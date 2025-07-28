@@ -165,8 +165,7 @@ export default function App() {
                     </p>
                     {def.info.link && (
                       <Button
-                        variant="secondary"
-                        className="mt-2"
+                        className="mt-2 bg-blue-500 text-white hover:bg-blue-600"
                         onClick={() => window.open(def.info.link.url, "_blank")}
                       >
                         {def.info.link.label}
