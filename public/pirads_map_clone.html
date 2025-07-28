@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>PI‑RADS Sector Map</title>
+  <style>
+    /*
+      Basic styles to organise the layout.  The map sits in a fixed size
+      container so that the interactive overlays always align with the
+      background.  A small margin is added around the page for a tidy
+      appearance.  Table and form controls are styled to roughly
+      match the look and feel of the original tool without copying any
+      proprietary styles verbatim.  The colour palette is kept similar
+      to the source (blue markers with white numbers) but implemented
+      independently.
+    */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    h3 {
+      margin-bottom: 10px;
+    }
+    #map-container {
+      position: relative;
+      width: 570px;
+      height: 606px;
+      margin-bottom: 10px;
+    }
+    canvas {
+      border: 2px solid lightgrey;
+    }
+    #controls {
+      margin-bottom: 15px;
+    }
+    #controls button {
+      margin-right: 8px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 960px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 4px;
+      text-align: center;
+    }
+    select, input[type="number"] {
+      width: 70px;
+    }
+  </style>
+  <!-- load fabric.js from a CDN (MIT licensed) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js" defer></script>
+</head>
+<body>
+  <h3>PI‑RADS Sector Map</h3>
+  <div id="map-container">
+    <canvas id="c" width="570" height="606"></canvas>
+  </div>
+  <div id="controls">
+    <button id="btn-download">Download</button>
+    <button id="btn-open">Open</button>
+    <button id="btn-reset">Reset</button>
+  </div>
+  <table id="lesion-table">
+    <thead>
+      <tr>
+        <th>Lesion No.</th>
+        <th>Zone</th>
+        <th>Location</th>
+        <th>Size (mm)</th>
+        <th>T2</th>
+        <th>DWI</th>
+        <th>DCE</th>
+        <th>PI‑RADS</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    // Wait until fabric.js is loaded before initialising the canvas.
+    window.addEventListener('load', function() {
+      const canvas = new fabric.Canvas('c', {
+        selection: false
+      });
+
+      // Save global references for later use
+      window._piradsCanvas = canvas;
+      window._piradsMarkers = [];
+      window._piradsOriginalPositions = [];
+
+      /**
+       * Load the lesion map image as the background for the canvas.
+       * The image is loaded from the local server to avoid CORS issues.
+       */
+      function drawBackground() {
+        // Clear any previous background objects
+        canvas.backgroundImage = null;
+        
+        // Load the lesion map image as background
+        fabric.Image.fromURL('/lesion_map.png', function(img) {
+          // Scale the image to fit the canvas while maintaining aspect ratio
+          const scaleX = canvas.width / img.width;
+          const scaleY = canvas.height / img.height;
+          const scale = Math.min(scaleX, scaleY);
+          
+          img.set({
+            scaleX: scale,
+            scaleY: scale,
+            originX: 'center',
+            originY: 'center',
+            left: canvas.width / 2,
+            top: canvas.height / 2,
+            selectable: false
+          });
+          
+          // Set as background image
+          canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+        }, {
+          // Handle image loading errors
+          crossOrigin: 'anonymous'
+        });
+      }
+      // Draw the simplified background
+      drawBackground();
+
+      /**
+       * Helper to create a draggable lesion marker.  Each marker is a
+       * grouped object containing a coloured circle and a white number.
+       * Markers are pushed into the global array so that they can be
+       * repositioned later (e.g. on reset).  The original position is
+       * recorded for the reset operation.
+       */
+      function createMarker(index, left, top) {
+        const radius = 14;
+        const circle = new fabric.Circle({
+          radius: radius,
+          fill: '#007bff',
+          stroke: '#005bef',
+          strokeWidth: 1,
+          originX: 'center',
+          originY: 'center'
+        });
+        const label = new fabric.Text(String(index), {
+          fontSize: 20,
+          fill: '#ffffff',
+          originX: 'center',
+          originY: 'center'
+        });
+        const group = new fabric.Group([circle, label], {
+          left: left,
+          top: top,
+          hasControls: false,
+          lockScalingX: true,
+          lockScalingY: true,
+          hoverCursor: 'move'
+        });
+        canvas.add(group);
+        window._piradsMarkers.push(group);
+        window._piradsOriginalPositions.push({ left: left, top: top });
+      }
+
+      // Place four markers along the right edge of the canvas.  The
+      // coordinates are spaced evenly from the top.  Should you wish to
+      // customise the positions, adjust the left and top values here.
+      for (let i = 1; i <= 4; i++) {
+        const markerLeft = canvas.width - 60;
+        const markerTop = 20 + (i - 1) * 90;
+        createMarker(i, markerLeft, markerTop);
+      }
+
+      /**
+       * Populate the lesion table with four rows.  Each row corresponds
+       * to a marker.  Dropdowns provide zone, location, imaging scores
+       * (T2 and DWI), dynamic contrast (DCE) and a computed PI‑RADS
+       * category.  When values change the PI‑RADS category is recomputed.
+       */
+      const tbody = document.querySelector('#lesion-table tbody');
+      function addTableRow(i) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i}</td>
+          <td>
+            <select id="zone${i}">
+              <option value="">--</option>
+              <option value="TZa">TZa</option>
+              <option value="TZp">TZp</option>
+              <option value="PZa">PZa</option>
+              <option value="PZpI">PZpI</option>
+              <option value="PZpm">PZpm</option>
+            </select>
+          </td>
+          <td>
+            <select id="location${i}">
+              <option value="">--</option>
+              <option value="Base">Base</option>
+              <option value="Mid">Mid</option>
+              <option value="Apex">Apex</option>
+              <option value="Left">Left</option>
+              <option value="Right">Right</option>
+            </select>
+          </td>
+          <td><input type="number" id="size${i}" min="0" step="0.1"></td>
+          <td>
+            <select id="t2${i}">
+              <option value="">--</option>
+              ${[1,2,3,4,5].map(n => `<option value="${n}">${n}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <select id="dwi${i}">
+              <option value="">--</option>
+              ${[1,2,3,4,5].map(n => `<option value="${n}">${n}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <select id="dce${i}">
+              <option value="">--</option>
+              <option value="+">+</option>
+              <option value="-">-</option>
+            </select>
+          </td>
+          <td><span id="pirads${i}">-</span></td>
+        `;
+        tbody.appendChild(tr);
+        // attach change listeners for PI‑RADS computation
+        ['zone','t2','dwi','dce'].forEach(field => {
+          document.getElementById(field + i).addEventListener('change', () => computePirads(i));
+        });
+      }
+      for (let i = 1; i <= 4; i++) {
+        addTableRow(i);
+      }
+
+      /**
+       * Compute the PI‑RADS category based on user selections.  The logic
+       * implemented here is intentionally simplified: it averages the T2
+       * and DWI scores and optionally increments the result if the DCE
+       * selection is positive.  Real PI‑RADS scoring is more complex but
+       * requires proprietary algorithms; this serves as a starting point
+       * for customisation.
+       */
+      function computePirads(i) {
+        const zoneVal = document.getElementById('zone' + i).value;
+        const t2Val = parseInt(document.getElementById('t2' + i).value);
+        const dwiVal = parseInt(document.getElementById('dwi' + i).value);
+        const dceVal = document.getElementById('dce' + i).value;
+        let rating = '-';
+        if (zoneVal && !isNaN(t2Val) && !isNaN(dwiVal)) {
+          rating = Math.round((t2Val + dwiVal) / 2);
+          if (dceVal === '+' && rating < 5) {
+            rating += 1;
+          }
+        }
+        document.getElementById('pirads' + i).textContent = rating;
+      }
+
+      /**
+       * Export the canvas contents to a PNG file.  If the background
+       * image comes from a domain that does not allow cross‑origin
+       * access, the browser may refuse to export the canvas.  In such
+       * cases you may host the image yourself or draw your own
+       * schematic directly with fabric primitives.
+       */
+      function downloadCanvas() {
+        try {
+          canvas.discardActiveObject();
+          canvas.renderAll();
+          const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
+          const link = document.createElement('a');
+          link.href = dataURL;
+          link.download = 'pirads_map.png';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (e) {
+          alert('Unable to export image due to cross‑origin restrictions.');
+        }
+      }
+
+      /**
+       * Display the exported map in a new browser window.  This uses
+       * the same export mechanism as downloadCanvas().
+       */
+      function openImage() {
+        try {
+          canvas.discardActiveObject();
+          canvas.renderAll();
+          const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
+          const newWin = window.open('', '_blank');
+          newWin.document.write(`<img src="${dataURL}" alt="PI‑RADS map">`);
+        } catch (e) {
+          alert('Unable to open image due to cross‑origin restrictions.');
+        }
+      }
+
+      /**
+       * Reset all markers back to their original positions.  The
+       * original coordinates are stored in _piradsOriginalPositions and
+       * applied to the respective marker groups.  After repositioning
+       * the markers, the canvas is re‑rendered.
+       */
+      function resetMarkers() {
+        window._piradsMarkers.forEach((group, idx) => {
+          const pos = window._piradsOriginalPositions[idx];
+          group.set({ left: pos.left, top: pos.top });
+          group.setCoords();
+        });
+        canvas.renderAll();
+      }
+
+      // Bind buttons to their respective functions
+      document.getElementById('btn-download').addEventListener('click', downloadCanvas);
+      document.getElementById('btn-open').addEventListener('click', openImage);
+      document.getElementById('btn-reset').addEventListener('click', resetMarkers);
+    });
+  </script>
+</body>
+</html>
