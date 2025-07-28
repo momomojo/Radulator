@@ -101,7 +101,7 @@
         canvas.backgroundImage = null;
         
         // Load the lesion map image as background
-        fabric.Image.fromURL('/lesion_map.png', function(img) {
+        fabric.Image.fromURL('./lesion_map.png', function(img) {
           // Scale the image to fit the canvas while maintaining aspect ratio
           const scaleX = canvas.width / img.width;
           const scaleY = canvas.height / img.height;
