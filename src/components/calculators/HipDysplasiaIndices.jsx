@@ -4,7 +4,7 @@ export const HipDysplasiaIndices = {
   desc: "Calculate migration indices and normal values in hip dysplasia",
   info: {
     text: "Migration index measurements:\n\nThe migration index is calculated as (a / (a + b)) × 100, where:\n• a = lateral distance from femoral head to acetabular line\n• b = medial distance from acetabular line to center of femoral head\n\nInterpretation ranges:\n• <22%: Normal (in children >3 years)\n• 22-32%: Borderline/At risk\n• 33-59%: Subluxation\n• 60-89%: Severe subluxation\n• ≥90%: Dislocation\n\nAcetabular Index (Tönnis Angle) normal values:\n• 0-10°: Normal\n• >10°: Hip dysplasia",
-    image: "/migration_index_diagram.png",
+    image: "./migration_index_diagram.png",
   },
   fields: [
     { id: "dob", label: "Date of birth", type: "date" },

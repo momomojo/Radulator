@@ -6,7 +6,7 @@ export const ProstateVolume = {
     text: "Calculation by using the ellipsoid formula (length × width × height × π/6). π/6 is rounded to 0.52.\n\nUniversal PSA-Density cut-off values are not yet established. Suggested thresholds range roughly from 0.08 to 0.15 depending on clinical context.",
     link: {
       label: "PI-RADS Sector Map",
-      url: "/pirads_map_clone.html",
+      url: "./pirads_map_clone.html",
     },
   },
   fields: [
