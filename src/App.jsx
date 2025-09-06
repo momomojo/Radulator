@@ -35,6 +35,25 @@ const calcDefs = [
   ⬇️  Generic Field Renderer (uses shadcn Switch where needed)
 *******************************************************************/
 function Field({ f, val, on }) {
+  if (f.type === "textarea") {
+    return (
+      <div className="space-y-1 md:col-span-2">
+        <Label htmlFor={f.id}>
+          {f.label}
+          {f.subLabel && (
+            <span className="text-sm text-gray-500 ml-2">({f.subLabel})</span>
+          )}
+        </Label>
+        <textarea
+          id={f.id}
+          className="w-full border rounded p-2 min-h-[120px] focus:outline-none focus:ring focus:ring-blue-300 font-mono text-sm"
+          value={val ?? ""}
+          onChange={(e) => on(f.id, e.target.value)}
+          placeholder={f.subLabel}
+        />
+      </div>
+    );
+  }
   if (f.type === "select") {
     return (
       <div className="space-y-1">
@@ -125,6 +144,35 @@ export default function App() {
   const update = (k, v) => setVals((p) => ({ ...p, [k]: v }));
   const run = () => setOut(def.compute(vals));
 
+  // Disable Calculate for MRE until at least one valid ROI pair exists
+  const canRun = (() => {
+    if (def.id !== "mr-elastography") return true;
+    const parseValue = (val) => {
+      if (val === undefined || val === null || val === "") return NaN;
+      const parsed = parseFloat(String(val).replace(",", "."));
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : NaN;
+    };
+    const roisFromFields = [
+      { kpa: parseValue(vals["roi1_kpa"]), area: parseValue(vals["roi1_area"]) },
+      { kpa: parseValue(vals["roi2_kpa"]), area: parseValue(vals["roi2_area"]) },
+      { kpa: parseValue(vals["roi3_kpa"]), area: parseValue(vals["roi3_area"]) },
+      { kpa: parseValue(vals["roi4_kpa"]), area: parseValue(vals["roi4_area"]) },
+    ].filter((r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0);
+    const csv = String(vals["roi_csv"] || "");
+    const roisFromCsv = csv
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const parts = line.split(/[;,\s]+/).filter(Boolean);
+        const kpa = parseValue(parts[0]);
+        const area = parseValue(parts[1]);
+        return { kpa, area };
+      })
+      .filter((r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0);
+    return roisFromFields.length + roisFromCsv.length > 0;
+  })();
+
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900">
       {/* Sidebar */}
@@ -194,7 +242,7 @@ export default function App() {
               ))}
             </div>
 
-            <Button className="w-full" onClick={run}>
+            <Button className="w-full" onClick={run} disabled={!canRun}>
               Calculate
             </Button>
 
