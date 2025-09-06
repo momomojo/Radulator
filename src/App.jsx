@@ -15,6 +15,7 @@ import {
   RenalCystBosniak,
   SpleenSizeULN,
   HipDysplasiaIndices,
+  MRElastography,
 } from "@/components/calculators";
 
 /*******************************************************************
@@ -27,6 +28,7 @@ const calcDefs = [
   RenalCystBosniak,
   SpleenSizeULN,
   HipDysplasiaIndices,
+  MRElastography,
 ];
 
 /*******************************************************************
