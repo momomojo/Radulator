@@ -2,7 +2,7 @@
 // React + Tailwind + shadcn/ui components
 // All formulas mirror radcalc.online calculators with referenced studies.
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -139,10 +139,19 @@ export default function App() {
   const [active, setActive] = useState(calcDefs[0].id);
   const [vals, setVals] = useState({});
   const [out, setOut] = useState(null);
+  const [mreRows, setMreRows] = useState([{ kpa: "", area: "" }]);
 
   const def = calcDefs.find((c) => c.id === active);
   const update = (k, v) => setVals((p) => ({ ...p, [k]: v }));
   const run = () => setOut(def.compute(vals));
+
+  // Sync dynamic MRE rows into compute values
+  useEffect(() => {
+    if (def?.id === "mr-elastography") {
+      setVals((p) => ({ ...p, roi_rows: mreRows }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [def?.id, mreRows]);
 
   // Disable Calculate for MRE until at least one valid ROI pair exists
   const canRun = (() => {
@@ -170,7 +179,12 @@ export default function App() {
         return { kpa, area };
       })
       .filter((r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0);
-    return roisFromFields.length + roisFromCsv.length > 0;
+    const roisFromRows = Array.isArray(mreRows)
+      ? mreRows
+          .map((r) => ({ kpa: parseValue(r?.kpa), area: parseValue(r?.area) }))
+          .filter((r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0)
+      : [];
+    return roisFromFields.length + roisFromCsv.length + roisFromRows.length > 0;
   })();
 
   return (
@@ -185,6 +199,7 @@ export default function App() {
               setActive(c.id);
               setVals({});
               setOut(null);
+              setMreRows([{ kpa: "", area: "" }]);
             }}
             className={`w-full text-left px-3 py-2 rounded-lg transition ${
               c.id === active
@@ -242,17 +257,95 @@ export default function App() {
               ))}
             </div>
 
+            {def.id === "mr-elastography" && (
+              <div className="space-y-3">
+                <h4 className="font-medium">Dynamic ROIs</h4>
+                <div className="grid grid-cols-3 gap-4 font-medium">
+                  <div>Slice / ROI</div>
+                  <div>Stiffness (kPa)</div>
+                  <div>ROI Area</div>
+                </div>
+                {mreRows.map((r, i) => {
+                  const parseValue = (val) => {
+                    if (val === undefined || val === null || val === "") return NaN;
+                    const parsed = parseFloat(String(val).replace(",", "."));
+                    return Number.isFinite(parsed) && parsed >= 0 ? parsed : NaN;
+                  };
+                  const kpaNum = parseValue(r.kpa);
+                  const areaNum = parseValue(r.area);
+                  const kpaInvalid = r.kpa !== "" && !Number.isFinite(kpaNum);
+                  const areaInvalid = r.area !== "" && (!Number.isFinite(areaNum) || areaNum <= 0);
+                  return (
+                    <div key={i} className="grid grid-cols-3 gap-4 items-center">
+                      <div className="text-gray-500">#{i + 1}</div>
+                      <Input
+                        placeholder="e.g., 2.8"
+                        value={r.kpa}
+                        inputMode="decimal"
+                        className={kpaInvalid ? "border-red-500" : ""}
+                        onChange={(e) => {
+                          const next = mreRows.slice();
+                          next[i] = { ...next[i], kpa: e.target.value };
+                          setMreRows(next);
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="e.g., 50.0"
+                          value={r.area}
+                          inputMode="decimal"
+                          className={areaInvalid ? "border-red-500" : ""}
+                          onChange={(e) => {
+                            const next = mreRows.slice();
+                            next[i] = { ...next[i], area: e.target.value };
+                            setMreRows(next);
+                          }}
+                        />
+                        <Button
+                          variant="secondary"
+                          onClick={() => setMreRows((rows) => rows.filter((_, idx) => idx !== i))}
+                          disabled={mreRows.length <= 1}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+                <Button
+                  variant="secondary"
+                  onClick={() => setMreRows((rows) => [...rows, { kpa: "", area: "" }])}
+                >
+                  Add ROI
+                </Button>
+              </div>
+            )}
+
             <Button className="w-full" onClick={run} disabled={!canRun}>
               Calculate
             </Button>
 
             {out && (
               <section className="pt-4 border-t space-y-1 text-sm">
-                {Object.entries(out).map(([k, v]) => (
-                  <p key={k}>
-                    <span className="font-mono font-medium">{k}:</span> {v}
-                  </p>
-                ))}
+                {Object.entries(out).map(([k, v]) => {
+                  if (
+                    def.id === "mr-elastography" &&
+                    k === "Area-weighted Mean (kPa)" &&
+                    out["Area-weighted Mean Raw (kPa)"]
+                  ) {
+                    return (
+                      <p key={k}>
+                        <span className="font-mono font-medium">{k}:</span>{" "}
+                        <span title={`Raw: ${out["Area-weighted Mean Raw (kPa)"]}`}>{v}</span>
+                      </p>
+                    );
+                  }
+                  return (
+                    <p key={k}>
+                      <span className="font-mono font-medium">{k}:</span> {v}
+                    </p>
+                  );
+                })}
                 {def.id === "adrenal-ct" &&
                   parseFloat(out["Absolute Washout (%)"]) >= 60 && (
                     <p className="mt-1 font-medium text-gray-600">

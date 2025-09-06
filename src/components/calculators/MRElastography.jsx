@@ -31,7 +31,8 @@ export const MRElastography = {
     roi4_kpa = "", roi4_area = "",
     roi_csv = "",
     frequency = "60",
-    frequency_other = ""
+    frequency_other = "",
+    roi_rows = []
   }) => {
     // Parse and filter valid ROIs with robust input handling
     const parseValue = (val) => {
@@ -61,7 +62,14 @@ export const MRElastography = {
       })
       .filter(r => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0);
 
-    const rois = [...roisFromFields, ...roisFromCsv];
+    // From dynamic rows array
+    const roisFromRows = Array.isArray(roi_rows)
+      ? roi_rows
+          .map((r) => ({ kpa: parseValue(r?.kpa), area: parseValue(r?.area) }))
+          .filter((r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0)
+      : [];
+
+    const rois = [...roisFromFields, ...roisFromCsv, ...roisFromRows];
 
     // Safety checks
     if (rois.length === 0) {
@@ -102,6 +110,7 @@ export const MRElastography = {
     return {
       "Total Area (cm²)": totalArea.toFixed(2),
       "Area-weighted Mean (kPa)": Number.isFinite(weightedMean) ? weightedMean.toFixed(2) : "—",
+      "Area-weighted Mean Raw (kPa)": Number.isFinite(weightedMean) ? String(weightedMean) : "",
       "Interpretation": interpretation,
       "ROIs Used": `${rois.length} valid ROI${rois.length !== 1 ? 's' : ''}`,
       "Frequency": `${effFrequency} Hz`,
