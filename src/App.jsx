@@ -251,15 +251,16 @@ export default function App() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Input fields">
               {def.fields.map((f) => (
                 <Field key={f.id} f={f} val={vals[f.id]} on={update} />
               ))}
             </div>
 
             {def.id === "mr-elastography" && (
-              <div className="space-y-3">
+              <div className="space-y-3" aria-label="Dynamic ROI table">
                 <h4 className="font-medium">Dynamic ROIs</h4>
+                <p className="text-sm text-gray-600">Tip: You can paste multiple pairs in the CSV box above, or add rows here. Use decimals and consistent units.</p>
                 <div className="grid grid-cols-3 gap-4 font-medium">
                   <div>Slice / ROI</div>
                   <div>Stiffness (kPa)</div>
@@ -283,6 +284,8 @@ export default function App() {
                         value={r.kpa}
                         inputMode="decimal"
                         className={kpaInvalid ? "border-red-500" : ""}
+                        aria-invalid={kpaInvalid ? "true" : "false"}
+                        aria-label={`ROI ${i + 1} stiffness in kPa`}
                         onChange={(e) => {
                           const next = mreRows.slice();
                           next[i] = { ...next[i], kpa: e.target.value };
@@ -295,6 +298,8 @@ export default function App() {
                           value={r.area}
                           inputMode="decimal"
                           className={areaInvalid ? "border-red-500" : ""}
+                          aria-invalid={areaInvalid ? "true" : "false"}
+                          aria-label={`ROI ${i + 1} area in cm²`}
                           onChange={(e) => {
                             const next = mreRows.slice();
                             next[i] = { ...next[i], area: e.target.value };
@@ -321,12 +326,15 @@ export default function App() {
               </div>
             )}
 
-            <Button className="w-full" onClick={run} disabled={!canRun}>
+            {!canRun && def.id === "mr-elastography" && (
+              <p className="text-xs text-gray-600" role="note">Enter at least one valid ROI (kPa and area &gt; 0) in fields, CSV, or dynamic rows to enable Calculate.</p>
+            )}
+            <Button className="w-full" onClick={run} disabled={!canRun} aria-disabled={!canRun}>
               Calculate
             </Button>
 
             {out && (
-              <section className="pt-4 border-t space-y-1 text-sm">
+              <section className="pt-4 border-t space-y-1 text-sm" aria-live="polite">
                 {Object.entries(out).map(([k, v]) => {
                   if (
                     def.id === "mr-elastography" &&

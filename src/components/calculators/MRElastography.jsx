@@ -3,7 +3,8 @@ export const MRElastography = {
   name: "MR Elastography (Liver)",
   desc: "Area-weighted mean liver stiffness across ROIs/slices.",
   info: {
-    text: "Compute the area-weighted mean liver stiffness across ROIs/slices: Σ(Mi·Ai) / ΣAi.\n\nEnter stiffness in kPa and ROI area in cm² (or pixels² consistently).\n\nUse consistent ROIs: avoid vessels, wave interference, and 'hot' edges; rely on the confidence map where available.\n\nInterpretation depends on sequence, driver frequency (commonly 60 Hz), and underlying disease etiology; correlate with labs and imaging.\n\nWhen mixing ROIs of different sizes, area-weighting improves representativeness versus a simple mean.\n\nNote: Fibrosis cutoffs vary by etiology, vendor, sequence, and frequency. These are typical 60 Hz GRE ranges—always correlate clinically.",
+    text: "MR Elastography (Liver) – Quick Start\n\nGoal: Compute the area-weighted mean liver stiffness across ROIs/slices using Σ(Mi·Ai) / ΣAi.\n\nHow to use:\n1) Select driver frequency (60 Hz is most common for GRE).\n2) Enter ROI stiffness (kPa) and ROI area (cm²) in the fields provided.\n   - You can also paste multiple rows via the CSV box (format: kPa,Area per line).\n   - Or add rows below in the Dynamic ROIs table.\n3) Click Calculate. The tool displays total area, weighted mean (kPa), and an interpretation.\n\nCSV example:\n2.8, 50\n3.2, 45\n3.6, 40\n\nTechnique & interpretation notes:\n• Use consistent ROIs; avoid vessels, wave interference, and hot edges; prefer confidence maps when available.\n• Interpretation depends on sequence, frequency, vendor, and disease etiology; always correlate clinically.\n• Typical 60 Hz GRE ranges (institutional variations exist): <2.5 normal; 2.5–3.0 borderline; 3.0–3.6 ≥F2; 3.6–4.0 ≥F3; ≥4.0 cirrhosis likely.",
+    link: { label: "Consensus guidance (Manduca 2020)", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8495610/" },
   },
   fields: [
     { 
