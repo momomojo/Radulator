@@ -16,6 +16,7 @@ import {
   SpleenSizeULN,
   HipDysplasiaIndices,
   MRElastography,
+  RenalNephrometry,
 } from "@/components/calculators";
 
 /*******************************************************************
@@ -26,6 +27,7 @@ const calcDefs = [
   AdrenalMRICSI,
   ProstateVolume,
   RenalCystBosniak,
+  RenalNephrometry,
   SpleenSizeULN,
   HipDysplasiaIndices,
   MRElastography,
