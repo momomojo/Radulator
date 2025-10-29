@@ -17,6 +17,7 @@ import {
   HipDysplasiaIndices,
   MRElastography,
   RenalNephrometry,
+  FeedbackForm,
 } from "@/components/calculators";
 
 /*******************************************************************
@@ -31,6 +32,7 @@ const calcDefs = [
   SpleenSizeULN,
   HipDysplasiaIndices,
   MRElastography,
+  FeedbackForm,
 ];
 
 /*******************************************************************
@@ -253,11 +255,15 @@ export default function App() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Input fields">
-              {def.fields.map((f) => (
-                <Field key={f.id} f={f} val={vals[f.id]} on={update} />
-              ))}
-            </div>
+            {def.isCustomComponent ? (
+              <def.Component />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Input fields">
+                {def.fields.map((f) => (
+                  <Field key={f.id} f={f} val={vals[f.id]} on={update} />
+                ))}
+              </div>
+            )}
 
             {def.id === "mr-elastography" && (
               <div className="space-y-3" aria-label="Dynamic ROI table">
@@ -331,11 +337,13 @@ export default function App() {
             {!canRun && def.id === "mr-elastography" && (
               <p className="text-xs text-gray-600" role="note">Enter at least one valid ROI (kPa and area &gt; 0) in fields, CSV, or dynamic rows to enable Calculate.</p>
             )}
-            <Button className="w-full" onClick={run} disabled={!canRun} aria-disabled={!canRun}>
-              Calculate
-            </Button>
+            {!def.isCustomComponent && (
+              <Button className="w-full" onClick={run} disabled={!canRun} aria-disabled={!canRun}>
+                Calculate
+              </Button>
+            )}
 
-            {out && (
+            {out && !def.isCustomComponent && (
               <section className="pt-4 border-t space-y-1 text-sm" aria-live="polite">
                 {Object.entries(out).map(([k, v]) => {
                   if (
@@ -372,23 +380,25 @@ export default function App() {
             )}
 
             {/* References */}
-            <section className="pt-4 border-t">
-              <h3 className="font-medium mb-2">References</h3>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                {def.refs.map((r) => (
-                  <li key={r.u}>
-                    <a
-                      href={r.u}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      {r.t}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {def.refs && def.refs.length > 0 && (
+              <section className="pt-4 border-t">
+                <h3 className="font-medium mb-2">References</h3>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  {def.refs.map((r) => (
+                    <li key={r.u}>
+                      <a
+                        href={r.u}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        {r.t}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </CardContent>
         </Card>
       </main>
