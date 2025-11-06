@@ -413,7 +413,10 @@ export const AVSHyperaldo = {
       const link = document.createElement("a");
       link.href = url;
       link.download = `AVS_Aldosterone_${patientInitials || "Patient"}_${procedureDate || "Results"}.csv`;
+      link.style.display = "none";
+      document.body.appendChild(link); // Append to DOM before clicking
       link.click();
+      document.body.removeChild(link); // Clean up
       URL.revokeObjectURL(url);
     };
 

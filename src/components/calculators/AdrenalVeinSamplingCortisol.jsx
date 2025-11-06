@@ -104,7 +104,7 @@ export const AVSCortisol = {
       const ivcCortStd = convertCortToStandard(parseFloat(suprarenalIVCCort || infrarenalIVCCort) || 0);
       const ivcEpi = parseFloat(suprarenalIVCEpi || infrarenalIVCEpi) || 0; // Epi units are already standard (pg/mL)
 
-      // Process left samples - convert to standard units
+      // Process left samples - convert to standard units and validate epinephrine INDIVIDUALLY
       const leftValidSamples = leftSamples
         .map(s => ({
           cortisol: convertCortToStandard(parseFloat(s.cortisol)),
@@ -113,7 +113,7 @@ export const AVSCortisol = {
         }))
         .filter(s => !isNaN(s.cortisol) && !isNaN(s.epinephrine));
 
-      // Process right samples - convert to standard units
+      // Process right samples - convert to standard units and validate epinephrine INDIVIDUALLY
       const rightValidSamples = rightSamples
         .map(s => ({
           cortisol: convertCortToStandard(parseFloat(s.cortisol)),
@@ -127,35 +127,55 @@ export const AVSCortisol = {
         return;
       }
 
-      // Calculate averages for left side
+      // Filter samples that pass epinephrine validation (each sample must have Epi Δ > 100 pg/mL)
+      const leftSuccessfulSamples = leftValidSamples.filter(s => (s.epinephrine - ivcEpi) > 100);
+      const rightSuccessfulSamples = rightValidSamples.filter(s => (s.epinephrine - ivcEpi) > 100);
+
+      // Cannulation success determined by whether ANY samples passed epinephrine threshold
+      const leftAdrenalBlood = leftSuccessfulSamples.length > 0;
+      const rightAdrenalBlood = rightSuccessfulSamples.length > 0;
+
+      // Calculate averages for display (all samples)
       const leftAvgCort = leftValidSamples.reduce((sum, s) => sum + s.cortisol, 0) / leftValidSamples.length;
       const leftAvgEpi = leftValidSamples.reduce((sum, s) => sum + s.epinephrine, 0) / leftValidSamples.length;
-
-      // Calculate averages for right side
       const rightAvgCort = rightValidSamples.reduce((sum, s) => sum + s.cortisol, 0) / rightValidSamples.length;
       const rightAvgEpi = rightValidSamples.reduce((sum, s) => sum + s.epinephrine, 0) / rightValidSamples.length;
 
-      // Cannulation success (epinephrine gradient >100 pg/mL)
       const leftEpiDelta = leftAvgEpi - ivcEpi;
       const rightEpiDelta = rightAvgEpi - ivcEpi;
-      const leftAdrenalBlood = leftEpiDelta > 100;
-      const rightAdrenalBlood = rightEpiDelta > 100;
 
-      // AV/PV cortisol ratios - using standard units
-      const leftRatio = leftAvgCort / ivcCortStd;
-      const rightRatio = rightAvgCort / ivcCortStd;
+      // AV/PV cortisol ratios - ONLY use samples that passed epinephrine validation
+      let leftRatio = null;
+      let rightRatio = null;
+      let clr = null;
 
-      // CLR (cortisol lateralization ratio)
-      const clr = Math.max(leftRatio, rightRatio) / Math.min(leftRatio, rightRatio);
+      if (leftAdrenalBlood) {
+        const leftSuccessfulAvgCort = leftSuccessfulSamples.reduce((sum, s) => sum + s.cortisol, 0) / leftSuccessfulSamples.length;
+        leftRatio = leftSuccessfulAvgCort / ivcCortStd;
+      }
+
+      if (rightAdrenalBlood) {
+        const rightSuccessfulAvgCort = rightSuccessfulSamples.reduce((sum, s) => sum + s.cortisol, 0) / rightSuccessfulSamples.length;
+        rightRatio = rightSuccessfulAvgCort / ivcCortStd;
+      }
+
+      // CLR (cortisol lateralization ratio) - only compute if BOTH sides successful
+      if (leftAdrenalBlood && rightAdrenalBlood) {
+        clr = Math.max(leftRatio, rightRatio) / Math.min(leftRatio, rightRatio);
+      }
 
       // Interpretation per Young criteria
       let interpretation = "";
-      const dominantSide = leftRatio > rightRatio ? "LEFT" : "RIGHT";
+      let dominantSide = "INDETERMINATE";
+
+      if (leftRatio !== null && rightRatio !== null) {
+        dominantSide = leftRatio > rightRatio ? "LEFT" : "RIGHT";
+      }
 
       if (!leftAdrenalBlood || !rightAdrenalBlood) {
         const failedSide = !leftAdrenalBlood && !rightAdrenalBlood ? "both sides" :
                           !leftAdrenalBlood ? "left side" : "right side";
-        interpretation = `⚠️ Cannulation unsuccessful on ${failedSide}. Epinephrine gradient must be >100 pg/mL above IVC for reliable interpretation (Young et al.).`;
+        interpretation = `⚠️ Cannulation unsuccessful on ${failedSide}. Epinephrine gradient must be >100 pg/mL above IVC for each sample per Young et al. protocol. Ratios cannot be reliably interpreted.`;
       } else if (leftRatio > 6.5 && rightRatio <= 3.3 && clr >= 2.3) {
         interpretation = `✓ Unilateral cortisol-secreting adenoma on LEFT side. Criteria met: left AV/PV >6.5 (${leftRatio.toFixed(2)}), right AV/PV ≤3.3 (${rightRatio.toFixed(2)}), CLR ≥2.3 (${clr.toFixed(2)}).`;
       } else if (rightRatio > 6.5 && leftRatio <= 3.3 && clr >= 2.3) {
@@ -254,9 +274,9 @@ export const AVSCortisol = {
         ["Right Average:", "", formatCortForDisplay(data.rightAvgCort), data.rightAvgEpi.toFixed(2), data.rightEpiDelta.toFixed(2), data.rightAdrenalBlood ? "YES" : "NO"],
         [""],
         ["Cortisol Lateralization Analysis"],
-        ["Left AV/PV Ratio:", data.leftRatio.toFixed(3)],
-        ["Right AV/PV Ratio:", data.rightRatio.toFixed(3)],
-        ["Side-to-side Cortisol Lateralization Ratio (CLR):", data.clr.toFixed(3)],
+        ["Left AV/PV Ratio:", data.leftRatio !== null ? data.leftRatio.toFixed(3) : "N/A (cannulation failed)"],
+        ["Right AV/PV Ratio:", data.rightRatio !== null ? data.rightRatio.toFixed(3) : "N/A (cannulation failed)"],
+        ["Side-to-side Cortisol Lateralization Ratio (CLR):", data.clr !== null ? data.clr.toFixed(3) : "N/A (bilateral cannulation required)"],
         ["Dominant Side:", data.dominantSide],
         [""],
         ["Interpretation"],
@@ -280,7 +300,10 @@ export const AVSCortisol = {
       const link = document.createElement("a");
       link.href = url;
       link.download = `AVS_Cortisol_${data.patientInitials || "Patient"}_${data.procedureDate || "Results"}.csv`;
+      link.style.display = "none";
+      document.body.appendChild(link); // Append to DOM before clicking
       link.click();
+      document.body.removeChild(link); // Clean up
       URL.revokeObjectURL(url);
     };
 
@@ -436,9 +459,9 @@ export const AVSCortisol = {
                 </div>
 
                 <div className="space-y-1 text-sm">
-                  <p><span className="font-medium">Left AV/PV Cortisol Ratio:</span> {results.leftRatio.toFixed(3)}</p>
-                  <p><span className="font-medium">Right AV/PV Cortisol Ratio:</span> {results.rightRatio.toFixed(3)}</p>
-                  <p><span className="font-medium">CLR (Side-to-side Ratio):</span> {results.clr.toFixed(3)}</p>
+                  <p><span className="font-medium">Left AV/PV Cortisol Ratio:</span> {results.leftRatio !== null ? results.leftRatio.toFixed(3) : "N/A (cannulation failed)"}</p>
+                  <p><span className="font-medium">Right AV/PV Cortisol Ratio:</span> {results.rightRatio !== null ? results.rightRatio.toFixed(3) : "N/A (cannulation failed)"}</p>
+                  <p><span className="font-medium">CLR (Side-to-side Ratio):</span> {results.clr !== null ? results.clr.toFixed(3) : "N/A (bilateral cannulation required)"}</p>
                   <p><span className="font-medium">Dominant Side:</span> {results.dominantSide}</p>
                 </div>
 
