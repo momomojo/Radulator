@@ -48,7 +48,7 @@ A 58-year-old woman with bilateral adrenal masses and mild autonomous cortisol s
    - Cortisol: 35
    - Epinephrine: 180
 
-7. Click "Calculate & Download CSV"
+7. Click "Calculate"
 
 ### Expected Results
 - **Cannulation Success**: Both should show "✓ Successful" in green
@@ -59,15 +59,25 @@ A 58-year-old woman with bilateral adrenal masses and mild autonomous cortisol s
 - **CLR**: 5.143
 - **Dominant Side**: LEFT
 - **Interpretation**: Should indicate "Unilateral cortisol-secreting adenoma on LEFT side" with criteria met (left >6.5, right ≤3.3, CLR ≥2.3)
-- **CSV Download**: File named "AVS_Cortisol_JD_[date].csv" should download automatically
+- **Download Button**: A "Download Results as CSV" button should appear below the interpretation
+
+8. Review results, then click "Download Results as CSV"
+
+### Expected CSV Download
+- File named "AVS_Cortisol_JD_[date].csv" should download
+- CSV contains all input data, calculations, and methodology section
 
 ### Validation Checks
+- [ ] "Calculate" button is separate from download functionality
+- [ ] Results display BEFORE any download occurs
 - [ ] Patient information displays correctly in results
 - [ ] Green checkmarks appear for successful cannulation
 - [ ] Epinephrine delta values are correct
 - [ ] AV/PV ratios match expected values (±0.001)
 - [ ] Interpretation correctly identifies LEFT unilateral disease
-- [ ] CSV file downloads automatically
+- [ ] "Download Results as CSV" button appears only after successful calculation
+- [ ] Can review results before downloading
+- [ ] CSV downloads only when "Download Results as CSV" button is clicked
 - [ ] CSV file contains all input data, calculations, and methodology section
 
 ---
@@ -129,7 +139,8 @@ Let me fix this test case with actual failure:
 - [ ] Red X appears for failed cannulation
 - [ ] Warning emoji (⚠️) appears in interpretation
 - [ ] Clear error message explains cannulation failure
-- [ ] CSV still downloads with failure noted
+- [ ] "Download Results as CSV" button still appears (failure is still a result)
+- [ ] CSV downloads with failure noted when button clicked
 
 ---
 
@@ -164,7 +175,7 @@ Let me fix this test case with actual failure:
    - Aldosterone: 2400
    - Cortisol: 900
 
-7. Click "Calculate & Download CSV"
+7. Click "Calculate"
 
 ### Expected Results
 - **Cannulation Status**: "✓ Bilateral successful cannulation (SI ≥ 5)" (green)
@@ -180,13 +191,19 @@ Let me fix this test case with actual failure:
 - **RASI**: 3.56 (>2.4, ✓ Chow 2024 positive)
 - **AV/IVC**: 3.56
 - **Interpretation**: "✓ Unilateral aldosterone hypersecretion on Right side (LI = 12.59 > 4). Consider unilateral adrenalectomy. Contralateral suppression confirmed (CR = 0.28 < 1). Chow 2024 criteria also met: CSI 0.28 < 0.5 (92.9% PPV); RASI 3.56 > 2.4 (94.4% PPV)."
+- **Download Button**: "Download Results as CSV" appears below results
+
+8. Click "Download Results as CSV"
 
 ### Validation Checks
+- [ ] Results display before any download
 - [ ] All selectivity indices calculated correctly
 - [ ] Both sides show checkmarks for adequate cannulation
 - [ ] L/R and R/L ratios displayed
 - [ ] CSI and RASI display with checkmarks when criteria met
 - [ ] Interpretation mentions Chow 2024 criteria
+- [ ] Download button appears only after calculation
+- [ ] CSV downloads only when button clicked
 - [ ] CSV contains complete methodology section
 - [ ] Notes field appears in CSV output
 
@@ -223,7 +240,7 @@ Test the "Both" protocol option to see side-by-side comparison view.
    - Right AV Aldosterone: 180
    - Right AV Cortisol: 720
 
-7. Calculate
+7. Click "Calculate"
 
 ### Expected Results
 - **Display**: Two side-by-side boxes:
@@ -238,14 +255,23 @@ Test the "Both" protocol option to see side-by-side comparison view.
   - LI threshold: >4
   - Both SIs should be ≥5
 - **Both protocols should calculate**: LI, CR, CSI, RASI, interpretations
-- **CSV**: Should contain BOTH pre and post sections
+- **Download Button**: "Download Results as CSV" appears below both result panels
+
+8. Review results from both protocols, then click "Download Results as CSV"
+
+### Expected CSV Download
+- File should contain BOTH pre and post sections with complete data for both protocols
 
 ### Validation Checks
+- [ ] Results display before any download occurs
 - [ ] Side-by-side layout appears (2 columns on desktop)
 - [ ] Pre section has blue background
 - [ ] Post section has green background
 - [ ] Different thresholds applied (Pre: LI>2, Post: LI>4)
 - [ ] Both interpretations display (truncated to 150 chars in comparison view)
+- [ ] Download button appears only after successful calculation
+- [ ] Can review both result sections before downloading
+- [ ] CSV downloads only when "Download Results as CSV" button is clicked
 - [ ] CSV contains complete data for both protocols
 - [ ] Can scroll through both result sections
 
@@ -277,7 +303,7 @@ Test adding multiple samples per adrenal vein and verify averaging.
    - Sample 3: Time 10:20, Aldosterone 110, Cortisol 550
    - (Average should be: Aldo=110, Cort=500)
 
-6. Calculate
+6. Click "Calculate"
 
 ### Expected Results
 - **Calculations should use averaged values**:
@@ -286,8 +312,16 @@ Test adding multiple samples per adrenal vein and verify averaging.
   - Left A/C: 700/550 = 1.2727
   - Right A/C: 110/500 = 0.2200
   - LI: 1.2727/0.2200 = 5.79 (>4, unilateral LEFT)
+- **Download Button**: "Download Results as CSV" appears below interpretation
+
+7. Review averaged results, then click "Download Results as CSV"
+
+### Expected CSV Download
+- CSV should include all individual samples with times
+- Averages should be noted in calculations section
 
 ### Validation Checks
+- [ ] Results display before any download occurs
 - [ ] Can add up to 2 samples for left AV
 - [ ] Can add up to 4 samples for right AV
 - [ ] "+ Add Sample" button disables at max
@@ -295,6 +329,8 @@ Test adding multiple samples per adrenal vein and verify averaging.
 - [ ] "Remove" button disabled when only 1 sample remains
 - [ ] Calculations correctly average multiple samples
 - [ ] Time fields display properly for each sample
+- [ ] Download button appears only after calculation
+- [ ] CSV downloads only when button clicked
 - [ ] CSV includes all individual samples with times
 
 ---
@@ -324,17 +360,24 @@ Let me recalculate for LI between 2-4:
 3. Left AV: Aldosterone 400, Cortisol 500 (A/C = 0.8)
 4. Right AV: Aldosterone 135, Cortisol 450 (A/C = 0.3)
 5. IVC A/C = 10/15 = 0.667
+6. Click "Calculate"
 
 ### Expected Results
 - LI: 2.67 (between 2 and 4)
 - Interpretation should include: "⚠️ Equivocal lateralization (LI = 2.67 between 2-4). Per Kahn & Angle 2010: ratios between 2-3 are equivocal."
 - Should also check CSI and RASI for additional guidance
+- **Download Button**: "Download Results as CSV" appears below interpretation
+
+7. Review equivocal interpretation, then click "Download Results as CSV"
 
 ### Validation Checks
+- [ ] Results display before any download occurs
 - [ ] Warning emoji appears for equivocal result
 - [ ] Kahn & Angle 2010 citation appears
 - [ ] Additional guidance from CSI/RASI included if applicable
 - [ ] Mentions "LI < 3 suggests possible bilateral hyperplasia" OR "LI ≥ 3 suggests unilateral asymmetry"
+- [ ] Download button appears only after calculation
+- [ ] CSV downloads only when button clicked
 
 ---
 
@@ -348,7 +391,7 @@ Test Chow 2024 unilateral-cannulating criteria when one side fails SI but CSI/RA
 2. IVC: Aldosterone 8, Cortisol 12
 3. Left AV: Aldosterone 800, Cortisol 450 (SI = 37.5, PASSES)
 4. Right AV: Aldosterone 50, Cortisol 40 (SI = 3.33, FAILS threshold of 5)
-5. Calculate
+5. Click "Calculate"
 
 ### Expected Results
 - Cannulation Status: "⚠️ Cannulation failure on right (SI < 5)"
@@ -359,13 +402,19 @@ Test Chow 2024 unilateral-cannulating criteria when one side fails SI but CSI/RA
   - CSI: 1.25/0.667 = 1.87 (>0.5, does NOT meet Chow criteria)
   - RASI: 1.778/0.667 = 2.67 (>2.4, MEETS Chow criteria ✓)
 - Interpretation: "Cannulation failure on right... However, unilateral-cannulating criteria suggest unilateral disease: RASI > 2.4 (2.67, 94.4% PPV)."
+- **Download Button**: "Download Results as CSV" appears below interpretation
+
+6. Review CSI/RASI rescue criteria, then click "Download Results as CSV"
 
 ### Validation Checks
+- [ ] Results display before any download occurs
 - [ ] Shows cannulation failure warning
 - [ ] Still calculates CSI and RASI
 - [ ] Mentions "unilateral-cannulating criteria" from Chow 2024
 - [ ] Provides PPV values for CSI/RASI
 - [ ] Explains that guidance is still possible despite failed cannulation
+- [ ] Download button appears only after calculation
+- [ ] CSV downloads only when button clicked
 
 ---
 
@@ -396,7 +445,10 @@ Test Chow 2024 unilateral-cannulating criteria when one side fails SI but CSI/RA
 - [ ] Color-coded result boxes (gray for cannulation status, blue for interpretation)
 
 ### CSV Download
-- [ ] CSV downloads automatically after calculation
+- [ ] "Download Results as CSV" button appears only after successful calculation
+- [ ] Button does not appear before calculation
+- [ ] Clicking "Calculate" does NOT trigger automatic download
+- [ ] CSV downloads only when "Download Results as CSV" button is clicked
 - [ ] Filename includes patient initials and date
 - [ ] CSV contains all sections: patient info, input data, calculations, interpretation, methodology, references
 - [ ] CSV is properly formatted (commas, no HTML)
@@ -429,7 +481,7 @@ Test Chow 2024 unilateral-cannulating criteria when one side fails SI but CSI/RA
 - [ ] Calculator switches instantly
 - [ ] Calculations complete in <100ms
 - [ ] No console errors in browser developer tools
-- [ ] CSV downloads within 1 second of calculation
+- [ ] CSV downloads within 1 second of clicking "Download Results as CSV" button
 
 ---
 

@@ -242,9 +242,11 @@ export const AVSHyperaldo = {
       }
 
       setResults({ pre: preResults, post: postResults });
+    };
 
-      // Generate CSV
-      generateCSV({ pre: preResults, post: postResults });
+    const downloadCSV = () => {
+      if (!results || results.error) return;
+      generateCSV(results);
     };
 
     const generateCSV = (data) => {
@@ -463,7 +465,7 @@ export const AVSHyperaldo = {
         )}
 
         {/* Calculate Button */}
-        <Button className="w-full" onClick={calculate}>Calculate & Download CSV</Button>
+        <Button className="w-full" onClick={calculate}>Calculate</Button>
 
         {/* Results */}
         {results && (
@@ -558,7 +560,10 @@ export const AVSHyperaldo = {
                   </>
                 )}
 
-                <p className="text-xs text-gray-600 italic">CSV file has been automatically downloaded with complete results, methodology, and all indices (SI, LI, CR, CSI, RASI, AV/IVC).</p>
+                {/* Download CSV Button */}
+                <Button className="w-full" variant="secondary" onClick={downloadCSV}>
+                  Download Results as CSV
+                </Button>
               </>
             )}
           </div>

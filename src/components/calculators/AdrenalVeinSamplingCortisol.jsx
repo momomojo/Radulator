@@ -173,9 +173,11 @@ export const AVSCortisol = {
       };
 
       setResults(resultData);
+    };
 
-      // Generate and download CSV
-      generateCSV(resultData);
+    const downloadCSV = () => {
+      if (!results || results.error) return;
+      generateCSV(results);
     };
 
     const generateCSV = (data) => {
@@ -357,7 +359,7 @@ export const AVSCortisol = {
         </div>
 
         {/* Calculate Button */}
-        <Button className="w-full" onClick={calculate}>Calculate & Download CSV</Button>
+        <Button className="w-full" onClick={calculate}>Calculate</Button>
 
         {/* Results */}
         {results && (
@@ -398,7 +400,10 @@ export const AVSCortisol = {
                   <p className="text-sm">{results.interpretation}</p>
                 </div>
 
-                <p className="text-xs text-gray-600 italic">CSV file has been automatically downloaded with complete results and methodology.</p>
+                {/* Download CSV Button */}
+                <Button className="w-full" variant="secondary" onClick={downloadCSV}>
+                  Download Results as CSV
+                </Button>
               </>
             )}
           </div>
