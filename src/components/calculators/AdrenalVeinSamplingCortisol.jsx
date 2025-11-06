@@ -46,6 +46,23 @@ export const AVSCortisol = {
 
     const [results, setResults] = useState(null);
 
+    // Unit selections
+    const [cortUnits, setCortUnits] = useState("µg/dL"); // "µg/dL" or "nmol/L"
+    const [epiUnits, setEpiUnits] = useState("pg/mL"); // "pg/mL" or "ng/L" (same numerically)
+
+    // Unit conversion functions
+    const convertCortToStandard = (value) => {
+      // Standard: µg/dL
+      if (cortUnits === "nmol/L") return value / 27.59; // nmol/L to µg/dL
+      return value; // already in µg/dL
+    };
+
+    const formatCortForDisplay = (value) => {
+      // Convert from standard (µg/dL) to user's preferred units
+      if (cortUnits === "nmol/L") return (value * 27.59).toFixed(2);
+      return value.toFixed(2);
+    };
+
     const addLeftSample = () => {
       if (leftSamples.length < 2) {
         setLeftSamples([...leftSamples, { time: "", cortisol: "", epinephrine: "" }]);
@@ -83,29 +100,29 @@ export const AVSCortisol = {
     };
 
     const calculate = () => {
-      // Use suprarenal IVC if available, otherwise infrarenal
-      const ivcCort = parseFloat(suprarenalIVCCort || infrarenalIVCCort) || 0;
-      const ivcEpi = parseFloat(suprarenalIVCEpi || infrarenalIVCEpi) || 0;
+      // Use suprarenal IVC if available, otherwise infrarenal - convert to standard units
+      const ivcCortStd = convertCortToStandard(parseFloat(suprarenalIVCCort || infrarenalIVCCort) || 0);
+      const ivcEpi = parseFloat(suprarenalIVCEpi || infrarenalIVCEpi) || 0; // Epi units are already standard (pg/mL)
 
-      // Process left samples
+      // Process left samples - convert to standard units
       const leftValidSamples = leftSamples
         .map(s => ({
-          cortisol: parseFloat(s.cortisol),
-          epinephrine: parseFloat(s.epinephrine),
+          cortisol: convertCortToStandard(parseFloat(s.cortisol)),
+          epinephrine: parseFloat(s.epinephrine), // Epi already in pg/mL
           time: s.time
         }))
         .filter(s => !isNaN(s.cortisol) && !isNaN(s.epinephrine));
 
-      // Process right samples
+      // Process right samples - convert to standard units
       const rightValidSamples = rightSamples
         .map(s => ({
-          cortisol: parseFloat(s.cortisol),
-          epinephrine: parseFloat(s.epinephrine),
+          cortisol: convertCortToStandard(parseFloat(s.cortisol)),
+          epinephrine: parseFloat(s.epinephrine), // Epi already in pg/mL
           time: s.time
         }))
         .filter(s => !isNaN(s.cortisol) && !isNaN(s.epinephrine));
 
-      if (leftValidSamples.length === 0 || rightValidSamples.length === 0 || ivcCort === 0) {
+      if (leftValidSamples.length === 0 || rightValidSamples.length === 0 || ivcCortStd === 0) {
         setResults({ error: "Insufficient data. Please enter at least one valid sample per side and IVC cortisol." });
         return;
       }
@@ -124,9 +141,9 @@ export const AVSCortisol = {
       const leftAdrenalBlood = leftEpiDelta > 100;
       const rightAdrenalBlood = rightEpiDelta > 100;
 
-      // AV/PV cortisol ratios
-      const leftRatio = leftAvgCort / ivcCort;
-      const rightRatio = rightAvgCort / ivcCort;
+      // AV/PV cortisol ratios - using standard units
+      const leftRatio = leftAvgCort / ivcCortStd;
+      const rightRatio = rightAvgCort / ivcCortStd;
 
       // CLR (cortisol lateralization ratio)
       const clr = Math.max(leftRatio, rightRatio) / Math.min(leftRatio, rightRatio);
@@ -153,7 +170,7 @@ export const AVSCortisol = {
         patientInitials,
         procedureDate,
         sideOfNodule,
-        ivcCort,
+        ivcCort: ivcCortStd, // Store in standard units
         ivcEpi,
         leftSamples: leftValidSamples,
         rightSamples: rightValidSamples,
@@ -189,12 +206,17 @@ export const AVSCortisol = {
         ["Date of Procedure:", data.procedureDate || "Not provided"],
         ["Side of Nodule:", data.sideOfNodule || "Not provided"],
         [""],
+        ["Laboratory Units"],
+        ["Cortisol Units:", cortUnits],
+        ["Epinephrine Units:", epiUnits],
+        ["Note:", "All values in CSV are displayed in the units you selected. Calculations use standard units (µg/dL for cortisol) internally."],
+        [""],
         ["Peripheral (IVC) Measurements"],
-        ["IVC Cortisol (µg/dL or nmol/L):", data.ivcCort.toFixed(2)],
-        ["IVC Epinephrine (pg/mL):", data.ivcEpi.toFixed(2)],
+        [`IVC Cortisol (${cortUnits}):`, formatCortForDisplay(data.ivcCort)],
+        [`IVC Epinephrine (${epiUnits}):`, data.ivcEpi.toFixed(2)],
         [""],
         ["Left Adrenal Vein Samples"],
-        ["Sample", "Time", "Cortisol", "Epinephrine", "Epi Δ", "Adrenal Blood?"]
+        ["Sample", "Time", `Cortisol (${cortUnits})`, `Epinephrine (${epiUnits})`, "Epi Δ (pg/mL)", "Adrenal Blood?"]
       ];
 
       data.leftSamples.forEach((s, i) => {
@@ -202,7 +224,7 @@ export const AVSCortisol = {
         lines.push([
           `Left AV ${i + 1}`,
           s.time || "—",
-          s.cortisol.toFixed(2),
+          formatCortForDisplay(s.cortisol),
           s.epinephrine.toFixed(2),
           delta.toFixed(2),
           delta > 100 ? "YES" : "NO"
@@ -210,10 +232,10 @@ export const AVSCortisol = {
       });
 
       lines.push(
-        ["Left Average:", "", data.leftAvgCort.toFixed(2), data.leftAvgEpi.toFixed(2), data.leftEpiDelta.toFixed(2), data.leftAdrenalBlood ? "YES" : "NO"],
+        ["Left Average:", "", formatCortForDisplay(data.leftAvgCort), data.leftAvgEpi.toFixed(2), data.leftEpiDelta.toFixed(2), data.leftAdrenalBlood ? "YES" : "NO"],
         [""],
         ["Right Adrenal Vein Samples"],
-        ["Sample", "Time", "Cortisol", "Epinephrine", "Epi Δ", "Adrenal Blood?"]
+        ["Sample", "Time", `Cortisol (${cortUnits})`, `Epinephrine (${epiUnits})`, "Epi Δ (pg/mL)", "Adrenal Blood?"]
       );
 
       data.rightSamples.forEach((s, i) => {
@@ -221,7 +243,7 @@ export const AVSCortisol = {
         lines.push([
           `Right AV ${i + 1}`,
           s.time || "—",
-          s.cortisol.toFixed(2),
+          formatCortForDisplay(s.cortisol),
           s.epinephrine.toFixed(2),
           delta.toFixed(2),
           delta > 100 ? "YES" : "NO"
@@ -229,7 +251,7 @@ export const AVSCortisol = {
       });
 
       lines.push(
-        ["Right Average:", "", data.rightAvgCort.toFixed(2), data.rightAvgEpi.toFixed(2), data.rightEpiDelta.toFixed(2), data.rightAdrenalBlood ? "YES" : "NO"],
+        ["Right Average:", "", formatCortForDisplay(data.rightAvgCort), data.rightAvgEpi.toFixed(2), data.rightEpiDelta.toFixed(2), data.rightAdrenalBlood ? "YES" : "NO"],
         [""],
         ["Cortisol Lateralization Analysis"],
         ["Left AV/PV Ratio:", data.leftRatio.toFixed(3)],
@@ -286,6 +308,31 @@ export const AVSCortisol = {
               </select>
             </div>
           </div>
+        </div>
+
+        {/* Unit Selection */}
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+          <h3 className="font-semibold mb-3">Laboratory Units</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Cortisol Units</Label>
+              <select className="w-full border rounded p-2" value={cortUnits} onChange={(e) => setCortUnits(e.target.value)}>
+                <option value="µg/dL">µg/dL (micrograms per deciliter)</option>
+                <option value="nmol/L">nmol/L (nanomoles per liter)</option>
+              </select>
+              <p className="text-xs text-gray-600">1 µg/dL = 27.59 nmol/L</p>
+            </div>
+            <div className="space-y-1">
+              <Label>Epinephrine Units</Label>
+              <select className="w-full border rounded p-2" value={epiUnits} onChange={(e) => setEpiUnits(e.target.value)} disabled>
+                <option value="pg/mL">pg/mL (picograms per milliliter)</option>
+              </select>
+              <p className="text-xs text-gray-600">Standard unit (no conversion needed)</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2 italic">
+            All calculations are performed using standard units (µg/dL for cortisol, pg/mL for epinephrine) regardless of your input units.
+          </p>
         </div>
 
         {/* IVC Measurements */}

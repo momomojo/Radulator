@@ -55,6 +55,35 @@ export const AVSHyperaldo = {
 
     const [results, setResults] = useState(null);
 
+    // Unit selections
+    const [aldoUnits, setAldoUnits] = useState("ng/dL"); // "ng/dL" or "pg/mL"
+    const [cortUnits, setCortUnits] = useState("µg/dL"); // "µg/dL" or "nmol/L"
+
+    // Unit conversion functions
+    const convertAldoToStandard = (value) => {
+      // Standard: ng/dL
+      if (aldoUnits === "pg/mL") return value / 10; // pg/mL to ng/dL
+      return value; // already in ng/dL
+    };
+
+    const convertCortToStandard = (value) => {
+      // Standard: µg/dL
+      if (cortUnits === "nmol/L") return value / 27.59; // nmol/L to µg/dL
+      return value; // already in µg/dL
+    };
+
+    const formatAldoForDisplay = (value) => {
+      // Convert from standard (ng/dL) to user's preferred units
+      if (aldoUnits === "pg/mL") return (value * 10).toFixed(2);
+      return value.toFixed(2);
+    };
+
+    const formatCortForDisplay = (value) => {
+      // Convert from standard (µg/dL) to user's preferred units
+      if (cortUnits === "nmol/L") return (value * 27.59).toFixed(2);
+      return value.toFixed(2);
+    };
+
     // Helper functions for managing samples
     const addSample = (setter, samples, maxCount) => {
       if (samples.length < maxCount) {
@@ -79,40 +108,52 @@ export const AVSHyperaldo = {
 
       // Helper to compute metrics for pre or post
       const computeSet = (prefix, useACTH, ivcAld, ivcCort, leftSamples, rightSamples) => {
-        if (!ivcCort || ivcCort === 0) return null;
+        // Convert IVC values to standard units
+        const ivcAldStd = convertAldoToStandard(ivcAld);
+        const ivcCortStd = convertCortToStandard(ivcCort);
 
-        // Process valid samples
+        if (!ivcCortStd || ivcCortStd === 0) return null;
+
+        // Process valid samples and convert to standard units
         const leftValid = leftSamples
-          .map(s => ({ aldosterone: parseFloat(s.aldosterone), cortisol: parseFloat(s.cortisol), time: s.time }))
+          .map(s => ({
+            aldosterone: convertAldoToStandard(parseFloat(s.aldosterone)),
+            cortisol: convertCortToStandard(parseFloat(s.cortisol)),
+            time: s.time
+          }))
           .filter(s => !isNaN(s.aldosterone) && !isNaN(s.cortisol) && s.cortisol !== 0);
 
         const rightValid = rightSamples
-          .map(s => ({ aldosterone: parseFloat(s.aldosterone), cortisol: parseFloat(s.cortisol), time: s.time }))
+          .map(s => ({
+            aldosterone: convertAldoToStandard(parseFloat(s.aldosterone)),
+            cortisol: convertCortToStandard(parseFloat(s.cortisol)),
+            time: s.time
+          }))
           .filter(s => !isNaN(s.aldosterone) && !isNaN(s.cortisol) && s.cortisol !== 0);
 
         if (leftValid.length === 0 || rightValid.length === 0) return null;
 
-        // Calculate averages
+        // Calculate averages (now in standard units)
         const leftAvgAld = leftValid.reduce((sum, s) => sum + s.aldosterone, 0) / leftValid.length;
         const leftAvgCort = leftValid.reduce((sum, s) => sum + s.cortisol, 0) / leftValid.length;
         const rightAvgAld = rightValid.reduce((sum, s) => sum + s.aldosterone, 0) / rightValid.length;
         const rightAvgCort = rightValid.reduce((sum, s) => sum + s.cortisol, 0) / rightValid.length;
 
-        // Selectivity Index (SI)
-        const siLeft = leftAvgCort / ivcCort;
-        const siRight = rightAvgCort / ivcCort;
+        // Selectivity Index (SI) - using standard units
+        const siLeft = leftAvgCort / ivcCortStd;
+        const siRight = rightAvgCort / ivcCortStd;
         const siThreshold = useACTH ? 5 : 2;
         const siLeftOk = siLeft >= siThreshold;
         const siRightOk = siRight >= siThreshold;
 
-        // Check if cortisol is at least 10x peripheral (Kahn & Angle guideline)
-        const leftCort10x = leftAvgCort >= (ivcCort * 10);
-        const rightCort10x = rightAvgCort >= (ivcCort * 10);
+        // Check if cortisol is at least 10x peripheral (Kahn & Angle guideline) - using standard units
+        const leftCort10x = leftAvgCort >= (ivcCortStd * 10);
+        const rightCort10x = rightAvgCort >= (ivcCortStd * 10);
 
-        // Aldosterone/Cortisol ratios
+        // Aldosterone/Cortisol ratios (unit-independent ratios)
         const acLeft = leftAvgAld / leftAvgCort;
         const acRight = rightAvgAld / rightAvgCort;
-        const acIVC = ivcAld / ivcCort;
+        const acIVC = ivcAldStd / ivcCortStd;
 
         // Determine dominant side
         const dominantSide = acLeft >= acRight ? "Left" : "Right";
@@ -258,6 +299,11 @@ export const AVSHyperaldo = {
         ["Date of Procedure:", procedureDate || "Not provided"],
         ["Side of Nodule:", sideOfNodule || "Not provided"],
         ["Notes:", notes || "Not provided"],
+        [""],
+        ["Laboratory Units"],
+        ["Aldosterone Units:", aldoUnits],
+        ["Cortisol Units:", cortUnits],
+        ["Note:", "All values in CSV are displayed in the units you selected. Calculations use standard units (ng/dL for aldo, µg/dL for cortisol) internally."],
         [""]
       ];
 
@@ -266,6 +312,46 @@ export const AVSHyperaldo = {
 
         lines.push(
           [`${prefix}-Cosyntropin Protocol (ACTH stimulation: ${useACTH ? "Yes" : "No"})`],
+          [""]
+        );
+
+        // Individual Left Adrenal Vein Samples
+        lines.push(
+          ["Left Adrenal Vein Samples"],
+          ["Sample", "Time", `Aldosterone (${aldoUnits})`, `Cortisol (${cortUnits})`]
+        );
+
+        results.leftSamples.forEach((s, i) => {
+          lines.push([
+            `Left AV ${i + 1}`,
+            s.time || "—",
+            formatAldoForDisplay(s.aldosterone),
+            formatCortForDisplay(s.cortisol)
+          ]);
+        });
+
+        lines.push(
+          ["Left Average:", "", formatAldoForDisplay(results.leftAvgAld), formatCortForDisplay(results.leftAvgCort)],
+          [""]
+        );
+
+        // Individual Right Adrenal Vein Samples
+        lines.push(
+          ["Right Adrenal Vein Samples"],
+          ["Sample", "Time", `Aldosterone (${aldoUnits})`, `Cortisol (${cortUnits})`]
+        );
+
+        results.rightSamples.forEach((s, i) => {
+          lines.push([
+            `Right AV ${i + 1}`,
+            s.time || "—",
+            formatAldoForDisplay(s.aldosterone),
+            formatCortForDisplay(s.cortisol)
+          ]);
+        });
+
+        lines.push(
+          ["Right Average:", "", formatAldoForDisplay(results.rightAvgAld), formatCortForDisplay(results.rightAvgCort)],
           [""],
           ["Selectivity Assessment"],
           [`Left SI:`, results.siLeft.toFixed(2), `(Threshold: ${useACTH ? "≥5" : "≥2"})`],
@@ -421,6 +507,32 @@ export const AVSHyperaldo = {
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
             </div>
           </div>
+        </div>
+
+        {/* Unit Selection */}
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+          <h3 className="font-semibold mb-3">Laboratory Units</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Aldosterone Units</Label>
+              <select className="w-full border rounded p-2" value={aldoUnits} onChange={(e) => setAldoUnits(e.target.value)}>
+                <option value="ng/dL">ng/dL (nanograms per deciliter)</option>
+                <option value="pg/mL">pg/mL (picograms per milliliter)</option>
+              </select>
+              <p className="text-xs text-gray-600">1 ng/dL = 10 pg/mL</p>
+            </div>
+            <div className="space-y-1">
+              <Label>Cortisol Units</Label>
+              <select className="w-full border rounded p-2" value={cortUnits} onChange={(e) => setCortUnits(e.target.value)}>
+                <option value="µg/dL">µg/dL (micrograms per deciliter)</option>
+                <option value="nmol/L">nmol/L (nanomoles per liter)</option>
+              </select>
+              <p className="text-xs text-gray-600">1 µg/dL = 27.59 nmol/L</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2 italic">
+            All calculations are performed using standard units (ng/dL for aldosterone, µg/dL for cortisol) regardless of your input units.
+          </p>
         </div>
 
         {/* Protocol Selection */}
