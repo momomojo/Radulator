@@ -7,3 +7,5 @@ export { HipDysplasiaIndices } from './HipDysplasiaIndices';
 export { MRElastography } from './MRElastography';
 export { RenalNephrometry } from './RenalNephrometry';
 export { FeedbackForm } from './FeedbackForm';
+export { AVSCortisol } from './AdrenalVeinSamplingCortisol';
+export { AVSHyperaldo } from './AdrenalVeinSamplingAldo';

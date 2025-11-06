@@ -18,6 +18,8 @@ import {
   MRElastography,
   RenalNephrometry,
   FeedbackForm,
+  AVSCortisol,
+  AVSHyperaldo,
 } from "@/components/calculators";
 
 /*******************************************************************
@@ -26,6 +28,8 @@ import {
 const calcDefs = [
   AdrenalCTWashout,
   AdrenalMRICSI,
+  AVSCortisol,
+  AVSHyperaldo,
   ProstateVolume,
   RenalCystBosniak,
   RenalNephrometry,
@@ -357,6 +361,25 @@ export default function App() {
                         <span title={`Raw: ${out["Area-weighted Mean Raw (kPa)"]}`}>{v}</span>
                       </p>
                     );
+                  }
+                  // Handle CSV download links for AVS calculators
+                  if (k === "Download CSV" && typeof v === "string" && v.includes("<a href=")) {
+                    const match = v.match(/href="([^"]+)".*download="([^"]+)"/);
+                    if (match) {
+                      const [, href, filename] = match;
+                      return (
+                        <p key={k} className="mt-2">
+                          <span className="font-mono font-medium">{k}:</span>{" "}
+                          <a
+                            href={href}
+                            download={filename}
+                            className="text-blue-600 underline hover:text-blue-800"
+                          >
+                            Click to download results as CSV
+                          </a>
+                        </p>
+                      );
+                    }
                   }
                   return (
                     <p key={k}>
