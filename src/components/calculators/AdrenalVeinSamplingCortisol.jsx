@@ -141,8 +141,13 @@ export const AVSCortisol = {
       const rightAvgCort = rightValidSamples.reduce((sum, s) => sum + s.cortisol, 0) / rightValidSamples.length;
       const rightAvgEpi = rightValidSamples.reduce((sum, s) => sum + s.epinephrine, 0) / rightValidSamples.length;
 
-      const leftEpiDelta = leftAvgEpi - ivcEpi;
-      const rightEpiDelta = rightAvgEpi - ivcEpi;
+      // Calculate Epi Δ for display using SUCCESSFUL samples only
+      const leftEpiDelta = leftAdrenalBlood
+        ? (leftSuccessfulSamples.reduce((sum, s) => sum + s.epinephrine, 0) / leftSuccessfulSamples.length) - ivcEpi
+        : leftAvgEpi - ivcEpi; // Fallback to all samples if no successful samples
+      const rightEpiDelta = rightAdrenalBlood
+        ? (rightSuccessfulSamples.reduce((sum, s) => sum + s.epinephrine, 0) / rightSuccessfulSamples.length) - ivcEpi
+        : rightAvgEpi - ivcEpi; // Fallback to all samples if no successful samples
 
       // AV/PV cortisol ratios - ONLY use samples that passed epinephrine validation
       let leftRatio = null;
@@ -301,10 +306,16 @@ export const AVSCortisol = {
       link.href = url;
       link.download = `AVS_Cortisol_${data.patientInitials || "Patient"}_${data.procedureDate || "Results"}.csv`;
       link.style.display = "none";
-      document.body.appendChild(link); // Append to DOM before clicking
-      link.click();
-      document.body.removeChild(link); // Clean up
-      URL.revokeObjectURL(url);
+      document.body.appendChild(link);
+
+      // Use setTimeout to ensure DOM is ready and browser allows download
+      setTimeout(() => {
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 100);
+      }, 0);
     };
 
     return (

@@ -175,16 +175,19 @@ export const AVSHyperaldo = {
         const csi = nondominantAC / dominantAC;
 
         // RASI (Relative Aldosterone Secretion Index) - Chow 2024
-        const rasi = dominantAC / acIVC;
+        // RASI = dominant A/C ÷ contralateral (nondominant) A/C
+        const rasi = dominantAC / nondominantAC;
 
         // Interpretation
         let interpretation = "";
         let cannulationStatus = "";
+        let displayDominantSide = dominantSide;
 
         if (!siLeftOk || !siRightOk) {
           const failedSide = !siLeftOk && !siRightOk ? "both sides" : !siLeftOk ? "left" : "right";
           cannulationStatus = `⚠️ Cannulation failure on ${failedSide} (SI < ${siThreshold})`;
           interpretation = `${cannulationStatus}. Reliable lateralization requires adequate selectivity. `;
+          displayDominantSide = "INDETERMINATE"; // Suppress dominant side display when cannulation fails
 
           // Check if CSI/RASI can still help (Chow 2024 - unilateral cannulation)
           if (siLeftOk || siRightOk) {
@@ -256,7 +259,7 @@ export const AVSHyperaldo = {
           avIvcIndex,
           csi,
           rasi,
-          dominantSide,
+          dominantSide: displayDominantSide,
           cannulationStatus,
           interpretation
         };
@@ -415,10 +418,16 @@ export const AVSHyperaldo = {
       link.href = url;
       link.download = `AVS_Aldosterone_${patientInitials || "Patient"}_${procedureDate || "Results"}.csv`;
       link.style.display = "none";
-      document.body.appendChild(link); // Append to DOM before clicking
-      link.click();
-      document.body.removeChild(link); // Clean up
-      URL.revokeObjectURL(url);
+      document.body.appendChild(link);
+
+      // Use setTimeout to ensure DOM is ready and browser allows download
+      setTimeout(() => {
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 100);
+      }, 0);
     };
 
     const renderSampleInputs = (samples, setter, maxCount, label) => (
