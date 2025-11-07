@@ -10,10 +10,10 @@ export const ProstateVolume = {
     },
   },
   fields: [
-    { id: "length", label: "1. Sagittal diameter (cm):", type: "number" },
-    { id: "height", label: "2. Sagittal diameter (cm):", type: "number" },
-    { id: "width", label: "Laterolateral diameter (cm)", type: "number" },
-    { id: "psa", label: "PSA (ng/mL)", type: "number" },
+    { id: "length", label: "Length (craniocaudal, cm):", type: "number" },
+    { id: "height", label: "Height (anteroposterior, cm):", type: "number" },
+    { id: "width", label: "Width (transverse, cm):", type: "number" },
+    { id: "psa", label: "PSA (ng/mL):", type: "number" },
   ],
   compute: ({ length = 0, height = 0, width = 0, psa = 0 }) => {
     const volume = length * height * width * 0.52;
