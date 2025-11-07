@@ -103,6 +103,27 @@ export const AVSHyperaldo = {
       setter(updated);
     };
 
+    // Validation function for extreme/physiologic values
+    const validateValues = (samples, ivcAld, ivcCort) => {
+      const warnings = [];
+
+      // Check IVC values
+      if (ivcAld > 500) warnings.push(`⚠️ IVC Aldosterone (${ivcAld} ng/dL) is extremely high. Verify value.`);
+      if (ivcCort > 100) warnings.push(`⚠️ IVC Cortisol (${ivcCort} µg/dL) is extremely high. Verify value.`);
+      if (ivcAld < 1) warnings.push(`⚠️ IVC Aldosterone (${ivcAld} ng/dL) is extremely low. Verify value.`);
+      if (ivcCort < 1) warnings.push(`⚠️ IVC Cortisol (${ivcCort} µg/dL) is extremely low. Verify value.`);
+
+      // Check adrenal vein samples
+      samples.forEach((s, i) => {
+        const ald = parseFloat(s.aldosterone);
+        const cort = parseFloat(s.cortisol);
+        if (ald > 10000) warnings.push(`⚠️ Sample ${i+1} Aldosterone (${ald} ng/dL) is extremely high. Verify value.`);
+        if (cort > 500) warnings.push(`⚠️ Sample ${i+1} Cortisol (${cort} µg/dL) is extremely high. Verify value.`);
+      });
+
+      return warnings;
+    };
+
     const calculate = () => {
       const results = {};
 
@@ -288,7 +309,37 @@ export const AVSHyperaldo = {
         return;
       }
 
-      setResults({ pre: preResults, post: postResults });
+      // Collect validation warnings
+      const warnings = [];
+      if (preResults) {
+        const preIvcAld = parseFloat(preSuprarenalIVCAld || preInfrarenalIVCAld) || 0;
+        const preIvcCort = parseFloat(preSuprarenalIVCCort || preInfrarenalIVCCort) || 0;
+        const preWarnings = validateValues([...preLeftSamples, ...preRightSamples], preIvcAld, preIvcCort);
+        warnings.push(...preWarnings.map(w => `Pre-ACTH: ${w}`));
+      }
+      if (postResults) {
+        const postIvcAld = parseFloat(postSuprarenalIVCAld || postInfrarenalIVCAld) || 0;
+        const postIvcCort = parseFloat(postSuprarenalIVCCort || postInfrarenalIVCCort) || 0;
+        const postWarnings = validateValues([...postLeftSamples, ...postRightSamples], postIvcAld, postIvcCort);
+        warnings.push(...postWarnings.map(w => `Post-ACTH: ${w}`));
+      }
+
+      // Detect conflicting criteria
+      const conflicts = [];
+      if (postResults && postResults.siLeftOk && postResults.siRightOk) {
+        const liUnilateral = postResults.li > 4;
+        const liBilateral = postResults.li < 2;
+        const csiUnilateral = postResults.csi < 0.5;
+        const rasiUnilateral = postResults.rasi > 2.4;
+
+        if (liUnilateral && !csiUnilateral && !rasiUnilateral) {
+          conflicts.push("⚠️ LI indicates unilateral disease, but neither Chow criterion (CSI/RASI) is met. Consider clinical correlation.");
+        } else if (liBilateral && (csiUnilateral || rasiUnilateral)) {
+          conflicts.push("⚠️ LI suggests bilateral disease, but Chow criteria indicate unilateral. Review sample quality and consider repeat AVS.");
+        }
+      }
+
+      setResults({ pre: preResults, post: postResults, warnings, conflicts });
     };
 
     const downloadCSV = () => {
@@ -440,12 +491,16 @@ export const AVSHyperaldo = {
               <Input type="time" value={sample.time} onChange={(e) => updateSample(setter, samples, index, "time", e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Aldosterone <span className="text-gray-500">(ng/dL)</span></Label>
-              <Input type="number" value={sample.aldosterone} onChange={(e) => updateSample(setter, samples, index, "aldosterone", e.target.value)} />
+              <Label className="text-xs" title="Aldosterone level from adrenal vein sample. Should be elevated compared to IVC if sampling successful.">
+                Aldosterone <span className="text-gray-500">(ng/dL)</span>
+              </Label>
+              <Input type="number" value={sample.aldosterone} onChange={(e) => updateSample(setter, samples, index, "aldosterone", e.target.value)} placeholder="e.g., 2900" title="Typical adrenal vein range: 200-10000+ ng/dL" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Cortisol <span className="text-gray-500">(µg/dL)</span></Label>
-              <Input type="number" value={sample.cortisol} onChange={(e) => updateSample(setter, samples, index, "cortisol", e.target.value)} />
+              <Label className="text-xs" title="Cortisol level from adrenal vein sample. Used to verify cannulation (SI ≥2 without ACTH, ≥5 with ACTH) and normalize aldosterone (A:C ratio).">
+                Cortisol <span className="text-gray-500">(µg/dL)</span>
+              </Label>
+              <Input type="number" value={sample.cortisol} onChange={(e) => updateSample(setter, samples, index, "cortisol", e.target.value)} placeholder="e.g., 280" title="Typical adrenal vein range: 50-500+ µg/dL" />
             </div>
             <Button variant="destructive" size="sm" onClick={() => removeSample(setter, samples, index)} disabled={samples.length === 1}>Remove</Button>
           </div>
@@ -465,12 +520,16 @@ export const AVSHyperaldo = {
           <h4 className="font-medium mb-2">IVC Measurements</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Infrarenal IVC Aldosterone <span className="text-gray-500">(ng/dL)</span></Label>
-              <Input type="number" value={infraAld} onChange={(e) => setInfraAld(e.target.value)} />
+              <Label className="text-xs" title="Peripheral vein baseline aldosterone level. Used to calculate A:C ratio for comparison with adrenal vein samples.">
+                Infrarenal IVC Aldosterone <span className="text-gray-500">(ng/dL)</span>
+              </Label>
+              <Input type="number" value={infraAld} onChange={(e) => setInfraAld(e.target.value)} placeholder="e.g., 85" title="Typical range: 5-200 ng/dL" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Infrarenal IVC Cortisol <span className="text-gray-500">(µg/dL)</span></Label>
-              <Input type="number" value={infraCort} onChange={(e) => setInfraCort(e.target.value)} />
+              <Label className="text-xs" title="Peripheral vein baseline cortisol level. Used to verify cannulation (Selectivity Index = AV Cortisol / IVC Cortisol).">
+                Infrarenal IVC Cortisol <span className="text-gray-500">(µg/dL)</span>
+              </Label>
+              <Input type="number" value={infraCort} onChange={(e) => setInfraCort(e.target.value)} placeholder="e.g., 18" title="Typical range: 5-50 µg/dL" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Suprarenal IVC Aldosterone <span className="text-gray-500">(ng/dL)</span></Label>
@@ -599,6 +658,36 @@ export const AVSHyperaldo = {
               <p className="text-red-600 font-medium">{results.error}</p>
             ) : (
               <>
+                {/* Validation Warnings */}
+                {results.warnings && results.warnings.length > 0 && (
+                  <div className="bg-orange-50 border border-orange-300 rounded-md p-4">
+                    <h4 className="font-semibold text-orange-900 mb-2">⚠️ Value Validation Warnings</h4>
+                    <ul className="text-sm text-orange-800 space-y-1">
+                      {results.warnings.map((warning, i) => (
+                        <li key={i}>{warning}</li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-orange-700 mt-2 italic">
+                      Please verify these values are correct. Calculations will proceed but results may be unreliable if values are incorrect.
+                    </p>
+                  </div>
+                )}
+
+                {/* Conflicting Criteria Warning */}
+                {results.conflicts && results.conflicts.length > 0 && (
+                  <div className="bg-red-50 border border-red-300 rounded-md p-4">
+                    <h4 className="font-semibold text-red-900 mb-2">⚠️ Conflicting Criteria Detected</h4>
+                    <ul className="text-sm text-red-800 space-y-1">
+                      {results.conflicts.map((conflict, i) => (
+                        <li key={i}>{conflict}</li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-red-700 mt-2 italic">
+                      Different criteria are giving inconsistent results. This may indicate equivocal findings requiring clinical correlation, imaging review, or repeat AVS.
+                    </p>
+                  </div>
+                )}
+
                 {/* Side-by-side comparison for both protocols */}
                 {protocol === "both" && results.pre && results.post ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -661,15 +750,35 @@ export const AVSHyperaldo = {
                             {results.pre.cannulationStatus}
                           </p>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <p><strong>Left SI:</strong> {results.pre.siLeft.toFixed(2)} {results.pre.siLeftOk ? "✓" : "✗"}</p>
-                          <p><strong>Right SI:</strong> {results.pre.siRight.toFixed(2)} {results.pre.siRightOk ? "✓" : "✗"}</p>
-                          <p><strong>LI:</strong> {results.pre.li.toFixed(2)}</p>
-                          <p><strong>Dominant:</strong> {results.pre.dominantSide}</p>
-                          <p><strong>CR:</strong> {results.pre.cr.toFixed(2)}</p>
-                          <p><strong>AV/IVC:</strong> {results.pre.avIvcIndex.toFixed(2)}</p>
-                          <p><strong>CSI:</strong> {results.pre.csi.toFixed(2)} {results.pre.csi < 0.5 ? "✓" : ""}</p>
-                          <p><strong>RASI:</strong> {results.pre.rasi.toFixed(2)} {results.pre.rasi > 2.4 ? "✓" : ""}</p>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <p><strong>Left SI:</strong> {results.pre.siLeft.toFixed(2)} {results.pre.siLeftOk ? "✓" : "✗"}</p>
+                            <p><strong>Right SI:</strong> {results.pre.siRight.toFixed(2)} {results.pre.siRightOk ? "✓" : "✗"}</p>
+                            <p><strong>LI:</strong> {results.pre.li.toFixed(2)}</p>
+                            <p><strong>Dominant:</strong> {results.pre.dominantSide}</p>
+                            <p><strong>CR:</strong> {results.pre.cr.toFixed(2)}</p>
+                            <p><strong>AV/IVC:</strong> {results.pre.avIvcIndex.toFixed(2)}</p>
+                          </div>
+
+                          {/* Chow 2024 Advanced Criteria */}
+                          <div className="bg-purple-50 border border-purple-200 rounded-md p-3 space-y-2">
+                            <h5 className="font-semibold text-sm text-purple-900">Chow 2024 Unilateral Criteria</h5>
+                            <div className="grid grid-cols-1 gap-1.5 text-xs">
+                              <div className={`p-2 rounded ${results.pre.csi < 0.5 ? 'bg-green-100 border border-green-300' : 'bg-gray-100'}`}>
+                                <p><strong>CSI:</strong> {results.pre.csi.toFixed(2)} {results.pre.csi < 0.5 ? "✓ PASSES" : "— (needs <0.5)"}</p>
+                                <p className="text-gray-600 mt-0.5">Sens: 76.5%, PPV: 92.9%</p>
+                              </div>
+                              <div className={`p-2 rounded ${results.pre.rasi > 2.4 ? 'bg-green-100 border border-green-300' : 'bg-gray-100'}`}>
+                                <p><strong>RASI:</strong> {results.pre.rasi.toFixed(2)} {results.pre.rasi > 2.4 ? "✓ PASSES" : "— (needs >2.4)"}</p>
+                                <p className="text-gray-600 mt-0.5">Sens: 85.0%, PPV: 94.4%</p>
+                              </div>
+                              {(results.pre.csi < 0.5 || results.pre.rasi > 2.4) && (
+                                <div className="p-2 rounded bg-green-200 border-2 border-green-400">
+                                  <p className="font-semibold text-green-900">✓ Combined criteria met (PPV: 95.5%)</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                         <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                           <h4 className="font-semibold mb-2">Interpretation</h4>
@@ -685,15 +794,35 @@ export const AVSHyperaldo = {
                             {results.post.cannulationStatus}
                           </p>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <p><strong>Left SI:</strong> {results.post.siLeft.toFixed(2)} {results.post.siLeftOk ? "✓" : "✗"}</p>
-                          <p><strong>Right SI:</strong> {results.post.siRight.toFixed(2)} {results.post.siRightOk ? "✓" : "✗"}</p>
-                          <p><strong>LI:</strong> {results.post.li.toFixed(2)}</p>
-                          <p><strong>Dominant:</strong> {results.post.dominantSide}</p>
-                          <p><strong>CR:</strong> {results.post.cr.toFixed(2)}</p>
-                          <p><strong>AV/IVC:</strong> {results.post.avIvcIndex.toFixed(2)}</p>
-                          <p><strong>CSI:</strong> {results.post.csi.toFixed(2)} {results.post.csi < 0.5 ? "✓" : ""}</p>
-                          <p><strong>RASI:</strong> {results.post.rasi.toFixed(2)} {results.post.rasi > 2.4 ? "✓" : ""}</p>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <p><strong>Left SI:</strong> {results.post.siLeft.toFixed(2)} {results.post.siLeftOk ? "✓" : "✗"}</p>
+                            <p><strong>Right SI:</strong> {results.post.siRight.toFixed(2)} {results.post.siRightOk ? "✓" : "✗"}</p>
+                            <p><strong>LI:</strong> {results.post.li.toFixed(2)}</p>
+                            <p><strong>Dominant:</strong> {results.post.dominantSide}</p>
+                            <p><strong>CR:</strong> {results.post.cr.toFixed(2)}</p>
+                            <p><strong>AV/IVC:</strong> {results.post.avIvcIndex.toFixed(2)}</p>
+                          </div>
+
+                          {/* Chow 2024 Advanced Criteria */}
+                          <div className="bg-purple-50 border border-purple-200 rounded-md p-3 space-y-2">
+                            <h5 className="font-semibold text-sm text-purple-900">Chow 2024 Unilateral Criteria</h5>
+                            <div className="grid grid-cols-1 gap-1.5 text-xs">
+                              <div className={`p-2 rounded ${results.post.csi < 0.5 ? 'bg-green-100 border border-green-300' : 'bg-gray-100'}`}>
+                                <p><strong>CSI:</strong> {results.post.csi.toFixed(2)} {results.post.csi < 0.5 ? "✓ PASSES" : "— (needs <0.5)"}</p>
+                                <p className="text-gray-600 mt-0.5">Sens: 76.5%, PPV: 92.9%</p>
+                              </div>
+                              <div className={`p-2 rounded ${results.post.rasi > 2.4 ? 'bg-green-100 border border-green-300' : 'bg-gray-100'}`}>
+                                <p><strong>RASI:</strong> {results.post.rasi.toFixed(2)} {results.post.rasi > 2.4 ? "✓ PASSES" : "— (needs >2.4)"}</p>
+                                <p className="text-gray-600 mt-0.5">Sens: 85.0%, PPV: 94.4%</p>
+                              </div>
+                              {(results.post.csi < 0.5 || results.post.rasi > 2.4) && (
+                                <div className="p-2 rounded bg-green-200 border-2 border-green-400">
+                                  <p className="font-semibold text-green-900">✓ Combined criteria met (PPV: 95.5%)</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                         <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                           <h4 className="font-semibold mb-2">Interpretation</h4>
