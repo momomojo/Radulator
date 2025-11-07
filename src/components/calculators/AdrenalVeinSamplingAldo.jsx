@@ -171,12 +171,14 @@ export const AVSHyperaldo = {
         const avIvcIndex = dominantAC / acIVC;
 
         // CSI (Contralateral Suppression Index) - Chow 2024
-        // CSI = contralateral (nondominant) A/C ÷ dominant A/C
-        const csi = nondominantAC / dominantAC;
+        // CSI = [nondominant A/C] ÷ [IVC A/C]
+        // Same as CR (Naruse), measures contralateral suppression vs baseline
+        const csi = nondominantAC / acIVC;
 
         // RASI (Relative Aldosterone Secretion Index) - Chow 2024
-        // RASI = dominant A/C ÷ contralateral (nondominant) A/C
-        const rasi = dominantAC / nondominantAC;
+        // RASI = [dominant A/C] ÷ [IVC A/C]
+        // Same as ipsilateral AV/IVC (Naruse), measures dominant hypersecretion vs baseline
+        const rasi = dominantAC / acIVC;
 
         // Interpretation
         let interpretation = "";
