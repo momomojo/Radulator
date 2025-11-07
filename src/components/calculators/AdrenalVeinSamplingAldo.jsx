@@ -412,22 +412,20 @@ export const AVSHyperaldo = {
       );
 
       const csvContent = lines.map(row => row.join(",")).join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
+
+      // Use data URI instead of Blob for better cross-browser compatibility
+      const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
       const link = document.createElement("a");
-      link.href = url;
+      link.href = dataUri;
       link.download = `AVS_Aldosterone_${patientInitials || "Patient"}_${procedureDate || "Results"}.csv`;
       link.style.display = "none";
       document.body.appendChild(link);
 
-      // Use setTimeout to ensure DOM is ready and browser allows download
-      setTimeout(() => {
-        link.click();
-        setTimeout(() => {
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }, 100);
-      }, 0);
+      // Trigger download
+      link.click();
+
+      // Clean up
+      document.body.removeChild(link);
     };
 
     const renderSampleInputs = (samples, setter, maxCount, label) => (
@@ -628,6 +626,25 @@ export const AVSHyperaldo = {
                         <p className="text-xs mt-2 italic">{results.post.interpretation.substring(0, 150)}...</p>
                       </div>
                     </div>
+                  </div>
+                ) : protocol === "both" && (!results.pre || !results.post) ? (
+                  <div className="bg-yellow-50 border border-yellow-300 rounded-md p-4">
+                    <p className="font-medium text-yellow-800 mb-2">⚠️ Incomplete Data for Comparison View</p>
+                    <p className="text-sm text-yellow-700">
+                      You've selected "Both (comparison view)" but haven't entered data for both protocols.
+                    </p>
+                    <ul className="text-sm text-yellow-700 mt-2 ml-4 list-disc">
+                      {!results.pre && <li>Missing <strong>Pre-ACTH</strong> data (IVC and adrenal vein samples)</li>}
+                      {!results.post && <li>Missing <strong>Post-ACTH</strong> data (IVC and adrenal vein samples)</li>}
+                    </ul>
+                    <p className="text-sm text-yellow-700 mt-2">
+                      Please enter data for both protocols above, or select a single protocol view.
+                    </p>
+                    {(results.pre || results.post) && (
+                      <p className="text-sm text-yellow-700 mt-2 italic">
+                        The available results are shown below.
+                      </p>
+                    )}
                   </div>
                 ) : null}
 

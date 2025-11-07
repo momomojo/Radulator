@@ -300,22 +300,20 @@ export const AVSCortisol = {
       );
 
       const csvContent = lines.map(row => row.join(",")).join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
+
+      // Use data URI instead of Blob for better cross-browser compatibility
+      const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
       const link = document.createElement("a");
-      link.href = url;
+      link.href = dataUri;
       link.download = `AVS_Cortisol_${data.patientInitials || "Patient"}_${data.procedureDate || "Results"}.csv`;
       link.style.display = "none";
       document.body.appendChild(link);
 
-      // Use setTimeout to ensure DOM is ready and browser allows download
-      setTimeout(() => {
-        link.click();
-        setTimeout(() => {
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }, 100);
-      }, 0);
+      // Trigger download
+      link.click();
+
+      // Clean up
+      document.body.removeChild(link);
     };
 
     return (
