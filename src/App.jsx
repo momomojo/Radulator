@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   AdrenalCTWashout,
   AdrenalMRICSI,
+  ALBIScore,
   ProstateVolume,
   RenalCystBosniak,
   SpleenSizeULN,
@@ -20,6 +21,13 @@ import {
   FeedbackForm,
   AVSCortisol,
   AVSHyperaldo,
+  BCLCStaging,
+  ChildPugh,
+  SHIMCalculator,
+  IPSS,
+  MilanCriteria,
+  MELDNa,
+  Y90RadiationSegmentectomy,
 } from "@/components/calculators";
 
 /*******************************************************************
@@ -28,14 +36,22 @@ import {
 const calcDefs = [
   AdrenalCTWashout,
   AdrenalMRICSI,
+  ALBIScore,
   AVSCortisol,
   AVSHyperaldo,
+  BCLCStaging,
+  ChildPugh,
+  IPSS,
+  MilanCriteria,
+  MELDNa,
   ProstateVolume,
   RenalCystBosniak,
   RenalNephrometry,
+  SHIMCalculator,
   SpleenSizeULN,
   HipDysplasiaIndices,
   MRElastography,
+  Y90RadiationSegmentectomy,
   FeedbackForm,
 ];
 
@@ -263,9 +279,11 @@ export default function App() {
               <def.Component />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Input fields">
-                {def.fields.map((f) => (
-                  <Field key={f.id} f={f} val={vals[f.id]} on={update} />
-                ))}
+                {def.fields
+                  .filter((f) => !f.showIf || f.showIf(vals))
+                  .map((f) => (
+                    <Field key={f.id} f={f} val={vals[f.id]} on={update} />
+                  ))}
               </div>
             )}
 
