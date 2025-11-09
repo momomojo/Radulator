@@ -160,8 +160,8 @@ export const RenalNephrometry = {
       u: "https://doi.org/10.1089/end.2012.0166",
     },
     {
-      t: "AUA Guidelines 2024 - Management of Renal Masses",
-      u: "https://www.auanet.org/guidelines-and-quality/guidelines/renal-mass-and-localized-renal-cancer-guideline",
+      t: "AUA Guidelines 2021 - Renal Mass and Localized Renal Cancer",
+      u: "https://www.auanet.org/guidelines-and-quality/guidelines/renal-mass-and-localized-renal-cancer-evaluation-management-and-follow-up",
     },
   ],
 };
