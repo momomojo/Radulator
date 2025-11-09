@@ -125,8 +125,8 @@ Endorsed by EASL, AASLD, and EORTC guidelines.`,
       type: "radio",
       opts: [
         { value: "none", label: "None" },
-        { value: "mild", label: "Mild/Moderate (diuretic-responsive)" },
-        { value: "severe", label: "Severe (refractory)" }
+        { value: "slight", label: "Slight" },
+        { value: "moderate", label: "Moderate to Severe" }
       ]
     },
     {
@@ -197,8 +197,8 @@ Endorsed by EASL, AASLD, and EORTC guidelines.`,
 
     // Ascites scoring
     if (ascites === "none") cpScore += 1;
-    else if (ascites === "mild") cpScore += 2;
-    else if (ascites === "severe") cpScore += 3;
+    else if (ascites === "slight") cpScore += 2;
+    else if (ascites === "moderate") cpScore += 3;
 
     // Encephalopathy scoring
     if (encephalopathy === "none") cpScore += 1;
