@@ -1,0 +1,667 @@
+{
+  "calculator": "BCLC Staging (HCC)",
+  "description": "Test cases for Barcelona Clinic Liver Cancer staging system with comprehensive coverage of all stages (0, A, B, C, D) and edge cases",
+  "testCases": [
+    {
+      "name": "Stage 0 - Very Early: Optimal candidate",
+      "category": "Stage 0",
+      "description": "Single tumor ≤2cm, ECOG 0, Child-Pugh A - ideal resection/ablation candidate",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "1.8",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "0.9",
+        "albumin": "4.2",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "yes"
+      },
+      "expectedResults": {
+        "bclcStage": "0",
+        "childPughScore": "5 points (Class A)",
+        "treatment": "Resection or ablation",
+        "prognosis": ">5 years"
+      }
+    },
+    {
+      "name": "Stage 0 - Boundary: Exactly 2.0cm",
+      "category": "Stage 0",
+      "description": "Edge case: Tumor exactly at 2.0cm threshold",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "2.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "1.0",
+        "albumin": "4.0",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "yes"
+      },
+      "expectedResults": {
+        "bclcStage": "0",
+        "childPughScore": "5 points (Class A)",
+        "treatment": "Resection or ablation"
+      }
+    },
+    {
+      "name": "Stage A - Early: Single large tumor",
+      "category": "Stage A",
+      "description": "Single tumor >2cm, ECOG 0, Child-Pugh A",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "4.5",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "1.1",
+        "albumin": "3.8",
+        "inr": "1.1",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "A",
+        "childPughScore": "5 points (Class A)",
+        "treatment": "Resection or ablation",
+        "prognosis": "median OS: 81 months"
+      }
+    },
+    {
+      "name": "Stage A - Milan Criteria: 2-3 tumors ≤3cm",
+      "category": "Stage A",
+      "description": "Multiple small tumors within Milan criteria, transplant eligible",
+      "inputs": {
+        "tumor_number": "2-3",
+        "largest_tumor_size": "2.8",
+        "all_tumors_size": "yes",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "1.3",
+        "albumin": "3.6",
+        "inr": "1.2",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "yes"
+      },
+      "expectedResults": {
+        "bclcStage": "A",
+        "childPughScore": "5 points (Class A)",
+        "treatment": "Liver transplant",
+        "details": "within Milan criteria"
+      }
+    },
+    {
+      "name": "Stage A - Boundary: Just over 2cm",
+      "category": "Stage A",
+      "description": "Edge case: 2.1cm tumor - should be Stage A not Stage 0",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "2.1",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "1.0",
+        "albumin": "4.0",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "yes"
+      },
+      "expectedResults": {
+        "bclcStage": "A",
+        "childPughScore": "5 points (Class A)",
+        "treatment": "Resection or ablation"
+      }
+    },
+    {
+      "name": "Stage A - Child-Pugh B: Not Stage 0 despite small tumor",
+      "category": "Stage A",
+      "description": "Edge case: Small tumor but Child-Pugh B disqualifies from Stage 0",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "1.9",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "2.5",
+        "albumin": "3.0",
+        "inr": "1.8",
+        "ascites": "slight",
+        "encephalopathy": "none",
+        "transplant_candidate": "unknown"
+      },
+      "expectedResults": {
+        "bclcStage": "A",
+        "childPughScore": "Class B",
+        "liverFunction": "Significantly compromised function"
+      }
+    },
+    {
+      "name": "Stage B - Intermediate: >3 tumors",
+      "category": "Stage B",
+      "description": "Multifocal disease with >3 tumors, ECOG 0",
+      "inputs": {
+        "tumor_number": ">3",
+        "largest_tumor_size": "3.5",
+        "all_tumors_size": "no",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "2.5",
+        "albumin": "3.0",
+        "inr": "1.8",
+        "ascites": "slight",
+        "encephalopathy": "none",
+        "transplant_candidate": "unknown"
+      },
+      "expectedResults": {
+        "bclcStage": "B",
+        "details": "Intermediate stage",
+        "treatment": "TACE",
+        "prognosis": "~2.5 years"
+      }
+    },
+    {
+      "name": "Stage B - Beyond Milan: 2-3 tumors with one >3cm",
+      "category": "Stage B",
+      "description": "Multiple tumors beyond Milan criteria (one >3cm)",
+      "inputs": {
+        "tumor_number": "2-3",
+        "largest_tumor_size": "4.2",
+        "all_tumors_size": "no",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "1.5",
+        "albumin": "3.5",
+        "inr": "1.3",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "B",
+        "childPughScore": "5 points (Class A)",
+        "treatment": "TACE",
+        "details": "at least one tumor >3 cm"
+      }
+    },
+    {
+      "name": "Stage C - Advanced: Portal vein invasion (main trunk)",
+      "category": "Stage C",
+      "description": "Main portal vein invasion - requires systemic therapy",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "5.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "portal_main",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "1",
+        "bilirubin": "1.5",
+        "albumin": "3.5",
+        "inr": "1.3",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "C",
+        "details": "vascular invasion (portal vein left/right/main trunk)",
+        "treatment": "Atezolizumab + Bevacizumab",
+        "prognosis": "~2 years with systemic therapy"
+      }
+    },
+    {
+      "name": "Stage C - Advanced: Segmental portal vein invasion",
+      "category": "Stage C",
+      "description": "Segmental/sectoral portal vein invasion",
+      "inputs": {
+        "tumor_number": "2-3",
+        "largest_tumor_size": "3.8",
+        "all_tumors_size": "no",
+        "vascular_invasion": "portal_segmental",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "1.2",
+        "albumin": "3.7",
+        "inr": "1.1",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "C",
+        "details": "vascular invasion (portal vein segmental/sectoral)",
+        "treatment": "Systemic therapy"
+      }
+    },
+    {
+      "name": "Stage C - Advanced: Hepatic vein invasion",
+      "category": "Stage C",
+      "description": "Hepatic vein involvement",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "6.5",
+        "all_tumors_size": "na",
+        "vascular_invasion": "hepatic_vein",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "1",
+        "bilirubin": "1.8",
+        "albumin": "3.3",
+        "inr": "1.4",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "C",
+        "details": "vascular invasion (hepatic vein invasion)",
+        "treatment": "Sorafenib or Lenvatinib"
+      }
+    },
+    {
+      "name": "Stage C - Advanced: Lymph node metastasis",
+      "category": "Stage C",
+      "description": "Extrahepatic spread to lymph nodes",
+      "inputs": {
+        "tumor_number": "2-3",
+        "largest_tumor_size": "3.5",
+        "all_tumors_size": "yes",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "lymph_nodes",
+        "ecog_ps": "1",
+        "bilirubin": "1.1",
+        "albumin": "3.8",
+        "inr": "1.1",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "C",
+        "details": "extrahepatic spread (lymph node metastasis)",
+        "treatment": "Systemic therapy"
+      }
+    },
+    {
+      "name": "Stage C - Advanced: Distant metastasis",
+      "category": "Stage C",
+      "description": "Distant metastasis to lung/bone",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "4.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "distant",
+        "ecog_ps": "0",
+        "bilirubin": "0.8",
+        "albumin": "4.0",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "C",
+        "details": "extrahepatic spread (distant metastasis)",
+        "treatment": "Systemic therapy"
+      }
+    },
+    {
+      "name": "Stage C - Advanced: Both vascular invasion AND metastasis",
+      "category": "Stage C",
+      "description": "Edge case: Both vascular invasion and metastasis present",
+      "inputs": {
+        "tumor_number": ">3",
+        "largest_tumor_size": "5.5",
+        "all_tumors_size": "no",
+        "vascular_invasion": "portal_segmental",
+        "extrahepatic_spread": "lymph_nodes",
+        "ecog_ps": "1",
+        "bilirubin": "1.6",
+        "albumin": "3.4",
+        "inr": "1.4",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "C",
+        "details": "vascular invasion",
+        "detailsAlso": "extrahepatic spread",
+        "treatment": "Systemic therapy"
+      }
+    },
+    {
+      "name": "Stage D - Terminal: Poor ECOG performance (3)",
+      "category": "Stage D",
+      "description": "ECOG 3 - limited self-care, confined >50% of time",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "2.5",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "3",
+        "bilirubin": "1.0",
+        "albumin": "3.8",
+        "inr": "1.1",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "D",
+        "details": "poor performance status (ECOG >2)",
+        "treatment": "Best supportive care",
+        "prognosis": "~3 months"
+      }
+    },
+    {
+      "name": "Stage D - Terminal: ECOG 4 (bedbound)",
+      "category": "Stage D",
+      "description": "ECOG 4 - completely disabled",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "3.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "4",
+        "bilirubin": "1.5",
+        "albumin": "3.5",
+        "inr": "1.2",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "D",
+        "details": "poor performance status (ECOG >2)",
+        "treatment": "Best supportive care"
+      }
+    },
+    {
+      "name": "Stage D - Terminal: Decompensated cirrhosis (Child-Pugh C)",
+      "category": "Stage D",
+      "description": "Child-Pugh C without transplant option",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "3.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "1",
+        "bilirubin": "4.5",
+        "albumin": "2.5",
+        "inr": "2.5",
+        "ascites": "moderate",
+        "encephalopathy": "grade3-4",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "D",
+        "childPughScore": "15 points (Class C)",
+        "details": "decompensated cirrhosis (Child-Pugh C)",
+        "liverFunction": "Decompensated cirrhosis (Class C)",
+        "treatment": "Best supportive care"
+      }
+    },
+    {
+      "name": "Stage D - Terminal: ECOG >2 AND Child-Pugh C",
+      "category": "Stage D",
+      "description": "Edge case: Both poor performance and decompensated cirrhosis",
+      "inputs": {
+        "tumor_number": "2-3",
+        "largest_tumor_size": "4.0",
+        "all_tumors_size": "no",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "3",
+        "bilirubin": "5.0",
+        "albumin": "2.3",
+        "inr": "2.8",
+        "ascites": "moderate",
+        "encephalopathy": "grade3-4",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "bclcStage": "D",
+        "childPughScore": "Class C",
+        "details": "poor performance status",
+        "detailsAlso": "decompensated cirrhosis",
+        "treatment": "Best supportive care"
+      }
+    },
+    {
+      "name": "Child-Pugh A - Score 5: All optimal values",
+      "category": "Child-Pugh Validation",
+      "description": "Minimum Child-Pugh A score (5 points)",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "2.5",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "0.8",
+        "albumin": "4.5",
+        "inr": "0.9",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "yes"
+      },
+      "expectedResults": {
+        "childPughScore": "5 points (Class A)",
+        "liverFunction": "Well-compensated cirrhosis (Class A)"
+      }
+    },
+    {
+      "name": "Child-Pugh A - Score 6: Upper boundary",
+      "category": "Child-Pugh Validation",
+      "description": "Maximum Child-Pugh A score (6 points)",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "3.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "1.9",
+        "albumin": "3.6",
+        "inr": "1.6",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "unknown"
+      },
+      "expectedResults": {
+        "childPughScore": "6 points (Class A)",
+        "liverFunction": "Well-compensated cirrhosis (Class A)"
+      }
+    },
+    {
+      "name": "Child-Pugh B - Score 7: Lower boundary",
+      "category": "Child-Pugh Validation",
+      "description": "Minimum Child-Pugh B score (7 points)",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "4.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "2.0",
+        "albumin": "3.5",
+        "inr": "1.7",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "childPughScore": "7 points (Class B)",
+        "liverFunction": "Significantly compromised function (Class B)"
+      }
+    },
+    {
+      "name": "Child-Pugh B - Score 9: Upper boundary",
+      "category": "Child-Pugh Validation",
+      "description": "Maximum Child-Pugh B score (9 points)",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "3.5",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "3.0",
+        "albumin": "2.8",
+        "inr": "2.2",
+        "ascites": "slight",
+        "encephalopathy": "grade1-2",
+        "transplant_candidate": "no"
+      },
+      "expectedResults": {
+        "childPughScore": "9 points (Class B)",
+        "liverFunction": "Significantly compromised function (Class B)"
+      }
+    },
+    {
+      "name": "Child-Pugh C - Score 10: Lower boundary",
+      "category": "Child-Pugh Validation",
+      "description": "Minimum Child-Pugh C score (10 points)",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "2.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "2",
+        "bilirubin": "3.1",
+        "albumin": "2.7",
+        "inr": "2.3",
+        "ascites": "slight",
+        "encephalopathy": "grade1-2",
+        "transplant_candidate": "yes"
+      },
+      "expectedResults": {
+        "childPughScore": "10 points (Class C)",
+        "liverFunction": "Decompensated cirrhosis (Class C)"
+      }
+    },
+    {
+      "name": "Child-Pugh C - Score 15: Maximum",
+      "category": "Child-Pugh Validation",
+      "description": "Maximum Child-Pugh C score (15 points) - worst liver function",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "1.5",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "2",
+        "bilirubin": "5.5",
+        "albumin": "2.0",
+        "inr": "3.0",
+        "ascites": "moderate",
+        "encephalopathy": "grade3-4",
+        "transplant_candidate": "yes"
+      },
+      "expectedResults": {
+        "bclcStage": "D",
+        "childPughScore": "15 points (Class C)",
+        "liverFunction": "Decompensated cirrhosis (Class C)"
+      }
+    },
+    {
+      "name": "Decimal precision: Bilirubin boundary 2.0 mg/dL",
+      "category": "Edge Cases",
+      "description": "Test scoring at exact threshold: bilirubin 2.0 should be 2 points",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "3.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "2.0",
+        "albumin": "4.0",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "unknown"
+      },
+      "expectedResults": {
+        "childPughScore": "6 points (Class A)"
+      }
+    },
+    {
+      "name": "Decimal precision: Albumin boundary 3.5 g/dL",
+      "category": "Edge Cases",
+      "description": "Test scoring at exact threshold: albumin 3.5 should be 2 points",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "3.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "1.0",
+        "albumin": "3.5",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "unknown"
+      },
+      "expectedResults": {
+        "childPughScore": "6 points (Class A)"
+      }
+    },
+    {
+      "name": "Decimal precision: INR boundary 1.7",
+      "category": "Edge Cases",
+      "description": "Test scoring at exact threshold: INR 1.7 should be 2 points",
+      "inputs": {
+        "tumor_number": "single",
+        "largest_tumor_size": "3.0",
+        "all_tumors_size": "na",
+        "vascular_invasion": "none",
+        "extrahepatic_spread": "none",
+        "ecog_ps": "0",
+        "bilirubin": "1.0",
+        "albumin": "4.0",
+        "inr": "1.7",
+        "ascites": "none",
+        "encephalopathy": "none",
+        "transplant_candidate": "unknown"
+      },
+      "expectedResults": {
+        "childPughScore": "6 points (Class A)"
+      }
+    }
+  ],
+  "notes": [
+    "BCLC staging algorithm follows a decision tree: D → C → B/A/0",
+    "Stage D is checked first (ECOG >2 OR Child-Pugh C without transplant)",
+    "Stage C is checked next (vascular invasion OR extrahepatic spread)",
+    "Stages 0, A, B depend on tumor burden and ECOG 0",
+    "Stage 0 specifically requires: single tumor ≤2cm AND ECOG 0 AND Child-Pugh A",
+    "Child-Pugh scoring: A (5-6 pts), B (7-9 pts), C (10-15 pts)",
+    "Milan criteria: single ≤5cm OR up to 3 tumors all ≤3cm",
+    "ECOG Performance Status: 0-4 scale (0=fully active, 4=bedbound)",
+    "Treatment recommendations are evidence-based from 2022 BCLC update",
+    "Atezolizumab + Bevacizumab is now first-line for Stage C"
+  ]
+}

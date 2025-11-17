@@ -1,0 +1,291 @@
+{
+  "testCases": [
+    {
+      "name": "Mild Symptoms - Minimum Score",
+      "description": "Patient with minimal urinary symptoms, all questions answered 'Not at all'",
+      "inputs": {
+        "q1": "0",
+        "q2": "0",
+        "q3": "0",
+        "q4": "0",
+        "q5": "0",
+        "q6": "0",
+        "q7": "0",
+        "q8": "0"
+      },
+      "expectedResults": {
+        "totalScore": 0,
+        "severity": "Mild",
+        "qolScore": 0,
+        "qolAssessment": "Delighted - Excellent quality of life",
+        "recommendation": "Watchful waiting is appropriate. No immediate treatment needed unless symptoms are bothersome."
+      }
+    },
+    {
+      "name": "Mild Symptoms - Upper Boundary",
+      "description": "Patient with mild symptoms at the upper boundary (score 7)",
+      "inputs": {
+        "q1": "1",
+        "q2": "1",
+        "q3": "1",
+        "q4": "1",
+        "q5": "1",
+        "q6": "1",
+        "q7": "1",
+        "q8": "2"
+      },
+      "expectedResults": {
+        "totalScore": 7,
+        "severity": "Mild",
+        "qolScore": 2,
+        "qolAssessment": "Mostly satisfied - Good quality of life",
+        "recommendation": "Watchful waiting is appropriate. No immediate treatment needed unless symptoms are bothersome."
+      }
+    },
+    {
+      "name": "Moderate Symptoms - Lower Boundary",
+      "description": "Patient just entering moderate category (score 8)",
+      "inputs": {
+        "q1": "2",
+        "q2": "1",
+        "q3": "1",
+        "q4": "1",
+        "q5": "1",
+        "q6": "1",
+        "q7": "1",
+        "q8": "3"
+      },
+      "expectedResults": {
+        "totalScore": 8,
+        "severity": "Moderate",
+        "qolScore": 3,
+        "qolAssessment": "Mixed - Fair quality of life",
+        "recommendation": "Medical therapy recommended. Consider alpha-blockers or 5-alpha reductase inhibitors."
+      }
+    },
+    {
+      "name": "Moderate Symptoms - Mid-Range",
+      "description": "Patient with moderate symptoms in middle of range (score 13-14)",
+      "inputs": {
+        "q1": "2",
+        "q2": "2",
+        "q3": "2",
+        "q4": "2",
+        "q5": "2",
+        "q6": "2",
+        "q7": "2",
+        "q8": "3"
+      },
+      "expectedResults": {
+        "totalScore": 14,
+        "severity": "Moderate",
+        "qolScore": 3,
+        "qolAssessment": "Mixed - Fair quality of life",
+        "recommendation": "Medical therapy recommended. Consider alpha-blockers or 5-alpha reductase inhibitors."
+      }
+    },
+    {
+      "name": "Moderate Symptoms - Upper Boundary",
+      "description": "Patient at upper boundary of moderate symptoms (score 19)",
+      "inputs": {
+        "q1": "3",
+        "q2": "3",
+        "q3": "3",
+        "q4": "3",
+        "q5": "2",
+        "q6": "2",
+        "q7": "3",
+        "q8": "4"
+      },
+      "expectedResults": {
+        "totalScore": 19,
+        "severity": "Moderate",
+        "qolScore": 4,
+        "qolAssessment": "Mostly dissatisfied - Poor quality of life",
+        "recommendation": "Medical therapy recommended. Consider alpha-blockers or 5-alpha reductase inhibitors."
+      }
+    },
+    {
+      "name": "Severe Symptoms - Lower Boundary",
+      "description": "Patient just entering severe category (score 20)",
+      "inputs": {
+        "q1": "3",
+        "q2": "3",
+        "q3": "3",
+        "q4": "3",
+        "q5": "3",
+        "q6": "2",
+        "q7": "3",
+        "q8": "5"
+      },
+      "expectedResults": {
+        "totalScore": 20,
+        "severity": "Severe",
+        "qolScore": 5,
+        "qolAssessment": "Unhappy - Very poor quality of life",
+        "recommendation": "Medical and/or surgical therapy recommended. Consider referral to urology."
+      }
+    },
+    {
+      "name": "Severe Symptoms - High Score",
+      "description": "Patient with severe symptoms (score 28)",
+      "inputs": {
+        "q1": "4",
+        "q2": "4",
+        "q3": "4",
+        "q4": "4",
+        "q5": "4",
+        "q6": "4",
+        "q7": "4",
+        "q8": "5"
+      },
+      "expectedResults": {
+        "totalScore": 28,
+        "severity": "Severe",
+        "qolScore": 5,
+        "qolAssessment": "Unhappy - Very poor quality of life",
+        "recommendation": "Medical and/or surgical therapy recommended. Consider referral to urology."
+      }
+    },
+    {
+      "name": "Severe Symptoms - Maximum Score",
+      "description": "Patient with maximum severity on all questions",
+      "inputs": {
+        "q1": "5",
+        "q2": "5",
+        "q3": "5",
+        "q4": "5",
+        "q5": "5",
+        "q6": "5",
+        "q7": "5",
+        "q8": "6"
+      },
+      "expectedResults": {
+        "totalScore": 35,
+        "severity": "Severe",
+        "qolScore": 6,
+        "qolAssessment": "Terrible - Extremely poor quality of life",
+        "recommendation": "Medical and/or surgical therapy recommended. Consider referral to urology."
+      }
+    },
+    {
+      "name": "Mild Symptoms - No QoL Answer",
+      "description": "Patient with mild symptoms who did not answer quality of life question",
+      "inputs": {
+        "q1": "1",
+        "q2": "0",
+        "q3": "1",
+        "q4": "1",
+        "q5": "1",
+        "q6": "1",
+        "q7": "0",
+        "q8": ""
+      },
+      "expectedResults": {
+        "totalScore": 5,
+        "severity": "Mild",
+        "qolScore": null,
+        "qolAssessment": null,
+        "recommendation": "Watchful waiting is appropriate. No immediate treatment needed unless symptoms are bothersome."
+      }
+    },
+    {
+      "name": "Moderate Nocturia Only",
+      "description": "Patient with primarily nocturia symptoms",
+      "inputs": {
+        "q1": "0",
+        "q2": "0",
+        "q3": "0",
+        "q4": "0",
+        "q5": "0",
+        "q6": "0",
+        "q7": "5",
+        "q8": "4"
+      },
+      "expectedResults": {
+        "totalScore": 5,
+        "severity": "Mild",
+        "qolScore": 4,
+        "qolAssessment": "Mostly dissatisfied - Poor quality of life",
+        "recommendation": "Watchful waiting is appropriate. No immediate treatment needed unless symptoms are bothersome."
+      }
+    },
+    {
+      "name": "Validation - Incomplete Questions",
+      "description": "Test error handling when required questions are not answered",
+      "inputs": {
+        "q1": "2",
+        "q2": "2",
+        "q3": "",
+        "q4": "2",
+        "q5": "",
+        "q6": "1",
+        "q7": "1",
+        "q8": "3"
+      },
+      "expectedResults": {
+        "error": "Please answer all symptom questions (1-7) to calculate IPSS score."
+      }
+    },
+    {
+      "name": "Mixed Severity Profile",
+      "description": "Patient with mixed symptom severity (voiding vs storage symptoms)",
+      "inputs": {
+        "q1": "4",
+        "q2": "1",
+        "q3": "3",
+        "q4": "1",
+        "q5": "4",
+        "q6": "3",
+        "q7": "2",
+        "q8": "3"
+      },
+      "expectedResults": {
+        "totalScore": 18,
+        "severity": "Moderate",
+        "qolScore": 3,
+        "qolAssessment": "Mixed - Fair quality of life",
+        "recommendation": "Medical therapy recommended. Consider alpha-blockers or 5-alpha reductase inhibitors."
+      }
+    }
+  ],
+  "edgeCases": [
+    {
+      "name": "Boundary Test - Score 7 vs 8",
+      "description": "Testing exact boundary between Mild and Moderate",
+      "score7": {
+        "inputs": {"q1": "1", "q2": "1", "q3": "1", "q4": "1", "q5": "1", "q6": "1", "q7": "1"},
+        "expectedSeverity": "Mild"
+      },
+      "score8": {
+        "inputs": {"q1": "2", "q2": "1", "q3": "1", "q4": "1", "q5": "1", "q6": "1", "q7": "1"},
+        "expectedSeverity": "Moderate"
+      }
+    },
+    {
+      "name": "Boundary Test - Score 19 vs 20",
+      "description": "Testing exact boundary between Moderate and Severe",
+      "score19": {
+        "inputs": {"q1": "3", "q2": "3", "q3": "3", "q4": "3", "q5": "2", "q6": "2", "q7": "3"},
+        "expectedSeverity": "Moderate"
+      },
+      "score20": {
+        "inputs": {"q1": "3", "q2": "3", "q3": "3", "q4": "3", "q5": "3", "q6": "2", "q7": "3"},
+        "expectedSeverity": "Severe"
+      }
+    },
+    {
+      "name": "QoL Boundary Tests",
+      "description": "Testing all QoL score values (0-6)",
+      "qolTests": [
+        {"qolScore": "0", "expectedAssessment": "Delighted - Excellent quality of life"},
+        {"qolScore": "1", "expectedAssessment": "Pleased - Very good quality of life"},
+        {"qolScore": "2", "expectedAssessment": "Mostly satisfied - Good quality of life"},
+        {"qolScore": "3", "expectedAssessment": "Mixed - Fair quality of life"},
+        {"qolScore": "4", "expectedAssessment": "Mostly dissatisfied - Poor quality of life"},
+        {"qolScore": "5", "expectedAssessment": "Unhappy - Very poor quality of life"},
+        {"qolScore": "6", "expectedAssessment": "Terrible - Extremely poor quality of life"}
+      ]
+    }
+  ]
+}

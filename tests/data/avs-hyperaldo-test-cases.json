@@ -1,0 +1,529 @@
+{
+  "calculator": "AVS Hyperaldo (Primary Aldosteronism)",
+  "testCases": [
+    {
+      "id": "unilateral_left_classic",
+      "name": "Classic Unilateral Left Aldosteronism (Post-ACTH)",
+      "description": "Patient with left adrenal adenoma causing primary aldosteronism, clear lateralization after ACTH stimulation",
+      "protocol": "post",
+      "patientMetadata": {
+        "initials": "JD",
+        "procedureDate": "2024-01-15",
+        "sideOfNodule": "Left",
+        "notes": "Microcatheter used for right AV cannulation"
+      },
+      "units": {
+        "aldosterone": "ng/dL",
+        "cortisol": "µg/dL"
+      },
+      "inputs": {
+        "ivcAldosterone": 85,
+        "ivcCortisol": 18,
+        "leftAV": [
+          {"time": "10:15", "aldosterone": 2900, "cortisol": 280}
+        ],
+        "rightAV": [
+          {"time": "10:20", "aldosterone": 450, "cortisol": 320}
+        ]
+      },
+      "expectedResults": {
+        "siLeft": ">5",
+        "siRight": ">5",
+        "cannulationSuccess": true,
+        "li": ">4",
+        "dominantSide": "Left",
+        "interpretation": "Unilateral aldosterone hypersecretion on Left side",
+        "csi": "<0.5",
+        "rasi": ">2.4"
+      }
+    },
+    {
+      "id": "unilateral_right_pre_acth",
+      "name": "Unilateral Right Aldosteronism (Pre-ACTH)",
+      "description": "Right adrenal adenoma, pre-ACTH protocol with lower thresholds",
+      "protocol": "pre",
+      "inputs": {
+        "ivcAldosterone": 75,
+        "ivcCortisol": 15,
+        "leftAV": [
+          {"aldosterone": 350, "cortisol": 200}
+        ],
+        "rightAV": [
+          {"aldosterone": 1800, "cortisol": 180}
+        ]
+      },
+      "expectedResults": {
+        "siLeft": ">2",
+        "siRight": ">2",
+        "cannulationSuccess": true,
+        "li": ">2",
+        "dominantSide": "Right",
+        "interpretation": "Unilateral aldosterone hypersecretion on Right side"
+      }
+    },
+    {
+      "id": "bilateral_hyperplasia",
+      "name": "Bilateral Adrenal Hyperplasia",
+      "description": "Both adrenal glands producing excess aldosterone, no clear lateralization",
+      "protocol": "post",
+      "inputs": {
+        "ivcAldosterone": 90,
+        "ivcCortisol": 20,
+        "leftAV": [
+          {"aldosterone": 800, "cortisol": 250}
+        ],
+        "rightAV": [
+          {"aldosterone": 750, "cortisol": 240}
+        ]
+      },
+      "expectedResults": {
+        "siLeft": ">5",
+        "siRight": ">5",
+        "cannulationSuccess": true,
+        "li": "<2",
+        "interpretation": "Bilateral disease likely"
+      }
+    },
+    {
+      "id": "equivocal_li_2_to_4",
+      "name": "Equivocal Lateralization (LI 2-4)",
+      "description": "Borderline lateralization requiring clinical correlation",
+      "protocol": "post",
+      "inputs": {
+        "ivcAldosterone": 85,
+        "ivcCortisol": 18,
+        "leftAV": [
+          {"aldosterone": 1500, "cortisol": 270}
+        ],
+        "rightAV": [
+          {"aldosterone": 600, "cortisol": 260}
+        ]
+      },
+      "expectedResults": {
+        "siLeft": ">5",
+        "siRight": ">5",
+        "cannulationSuccess": true,
+        "li": "2-4",
+        "interpretation": "Equivocal lateralization"
+      }
+    },
+    {
+      "id": "cannulation_failure_right",
+      "name": "Right Cannulation Failure (Low SI)",
+      "description": "Failed cannulation on right side, CSI/RASI may still help",
+      "protocol": "post",
+      "inputs": {
+        "ivcAldosterone": 100,
+        "ivcCortisol": 25,
+        "leftAV": [
+          {"aldosterone": 3500, "cortisol": 350}
+        ],
+        "rightAV": [
+          {"aldosterone": 150, "cortisol": 80}
+        ]
+      },
+      "expectedResults": {
+        "siLeft": ">5",
+        "siRight": "<5",
+        "cannulationSuccess": false,
+        "warning": "Cannulation failure on right",
+        "csiRasiRescue": "possible"
+      }
+    },
+    {
+      "id": "cannulation_failure_both",
+      "name": "Bilateral Cannulation Failure",
+      "description": "Both adrenal veins poorly cannulated, unreliable results",
+      "protocol": "post",
+      "inputs": {
+        "ivcAldosterone": 90,
+        "ivcCortisol": 22,
+        "leftAV": [
+          {"aldosterone": 250, "cortisol": 80}
+        ],
+        "rightAV": [
+          {"aldosterone": 200, "cortisol": 70}
+        ]
+      },
+      "expectedResults": {
+        "siLeft": "<5",
+        "siRight": "<5",
+        "cannulationSuccess": false,
+        "warning": "Cannulation failure on both sides",
+        "interpretation": "Unreliable - repeat AVS recommended"
+      }
+    },
+    {
+      "id": "multi_sample_averaging",
+      "name": "Multi-Sample Averaging (2 Left, 4 Right)",
+      "description": "Multiple samples from each vein to improve accuracy",
+      "protocol": "post",
+      "inputs": {
+        "ivcAldosterone": 90,
+        "ivcCortisol": 20,
+        "leftAV": [
+          {"time": "10:15", "aldosterone": 2800, "cortisol": 275},
+          {"time": "10:17", "aldosterone": 3000, "cortisol": 285}
+        ],
+        "rightAV": [
+          {"time": "10:20", "aldosterone": 440, "cortisol": 310},
+          {"time": "10:22", "aldosterone": 460, "cortisol": 330},
+          {"time": "10:24", "aldosterone": 450, "cortisol": 320},
+          {"time": "10:26", "aldosterone": 470, "cortisol": 340}
+        ]
+      },
+      "expectedResults": {
+        "leftAvgAldosterone": 2900,
+        "leftAvgCortisol": 280,
+        "rightAvgAldosterone": 455,
+        "rightAvgCortisol": 325,
+        "li": ">4",
+        "dominantSide": "Left"
+      }
+    },
+    {
+      "id": "pre_post_comparison",
+      "name": "Pre and Post-ACTH Comparison",
+      "description": "Both protocols to show ACTH effect on selectivity",
+      "protocol": "both",
+      "inputs": {
+        "pre": {
+          "ivcAldosterone": 75,
+          "ivcCortisol": 15,
+          "leftAV": [{"aldosterone": 1800, "cortisol": 180}],
+          "rightAV": [{"aldosterone": 350, "cortisol": 200}]
+        },
+        "post": {
+          "ivcAldosterone": 85,
+          "ivcCortisol": 18,
+          "leftAV": [{"aldosterone": 2900, "cortisol": 280}],
+          "rightAV": [{"aldosterone": 450, "cortisol": 320}]
+        }
+      },
+      "expectedResults": {
+        "pre": {
+          "li": ">2",
+          "dominantSide": "Left"
+        },
+        "post": {
+          "li": ">4",
+          "dominantSide": "Left"
+        },
+        "comparison": "Both protocols agree on left lateralization"
+      }
+    },
+    {
+      "id": "suprarenal_ivc_usage",
+      "name": "Suprarenal IVC Sampling",
+      "description": "Using suprarenal IVC instead of infrarenal",
+      "protocol": "post",
+      "inputs": {
+        "suprarenalIVCAldosterone": 95,
+        "suprarenalIVCCortisol": 22,
+        "leftAV": [
+          {"aldosterone": 2850, "cortisol": 275}
+        ],
+        "rightAV": [
+          {"aldosterone": 480, "cortisol": 310}
+        ]
+      },
+      "expectedResults": {
+        "ivcUsed": "suprarenal",
+        "li": ">4",
+        "dominantSide": "Left"
+      }
+    },
+    {
+      "id": "high_baseline_aldosterone",
+      "name": "Severe Primary Aldosteronism (High Baseline)",
+      "description": "Very high baseline aldosterone levels",
+      "protocol": "post",
+      "inputs": {
+        "ivcAldosterone": 180,
+        "ivcCortisol": 18,
+        "leftAV": [
+          {"aldosterone": 8500, "cortisol": 290}
+        ],
+        "rightAV": [
+          {"aldosterone": 950, "cortisol": 315}
+        ]
+      },
+      "expectedResults": {
+        "li": ">4",
+        "dominantSide": "Left",
+        "notes": "Very high aldosterone levels suggest severe disease"
+      }
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "edge_extreme_aldosterone_ivc",
+      "name": "Extremely High IVC Aldosterone",
+      "description": "IVC aldosterone > 500 should trigger validation warning",
+      "inputs": {
+        "ivcAldosterone": 600,
+        "ivcCortisol": 18
+      },
+      "expectedBehavior": {
+        "warning": "IVC Aldosterone (600 ng/dL) is extremely high. Verify value."
+      }
+    },
+    {
+      "id": "edge_extreme_aldosterone_av",
+      "name": "Extremely High Adrenal Vein Aldosterone",
+      "description": "AV aldosterone > 10000 should trigger validation warning",
+      "inputs": {
+        "leftAV": [{"aldosterone": 15000, "cortisol": 280}]
+      },
+      "expectedBehavior": {
+        "warning": "Sample 1 Aldosterone (15000 ng/dL) is extremely high. Verify value."
+      }
+    },
+    {
+      "id": "edge_extreme_cortisol",
+      "name": "Extremely High Cortisol Values",
+      "description": "Cortisol > 500 µg/dL should trigger validation warning",
+      "inputs": {
+        "leftAV": [{"aldosterone": 2900, "cortisol": 550}]
+      },
+      "expectedBehavior": {
+        "warning": "Sample 1 Cortisol (550 µg/dL) is extremely high. Verify value."
+      }
+    },
+    {
+      "id": "edge_very_low_aldosterone",
+      "name": "Very Low IVC Aldosterone",
+      "description": "IVC aldosterone < 1 should trigger validation warning",
+      "inputs": {
+        "ivcAldosterone": 0.5,
+        "ivcCortisol": 18
+      },
+      "expectedBehavior": {
+        "warning": "IVC Aldosterone (0.5 ng/dL) is extremely low. Verify value."
+      }
+    },
+    {
+      "id": "edge_zero_cortisol",
+      "name": "Zero Cortisol Value",
+      "description": "Zero cortisol should be handled gracefully (division by zero)",
+      "inputs": {
+        "ivcAldosterone": 85,
+        "ivcCortisol": 0
+      },
+      "expectedBehavior": {
+        "error": "Insufficient data or invalid cortisol values"
+      }
+    },
+    {
+      "id": "edge_negative_values",
+      "name": "Negative Input Values",
+      "description": "Negative values should be rejected or handled",
+      "inputs": {
+        "ivcAldosterone": -50,
+        "ivcCortisol": 18
+      },
+      "expectedBehavior": {
+        "validation": "Values should be rejected or treated as invalid"
+      }
+    },
+    {
+      "id": "edge_unit_conversion_pg_ml",
+      "name": "Unit Conversion - pg/mL Aldosterone",
+      "description": "850 pg/mL = 85 ng/dL, results should match",
+      "units": {
+        "aldosterone": "pg/mL"
+      },
+      "inputs": {
+        "ivcAldosterone": 850,
+        "leftAV": [{"aldosterone": 29000, "cortisol": 280}],
+        "rightAV": [{"aldosterone": 4500, "cortisol": 320}]
+      },
+      "expectedBehavior": {
+        "internalConversion": true,
+        "resultsMatchStandardUnits": true
+      }
+    },
+    {
+      "id": "edge_unit_conversion_nmol_l",
+      "name": "Unit Conversion - nmol/L Cortisol",
+      "description": "496.62 nmol/L ≈ 18 µg/dL, results should match",
+      "units": {
+        "cortisol": "nmol/L"
+      },
+      "inputs": {
+        "ivcCortisol": 496.62,
+        "leftAV": [{"aldosterone": 2900, "cortisol": 7725.2}],
+        "rightAV": [{"aldosterone": 450, "cortisol": 8828.8}]
+      },
+      "expectedBehavior": {
+        "internalConversion": true,
+        "resultsMatchStandardUnits": true
+      }
+    },
+    {
+      "id": "edge_single_sample_only",
+      "name": "Minimum Valid Data (1 Sample Each)",
+      "description": "Calculator should work with minimum 1 sample per side",
+      "inputs": {
+        "ivcAldosterone": 85,
+        "ivcCortisol": 18,
+        "leftAV": [{"aldosterone": 2900, "cortisol": 280}],
+        "rightAV": [{"aldosterone": 450, "cortisol": 320}]
+      },
+      "expectedBehavior": {
+        "calculationSucceeds": true
+      }
+    },
+    {
+      "id": "edge_max_samples",
+      "name": "Maximum Samples (2 Left, 4 Right)",
+      "description": "Should handle max allowed samples correctly",
+      "inputs": {
+        "leftAV": [
+          {"aldosterone": 2900, "cortisol": 280},
+          {"aldosterone": 2950, "cortisol": 285}
+        ],
+        "rightAV": [
+          {"aldosterone": 450, "cortisol": 320},
+          {"aldosterone": 460, "cortisol": 315},
+          {"aldosterone": 455, "cortisol": 318},
+          {"aldosterone": 465, "cortisol": 322}
+        ]
+      },
+      "expectedBehavior": {
+        "averagingCorrect": true,
+        "addButtonDisabled": true
+      }
+    },
+    {
+      "id": "edge_missing_one_side",
+      "name": "Missing Right Adrenal Data",
+      "description": "Should require both sides for calculation",
+      "inputs": {
+        "ivcAldosterone": 85,
+        "ivcCortisol": 18,
+        "leftAV": [{"aldosterone": 2900, "cortisol": 280}],
+        "rightAV": []
+      },
+      "expectedBehavior": {
+        "error": "Insufficient data"
+      }
+    },
+    {
+      "id": "edge_incomplete_sample",
+      "name": "Sample with Missing Cortisol",
+      "description": "Should skip samples with missing values",
+      "inputs": {
+        "leftAV": [
+          {"aldosterone": 2900, "cortisol": ""}
+        ]
+      },
+      "expectedBehavior": {
+        "sampleSkipped": true,
+        "error": "No valid samples"
+      }
+    },
+    {
+      "id": "edge_conflicting_criteria",
+      "name": "Conflicting LI vs CSI/RASI",
+      "description": "Values that create disagreement between criteria",
+      "inputs": {
+        "ivcAldosterone": 100,
+        "ivcCortisol": 20,
+        "leftAV": [{"aldosterone": 1500, "cortisol": 250}],
+        "rightAV": [{"aldosterone": 500, "cortisol": 240}]
+      },
+      "expectedBehavior": {
+        "conflictDetection": "May show conflict if LI and CSI/RASI disagree"
+      }
+    },
+    {
+      "id": "edge_both_protocol_partial",
+      "name": "Both Protocol Selected but Only One Filled",
+      "description": "Should show incomplete data warning",
+      "protocol": "both",
+      "inputs": {
+        "post": {
+          "ivcAldosterone": 85,
+          "ivcCortisol": 18,
+          "leftAV": [{"aldosterone": 2900, "cortisol": 280}],
+          "rightAV": [{"aldosterone": 450, "cortisol": 320}]
+        }
+      },
+      "expectedBehavior": {
+        "warning": "Incomplete Data for Comparison View",
+        "showsAvailableResults": true
+      }
+    },
+    {
+      "id": "edge_csv_download_special_chars",
+      "name": "CSV Download with Special Characters in Patient Data",
+      "description": "Patient name with commas, quotes should not break CSV",
+      "patientMetadata": {
+        "initials": "O'Brien, J.",
+        "notes": "Used \"microcatheter\" successfully"
+      },
+      "expectedBehavior": {
+        "csvValid": true,
+        "specialCharsEscaped": true
+      }
+    }
+  ],
+  "performanceTests": [
+    {
+      "id": "perf_rapid_protocol_switch",
+      "name": "Rapid Protocol Switching",
+      "description": "Switch between Pre/Post/Both protocols quickly",
+      "expectedBehavior": {
+        "noMemoryLeaks": true,
+        "stateResets": true
+      }
+    },
+    {
+      "id": "perf_multiple_sample_additions",
+      "name": "Adding/Removing Samples Rapidly",
+      "description": "Add and remove samples quickly",
+      "expectedBehavior": {
+        "uiResponsive": true,
+        "noErrors": true
+      }
+    },
+    {
+      "id": "perf_large_csv_generation",
+      "name": "CSV Generation with Max Data",
+      "description": "Generate CSV with all fields filled and max samples",
+      "expectedBehavior": {
+        "csvGeneratesQuickly": true,
+        "csvComplete": true
+      }
+    }
+  ],
+  "usabilityTests": [
+    {
+      "id": "usability_clear_labels",
+      "name": "Input Labels Are Clear and Medical",
+      "expectedBehavior": {
+        "labelsIncludeUnits": true,
+        "medicalTerminologyCorrect": true,
+        "tooltipsHelpful": true
+      }
+    },
+    {
+      "id": "usability_error_messages",
+      "name": "Error Messages Are Helpful",
+      "expectedBehavior": {
+        "errorsSpecific": true,
+        "suggestCorrections": true
+      }
+    },
+    {
+      "id": "usability_interpretation_clinical",
+      "name": "Interpretation Uses Clinical Language",
+      "expectedBehavior": {
+        "recommendationsClear": true,
+        "citesGuidelines": true,
+        "actionable": true
+      }
+    }
+  ]
+}
