@@ -850,12 +850,12 @@ export const AVSHyperaldo = {
       u: "https://doi.org/10.3803/EnM.2021.1192",
     },
     {
-      t: "Williams TA et al. 2018 – PASO study (Primary Aldosteronism Surgical Outcome)",
-      u: "https://doi.org/10.1210/jc.2016-2938",
+      t: "Williams TA et al. 2017 – PASO study (Primary Aldosteronism Surgical Outcome)",
+      u: "https://doi.org/10.1016/S2213-8587(17)30135-3",
     },
     {
       t: "Chow CM et al. 2024 – Unilateral-cannulating AVS with CSI/RASI criteria",
-      u: "https://doi.org/10.1007/s00268-024-08280-w",
+      u: "https://doi.org/10.1002/wjs.12402",
     },
     {
       t: "Kahn SL, Angle JF 2010 – Adrenal vein sampling techniques and interpretation",

@@ -497,7 +497,7 @@ export const AVSCortisol = {
     },
     {
       t: "Young WF et al. 2008 – Cortisol lateralization criteria in AVS",
-      u: "https://doi.org/10.1007/s00268-007-9040-y",
+      u: "https://doi.org/10.1007/s00268-007-9332-8",
     },
   ],
 };
