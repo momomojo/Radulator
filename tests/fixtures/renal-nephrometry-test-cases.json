@@ -1,0 +1,486 @@
+{
+  "testCases": [
+    {
+      "id": "low-complexity-min",
+      "description": "Minimum low complexity score (4): Small, exophytic, far from collecting system, above polar line",
+      "inputs": {
+        "radius": "3.5",
+        "exophytic": ">=50",
+        "nearness": ">=7",
+        "polar": "above/below",
+        "anterior": "Anterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "4a",
+        "complexity": "Low complexity",
+        "scoreBreakdown": {
+          "R": 1,
+          "E": 1,
+          "N": 1,
+          "A": "a",
+          "L": 1
+        }
+      },
+      "interpretation": "Low complexity tumors are amenable to nephron-sparing approaches"
+    },
+    {
+      "id": "low-complexity-mid",
+      "description": "Mid-range low complexity (5): Small tumor with moderate exophytic properties",
+      "inputs": {
+        "radius": "4.0",
+        "exophytic": "<50",
+        "nearness": ">=7",
+        "polar": "above/below",
+        "anterior": "Posterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "5p",
+        "complexity": "Low complexity",
+        "scoreBreakdown": {
+          "R": 1,
+          "E": 2,
+          "N": 1,
+          "A": "p",
+          "L": 1
+        }
+      },
+      "interpretation": "Low complexity tumors are amenable to nephron-sparing approaches"
+    },
+    {
+      "id": "low-complexity-max",
+      "description": "Maximum low complexity (6): Boundary case before moderate complexity",
+      "inputs": {
+        "radius": "3.0",
+        "exophytic": "endophytic",
+        "nearness": ">=7",
+        "polar": "crosses",
+        "anterior": "Neither/Indeterminate",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "6x",
+        "complexity": "Low complexity",
+        "scoreBreakdown": {
+          "R": 1,
+          "E": 3,
+          "N": 1,
+          "A": "x",
+          "L": 2
+        }
+      },
+      "interpretation": "Low complexity tumors are amenable to nephron-sparing approaches"
+    },
+    {
+      "id": "moderate-complexity-min",
+      "description": "Minimum moderate complexity (7): Boundary case entering moderate complexity",
+      "inputs": {
+        "radius": "5.5",
+        "exophytic": ">=50",
+        "nearness": "4-7",
+        "polar": "crosses",
+        "anterior": "Anterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "7a",
+        "complexity": "Moderate complexity",
+        "scoreBreakdown": {
+          "R": 2,
+          "E": 1,
+          "N": 2,
+          "A": "a",
+          "L": 2
+        }
+      },
+      "interpretation": "Moderate complexity tumors can usually be managed with partial nephrectomy"
+    },
+    {
+      "id": "moderate-complexity-mid-1",
+      "description": "Mid-range moderate complexity (8): Larger tumor close to collecting system",
+      "inputs": {
+        "radius": "6.5",
+        "exophytic": "<50",
+        "nearness": "4-7",
+        "polar": "above/below",
+        "anterior": "Posterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "8p",
+        "complexity": "Moderate complexity",
+        "scoreBreakdown": {
+          "R": 2,
+          "E": 2,
+          "N": 2,
+          "A": "p",
+          "L": 2
+        }
+      },
+      "interpretation": "Moderate complexity tumors can usually be managed with partial nephrectomy"
+    },
+    {
+      "id": "moderate-complexity-mid-2",
+      "description": "Mid-range moderate complexity (8): Alternative scoring combination",
+      "inputs": {
+        "radius": "4.0",
+        "exophytic": "endophytic",
+        "nearness": ">=7",
+        "polar": "central",
+        "anterior": "Neither/Indeterminate",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "8x",
+        "complexity": "Moderate complexity",
+        "scoreBreakdown": {
+          "R": 1,
+          "E": 3,
+          "N": 1,
+          "A": "x",
+          "L": 3
+        }
+      },
+      "interpretation": "Moderate complexity tumors can usually be managed with partial nephrectomy"
+    },
+    {
+      "id": "moderate-complexity-max",
+      "description": "Maximum moderate complexity (9): Boundary case before high complexity",
+      "inputs": {
+        "radius": "5.0",
+        "exophytic": "<50",
+        "nearness": "<=4",
+        "polar": "crosses",
+        "anterior": "Anterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "9a",
+        "complexity": "Moderate complexity",
+        "scoreBreakdown": {
+          "R": 2,
+          "E": 2,
+          "N": 3,
+          "A": "a",
+          "L": 2
+        }
+      },
+      "interpretation": "Moderate complexity tumors can usually be managed with partial nephrectomy"
+    },
+    {
+      "id": "high-complexity-min",
+      "description": "Minimum high complexity (10): Boundary case entering high complexity",
+      "inputs": {
+        "radius": "7.5",
+        "exophytic": ">=50",
+        "nearness": "4-7",
+        "polar": "central",
+        "anterior": "Posterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "10p",
+        "complexity": "High complexity",
+        "scoreBreakdown": {
+          "R": 3,
+          "E": 1,
+          "N": 2,
+          "A": "p",
+          "L": 3
+        }
+      },
+      "interpretation": "High complexity tumors are associated with longer operative times"
+    },
+    {
+      "id": "high-complexity-mid",
+      "description": "Mid-range high complexity (11): Large endophytic tumor",
+      "inputs": {
+        "radius": "8.0",
+        "exophytic": "endophytic",
+        "nearness": "4-7",
+        "polar": "crosses",
+        "anterior": "Neither/Indeterminate",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "11x",
+        "complexity": "High complexity",
+        "scoreBreakdown": {
+          "R": 3,
+          "E": 3,
+          "N": 2,
+          "A": "x",
+          "L": 2
+        }
+      },
+      "interpretation": "High complexity tumors are associated with longer operative times"
+    },
+    {
+      "id": "high-complexity-max",
+      "description": "Maximum high complexity (12): Worst case scenario - large, endophytic, touching collecting system, central",
+      "inputs": {
+        "radius": "9.0",
+        "exophytic": "endophytic",
+        "nearness": "<=4",
+        "polar": "central",
+        "anterior": "Anterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "12a",
+        "complexity": "High complexity",
+        "scoreBreakdown": {
+          "R": 3,
+          "E": 3,
+          "N": 3,
+          "A": "a",
+          "L": 3
+        }
+      },
+      "interpretation": "High complexity tumors are associated with longer operative times"
+    },
+    {
+      "id": "hilar-low-complexity",
+      "description": "Low complexity with hilar involvement (6h): Small tumor abutting renal vessels",
+      "inputs": {
+        "radius": "3.5",
+        "exophytic": ">=50",
+        "nearness": ">=7",
+        "polar": "crosses",
+        "anterior": "Posterior",
+        "hilar": true
+      },
+      "expected": {
+        "totalScore": "6ph",
+        "complexity": "Low complexity",
+        "scoreBreakdown": {
+          "R": 1,
+          "E": 1,
+          "N": 1,
+          "A": "p",
+          "L": 2,
+          "suffix": "h"
+        }
+      },
+      "interpretation": "Low complexity tumors are amenable to nephron-sparing approaches"
+    },
+    {
+      "id": "hilar-moderate-complexity",
+      "description": "Moderate complexity with hilar involvement (8xh): Endophytic central tumor near hilum",
+      "inputs": {
+        "radius": "4.5",
+        "exophytic": "endophytic",
+        "nearness": ">=7",
+        "polar": "crosses",
+        "anterior": "Neither/Indeterminate",
+        "hilar": true
+      },
+      "expected": {
+        "totalScore": "8xh",
+        "complexity": "Moderate complexity",
+        "scoreBreakdown": {
+          "R": 1,
+          "E": 3,
+          "N": 1,
+          "A": "x",
+          "L": 2,
+          "suffix": "h"
+        }
+      },
+      "interpretation": "Moderate complexity tumors can usually be managed with partial nephrectomy"
+    },
+    {
+      "id": "hilar-high-complexity",
+      "description": "High complexity with hilar involvement (12ah): Worst case with hilar involvement",
+      "inputs": {
+        "radius": "10.0",
+        "exophytic": "endophytic",
+        "nearness": "<=4",
+        "polar": "central",
+        "anterior": "Anterior",
+        "hilar": true
+      },
+      "expected": {
+        "totalScore": "12ah",
+        "complexity": "High complexity",
+        "scoreBreakdown": {
+          "R": 3,
+          "E": 3,
+          "N": 3,
+          "A": "a",
+          "L": 3,
+          "suffix": "h"
+        }
+      },
+      "interpretation": "High complexity tumors are associated with longer operative times"
+    },
+    {
+      "id": "boundary-4cm",
+      "description": "Boundary test: Exactly 4.0 cm radius (score 1 vs 2)",
+      "inputs": {
+        "radius": "4.0",
+        "exophytic": ">=50",
+        "nearness": ">=7",
+        "polar": "above/below",
+        "anterior": "Anterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "4a",
+        "complexity": "Low complexity",
+        "scoreBreakdown": {
+          "R": 1,
+          "E": 1,
+          "N": 1,
+          "A": "a",
+          "L": 1
+        }
+      },
+      "interpretation": "Low complexity tumors are amenable to nephron-sparing approaches"
+    },
+    {
+      "id": "boundary-7cm",
+      "description": "Boundary test: Exactly 7.0 cm radius (score 2 vs 3)",
+      "inputs": {
+        "radius": "7.0",
+        "exophytic": ">=50",
+        "nearness": ">=7",
+        "polar": "above/below",
+        "anterior": "Posterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "7p",
+        "complexity": "Moderate complexity",
+        "scoreBreakdown": {
+          "R": 3,
+          "E": 1,
+          "N": 1,
+          "A": "p",
+          "L": 1
+        }
+      },
+      "interpretation": "Moderate complexity tumors can usually be managed with partial nephrectomy"
+    },
+    {
+      "id": "all-descriptors-test",
+      "description": "Test all descriptor combinations: Indeterminate location without hilar",
+      "inputs": {
+        "radius": "5.5",
+        "exophytic": "<50",
+        "nearness": "4-7",
+        "polar": "central",
+        "anterior": "Neither/Indeterminate",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "10x",
+        "complexity": "High complexity",
+        "scoreBreakdown": {
+          "R": 2,
+          "E": 2,
+          "N": 2,
+          "A": "x",
+          "L": 3
+        }
+      },
+      "interpretation": "High complexity tumors are associated with longer operative times"
+    },
+    {
+      "id": "small-central-endophytic",
+      "description": "Small but challenging tumor: Tiny central endophytic lesion near collecting system",
+      "inputs": {
+        "radius": "2.5",
+        "exophytic": "endophytic",
+        "nearness": "<=4",
+        "polar": "central",
+        "anterior": "Anterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "10a",
+        "complexity": "High complexity",
+        "scoreBreakdown": {
+          "R": 1,
+          "E": 3,
+          "N": 3,
+          "A": "a",
+          "L": 3
+        }
+      },
+      "interpretation": "High complexity tumors are associated with longer operative times"
+    },
+    {
+      "id": "large-exophytic-simple",
+      "description": "Large but accessible: Large exophytic tumor far from critical structures",
+      "inputs": {
+        "radius": "8.5",
+        "exophytic": ">=50",
+        "nearness": ">=7",
+        "polar": "above/below",
+        "anterior": "Posterior",
+        "hilar": false
+      },
+      "expected": {
+        "totalScore": "6p",
+        "complexity": "Low complexity",
+        "scoreBreakdown": {
+          "R": 3,
+          "E": 1,
+          "N": 1,
+          "A": "p",
+          "L": 1
+        }
+      },
+      "interpretation": "Low complexity tumors are amenable to nephron-sparing approaches"
+    }
+  ],
+  "metadata": {
+    "calculator": "RENAL Nephrometry Score",
+    "version": "1.0",
+    "totalTestCases": 18,
+    "complexityBreakdown": {
+      "low": 6,
+      "moderate": 5,
+      "high": 7
+    },
+    "hilarCases": 3,
+    "boundaryCases": 4,
+    "scoringRules": {
+      "R_Radius": {
+        "1": "≤ 4.0 cm",
+        "2": "> 4.0 and < 7.0 cm",
+        "3": "≥ 7.0 cm"
+      },
+      "E_Exophytic": {
+        "1": "≥ 50% exophytic",
+        "2": "< 50% exophytic",
+        "3": "Entirely endophytic"
+      },
+      "N_Nearness": {
+        "1": "≥ 7 mm from collecting system",
+        "2": "4-7 mm from collecting system",
+        "3": "≤ 4 mm from collecting system"
+      },
+      "A_Anterior": {
+        "descriptor": "a/p/x (anterior/posterior/neither)",
+        "noPoints": true
+      },
+      "L_Location": {
+        "1": "Entirely above or below polar line",
+        "2": "Crosses polar line",
+        "3": "> 50% across polar line or between lines or crosses axial midline"
+      },
+      "hilarSuffix": {
+        "h": "Tumor touches main renal artery or vein",
+        "noPoints": true
+      }
+    },
+    "complexityCategories": {
+      "low": "4-6 points",
+      "moderate": "7-9 points",
+      "high": "10-12 points"
+    }
+  }
+}
