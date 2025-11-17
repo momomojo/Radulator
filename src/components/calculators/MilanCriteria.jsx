@@ -18,9 +18,9 @@
  *
  * @references
  * - Mazzaferro V et al. N Engl J Med 1996;334:693-9 (PMID: 8594428)
- * - Yao FY et al. Transplantation 2001;72:1892-9 (PMID: 11923664)
+ * - Yao FY et al. Hepatology 2001;33:1394-403 (PMID: 11391528)
  * - Mazzaferro V et al. Lancet Oncol 2009;10:35-43 (PMID: 19058754)
- * - Duffy JP et al. Ann Surg 2007;245:386-94 (PMID: 17435545)
+ * - Duffy JP et al. Ann Surg 2007;246(3):502-9 (PMID: 17717454)
  */
 
 export const MilanCriteria = {
@@ -265,16 +265,16 @@ export const MilanCriteria = {
       u: "https://pubmed.ncbi.nlm.nih.gov/8594428/",
     },
     {
-      t: "Yao FY et al. Transplantation 2001;72:1892-9 - UCSF Expanded Criteria",
-      u: "https://pubmed.ncbi.nlm.nih.gov/11923664/",
+      t: "Yao FY et al. Hepatology 2001;33:1394-403 - UCSF Expanded Criteria",
+      u: "https://pubmed.ncbi.nlm.nih.gov/11391528/",
     },
     {
       t: "Mazzaferro V et al. Lancet Oncol 2009;10:35-43 - Milan Criteria Validation",
       u: "https://pubmed.ncbi.nlm.nih.gov/19058754/",
     },
     {
-      t: "Duffy JP et al. Ann Surg 2007;245:386-94 - UCSF vs Milan Outcomes",
-      u: "https://pubmed.ncbi.nlm.nih.gov/17435545/",
+      t: "Duffy JP et al. Ann Surg 2007;246(3):502-9 - UCSF vs Milan Outcomes",
+      u: "https://pubmed.ncbi.nlm.nih.gov/17717454/",
     },
   ],
 };

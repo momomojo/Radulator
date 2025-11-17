@@ -16,7 +16,7 @@
  * - Cockett ATK et al. Proceedings of the WHO consultation on BPH, Paris. 1991.
  * - AUA Practice Guidelines Committee. AUA guideline on BPH. J Urol. 2003;170(2 Pt 1):530-47.
  * - Chapple CR et al. Eur Urol. 2013;64(1):118-40. DOI: 10.1016/j.eururo.2013.03.004
- * - Nickel JC. CMAJ. 2005;173(1):34-5. DOI: 10.1503/cmaj.045457
+ * - Nickel JC. CMAJ. 2005;173(1):34-5. PMID: 15997039
  */
 
 export const IPSS = {
@@ -227,7 +227,7 @@ export const IPSS = {
     },
     {
       t: "Nickel JC. The overlapping lower urinary tract symptoms of benign prostatic hyperplasia and prostatitis. CMAJ. 2005;173(1):34-5.",
-      u: "https://doi.org/10.1503/cmaj.045457",
+      u: "https://pubmed.ncbi.nlm.nih.gov/15997039/",
     },
   ],
 };
