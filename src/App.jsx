@@ -28,6 +28,7 @@ import {
   MilanCriteria,
   MELDNa,
   Y90RadiationSegmentectomy,
+  KhouryCatheterSelector,
 } from "@/components/calculators";
 
 /*******************************************************************
@@ -52,8 +53,43 @@ const calcDefs = [
   HipDysplasiaIndices,
   MRElastography,
   Y90RadiationSegmentectomy,
+  KhouryCatheterSelector,
   FeedbackForm,
 ];
+
+// Category organization for sidebar
+const categories = {
+  "Radiology": [
+    "adrenal-ct",
+    "adrenal-mri-csi",
+    "prostate-volume",
+    "renal-cyst",
+    "spleen-size",
+    "hip-dysplasia-indices",
+  ],
+  "Hepatology/Liver": [
+    "albi-score",
+    "avs-cortisol",
+    "avs-hyperaldo",
+    "bclc-staging",
+    "child-pugh",
+    "milan-criteria",
+    "meld-na",
+    "mr-elastography",
+    "y90-radiation",
+  ],
+  "Urology": [
+    "ipss",
+    "renal-nephrometry",
+    "shim",
+  ],
+  "Interventional": [
+    "khoury-catheter-selector",
+  ],
+  "Feedback": [
+    "feedback-form",
+  ],
+};
 
 /*******************************************************************
   ⬇️  Generic Field Renderer (uses shadcn Switch where needed)
@@ -214,25 +250,36 @@ export default function App() {
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900">
       {/* Sidebar */}
-      <aside className="w-48 md:w-64 p-4 bg-white border-r shadow-sm space-y-2">
+      <aside className="w-48 md:w-64 p-4 bg-white border-r shadow-sm space-y-2 overflow-y-auto">
         <h1 className="text-2xl font-bold mb-4">Radulator</h1>
-        {calcDefs.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => {
-              setActive(c.id);
-              setVals({});
-              setOut(null);
-              setMreRows([{ kpa: "", area: "" }]);
-            }}
-            className={`w-full text-left px-3 py-2 rounded-lg transition ${
-              c.id === active
-                ? "bg-blue-200 font-semibold"
-                : "hover:bg-blue-100"
-            }`}
-          >
-            {c.name}
-          </button>
+        {Object.entries(categories).map(([categoryName, calcIds]) => (
+          <div key={categoryName} className="space-y-1 mb-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 mb-1">
+              {categoryName}
+            </h3>
+            {calcIds.map((calcId) => {
+              const calc = calcDefs.find((c) => c.id === calcId);
+              if (!calc) return null;
+              return (
+                <button
+                  key={calc.id}
+                  onClick={() => {
+                    setActive(calc.id);
+                    setVals({});
+                    setOut(null);
+                    setMreRows([{ kpa: "", area: "" }]);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
+                    calc.id === active
+                      ? "bg-blue-200 font-semibold"
+                      : "hover:bg-blue-100"
+                  }`}
+                >
+                  {calc.name}
+                </button>
+              );
+            })}
+          </div>
         ))}
       </aside>
 

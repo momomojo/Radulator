@@ -17,3 +17,4 @@ export { MilanCriteria } from './MilanCriteria';
 export { MELDNa } from './MELDNa';
 export { BCLCStaging } from './BCLCStaging';
 export { Y90RadiationSegmentectomy } from './Y90RadiationSegmentectomy';
+export { KhouryCatheterSelector } from './KhouryCatheterSelector';
