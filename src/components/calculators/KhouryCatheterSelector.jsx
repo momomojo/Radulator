@@ -1712,8 +1712,8 @@ function KhouryCatheterSelectorComponent() {
               <h5 className="font-semibold text-sm mb-2">Compatible Embolic Agents</h5>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(selectedCatheter.embolicsCompatible)
-                  .filter(([_, compatible]) => compatible)
-                  .map(([key, _]) => (
+                  .filter(([, compatible]) => compatible)
+                  .map(([key]) => (
                     <span
                       key={key}
                       className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded"

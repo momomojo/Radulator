@@ -75,7 +75,7 @@ export const HipDysplasiaIndices = {
     },
   ],
   compute: (v) => {
-    const { dob, gender, ac_right, ac_left, ccd_right, ccd_left, mi_right_a, mi_right_b, mi_left_a, mi_left_b } = v;
+    const { dob, gender, ccd_right, ccd_left, mi_right_a, mi_right_b, mi_left_a, mi_left_b } = v;
     
     // Calculate age in months
     const ageMonths = dob ? Math.floor((Date.now() - new Date(dob)) / (1000 * 60 * 60 * 24 * 30.44)) : null;

@@ -125,8 +125,6 @@ export const AVSHyperaldo = {
     };
 
     const calculate = () => {
-      const results = {};
-
       // Helper to compute metrics for pre or post
       const computeSet = (prefix, useACTH, ivcAld, ivcCort, leftSamples, rightSamples) => {
         // Convert IVC values to standard units
@@ -434,10 +432,10 @@ export const AVSHyperaldo = {
           [`RASI (Chow 2024):`, results.rasi.toFixed(2), `(> 2.4: 85.0% sens, 94.4% PPV)`],
           [""],
           ["Cannulation Status"],
-          [results.cannulationStatus.replace(/[✓⚠️]/g, "")],
+          [results.cannulationStatus.replace(/✓|⚠️/g, "")],
           [""],
           ["Interpretation"],
-          [results.interpretation.replace(/[✓⚠️]/g, "")],
+          [results.interpretation.replace(/✓|⚠️/g, "")],
           [""]
         );
       };

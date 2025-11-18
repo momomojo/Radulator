@@ -61,11 +61,11 @@ const calcDefs = [
 const categories = {
   "Radiology": [
     "adrenal-ct",
-    "adrenal-mri-csi",
+    "adrenal-mri",
     "prostate-volume",
-    "renal-cyst",
+    "bosniak",
     "spleen-size",
-    "hip-dysplasia-indices",
+    "hip-dysplasia",
   ],
   "Hepatology/Liver": [
     "albi-score",
@@ -76,7 +76,7 @@ const categories = {
     "milan-criteria",
     "meld-na",
     "mr-elastography",
-    "y90-radiation",
+    "y90-radiation-segmentectomy",
   ],
   "Urology": [
     "ipss",
@@ -210,7 +210,6 @@ export default function App() {
     if (def?.id === "mr-elastography") {
       setVals((p) => ({ ...p, roi_rows: mreRows }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [def?.id, mreRows]);
 
   // Disable Calculate for MRE until at least one valid ROI pair exists
