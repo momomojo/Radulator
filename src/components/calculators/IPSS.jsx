@@ -1,10 +1,23 @@
 /**
  * IPSS Calculator - International Prostate Symptom Score
  *
+ * The IPSS is identical to the AUA Symptom Index (AUA-SI) for questions 1-7.
+ * The WHO International Consultation adopted the AUA-SI as the IPSS in 1991.
+ *
  * Scoring System:
- * - Questions 1-7: 0-5 points each (0 = not at all, 5 = almost always/≥5 times)
+ * - Questions 1-6: 0-5 points each (frequency-based scale)
+ *   - 0 = Not at all
+ *   - 1 = Less than 1 time in 5
+ *   - 2 = Less than half the time
+ *   - 3 = About half the time
+ *   - 4 = More than half the time
+ *   - 5 = Almost always
+ *
+ * - Question 7 (Nocturia): 0-5 points (count-based scale, NO "past month" timeframe)
+ *   - 0 = None, 1 = 1 time, 2 = 2 times, 3 = 3 times, 4 = 4 times, 5 = 5 or more times
+ *
  * - Total IPSS Score: 0-35 (sum of Q1-Q7)
- * - Question 8 (QoL): 0-6 points, scored separately
+ * - Question 8 (QoL): 0-6 points, scored separately (not part of total)
  *
  * Severity Classification:
  * - Mild: 0-7 (watchful waiting)
@@ -31,11 +44,11 @@ export const IPSS = {
   fields: [
     {
       id: "q1",
-      label: "1. Incomplete Emptying: Over the past month, how often have you had a sensation of not emptying your bladder completely after you finished urinating?",
+      label: "1. Incomplete Emptying: Over the past month, how often have you had a feeling of not emptying your bladder completely after you finished urinating?",
       type: "radio",
       opts: [
         { value: "0", label: "Not at all" },
-        { value: "1", label: "Less than 1 in 5 times" },
+        { value: "1", label: "Less than 1 time in 5" },
         { value: "2", label: "Less than half the time" },
         { value: "3", label: "About half the time" },
         { value: "4", label: "More than half the time" },
@@ -48,7 +61,7 @@ export const IPSS = {
       type: "radio",
       opts: [
         { value: "0", label: "Not at all" },
-        { value: "1", label: "Less than 1 in 5 times" },
+        { value: "1", label: "Less than 1 time in 5" },
         { value: "2", label: "Less than half the time" },
         { value: "3", label: "About half the time" },
         { value: "4", label: "More than half the time" },
@@ -61,7 +74,7 @@ export const IPSS = {
       type: "radio",
       opts: [
         { value: "0", label: "Not at all" },
-        { value: "1", label: "Less than 1 in 5 times" },
+        { value: "1", label: "Less than 1 time in 5" },
         { value: "2", label: "Less than half the time" },
         { value: "3", label: "About half the time" },
         { value: "4", label: "More than half the time" },
@@ -74,7 +87,7 @@ export const IPSS = {
       type: "radio",
       opts: [
         { value: "0", label: "Not at all" },
-        { value: "1", label: "Less than 1 in 5 times" },
+        { value: "1", label: "Less than 1 time in 5" },
         { value: "2", label: "Less than half the time" },
         { value: "3", label: "About half the time" },
         { value: "4", label: "More than half the time" },
@@ -87,7 +100,7 @@ export const IPSS = {
       type: "radio",
       opts: [
         { value: "0", label: "Not at all" },
-        { value: "1", label: "Less than 1 in 5 times" },
+        { value: "1", label: "Less than 1 time in 5" },
         { value: "2", label: "Less than half the time" },
         { value: "3", label: "About half the time" },
         { value: "4", label: "More than half the time" },
@@ -100,7 +113,7 @@ export const IPSS = {
       type: "radio",
       opts: [
         { value: "0", label: "Not at all" },
-        { value: "1", label: "Less than 1 in 5 times" },
+        { value: "1", label: "Less than 1 time in 5" },
         { value: "2", label: "Less than half the time" },
         { value: "3", label: "About half the time" },
         { value: "4", label: "More than half the time" },
@@ -109,7 +122,7 @@ export const IPSS = {
     },
     {
       id: "q7",
-      label: "7. Nocturia: Over the past month, how many times did you most typically get up to urinate from the time you went to bed until the time you got up in the morning?",
+      label: "7. Nocturia: How many times did you most typically get up to urinate from the time you went to bed until the time you got up in the morning?",
       type: "radio",
       opts: [
         { value: "0", label: "None" },
