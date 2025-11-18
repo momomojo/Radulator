@@ -1,0 +1,419 @@
+{
+  "calculator": "Renal Cyst (Bosniak Classification)",
+  "description": "Comprehensive test data for Bosniak CT classification of cystic renal lesions covering all categories (I, II, IIF, III, IV) with edge cases",
+  "testCases": [
+    {
+      "id": "category-i-classic",
+      "name": "Classic Bosniak I - Simple Benign Cyst",
+      "category": "I",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "no",
+        "calcs": "no",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "I",
+        "management": "Simple, benign cyst - No follow up needed",
+        "hasTextModule": true
+      },
+      "clinicalContext": "Homogeneous water attenuation cyst with imperceptible thin wall, no septa, calcifications, or solid components. Benign finding requiring no follow-up."
+    },
+    {
+      "id": "category-ii-thin-septa",
+      "name": "Bosniak II - Few Thin Septa",
+      "category": "II",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "few-thin",
+        "calcs": "no",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "II",
+        "management": "Minimally complex benign cyst - No follow up needed",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Minimally complex cyst with few hairline thin septa. No enhancement. Benign, no follow-up needed."
+    },
+    {
+      "id": "category-ii-fine-calcifications",
+      "name": "Bosniak II - Fine Peripheral Calcifications",
+      "category": "II",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "no",
+        "calcs": "fine",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "II",
+        "management": "Minimally complex benign cyst - No follow up needed",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Water density cyst with fine peripheral or septal calcifications. Benign appearance."
+    },
+    {
+      "id": "category-iif-minimally-thick-walls",
+      "name": "Bosniak IIF - Minimally Thick Walls",
+      "category": "IIF",
+      "inputs": {
+        "walls": "minimally-thick",
+        "septa": "no",
+        "calcs": "no",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "IIF",
+        "management": "Minimally complex - Follow up recommended",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with minimally thickened smooth wall. Minimal enhancement possible. Requires imaging follow-up."
+    },
+    {
+      "id": "category-iif-thick-septa",
+      "name": "Bosniak IIF - Thick Minimally Enhanced Septa",
+      "category": "IIF",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "thick",
+        "calcs": "no",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "IIF",
+        "management": "Minimally complex - Follow up recommended",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with thick or minimally thickened septa showing minimal enhancement. Follow-up imaging recommended."
+    },
+    {
+      "id": "category-iif-high-attenuation",
+      "name": "Bosniak IIF - High Attenuation Cyst (>20 HU)",
+      "category": "IIF",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "no",
+        "calcs": "no",
+        "density": "high",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "IIF",
+        "management": "Minimally complex - Follow up recommended",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Homogeneous mass with high attenuation >20 HU at unenhanced CT (≥70 HU typical). May represent proteinaceous or hemorrhagic cyst. Requires follow-up."
+    },
+    {
+      "id": "category-iif-intrarenal",
+      "name": "Bosniak IIF - Totally Intrarenal Cyst",
+      "category": "IIF",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "no",
+        "calcs": "no",
+        "density": "water",
+        "intrarenal": true,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "IIF",
+        "management": "Minimally complex - Follow up recommended",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Simple cyst that is totally intrarenal. This location alone upgrades to IIF requiring follow-up."
+    },
+    {
+      "id": "category-iif-large-size",
+      "name": "Bosniak IIF - Large Cyst (≥3 cm)",
+      "category": "IIF",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "no",
+        "calcs": "no",
+        "density": "water",
+        "intrarenal": false,
+        "large": true,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "IIF",
+        "management": "Minimally complex - Follow up recommended",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Simple cyst measuring ≥3 cm. Size alone warrants follow-up imaging to ensure stability."
+    },
+    {
+      "id": "category-iif-multiple-features",
+      "name": "Bosniak IIF - Multiple IIF Features",
+      "category": "IIF",
+      "inputs": {
+        "walls": "minimally-thick",
+        "septa": "thick",
+        "calcs": "no",
+        "density": "high",
+        "intrarenal": true,
+        "large": true,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "IIF",
+        "management": "Minimally complex - Follow up recommended",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with multiple IIF features: minimally thick walls, thick septa, high attenuation, intrarenal location, and large size. Still IIF (not upgraded to III without irregular enhancement)."
+    },
+    {
+      "id": "category-iii-thick-irregular-walls",
+      "name": "Bosniak III - Thickened Irregular Enhancing Walls",
+      "category": "III",
+      "inputs": {
+        "walls": "thick-irregular",
+        "septa": "no",
+        "calcs": "no",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "III",
+        "management": "Indeterminate cystic mass - Surgical resection",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with thickened irregular walls showing measurable enhancement. Indeterminate mass requiring surgical exploration."
+    },
+    {
+      "id": "category-iii-irregular-septa",
+      "name": "Bosniak III - Thickened Irregular Enhancing Septa",
+      "category": "III",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "thickened-irregular",
+        "calcs": "no",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "III",
+        "management": "Indeterminate cystic mass - Surgical resection",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with thickened irregular enhancing septa. Indeterminate lesion requiring surgical resection."
+    },
+    {
+      "id": "category-iii-thick-nodular-calcs",
+      "name": "Bosniak III - Thick Nodular Calcifications",
+      "category": "III",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "no",
+        "calcs": "thick-nodular",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "III",
+        "management": "Indeterminate cystic mass - Surgical resection",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with thick or nodular calcifications. These calcifications suggest possible malignancy, requiring surgical resection."
+    },
+    {
+      "id": "category-iii-multiple-features",
+      "name": "Bosniak III - Multiple Concerning Features",
+      "category": "III",
+      "inputs": {
+        "walls": "thick-irregular",
+        "septa": "thickened-irregular",
+        "calcs": "thick-nodular",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "III",
+        "management": "Indeterminate cystic mass - Surgical resection",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with multiple Category III features: thick irregular walls, irregular septa, and thick nodular calcifications. Highly concerning for malignancy."
+    },
+    {
+      "id": "category-iv-soft-tissue-component",
+      "name": "Bosniak IV - Enhancing Soft Tissue Component",
+      "category": "IV",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "no",
+        "calcs": "no",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "yes"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "IV",
+        "management": "Clearly malignant cystic mass - Surgical resection",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with enhancing soft tissue component. Clearly malignant cystic mass (likely cystic RCC). Requires surgical resection."
+    },
+    {
+      "id": "category-iv-overrides-all",
+      "name": "Bosniak IV - Soft Tissue Overrides All Other Features",
+      "category": "IV",
+      "inputs": {
+        "walls": "thick-irregular",
+        "septa": "thickened-irregular",
+        "calcs": "thick-nodular",
+        "density": "high",
+        "intrarenal": true,
+        "large": true,
+        "soft": "yes"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "IV",
+        "management": "Clearly malignant cystic mass - Surgical resection",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with soft tissue component and all possible concerning features. Soft tissue enhancement alone determines Category IV classification regardless of other features."
+    },
+    {
+      "id": "edge-case-iii-vs-iif-priority",
+      "name": "Edge Case - Category III Overrides IIF Features",
+      "category": "III",
+      "inputs": {
+        "walls": "minimally-thick",
+        "septa": "thickened-irregular",
+        "calcs": "fine",
+        "density": "high",
+        "intrarenal": true,
+        "large": true,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "III",
+        "management": "Indeterminate cystic mass - Surgical resection",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Mix of IIF features (minimally thick walls, fine calcs, high density, intrarenal, large) and Category III feature (irregular septa). Category III wins."
+    },
+    {
+      "id": "edge-case-borderline-ii-vs-iif",
+      "name": "Edge Case - Borderline Category II vs IIF",
+      "category": "II",
+      "inputs": {
+        "walls": "hairline-thin",
+        "septa": "few-thin",
+        "calcs": "fine",
+        "density": "water",
+        "intrarenal": false,
+        "large": false,
+        "soft": "no"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "II",
+        "management": "Minimally complex benign cyst - No follow up needed",
+        "hasTextModule": false
+      },
+      "clinicalContext": "Cyst with both thin septa and fine calcifications. Both are Category II features. Remains Category II (no IIF features present)."
+    }
+  ],
+  "validationRules": {
+    "precision": {
+      "categoryMatch": "exact",
+      "managementTextMatch": "contains"
+    },
+    "performance": {
+      "maxCalculationTime": 500,
+      "unit": "milliseconds"
+    },
+    "accessibility": {
+      "ariaLabelRequired": true,
+      "keyboardNavigationSupported": true,
+      "contrastRatio": "4.5:1 minimum"
+    }
+  },
+  "categoryDefinitions": {
+    "I": {
+      "description": "Simple benign cyst",
+      "criteria": "Water attenuation, thin wall, no septa, calcifications, or solid components",
+      "management": "No follow-up needed",
+      "malignancyRisk": "<1%",
+      "hasTextModule": true
+    },
+    "II": {
+      "description": "Minimally complex benign cyst",
+      "criteria": "Few thin septa, fine calcifications, or minimally complex features without enhancement",
+      "management": "No follow-up needed",
+      "malignancyRisk": "<5%",
+      "hasTextModule": false
+    },
+    "IIF": {
+      "description": "Minimally complex cyst requiring follow-up",
+      "criteria": "Minimally thickened walls/septa with minimal enhancement, high attenuation, intrarenal location, or ≥3cm size",
+      "management": "Follow-up imaging at 6 and 12 months, then yearly for 5 years",
+      "malignancyRisk": "5-10%",
+      "hasTextModule": false
+    },
+    "III": {
+      "description": "Indeterminate cystic mass",
+      "criteria": "Thickened irregular walls or septa with measurable enhancement, thick/nodular calcifications",
+      "management": "Surgical exploration recommended",
+      "malignancyRisk": "50-60%",
+      "hasTextModule": false
+    },
+    "IV": {
+      "description": "Clearly malignant cystic mass",
+      "criteria": "Enhancing soft tissue component",
+      "management": "Surgical resection",
+      "malignancyRisk": "85-100%",
+      "hasTextModule": false
+    }
+  },
+  "references": [
+    {
+      "id": "bosniak-2005",
+      "citation": "Bosniak MA. The current radiological approach to renal cysts. Radiology. 2005 Jul;236(1):61-70.",
+      "doi": "10.1148/radiol.2362040218",
+      "url": "https://doi.org/10.1148/radiol.2362040218",
+      "description": "Original Bosniak classification system for cystic renal lesions on CT"
+    },
+    {
+      "id": "silverman-2019",
+      "citation": "Silverman SG, Pedrosa I, Ellis JH, et al. Bosniak Classification of Cystic Renal Masses, Version 2019: An Update Proposal and Needs Assessment. Radiology. 2019 Aug;292(2):441-448.",
+      "doi": "10.1148/radiol.2019182646",
+      "url": "https://doi.org/10.1148/radiol.2019182646",
+      "description": "Updated Bosniak classification including MRI criteria"
+    }
+  ],
+  "notes": {
+    "mriNote": "This calculator implements the CT-based Bosniak 2005 classification. For MRI evaluation, use the updated Bosniak 2019 MRI criteria (Silverman et al. Radiology 2019).",
+    "highAttenuationNote": "A homogeneous mass ≥70 HU at unenhanced CT is consistent with a high-attenuation renal cyst",
+    "textModuleNote": "Text module generation is only implemented for Category I cases in current version"
+  }
+}

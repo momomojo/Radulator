@@ -1,0 +1,409 @@
+{
+  "testCases": [
+    {
+      "id": "normal-001",
+      "category": "Normal Prostate",
+      "description": "Typical normal adult prostate",
+      "input": {
+        "length": 4.0,
+        "height": 3.0,
+        "width": 3.5,
+        "psa": 2.5
+      },
+      "expected": {
+        "volume": 21.8,
+        "psaDensity": 0.115,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 4.0 × 3.0 × 3.5 × 0.52 = 21.84 mL"
+      },
+      "clinicalContext": "Average normal prostate in adult male. PSA-D within acceptable range (<0.15)."
+    },
+    {
+      "id": "normal-002",
+      "category": "Normal Prostate",
+      "description": "Upper limit of normal prostate volume",
+      "input": {
+        "length": 4.2,
+        "height": 3.5,
+        "width": 3.8,
+        "psa": 3.0
+      },
+      "expected": {
+        "volume": 29.0,
+        "psaDensity": 0.103,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 4.2 × 3.5 × 3.8 × 0.52 = 29.036 mL"
+      },
+      "clinicalContext": "At upper limit of normal. PSA-D suggests benign findings."
+    },
+    {
+      "id": "normal-003",
+      "category": "Normal Prostate",
+      "description": "Small prostate",
+      "input": {
+        "length": 3.0,
+        "height": 2.5,
+        "width": 2.8,
+        "psa": 1.2
+      },
+      "expected": {
+        "volume": 10.9,
+        "psaDensity": 0.110,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 3.0 × 2.5 × 2.8 × 0.52 = 10.92 mL"
+      },
+      "clinicalContext": "Smaller than average but within normal range."
+    },
+    {
+      "id": "bph-001",
+      "category": "Benign Prostatic Hyperplasia (BPH)",
+      "description": "Mildly enlarged prostate",
+      "input": {
+        "length": 5.0,
+        "height": 4.0,
+        "width": 4.5,
+        "psa": 5.0
+      },
+      "expected": {
+        "volume": 46.8,
+        "psaDensity": 0.107,
+        "interpretation": "Enlarged prostate (> 30 cm³)",
+        "calculation": "Volume = 5.0 × 4.0 × 4.5 × 0.52 = 46.8 mL"
+      },
+      "clinicalContext": "Mild BPH. PSA-D <0.15 suggests benign etiology despite enlargement."
+    },
+    {
+      "id": "bph-002",
+      "category": "Benign Prostatic Hyperplasia (BPH)",
+      "description": "Moderately enlarged prostate",
+      "input": {
+        "length": 6.0,
+        "height": 5.0,
+        "width": 5.5,
+        "psa": 8.0
+      },
+      "expected": {
+        "volume": 85.8,
+        "psaDensity": 0.093,
+        "interpretation": "Enlarged prostate (> 30 cm³)",
+        "calculation": "Volume = 6.0 × 5.0 × 5.5 × 0.52 = 85.8 mL"
+      },
+      "clinicalContext": "Moderate BPH. Low PSA-D despite elevated PSA suggests benign enlargement."
+    },
+    {
+      "id": "bph-003",
+      "category": "Benign Prostatic Hyperplasia (BPH)",
+      "description": "Severely enlarged prostate",
+      "input": {
+        "length": 7.0,
+        "height": 6.0,
+        "width": 6.5,
+        "psa": 12.0
+      },
+      "expected": {
+        "volume": 142.7,
+        "psaDensity": 0.084,
+        "interpretation": "Enlarged prostate (> 30 cm³)",
+        "calculation": "Volume = 7.0 × 6.0 × 6.5 × 0.52 = 142.74 mL"
+      },
+      "clinicalContext": "Severe BPH. PSA-D remains low, consistent with benign disease."
+    },
+    {
+      "id": "cancer-suspect-001",
+      "category": "Cancer Suspicion",
+      "description": "Elevated PSA-Density suggesting malignancy",
+      "input": {
+        "length": 4.0,
+        "height": 3.0,
+        "width": 3.5,
+        "psa": 6.0
+      },
+      "expected": {
+        "volume": 21.8,
+        "psaDensity": 0.275,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 4.0 × 3.0 × 3.5 × 0.52 = 21.84 mL"
+      },
+      "clinicalContext": "Normal volume but PSA-D >0.15 raises concern for malignancy. Biopsy may be indicated."
+    },
+    {
+      "id": "cancer-suspect-002",
+      "category": "Cancer Suspicion",
+      "description": "Moderately elevated PSA-Density",
+      "input": {
+        "length": 3.5,
+        "height": 3.0,
+        "width": 3.2,
+        "psa": 4.0
+      },
+      "expected": {
+        "volume": 17.5,
+        "psaDensity": 0.229,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 3.5 × 3.0 × 3.2 × 0.52 = 17.472 mL"
+      },
+      "clinicalContext": "Small prostate with elevated PSA-D (>0.15). Higher suspicion for malignancy."
+    },
+    {
+      "id": "low-psa-001",
+      "category": "Low PSA",
+      "description": "Very low PSA with normal prostate",
+      "input": {
+        "length": 3.5,
+        "height": 3.0,
+        "width": 3.2,
+        "psa": 1.2
+      },
+      "expected": {
+        "volume": 17.5,
+        "psaDensity": 0.069,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 3.5 × 3.0 × 3.2 × 0.52 = 17.472 mL"
+      },
+      "clinicalContext": "Low PSA-D (<0.08) associated with very low cancer risk."
+    },
+    {
+      "id": "low-psa-002",
+      "category": "Low PSA",
+      "description": "Minimal PSA with small prostate",
+      "input": {
+        "length": 4.0,
+        "height": 3.0,
+        "width": 3.5,
+        "psa": 0.1
+      },
+      "expected": {
+        "volume": 21.8,
+        "psaDensity": 0.005,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 4.0 × 3.0 × 3.5 × 0.52 = 21.84 mL"
+      },
+      "clinicalContext": "Very low PSA-D. Minimal concern for malignancy."
+    },
+    {
+      "id": "high-psa-001",
+      "category": "Very High PSA",
+      "description": "Markedly elevated PSA with enlarged prostate",
+      "input": {
+        "length": 7.0,
+        "height": 6.0,
+        "width": 6.5,
+        "psa": 50.0
+      },
+      "expected": {
+        "volume": 142.7,
+        "psaDensity": 0.350,
+        "interpretation": "Enlarged prostate (> 30 cm³)",
+        "calculation": "Volume = 7.0 × 6.0 × 6.5 × 0.52 = 142.74 mL"
+      },
+      "clinicalContext": "Very high PSA-D (>0.15) despite large prostate. High suspicion for malignancy."
+    },
+    {
+      "id": "precision-001",
+      "category": "Decimal Precision",
+      "description": "High-precision decimal measurements",
+      "input": {
+        "length": 4.23,
+        "height": 3.87,
+        "width": 4.12,
+        "psa": 2.54
+      },
+      "expected": {
+        "volume": 35.1,
+        "psaDensity": 0.072,
+        "interpretation": "Normal prostate volume (≤ 30 cm³) - borderline",
+        "calculation": "Volume = 4.23 × 3.87 × 4.12 × 0.52 = 35.074 mL"
+      },
+      "clinicalContext": "Just above normal threshold. PSA-D remains favorable."
+    },
+    {
+      "id": "precision-002",
+      "category": "Decimal Precision",
+      "description": "Multiple decimal places",
+      "input": {
+        "length": 4.567,
+        "height": 3.234,
+        "width": 3.891,
+        "psa": 2.543
+      },
+      "expected": {
+        "volume": 29.9,
+        "psaDensity": 0.085,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 4.567 × 3.234 × 3.891 × 0.52 = 29.916 mL"
+      },
+      "clinicalContext": "Tests calculation precision with multiple decimal places."
+    },
+    {
+      "id": "edge-001",
+      "category": "Edge Cases",
+      "description": "Zero dimensions",
+      "input": {
+        "length": 0,
+        "height": 0,
+        "width": 0,
+        "psa": 0
+      },
+      "expected": {
+        "volume": 0.0,
+        "psaDensity": null,
+        "psaDensityDisplay": "‑‑",
+        "interpretation": "N/A",
+        "calculation": "Volume = 0 × 0 × 0 × 0.52 = 0 mL"
+      },
+      "clinicalContext": "Edge case: all zero values."
+    },
+    {
+      "id": "edge-002",
+      "category": "Edge Cases",
+      "description": "Very small prostate",
+      "input": {
+        "length": 1.0,
+        "height": 0.8,
+        "width": 0.9,
+        "psa": 0.5
+      },
+      "expected": {
+        "volume": 0.4,
+        "psaDensity": 1.346,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 1.0 × 0.8 × 0.9 × 0.52 = 0.3744 mL"
+      },
+      "clinicalContext": "Unusually small prostate. Very high PSA-D due to small volume."
+    },
+    {
+      "id": "edge-003",
+      "category": "Edge Cases",
+      "description": "Very large prostate (massive BPH)",
+      "input": {
+        "length": 10.0,
+        "height": 9.0,
+        "width": 9.5,
+        "psa": 15.0
+      },
+      "expected": {
+        "volume": 445.2,
+        "psaDensity": 0.034,
+        "interpretation": "Enlarged prostate (> 30 cm³)",
+        "calculation": "Volume = 10.0 × 9.0 × 9.5 × 0.52 = 445.2 mL"
+      },
+      "clinicalContext": "Massive BPH. Very low PSA-D due to large volume despite elevated PSA."
+    },
+    {
+      "id": "no-psa-001",
+      "category": "Missing PSA",
+      "description": "Volume calculation without PSA",
+      "input": {
+        "length": 4.0,
+        "height": 3.0,
+        "width": 3.5,
+        "psa": null
+      },
+      "expected": {
+        "volume": 21.8,
+        "psaDensity": null,
+        "psaDensityDisplay": "‑‑",
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 4.0 × 3.0 × 3.5 × 0.52 = 21.84 mL"
+      },
+      "clinicalContext": "Volume can be calculated independently of PSA."
+    },
+    {
+      "id": "clinical-001",
+      "category": "Clinical Scenarios",
+      "description": "Active surveillance candidate",
+      "input": {
+        "length": 3.8,
+        "height": 3.2,
+        "width": 3.4,
+        "psa": 1.8
+      },
+      "expected": {
+        "volume": 21.5,
+        "psaDensity": 0.084,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 3.8 × 3.2 × 3.4 × 0.52 = 21.49 mL"
+      },
+      "clinicalContext": "PSA-D at threshold (0.08-0.15 range). Patient may be candidate for active surveillance."
+    },
+    {
+      "id": "clinical-002",
+      "category": "Clinical Scenarios",
+      "description": "Biopsy recommended",
+      "input": {
+        "length": 4.5,
+        "height": 3.5,
+        "width": 4.0,
+        "psa": 8.5
+      },
+      "expected": {
+        "volume": 32.8,
+        "psaDensity": 0.259,
+        "interpretation": "Enlarged prostate (> 30 cm³)",
+        "calculation": "Volume = 4.5 × 3.5 × 4.0 × 0.52 = 32.76 mL"
+      },
+      "clinicalContext": "PSA-D >0.15 warrants biopsy consideration despite only mild enlargement."
+    },
+    {
+      "id": "clinical-003",
+      "category": "Clinical Scenarios",
+      "description": "Post-TURP monitoring",
+      "input": {
+        "length": 3.0,
+        "height": 2.8,
+        "width": 3.2,
+        "psa": 1.5
+      },
+      "expected": {
+        "volume": 13.9,
+        "psaDensity": 0.108,
+        "interpretation": "Normal prostate volume (≤ 30 cm³)",
+        "calculation": "Volume = 3.0 × 2.8 × 3.2 × 0.52 = 13.901 mL"
+      },
+      "clinicalContext": "Reduced volume post-TURP. PSA-D within acceptable range for post-surgical monitoring."
+    }
+  ],
+  "formulaValidation": {
+    "ellipsoidFormula": "Volume = Length × Height × Width × (π/6)",
+    "piSixthApproximation": 0.52,
+    "actualPiSixth": 0.523598776,
+    "approximationError": "0.69% underestimation",
+    "psaDensityFormula": "PSA-Density = PSA (ng/mL) / Prostate Volume (mL)"
+  },
+  "clinicalThresholds": {
+    "normalVolume": {
+      "max": 30,
+      "unit": "mL",
+      "interpretation": "≤ 30 cm³ considered normal"
+    },
+    "psaDensity": {
+      "low": {
+        "max": 0.08,
+        "interpretation": "Very low cancer risk"
+      },
+      "intermediate": {
+        "min": 0.08,
+        "max": 0.15,
+        "interpretation": "Suggested acceptable range, context-dependent"
+      },
+      "elevated": {
+        "min": 0.15,
+        "interpretation": "Elevated, may warrant further investigation"
+      }
+    }
+  },
+  "references": {
+    "paterson2016": {
+      "citation": "Paterson NR, et al. CUAJ 2016",
+      "doi": "10.5489/cuaj.3236",
+      "url": "https://doi.org/10.5489/cuaj.3236",
+      "topic": "Prostate volume measurement techniques"
+    },
+    "aminsharifi2018": {
+      "citation": "Aminsharifi A, et al. J Urol 2018",
+      "doi": "10.1016/j.juro.2018.05.016",
+      "url": "https://doi.org/10.1016/j.juro.2018.05.016",
+      "topic": "PSA density as predictor of prostate cancer"
+    }
+  }
+}

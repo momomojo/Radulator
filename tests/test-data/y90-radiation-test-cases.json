@@ -1,0 +1,626 @@
+{
+  "calculator": "Y-90 Radiation Segmentectomy",
+  "version": "1.0",
+  "testCases": [
+    {
+      "name": "Standard Radiation Segmentectomy - MIRD Model",
+      "category": "MIRD Model - Standard",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "200",
+        "target_dose": "205",
+        "lung_shunt": "5",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "safetyStatus": "Within safety parameters",
+        "hasContraindication": false,
+        "hasWarning": false,
+        "model": "MIRD (uniform distribution)",
+        "vialSize": "5 GBq vial",
+        "meanSegmentDose": "205.0 Gy"
+      },
+      "validationNotes": "Standard segmentectomy with optimal parameters"
+    },
+    {
+      "name": "Small Volume Segmentectomy - 3 GBq Vial",
+      "category": "MIRD Model - Small Volume",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "100",
+        "target_dose": "200",
+        "lung_shunt": "5",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "safetyStatus": "Within safety parameters",
+        "vialSize": "3 GBq vial",
+        "meanSegmentDose": "200.0 Gy"
+      },
+      "validationNotes": "Small volume requiring 3 GBq vial"
+    },
+    {
+      "name": "Lobectomy - High Volume MIRD",
+      "category": "MIRD Model - Large Volume",
+      "inputs": {
+        "treatment_intent": "lobectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "800",
+        "target_dose": "120",
+        "lung_shunt": "8",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "safetyStatus": "Within safety parameters",
+        "treatmentIntent": "Lobectomy",
+        "vialSize": "10 GBq vial",
+        "meanSegmentDose": "120.0 Gy"
+      },
+      "validationNotes": "Large volume lobectomy treatment"
+    },
+    {
+      "name": "Partition Model - Standard T/N Ratio",
+      "category": "Partition Model - Standard",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "partition",
+        "segment_volume": "300",
+        "tumor_volume": "100",
+        "target_dose": "400",
+        "lung_shunt": "5",
+        "tn_ratio": "3",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "safetyStatus": "Within safety parameters",
+        "model": "Partition (tumor/normal)",
+        "tumorDose": "400.0 Gy",
+        "normalDose": "133.3 Gy",
+        "tnRatio": "3.0",
+        "tumorVolume": "100 mL",
+        "normalVolume": "200 mL"
+      },
+      "validationNotes": "Standard partition model with 3:1 T/N ratio",
+      "calculations": {
+        "normalDose": "400 / 3 = 133.3 Gy",
+        "normalMass": "(300-100) * 0.00103 = 0.206 kg",
+        "activity": "(133.3 * 0.206 * 4 * 0.95) / 49.67 GBq"
+      }
+    },
+    {
+      "name": "Partition Model - High T/N Ratio",
+      "category": "Partition Model - High Differential",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "partition",
+        "segment_volume": "200",
+        "tumor_volume": "50",
+        "target_dose": "500",
+        "lung_shunt": "5",
+        "tn_ratio": "10",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "tumorDose": "500.0 Gy",
+        "normalDose": "50.0 Gy",
+        "tnRatio": "10.0"
+      },
+      "validationNotes": "Very hot tumor with 10:1 uptake ratio",
+      "calculations": {
+        "normalDose": "500 / 10 = 50 Gy"
+      }
+    },
+    {
+      "name": "Partition Model - Low T/N Ratio",
+      "category": "Partition Model - Low Differential",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "partition",
+        "segment_volume": "250",
+        "tumor_volume": "80",
+        "target_dose": "300",
+        "lung_shunt": "5",
+        "tn_ratio": "2",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "tumorDose": "300.0 Gy",
+        "normalDose": "150.0 Gy",
+        "tnRatio": "2.0"
+      },
+      "validationNotes": "Minimal differential uptake",
+      "calculations": {
+        "normalDose": "300 / 2 = 150 Gy"
+      }
+    },
+    {
+      "name": "CONTRAINDICATION - Lung Shunt >20% with Resin",
+      "category": "Safety - Contraindications",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "200",
+        "target_dose": "205",
+        "lung_shunt": "25",
+        "vial_residual": "1",
+        "microsphere_type": "resin"
+      },
+      "expectedOutputs": {
+        "safetyStatus": "CONTRAINDICATED",
+        "hasContraindication": true,
+        "contraindicationMessage": "Lung shunt >20% with resin microspheres"
+      },
+      "validationNotes": "Per manufacturer guidelines for resin microspheres"
+    },
+    {
+      "name": "CONTRAINDICATION - Lung Dose >30 Gy",
+      "category": "Safety - Contraindications",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "500",
+        "target_dose": "300",
+        "lung_shunt": "30",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "safetyStatus": "CONTRAINDICATED",
+        "hasContraindication": true,
+        "contraindicationMessage": "Estimated lung dose exceeds 30 Gy safety limit"
+      },
+      "validationNotes": "Lung dose exceeds safety threshold"
+    },
+    {
+      "name": "WARNING - Low Target Dose for Segmentectomy",
+      "category": "Safety - Warnings",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "200",
+        "target_dose": "150",
+        "lung_shunt": "5",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "safetyStatus": "Warnings present",
+        "hasWarning": true,
+        "warningMessage": "Target dose 150 Gy is below recommended 190 Gy minimum"
+      },
+      "validationNotes": "Suboptimal dose for radiation segmentectomy"
+    },
+    {
+      "name": "WARNING - High Normal Dose in Large Volume",
+      "category": "Safety - Warnings",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "partition",
+        "segment_volume": "500",
+        "tumor_volume": "100",
+        "target_dose": "400",
+        "lung_shunt": "5",
+        "tn_ratio": "2",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "hasWarning": true,
+        "normalDose": "200.0 Gy",
+        "warningMessage": "Normal tissue dose exceeds 80 Gy in large volume"
+      },
+      "validationNotes": "High normal dose in >300 mL volume",
+      "calculations": {
+        "normalVolume": "400 mL",
+        "normalDose": "400 / 2 = 200 Gy"
+      }
+    },
+    {
+      "name": "NOTE - Elevated Lung Shunt 10-20%",
+      "category": "Safety - Monitoring",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "200",
+        "target_dose": "205",
+        "lung_shunt": "15",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "hasWarning": true,
+        "lungShuntFraction": "15.0%",
+        "warningMessage": "Lung shunt is elevated (10-20%)"
+      },
+      "validationNotes": "Requires monitoring but not contraindicated"
+    },
+    {
+      "name": "BSA Calculation - Standard Adult",
+      "category": "Optional Parameters - BSA",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "200",
+        "target_dose": "205",
+        "lung_shunt": "5",
+        "vial_residual": "1",
+        "microsphere_type": "glass",
+        "patient_weight": "70",
+        "patient_height": "170"
+      },
+      "expectedOutputs": {
+        "bsa": "1.79 m²"
+      },
+      "validationNotes": "Mosteller formula: sqrt((170*70)/3600) = 1.79",
+      "calculations": {
+        "bsa": "sqrt((170 * 70) / 3600) = 1.79 m²"
+      }
+    },
+    {
+      "name": "BSA Calculation - Large Patient",
+      "category": "Optional Parameters - BSA",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "200",
+        "target_dose": "205",
+        "lung_shunt": "5",
+        "vial_residual": "1",
+        "microsphere_type": "glass",
+        "patient_weight": "100",
+        "patient_height": "185"
+      },
+      "expectedOutputs": {
+        "bsa": "2.27 m²"
+      },
+      "validationNotes": "Large patient BSA",
+      "calculations": {
+        "bsa": "sqrt((185 * 100) / 3600) = 2.27 m²"
+      }
+    },
+    {
+      "name": "Vial Size - 5 GBq Recommendation",
+      "category": "Vial Size Recommendations",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "150",
+        "target_dose": "205",
+        "lung_shunt": "5",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "vialSize": "5 GBq vial"
+      },
+      "validationNotes": "Activity between 3-5 GBq"
+    },
+    {
+      "name": "Vial Size - 10 GBq Recommendation",
+      "category": "Vial Size Recommendations",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "300",
+        "target_dose": "205",
+        "lung_shunt": "5",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "vialSize": "10 GBq vial"
+      },
+      "validationNotes": "Activity between 7-10 GBq"
+    },
+    {
+      "name": "Vial Size - 20 GBq Recommendation",
+      "category": "Vial Size Recommendations",
+      "inputs": {
+        "treatment_intent": "lobectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "600",
+        "target_dose": "205",
+        "lung_shunt": "5",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "vialSize": "20 GBq vial"
+      },
+      "validationNotes": "High activity for lobectomy"
+    },
+    {
+      "name": "Zero Lung Shunt",
+      "category": "Edge Cases",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "200",
+        "target_dose": "205",
+        "lung_shunt": "0",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "lungShuntFraction": "0.0%",
+        "lungDose": "0.0 Gy"
+      },
+      "validationNotes": "No hepatopulmonary shunting"
+    },
+    {
+      "name": "T/N Ratio = 1 (No Differential Uptake)",
+      "category": "Edge Cases",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "partition",
+        "segment_volume": "200",
+        "tumor_volume": "100",
+        "target_dose": "400",
+        "lung_shunt": "5",
+        "tn_ratio": "1",
+        "vial_residual": "1",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "tumorDose": "400.0 Gy",
+        "normalDose": "400.0 Gy",
+        "tnRatio": "1.0"
+      },
+      "validationNotes": "Equal uptake in tumor and normal tissue"
+    },
+    {
+      "name": "Minimum Valid Values",
+      "category": "Edge Cases",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "10",
+        "target_dose": "80",
+        "lung_shunt": "0",
+        "vial_residual": "0",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "safetyStatus": "Warnings present",
+        "hasWarning": true
+      },
+      "validationNotes": "All minimum boundary values"
+    },
+    {
+      "name": "Maximum Valid Values",
+      "category": "Edge Cases",
+      "inputs": {
+        "treatment_intent": "lobectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "2000",
+        "target_dose": "800",
+        "lung_shunt": "15",
+        "vial_residual": "5",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "safetyStatus": "Within safety parameters or Warnings present"
+      },
+      "validationNotes": "Maximum boundary values within safe limits"
+    },
+    {
+      "name": "Resin Microspheres - No Vial Size",
+      "category": "Microsphere Type",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "200",
+        "target_dose": "205",
+        "lung_shunt": "10",
+        "vial_residual": "1",
+        "microsphere_type": "resin"
+      },
+      "expectedOutputs": {
+        "microsphereType": "Resin (SIR-Spheres)",
+        "noVialSize": true
+      },
+      "validationNotes": "Resin microspheres don't have vial size recommendations"
+    },
+    {
+      "name": "High Residual Correction",
+      "category": "Residual Correction",
+      "inputs": {
+        "treatment_intent": "segmentectomy",
+        "dosimetry_model": "mird",
+        "segment_volume": "200",
+        "target_dose": "205",
+        "lung_shunt": "5",
+        "vial_residual": "10",
+        "microsphere_type": "glass"
+      },
+      "expectedOutputs": {
+        "residualCorrection": "10.0%"
+      },
+      "validationNotes": "High vial residual increases ordered activity"
+    }
+  ],
+  "validationScenarios": [
+    {
+      "scenario": "Missing Required Fields",
+      "testCases": [
+        {
+          "description": "Missing treatment intent",
+          "omitFields": ["treatment_intent"],
+          "expectedError": "Please select treatment intent, dosimetry model, and microsphere type"
+        },
+        {
+          "description": "Missing dosimetry model",
+          "omitFields": ["dosimetry_model"],
+          "expectedError": "Please select treatment intent, dosimetry model, and microsphere type"
+        },
+        {
+          "description": "Missing microsphere type",
+          "omitFields": ["microsphere_type"],
+          "expectedError": "Please select treatment intent, dosimetry model, and microsphere type"
+        },
+        {
+          "description": "Missing lung shunt",
+          "omitFields": ["lung_shunt"],
+          "expectedError": "Lung shunt fraction is required and must be between 0-50%"
+        }
+      ]
+    },
+    {
+      "scenario": "Out of Range Values",
+      "testCases": [
+        {
+          "description": "Segment volume too low",
+          "field": "segment_volume",
+          "value": "5",
+          "expectedError": "Target segment volume must be between 10-2000 mL"
+        },
+        {
+          "description": "Segment volume too high",
+          "field": "segment_volume",
+          "value": "2500",
+          "expectedError": "Target segment volume must be between 10-2000 mL"
+        },
+        {
+          "description": "Target dose too low",
+          "field": "target_dose",
+          "value": "50",
+          "expectedError": "Target dose must be between 80-800 Gy"
+        },
+        {
+          "description": "Target dose too high",
+          "field": "target_dose",
+          "value": "900",
+          "expectedError": "Target dose must be between 80-800 Gy"
+        },
+        {
+          "description": "Lung shunt too high",
+          "field": "lung_shunt",
+          "value": "60",
+          "expectedError": "Lung shunt fraction is required and must be between 0-50%"
+        },
+        {
+          "description": "Vial residual too high",
+          "field": "vial_residual",
+          "value": "25",
+          "expectedError": "Vial residual must be between 0-20%"
+        },
+        {
+          "description": "T/N ratio too low",
+          "field": "tn_ratio",
+          "value": "0.5",
+          "expectedError": "Tumor-to-normal ratio must be between 1-50"
+        },
+        {
+          "description": "T/N ratio too high",
+          "field": "tn_ratio",
+          "value": "60",
+          "expectedError": "Tumor-to-normal ratio must be between 1-50"
+        },
+        {
+          "description": "Patient weight too high",
+          "field": "patient_weight",
+          "value": "600",
+          "expectedError": "Patient weight must be between 0-500 kg"
+        },
+        {
+          "description": "Patient height too high",
+          "field": "patient_height",
+          "value": "350",
+          "expectedError": "Patient height must be between 0-300 cm"
+        }
+      ]
+    },
+    {
+      "scenario": "Partition Model Specific Validation",
+      "testCases": [
+        {
+          "description": "Partition model without tumor volume",
+          "omitFields": ["tumor_volume"],
+          "expectedError": "Tumor volume must be positive and ≤ segment volume for partition model"
+        },
+        {
+          "description": "Partition model without T/N ratio",
+          "omitFields": ["tn_ratio"],
+          "expectedError": "Tumor-to-normal ratio must be between 1-50 for partition model"
+        },
+        {
+          "description": "Tumor volume > segment volume",
+          "inputs": {
+            "segment_volume": "200",
+            "tumor_volume": "250"
+          },
+          "expectedError": "Tumor volume must be positive and ≤ segment volume"
+        }
+      ]
+    }
+  ],
+  "formulaValidation": {
+    "mirdModel": {
+      "formula": "A [GBq] = (D [Gy] × M [kg] × (1-LSF)) / 49.67",
+      "example": {
+        "inputs": {
+          "dose": 205,
+          "segmentVolume_mL": 200,
+          "lungShuntFraction": 0.05,
+          "liverDensity_kg_per_mL": 0.00103
+        },
+        "calculations": {
+          "segmentMass_kg": "200 * 0.00103 = 0.206 kg",
+          "activity_GBq": "(205 * 0.206 * 0.95) / 49.67 = 0.807 GBq",
+          "activityWithResidual_GBq": "0.807 / 0.99 = 0.815 GBq",
+          "activity_mCi": "0.815 * 27.027 = 22.0 mCi"
+        }
+      }
+    },
+    "partitionModel": {
+      "formula": "A [GBq] = (D_N × M_N × (T/N + 1) × (1-LSF)) / 49.67",
+      "example": {
+        "inputs": {
+          "tumorDose": 400,
+          "segmentVolume_mL": 300,
+          "tumorVolume_mL": 100,
+          "tnRatio": 3,
+          "lungShuntFraction": 0.05,
+          "liverDensity_kg_per_mL": 0.00103
+        },
+        "calculations": {
+          "normalDose": "400 / 3 = 133.3 Gy",
+          "normalMass_kg": "(300-100) * 0.00103 = 0.206 kg",
+          "activity_GBq": "(133.3 * 0.206 * 4 * 0.95) / 49.67 = 2.097 GBq"
+        }
+      }
+    },
+    "lungDose": {
+      "formula": "D_lung = 49.67 × (A × LSF) / 1.0 kg",
+      "example": {
+        "inputs": {
+          "activity_GBq": 0.815,
+          "lungShuntFraction": 0.05
+        },
+        "calculations": {
+          "lungDose_Gy": "(49.67 * 0.815 * 0.05) / 1.0 = 2.0 Gy"
+        }
+      }
+    },
+    "bsa": {
+      "formula": "BSA = sqrt((height [cm] × weight [kg]) / 3600)",
+      "example": {
+        "inputs": {
+          "height_cm": 170,
+          "weight_kg": 70
+        },
+        "calculations": {
+          "bsa_m2": "sqrt((170 * 70) / 3600) = 1.79 m²"
+        }
+      }
+    }
+  }
+}

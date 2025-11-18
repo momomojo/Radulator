@@ -285,7 +285,7 @@ export const AVSCortisol = {
         ["Dominant Side:", data.dominantSide],
         [""],
         ["Interpretation"],
-        [data.interpretation.replace(/[✓⚠️]/g, "")],
+        [data.interpretation.replace(/✓|⚠️/g, "")],
         [""],
         ["Methodology"],
         ["Catheterization of an AV was considered successful if plasma epinephrine (Epi) concentration in the AV was 100 pg/mL above the PV (AV-PV >100 pg/mL), per protocol by Young et al."],
@@ -497,7 +497,7 @@ export const AVSCortisol = {
     },
     {
       t: "Young WF et al. 2008 – Cortisol lateralization criteria in AVS",
-      u: "https://doi.org/10.1007/s00268-007-9040-y",
+      u: "https://doi.org/10.1007/s00268-007-9332-8",
     },
   ],
 };

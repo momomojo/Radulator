@@ -1,0 +1,498 @@
+{
+  "description": "Test data for Hip Dysplasia Indices Calculator",
+  "testCases": [
+    {
+      "name": "Newborn Female - Normal Development",
+      "category": "newborn",
+      "input": {
+        "ageMonths": 1,
+        "gender": "female",
+        "mi_right_a": 0,
+        "mi_right_b": 100,
+        "mi_left_a": 0,
+        "mi_left_b": 100
+      },
+      "expected": {
+        "normalAC": "27 ± 5°",
+        "normalCCD": "140-150° (newborn)",
+        "miRight": "0.0%",
+        "miRightInterpretation": "Normal",
+        "miLeft": "0.0%",
+        "miLeftInterpretation": "Normal"
+      }
+    },
+    {
+      "name": "Newborn Male - Normal Development",
+      "category": "newborn",
+      "input": {
+        "ageMonths": 2,
+        "gender": "male",
+        "mi_right_a": 0,
+        "mi_right_b": 100,
+        "mi_left_a": 0,
+        "mi_left_b": 100
+      },
+      "expected": {
+        "normalAC": "25 ± 5°",
+        "normalCCD": "140-150° (newborn)",
+        "miRight": "0.0%",
+        "miRightInterpretation": "Normal",
+        "miLeft": "0.0%",
+        "miLeftInterpretation": "Normal"
+      }
+    },
+    {
+      "name": "Infant Female 5 months - Mild Concern",
+      "category": "infant",
+      "input": {
+        "ageMonths": 5,
+        "gender": "female",
+        "mi_right_a": 5,
+        "mi_right_b": 95,
+        "mi_left_a": 8,
+        "mi_left_b": 92
+      },
+      "expected": {
+        "normalAC": "25 ± 4°",
+        "normalCCD": "135-145° (infant)",
+        "miRight": "5.3%",
+        "miRightInterpretation": "Mild concern",
+        "miLeft": "8.0%",
+        "miLeftInterpretation": "Mild concern"
+      }
+    },
+    {
+      "name": "Infant Male 6 months - At Risk",
+      "category": "infant",
+      "input": {
+        "ageMonths": 6,
+        "gender": "male",
+        "mi_right_a": 12,
+        "mi_right_b": 88,
+        "mi_left_a": 15,
+        "mi_left_b": 85
+      },
+      "expected": {
+        "normalAC": "23 ± 4°",
+        "normalCCD": "135-145° (infant)",
+        "miRight": "12.0%",
+        "miRightInterpretation": "At risk",
+        "miLeft": "15.0%",
+        "miLeftInterpretation": "At risk"
+      }
+    },
+    {
+      "name": "1-Year-Old Female - Normal",
+      "category": "1year",
+      "input": {
+        "ageMonths": 12,
+        "gender": "female",
+        "mi_right_a": 10,
+        "mi_right_b": 90,
+        "mi_left_a": 12,
+        "mi_left_b": 88
+      },
+      "expected": {
+        "normalAC": "23 ± 3°",
+        "normalCCD": "130-140° (1 year)",
+        "miRight": "10.0%",
+        "miRightInterpretation": "Normal",
+        "miLeft": "12.0%",
+        "miLeftInterpretation": "At risk"
+      }
+    },
+    {
+      "name": "2-Year-Old Male - Borderline",
+      "category": "2years",
+      "input": {
+        "ageMonths": 24,
+        "gender": "male",
+        "mi_right_a": 18,
+        "mi_right_b": 82,
+        "mi_left_a": 22,
+        "mi_left_b": 78
+      },
+      "expected": {
+        "normalAC": "20 ± 3°",
+        "normalCCD": "125-135° (2 years)",
+        "miRight": "18.0%",
+        "miRightInterpretation": "At risk",
+        "miLeft": "22.0%",
+        "miLeftInterpretation": "At risk"
+      }
+    },
+    {
+      "name": "3-Year-Old Female - Borderline/At Risk",
+      "category": "preschool",
+      "input": {
+        "ageMonths": 36,
+        "gender": "female",
+        "mi_right_a": 25,
+        "mi_right_b": 75,
+        "mi_left_a": 30,
+        "mi_left_b": 70
+      },
+      "expected": {
+        "normalAC": "18-22° (preschool)",
+        "normalCCD": "125-135° (child)",
+        "miRight": "25.0%",
+        "miRightInterpretation": "Borderline/At risk",
+        "miLeft": "30.0%",
+        "miLeftInterpretation": "Borderline/At risk"
+      }
+    },
+    {
+      "name": "4-Year-Old Male - Subluxation",
+      "category": "preschool",
+      "input": {
+        "ageMonths": 48,
+        "gender": "male",
+        "mi_right_a": 40,
+        "mi_right_b": 60,
+        "mi_left_a": 50,
+        "mi_left_b": 50
+      },
+      "expected": {
+        "normalAC": "18-22° (preschool)",
+        "normalCCD": "125-135° (child)",
+        "miRight": "40.0%",
+        "miRightInterpretation": "Subluxation",
+        "miLeft": "50.0%",
+        "miLeftInterpretation": "Subluxation"
+      }
+    },
+    {
+      "name": "5-Year-Old Female - Severe Subluxation",
+      "category": "preschool",
+      "input": {
+        "ageMonths": 60,
+        "gender": "female",
+        "mi_right_a": 65,
+        "mi_right_b": 35,
+        "mi_left_a": 75,
+        "mi_left_b": 25
+      },
+      "expected": {
+        "normalAC": "18-22° (preschool)",
+        "normalCCD": "125-135° (child)",
+        "miRight": "65.0%",
+        "miRightInterpretation": "Severe subluxation",
+        "miLeft": "75.0%",
+        "miLeftInterpretation": "Severe subluxation"
+      }
+    },
+    {
+      "name": "7-Year-Old Male - Dislocation",
+      "category": "schoolAge",
+      "input": {
+        "ageMonths": 84,
+        "gender": "male",
+        "mi_right_a": 92,
+        "mi_right_b": 8,
+        "mi_left_a": 95,
+        "mi_left_b": 5
+      },
+      "expected": {
+        "normalAC": "15-20° (school age)",
+        "normalCCD": "125-135° (adult range)",
+        "miRight": "92.0%",
+        "miRightInterpretation": "Dislocation",
+        "miLeft": "95.0%",
+        "miLeftInterpretation": "Dislocation"
+      }
+    },
+    {
+      "name": "10-Year-Old Female - Complete Dislocation",
+      "category": "schoolAge",
+      "input": {
+        "ageMonths": 120,
+        "gender": "female",
+        "mi_right_a": 100,
+        "mi_right_b": 0,
+        "mi_left_a": 100,
+        "mi_left_b": 0
+      },
+      "expected": {
+        "normalAC": "15-20° (school age)",
+        "normalCCD": "125-135° (adult range)",
+        "miRight": "100.0%",
+        "miRightInterpretation": "Dislocation",
+        "miLeft": "100.0%",
+        "miLeftInterpretation": "Dislocation"
+      }
+    },
+    {
+      "name": "Edge Case - Boundary at 3 months (Upper)",
+      "category": "edge",
+      "input": {
+        "ageMonths": 3,
+        "gender": "female",
+        "mi_right_a": 5,
+        "mi_right_b": 95
+      },
+      "expected": {
+        "normalAC": "27 ± 5°",
+        "normalCCD": "140-150° (newborn)",
+        "miRight": "5.0%",
+        "miRightInterpretation": "Mild concern"
+      }
+    },
+    {
+      "name": "Edge Case - Boundary at 4 months (Lower)",
+      "category": "edge",
+      "input": {
+        "ageMonths": 4,
+        "gender": "male",
+        "mi_right_a": 5,
+        "mi_right_b": 95
+      },
+      "expected": {
+        "normalAC": "23 ± 4°",
+        "normalCCD": "135-145° (infant)",
+        "miRight": "5.0%",
+        "miRightInterpretation": "Mild concern"
+      }
+    },
+    {
+      "name": "Edge Case - 22% Migration Index (Boundary)",
+      "category": "edge",
+      "input": {
+        "ageMonths": 48,
+        "gender": "female",
+        "mi_right_a": 22,
+        "mi_right_b": 78
+      },
+      "expected": {
+        "miRight": "22.0%",
+        "miRightInterpretation": "Borderline/At risk"
+      }
+    },
+    {
+      "name": "Edge Case - 33% Migration Index (Subluxation Boundary)",
+      "category": "edge",
+      "input": {
+        "ageMonths": 48,
+        "gender": "male",
+        "mi_left_a": 33,
+        "mi_left_b": 67
+      },
+      "expected": {
+        "miLeft": "33.0%",
+        "miLeftInterpretation": "Subluxation"
+      }
+    },
+    {
+      "name": "Edge Case - 60% Migration Index (Severe Subluxation Boundary)",
+      "category": "edge",
+      "input": {
+        "ageMonths": 60,
+        "gender": "female",
+        "mi_right_a": 60,
+        "mi_right_b": 40
+      },
+      "expected": {
+        "miRight": "60.0%",
+        "miRightInterpretation": "Severe subluxation"
+      }
+    },
+    {
+      "name": "Edge Case - 90% Migration Index (Dislocation Boundary)",
+      "category": "edge",
+      "input": {
+        "ageMonths": 72,
+        "gender": "male",
+        "mi_left_a": 90,
+        "mi_left_b": 10
+      },
+      "expected": {
+        "miLeft": "90.0%",
+        "miLeftInterpretation": "Dislocation"
+      }
+    },
+    {
+      "name": "Decimal Values - Precise Calculation",
+      "category": "decimal",
+      "input": {
+        "ageMonths": 36,
+        "gender": "female",
+        "mi_right_a": 12.5,
+        "mi_right_b": 87.5,
+        "mi_left_a": 27.3,
+        "mi_left_b": 72.7
+      },
+      "expected": {
+        "miRight": "12.5%",
+        "miRightInterpretation": "Normal",
+        "miLeft": "27.3%",
+        "miLeftInterpretation": "Borderline/At risk"
+      }
+    },
+    {
+      "name": "Asymmetric Hips - Normal vs Subluxation",
+      "category": "clinical",
+      "input": {
+        "ageMonths": 48,
+        "gender": "male",
+        "mi_right_a": 15,
+        "mi_right_b": 85,
+        "mi_left_a": 45,
+        "mi_left_b": 55
+      },
+      "expected": {
+        "miRight": "15.0%",
+        "miRightInterpretation": "Normal",
+        "miLeft": "45.0%",
+        "miLeftInterpretation": "Subluxation"
+      }
+    },
+    {
+      "name": "Bilateral Severe Pathology",
+      "category": "clinical",
+      "input": {
+        "ageMonths": 60,
+        "gender": "female",
+        "mi_right_a": 80,
+        "mi_right_b": 20,
+        "mi_left_a": 85,
+        "mi_left_b": 15
+      },
+      "expected": {
+        "miRight": "80.0%",
+        "miRightInterpretation": "Severe subluxation",
+        "miLeft": "85.0%",
+        "miLeftInterpretation": "Severe subluxation"
+      }
+    },
+    {
+      "name": "Unilateral Assessment - Right Only",
+      "category": "partial",
+      "input": {
+        "ageMonths": 36,
+        "gender": "male",
+        "mi_right_a": 28,
+        "mi_right_b": 72,
+        "mi_left_a": null,
+        "mi_left_b": null
+      },
+      "expected": {
+        "miRight": "28.0%",
+        "miRightInterpretation": "Borderline/At risk",
+        "miLeft": null
+      }
+    },
+    {
+      "name": "Unilateral Assessment - Left Only",
+      "category": "partial",
+      "input": {
+        "ageMonths": 24,
+        "gender": "female",
+        "mi_right_a": null,
+        "mi_right_b": null,
+        "mi_left_a": 35,
+        "mi_left_b": 65
+      },
+      "expected": {
+        "miRight": null,
+        "miLeft": "35.0%",
+        "miLeftInterpretation": "Subluxation"
+      }
+    },
+    {
+      "name": "No Date of Birth - Only Migration Index",
+      "category": "partial",
+      "input": {
+        "ageMonths": null,
+        "gender": null,
+        "mi_right_a": 45,
+        "mi_right_b": 55,
+        "mi_left_a": 30,
+        "mi_left_b": 70
+      },
+      "expected": {
+        "normalAC": "Enter date of birth and gender",
+        "normalCCD": "Enter date of birth and gender",
+        "miRight": "45.0%",
+        "miLeft": "30.0%"
+      }
+    },
+    {
+      "name": "Very Young Infant - 1 week old",
+      "category": "newborn",
+      "input": {
+        "ageMonths": 0.25,
+        "gender": "female",
+        "mi_right_a": 0,
+        "mi_right_b": 100
+      },
+      "expected": {
+        "normalAC": "27 ± 5°",
+        "normalCCD": "140-150° (newborn)",
+        "miRight": "0.0%",
+        "miRightInterpretation": "Normal"
+      }
+    },
+    {
+      "name": "Teenager - 15 years old",
+      "category": "schoolAge",
+      "input": {
+        "ageMonths": 180,
+        "gender": "male",
+        "mi_right_a": 20,
+        "mi_right_b": 80
+      },
+      "expected": {
+        "normalAC": "15-20° (school age)",
+        "normalCCD": "125-135° (adult range)",
+        "miRight": "20.0%",
+        "miRightInterpretation": "Normal"
+      }
+    }
+  ],
+  "interpretationRanges": {
+    "under3Years": {
+      "normal": "0%",
+      "mildConcern": "0-10%",
+      "atRisk": "10-33%",
+      "subluxation": "33-60%",
+      "severeSubluxation": "60-90%",
+      "dislocation": "≥90%"
+    },
+    "3YearsAndOlder": {
+      "normal": "<22%",
+      "borderlineAtRisk": "22-32%",
+      "subluxation": "33-59%",
+      "severeSubluxation": "60-89%",
+      "dislocation": "≥90%"
+    }
+  },
+  "normalValues": {
+    "ac": {
+      "0-3months": {
+        "female": "27 ± 5°",
+        "male": "25 ± 5°"
+      },
+      "4-6months": {
+        "female": "25 ± 4°",
+        "male": "23 ± 4°"
+      },
+      "7-12months": {
+        "female": "23 ± 3°",
+        "male": "21 ± 3°"
+      },
+      "13-24months": {
+        "female": "22 ± 3°",
+        "male": "20 ± 3°"
+      },
+      "25-60months": "18-22° (preschool)",
+      "61+months": "15-20° (school age)"
+    },
+    "ccd": {
+      "0-3months": "140-150° (newborn)",
+      "4-6months": "135-145° (infant)",
+      "7-12months": "130-140° (1 year)",
+      "13-24months": "125-135° (2 years)",
+      "25-60months": "125-135° (child)",
+      "61+months": "125-135° (adult range)"
+    }
+  }
+}

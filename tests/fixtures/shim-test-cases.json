@@ -1,0 +1,380 @@
+{
+  "description": "Comprehensive test cases for SHIM Score (Sexual Health Inventory for Men) Calculator",
+  "calculator": "shim",
+  "testCases": [
+    {
+      "id": "severe-ed-minimum",
+      "name": "Severe ED - Minimum Score (5)",
+      "inputs": {
+        "q1": "1",
+        "q2": "1",
+        "q3": "1",
+        "q4": "1",
+        "q5": "1"
+      },
+      "expected": {
+        "Total SHIM Score": "5 / 25",
+        "ED Severity": "Severe ED",
+        "Clinical Interpretation": "Severe erectile dysfunction. Comprehensive medical evaluation recommended to identify underlying causes. Multiple treatment options should be explored."
+      },
+      "notes": "All questions at minimum (1 point each)"
+    },
+    {
+      "id": "severe-ed-score-6",
+      "name": "Severe ED - Score 6",
+      "inputs": {
+        "q1": "1",
+        "q2": "2",
+        "q3": "1",
+        "q4": "1",
+        "q5": "1"
+      },
+      "expected": {
+        "Total SHIM Score": "6 / 25",
+        "ED Severity": "Severe ED",
+        "Clinical Interpretation": "Severe erectile dysfunction. Comprehensive medical evaluation recommended to identify underlying causes. Multiple treatment options should be explored."
+      },
+      "notes": "Within severe ED range (5-7)"
+    },
+    {
+      "id": "severe-ed-boundary-upper",
+      "name": "Severe ED - Upper Boundary (7)",
+      "inputs": {
+        "q1": "2",
+        "q2": "1",
+        "q3": "2",
+        "q4": "1",
+        "q5": "1"
+      },
+      "expected": {
+        "Total SHIM Score": "7 / 25",
+        "ED Severity": "Severe ED",
+        "Clinical Interpretation": "Severe erectile dysfunction. Comprehensive medical evaluation recommended to identify underlying causes. Multiple treatment options should be explored."
+      },
+      "notes": "Upper boundary of severe ED (7)"
+    },
+    {
+      "id": "moderate-ed-boundary-lower",
+      "name": "Moderate ED - Lower Boundary (8)",
+      "inputs": {
+        "q1": "2",
+        "q2": "2",
+        "q3": "1",
+        "q4": "2",
+        "q5": "1"
+      },
+      "expected": {
+        "Total SHIM Score": "8 / 25",
+        "ED Severity": "Moderate ED",
+        "Clinical Interpretation": "Moderate erectile dysfunction. Medical evaluation recommended. Treatment with PDE5 inhibitors or other therapies should be considered."
+      },
+      "notes": "Lower boundary of moderate ED (8)"
+    },
+    {
+      "id": "moderate-ed-middle",
+      "name": "Moderate ED - Middle (9-10)",
+      "inputs": {
+        "q1": "2",
+        "q2": "2",
+        "q3": "2",
+        "q4": "2",
+        "q5": "2"
+      },
+      "expected": {
+        "Total SHIM Score": "10 / 25",
+        "ED Severity": "Moderate ED",
+        "Clinical Interpretation": "Moderate erectile dysfunction. Medical evaluation recommended. Treatment with PDE5 inhibitors or other therapies should be considered."
+      },
+      "notes": "Middle of moderate ED range (8-11)"
+    },
+    {
+      "id": "moderate-ed-boundary-upper",
+      "name": "Moderate ED - Upper Boundary (11)",
+      "inputs": {
+        "q1": "3",
+        "q2": "2",
+        "q3": "2",
+        "q4": "2",
+        "q5": "2"
+      },
+      "expected": {
+        "Total SHIM Score": "11 / 25",
+        "ED Severity": "Moderate ED",
+        "Clinical Interpretation": "Moderate erectile dysfunction. Medical evaluation recommended. Treatment with PDE5 inhibitors or other therapies should be considered."
+      },
+      "notes": "Upper boundary of moderate ED (11)"
+    },
+    {
+      "id": "mild-moderate-ed-boundary-lower",
+      "name": "Mild-to-Moderate ED - Lower Boundary (12)",
+      "inputs": {
+        "q1": "3",
+        "q2": "2",
+        "q3": "3",
+        "q4": "2",
+        "q5": "2"
+      },
+      "expected": {
+        "Total SHIM Score": "12 / 25",
+        "ED Severity": "Mild-to-Moderate ED",
+        "Clinical Interpretation": "Mild-to-moderate erectile dysfunction. Medical evaluation and treatment options should be discussed. PDE5 inhibitors are often effective."
+      },
+      "notes": "Lower boundary of mild-to-moderate ED (12)"
+    },
+    {
+      "id": "mild-moderate-ed-middle",
+      "name": "Mild-to-Moderate ED - Middle (14)",
+      "inputs": {
+        "q1": "3",
+        "q2": "3",
+        "q3": "3",
+        "q4": "3",
+        "q5": "2"
+      },
+      "expected": {
+        "Total SHIM Score": "14 / 25",
+        "ED Severity": "Mild-to-Moderate ED",
+        "Clinical Interpretation": "Mild-to-moderate erectile dysfunction. Medical evaluation and treatment options should be discussed. PDE5 inhibitors are often effective."
+      },
+      "notes": "Middle of mild-to-moderate ED range (12-16)"
+    },
+    {
+      "id": "mild-moderate-ed-boundary-upper",
+      "name": "Mild-to-Moderate ED - Upper Boundary (16)",
+      "inputs": {
+        "q1": "4",
+        "q2": "3",
+        "q3": "3",
+        "q4": "3",
+        "q5": "3"
+      },
+      "expected": {
+        "Total SHIM Score": "16 / 25",
+        "ED Severity": "Mild-to-Moderate ED",
+        "Clinical Interpretation": "Mild-to-moderate erectile dysfunction. Medical evaluation and treatment options should be discussed. PDE5 inhibitors are often effective."
+      },
+      "notes": "Upper boundary of mild-to-moderate ED (16)"
+    },
+    {
+      "id": "mild-ed-boundary-lower",
+      "name": "Mild ED - Lower Boundary (17)",
+      "inputs": {
+        "q1": "4",
+        "q2": "3",
+        "q3": "4",
+        "q4": "3",
+        "q5": "3"
+      },
+      "expected": {
+        "Total SHIM Score": "17 / 25",
+        "ED Severity": "Mild ED",
+        "Clinical Interpretation": "Mild erectile dysfunction. Consider lifestyle modifications and counseling. Medical treatment may be beneficial if desired."
+      },
+      "notes": "Lower boundary of mild ED (17)"
+    },
+    {
+      "id": "mild-ed-middle",
+      "name": "Mild ED - Middle (19)",
+      "inputs": {
+        "q1": "4",
+        "q2": "4",
+        "q3": "4",
+        "q4": "4",
+        "q5": "3"
+      },
+      "expected": {
+        "Total SHIM Score": "19 / 25",
+        "ED Severity": "Mild ED",
+        "Clinical Interpretation": "Mild erectile dysfunction. Consider lifestyle modifications and counseling. Medical treatment may be beneficial if desired."
+      },
+      "notes": "Middle of mild ED range (17-21)"
+    },
+    {
+      "id": "mild-ed-boundary-upper",
+      "name": "Mild ED - Upper Boundary (21)",
+      "inputs": {
+        "q1": "5",
+        "q2": "4",
+        "q3": "4",
+        "q4": "4",
+        "q5": "4"
+      },
+      "expected": {
+        "Total SHIM Score": "21 / 25",
+        "ED Severity": "Mild ED",
+        "Clinical Interpretation": "Mild erectile dysfunction. Consider lifestyle modifications and counseling. Medical treatment may be beneficial if desired."
+      },
+      "notes": "Upper boundary of mild ED (21)"
+    },
+    {
+      "id": "no-ed-boundary-lower",
+      "name": "No ED - Lower Boundary (22)",
+      "inputs": {
+        "q1": "5",
+        "q2": "4",
+        "q3": "5",
+        "q4": "4",
+        "q5": "4"
+      },
+      "expected": {
+        "Total SHIM Score": "22 / 25",
+        "ED Severity": "No ED",
+        "Clinical Interpretation": "No evidence of erectile dysfunction. Erectile function is normal."
+      },
+      "notes": "Lower boundary of No ED (22)"
+    },
+    {
+      "id": "no-ed-middle",
+      "name": "No ED - Middle (24)",
+      "inputs": {
+        "q1": "5",
+        "q2": "5",
+        "q3": "5",
+        "q4": "4",
+        "q5": "5"
+      },
+      "expected": {
+        "Total SHIM Score": "24 / 25",
+        "ED Severity": "No ED",
+        "Clinical Interpretation": "No evidence of erectile dysfunction. Erectile function is normal."
+      },
+      "notes": "Near-perfect score"
+    },
+    {
+      "id": "no-ed-maximum",
+      "name": "No ED - Maximum Score (25)",
+      "inputs": {
+        "q1": "5",
+        "q2": "5",
+        "q3": "5",
+        "q4": "5",
+        "q5": "5"
+      },
+      "expected": {
+        "Total SHIM Score": "25 / 25",
+        "ED Severity": "No ED",
+        "Clinical Interpretation": "No evidence of erectile dysfunction. Erectile function is normal."
+      },
+      "notes": "Perfect score - all questions at maximum (5 points each)"
+    },
+    {
+      "id": "no-sexual-activity",
+      "name": "No Sexual Activity - Score with zeros",
+      "inputs": {
+        "q1": "1",
+        "q2": "0",
+        "q3": "0",
+        "q4": "0",
+        "q5": "0"
+      },
+      "expected": {
+        "Total SHIM Score": "1 / 25",
+        "ED Severity": "Severe ED",
+        "Clinical Interpretation": "Severe erectile dysfunction (may include no sexual activity). Comprehensive medical evaluation recommended. Consider cardiovascular and endocrine assessment as clinically indicated."
+      },
+      "notes": "Tests questions 2-5 with 'no sexual activity' responses (0 points)"
+    },
+    {
+      "id": "mixed-responses-1",
+      "name": "Mixed Responses - Q1 high, others low",
+      "inputs": {
+        "q1": "5",
+        "q2": "1",
+        "q3": "2",
+        "q4": "1",
+        "q5": "1"
+      },
+      "expected": {
+        "Total SHIM Score": "10 / 25",
+        "ED Severity": "Moderate ED",
+        "Clinical Interpretation": "Moderate erectile dysfunction. Medical evaluation recommended. Treatment with PDE5 inhibitors or other therapies should be considered."
+      },
+      "notes": "High confidence but poor performance - tests individual question scoring"
+    },
+    {
+      "id": "mixed-responses-2",
+      "name": "Mixed Responses - Varied across all questions",
+      "inputs": {
+        "q1": "3",
+        "q2": "4",
+        "q3": "2",
+        "q4": "3",
+        "q5": "3"
+      },
+      "expected": {
+        "Total SHIM Score": "15 / 25",
+        "ED Severity": "Mild-to-Moderate ED",
+        "Clinical Interpretation": "Mild-to-moderate erectile dysfunction. Medical evaluation and treatment options should be discussed. PDE5 inhibitors are often effective."
+      },
+      "notes": "Varied responses across all questions"
+    },
+    {
+      "id": "boundary-7-to-8",
+      "name": "Critical Boundary Test - 7 vs 8",
+      "inputs": {
+        "q1": "1",
+        "q2": "2",
+        "q3": "2",
+        "q4": "1",
+        "q5": "2"
+      },
+      "expected": {
+        "Total SHIM Score": "8 / 25",
+        "ED Severity": "Moderate ED",
+        "Clinical Interpretation": "Moderate erectile dysfunction. Medical evaluation recommended. Treatment with PDE5 inhibitors or other therapies should be considered."
+      },
+      "notes": "Tests critical boundary between Severe and Moderate ED"
+    },
+    {
+      "id": "boundary-11-to-12",
+      "name": "Critical Boundary Test - 11 vs 12",
+      "inputs": {
+        "q1": "2",
+        "q2": "3",
+        "q3": "2",
+        "q4": "3",
+        "q5": "2"
+      },
+      "expected": {
+        "Total SHIM Score": "12 / 25",
+        "ED Severity": "Mild-to-Moderate ED",
+        "Clinical Interpretation": "Mild-to-moderate erectile dysfunction. Medical evaluation and treatment options should be discussed. PDE5 inhibitors are often effective."
+      },
+      "notes": "Tests critical boundary between Moderate and Mild-to-Moderate ED"
+    },
+    {
+      "id": "boundary-16-to-17",
+      "name": "Critical Boundary Test - 16 vs 17",
+      "inputs": {
+        "q1": "3",
+        "q2": "4",
+        "q3": "3",
+        "q4": "4",
+        "q5": "3"
+      },
+      "expected": {
+        "Total SHIM Score": "17 / 25",
+        "ED Severity": "Mild ED",
+        "Clinical Interpretation": "Mild erectile dysfunction. Consider lifestyle modifications and counseling. Medical treatment may be beneficial if desired."
+      },
+      "notes": "Tests critical boundary between Mild-to-Moderate and Mild ED"
+    },
+    {
+      "id": "boundary-21-to-22",
+      "name": "Critical Boundary Test - 21 vs 22",
+      "inputs": {
+        "q1": "4",
+        "q2": "5",
+        "q3": "4",
+        "q4": "5",
+        "q5": "4"
+      },
+      "expected": {
+        "Total SHIM Score": "22 / 25",
+        "ED Severity": "No ED",
+        "Clinical Interpretation": "No evidence of erectile dysfunction. Erectile function is normal."
+      },
+      "notes": "Tests critical boundary between Mild ED and No ED - most clinically significant threshold"
+    }
+  ]
+}
