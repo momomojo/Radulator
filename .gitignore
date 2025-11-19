@@ -31,3 +31,8 @@ dist-ssr
 
 # Development artifacts and local files
 .dev/
+
+# .claude directory is version-controlled for agents
+# But exclude session/temp files
+!.claude/
+!.claude/**/*.md
