@@ -16,7 +16,7 @@
  * - Input validation and edge cases
  */
 
-import { test, expect } from '@playwright/test';
+const { test, expect } = require('@playwright/test');
 
 const BASE_URL = 'http://localhost:5173';
 
