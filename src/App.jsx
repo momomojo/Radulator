@@ -30,6 +30,12 @@ import {
   Y90RadiationSegmentectomy,
   KhouryCatheterSelector,
 } from "@/components/calculators";
+import {
+  trackCalculatorSelected,
+  trackCalculation,
+  trackOutboundLink,
+  trackCSVDownload,
+} from "@/lib/analytics";
 
 /*******************************************************************
   ⬇️  Calculator Definitions (100 % parity with radcalc.online)
@@ -200,10 +206,25 @@ export default function App() {
   const [vals, setVals] = useState({});
   const [out, setOut] = useState(null);
   const [mreRows, setMreRows] = useState([{ kpa: "", area: "" }]);
+  const [ipssRows, setIpssRows] = useState([
+    { time: "", leftACTH: "", rightACTH: "", periphACTH: "", leftPRL: "", rightPRL: "", periphPRL: "" }
+  ]);
 
   const def = calcDefs.find((c) => c.id === active);
   const update = (k, v) => setVals((p) => ({ ...p, [k]: v }));
-  const run = () => setOut(def.compute(vals));
+  const run = () => {
+    const result = def.compute(vals);
+    setOut(result);
+
+    // Find category for tracking
+    const category = Object.keys(categories).find(cat =>
+      categories[cat].includes(active)
+    ) || 'Unknown';
+
+    // Track calculation with result status
+    const hasResult = result && Object.keys(result).length > 0;
+    trackCalculation(def.id, def.name, category, hasResult);
+  };
 
   // Sync dynamic MRE rows into compute values
   useEffect(() => {
@@ -211,6 +232,13 @@ export default function App() {
       setVals((p) => ({ ...p, roi_rows: mreRows }));
     }
   }, [def?.id, mreRows]);
+
+  // Sync dynamic IPSS rows into compute values
+  useEffect(() => {
+    if (def?.id === "ipss") {
+      setVals((p) => ({ ...p, ipssRows: ipssRows }));
+    }
+  }, [def?.id, ipssRows]);
 
   // Disable Calculate for MRE until at least one valid ROI pair exists
   const canRun = (() => {
@@ -267,6 +295,11 @@ export default function App() {
                     setVals({});
                     setOut(null);
                     setMreRows([{ kpa: "", area: "" }]);
+                    setIpssRows([
+                      { time: "", leftACTH: "", rightACTH: "", periphACTH: "", leftPRL: "", rightPRL: "", periphPRL: "" }
+                    ]);
+                    // Track calculator selection
+                    trackCalculatorSelected(calc.id, calc.name, categoryName);
                   }}
                   className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
                     calc.id === active
@@ -301,7 +334,10 @@ export default function App() {
                     {def.info.link && (
                       <Button
                         className="mt-2 bg-blue-500 text-white hover:bg-blue-600"
-                        onClick={() => window.open(def.info.link.url, "_blank")}
+                        onClick={() => {
+                          trackOutboundLink(def.info.link.url, 'info_button', def.id);
+                          window.open(def.info.link.url, "_blank");
+                        }}
                       >
                         {def.info.link.label}
                       </Button>
@@ -402,6 +438,123 @@ export default function App() {
               </div>
             )}
 
+            {def.id === "ipss" && (
+              <div className="space-y-3" aria-label="Post-CRH Sample Table">
+                <h4 className="font-medium">Post-CRH Stimulation Samples</h4>
+                <p className="text-sm text-gray-600">
+                  Add time-series samples after CRH administration (typically at +3, +6, +9, +15 minutes).
+                  These help identify peak ACTH response and improve lateralization accuracy.
+                </p>
+                <div className="overflow-x-auto">
+                  <div className="grid grid-cols-8 gap-2 font-medium text-xs min-w-max">
+                    <div>Time</div>
+                    <div>Lt ACTH</div>
+                    <div>Rt ACTH</div>
+                    <div>Per ACTH</div>
+                    <div>Lt PRL</div>
+                    <div>Rt PRL</div>
+                    <div>Per PRL</div>
+                    <div>Action</div>
+                  </div>
+                  {ipssRows.map((r, i) => (
+                    <div key={i} className="grid grid-cols-8 gap-2 items-center min-w-max">
+                      <Input
+                        placeholder="+3"
+                        value={r.time}
+                        inputMode="decimal"
+                        className="text-sm"
+                        onChange={(e) => {
+                          const next = ipssRows.slice();
+                          next[i] = { ...next[i], time: e.target.value };
+                          setIpssRows(next);
+                        }}
+                      />
+                      <Input
+                        placeholder="pg/mL"
+                        value={r.leftACTH}
+                        inputMode="decimal"
+                        className="text-sm"
+                        onChange={(e) => {
+                          const next = ipssRows.slice();
+                          next[i] = { ...next[i], leftACTH: e.target.value };
+                          setIpssRows(next);
+                        }}
+                      />
+                      <Input
+                        placeholder="pg/mL"
+                        value={r.rightACTH}
+                        inputMode="decimal"
+                        className="text-sm"
+                        onChange={(e) => {
+                          const next = ipssRows.slice();
+                          next[i] = { ...next[i], rightACTH: e.target.value };
+                          setIpssRows(next);
+                        }}
+                      />
+                      <Input
+                        placeholder="pg/mL"
+                        value={r.periphACTH}
+                        inputMode="decimal"
+                        className="text-sm"
+                        onChange={(e) => {
+                          const next = ipssRows.slice();
+                          next[i] = { ...next[i], periphACTH: e.target.value };
+                          setIpssRows(next);
+                        }}
+                      />
+                      <Input
+                        placeholder="ng/mL"
+                        value={r.leftPRL}
+                        inputMode="decimal"
+                        className="text-sm"
+                        onChange={(e) => {
+                          const next = ipssRows.slice();
+                          next[i] = { ...next[i], leftPRL: e.target.value };
+                          setIpssRows(next);
+                        }}
+                      />
+                      <Input
+                        placeholder="ng/mL"
+                        value={r.rightPRL}
+                        inputMode="decimal"
+                        className="text-sm"
+                        onChange={(e) => {
+                          const next = ipssRows.slice();
+                          next[i] = { ...next[i], rightPRL: e.target.value };
+                          setIpssRows(next);
+                        }}
+                      />
+                      <Input
+                        placeholder="ng/mL"
+                        value={r.periphPRL}
+                        inputMode="decimal"
+                        className="text-sm"
+                        onChange={(e) => {
+                          const next = ipssRows.slice();
+                          next[i] = { ...next[i], periphPRL: e.target.value };
+                          setIpssRows(next);
+                        }}
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setIpssRows((rows) => rows.filter((_, idx) => idx !== i))}
+                        disabled={ipssRows.length <= 1}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="secondary"
+                    onClick={() => setIpssRows((rows) => [...rows, { time: "", leftACTH: "", rightACTH: "", periphACTH: "", leftPRL: "", rightPRL: "", periphPRL: "" }])}
+                  >
+                    Add Sample Time Point
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {!canRun && def.id === "mr-elastography" && (
               <p className="text-xs text-gray-600" role="note">Enter at least one valid ROI (kPa and area &gt; 0) in fields, CSV, or dynamic rows to enable Calculate.</p>
             )}
@@ -438,6 +591,7 @@ export default function App() {
                             href={href}
                             download={filename}
                             className="text-blue-600 underline hover:text-blue-800"
+                            onClick={() => trackCSVDownload(filename, def.id)}
                           >
                             Click to download results as CSV
                           </a>
@@ -478,6 +632,7 @@ export default function App() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 underline"
+                        onClick={() => trackOutboundLink(r.u, 'reference', def.id)}
                       >
                         {r.t}
                       </a>
