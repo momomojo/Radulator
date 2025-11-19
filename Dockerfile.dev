@@ -1,0 +1,28 @@
+# Dockerfile for Radulator QA Testing Environment
+# This container runs the Radulator development server for automated testing
+
+FROM node:20-slim
+
+# Install curl for healthchecks
+RUN apt-get update && \
+    apt-get install -y curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy application source
+COPY . .
+
+# Expose Vite development server port
+EXPOSE 5173
+
+# Start development server with host 0.0.0.0 to allow external connections
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

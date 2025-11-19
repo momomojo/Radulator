@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Radulator development server for testing
+  radulator-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: radulator-qa-test
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules  # Prevent overwriting node_modules from host
+    environment:
+      - NODE_ENV=development
+      - VITE_HOST=0.0.0.0  # Allow external connections
+    networks:
+      - radulator-qa-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    stdin_open: true
+    tty: true
+
+networks:
+  radulator-qa-network:
+    name: radulator-qa
+    driver: bridge
