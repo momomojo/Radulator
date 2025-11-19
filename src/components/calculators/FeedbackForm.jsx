@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { useForm, ValidationError } from '@formspree/react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { trackFeedbackSubmission } from "@/lib/analytics";
 
 export const FeedbackForm = {
   id: "feedback-form",
@@ -21,13 +23,20 @@ export const FeedbackForm = {
   Component: function FeedbackFormComponent() {
     // Formspree form ID for feedback submissions
     const [state, handleSubmit] = useForm("xgvpkawo");
-    
+
+    // Track successful feedback submissions
+    useEffect(() => {
+      if (state.succeeded) {
+        trackFeedbackSubmission(true, 'feedback-form');
+      }
+    }, [state.succeeded]);
+
     // Debug logging
     console.log("Formspree state:", state);
     console.log("Errors:", state.errors);
     console.log("Submitting:", state.submitting);
     console.log("Succeeded:", state.succeeded);
-    
+
     if (state.succeeded) {
       return (
         <div className="space-y-4">
