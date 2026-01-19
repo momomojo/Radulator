@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About - Radulator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      color: #333;
+    }
+    h1 { color: #1a1a1a; border-bottom: 2px solid #e5e5e5; padding-bottom: 0.5rem; }
+    h2 { color: #333; margin-top: 2rem; }
+    a { color: #2563eb; }
+    .back-link { margin-bottom: 2rem; display: inline-block; }
+    .highlight { background: #eff6ff; border: 1px solid #3b82f6; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; }
+    .calculator-list { columns: 2; column-gap: 2rem; }
+    .calculator-list li { margin-bottom: 0.5rem; }
+    @media (max-width: 600px) { .calculator-list { columns: 1; } }
+  </style>
+</head>
+<body>
+  <a href="/" class="back-link">&larr; Back to Radulator</a>
+
+  <h1>About Radulator</h1>
+
+  <div class="highlight">
+    <strong>Mission:</strong> Provide free, accurate, evidence-based medical calculators
+    for healthcare professionals, trainees, and researchers.
+  </div>
+
+  <h2>What is Radulator?</h2>
+  <p>
+    Radulator is a collection of medical calculators focused on radiology, hepatology,
+    urology, and interventional medicine. Each calculator is built using formulas from
+    peer-reviewed literature, with references to the original studies.
+  </p>
+  <p>
+    All calculations are performed locally in your browser. We never collect, store,
+    or transmit any patient data or clinical information you enter.
+  </p>
+
+  <h2>Available Calculators</h2>
+  <p>Radulator currently offers 20 calculators across multiple specialties:</p>
+
+  <h3>Radiology</h3>
+  <ul class="calculator-list">
+    <li>Adrenal CT Washout</li>
+    <li>Adrenal MRI Chemical Shift Index</li>
+    <li>Prostate Volume & PSA Density</li>
+    <li>Bosniak Classification</li>
+    <li>Spleen Size (ULN)</li>
+    <li>Hip Dysplasia Indices</li>
+  </ul>
+
+  <h3>Hepatology/Liver</h3>
+  <ul class="calculator-list">
+    <li>ALBI Score</li>
+    <li>AVS for Cortisol (ACTH-independent)</li>
+    <li>AVS for Primary Hyperaldosteronism</li>
+    <li>BCLC Staging</li>
+    <li>Child-Pugh Score</li>
+    <li>Milan Criteria</li>
+    <li>MELD-Na Score</li>
+    <li>MR Elastography</li>
+    <li>Y-90 Radiation Segmentectomy</li>
+  </ul>
+
+  <h3>Urology</h3>
+  <ul class="calculator-list">
+    <li>IPSS (Inferior Petrosal Sinus Sampling)</li>
+    <li>R.E.N.A.L. Nephrometry Score</li>
+    <li>SHIM/IIEF-5 Score</li>
+  </ul>
+
+  <h3>Interventional</h3>
+  <ul>
+    <li>Khoury Catheter Selector</li>
+  </ul>
+
+  <h2>Methodology</h2>
+  <p>
+    Each calculator includes:
+  </p>
+  <ul>
+    <li><strong>Source References:</strong> Links to the original peer-reviewed studies</li>
+    <li><strong>Validated Formulas:</strong> Calculations verified against published literature</li>
+    <li><strong>Clinical Context:</strong> Information about appropriate use and limitations</li>
+  </ul>
+
+  <h2>Technology</h2>
+  <p>
+    Radulator is built with modern web technologies:
+  </p>
+  <ul>
+    <li>React 19 for the user interface</li>
+    <li>Tailwind CSS for responsive design</li>
+    <li>Vite for fast development and optimized builds</li>
+    <li>Playwright for comprehensive testing</li>
+  </ul>
+  <p>
+    The entire application runs client-side, ensuring your data privacy and enabling
+    offline use once loaded.
+  </p>
+
+  <h2>Contact & Feedback</h2>
+  <p>
+    We welcome feedback, suggestions, and bug reports. Please use the
+    <a href="/">Feedback form</a> in the application sidebar.
+  </p>
+  <p>
+    For technical issues or feature requests, visit our
+    <a href="https://github.com/momomojo/Radulator" target="_blank" rel="noopener">GitHub repository</a>.
+  </p>
+
+  <h2>Disclaimer</h2>
+  <p>
+    Radulator is for educational and informational purposes only. It is not intended
+    as a substitute for professional medical advice, diagnosis, or treatment. Always
+    consult qualified healthcare providers for clinical decision-making.
+  </p>
+  <p>
+    See our <a href="/terms.html">Terms of Use</a> and <a href="/privacy.html">Privacy Policy</a>
+    for more information.
+  </p>
+
+  <hr style="margin-top: 3rem;">
+  <p style="text-align: center; color: #666;">
+    <a href="/">Radulator</a> | <a href="/privacy.html">Privacy Policy</a> | <a href="/terms.html">Terms of Use</a>
+  </p>
+</body>
+</html>

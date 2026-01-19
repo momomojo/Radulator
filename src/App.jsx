@@ -65,7 +65,7 @@ const calcDefs = [
 
 // Category organization for sidebar
 const categories = {
-  "Radiology": [
+  Radiology: [
     "adrenal-ct",
     "adrenal-mri",
     "prostate-volume",
@@ -84,17 +84,9 @@ const categories = {
     "mr-elastography",
     "y90-radiation-segmentectomy",
   ],
-  "Urology": [
-    "ipss",
-    "renal-nephrometry",
-    "shim",
-  ],
-  "Interventional": [
-    "khoury-catheter-selector",
-  ],
-  "Feedback": [
-    "feedback-form",
-  ],
+  Urology: ["ipss", "renal-nephrometry", "shim"],
+  Interventional: ["khoury-catheter-selector"],
+  Feedback: ["feedback-form"],
 };
 
 /*******************************************************************
@@ -155,7 +147,7 @@ function Field({ f, val, on }) {
                 onChange={(e) => on(f.id, e.target.value)}
                 className="text-blue-600 focus:ring-blue-500"
               />
-              <Label 
+              <Label
                 htmlFor={`${f.id}-${opt.value}`}
                 className="text-sm font-normal cursor-pointer"
               >
@@ -207,7 +199,15 @@ export default function App() {
   const [out, setOut] = useState(null);
   const [mreRows, setMreRows] = useState([{ kpa: "", area: "" }]);
   const [ipssRows, setIpssRows] = useState([
-    { time: "", leftACTH: "", rightACTH: "", periphACTH: "", leftPRL: "", rightPRL: "", periphPRL: "" }
+    {
+      time: "",
+      leftACTH: "",
+      rightACTH: "",
+      periphACTH: "",
+      leftPRL: "",
+      rightPRL: "",
+      periphPRL: "",
+    },
   ]);
 
   const def = calcDefs.find((c) => c.id === active);
@@ -217,9 +217,9 @@ export default function App() {
     setOut(result);
 
     // Find category for tracking
-    const category = Object.keys(categories).find(cat =>
-      categories[cat].includes(active)
-    ) || 'Unknown';
+    const category =
+      Object.keys(categories).find((cat) => categories[cat].includes(active)) ||
+      "Unknown";
 
     // Track calculation with result status
     const hasResult = result && Object.keys(result).length > 0;
@@ -249,11 +249,25 @@ export default function App() {
       return Number.isFinite(parsed) && parsed >= 0 ? parsed : NaN;
     };
     const roisFromFields = [
-      { kpa: parseValue(vals["roi1_kpa"]), area: parseValue(vals["roi1_area"]) },
-      { kpa: parseValue(vals["roi2_kpa"]), area: parseValue(vals["roi2_area"]) },
-      { kpa: parseValue(vals["roi3_kpa"]), area: parseValue(vals["roi3_area"]) },
-      { kpa: parseValue(vals["roi4_kpa"]), area: parseValue(vals["roi4_area"]) },
-    ].filter((r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0);
+      {
+        kpa: parseValue(vals["roi1_kpa"]),
+        area: parseValue(vals["roi1_area"]),
+      },
+      {
+        kpa: parseValue(vals["roi2_kpa"]),
+        area: parseValue(vals["roi2_area"]),
+      },
+      {
+        kpa: parseValue(vals["roi3_kpa"]),
+        area: parseValue(vals["roi3_area"]),
+      },
+      {
+        kpa: parseValue(vals["roi4_kpa"]),
+        area: parseValue(vals["roi4_area"]),
+      },
+    ].filter(
+      (r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0,
+    );
     const csv = String(vals["roi_csv"] || "");
     const roisFromCsv = csv
       .split(/\n+/)
@@ -265,17 +279,22 @@ export default function App() {
         const area = parseValue(parts[1]);
         return { kpa, area };
       })
-      .filter((r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0);
+      .filter(
+        (r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0,
+      );
     const roisFromRows = Array.isArray(mreRows)
       ? mreRows
           .map((r) => ({ kpa: parseValue(r?.kpa), area: parseValue(r?.area) }))
-          .filter((r) => Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0)
+          .filter(
+            (r) =>
+              Number.isFinite(r.kpa) && Number.isFinite(r.area) && r.area > 0,
+          )
       : [];
     return roisFromFields.length + roisFromCsv.length + roisFromRows.length > 0;
   })();
 
   return (
-    <div className="min-h-screen flex bg-gray-50 text-gray-900">
+    <div className="min-h-screen flex bg-gray-50 text-gray-900 pb-16">
       {/* Sidebar */}
       <aside className="w-48 md:w-64 p-4 bg-white border-r shadow-sm space-y-2 overflow-y-auto">
         <h1 className="text-2xl font-bold mb-4">Radulator</h1>
@@ -296,7 +315,15 @@ export default function App() {
                     setOut(null);
                     setMreRows([{ kpa: "", area: "" }]);
                     setIpssRows([
-                      { time: "", leftACTH: "", rightACTH: "", periphACTH: "", leftPRL: "", rightPRL: "", periphPRL: "" }
+                      {
+                        time: "",
+                        leftACTH: "",
+                        rightACTH: "",
+                        periphACTH: "",
+                        leftPRL: "",
+                        rightPRL: "",
+                        periphPRL: "",
+                      },
                     ]);
                     // Track calculator selection
                     trackCalculatorSelected(calc.id, calc.name, categoryName);
@@ -326,7 +353,13 @@ export default function App() {
 
             {def.info && (
               <div className="bg-blue-50/60 border border-blue-200 rounded-md p-4 text-sm space-y-4">
-                <div className={def.info.image ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""}>
+                <div
+                  className={
+                    def.info.image
+                      ? "grid grid-cols-1 lg:grid-cols-2 gap-4"
+                      : ""
+                  }
+                >
                   <div>
                     <p className="whitespace-pre-line text-gray-800">
                       {def.info.text}
@@ -335,7 +368,11 @@ export default function App() {
                       <Button
                         className="mt-2 bg-blue-500 text-white hover:bg-blue-600"
                         onClick={() => {
-                          trackOutboundLink(def.info.link.url, 'info_button', def.id);
+                          trackOutboundLink(
+                            def.info.link.url,
+                            "info_button",
+                            def.id,
+                          );
                           window.open(def.info.link.url, "_blank");
                         }}
                       >
@@ -345,11 +382,11 @@ export default function App() {
                   </div>
                   {def.info.image && (
                     <div className="flex justify-center">
-                      <img 
-                        src={def.info.image} 
+                      <img
+                        src={def.info.image}
                         alt="Reference diagram"
                         className="max-w-full h-auto rounded-md border border-gray-200"
-                        style={{ maxHeight: '300px' }}
+                        style={{ maxHeight: "300px" }}
                       />
                     </div>
                   )}
@@ -360,7 +397,10 @@ export default function App() {
             {def.isCustomComponent ? (
               <def.Component />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Input fields">
+              <div
+                className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                aria-label="Input fields"
+              >
                 {def.fields
                   .filter((f) => !f.showIf || f.showIf(vals))
                   .map((f) => (
@@ -372,7 +412,10 @@ export default function App() {
             {def.id === "mr-elastography" && (
               <div className="space-y-3" aria-label="Dynamic ROI table">
                 <h4 className="font-medium">Dynamic ROIs</h4>
-                <p className="text-sm text-gray-600">Tip: You can paste multiple pairs in the CSV box above, or add rows here. Use decimals and consistent units.</p>
+                <p className="text-sm text-gray-600">
+                  Tip: You can paste multiple pairs in the CSV box above, or add
+                  rows here. Use decimals and consistent units.
+                </p>
                 <div className="grid grid-cols-3 gap-4 font-medium">
                   <div>Slice / ROI</div>
                   <div>Stiffness (kPa)</div>
@@ -380,16 +423,24 @@ export default function App() {
                 </div>
                 {mreRows.map((r, i) => {
                   const parseValue = (val) => {
-                    if (val === undefined || val === null || val === "") return NaN;
+                    if (val === undefined || val === null || val === "")
+                      return NaN;
                     const parsed = parseFloat(String(val).replace(",", "."));
-                    return Number.isFinite(parsed) && parsed >= 0 ? parsed : NaN;
+                    return Number.isFinite(parsed) && parsed >= 0
+                      ? parsed
+                      : NaN;
                   };
                   const kpaNum = parseValue(r.kpa);
                   const areaNum = parseValue(r.area);
                   const kpaInvalid = r.kpa !== "" && !Number.isFinite(kpaNum);
-                  const areaInvalid = r.area !== "" && (!Number.isFinite(areaNum) || areaNum <= 0);
+                  const areaInvalid =
+                    r.area !== "" &&
+                    (!Number.isFinite(areaNum) || areaNum <= 0);
                   return (
-                    <div key={i} className="grid grid-cols-3 gap-4 items-center">
+                    <div
+                      key={i}
+                      className="grid grid-cols-3 gap-4 items-center"
+                    >
                       <div className="text-gray-500">#{i + 1}</div>
                       <Input
                         placeholder="e.g., 2.8"
@@ -420,7 +471,11 @@ export default function App() {
                         />
                         <Button
                           variant="secondary"
-                          onClick={() => setMreRows((rows) => rows.filter((_, idx) => idx !== i))}
+                          onClick={() =>
+                            setMreRows((rows) =>
+                              rows.filter((_, idx) => idx !== i),
+                            )
+                          }
                           disabled={mreRows.length <= 1}
                         >
                           Remove
@@ -431,7 +486,9 @@ export default function App() {
                 })}
                 <Button
                   variant="secondary"
-                  onClick={() => setMreRows((rows) => [...rows, { kpa: "", area: "" }])}
+                  onClick={() =>
+                    setMreRows((rows) => [...rows, { kpa: "", area: "" }])
+                  }
                 >
                   Add ROI
                 </Button>
@@ -442,8 +499,9 @@ export default function App() {
               <div className="space-y-3" aria-label="Post-CRH Sample Table">
                 <h4 className="font-medium">Post-CRH Stimulation Samples</h4>
                 <p className="text-sm text-gray-600">
-                  Add time-series samples after CRH administration (typically at +3, +6, +9, +15 minutes).
-                  These help identify peak ACTH response and improve lateralization accuracy.
+                  Add time-series samples after CRH administration (typically at
+                  +3, +6, +9, +15 minutes). These help identify peak ACTH
+                  response and improve lateralization accuracy.
                 </p>
                 <div className="overflow-x-auto">
                   <div className="grid grid-cols-8 gap-2 font-medium text-xs min-w-max">
@@ -457,7 +515,10 @@ export default function App() {
                     <div>Action</div>
                   </div>
                   {ipssRows.map((r, i) => (
-                    <div key={i} className="grid grid-cols-8 gap-2 items-center min-w-max">
+                    <div
+                      key={i}
+                      className="grid grid-cols-8 gap-2 items-center min-w-max"
+                    >
                       <Input
                         placeholder="+3"
                         value={r.time}
@@ -538,7 +599,11 @@ export default function App() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => setIpssRows((rows) => rows.filter((_, idx) => idx !== i))}
+                        onClick={() =>
+                          setIpssRows((rows) =>
+                            rows.filter((_, idx) => idx !== i),
+                          )
+                        }
                         disabled={ipssRows.length <= 1}
                       >
                         Remove
@@ -547,7 +612,20 @@ export default function App() {
                   ))}
                   <Button
                     variant="secondary"
-                    onClick={() => setIpssRows((rows) => [...rows, { time: "", leftACTH: "", rightACTH: "", periphACTH: "", leftPRL: "", rightPRL: "", periphPRL: "" }])}
+                    onClick={() =>
+                      setIpssRows((rows) => [
+                        ...rows,
+                        {
+                          time: "",
+                          leftACTH: "",
+                          rightACTH: "",
+                          periphACTH: "",
+                          leftPRL: "",
+                          rightPRL: "",
+                          periphPRL: "",
+                        },
+                      ])
+                    }
                   >
                     Add Sample Time Point
                   </Button>
@@ -556,16 +634,27 @@ export default function App() {
             )}
 
             {!canRun && def.id === "mr-elastography" && (
-              <p className="text-xs text-gray-600" role="note">Enter at least one valid ROI (kPa and area &gt; 0) in fields, CSV, or dynamic rows to enable Calculate.</p>
+              <p className="text-xs text-gray-600" role="note">
+                Enter at least one valid ROI (kPa and area &gt; 0) in fields,
+                CSV, or dynamic rows to enable Calculate.
+              </p>
             )}
             {!def.isCustomComponent && (
-              <Button className="w-full" onClick={run} disabled={!canRun} aria-disabled={!canRun}>
+              <Button
+                className="w-full"
+                onClick={run}
+                disabled={!canRun}
+                aria-disabled={!canRun}
+              >
                 Calculate
               </Button>
             )}
 
             {out && !def.isCustomComponent && (
-              <section className="pt-4 border-t space-y-1 text-sm" aria-live="polite">
+              <section
+                className="pt-4 border-t space-y-1 text-sm"
+                aria-live="polite"
+              >
                 {Object.entries(out).map(([k, v]) => {
                   if (
                     def.id === "mr-elastography" &&
@@ -575,12 +664,20 @@ export default function App() {
                     return (
                       <p key={k}>
                         <span className="font-mono font-medium">{k}:</span>{" "}
-                        <span title={`Raw: ${out["Area-weighted Mean Raw (kPa)"]}`}>{v}</span>
+                        <span
+                          title={`Raw: ${out["Area-weighted Mean Raw (kPa)"]}`}
+                        >
+                          {v}
+                        </span>
                       </p>
                     );
                   }
                   // Handle CSV download links for AVS calculators
-                  if (k === "Download CSV" && typeof v === "string" && v.includes("<a href=")) {
+                  if (
+                    k === "Download CSV" &&
+                    typeof v === "string" &&
+                    v.includes("<a href=")
+                  ) {
                     const match = v.match(/href="([^"]+)".*download="([^"]+)"/);
                     if (match) {
                       const [, href, filename] = match;
@@ -632,7 +729,9 @@ export default function App() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 underline"
-                        onClick={() => trackOutboundLink(r.u, 'reference', def.id)}
+                        onClick={() =>
+                          trackOutboundLink(r.u, "reference", def.id)
+                        }
                       >
                         {r.t}
                       </a>
@@ -644,6 +743,39 @@ export default function App() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Footer with Medical Disclaimer */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-gray-100 border-t border-gray-200 py-2 px-4 text-xs text-gray-600">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+          <p className="text-center md:text-left">
+            <strong>Medical Disclaimer:</strong> This tool is for educational
+            and informational purposes only. It is not intended as a substitute
+            for professional medical advice, diagnosis, or treatment. Always
+            consult a qualified healthcare provider.
+          </p>
+          <div className="flex gap-4 text-gray-500">
+            <a
+              href="/about.html"
+              className="hover:text-gray-700 hover:underline"
+            >
+              About
+            </a>
+            <a
+              href="/privacy.html"
+              className="hover:text-gray-700 hover:underline"
+            >
+              Privacy
+            </a>
+            <a
+              href="/terms.html"
+              className="hover:text-gray-700 hover:underline"
+            >
+              Terms
+            </a>
+            <span>&copy; {new Date().getFullYear()} Radulator</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
