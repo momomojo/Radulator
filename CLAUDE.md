@@ -3,7 +3,10 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-RadCalc 2.0 is a React-based medical calculator application built with Vite. It provides 18 medical calculators across radiology, hepatology/liver, and urology specialties for various clinical measurements and classifications.
+
+**Radulator** (RadCalc 2.0) is a comprehensive React-based medical calculator web application built with Vite. It provides **20 medical calculators** across radiology, hepatology/liver, urology, and interventional specialties for various clinical measurements, classifications, and decision support.
+
+**Repository:** https://github.com/momomojo/Radulator.git
 
 ## Key Commands
 
@@ -14,98 +17,283 @@ npm run dev          # Start development server (http://localhost:5173)
 # Production Build
 npm run build        # Build for production (outputs to dist/)
 npm run preview      # Preview production build
+npm run deploy       # Build + deploy to GitHub Pages
 
 # Code Quality
 npm run lint         # Run ESLint to check code quality
+
+# Testing (Playwright E2E)
+npm run test              # Run all tests
+npm run test:headed       # Run with browser visible
+npm run test:debug        # Debug mode
+npm run test:ui           # Interactive UI mode
+npm run test:report       # View HTML test report
+npm run test:smoke        # Smoke tests only
+npm run test:calculator   # Calculator tests only
+npm run test:chromium     # Chrome only
+npm run test:firefox      # Firefox only
+npm run test:webkit       # Safari only
+npm run test:mobile       # Mobile browsers only
 ```
 
 ## Architecture
 
 ### Tech Stack
+
 - **Framework**: React 19.1.0 (functional components with hooks)
 - **Build Tool**: Vite 7.0.4
 - **Styling**: Tailwind CSS 3.4.4 + shadcn/ui components
 - **Language**: JavaScript (ES modules, no TypeScript)
+- **Testing**: Playwright E2E (multi-browser, multi-device)
+- **Analytics**: Google Analytics 4 (optional)
+- **Deployment**: GitHub Pages via GitHub Actions
 
-### Key Directories
-- `src/App.jsx` - Main application with all 18 calculator implementations
-- `src/components/ui/` - shadcn/ui components (button, card, input, label, switch)
-- `src/lib/utils.js` - Utility functions (primarily for className management)
-- `.dev/` - Local development artifacts (tests, docs, archived files) - excluded from git
+### Project Structure
+
+```
+radcalc-2.0/
+├── .github/workflows/     # CI/CD (deploy.yml)
+├── public/                # Static assets, images, CNAME
+├── src/
+│   ├── App.jsx           # Main application
+│   ├── components/
+│   │   ├── calculators/  # 20 calculator definitions
+│   │   │   └── index.js  # Barrel export
+│   │   └── ui/           # shadcn/ui components
+│   └── lib/
+│       ├── utils.js      # cn() className helper
+│       └── analytics.js  # GA4 tracking functions
+├── tests/
+│   ├── e2e/              # Playwright test suites
+│   │   └── calculators/  # Tests by specialty
+│   ├── fixtures/         # Test data (JSON)
+│   └── helpers/          # Test utilities
+├── docs/                 # Documentation
+├── playwright.config.js  # Test configuration
+├── Dockerfile.dev        # Docker dev container
+└── docker-compose.test.yml
+```
 
 ### Path Aliases
+
 - `@/` maps to `src/` directory (configured in vite.config.js and jsconfig.json)
 
-### Calculator Implementations
-All calculators are implemented in `src/App.jsx`, organized by medical specialty:
+## Calculator Implementations
 
-#### Radiology (6 calculators)
-1. **AdrenalCTWashout** - Calculates washout percentages for adrenal lesions
-2. **AdrenalMRICSI** - MRI signal-intensity index calculations
-3. **ProstateVolume** - Volume and PSA-Density calculations
-4. **RenalCystBosniak** - Bosniak classification for renal cysts
-5. **SpleenSizeULN** - Height/sex-adjusted spleen size limits
-6. **HipDysplasiaIndices** - Reference limits for hip measurements
+All calculators are defined in `src/components/calculators/` and imported into `src/App.jsx`. Organized by medical specialty:
 
-#### Hepatology/Liver (9 calculators)
-7. **ALBIScore** - Albumin-Bilirubin grade for liver function assessment
-8. **AVSCortisol** - Adrenal Vein Sampling cortisol-corrected ratios
-9. **AVSHyperaldo** - Adrenal Vein Sampling for primary hyperaldosteronism
-10. **BCLCStaging** - Barcelona Clinic Liver Cancer staging system
-11. **ChildPugh** - Child-Pugh score for cirrhosis severity
-12. **MilanCriteria** - Milan Criteria for HCC transplant eligibility
+### Radiology (6 calculators)
+
+1. **AdrenalCTWashout** - Calculates absolute/relative washout percentages for adrenal lesions
+2. **AdrenalMRICSI** - MRI signal-intensity index and adrenal-to-spleen ratios
+3. **ProstateVolume** - Volume (ellipsoid formula) and PSA-Density calculations
+4. **RenalCystBosniak** - Bosniak classification for cystic renal lesions (I, II, IIF, III, IV)
+5. **SpleenSizeULN** - Height/sex-adjusted spleen size limits (Chow et al. 2016)
+6. **HipDysplasiaIndices** - Age/gender-specific normal values and migration indices
+
+### Hepatology/Liver (9 calculators)
+
+7. **ALBIScore** - Albumin-Bilirubin grade for liver function in HCC (SI/US units)
+8. **AVSCortisol** - Adrenal Vein Sampling for ACTH-independent hypercortisolism (custom component)
+9. **AVSHyperaldo** - Adrenal Vein Sampling for primary hyperaldosteronism (custom component)
+10. **BCLCStaging** - Barcelona Clinic Liver Cancer staging with treatment recommendations
+11. **ChildPugh** - Child-Pugh score (A/B/C) for cirrhosis severity
+12. **MilanCriteria** - Milan and UCSF criteria for HCC transplant eligibility
 13. **MELDNa** - MELD-Na score for liver transplant prioritization
-14. **MRElastography** - MR Elastography for liver fibrosis staging
-15. **Y90RadiationSegmentectomy** - Y-90 Radioembolization dosimetry
+14. **MRElastography** - Area-weighted mean liver stiffness across ROIs (dynamic rows)
+15. **Y90RadiationSegmentectomy** - Y-90 Radioembolization dosimetry calculations
 
-#### Urology (3 calculators)
-16. **IPSS** - International Prostate Symptom Score
-17. **RenalNephrometry** - R.E.N.A.L. Nephrometry Score for renal masses
-18. **SHIMCalculator** - SHIM Score for erectile dysfunction
+### Urology (3 calculators)
 
-### Styling Approach
-- Uses Tailwind CSS with custom CSS variables for theming
-- Responsive design with mobile-first approach:
-  - Main containers: `max-w-4xl` for better desktop viewing
-  - Grid layouts: 2-column on md+ screens, single column on mobile
-  - Sidebar: Responsive width (48px on mobile, 64px on desktop)
-- shadcn/ui components follow a consistent pattern with:
-  - Component variants defined using `cva` (class-variance-authority)
-  - Compound components pattern (e.g., Card.Header, Card.Content)
-  - CSS variables for colors (e.g., `--primary`, `--background`)
+16. **IPSS** - Inferior Petrosal Sinus Sampling (dynamic post-CRH samples)
+17. **RenalNephrometry** - R.E.N.A.L. Nephrometry Score for renal mass complexity
+18. **SHIMCalculator** - SHIM/IIEF-5 Score for erectile dysfunction assessment
+
+### Interventional (1 calculator)
+
+19. **KhouryCatheterSelector** - Interactive microcatheter selection tool
+
+### Feedback
+
+20. **FeedbackForm** - User feedback collection via Formspree (custom component)
+
+## Calculator Definition Pattern
+
+Each calculator exports a constant object with this structure:
+
+```javascript
+export const CalculatorName = {
+  id: "unique-kebab-case-id",
+  name: "Display Name",
+  desc: "Short description",
+  info: { text: "...", link?: {...}, image?: "..." },
+  fields: [...],              // Array of field definitions
+  compute: (values) => {...}, // Function returning results object
+  refs: [{ t: "Title", u: "URL" }], // Array of references
+
+  // Optional for custom components:
+  isCustomComponent: true,
+  Component: function() {...}
+}
+```
 
 ### Field Types Supported
+
 - `number` - Numeric input fields
 - `date` - Date picker fields
+- `textarea` - Multi-line text input
 - `select` - Dropdown with options array
 - `radio` - Radio button groups with {value, label} options
 - `checkbox` - Toggle switches using shadcn/ui Switch component
 
-### Calculator Patterns & Evolution
+### Field Properties
 
-The application has evolved from simple calculators to comprehensive clinical tools. Key patterns:
+- `id` - Unique field identifier
+- `label` - Display label
+- `subLabel` - Hint/unit text (gray)
+- `type` - Field type
+- `opts` - Options array (for select/radio)
+- `showIf` - Conditional rendering function: `(vals) => boolean`
+- `group` - Field grouping (used in Hip Dysplasia)
 
-#### Enhanced Features in Newer Calculators
-- **subLabel** - Provides units, ranges, and clinical guidance for inputs
-- **showIf** - Conditional field display based on other inputs
-- **Validation** - Comprehensive input validation with explicit error messages
-- **Multi-step calculations** - Complex decision trees and intermediate values
-- **Clinical context** - Extensive header comments with formulas, units, and bounds
-- **Structured output** - Section separators using empty-string keys (e.g., "═══ SECTION ═══")
-- **Clinical interpretation** - Detailed result explanations with management recommendations
-- **Comprehensive references** - Multiple citations including original studies, validation studies, and guidelines
+### Custom Components
 
-#### Consistency Across All Calculators
-- Controlled components with React state via `vals` object
-- Generic `Field` component renders all field types
-- `compute` function returns result object
-- State management in App.jsx (except MRElastography which uses additional `mreRows` state)
+Three calculators use `isCustomComponent: true` for complex UIs:
 
-### Important Notes
-- No test framework is configured - consider adding tests before major changes
-- ESLint is configured but no Prettier - follow existing code formatting
-- All medical formulas include references to source studies in comments
-- The application uses controlled components with React state for all inputs
-- Renal Cyst calculator includes comprehensive Bosniak classification with detailed options and text modules
-- Spleen Size calculator includes gender-specific formulas with validation ranges and 95% confidence interpretation
-- Hip Dysplasia calculator includes age/gender-specific normal values, migration index calculations, and interpretive ranges
+- **AVSCortisol** - Dynamic multi-sample management, unit conversion, CSV export
+- **AVSHyperaldo** - Similar to AVSCortisol
+- **FeedbackForm** - Formspree integration
+
+### Dynamic Row Patterns
+
+Two calculators manage dynamic rows in App.jsx state:
+
+- **MRElastography** - `mreRows` state for ROI management
+- **IPSS** - `ipssRows` state for post-CRH samples
+
+## UI Components (shadcn/ui)
+
+Located in `src/components/ui/`:
+
+- **Button** - CVA-based variants (default, destructive, outline, secondary, ghost, link)
+- **Card** - Compound component (Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter)
+- **Input** - Full-width responsive input with focus ring
+- **Label** - Accessible form labels
+- **Switch** - Toggle switch (Radix UI based)
+
+### Styling Approach
+
+- Tailwind CSS with CSS variables for theming (dark mode support)
+- Responsive design: single column mobile, 2-column desktop
+- Sidebar: `w-48` (mobile) → `w-64` (desktop)
+- Main content: `max-w-4xl` with centered layout
+- Color palette: gray-600 primary, blue-600 accents
+
+## Testing Infrastructure
+
+### Framework: Playwright
+
+- **Configuration**: `playwright.config.js`
+- **Test Location**: `tests/e2e/`
+- **Coverage**: All 20 calculators
+
+### Browser/Device Coverage
+
+- Desktop: Chromium, Firefox, WebKit
+- Mobile: Chrome (Pixel 5), Safari (iPhone 12)
+
+### Test Features
+
+- Parallel execution
+- Screenshots/video on failure
+- HTML, List, and JSON reporters
+- Auto-starts dev server
+- 2 retries on CI
+
+### Test Organization
+
+```
+tests/
+├── e2e/calculators/
+│   ├── radiology/        # 6 test files
+│   ├── hepatology/       # 9 test files
+│   ├── urology/          # 3 test files
+│   └── interventional/   # 1 test file
+├── fixtures/             # JSON test data
+├── helpers/
+│   └── calculator-test-helper.js  # Reusable utilities
+└── test-data/            # Additional test datasets
+```
+
+### Test Helper Functions
+
+- `navigateToCalculator(page, name)` - Navigate to calculator
+- `fillInput(page, label, value)` - Fill form fields
+- `verifyResult(page, label, expected)` - Verify calculations
+- `verifyCalculationAccuracy(page, results, tolerance)` - Accuracy testing
+- `verifyMobileResponsive(page)` - Responsive testing
+
+## CI/CD & Deployment
+
+### GitHub Actions (`.github/workflows/deploy.yml`)
+
+- **Trigger**: Push to `main` branch
+- **Process**: Install → Build → Deploy to GitHub Pages
+- **Node**: v20
+- **Output**: `dist/` folder deployed automatically
+
+### Environment Variables
+
+- `VITE_GA4_MEASUREMENT_ID` - Google Analytics 4 measurement ID (optional)
+
+## Analytics (Google Analytics 4)
+
+Located in `src/lib/analytics.js`. Tracked events:
+
+- `calculator_selected` - User selects a calculator
+- `calculation_performed` - Calculation executed (success/error)
+- `file_download` - CSV downloads
+- `outbound_link_click` - Reference link clicks
+- `feedback_submitted` - Feedback form submissions
+
+Analytics auto-disabled in development mode.
+
+## Docker Support
+
+For QA testing environment:
+
+- `Dockerfile.dev` - Development container
+- `docker-compose.test.yml` - Test service configuration
+- `.mcp.json` - MCP Docker gateway configuration
+
+```bash
+docker-compose -f docker-compose.test.yml up
+```
+
+## Calculator Complexity Levels
+
+**Simple** (2-4 numeric inputs):
+
+- Adrenal CT Washout, Adrenal MRI CSI, Prostate Volume
+
+**Moderate** (5-8 fields with radio/select):
+
+- Child-Pugh, ALBI Score, SHIM, RENAL Nephrometry
+
+**Complex** (10+ fields with conditionals):
+
+- BCLC Staging, Milan Criteria, Renal Cyst Bosniak
+
+**Very Complex** (custom components with state):
+
+- AVS Cortisol, AVS Hyperaldosteronism, IPSS, MR Elastography
+
+## Important Notes
+
+- **Testing**: Comprehensive Playwright E2E testing is configured - run `npm test` before major changes
+- **ESLint**: Configured but no Prettier - follow existing code formatting
+- **Medical Accuracy**: All formulas include references to source studies in comments
+- **State Management**: Controlled components via `vals` object in App.jsx
+- **Adding Calculators**: Create `.jsx` in `src/components/calculators/`, export from `index.js`, add to `calcDefs` array and `categories` object in App.jsx
+- **References**: All calculators include `refs` array with academic citations (PubMed, DOI links)
+- **Custom Components**: Use `isCustomComponent: true` for calculators needing complex UI beyond the standard field system
