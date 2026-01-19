@@ -297,3 +297,145 @@ docker-compose -f docker-compose.test.yml up
 - **Adding Calculators**: Create `.jsx` in `src/components/calculators/`, export from `index.js`, add to `calcDefs` array and `categories` object in App.jsx
 - **References**: All calculators include `refs` array with academic citations (PubMed, DOI links)
 - **Custom Components**: Use `isCustomComponent: true` for calculators needing complex UI beyond the standard field system
+
+## Project Planning System
+
+### Location
+
+All planning artifacts are in `.dev/planning/` (gitignored, local only):
+
+- **ROADMAP.yaml**: Master task tree with all planned work
+- **ROLES.md**: Role definitions (@human, @claude, @agent:\*, etc.)
+- **DECISIONS.md**: Key decisions with rationale
+- **archive/**: Completed work organized by month
+
+### Quick Commands
+
+- `/roadmap-status` - Get current progress report
+- `/roadmap-add <task>` - Add a new task
+
+### Task Workflow
+
+1. Tasks are defined in `ROADMAP.yaml` with status, priority, assignee, effort
+2. Mark tasks `in_progress` when starting
+3. Mark tasks `completed` with `completed_date` when done
+4. Periodically archive completed items
+
+### Roles
+
+- **@human**: Decisions, external accounts, medical expertise
+- **@claude**: Code, documentation, implementation
+- **@agent:explore**: Research, codebase analysis
+- **@agent:business**: Market research, competitive analysis
+- **@agent:architect**: System design
+- **@tool:playwright**: Test execution
+
+### Skills Available
+
+- `roadmap-manager`: Task management operations
+- `analytics-review`: Traffic and metrics analysis (requires GA4 MCP)
+- `seo-audit`: Search optimization checks
+
+## Autonomous Operation Authority
+
+### Surrogate Decision-Maker
+
+The project owner (@human / Mohib) has granted Claude surrogate decision-making authority for this project. This means:
+
+1. **Continue working autonomously** after completing tasks
+2. **Make judgment calls** on next priorities based on project goals
+3. **Log decisions** in `.dev/decision-logs/` (one sentence per major decision)
+4. **Stop and ask** only for:
+   - Decisions requiring human credentials/accounts
+   - Medical accuracy validation
+   - Significant architectural changes
+   - Anything with financial implications
+
+### Decision Framework
+
+When deciding what to do next, ask: "What would Mohib want me to do?"
+
+Priority order:
+
+1. Critical blockers (things preventing progress)
+2. High-priority tasks from ROADMAP.yaml
+3. Tasks that unblock other work
+4. Quality improvements
+5. Future planning
+
+### Decision Logging
+
+Location: `.dev/decision-logs/YYYY-MM-DD.md`
+
+Format: One sentence per decision, append-only.
+
+```
+- Chose to implement meta descriptions before sitemap because they provide immediate SEO value.
+- Started legal-001 (disclaimer) as it blocks AdSense application.
+```
+
+Keep sparse. Only log non-obvious decisions.
+
+## Weekly Agent System
+
+### Purpose
+
+Automated weekly analysis to:
+
+1. Discover new task opportunities
+2. Research competitive landscape
+3. Identify technical improvements
+4. Keep the project growing even when @human is busy
+
+### Schedule
+
+Run weekly (Sundays) or when @human requests: `/run-weekly-agents`
+
+### Agent Team
+
+1. **@agent:explore** - Codebase analysis
+   - Find technical debt
+   - Identify missing tests
+   - Spot improvement opportunities
+
+2. **@agent:business** - Market research
+   - Check competitor updates (MDCalc, etc.)
+   - Research new calculator ideas
+   - Find backlink opportunities
+
+3. **@agent:architect** - System design
+   - Review architecture for scale
+   - Suggest infrastructure improvements
+   - Plan for growth milestones
+
+### Output Location
+
+`.dev/agent-runs/YYYY-MM-DD-weekly.md`
+
+Contents:
+
+- Date and agents run
+- Discoveries (bulleted)
+- Tasks added to ROADMAP.yaml
+- Infrastructure changes made
+- Recommendations for @human
+
+### Verification
+
+After each run:
+
+1. Check `.dev/agent-runs/` for new report
+2. Review ROADMAP.yaml for new tasks
+3. Validate no breaking changes via `npm test`
+
+### Triggering
+
+```
+/run-weekly-agents
+```
+
+Or Claude may run proactively if:
+
+- More than 7 days since last run
+- Significant milestone completed
+- @human requests strategic review
