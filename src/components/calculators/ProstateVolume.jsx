@@ -2,6 +2,8 @@ export const ProstateVolume = {
   id: "prostate-volume",
   name: "Prostate Volume",
   desc: "Ellipsoid volume estimation (MRI/US) and PSA‑Density.",
+  metaDesc:
+    "Free Prostate Volume and PSA Density Calculator. Calculate prostate volume using ellipsoid formula from MRI/ultrasound measurements. Includes PSA density calculation.",
   info: {
     text: "Calculation by using the ellipsoid formula (length × width × height × π/6). π/6 is rounded to 0.52.\n\nUniversal PSA-Density cut-off values are not yet established. Suggested thresholds range roughly from 0.08 to 0.15 depending on clinical context.",
     link: {

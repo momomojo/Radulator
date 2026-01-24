@@ -29,6 +29,9 @@ import {
   MELDNa,
   Y90RadiationSegmentectomy,
   KhouryCatheterSelector,
+  TIRADS,
+  PIRADS,
+  Fleischner,
 } from "@/components/calculators";
 import {
   trackCalculatorSelected,
@@ -48,9 +51,11 @@ const calcDefs = [
   AVSHyperaldo,
   BCLCStaging,
   ChildPugh,
+  Fleischner,
   IPSS,
   MilanCriteria,
   MELDNa,
+  PIRADS,
   ProstateVolume,
   RenalCystBosniak,
   RenalNephrometry,
@@ -58,6 +63,7 @@ const calcDefs = [
   SpleenSizeULN,
   HipDysplasiaIndices,
   MRElastography,
+  TIRADS,
   Y90RadiationSegmentectomy,
   KhouryCatheterSelector,
   FeedbackForm,
@@ -68,10 +74,12 @@ const categories = {
   Radiology: [
     "adrenal-ct",
     "adrenal-mri",
+    "fleischner",
     "prostate-volume",
     "bosniak",
     "spleen-size",
     "hip-dysplasia",
+    "tirads",
   ],
   "Hepatology/Liver": [
     "albi-score",
@@ -84,7 +92,7 @@ const categories = {
     "mr-elastography",
     "y90-radiation-segmentectomy",
   ],
-  Urology: ["ipss", "renal-nephrometry", "shim"],
+  Urology: ["ipss", "pirads", "renal-nephrometry", "shim"],
   Interventional: ["khoury-catheter-selector"],
   Feedback: ["feedback-form"],
 };
@@ -239,6 +247,41 @@ export default function App() {
       setVals((p) => ({ ...p, ipssRows: ipssRows }));
     }
   }, [def?.id, ipssRows]);
+
+  // Update page title and meta description for SEO
+  useEffect(() => {
+    if (def) {
+      // Update document title
+      document.title = `${def.name} Calculator | Radulator`;
+
+      // Update meta description
+      const metaDescription = document.querySelector(
+        'meta[name="description"]',
+      );
+      if (metaDescription) {
+        const description =
+          def.metaDesc ||
+          def.desc ||
+          `Calculate ${def.name} - free online medical calculator with peer-reviewed references.`;
+        metaDescription.setAttribute("content", description);
+      }
+
+      // Update Open Graph tags
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) {
+        ogTitle.setAttribute("content", `${def.name} Calculator | Radulator`);
+      }
+
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      if (ogDesc) {
+        const description =
+          def.metaDesc ||
+          def.desc ||
+          `Calculate ${def.name} - free online medical calculator.`;
+        ogDesc.setAttribute("content", description);
+      }
+    }
+  }, [def]);
 
   // Disable Calculate for MRE until at least one valid ROI pair exists
   const canRun = (() => {

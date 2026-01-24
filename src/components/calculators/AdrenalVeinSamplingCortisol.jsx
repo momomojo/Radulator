@@ -21,6 +21,8 @@ export const AVSCortisol = {
   id: "avs-cortisol",
   name: "AVS – Cortisol (Cushing)",
   desc: "Comprehensive adrenal vein sampling interpretation for ACTH-independent hypercortisolism with multi-sample support.",
+  metaDesc:
+    "Free AVS Cortisol Calculator for Cushing's syndrome. Adrenal vein sampling interpretation with epinephrine validation, lateralization ratios, and Young criteria. CSV export.",
   isCustomComponent: true,
   Component: function AVSCortisolCalculator() {
     // Patient metadata
@@ -36,12 +38,12 @@ export const AVSCortisol = {
 
     // Left adrenal vein samples (support up to 2)
     const [leftSamples, setLeftSamples] = useState([
-      { time: "", cortisol: "", epinephrine: "" }
+      { time: "", cortisol: "", epinephrine: "" },
     ]);
 
     // Right adrenal vein samples (support up to 4)
     const [rightSamples, setRightSamples] = useState([
-      { time: "", cortisol: "", epinephrine: "" }
+      { time: "", cortisol: "", epinephrine: "" },
     ]);
 
     const [results, setResults] = useState(null);
@@ -65,13 +67,19 @@ export const AVSCortisol = {
 
     const addLeftSample = () => {
       if (leftSamples.length < 2) {
-        setLeftSamples([...leftSamples, { time: "", cortisol: "", epinephrine: "" }]);
+        setLeftSamples([
+          ...leftSamples,
+          { time: "", cortisol: "", epinephrine: "" },
+        ]);
       }
     };
 
     const addRightSample = () => {
       if (rightSamples.length < 4) {
-        setRightSamples([...rightSamples, { time: "", cortisol: "", epinephrine: "" }]);
+        setRightSamples([
+          ...rightSamples,
+          { time: "", cortisol: "", epinephrine: "" },
+        ]);
       }
     };
 
@@ -101,52 +109,77 @@ export const AVSCortisol = {
 
     const calculate = () => {
       // Use suprarenal IVC if available, otherwise infrarenal - convert to standard units
-      const ivcCortStd = convertCortToStandard(parseFloat(suprarenalIVCCort || infrarenalIVCCort) || 0);
+      const ivcCortStd = convertCortToStandard(
+        parseFloat(suprarenalIVCCort || infrarenalIVCCort) || 0,
+      );
       const ivcEpi = parseFloat(suprarenalIVCEpi || infrarenalIVCEpi) || 0; // Epi units are already standard (pg/mL)
 
       // Process left samples - convert to standard units and validate epinephrine INDIVIDUALLY
       const leftValidSamples = leftSamples
-        .map(s => ({
+        .map((s) => ({
           cortisol: convertCortToStandard(parseFloat(s.cortisol)),
           epinephrine: parseFloat(s.epinephrine), // Epi already in pg/mL
-          time: s.time
+          time: s.time,
         }))
-        .filter(s => !isNaN(s.cortisol) && !isNaN(s.epinephrine));
+        .filter((s) => !isNaN(s.cortisol) && !isNaN(s.epinephrine));
 
       // Process right samples - convert to standard units and validate epinephrine INDIVIDUALLY
       const rightValidSamples = rightSamples
-        .map(s => ({
+        .map((s) => ({
           cortisol: convertCortToStandard(parseFloat(s.cortisol)),
           epinephrine: parseFloat(s.epinephrine), // Epi already in pg/mL
-          time: s.time
+          time: s.time,
         }))
-        .filter(s => !isNaN(s.cortisol) && !isNaN(s.epinephrine));
+        .filter((s) => !isNaN(s.cortisol) && !isNaN(s.epinephrine));
 
-      if (leftValidSamples.length === 0 || rightValidSamples.length === 0 || ivcCortStd === 0) {
-        setResults({ error: "Insufficient data. Please enter at least one valid sample per side and IVC cortisol." });
+      if (
+        leftValidSamples.length === 0 ||
+        rightValidSamples.length === 0 ||
+        ivcCortStd === 0
+      ) {
+        setResults({
+          error:
+            "Insufficient data. Please enter at least one valid sample per side and IVC cortisol.",
+        });
         return;
       }
 
       // Filter samples that pass epinephrine validation (each sample must have Epi Δ > 100 pg/mL)
-      const leftSuccessfulSamples = leftValidSamples.filter(s => (s.epinephrine - ivcEpi) > 100);
-      const rightSuccessfulSamples = rightValidSamples.filter(s => (s.epinephrine - ivcEpi) > 100);
+      const leftSuccessfulSamples = leftValidSamples.filter(
+        (s) => s.epinephrine - ivcEpi > 100,
+      );
+      const rightSuccessfulSamples = rightValidSamples.filter(
+        (s) => s.epinephrine - ivcEpi > 100,
+      );
 
       // Cannulation success determined by whether ANY samples passed epinephrine threshold
       const leftAdrenalBlood = leftSuccessfulSamples.length > 0;
       const rightAdrenalBlood = rightSuccessfulSamples.length > 0;
 
       // Calculate averages for display (all samples)
-      const leftAvgCort = leftValidSamples.reduce((sum, s) => sum + s.cortisol, 0) / leftValidSamples.length;
-      const leftAvgEpi = leftValidSamples.reduce((sum, s) => sum + s.epinephrine, 0) / leftValidSamples.length;
-      const rightAvgCort = rightValidSamples.reduce((sum, s) => sum + s.cortisol, 0) / rightValidSamples.length;
-      const rightAvgEpi = rightValidSamples.reduce((sum, s) => sum + s.epinephrine, 0) / rightValidSamples.length;
+      const leftAvgCort =
+        leftValidSamples.reduce((sum, s) => sum + s.cortisol, 0) /
+        leftValidSamples.length;
+      const leftAvgEpi =
+        leftValidSamples.reduce((sum, s) => sum + s.epinephrine, 0) /
+        leftValidSamples.length;
+      const rightAvgCort =
+        rightValidSamples.reduce((sum, s) => sum + s.cortisol, 0) /
+        rightValidSamples.length;
+      const rightAvgEpi =
+        rightValidSamples.reduce((sum, s) => sum + s.epinephrine, 0) /
+        rightValidSamples.length;
 
       // Calculate Epi Δ for display using SUCCESSFUL samples only
       const leftEpiDelta = leftAdrenalBlood
-        ? (leftSuccessfulSamples.reduce((sum, s) => sum + s.epinephrine, 0) / leftSuccessfulSamples.length) - ivcEpi
+        ? leftSuccessfulSamples.reduce((sum, s) => sum + s.epinephrine, 0) /
+            leftSuccessfulSamples.length -
+          ivcEpi
         : leftAvgEpi - ivcEpi; // Fallback to all samples if no successful samples
       const rightEpiDelta = rightAdrenalBlood
-        ? (rightSuccessfulSamples.reduce((sum, s) => sum + s.epinephrine, 0) / rightSuccessfulSamples.length) - ivcEpi
+        ? rightSuccessfulSamples.reduce((sum, s) => sum + s.epinephrine, 0) /
+            rightSuccessfulSamples.length -
+          ivcEpi
         : rightAvgEpi - ivcEpi; // Fallback to all samples if no successful samples
 
       // AV/PV cortisol ratios - ONLY use samples that passed epinephrine validation
@@ -155,12 +188,16 @@ export const AVSCortisol = {
       let clr = null;
 
       if (leftAdrenalBlood) {
-        const leftSuccessfulAvgCort = leftSuccessfulSamples.reduce((sum, s) => sum + s.cortisol, 0) / leftSuccessfulSamples.length;
+        const leftSuccessfulAvgCort =
+          leftSuccessfulSamples.reduce((sum, s) => sum + s.cortisol, 0) /
+          leftSuccessfulSamples.length;
         leftRatio = leftSuccessfulAvgCort / ivcCortStd;
       }
 
       if (rightAdrenalBlood) {
-        const rightSuccessfulAvgCort = rightSuccessfulSamples.reduce((sum, s) => sum + s.cortisol, 0) / rightSuccessfulSamples.length;
+        const rightSuccessfulAvgCort =
+          rightSuccessfulSamples.reduce((sum, s) => sum + s.cortisol, 0) /
+          rightSuccessfulSamples.length;
         rightRatio = rightSuccessfulAvgCort / ivcCortStd;
       }
 
@@ -178,8 +215,12 @@ export const AVSCortisol = {
       }
 
       if (!leftAdrenalBlood || !rightAdrenalBlood) {
-        const failedSide = !leftAdrenalBlood && !rightAdrenalBlood ? "both sides" :
-                          !leftAdrenalBlood ? "left side" : "right side";
+        const failedSide =
+          !leftAdrenalBlood && !rightAdrenalBlood
+            ? "both sides"
+            : !leftAdrenalBlood
+              ? "left side"
+              : "right side";
         interpretation = `⚠️ Cannulation unsuccessful on ${failedSide}. Epinephrine gradient must be >100 pg/mL above IVC for each sample per Young et al. protocol. Ratios cannot be reliably interpreted.`;
       } else if (leftRatio > 6.5 && rightRatio <= 3.3 && clr >= 2.3) {
         interpretation = `✓ Unilateral cortisol-secreting adenoma on LEFT side. Criteria met: left AV/PV >6.5 (${leftRatio.toFixed(2)}), right AV/PV ≤3.3 (${rightRatio.toFixed(2)}), CLR ≥2.3 (${clr.toFixed(2)}).`;
@@ -211,7 +252,7 @@ export const AVSCortisol = {
         rightRatio,
         clr,
         dominantSide,
-        interpretation
+        interpretation,
       };
 
       setResults(resultData);
@@ -234,14 +275,24 @@ export const AVSCortisol = {
         ["Laboratory Units"],
         ["Cortisol Units:", cortUnits],
         ["Epinephrine Units:", epiUnits],
-        ["Note:", "All values in CSV are displayed in the units you selected. Calculations use standard units (µg/dL for cortisol) internally."],
+        [
+          "Note:",
+          "All values in CSV are displayed in the units you selected. Calculations use standard units (µg/dL for cortisol) internally.",
+        ],
         [""],
         ["Peripheral (IVC) Measurements"],
         [`IVC Cortisol (${cortUnits}):`, formatCortForDisplay(data.ivcCort)],
         [`IVC Epinephrine (${epiUnits}):`, data.ivcEpi.toFixed(2)],
         [""],
         ["Left Adrenal Vein Samples"],
-        ["Sample", "Time", `Cortisol (${cortUnits})`, `Epinephrine (${epiUnits})`, "Epi Δ (pg/mL)", "Adrenal Blood?"]
+        [
+          "Sample",
+          "Time",
+          `Cortisol (${cortUnits})`,
+          `Epinephrine (${epiUnits})`,
+          "Epi Δ (pg/mL)",
+          "Adrenal Blood?",
+        ],
       ];
 
       data.leftSamples.forEach((s, i) => {
@@ -252,15 +303,29 @@ export const AVSCortisol = {
           formatCortForDisplay(s.cortisol),
           s.epinephrine.toFixed(2),
           delta.toFixed(2),
-          delta > 100 ? "YES" : "NO"
+          delta > 100 ? "YES" : "NO",
         ]);
       });
 
       lines.push(
-        ["Left Average:", "", formatCortForDisplay(data.leftAvgCort), data.leftAvgEpi.toFixed(2), data.leftEpiDelta.toFixed(2), data.leftAdrenalBlood ? "YES" : "NO"],
+        [
+          "Left Average:",
+          "",
+          formatCortForDisplay(data.leftAvgCort),
+          data.leftAvgEpi.toFixed(2),
+          data.leftEpiDelta.toFixed(2),
+          data.leftAdrenalBlood ? "YES" : "NO",
+        ],
         [""],
         ["Right Adrenal Vein Samples"],
-        ["Sample", "Time", `Cortisol (${cortUnits})`, `Epinephrine (${epiUnits})`, "Epi Δ (pg/mL)", "Adrenal Blood?"]
+        [
+          "Sample",
+          "Time",
+          `Cortisol (${cortUnits})`,
+          `Epinephrine (${epiUnits})`,
+          "Epi Δ (pg/mL)",
+          "Adrenal Blood?",
+        ],
       );
 
       data.rightSamples.forEach((s, i) => {
@@ -271,38 +336,73 @@ export const AVSCortisol = {
           formatCortForDisplay(s.cortisol),
           s.epinephrine.toFixed(2),
           delta.toFixed(2),
-          delta > 100 ? "YES" : "NO"
+          delta > 100 ? "YES" : "NO",
         ]);
       });
 
       lines.push(
-        ["Right Average:", "", formatCortForDisplay(data.rightAvgCort), data.rightAvgEpi.toFixed(2), data.rightEpiDelta.toFixed(2), data.rightAdrenalBlood ? "YES" : "NO"],
+        [
+          "Right Average:",
+          "",
+          formatCortForDisplay(data.rightAvgCort),
+          data.rightAvgEpi.toFixed(2),
+          data.rightEpiDelta.toFixed(2),
+          data.rightAdrenalBlood ? "YES" : "NO",
+        ],
         [""],
         ["Cortisol Lateralization Analysis"],
-        ["Left AV/PV Ratio:", data.leftRatio !== null ? data.leftRatio.toFixed(3) : "N/A (cannulation failed)"],
-        ["Right AV/PV Ratio:", data.rightRatio !== null ? data.rightRatio.toFixed(3) : "N/A (cannulation failed)"],
-        ["Side-to-side Cortisol Lateralization Ratio (CLR):", data.clr !== null ? data.clr.toFixed(3) : "N/A (bilateral cannulation required)"],
+        [
+          "Left AV/PV Ratio:",
+          data.leftRatio !== null
+            ? data.leftRatio.toFixed(3)
+            : "N/A (cannulation failed)",
+        ],
+        [
+          "Right AV/PV Ratio:",
+          data.rightRatio !== null
+            ? data.rightRatio.toFixed(3)
+            : "N/A (cannulation failed)",
+        ],
+        [
+          "Side-to-side Cortisol Lateralization Ratio (CLR):",
+          data.clr !== null
+            ? data.clr.toFixed(3)
+            : "N/A (bilateral cannulation required)",
+        ],
         ["Dominant Side:", data.dominantSide],
         [""],
         ["Interpretation"],
         [data.interpretation.replace(/✓|⚠️/g, "")],
         [""],
         ["Methodology"],
-        ["Catheterization of an AV was considered successful if plasma epinephrine (Epi) concentration in the AV was 100 pg/mL above the PV (AV-PV >100 pg/mL), per protocol by Young et al."],
-        ["Cortisol gradients were then calculated by computing the AV/PV ratios. Only the AV cortisol values from samples with Epi levels >100 pg/mL above the PV were included in the analysis."],
-        ["We calculated the AV/PV ratio for each adrenal gland using the mean of the values. Side-to-side (higher cortisol/lower cortisol) cortisol lateralization ratios (CLR) were also calculated."],
-        ["The data were analyzed using criteria from study by Young et al. of an AV/PV cortisol ratio of >6.5 on one side and ≤3.3 on the contralateral side, and CLR ≥2.3 to indicate a unilateral cortisol-secreting adenoma."],
+        [
+          "Catheterization of an AV was considered successful if plasma epinephrine (Epi) concentration in the AV was 100 pg/mL above the PV (AV-PV >100 pg/mL), per protocol by Young et al.",
+        ],
+        [
+          "Cortisol gradients were then calculated by computing the AV/PV ratios. Only the AV cortisol values from samples with Epi levels >100 pg/mL above the PV were included in the analysis.",
+        ],
+        [
+          "We calculated the AV/PV ratio for each adrenal gland using the mean of the values. Side-to-side (higher cortisol/lower cortisol) cortisol lateralization ratios (CLR) were also calculated.",
+        ],
+        [
+          "The data were analyzed using criteria from study by Young et al. of an AV/PV cortisol ratio of >6.5 on one side and ≤3.3 on the contralateral side, and CLR ≥2.3 to indicate a unilateral cortisol-secreting adenoma.",
+        ],
         ["A CLR of ≤2 was used to indicate bilateral cortisol hypersecretion."],
         [""],
         ["References"],
-        ["Acharya R et al. Outcomes of adrenal venous sampling in patients with bilateral adrenal masses and ACTH-independent Cushing syndrome. World J Surg 2019 43(2) 527-533"],
-        ["Young WF et al. The clinical conundrum of corticotropin-independent autonomous cortisol secretion in patients with bilateral adrenal masses. World J Surg 2008 32 856-862"]
+        [
+          "Acharya R et al. Outcomes of adrenal venous sampling in patients with bilateral adrenal masses and ACTH-independent Cushing syndrome. World J Surg 2019 43(2) 527-533",
+        ],
+        [
+          "Young WF et al. The clinical conundrum of corticotropin-independent autonomous cortisol secretion in patients with bilateral adrenal masses. World J Surg 2008 32 856-862",
+        ],
       );
 
-      const csvContent = lines.map(row => row.join(",")).join("\n");
+      const csvContent = lines.map((row) => row.join(",")).join("\n");
 
       // Use data URI instead of Blob for better cross-browser compatibility
-      const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+      const dataUri =
+        "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
       const link = document.createElement("a");
       link.href = dataUri;
       link.download = `AVS_Cortisol_${data.patientInitials || "Patient"}_${data.procedureDate || "Results"}.csv`;
@@ -324,15 +424,27 @@ export const AVSCortisol = {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
               <Label>Patient Initials</Label>
-              <Input value={patientInitials} onChange={(e) => setPatientInitials(e.target.value)} placeholder="e.g., JD" />
+              <Input
+                value={patientInitials}
+                onChange={(e) => setPatientInitials(e.target.value)}
+                placeholder="e.g., JD"
+              />
             </div>
             <div className="space-y-1">
               <Label>Date of Procedure</Label>
-              <Input type="date" value={procedureDate} onChange={(e) => setProcedureDate(e.target.value)} />
+              <Input
+                type="date"
+                value={procedureDate}
+                onChange={(e) => setProcedureDate(e.target.value)}
+              />
             </div>
             <div className="space-y-1">
               <Label>Side of Nodule</Label>
-              <select className="w-full border rounded p-2" value={sideOfNodule} onChange={(e) => setSideOfNodule(e.target.value)}>
+              <select
+                className="w-full border rounded p-2"
+                value={sideOfNodule}
+                onChange={(e) => setSideOfNodule(e.target.value)}
+              >
                 <option value="">Select...</option>
                 <option value="Left">Left</option>
                 <option value="Right">Right</option>
@@ -348,7 +460,11 @@ export const AVSCortisol = {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Cortisol Units</Label>
-              <select className="w-full border rounded p-2" value={cortUnits} onChange={(e) => setCortUnits(e.target.value)}>
+              <select
+                className="w-full border rounded p-2"
+                value={cortUnits}
+                onChange={(e) => setCortUnits(e.target.value)}
+              >
                 <option value="µg/dL">µg/dL (micrograms per deciliter)</option>
                 <option value="nmol/L">nmol/L (nanomoles per liter)</option>
               </select>
@@ -356,14 +472,22 @@ export const AVSCortisol = {
             </div>
             <div className="space-y-1">
               <Label>Epinephrine Units</Label>
-              <select className="w-full border rounded p-2" value={epiUnits} onChange={(e) => setEpiUnits(e.target.value)} disabled>
+              <select
+                className="w-full border rounded p-2"
+                value={epiUnits}
+                onChange={(e) => setEpiUnits(e.target.value)}
+                disabled
+              >
                 <option value="pg/mL">pg/mL (picograms per milliliter)</option>
               </select>
-              <p className="text-xs text-gray-600">Standard unit (no conversion needed)</p>
+              <p className="text-xs text-gray-600">
+                Standard unit (no conversion needed)
+              </p>
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-2 italic">
-            All calculations are performed using standard units (µg/dL for cortisol, pg/mL for epinephrine) regardless of your input units.
+            All calculations are performed using standard units (µg/dL for
+            cortisol, pg/mL for epinephrine) regardless of your input units.
           </p>
         </div>
 
@@ -372,73 +496,188 @@ export const AVSCortisol = {
           <h3 className="font-semibold mb-3">Peripheral (IVC) Measurements</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Infrarenal IVC Cortisol <span className="text-gray-500 text-sm">(µg/dL or nmol/L)</span></Label>
-              <Input type="number" value={infrarenalIVCCort} onChange={(e) => setInfrarenalIVCCort(e.target.value)} />
+              <Label>
+                Infrarenal IVC Cortisol{" "}
+                <span className="text-gray-500 text-sm">(µg/dL or nmol/L)</span>
+              </Label>
+              <Input
+                type="number"
+                value={infrarenalIVCCort}
+                onChange={(e) => setInfrarenalIVCCort(e.target.value)}
+              />
             </div>
             <div className="space-y-1">
-              <Label>Infrarenal IVC Epinephrine <span className="text-gray-500 text-sm">(pg/mL)</span></Label>
-              <Input type="number" value={infrarenalIVCEpi} onChange={(e) => setInfrarenalIVCEpi(e.target.value)} />
+              <Label>
+                Infrarenal IVC Epinephrine{" "}
+                <span className="text-gray-500 text-sm">(pg/mL)</span>
+              </Label>
+              <Input
+                type="number"
+                value={infrarenalIVCEpi}
+                onChange={(e) => setInfrarenalIVCEpi(e.target.value)}
+              />
             </div>
             <div className="space-y-1">
-              <Label>Suprarenal IVC Cortisol <span className="text-gray-500 text-sm">(µg/dL or nmol/L)</span></Label>
-              <Input type="number" value={suprarenalIVCCort} onChange={(e) => setSuprarenalIVCCort(e.target.value)} />
+              <Label>
+                Suprarenal IVC Cortisol{" "}
+                <span className="text-gray-500 text-sm">(µg/dL or nmol/L)</span>
+              </Label>
+              <Input
+                type="number"
+                value={suprarenalIVCCort}
+                onChange={(e) => setSuprarenalIVCCort(e.target.value)}
+              />
             </div>
             <div className="space-y-1">
-              <Label>Suprarenal IVC Epinephrine <span className="text-gray-500 text-sm">(pg/mL)</span></Label>
-              <Input type="number" value={suprarenalIVCEpi} onChange={(e) => setSuprarenalIVCEpi(e.target.value)} />
+              <Label>
+                Suprarenal IVC Epinephrine{" "}
+                <span className="text-gray-500 text-sm">(pg/mL)</span>
+              </Label>
+              <Input
+                type="number"
+                value={suprarenalIVCEpi}
+                onChange={(e) => setSuprarenalIVCEpi(e.target.value)}
+              />
             </div>
           </div>
-          <p className="text-xs text-gray-600 mt-2">Note: If both provided, suprarenal IVC will be used for calculations.</p>
+          <p className="text-xs text-gray-600 mt-2">
+            Note: If both provided, suprarenal IVC will be used for
+            calculations.
+          </p>
         </div>
 
         {/* Left Adrenal Vein Samples */}
         <div>
           <h3 className="font-semibold mb-3">Left Adrenal Vein Samples</h3>
           {leftSamples.map((sample, index) => (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3 items-end">
+            <div
+              key={index}
+              className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3 items-end"
+            >
               <div className="space-y-1">
                 <Label>Time Drawn</Label>
-                <Input type="time" value={sample.time} onChange={(e) => updateLeftSample(index, "time", e.target.value)} />
+                <Input
+                  type="time"
+                  value={sample.time}
+                  onChange={(e) =>
+                    updateLeftSample(index, "time", e.target.value)
+                  }
+                />
               </div>
               <div className="space-y-1">
-                <Label>Cortisol <span className="text-gray-500 text-sm">(µg/dL or nmol/L)</span></Label>
-                <Input type="number" value={sample.cortisol} onChange={(e) => updateLeftSample(index, "cortisol", e.target.value)} />
+                <Label>
+                  Cortisol{" "}
+                  <span className="text-gray-500 text-sm">
+                    (µg/dL or nmol/L)
+                  </span>
+                </Label>
+                <Input
+                  type="number"
+                  value={sample.cortisol}
+                  onChange={(e) =>
+                    updateLeftSample(index, "cortisol", e.target.value)
+                  }
+                />
               </div>
               <div className="space-y-1">
-                <Label>Epinephrine <span className="text-gray-500 text-sm">(pg/mL)</span></Label>
-                <Input type="number" value={sample.epinephrine} onChange={(e) => updateLeftSample(index, "epinephrine", e.target.value)} />
+                <Label>
+                  Epinephrine{" "}
+                  <span className="text-gray-500 text-sm">(pg/mL)</span>
+                </Label>
+                <Input
+                  type="number"
+                  value={sample.epinephrine}
+                  onChange={(e) =>
+                    updateLeftSample(index, "epinephrine", e.target.value)
+                  }
+                />
               </div>
-              <Button variant="destructive" onClick={() => removeLeftSample(index)} disabled={leftSamples.length === 1}>Remove</Button>
+              <Button
+                variant="destructive"
+                onClick={() => removeLeftSample(index)}
+                disabled={leftSamples.length === 1}
+              >
+                Remove
+              </Button>
             </div>
           ))}
-          <Button variant="secondary" onClick={addLeftSample} disabled={leftSamples.length >= 2}>+ Add Left Sample</Button>
+          <Button
+            variant="secondary"
+            onClick={addLeftSample}
+            disabled={leftSamples.length >= 2}
+          >
+            + Add Left Sample
+          </Button>
         </div>
 
         {/* Right Adrenal Vein Samples */}
         <div>
           <h3 className="font-semibold mb-3">Right Adrenal Vein Samples</h3>
           {rightSamples.map((sample, index) => (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3 items-end">
+            <div
+              key={index}
+              className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3 items-end"
+            >
               <div className="space-y-1">
                 <Label>Time Drawn</Label>
-                <Input type="time" value={sample.time} onChange={(e) => updateRightSample(index, "time", e.target.value)} />
+                <Input
+                  type="time"
+                  value={sample.time}
+                  onChange={(e) =>
+                    updateRightSample(index, "time", e.target.value)
+                  }
+                />
               </div>
               <div className="space-y-1">
-                <Label>Cortisol <span className="text-gray-500 text-sm">(µg/dL or nmol/L)</span></Label>
-                <Input type="number" value={sample.cortisol} onChange={(e) => updateRightSample(index, "cortisol", e.target.value)} />
+                <Label>
+                  Cortisol{" "}
+                  <span className="text-gray-500 text-sm">
+                    (µg/dL or nmol/L)
+                  </span>
+                </Label>
+                <Input
+                  type="number"
+                  value={sample.cortisol}
+                  onChange={(e) =>
+                    updateRightSample(index, "cortisol", e.target.value)
+                  }
+                />
               </div>
               <div className="space-y-1">
-                <Label>Epinephrine <span className="text-gray-500 text-sm">(pg/mL)</span></Label>
-                <Input type="number" value={sample.epinephrine} onChange={(e) => updateRightSample(index, "epinephrine", e.target.value)} />
+                <Label>
+                  Epinephrine{" "}
+                  <span className="text-gray-500 text-sm">(pg/mL)</span>
+                </Label>
+                <Input
+                  type="number"
+                  value={sample.epinephrine}
+                  onChange={(e) =>
+                    updateRightSample(index, "epinephrine", e.target.value)
+                  }
+                />
               </div>
-              <Button variant="destructive" onClick={() => removeRightSample(index)} disabled={rightSamples.length === 1}>Remove</Button>
+              <Button
+                variant="destructive"
+                onClick={() => removeRightSample(index)}
+                disabled={rightSamples.length === 1}
+              >
+                Remove
+              </Button>
             </div>
           ))}
-          <Button variant="secondary" onClick={addRightSample} disabled={rightSamples.length >= 4}>+ Add Right Sample</Button>
+          <Button
+            variant="secondary"
+            onClick={addRightSample}
+            disabled={rightSamples.length >= 4}
+          >
+            + Add Right Sample
+          </Button>
         </div>
 
         {/* Calculate Button */}
-        <Button className="w-full" onClick={calculate}>Calculate</Button>
+        <Button className="w-full" onClick={calculate}>
+          Calculate
+        </Button>
 
         {/* Results */}
         {results && (
@@ -452,26 +691,60 @@ export const AVSCortisol = {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium">Left Adrenal</p>
-                      <p className={`text-lg ${results.leftAdrenalBlood ? "text-green-600" : "text-red-600"}`}>
+                      <p
+                        className={`text-lg ${results.leftAdrenalBlood ? "text-green-600" : "text-red-600"}`}
+                      >
                         {results.leftAdrenalBlood ? "✓ Successful" : "✗ Failed"}
                       </p>
-                      <p className="text-xs text-gray-600">Epi Δ: {results.leftEpiDelta.toFixed(1)} pg/mL</p>
+                      <p className="text-xs text-gray-600">
+                        Epi Δ: {results.leftEpiDelta.toFixed(1)} pg/mL
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium">Right Adrenal</p>
-                      <p className={`text-lg ${results.rightAdrenalBlood ? "text-green-600" : "text-red-600"}`}>
-                        {results.rightAdrenalBlood ? "✓ Successful" : "✗ Failed"}
+                      <p
+                        className={`text-lg ${results.rightAdrenalBlood ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {results.rightAdrenalBlood
+                          ? "✓ Successful"
+                          : "✗ Failed"}
                       </p>
-                      <p className="text-xs text-gray-600">Epi Δ: {results.rightEpiDelta.toFixed(1)} pg/mL</p>
+                      <p className="text-xs text-gray-600">
+                        Epi Δ: {results.rightEpiDelta.toFixed(1)} pg/mL
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1 text-sm">
-                  <p><span className="font-medium">Left AV/PV Cortisol Ratio:</span> {results.leftRatio !== null ? results.leftRatio.toFixed(3) : "N/A (cannulation failed)"}</p>
-                  <p><span className="font-medium">Right AV/PV Cortisol Ratio:</span> {results.rightRatio !== null ? results.rightRatio.toFixed(3) : "N/A (cannulation failed)"}</p>
-                  <p><span className="font-medium">CLR (Side-to-side Ratio):</span> {results.clr !== null ? results.clr.toFixed(3) : "N/A (bilateral cannulation required)"}</p>
-                  <p><span className="font-medium">Dominant Side:</span> {results.dominantSide}</p>
+                  <p>
+                    <span className="font-medium">
+                      Left AV/PV Cortisol Ratio:
+                    </span>{" "}
+                    {results.leftRatio !== null
+                      ? results.leftRatio.toFixed(3)
+                      : "N/A (cannulation failed)"}
+                  </p>
+                  <p>
+                    <span className="font-medium">
+                      Right AV/PV Cortisol Ratio:
+                    </span>{" "}
+                    {results.rightRatio !== null
+                      ? results.rightRatio.toFixed(3)
+                      : "N/A (cannulation failed)"}
+                  </p>
+                  <p>
+                    <span className="font-medium">
+                      CLR (Side-to-side Ratio):
+                    </span>{" "}
+                    {results.clr !== null
+                      ? results.clr.toFixed(3)
+                      : "N/A (bilateral cannulation required)"}
+                  </p>
+                  <p>
+                    <span className="font-medium">Dominant Side:</span>{" "}
+                    {results.dominantSide}
+                  </p>
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
@@ -480,7 +753,11 @@ export const AVSCortisol = {
                 </div>
 
                 {/* Download CSV Button */}
-                <Button className="w-full" variant="secondary" onClick={downloadCSV}>
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  onClick={downloadCSV}
+                >
                   Download Results as CSV
                 </Button>
               </>

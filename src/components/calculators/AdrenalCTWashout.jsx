@@ -2,6 +2,8 @@ export const AdrenalCTWashout = {
   id: "adrenal-ct",
   name: "Adrenal Washout CT",
   desc: "Absolute & relative washout percentages to differentiate adenoma vs. non‑adenoma.",
+  metaDesc:
+    "Free Adrenal CT Washout Calculator. Calculate absolute and relative washout percentages to differentiate adrenal adenoma from non-adenoma. Evidence-based with peer-reviewed references.",
   info: {
     text: "Caveat: Washout measurements may be the same in adenomas and metastases from hypervascular extraadrenal primary tumors, e.g. renal cell carcinoma (RCC) or hepatocellular carcinoma (HCC).\n\nCaveat: Markedly decreased sensitivity (66.7%) of washout measurements in large adenomas (≥ 3 cm).",
   },

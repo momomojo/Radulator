@@ -28,7 +28,13 @@ import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, ExternalLink, Filter, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  AlertCircle,
+  ExternalLink,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════
 // CATHETER DATABASE (30 Catheters)
@@ -72,8 +78,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 500,
-    ifuUrl: "https://assets.ctfassets.net/ka7vsj9fzri4/67Ughn2Vs6441sTO9Q2AWm/4d4105c44b48e9e81b29eb857afa7eff/IFU100302X1.pdf",
-    notes: "Dual-lumen balloon catheter with 4mm balloon diameter. Dead space 0.44 mL standard, reduced to 0.23 mL with PHIL adaptor. NOT compatible with NBCA."
+    ifuUrl:
+      "https://assets.ctfassets.net/ka7vsj9fzri4/67Ughn2Vs6441sTO9Q2AWm/4d4105c44b48e9e81b29eb857afa7eff/IFU100302X1.pdf",
+    notes:
+      "Dual-lumen balloon catheter with 4mm balloon diameter. Dead space 0.44 mL standard, reduced to 0.23 mL with PHIL adaptor. NOT compatible with NBCA.",
   },
   {
     id: "scepter-xc",
@@ -113,7 +121,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 500,
     ifuUrl: "https://www.accessdata.fda.gov/cdrh_docs/pdf11/K113698.pdf",
-    notes: "Extra-compliant balloon version of Scepter. Similar specs to Scepter C but different balloon compliance."
+    notes:
+      "Extra-compliant balloon version of Scepter. Similar specs to Scepter C but different balloon compliance.",
   },
   {
     id: "scepter-mini",
@@ -121,12 +130,12 @@ const CATHETER_DATABASE = [
     manufacturer: "TerumoNeuro (MicroVention)",
     category: "Balloon Occlusion",
     innerDiameter: 0.008,
-    outerDiameter: 0.020,
+    outerDiameter: 0.02,
     workingLength: [165],
-    deadSpace: 0.20,
+    deadSpace: 0.2,
     deadSpaceOptions: [
-      { type: "standard", volume: 0.20, label: "Standard" },
-      { type: "phil", volume: 0.10, label: "With PHIL Adaptor (estimated)" },
+      { type: "standard", volume: 0.2, label: "Standard" },
+      { type: "phil", volume: 0.1, label: "With PHIL Adaptor (estimated)" },
     ],
     embolicsCompatible: {
       onyx18: true,
@@ -152,8 +161,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 500,
-    ifuUrl: "https://assets.ctfassets.net/ka7vsj9fzri4/5Uhnz24wCK0r10WPt3ZaFq/1f8dcca10413c0b26992ca4c50bad698/Scepter_Mini_Spec_Sheet_-_NA.PDF",
-    notes: "Smallest dual-lumen balloon catheter. 2.2mm x 9mm balloon. Compatible with 0.008 inch guidewires."
+    ifuUrl:
+      "https://assets.ctfassets.net/ka7vsj9fzri4/5Uhnz24wCK0r10WPt3ZaFq/1f8dcca10413c0b26992ca4c50bad698/Scepter_Mini_Spec_Sheet_-_NA.PDF",
+    notes:
+      "Smallest dual-lumen balloon catheter. 2.2mm x 9mm balloon. Compatible with 0.008 inch guidewires.",
   },
   {
     id: "sniper",
@@ -163,10 +174,8 @@ const CATHETER_DATABASE = [
     innerDiameter: 0.0165,
     outerDiameter: 0.027,
     workingLength: [110, 130, 150, 165],
-    deadSpace: 0.40,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.40, label: "Standard" },
-    ],
+    deadSpace: 0.4,
+    deadSpaceOptions: [{ type: "standard", volume: 0.4, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -191,8 +200,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 900,
-    ifuUrl: "https://embolx.com/wp-content/uploads/2022/08/DC-0274-Rev-H-Sniper-IFU-SBC0629-series-normal-PDF-1.pdf",
-    notes: "Peripheral balloon occlusion catheter. Designed for pressure-directed therapy including Y-90, PAE, UFE."
+    ifuUrl:
+      "https://embolx.com/wp-content/uploads/2022/08/DC-0274-Rev-H-Sniper-IFU-SBC0629-series-normal-PDF-1.pdf",
+    notes:
+      "Peripheral balloon occlusion catheter. Designed for pressure-directed therapy including Y-90, PAE, UFE.",
   },
   {
     id: "transform",
@@ -202,10 +213,8 @@ const CATHETER_DATABASE = [
     innerDiameter: 0.014,
     outerDiameter: 0.025,
     workingLength: [150],
-    deadSpace: 0.30,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.30, label: "Standard" },
-    ],
+    deadSpace: 0.3,
+    deadSpaceOptions: [{ type: "standard", volume: 0.3, label: "Standard" }],
     embolicsCompatible: {
       onyx18: false,
       onyx34: false,
@@ -230,8 +239,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: false,
     },
     maxInjectionPressure: 150,
-    ifuUrl: "https://www.stryker.com/us/en/neurovascular/products/transform-occlusion-balloon-catheter.html",
-    notes: "Single-lumen occlusion balloon for aneurysm coiling. NOT DMSO compatible. Coils only."
+    ifuUrl:
+      "https://www.stryker.com/us/en/neurovascular/products/transform-occlusion-balloon-catheter.html",
+    notes:
+      "Single-lumen occlusion balloon for aneurysm coiling. NOT DMSO compatible. Coils only.",
   },
   {
     id: "headway-duo",
@@ -239,12 +250,16 @@ const CATHETER_DATABASE = [
     manufacturer: "TerumoNeuro (MicroVention)",
     category: "General Purpose",
     innerDiameter: 0.0165,
-    outerDiameter: 0.020,
+    outerDiameter: 0.02,
     workingLength: [156, 167],
     deadSpace: 0.34,
     deadSpaceOptions: [
       { type: "standard", volume: 0.34, label: "Standard" },
-      { type: "microvention", volume: 0.18, label: "With MicroVention Adaptor (estimated)" },
+      {
+        type: "microvention",
+        volume: 0.18,
+        label: "With MicroVention Adaptor (estimated)",
+      },
     ],
     embolicsCompatible: {
       onyx18: true,
@@ -270,8 +285,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://assets.ctfassets.net/ka7vsj9fzri4/15mFutEyvnoXZ2K1whAD6E/15014db4fd29aeee1ade318bcb17bf87/Headway_Portfolio_Data_Sheet_-_NA.PDF",
-    notes: "Widely used for Onyx, PHIL, Squid. ID 0.0165 inch, dead space 0.34 mL. Hydrophilic coating."
+    ifuUrl:
+      "https://assets.ctfassets.net/ka7vsj9fzri4/15mFutEyvnoXZ2K1whAD6E/15014db4fd29aeee1ade318bcb17bf87/Headway_Portfolio_Data_Sheet_-_NA.PDF",
+    notes:
+      "Widely used for Onyx, PHIL, Squid. ID 0.0165 inch, dead space 0.34 mL. Hydrophilic coating.",
   },
   {
     id: "headway-17",
@@ -284,7 +301,11 @@ const CATHETER_DATABASE = [
     deadSpace: 0.41,
     deadSpaceOptions: [
       { type: "standard", volume: 0.41, label: "Standard" },
-      { type: "microvention", volume: 0.26, label: "With MicroVention Hub Adaptor" },
+      {
+        type: "microvention",
+        volume: 0.26,
+        label: "With MicroVention Hub Adaptor",
+      },
     ],
     embolicsCompatible: {
       onyx18: true,
@@ -311,7 +332,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 600,
     ifuUrl: "https://www.accessdata.fda.gov/cdrh_docs/pdf10/K101542.pdf",
-    notes: "Larger 0.017 inch lumen for stent/coil delivery. Dead space 0.41 mL standard, 0.26 mL with adaptor (37% reduction)."
+    notes:
+      "Larger 0.017 inch lumen for stent/coil delivery. Dead space 0.41 mL standard, 0.26 mL with adaptor (37% reduction).",
   },
   {
     id: "headway-21",
@@ -321,10 +343,14 @@ const CATHETER_DATABASE = [
     innerDiameter: 0.021,
     outerDiameter: 0.025,
     workingLength: [150, 156],
-    deadSpace: 0.50,
+    deadSpace: 0.5,
     deadSpaceOptions: [
-      { type: "standard", volume: 0.50, label: "Standard" },
-      { type: "microvention", volume: 0.32, label: "With MicroVention Adaptor (estimated)" },
+      { type: "standard", volume: 0.5, label: "Standard" },
+      {
+        type: "microvention",
+        volume: 0.32,
+        label: "With MicroVention Adaptor (estimated)",
+      },
     ],
     embolicsCompatible: {
       onyx18: true,
@@ -350,8 +376,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://assets.ctfassets.net/ka7vsj9fzri4/15mFutEyvnoXZ2K1whAD6E/15014db4fd29aeee1ade318bcb17bf87/Headway_Portfolio_Data_Sheet_-_NA.PDF",
-    notes: "Large 0.021 inch lumen. Supports high-viscosity embolics including Onyx 500."
+    ifuUrl:
+      "https://assets.ctfassets.net/ka7vsj9fzri4/15mFutEyvnoXZ2K1whAD6E/15014db4fd29aeee1ade318bcb17bf87/Headway_Portfolio_Data_Sheet_-_NA.PDF",
+    notes:
+      "Large 0.021 inch lumen. Supports high-viscosity embolics including Onyx 500.",
   },
   {
     id: "headway-27",
@@ -359,12 +387,16 @@ const CATHETER_DATABASE = [
     manufacturer: "TerumoNeuro (MicroVention)",
     category: "General Purpose",
     innerDiameter: 0.027,
-    outerDiameter: 0.030,
+    outerDiameter: 0.03,
     workingLength: [150],
-    deadSpace: 0.60,
+    deadSpace: 0.6,
     deadSpaceOptions: [
-      { type: "standard", volume: 0.60, label: "Standard" },
-      { type: "microvention", volume: 0.38, label: "With MicroVention Adaptor (estimated)" },
+      { type: "standard", volume: 0.6, label: "Standard" },
+      {
+        type: "microvention",
+        volume: 0.38,
+        label: "With MicroVention Adaptor (estimated)",
+      },
     ],
     embolicsCompatible: {
       onyx18: true,
@@ -390,8 +422,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://assets.ctfassets.net/ka7vsj9fzri4/15mFutEyvnoXZ2K1whAD6E/15014db4fd29aeee1ade318bcb17bf87/Headway_Portfolio_Data_Sheet_-_NA.PDF",
-    notes: "Largest Headway lumen (0.027 inch). Required for Neuroform stent delivery."
+    ifuUrl:
+      "https://assets.ctfassets.net/ka7vsj9fzri4/15mFutEyvnoXZ2K1whAD6E/15014db4fd29aeee1ade318bcb17bf87/Headway_Portfolio_Data_Sheet_-_NA.PDF",
+    notes:
+      "Largest Headway lumen (0.027 inch). Required for Neuroform stent delivery.",
   },
   {
     id: "excelsior-sl10",
@@ -402,9 +436,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.022,
     workingLength: [150],
     deadSpace: 0.29,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.29, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.29, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -429,8 +461,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://www.stryker.com/us/en/neurovascular/products/excelsior-sl-10.html",
-    notes: "Dead space 0.29 mL. DMSO compatible. Widely used for coil delivery. Lower dead space than Headway Duo."
+    ifuUrl:
+      "https://www.stryker.com/us/en/neurovascular/products/excelsior-sl-10.html",
+    notes:
+      "Dead space 0.29 mL. DMSO compatible. Widely used for coil delivery. Lower dead space than Headway Duo.",
   },
   {
     id: "excelsior-xt27",
@@ -441,9 +475,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.032,
     workingLength: [150],
     deadSpace: 0.55,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.55, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.55, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -468,8 +500,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://www.stryker.com/us/en/neurovascular/products/excelsior-xt-27.html",
-    notes: "Large 0.027 inch microcatheter for stent delivery (Neuroform, Trevo 6mm retriever)."
+    ifuUrl:
+      "https://www.stryker.com/us/en/neurovascular/products/excelsior-xt-27.html",
+    notes:
+      "Large 0.027 inch microcatheter for stent delivery (Neuroform, Trevo 6mm retriever).",
   },
   {
     id: "via-27",
@@ -480,9 +514,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.032,
     workingLength: [154],
     deadSpace: 0.55,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.55, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.55, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -508,7 +540,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 600,
     ifuUrl: "https://accessgudid.nlm.nih.gov/devices/00851566003420",
-    notes: "0.027 inch microcatheter for intrasaccular flow diverter delivery (WEB) and Pipeline Flex."
+    notes:
+      "0.027 inch microcatheter for intrasaccular flow diverter delivery (WEB) and Pipeline Flex.",
   },
   {
     id: "sonic",
@@ -521,7 +554,11 @@ const CATHETER_DATABASE = [
     deadSpace: 0.32,
     deadSpaceOptions: [
       { type: "standard", volume: 0.32, label: "Standard (without adaptor)" },
-      { type: "microvention", volume: 0.24, label: "With MicroVention Adaptor" },
+      {
+        type: "microvention",
+        volume: 0.24,
+        label: "With MicroVention Adaptor",
+      },
     ],
     embolicsCompatible: {
       onyx18: true,
@@ -548,7 +585,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 600,
     ifuUrl: "https://www.terumoneuro.com/products/sonic",
-    notes: "Detachable-tip for Onyx/Squid. Dead space 0.24-0.32 mL. Tip can be left in embolic cast to prevent reflux."
+    notes:
+      "Detachable-tip for Onyx/Squid. Dead space 0.24-0.32 mL. Tip can be left in embolic cast to prevent reflux.",
   },
   {
     id: "apollo",
@@ -559,9 +597,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.019,
     workingLength: [165],
     deadSpace: 0.25,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.25, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.25, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -586,8 +622,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 150,
-    ifuUrl: "https://www.medtronic.com/us-en/healthcare-professionals/products/neurological/avm-embolization/apollo-marathon.html",
-    notes: "Detachable-tip microcatheter. Dead space 0.25 mL. 1.5cm or 3cm tip lengths available."
+    ifuUrl:
+      "https://www.medtronic.com/us-en/healthcare-professionals/products/neurological/avm-embolization/apollo-marathon.html",
+    notes:
+      "Detachable-tip microcatheter. Dead space 0.25 mL. 1.5cm or 3cm tip lengths available.",
   },
   {
     id: "marathon",
@@ -598,9 +636,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.019,
     workingLength: [165],
     deadSpace: 0.23,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.23, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.23, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -625,8 +661,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://www.medtronic.com/us-en/healthcare-professionals/products/neurological/avm-embolization/apollo-marathon.html",
-    notes: "Flow-directed. Small lumen, dead space 0.23 mL. Used for distal AVM embolization with Onyx or n-BCA."
+    ifuUrl:
+      "https://www.medtronic.com/us-en/healthcare-professionals/products/neurological/avm-embolization/apollo-marathon.html",
+    notes:
+      "Flow-directed. Small lumen, dead space 0.23 mL. Used for distal AVM embolization with Onyx or n-BCA.",
   },
   {
     id: "magic-12",
@@ -636,10 +674,8 @@ const CATHETER_DATABASE = [
     innerDiameter: 0.008,
     outerDiameter: 0.015,
     workingLength: [165],
-    deadSpace: 0.20,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.20, label: "Standard" },
-    ],
+    deadSpace: 0.2,
+    deadSpaceOptions: [{ type: "standard", volume: 0.2, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: false,
@@ -665,20 +701,19 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 500,
     ifuUrl: "https://baltgroup.com/products/magic/",
-    notes: "First flow-directed microcatheter. 1.2F with olive tip. For hyperselective catheterization <1mm vessels."
+    notes:
+      "First flow-directed microcatheter. 1.2F with olive tip. For hyperselective catheterization <1mm vessels.",
   },
   {
     id: "magic-15",
     name: "Magic 1.5",
     manufacturer: "Balt",
     category: "Flow-Directed",
-    innerDiameter: 0.010,
+    innerDiameter: 0.01,
     outerDiameter: 0.019,
     workingLength: [165, 180],
     deadSpace: 0.28,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.28, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.28, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -704,7 +739,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 500,
     ifuUrl: "https://baltgroup.com/products/magic/",
-    notes: "Flow-directed. 1.5F with olive tip. Used for peripheral and neurovascular embolization."
+    notes:
+      "Flow-directed. 1.5F with olive tip. Used for peripheral and neurovascular embolization.",
   },
   {
     id: "magic-18",
@@ -715,9 +751,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.023,
     workingLength: [165, 180],
     deadSpace: 0.34,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.34, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.34, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -743,7 +777,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 500,
     ifuUrl: "https://baltgroup.com/products/magic/",
-    notes: "Flow-directed. Dead space ~0.34 mL. Used for peripheral embolization with Onyx, PHIL, or particles."
+    notes:
+      "Flow-directed. Dead space ~0.34 mL. Used for peripheral embolization with Onyx, PHIL, or particles.",
   },
   {
     id: "progreat-24",
@@ -751,12 +786,10 @@ const CATHETER_DATABASE = [
     manufacturer: "Terumo",
     category: "Peripheral",
     innerDiameter: 0.019,
-    outerDiameter: 0.030,
+    outerDiameter: 0.03,
     workingLength: [110, 130, 150],
-    deadSpace: 0.60,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.60, label: "Standard" },
-    ],
+    deadSpace: 0.6,
+    deadSpaceOptions: [{ type: "standard", volume: 0.6, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -782,7 +815,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 800,
     ifuUrl: "https://www.terumois.com/products/catheters/progreat.html",
-    notes: "Large 0.019 inch lumen. PTFE inner layer. Designed for peripheral embolization."
+    notes:
+      "Large 0.019 inch lumen. PTFE inner layer. Designed for peripheral embolization.",
   },
   {
     id: "truselect",
@@ -793,9 +827,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.025,
     workingLength: [105, 130, 155, 175],
     deadSpace: 0.55,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.55, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.55, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -820,21 +852,21 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 800,
-    ifuUrl: "https://www.bostonscientific.com/en-US/products/embolization/truselect-microcatheter.html",
-    notes: "2.0F OD with 0.021 inch ID. First 175cm microcatheter. Compatible with 700µm particles and Y-90."
+    ifuUrl:
+      "https://www.bostonscientific.com/en-US/products/embolization/truselect-microcatheter.html",
+    notes:
+      "2.0F OD with 0.021 inch ID. First 175cm microcatheter. Compatible with 700µm particles and Y-90.",
   },
   {
     id: "maestro",
     name: "Maestro",
     manufacturer: "Merit Medical",
     category: "Peripheral",
-    innerDiameter: 0.020,
+    innerDiameter: 0.02,
     outerDiameter: 0.028,
     workingLength: [110, 130, 150, 165],
     deadSpace: 0.58,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.58, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.58, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -860,7 +892,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 800,
     ifuUrl: "https://www.merit.com/product/merit-maestro-microcatheters/",
-    notes: "Multipurpose peripheral microcatheter. Supports coils up to 0.018 inch and embolics up to 900µm."
+    notes:
+      "Multipurpose peripheral microcatheter. Supports coils up to 0.018 inch and embolics up to 900µm.",
   },
   {
     id: "renegade-hiflo",
@@ -870,10 +903,8 @@ const CATHETER_DATABASE = [
     innerDiameter: 0.027,
     outerDiameter: 0.035,
     workingLength: [105, 115, 135, 150],
-    deadSpace: 0.70,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.70, label: "Standard" },
-    ],
+    deadSpace: 0.7,
+    deadSpaceOptions: [{ type: "standard", volume: 0.7, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -898,8 +929,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 800,
-    ifuUrl: "https://www.bostonscientific.com/en-US/products/embolization/Renegade_HI-FLO_Microcatheter.html",
-    notes: "Large 0.027 inch lumen for high flow peripheral embolization. DMSO and alcohol compatible."
+    ifuUrl:
+      "https://www.bostonscientific.com/en-US/products/embolization/Renegade_HI-FLO_Microcatheter.html",
+    notes:
+      "Large 0.027 inch lumen for high flow peripheral embolization. DMSO and alcohol compatible.",
   },
   {
     id: "direxion-21",
@@ -910,9 +943,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.026,
     workingLength: [130],
     deadSpace: 0.52,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.52, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.52, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -937,8 +968,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 1200,
-    ifuUrl: "https://www.bostonscientific.com/en-US/products/embolization/Direxion_and_Direxion_HI-FLO_Microcatheters.html",
-    notes: "First nitinol microcatheter. Unrivaled torqueability. Power injections up to 1200 psi."
+    ifuUrl:
+      "https://www.bostonscientific.com/en-US/products/embolization/Direxion_and_Direxion_HI-FLO_Microcatheters.html",
+    notes:
+      "First nitinol microcatheter. Unrivaled torqueability. Power injections up to 1200 psi.",
   },
   {
     id: "direxion-27",
@@ -949,9 +982,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.032,
     workingLength: [130],
     deadSpace: 0.65,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.65, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.65, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -976,8 +1007,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 1200,
-    ifuUrl: "https://www.bostonscientific.com/en-US/products/embolization/Direxion_and_Direxion_HI-FLO_Microcatheters.html",
-    notes: "Nitinol torqueable microcatheter. 0.027 inch lumen. 1200 psi power injection capability."
+    ifuUrl:
+      "https://www.bostonscientific.com/en-US/products/embolization/Direxion_and_Direxion_HI-FLO_Microcatheters.html",
+    notes:
+      "Nitinol torqueable microcatheter. 0.027 inch lumen. 1200 psi power injection capability.",
   },
   {
     id: "phenom-21",
@@ -988,9 +1021,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.029,
     workingLength: [160],
     deadSpace: 0.52,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.52, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.52, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -1015,8 +1046,9 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://europe.medtronic.com/xd-en/healthcare-professionals/products/neurological/access-delivery-nv/phenom.html",
-    notes: "0.021 inch ID, 160cm length. For flow diverter and coil delivery."
+    ifuUrl:
+      "https://europe.medtronic.com/xd-en/healthcare-professionals/products/neurological/access-delivery-nv/phenom.html",
+    notes: "0.021 inch ID, 160cm length. For flow diverter and coil delivery.",
   },
   {
     id: "phenom-27",
@@ -1026,10 +1058,8 @@ const CATHETER_DATABASE = [
     innerDiameter: 0.027,
     outerDiameter: 0.032,
     workingLength: [150],
-    deadSpace: 0.60,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.60, label: "Standard" },
-    ],
+    deadSpace: 0.6,
+    deadSpaceOptions: [{ type: "standard", volume: 0.6, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -1054,8 +1084,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://europe.medtronic.com/xd-en/healthcare-professionals/products/neurological/access-delivery-nv/phenom.html",
-    notes: "0.027 inch microcatheter. Used for flow diverter delivery (Pipeline, Surpass, etc)."
+    ifuUrl:
+      "https://europe.medtronic.com/xd-en/healthcare-professionals/products/neurological/access-delivery-nv/phenom.html",
+    notes:
+      "0.027 inch microcatheter. Used for flow diverter delivery (Pipeline, Surpass, etc).",
   },
   {
     id: "marksman",
@@ -1063,12 +1095,10 @@ const CATHETER_DATABASE = [
     manufacturer: "Medtronic",
     category: "General Purpose",
     innerDiameter: 0.027,
-    outerDiameter: 0.040,
+    outerDiameter: 0.04,
     workingLength: [160],
     deadSpace: 0.62,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.62, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.62, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -1093,8 +1123,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://europe.medtronic.com/xd-en/healthcare-professionals/products/neurological/access-delivery-nv/marksman.html",
-    notes: "0.027 inch ID. PTFE liner, stainless steel braiding. For Neuroform stent delivery."
+    ifuUrl:
+      "https://europe.medtronic.com/xd-en/healthcare-professionals/products/neurological/access-delivery-nv/marksman.html",
+    notes:
+      "0.027 inch ID. PTFE liner, stainless steel braiding. For Neuroform stent delivery.",
   },
   {
     id: "rebar-18",
@@ -1102,12 +1134,10 @@ const CATHETER_DATABASE = [
     manufacturer: "Medtronic",
     category: "General Purpose",
     innerDiameter: 0.021,
-    outerDiameter: 0.030,
+    outerDiameter: 0.03,
     workingLength: [130],
-    deadSpace: 0.50,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.50, label: "Standard" },
-    ],
+    deadSpace: 0.5,
+    deadSpaceOptions: [{ type: "standard", volume: 0.5, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -1132,8 +1162,10 @@ const CATHETER_DATABASE = [
       dmsoCompatible: true,
     },
     maxInjectionPressure: 600,
-    ifuUrl: "https://www.medtronic.com/us-en/healthcare-professionals/products/cardiovascular/peripheral-embolization/rebar.html",
-    notes: "Reinforced microcatheter. Stainless steel construction. High kink resistance."
+    ifuUrl:
+      "https://www.medtronic.com/us-en/healthcare-professionals/products/cardiovascular/peripheral-embolization/rebar.html",
+    notes:
+      "Reinforced microcatheter. Stainless steel construction. High kink resistance.",
   },
   {
     id: "trevo-trak21",
@@ -1144,9 +1176,7 @@ const CATHETER_DATABASE = [
     outerDiameter: 0.028,
     workingLength: [162],
     deadSpace: 0.48,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.48, label: "Standard" },
-    ],
+    deadSpaceOptions: [{ type: "standard", volume: 0.48, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -1172,7 +1202,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 600,
     ifuUrl: "https://www.stryker.com/us/en/neurovascular/products/trak-21.html",
-    notes: "0.021 inch ID, 162cm length. Designed for Trevo NXT ProVue Retriever delivery."
+    notes:
+      "0.021 inch ID, 162cm length. Designed for Trevo NXT ProVue Retriever delivery.",
   },
   {
     id: "prowler-select-plus",
@@ -1182,10 +1213,8 @@ const CATHETER_DATABASE = [
     innerDiameter: 0.021,
     outerDiameter: 0.035,
     workingLength: [150],
-    deadSpace: 0.50,
-    deadSpaceOptions: [
-      { type: "standard", volume: 0.50, label: "Standard" },
-    ],
+    deadSpace: 0.5,
+    deadSpaceOptions: [{ type: "standard", volume: 0.5, label: "Standard" }],
     embolicsCompatible: {
       onyx18: true,
       onyx34: true,
@@ -1211,7 +1240,8 @@ const CATHETER_DATABASE = [
     },
     maxInjectionPressure: 600,
     ifuUrl: "https://www.jnjmedtech.com/en-US/product/prowler-ex-microcatheter",
-    notes: "0.021 inch inner diameter. Part of Codman Neurovascular (now Cerenovus) product line."
+    notes:
+      "0.021 inch inner diameter. Part of Codman Neurovascular (now Cerenovus) product line.",
   },
 ];
 
@@ -1235,7 +1265,9 @@ function filterCatheters({
     if (searchTerm && searchTerm.trim() !== "") {
       const search = searchTerm.toLowerCase();
       const matchesName = catheter.name.toLowerCase().includes(search);
-      const matchesManufacturer = catheter.manufacturer.toLowerCase().includes(search);
+      const matchesManufacturer = catheter.manufacturer
+        .toLowerCase()
+        .includes(search);
       const matchesCategory = catheter.category.toLowerCase().includes(search);
       if (!matchesName && !matchesManufacturer && !matchesCategory) {
         return false;
@@ -1328,14 +1360,21 @@ function KhouryCatheterSelectorComponent() {
       needsDetachableTip,
       searchTerm,
     });
-  }, [emboilcAgent, coilSize, microsphereSize, needsBalloon, needsDetachableTip, searchTerm]);
+  }, [
+    emboilcAgent,
+    coilSize,
+    microsphereSize,
+    needsBalloon,
+    needsDetachableTip,
+    searchTerm,
+  ]);
 
   // Priming volume calculation
   const primingVolume = useMemo(() => {
     if (!selectedCatheter) return null;
 
     const adaptorOption = selectedCatheter.deadSpaceOptions.find(
-      opt => opt.type === selectedAdaptorType
+      (opt) => opt.type === selectedAdaptorType,
     );
 
     return adaptorOption ? adaptorOption.volume : selectedCatheter.deadSpace;
@@ -1388,7 +1427,11 @@ function KhouryCatheterSelectorComponent() {
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
               >
-                {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showFilters ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -1466,7 +1509,9 @@ function KhouryCatheterSelectorComponent() {
 
               {/* Microsphere Size */}
               <div className="space-y-2">
-                <Label htmlFor="microsphereSize">Microsphere Size (if applicable)</Label>
+                <Label htmlFor="microsphereSize">
+                  Microsphere Size (if applicable)
+                </Label>
                 <select
                   id="microsphereSize"
                   value={microsphereSize}
@@ -1525,8 +1570,12 @@ function KhouryCatheterSelectorComponent() {
         {filteredCatheters.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center">
-              <p className="text-gray-500 mb-2">No catheters match your criteria.</p>
-              <p className="text-sm text-gray-400">Try adjusting your filters.</p>
+              <p className="text-gray-500 mb-2">
+                No catheters match your criteria.
+              </p>
+              <p className="text-sm text-gray-400">
+                Try adjusting your filters.
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -1544,21 +1593,29 @@ function KhouryCatheterSelectorComponent() {
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-base">{catheter.name}</h4>
+                        <h4 className="font-semibold text-base">
+                          {catheter.name}
+                        </h4>
                         <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
                           {catheter.category}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3">{catheter.manufacturer}</p>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {catheter.manufacturer}
+                      </p>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-sm">
                         <div>
                           <span className="text-gray-500">ID:</span>{" "}
-                          <span className="font-medium">{catheter.innerDiameter}"</span>
+                          <span className="font-medium">
+                            {catheter.innerDiameter}"
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-500">Dead Space:</span>{" "}
-                          <span className="font-medium">{catheter.deadSpace} mL</span>
+                          <span className="font-medium">
+                            {catheter.deadSpace} mL
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-500">Balloon:</span>{" "}
@@ -1587,9 +1644,15 @@ function KhouryCatheterSelectorComponent() {
                         setSelectedCatheter(catheter);
                         setSelectedAdaptorType("standard");
                       }}
-                      variant={selectedCatheter?.id === catheter.id ? "default" : "outline"}
+                      variant={
+                        selectedCatheter?.id === catheter.id
+                          ? "default"
+                          : "outline"
+                      }
                     >
-                      {selectedCatheter?.id === catheter.id ? "Selected" : "Select"}
+                      {selectedCatheter?.id === catheter.id
+                        ? "Selected"
+                        : "Select"}
                     </Button>
                   </div>
                 </CardContent>
@@ -1608,25 +1671,39 @@ function KhouryCatheterSelectorComponent() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className="font-semibold text-lg mb-2">{selectedCatheter.name}</h4>
-                <p className="text-sm text-gray-600 mb-4">{selectedCatheter.manufacturer}</p>
+                <h4 className="font-semibold text-lg mb-2">
+                  {selectedCatheter.name}
+                </h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  {selectedCatheter.manufacturer}
+                </p>
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Inner Diameter:</span>
-                    <span className="font-medium">{selectedCatheter.innerDiameter} inch</span>
+                    <span className="font-medium">
+                      {selectedCatheter.innerDiameter} inch
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Outer Diameter:</span>
-                    <span className="font-medium">{selectedCatheter.outerDiameter} inch</span>
+                    <span className="font-medium">
+                      {selectedCatheter.outerDiameter} inch
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Working Length:</span>
-                    <span className="font-medium">{selectedCatheter.workingLength.join(", ")} cm</span>
+                    <span className="font-medium">
+                      {selectedCatheter.workingLength.join(", ")} cm
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Max Injection Pressure:</span>
-                    <span className="font-medium">{selectedCatheter.maxInjectionPressure} psi</span>
+                    <span className="text-gray-600">
+                      Max Injection Pressure:
+                    </span>
+                    <span className="font-medium">
+                      {selectedCatheter.maxInjectionPressure} psi
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1653,10 +1730,18 @@ function KhouryCatheterSelectorComponent() {
 
                 {/* Priming Volume */}
                 <div className="bg-blue-100 border border-blue-300 rounded-lg p-4">
-                  <h5 className="font-semibold text-blue-900 mb-2">Priming Volume</h5>
-                  <p className="text-3xl font-bold text-blue-700">{primingVolume} mL</p>
+                  <h5 className="font-semibold text-blue-900 mb-2">
+                    Priming Volume
+                  </h5>
+                  <p className="text-3xl font-bold text-blue-700">
+                    {primingVolume} mL
+                  </p>
                   <p className="text-xs text-blue-600 mt-1">
-                    {selectedCatheter.deadSpaceOptions.find(opt => opt.type === selectedAdaptorType)?.label}
+                    {
+                      selectedCatheter.deadSpaceOptions.find(
+                        (opt) => opt.type === selectedAdaptorType,
+                      )?.label
+                    }
                   </p>
                 </div>
 
@@ -1709,7 +1794,9 @@ function KhouryCatheterSelectorComponent() {
 
             {/* Compatible Embolics */}
             <div className="border-t pt-4">
-              <h5 className="font-semibold text-sm mb-2">Compatible Embolic Agents</h5>
+              <h5 className="font-semibold text-sm mb-2">
+                Compatible Embolic Agents
+              </h5>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(selectedCatheter.embolicsCompatible)
                   .filter(([, compatible]) => compatible)
@@ -1728,7 +1815,9 @@ function KhouryCatheterSelectorComponent() {
             {selectedCatheter.notes && (
               <div className="border-t pt-4">
                 <h5 className="font-semibold text-sm mb-2">Clinical Notes</h5>
-                <p className="text-sm text-gray-700">{selectedCatheter.notes}</p>
+                <p className="text-sm text-gray-700">
+                  {selectedCatheter.notes}
+                </p>
               </div>
             )}
           </CardContent>
@@ -1740,16 +1829,28 @@ function KhouryCatheterSelectorComponent() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-orange-600" />
-            <h3 className="text-lg font-semibold text-orange-900">Safety Information</h3>
+            <h3 className="text-lg font-semibold text-orange-900">
+              Safety Information
+            </h3>
           </div>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-orange-900">
           <div className="space-y-2">
-            <h5 className="font-semibold">Priming Instructions for Liquid Embolics</h5>
+            <h5 className="font-semibold">
+              Priming Instructions for Liquid Embolics
+            </h5>
             <ol className="list-decimal list-inside space-y-1 text-sm">
-              <li>Flush microcatheter with sterile saline (5 mL recommended)</li>
-              <li>Fill dead space with DMSO or manufacturer-specified solvent</li>
-              <li>Use calculated priming volume ({selectedCatheter ? primingVolume : "see above"} mL for selected catheter)</li>
+              <li>
+                Flush microcatheter with sterile saline (5 mL recommended)
+              </li>
+              <li>
+                Fill dead space with DMSO or manufacturer-specified solvent
+              </li>
+              <li>
+                Use calculated priming volume (
+                {selectedCatheter ? primingVolume : "see above"} mL for selected
+                catheter)
+              </li>
               <li>Slowly inject liquid embolic under fluoroscopic guidance</li>
               <li>Follow manufacturer IFU for injection rate and technique</li>
             </ol>
@@ -1758,22 +1859,41 @@ function KhouryCatheterSelectorComponent() {
           <div className="space-y-2">
             <h5 className="font-semibold">Critical Safety Warnings</h5>
             <ul className="list-disc list-inside space-y-1 text-sm">
-              <li><strong>NBCA (n-BCA) is NOT compatible with balloon occlusion catheters</strong> (Scepter, Sniper, TransForm)</li>
-              <li>Always verify catheter DMSO compatibility before using Onyx, PHIL, or Squid</li>
-              <li>Dead space values may be <strong>estimated</strong> - verify with manufacturer IFU</li>
-              <li>Observe maximum injection pressure limits to prevent catheter rupture</li>
-              <li>This tool is for <strong>educational reference only</strong> - not a substitute for clinical judgment</li>
+              <li>
+                <strong>
+                  NBCA (n-BCA) is NOT compatible with balloon occlusion
+                  catheters
+                </strong>{" "}
+                (Scepter, Sniper, TransForm)
+              </li>
+              <li>
+                Always verify catheter DMSO compatibility before using Onyx,
+                PHIL, or Squid
+              </li>
+              <li>
+                Dead space values may be <strong>estimated</strong> - verify
+                with manufacturer IFU
+              </li>
+              <li>
+                Observe maximum injection pressure limits to prevent catheter
+                rupture
+              </li>
+              <li>
+                This tool is for <strong>educational reference only</strong> -
+                not a substitute for clinical judgment
+              </li>
             </ul>
           </div>
 
           <div className="bg-white border border-orange-300 rounded p-3 text-xs">
             <p className="font-semibold mb-1">Disclaimer</p>
             <p>
-              This catheter selector provides reference information compiled from publicly available
-              manufacturer data. Dead space volumes and specifications should be verified with the
-              catheter's Instructions for Use (IFU) before clinical use. Always follow institutional
-              protocols and manufacturer guidelines. The tool developers assume no liability for
-              clinical decisions based on this information.
+              This catheter selector provides reference information compiled
+              from publicly available manufacturer data. Dead space volumes and
+              specifications should be verified with the catheter's Instructions
+              for Use (IFU) before clinical use. Always follow institutional
+              protocols and manufacturer guidelines. The tool developers assume
+              no liability for clinical decisions based on this information.
             </p>
           </div>
         </CardContent>
@@ -1791,6 +1911,8 @@ export const KhouryCatheterSelector = {
   name: "Khoury Catheter Selector",
   category: "interventional",
   desc: "Interactive microcatheter selection tool for interventional procedures based on embolic agent, device size, and clinical requirements",
+  metaDesc:
+    "Free Khoury Catheter Selector Tool. Interactive microcatheter selection for Onyx, PHIL, coils, and microspheres. Filter by embolic agent, size, and dead space calculations.",
 
   info: {
     text: `The Khoury Catheter Selector helps interventionalists choose the optimal microcatheter based on:

@@ -29,9 +29,12 @@ export const MELDNa = {
   id: "meld-na",
   name: "MELD-Na Score",
   desc: "Model for End-Stage Liver Disease with Sodium for transplant prioritization",
+  metaDesc:
+    "Free MELD-Na Score Calculator. Calculate Model for End-Stage Liver Disease with Sodium for liver transplant prioritization. Includes 90-day mortality estimate and UNOS allocation.",
 
   info: {
-    text: "The MELD-Na score predicts 3-month mortality in patients with end-stage liver disease and is used for liver transplant allocation.\n\n" +
+    text:
+      "The MELD-Na score predicts 3-month mortality in patients with end-stage liver disease and is used for liver transplant allocation.\n\n" +
       "Key Points:\n" +
       "• MELD uses creatinine, bilirubin, and INR\n" +
       "• MELD-Na adds sodium correction (only if MELD > 11)\n" +
@@ -83,7 +86,8 @@ export const MELDNa = {
     // Validation
     if (!cr || !bili || !inrVal || !na) {
       return {
-        Error: "Please enter all required values (creatinine, bilirubin, INR, and sodium).",
+        Error:
+          "Please enter all required values (creatinine, bilirubin, INR, and sodium).",
       };
     }
 
@@ -114,7 +118,9 @@ export const MELDNa = {
     // Dialysis rule: If dialysis ≥2x/week or 24hr CVVHD, set Cr = 4.0
     if (dialysis) {
       adjustedCr = 4.0;
-      notes.push("Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)");
+      notes.push(
+        "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)",
+      );
     }
     // Upper bound: If Cr > 4.0, cap at 4.0
     else if (adjustedCr > 4.0) {
@@ -165,14 +171,19 @@ export const MELDNa = {
       // Cap sodium between 125 and 137 mEq/L
       if (adjustedNa < 125) {
         adjustedNa = 125;
-        notes.push("Sodium set to lower bound of 125 mEq/L for MELD-Na calculation");
+        notes.push(
+          "Sodium set to lower bound of 125 mEq/L for MELD-Na calculation",
+        );
       } else if (adjustedNa > 137) {
         adjustedNa = 137;
-        notes.push("Sodium set to upper bound of 137 mEq/L for MELD-Na calculation");
+        notes.push(
+          "Sodium set to upper bound of 137 mEq/L for MELD-Na calculation",
+        );
       }
 
       // MELD-Na = MELD + 1.32 × (137 - Na) - [0.033 × MELD × (137 - Na)]
-      const naCorrection = 1.32 * (137 - adjustedNa) - 0.033 * meld * (137 - adjustedNa);
+      const naCorrection =
+        1.32 * (137 - adjustedNa) - 0.033 * meld * (137 - adjustedNa);
       meldNa = meld + naCorrection;
 
       // Round to nearest integer
@@ -185,7 +196,9 @@ export const MELDNa = {
         meldNa = 40;
       }
     } else {
-      notes.push("MELD-Na equals MELD (sodium correction only applies when MELD > 11)");
+      notes.push(
+        "MELD-Na equals MELD (sodium correction only applies when MELD > 11)",
+      );
     }
 
     // Determine 3-month mortality based on MELD-Na score
@@ -214,7 +227,8 @@ export const MELDNa = {
     let interpretation = `${riskCategory} of 3-month mortality without transplantation. `;
 
     if (meldNa >= 15) {
-      interpretation += "Patient meets criteria for liver transplant evaluation (MELD-Na ≥15). ";
+      interpretation +=
+        "Patient meets criteria for liver transplant evaluation (MELD-Na ≥15). ";
     }
 
     if (meldNa >= 25) {
@@ -222,7 +236,8 @@ export const MELDNa = {
     } else if (meldNa >= 15) {
       interpretation += "Candidate for transplant listing.";
     } else {
-      interpretation += "Monitor closely; transplant evaluation if disease progresses.";
+      interpretation +=
+        "Monitor closely; transplant evaluation if disease progresses.";
     }
 
     // Build result object
@@ -231,7 +246,7 @@ export const MELDNa = {
       "MELD-Na Score": meldNa.toString(),
       "3-Month Mortality": mortality,
       "Risk Category": riskCategory,
-      "Interpretation": interpretation,
+      Interpretation: interpretation,
     };
 
     // Add clinical notes if any

@@ -27,6 +27,8 @@ export const MilanCriteria = {
   id: "milan-criteria",
   name: "Milan Criteria (HCC)",
   desc: "Liver transplant eligibility criteria for hepatocellular carcinoma patients",
+  metaDesc:
+    "Free Milan and UCSF Criteria Calculator for HCC. Assess liver transplant eligibility for hepatocellular carcinoma based on tumor size, number, and vascular invasion.",
   info: {
     text: "The Milan Criteria, established in 1996, define the standard for liver transplant eligibility in HCC patients. Meeting these criteria is associated with excellent post-transplant outcomes (>70% 4-year survival).\n\nThe expanded UCSF criteria offer a less restrictive alternative while maintaining good outcomes, with 5-year survival rates of approximately 75%.\n\nNote: Patients with 'unknown' vascular invasion or extrahepatic disease status should undergo further diagnostic workup before transplant candidacy determination.",
   },
@@ -120,7 +122,8 @@ export const MilanCriteria = {
 
     // Calculate total tumor diameter for multiple tumors
     // At this point, validation ensures all required tumor sizes are present
-    const totalDiameter = count === 1 ? t1 : count === 2 ? t1 + t2 : t1 + t2 + t3;
+    const totalDiameter =
+      count === 1 ? t1 : count === 2 ? t1 + t2 : t1 + t2 + t3;
 
     // Get largest tumor (should be t1, but verify)
     const largestTumor = Math.max(t1, t2, t3);
@@ -132,16 +135,19 @@ export const MilanCriteria = {
     // Check for absolute contraindications first
     if (macrovascularInvasion === "yes") {
       milanMet = false;
-      milanReason = "Macrovascular invasion present (absolute contraindication)";
+      milanReason =
+        "Macrovascular invasion present (absolute contraindication)";
     } else if (extrahepaticDisease === "yes") {
       milanMet = false;
       milanReason = "Extrahepatic disease present (absolute contraindication)";
     } else if (macrovascularInvasion === "unknown") {
       milanMet = false;
-      milanReason = "Macrovascular invasion status unknown - further workup required";
+      milanReason =
+        "Macrovascular invasion status unknown - further workup required";
     } else if (extrahepaticDisease === "unknown") {
       milanMet = false;
-      milanReason = "Extrahepatic disease status unknown - further workup required";
+      milanReason =
+        "Extrahepatic disease status unknown - further workup required";
     } else if (count === 1) {
       // Single tumor: must be ≤5 cm
       if (t1 <= 5) {
@@ -182,10 +188,12 @@ export const MilanCriteria = {
       ucsfReason = "Extrahepatic disease present (absolute contraindication)";
     } else if (macrovascularInvasion === "unknown") {
       ucsfMet = false;
-      ucsfReason = "Macrovascular invasion status unknown - further workup required";
+      ucsfReason =
+        "Macrovascular invasion status unknown - further workup required";
     } else if (extrahepaticDisease === "unknown") {
       ucsfMet = false;
-      ucsfReason = "Extrahepatic disease status unknown - further workup required";
+      ucsfReason =
+        "Extrahepatic disease status unknown - further workup required";
     } else if (count === 1) {
       // Single tumor: must be ≤6.5 cm
       if (t1 <= 6.5) {
@@ -223,16 +231,23 @@ export const MilanCriteria = {
 
     if (milanMet) {
       eligibility = "ELIGIBLE - Meets Milan Criteria (standard)";
-      expectedOutcome = "Expected 4-year survival >70% (Mazzaferro 1996), 5-year recurrence-free survival 83% (Mazzaferro 2009 validation)";
+      expectedOutcome =
+        "Expected 4-year survival >70% (Mazzaferro 1996), 5-year recurrence-free survival 83% (Mazzaferro 2009 validation)";
     } else if (ucsfMet) {
       eligibility = "ELIGIBLE - Meets UCSF Criteria (expanded)";
-      expectedOutcome = "Expected 5-year survival ~75% (Yao 2001), though not meeting standard Milan criteria";
-    } else if (macrovascularInvasion === "unknown" || extrahepaticDisease === "unknown") {
+      expectedOutcome =
+        "Expected 5-year survival ~75% (Yao 2001), though not meeting standard Milan criteria";
+    } else if (
+      macrovascularInvasion === "unknown" ||
+      extrahepaticDisease === "unknown"
+    ) {
       eligibility = "INDETERMINATE - Further diagnostic workup required";
-      expectedOutcome = "Cannot determine eligibility until vascular invasion and extrahepatic disease status are clarified";
+      expectedOutcome =
+        "Cannot determine eligibility until vascular invasion and extrahepatic disease status are clarified";
     } else {
       eligibility = "NOT ELIGIBLE - Beyond both Milan and UCSF criteria";
-      expectedOutcome = "Consider alternative treatments (ablation, TACE, systemic therapy). Down-staging protocols may be available at some centers.";
+      expectedOutcome =
+        "Consider alternative treatments (ablation, TACE, systemic therapy). Down-staging protocols may be available at some centers.";
     }
 
     // Build results object
@@ -245,10 +260,16 @@ export const MilanCriteria = {
       results["Total Tumor Diameter"] = `${totalDiameter.toFixed(1)} cm`;
     }
 
-    results["Macrovascular Invasion"] = macrovascularInvasion.charAt(0).toUpperCase() + macrovascularInvasion.slice(1);
-    results["Extrahepatic Disease"] = extrahepaticDisease.charAt(0).toUpperCase() + extrahepaticDisease.slice(1);
+    results["Macrovascular Invasion"] =
+      macrovascularInvasion.charAt(0).toUpperCase() +
+      macrovascularInvasion.slice(1);
+    results["Extrahepatic Disease"] =
+      extrahepaticDisease.charAt(0).toUpperCase() +
+      extrahepaticDisease.slice(1);
     results[""] = ""; // Spacer
-    results["Milan Criteria"] = milanMet ? "WITHIN CRITERIA" : "BEYOND CRITERIA";
+    results["Milan Criteria"] = milanMet
+      ? "WITHIN CRITERIA"
+      : "BEYOND CRITERIA";
     results["Milan Details"] = milanReason;
     results[" "] = ""; // Spacer
     results["UCSF Criteria"] = ucsfMet ? "WITHIN CRITERIA" : "BEYOND CRITERIA";

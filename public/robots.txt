@@ -1,0 +1,11 @@
+# Robots.txt for Radulator - Medical Calculator Suite
+# https://radulator.com
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://radulator.com/sitemap.xml
+
+# Crawl-delay recommendation (be nice to servers)
+Crawl-delay: 1

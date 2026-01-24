@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useForm, ValidationError } from '@formspree/react';
+import { useEffect } from "react";
+import { useForm, ValidationError } from "@formspree/react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,11 @@ export const FeedbackForm = {
   id: "feedback-form",
   name: "Send Feedback",
   desc: "Help improve Radulator by sharing bugs, feature requests, or general feedback.",
+  metaDesc:
+    "Send feedback to improve Radulator medical calculators. Report bugs, request features, or share your experience with our evidence-based radiology tools.",
   info: {
-    text: "Your feedback helps us improve Radulator for all users. " +
+    text:
+      "Your feedback helps us improve Radulator for all users. " +
       "Please provide as much detail as possible, especially for bug reports.\n\n" +
       "• Bug reports: Include calculator name and steps to reproduce\n" +
       "• Feature requests: Describe the calculator or enhancement you'd like to see\n" +
@@ -27,7 +30,7 @@ export const FeedbackForm = {
     // Track successful feedback submissions
     useEffect(() => {
       if (state.succeeded) {
-        trackFeedbackSubmission(true, 'feedback-form');
+        trackFeedbackSubmission(true, "feedback-form");
       }
     }, [state.succeeded]);
 
@@ -41,21 +44,20 @@ export const FeedbackForm = {
       return (
         <div className="space-y-4">
           <div className="bg-green-50 border border-green-200 rounded-md p-4">
-            <p className="text-green-800 font-medium">Thank you for your feedback!</p>
+            <p className="text-green-800 font-medium">
+              Thank you for your feedback!
+            </p>
             <p className="text-green-700 text-sm mt-1">
               We've received your message and will review it soon.
             </p>
           </div>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="w-full"
-          >
+          <Button onClick={() => window.location.reload()} className="w-full">
             Send More Feedback
           </Button>
         </div>
       );
     }
-    
+
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -70,7 +72,7 @@ export const FeedbackForm = {
             />
             <ValidationError prefix="Name" field="name" errors={state.errors} />
           </div>
-          
+
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -80,10 +82,14 @@ export const FeedbackForm = {
               required
               placeholder="your@email.com"
             />
-            <ValidationError prefix="Email" field="email" errors={state.errors} />
+            <ValidationError
+              prefix="Email"
+              field="email"
+              errors={state.errors}
+            />
           </div>
         </div>
-        
+
         <div className="space-y-1">
           <Label htmlFor="type">Feedback Type</Label>
           <select
@@ -99,7 +105,7 @@ export const FeedbackForm = {
           </select>
           <ValidationError prefix="Type" field="type" errors={state.errors} />
         </div>
-        
+
         <div className="space-y-1">
           <Label htmlFor="calculator">Related Calculator (if applicable)</Label>
           <select
@@ -119,7 +125,7 @@ export const FeedbackForm = {
             <option value="other">Other / General</option>
           </select>
         </div>
-        
+
         <div className="space-y-1">
           <Label htmlFor="message">Message</Label>
           <textarea
@@ -130,9 +136,13 @@ export const FeedbackForm = {
             className="w-full border rounded p-2 focus:outline-none focus:ring focus:ring-blue-300"
             placeholder="Please describe your feedback in detail..."
           />
-          <ValidationError prefix="Message" field="message" errors={state.errors} />
+          <ValidationError
+            prefix="Message"
+            field="message"
+            errors={state.errors}
+          />
         </div>
-        
+
         {state.errors && Object.keys(state.errors).length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-md p-3">
             <p className="text-red-700 text-sm font-medium mb-2">
@@ -141,7 +151,8 @@ export const FeedbackForm = {
             <ul className="text-red-600 text-xs space-y-1">
               {Object.entries(state.errors).map(([field, errors]) => (
                 <li key={field}>
-                  <strong>{field}:</strong> {Array.isArray(errors) ? errors.join(', ') : errors}
+                  <strong>{field}:</strong>{" "}
+                  {Array.isArray(errors) ? errors.join(", ") : errors}
                 </li>
               ))}
             </ul>
@@ -150,17 +161,14 @@ export const FeedbackForm = {
             </p>
           </div>
         )}
-        
-        <Button 
-          type="submit" 
-          disabled={state.submitting} 
-          className="w-full"
-        >
+
+        <Button type="submit" disabled={state.submitting} className="w-full">
           {state.submitting ? "Sending..." : "Send Feedback"}
         </Button>
-        
+
         <p className="text-xs text-gray-500 text-center">
-          By submitting this form, you agree to share your feedback with the Radulator development team.
+          By submitting this form, you agree to share your feedback with the
+          Radulator development team.
         </p>
       </form>
     );

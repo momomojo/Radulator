@@ -16,6 +16,8 @@ export const SHIMCalculator = {
   id: "shim",
   name: "SHIM Score",
   desc: "Sexual Health Inventory for Men (IIEF-5) - Erectile Dysfunction Assessment",
+  metaDesc:
+    "Free SHIM/IIEF-5 Score Calculator. Sexual Health Inventory for Men - validated erectile dysfunction screening questionnaire with severity classification.",
 
   info: {
     text: `The Sexual Health Inventory for Men (SHIM), also known as IIEF-5, is a validated 5-question assessment tool for erectile dysfunction.
@@ -28,7 +30,8 @@ This tool is widely used in clinical practice and research to assess ED severity
   fields: [
     {
       id: "q1",
-      label: "1. How do you rate your confidence that you could get and keep an erection?",
+      label:
+        "1. How do you rate your confidence that you could get and keep an erection?",
       type: "radio",
       opts: [
         { value: "1", label: "Very low" },
@@ -40,7 +43,8 @@ This tool is widely used in clinical practice and research to assess ED severity
     },
     {
       id: "q2",
-      label: "2. When you had erections with sexual stimulation, how often were your erections hard enough for penetration (entering your partner)?",
+      label:
+        "2. When you had erections with sexual stimulation, how often were your erections hard enough for penetration (entering your partner)?",
       type: "radio",
       opts: [
         { value: "0", label: "No sexual activity" },
@@ -53,7 +57,8 @@ This tool is widely used in clinical practice and research to assess ED severity
     },
     {
       id: "q3",
-      label: "3. During sexual intercourse, how often were you able to maintain your erection after you had penetrated (entered) your partner?",
+      label:
+        "3. During sexual intercourse, how often were you able to maintain your erection after you had penetrated (entered) your partner?",
       type: "radio",
       opts: [
         { value: "0", label: "Did not attempt intercourse" },
@@ -66,7 +71,8 @@ This tool is widely used in clinical practice and research to assess ED severity
     },
     {
       id: "q4",
-      label: "4. During sexual intercourse, how difficult was it to maintain your erection to completion of intercourse?",
+      label:
+        "4. During sexual intercourse, how difficult was it to maintain your erection to completion of intercourse?",
       type: "radio",
       opts: [
         { value: "0", label: "Did not attempt intercourse" },
@@ -79,7 +85,8 @@ This tool is widely used in clinical practice and research to assess ED severity
     },
     {
       id: "q5",
-      label: "5. When you attempted sexual intercourse, how often was it satisfactory for you?",
+      label:
+        "5. When you attempted sexual intercourse, how often was it satisfactory for you?",
       type: "radio",
       opts: [
         { value: "0", label: "Did not attempt intercourse" },
@@ -111,14 +118,25 @@ This tool is widely used in clinical practice and research to assess ED severity
 
     // Validate numeric values
     if (
-      !Number.isInteger(score1) || score1 < 1 || score1 > 5 ||
-      !Number.isInteger(score2) || score2 < 0 || score2 > 5 ||
-      !Number.isInteger(score3) || score3 < 0 || score3 > 5 ||
-      !Number.isInteger(score4) || score4 < 0 || score4 > 5 ||
-      !Number.isInteger(score5) || score5 < 0 || score5 > 5
+      !Number.isInteger(score1) ||
+      score1 < 1 ||
+      score1 > 5 ||
+      !Number.isInteger(score2) ||
+      score2 < 0 ||
+      score2 > 5 ||
+      !Number.isInteger(score3) ||
+      score3 < 0 ||
+      score3 > 5 ||
+      !Number.isInteger(score4) ||
+      score4 < 0 ||
+      score4 > 5 ||
+      !Number.isInteger(score5) ||
+      score5 < 0 ||
+      score5 > 5
     ) {
       return {
-        Error: "Invalid response values detected. Please check your selections.",
+        Error:
+          "Invalid response values detected. Please check your selections.",
       };
     }
 
@@ -131,30 +149,36 @@ This tool is widely used in clinical practice and research to assess ED severity
 
     if (totalScore >= 22 && totalScore <= 25) {
       severity = "No ED";
-      interpretation = "No evidence of erectile dysfunction. Erectile function is normal.";
+      interpretation =
+        "No evidence of erectile dysfunction. Erectile function is normal.";
     } else if (totalScore >= 17 && totalScore <= 21) {
       severity = "Mild ED";
-      interpretation = "Mild erectile dysfunction. Consider lifestyle modifications and counseling. Medical treatment may be beneficial if desired.";
+      interpretation =
+        "Mild erectile dysfunction. Consider lifestyle modifications and counseling. Medical treatment may be beneficial if desired.";
     } else if (totalScore >= 12 && totalScore <= 16) {
       severity = "Mild-to-Moderate ED";
-      interpretation = "Mild-to-moderate erectile dysfunction. Medical evaluation and treatment options should be discussed. PDE5 inhibitors are often effective.";
+      interpretation =
+        "Mild-to-moderate erectile dysfunction. Medical evaluation and treatment options should be discussed. PDE5 inhibitors are often effective.";
     } else if (totalScore >= 8 && totalScore <= 11) {
       severity = "Moderate ED";
-      interpretation = "Moderate erectile dysfunction. Medical evaluation recommended. Treatment with PDE5 inhibitors or other therapies should be considered.";
+      interpretation =
+        "Moderate erectile dysfunction. Medical evaluation recommended. Treatment with PDE5 inhibitors or other therapies should be considered.";
     } else if (totalScore >= 5 && totalScore <= 7) {
       severity = "Severe ED";
-      interpretation = "Severe erectile dysfunction. Comprehensive medical evaluation recommended to identify underlying causes. Multiple treatment options should be explored.";
+      interpretation =
+        "Severe erectile dysfunction. Comprehensive medical evaluation recommended to identify underlying causes. Multiple treatment options should be explored.";
     } else if (totalScore >= 0 && totalScore <= 4) {
       // Non-standard range including "0" responses
       severity = "Severe ED";
-      interpretation = "Severe erectile dysfunction (may include no sexual activity). Comprehensive medical evaluation recommended. Consider cardiovascular and endocrine assessment as clinically indicated.";
+      interpretation =
+        "Severe erectile dysfunction (may include no sexual activity). Comprehensive medical evaluation recommended. Consider cardiovascular and endocrine assessment as clinically indicated.";
     }
 
     return {
       "Total SHIM Score": `${totalScore} / 25`,
       "ED Severity": severity,
       "Clinical Interpretation": interpretation,
-      "Note": "Assessment based on past 6 months. Score ≤21 indicates some degree of erectile dysfunction.",
+      Note: "Assessment based on past 6 months. Score ≤21 indicates some degree of erectile dysfunction.",
     };
   },
 
