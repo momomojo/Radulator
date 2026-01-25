@@ -1,0 +1,849 @@
+{
+  "testCases": [
+    {
+      "testName": "Liver Grade I - Minimal Subcapsular Hematoma",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "subcapsular_lt10",
+        "liver_laceration": "none",
+        "liver_vascular": "none",
+        "liver_major_vein": false,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 1",
+        "Organ": "Liver",
+        "Grade Description": "Minor - Subcapsular hematoma <10% or capsular tear <1 cm",
+        "Key Findings": "Subcapsular hematoma <10% surface area",
+        "Management Approach": "Non-operative management (NOM) - Observation with serial clinical and laboratory monitoring"
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: Evaluate hematoma - subcapsular <10% surface area = Grade I criterion. Step 3: No laceration present. Step 4: No vascular injury. Step 5: Final Grade = I (Minor).",
+      "medicalReference": "AAST-OIS 2018, Liver Injury Scale Table - Grade I: Subcapsular hematoma <10% surface area"
+    },
+    {
+      "testName": "Liver Grade I - Small Capsular Tear",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "none",
+        "liver_laceration": "capsular_lt1cm",
+        "liver_vascular": "none",
+        "liver_major_vein": false,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 1",
+        "Organ": "Liver",
+        "Grade Description": "Minor - Subcapsular hematoma <10% or capsular tear <1 cm",
+        "Key Findings": "Capsular tear <1 cm depth"
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: No hematoma present. Step 3: Evaluate laceration - capsular tear <1 cm depth = Grade I criterion. Step 4: No vascular injury. Step 5: Final Grade = I (Minor).",
+      "medicalReference": "AAST-OIS 2018, Liver Injury Scale Table - Grade I: Capsular tear <1 cm parenchymal depth"
+    },
+    {
+      "testName": "Liver Grade II - Moderate Subcapsular Hematoma",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "subcapsular_10_50",
+        "liver_laceration": "none",
+        "liver_vascular": "none",
+        "liver_major_vein": false,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 2",
+        "Organ": "Liver",
+        "Grade Description": "Moderate - Subcapsular 10-50% or laceration 1-3 cm",
+        "Key Findings": "Subcapsular hematoma 10-50% surface area"
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: Evaluate hematoma - subcapsular 10-50% surface area = Grade II criterion. Step 3: No laceration. Step 4: No vascular injury. Step 5: Final Grade = II (Moderate).",
+      "medicalReference": "AAST-OIS 2018, Liver Injury Scale Table - Grade II: Subcapsular hematoma 10-50% surface area"
+    },
+    {
+      "testName": "Liver Grade II - Moderate Laceration with Multiple Injury Advancement",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "none",
+        "liver_laceration": "1_3cm",
+        "liver_vascular": "none",
+        "liver_major_vein": false,
+        "multiple_injuries": true
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 3",
+        "Organ": "Liver",
+        "Key Findings": "1-3 cm parenchymal depth laceration; Multiple injuries (+1 grade)",
+        "Multiple Injury Adjustment": "Base grade 2 advanced to Grade 3 due to multiple injuries"
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: No hematoma. Step 3: Evaluate laceration - 1-3 cm depth = Grade II criterion. Step 4: Multiple injuries present - advance one grade (II to III). Step 5: Final Grade = III.",
+      "medicalReference": "AAST-OIS 2018 - Multiple injury rule: Advance one grade for multiple injuries up to Grade III"
+    },
+    {
+      "testName": "Liver Grade III - Large Subcapsular Hematoma",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "subcapsular_gt50",
+        "liver_laceration": "none",
+        "liver_vascular": "none",
+        "liver_major_vein": false,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 3",
+        "Organ": "Liver",
+        "Grade Description": "Serious - Large hematoma or deep laceration or contained bleeding",
+        "Key Findings": "Subcapsular hematoma >50% surface area",
+        "Intervention Consideration": "Angioembolization for contained bleeding (15-25% may require); repeat CT if clinical change"
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: Evaluate hematoma - subcapsular >50% surface area = Grade III criterion. Step 3: No laceration. Step 4: No vascular injury. Step 5: Final Grade = III (Serious).",
+      "medicalReference": "AAST-OIS 2018, Liver Injury Scale Table - Grade III: Subcapsular hematoma >50% surface area"
+    },
+    {
+      "testName": "Liver Grade III - Deep Laceration with Contained Bleeding",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "none",
+        "liver_laceration": "gt3cm",
+        "liver_vascular": "contained",
+        "liver_major_vein": false,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 3",
+        "Organ": "Liver",
+        "Grade Description": "Serious - Large hematoma or deep laceration or contained bleeding",
+        "Key Findings": ">3 cm parenchymal depth laceration; Active bleeding contained within liver parenchyma"
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: No hematoma. Step 3: Evaluate laceration - >3 cm depth = Grade III. Step 4: Vascular injury - contained active bleeding = Grade III. Step 5: Highest grade is III. Final Grade = III.",
+      "medicalReference": "AAST-OIS 2018 - Grade III includes: Laceration >3 cm depth AND vascular injury with bleeding contained within liver parenchyma"
+    },
+    {
+      "testName": "Liver Grade IV - Major Lobe Disruption",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "none",
+        "liver_laceration": "disruption_25_75",
+        "liver_vascular": "none",
+        "liver_major_vein": false,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 4",
+        "Organ": "Liver",
+        "Grade Description": "Severe - Major lobe disruption or intraperitoneal bleeding",
+        "Key Findings": "Parenchymal disruption 25-75% of hepatic lobe",
+        "Intervention Consideration": "Angioembolization for active bleeding (33-40% require intervention); operative management if unstable"
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: No hematoma. Step 3: Evaluate laceration - 25-75% lobe disruption = Grade IV criterion. Step 4: No additional vascular injury. Step 5: Final Grade = IV (Severe).",
+      "medicalReference": "AAST-OIS 2018, Liver Injury Scale Table - Grade IV: Parenchymal disruption involving 25-75% of hepatic lobe"
+    },
+    {
+      "testName": "Liver Grade IV - Active Intraperitoneal Bleeding",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "subcapsular_10_50",
+        "liver_laceration": "1_3cm",
+        "liver_vascular": "free_peritoneum",
+        "liver_major_vein": false,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 4",
+        "Organ": "Liver",
+        "Key Findings": "1-3 cm parenchymal depth laceration; Active bleeding extending beyond liver into peritoneum; Subcapsular hematoma 10-50% surface area"
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: Hematoma 10-50% = Grade II. Step 3: Laceration 1-3 cm = Grade II. Step 4: Vascular injury - active bleeding extending into peritoneum = Grade IV. Step 5: Highest grade is IV. Final Grade = IV.",
+      "medicalReference": "AAST-OIS 2018 - Grade IV vascular criterion: Active bleeding extending beyond liver parenchyma into peritoneum"
+    },
+    {
+      "testName": "Liver Grade V - Massive Lobe Disruption",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "ruptured_subcapsular",
+        "liver_laceration": "disruption_gt75",
+        "liver_vascular": "none",
+        "liver_major_vein": false,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 5",
+        "Organ": "Liver",
+        "Grade Description": "Critical - Massive disruption or juxtahepatic venous injury",
+        "Key Findings": "Parenchymal disruption >75% of hepatic lobe; Ruptured subcapsular/parenchymal hematoma",
+        "Liver-Specific Note": "High-grade liver injuries have significant risk of delayed bleeding, biliary complications, and hepatic necrosis. Consider damage control surgery for unstable patients."
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: Ruptured hematoma = Grade III. Step 3: Laceration >75% lobe disruption = Grade V criterion. Step 4: Final Grade = V (Critical).",
+      "medicalReference": "AAST-OIS 2018, Liver Injury Scale Table - Grade V: Parenchymal disruption involving >75% of hepatic lobe"
+    },
+    {
+      "testName": "Liver Grade V - Juxtahepatic Venous Injury",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "none",
+        "liver_laceration": "gt3cm",
+        "liver_vascular": "juxtahepatic",
+        "liver_major_vein": true,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 5",
+        "Organ": "Liver",
+        "Grade Description": "Critical - Massive disruption or juxtahepatic venous injury",
+        "Key Findings": "Juxtahepatic venous injury (retrohepatic IVC/central hepatic veins); >3 cm parenchymal depth laceration",
+        "Management Approach": "High-risk injury requiring aggressive management; consider early operative intervention",
+        "Intervention Consideration": "Operative management often required (43-57% require surgery); damage control surgery for unstable patients"
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: No hematoma. Step 3: Laceration >3 cm = Grade III. Step 4: Juxtahepatic venous injury (retrohepatic IVC/central hepatic veins) = Grade V criterion. Step 5: Final Grade = V (Critical).",
+      "medicalReference": "AAST-OIS 2018 - Grade V vascular criterion: Juxtahepatic venous injuries including retrohepatic vena cava or central major hepatic veins"
+    },
+    {
+      "testName": "Spleen Grade I - Small Subcapsular Hematoma",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "subcapsular_lt10",
+        "spleen_laceration": "none",
+        "spleen_vascular": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 1",
+        "Organ": "Spleen",
+        "Grade Description": "Minor - Subcapsular hematoma <10% or capsular tear <1 cm",
+        "Key Findings": "Subcapsular hematoma <10% surface area",
+        "Management Approach": "Non-operative management (NOM) - Observation; NOM success rate >95%"
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: Evaluate hematoma - subcapsular <10% surface area = Grade I criterion. Step 3: No laceration. Step 4: No vascular injury. Step 5: Final Grade = I (Minor).",
+      "medicalReference": "AAST-OIS 2018, Spleen Injury Scale Table - Grade I: Subcapsular hematoma <10% surface area"
+    },
+    {
+      "testName": "Spleen Grade II - Moderate Laceration",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "none",
+        "spleen_laceration": "1_3cm",
+        "spleen_vascular": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 2",
+        "Organ": "Spleen",
+        "Grade Description": "Moderate - Subcapsular 10-50% or laceration 1-3 cm",
+        "Key Findings": "1-3 cm parenchymal depth laceration"
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: No hematoma. Step 3: Evaluate laceration - 1-3 cm depth = Grade II criterion. Step 4: No vascular injury. Step 5: Final Grade = II (Moderate).",
+      "medicalReference": "AAST-OIS 2018, Spleen Injury Scale Table - Grade II: Parenchymal laceration 1-3 cm in depth"
+    },
+    {
+      "testName": "Spleen Grade II with Multiple Injury Advancement to Grade III",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "subcapsular_10_50",
+        "spleen_laceration": "1_3cm",
+        "spleen_vascular": "none",
+        "multiple_injuries": true
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 3",
+        "Organ": "Spleen",
+        "Key Findings": "1-3 cm parenchymal depth laceration; Subcapsular hematoma 10-50% surface area; Multiple injuries (+1 grade)",
+        "Multiple Injury Adjustment": "Base grade 2 advanced to Grade 3 due to multiple injuries"
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: Hematoma 10-50% = Grade II. Step 3: Laceration 1-3 cm = Grade II. Step 4: Multiple injuries - advance one grade. Step 5: Final Grade = III (advanced from II).",
+      "medicalReference": "AAST-OIS 2018 - Multiple injury rule: Advance one grade for multiple splenic injuries up to Grade III"
+    },
+    {
+      "testName": "Spleen Grade III - Deep Laceration",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "none",
+        "spleen_laceration": "gt3cm",
+        "spleen_vascular": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 3",
+        "Organ": "Spleen",
+        "Grade Description": "Serious - Large hematoma or deep laceration",
+        "Key Findings": ">3 cm parenchymal depth laceration",
+        "Management Approach": "Non-operative management with close monitoring; consider prophylactic angioembolization"
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: No hematoma. Step 3: Evaluate laceration - >3 cm depth = Grade III criterion. Step 4: No vascular injury. Step 5: Final Grade = III (Serious).",
+      "medicalReference": "AAST-OIS 2018, Spleen Injury Scale Table - Grade III: Parenchymal laceration >3 cm in depth"
+    },
+    {
+      "testName": "Spleen Grade III - Large Intraparenchymal Hematoma",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "intraparenchymal_gte5",
+        "spleen_laceration": "none",
+        "spleen_vascular": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 3",
+        "Organ": "Spleen",
+        "Key Findings": "Intraparenchymal hematoma >=5 cm"
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: Evaluate hematoma - intraparenchymal >=5 cm = Grade III criterion. Step 3: No laceration. Step 4: No vascular injury. Step 5: Final Grade = III.",
+      "medicalReference": "AAST-OIS 2018, Spleen Injury Scale Table - Grade III: Intraparenchymal hematoma >=5 cm or expanding"
+    },
+    {
+      "testName": "Spleen Grade IV - Pseudoaneurysm/AVF",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "none",
+        "spleen_laceration": "1_3cm",
+        "spleen_vascular": "psa_avf",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 4",
+        "Organ": "Spleen",
+        "Grade Description": "Severe - Vascular injury (PSA/AVF) or >25% devascularization",
+        "Key Findings": "Pseudoaneurysm or AV fistula; 1-3 cm parenchymal depth laceration",
+        "Management Approach": "Non-operative management possible with angioembolization for vascular injuries",
+        "Spleen-Specific Note": "Post-splenectomy patients require immunizations and have lifelong increased infection risk. Splenic preservation should be attempted when feasible."
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: No hematoma. Step 3: Laceration 1-3 cm = Grade II. Step 4: Vascular injury - PSA/AVF = Grade IV criterion (2018 update). Step 5: Highest grade is IV. Final Grade = IV.",
+      "medicalReference": "AAST-OIS 2018 - Grade IV: Vascular injury (pseudoaneurysm or arteriovenous fistula) - Key 2018 revision addition"
+    },
+    {
+      "testName": "Spleen Grade IV - Segmental Devascularization >25%",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "subcapsular_gt50",
+        "spleen_laceration": "segmental_gt25",
+        "spleen_vascular": "contained",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 4",
+        "Organ": "Spleen",
+        "Key Findings": "Segmental/hilar vessel injury with >25% devascularization; Active bleeding confined within splenic capsule; Subcapsular hematoma >50% surface area"
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: Hematoma >50% = Grade III. Step 3: Laceration with segmental vessel injury and >25% devascularization = Grade IV. Step 4: Contained vascular bleeding = Grade IV. Step 5: Highest grade is IV. Final Grade = IV.",
+      "medicalReference": "AAST-OIS 2018, Spleen Injury Scale Table - Grade IV: Laceration involving segmental or hilar vessels producing >25% devascularization"
+    },
+    {
+      "testName": "Spleen Grade V - Shattered Spleen",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "ruptured",
+        "spleen_laceration": "shattered",
+        "spleen_vascular": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 5",
+        "Organ": "Spleen",
+        "Grade Description": "Critical - Shattered spleen or hilar avulsion or free bleeding",
+        "Key Findings": "Shattered spleen; Ruptured subcapsular/intraparenchymal hematoma",
+        "Management Approach": "High-risk injury; operative management (splenectomy) often required for unstable patients"
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: Ruptured hematoma = Grade III. Step 3: Shattered spleen = Grade V criterion. Step 4: Final Grade = V (Critical).",
+      "medicalReference": "AAST-OIS 2018, Spleen Injury Scale Table - Grade V: Shattered spleen"
+    },
+    {
+      "testName": "Spleen Grade V - Hilar Devascularization",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "none",
+        "spleen_laceration": "gt3cm",
+        "spleen_vascular": "hilar_devascularized",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 5",
+        "Organ": "Spleen",
+        "Grade Description": "Critical - Shattered spleen or hilar avulsion or free bleeding",
+        "Key Findings": "Hilar vascular injury with complete devascularization; >3 cm parenchymal depth laceration",
+        "Follow-up": "If splenectomy: Vaccinations (pneumococcal, meningococcal, H. influenzae); lifelong infection awareness"
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: No hematoma. Step 3: Laceration >3 cm = Grade III. Step 4: Hilar vascular injury with complete devascularization = Grade V criterion. Step 5: Final Grade = V (Critical).",
+      "medicalReference": "AAST-OIS 2018 - Grade V: Hilar vascular injury that devascularizes spleen"
+    },
+    {
+      "testName": "Spleen Grade V - Free Intraperitoneal Bleeding",
+      "organ": "spleen",
+      "inputs": {
+        "organ": "spleen",
+        "spleen_hematoma": "subcapsular_10_50",
+        "spleen_laceration": "1_3cm",
+        "spleen_vascular": "free_peritoneum",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 5",
+        "Organ": "Spleen",
+        "Key Findings": "Active bleeding extending beyond spleen into peritoneum; 1-3 cm parenchymal depth laceration; Subcapsular hematoma 10-50% surface area",
+        "Intervention Consideration": "Splenectomy for hemodynamic instability or free intraperitoneal bleeding; consider partial splenectomy if feasible"
+      },
+      "calculationSteps": "Step 1: Identify organ (Spleen). Step 2: Hematoma 10-50% = Grade II. Step 3: Laceration 1-3 cm = Grade II. Step 4: Active bleeding into peritoneum = Grade V criterion. Step 5: Final Grade = V.",
+      "medicalReference": "AAST-OIS 2018 - Grade V vascular criterion: Any injury with active bleeding extending beyond spleen into peritoneum"
+    },
+    {
+      "testName": "Kidney Grade I - Parenchymal Contusion",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "contusion",
+        "kidney_laceration": "none",
+        "kidney_urinary_extrav": false,
+        "kidney_vascular": "none",
+        "kidney_infarction": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 1",
+        "Organ": "Kidney",
+        "Grade Description": "Minor - Contusion or subcapsular hematoma <3.5 cm",
+        "Key Findings": "Parenchymal contusion",
+        "Management Approach": "Non-operative management (NOM) - Observation with clinical and urinalysis monitoring"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: Evaluate hematoma - parenchymal contusion = Grade I criterion. Step 3: No laceration. Step 4: No vascular injury. Step 5: No infarction. Step 6: Final Grade = I (Minor).",
+      "medicalReference": "AAST-OIS 2018, Kidney Injury Scale Table - Grade I: Parenchymal contusion without laceration"
+    },
+    {
+      "testName": "Kidney Grade I - Small Subcapsular Hematoma",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "subcapsular_lt3_5",
+        "kidney_laceration": "none",
+        "kidney_urinary_extrav": false,
+        "kidney_vascular": "none",
+        "kidney_infarction": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 1",
+        "Organ": "Kidney",
+        "Grade Description": "Minor - Contusion or subcapsular hematoma <3.5 cm",
+        "Key Findings": "Subcapsular hematoma <3.5 cm"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: Evaluate hematoma - subcapsular <3.5 cm = Grade I criterion (uses Hematoma Rim Distance). Step 3: No laceration. Step 4: Final Grade = I.",
+      "medicalReference": "AAST-OIS 2018, Kidney Injury Scale - Grade I: Subcapsular hematoma with HRD <3.5 cm"
+    },
+    {
+      "testName": "Kidney Grade II - Small Laceration",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "perinephric_hrd_lt3_5",
+        "kidney_laceration": "lt2_5cm",
+        "kidney_urinary_extrav": false,
+        "kidney_vascular": "none",
+        "kidney_infarction": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 2",
+        "Organ": "Kidney",
+        "Grade Description": "Moderate - Small laceration <2.5 cm or limited perinephric hematoma",
+        "Key Findings": "Parenchymal laceration <2.5 cm, no collecting system involvement; Perinephric hematoma with HRD <3.5 cm"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: Perinephric hematoma HRD <3.5 cm = Grade II. Step 3: Laceration <2.5 cm = Grade II. Step 4: No collecting system involvement. Step 5: Final Grade = II (Moderate).",
+      "medicalReference": "AAST-OIS 2018, Kidney Injury Scale - Grade II: Laceration <2.5 cm and/or perinephric hematoma with HRD <3.5 cm"
+    },
+    {
+      "testName": "Kidney Grade III - Large Laceration with Contained Vascular Injury",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "hrd_gte3_5",
+        "kidney_laceration": "gte2_5cm_no_cs",
+        "kidney_urinary_extrav": false,
+        "kidney_vascular": "psa_avf_contained",
+        "kidney_infarction": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 3",
+        "Organ": "Kidney",
+        "Grade Description": "Serious - Larger laceration or contained vascular injury or partial infarction",
+        "Key Findings": "Pseudoaneurysm, AV fistula, or contained active bleeding; Parenchymal laceration >=2.5 cm; Hematoma rim distance >=3.5 cm",
+        "Management Approach": "Non-operative management with close monitoring; angioembolization for vascular injuries"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: HRD >=3.5 cm = Grade III. Step 3: Laceration >=2.5 cm = Grade III. Step 4: PSA/AVF or contained bleeding = Grade III (2018 criterion). Step 5: Final Grade = III.",
+      "medicalReference": "AAST-OIS 2018 - Grade III: Laceration >=2.5 cm, HRD >=3.5 cm, or contained vascular injury (PSA, AVF, contained bleeding)"
+    },
+    {
+      "testName": "Kidney Grade III - Collecting System Involvement with Urinary Extravasation",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "none",
+        "kidney_laceration": "into_collecting",
+        "kidney_urinary_extrav": true,
+        "kidney_vascular": "none",
+        "kidney_infarction": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 3",
+        "Organ": "Kidney",
+        "Key Findings": "Laceration extending into collecting system; Urinary extravasation present",
+        "Kidney-Specific Note": "Urinary extravasation resolves spontaneously in 80-90% of cases. Intervention indicated for enlarging urinoma, fever, persistent ileus, or suspected UPJ disruption."
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: No hematoma. Step 3: Laceration into collecting system with urinary extravasation = Grade III criterion. Step 4: Urinary extravasation confirmed. Step 5: Final Grade = III.",
+      "medicalReference": "AAST-OIS 2018 - Grade III: Laceration extending into collecting system with urinary extravasation (downgraded from Grade IV in earlier versions)"
+    },
+    {
+      "testName": "Kidney Grade III - Partial Infarction",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "none",
+        "kidney_laceration": "none",
+        "kidney_urinary_extrav": false,
+        "kidney_vascular": "none",
+        "kidney_infarction": "partial",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 3",
+        "Organ": "Kidney",
+        "Key Findings": "Partial/segmental infarction"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: No hematoma. Step 3: No laceration. Step 4: Partial/segmental infarction = Grade III criterion. Step 5: Final Grade = III.",
+      "medicalReference": "AAST-OIS 2018, Kidney Injury Scale - Grade III: Partial or segmental kidney infarction"
+    },
+    {
+      "testName": "Kidney Grade IV - Deep Calyceal Laceration",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "hrd_gte3_5",
+        "kidney_laceration": "deep_calyceal",
+        "kidney_urinary_extrav": true,
+        "kidney_vascular": "none",
+        "kidney_infarction": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 4",
+        "Organ": "Kidney",
+        "Grade Description": "Severe - Collecting system involvement or segmental vessel injury",
+        "Key Findings": "Deep laceration involving calyces; Urinary extravasation present; Hematoma rim distance >=3.5 cm",
+        "Intervention Consideration": "Angioembolization for active bleeding; ureteral stent or nephrostomy for persistent urinoma; exploration for UPJ disruption"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: HRD >=3.5 cm = Grade III. Step 3: Deep laceration involving calyces = Grade IV criterion. Step 4: Urinary extravasation present but grade already IV. Step 5: Final Grade = IV.",
+      "medicalReference": "AAST-OIS 2018, Kidney Injury Scale - Grade IV: Deep laceration involving calyces, renal pelvis, or UPJ"
+    },
+    {
+      "testName": "Kidney Grade IV - UPJ Disruption",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "none",
+        "kidney_laceration": "upj_disruption",
+        "kidney_urinary_extrav": true,
+        "kidney_vascular": "none",
+        "kidney_infarction": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 4",
+        "Organ": "Kidney",
+        "Key Findings": "Ureteropelvic junction disruption; Urinary extravasation present"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: No hematoma. Step 3: UPJ disruption = Grade IV criterion. Step 4: Urinary extravasation present (expected with UPJ disruption). Step 5: Final Grade = IV.",
+      "medicalReference": "AAST-OIS 2018, Kidney Injury Scale - Grade IV: Complete or near-complete ureteropelvic junction disruption"
+    },
+    {
+      "testName": "Kidney Grade IV - Segmental Vessel Injury",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "none",
+        "kidney_laceration": "gte2_5cm_no_cs",
+        "kidney_urinary_extrav": false,
+        "kidney_vascular": "segmental_no_bleed",
+        "kidney_infarction": "partial_no_bleed",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 4",
+        "Organ": "Kidney",
+        "Key Findings": "Segmental infarction without active bleeding; Segmental artery/vein injury without active bleeding; Parenchymal laceration >=2.5 cm"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: No hematoma. Step 3: Laceration >=2.5 cm = Grade III. Step 4: Segmental vessel injury without active bleeding = Grade IV. Step 5: Segmental infarction = Grade IV. Step 6: Final Grade = IV.",
+      "medicalReference": "AAST-OIS 2018 - Grade IV: Segmental artery or vein injury without active bleeding"
+    },
+    {
+      "testName": "Kidney Grade IV - Multifragmented Without Active Bleeding",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "hrd_gte3_5",
+        "kidney_laceration": "shattered",
+        "kidney_urinary_extrav": true,
+        "kidney_vascular": "psa_avf_contained",
+        "kidney_infarction": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 4",
+        "Organ": "Kidney",
+        "Key Findings": "Multifragmented kidney without active bleeding; Pseudoaneurysm, AV fistula, or contained active bleeding; Urinary extravasation present; Hematoma rim distance >=3.5 cm"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: HRD >=3.5 cm = Grade III. Step 3: Shattered/multifragmented kidney without main vessel active bleeding = Grade IV. Step 4: Contained vascular injury = Grade III. Step 5: Final Grade = IV.",
+      "medicalReference": "AAST-OIS 2018 - Grade IV: Multifragmented kidney without active bleeding"
+    },
+    {
+      "testName": "Kidney Grade V - Main Renal Vessel Injury",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "hrd_gte3_5",
+        "kidney_laceration": "deep_calyceal",
+        "kidney_urinary_extrav": true,
+        "kidney_vascular": "main_vessel",
+        "kidney_infarction": "none",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 5",
+        "Organ": "Kidney",
+        "Grade Description": "Critical - Main vessel injury or shattered kidney with active bleeding",
+        "Key Findings": "Main renal artery/vein laceration or transection with active bleeding; Deep laceration involving calyces; Urinary extravasation present; Hematoma rim distance >=3.5 cm",
+        "Management Approach": "High-risk injury; operative exploration often required; consider nephrectomy vs. reconstruction"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: HRD >=3.5 cm = Grade III. Step 3: Deep calyceal laceration = Grade IV. Step 4: Main renal artery/vein injury with active bleeding = Grade V criterion. Step 5: Final Grade = V (Critical).",
+      "medicalReference": "AAST-OIS 2018 - Grade V: Main renal artery or vein laceration or transection with active bleeding"
+    },
+    {
+      "testName": "Kidney Grade V - Complete Infarction with Active Bleeding",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "none",
+        "kidney_laceration": "none",
+        "kidney_urinary_extrav": false,
+        "kidney_vascular": "active_beyond_gerota",
+        "kidney_infarction": "complete_with_bleed",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 5",
+        "Organ": "Kidney",
+        "Key Findings": "Complete kidney infarction with active bleeding; Active bleeding extending beyond Gerota fascia",
+        "Intervention Consideration": "Nephrectomy for uncontrollable hemorrhage or complete devascularization; renal reconstruction if feasible"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: No hematoma. Step 3: No laceration. Step 4: Active bleeding beyond Gerota fascia = Grade IV. Step 5: Complete infarction with active bleeding = Grade V criterion. Step 6: Final Grade = V.",
+      "medicalReference": "AAST-OIS 2018 - Grade V: Complete or near-complete kidney infarction with active bleeding"
+    },
+    {
+      "testName": "Kidney Grade V - Shattered Kidney with Main Vessel Injury",
+      "organ": "kidney",
+      "inputs": {
+        "organ": "kidney",
+        "kidney_hematoma": "hrd_gte3_5",
+        "kidney_laceration": "shattered",
+        "kidney_urinary_extrav": true,
+        "kidney_vascular": "main_vessel",
+        "kidney_infarction": "complete_with_bleed",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "AAST Grade": "Grade 5",
+        "Organ": "Kidney",
+        "Key Findings": "Main renal artery/vein laceration or transection with active bleeding; Complete kidney infarction with active bleeding; Shattered kidney with active bleeding; Urinary extravasation present; Hematoma rim distance >=3.5 cm",
+        "Follow-up": "Long-term renal function monitoring; blood pressure surveillance; contralateral kidney evaluation"
+      },
+      "calculationSteps": "Step 1: Identify organ (Kidney). Step 2: HRD >=3.5 cm = Grade III. Step 3: Shattered kidney with main vessel active bleeding = Grade V. Step 4: Main vessel injury = Grade V. Step 5: Complete infarction with active bleeding = Grade V. Step 6: Final Grade = V (Critical - multiple Grade V criteria met).",
+      "medicalReference": "AAST-OIS 2018 - Grade V: Shattered kidney (multifragmented) with active bleeding from main renal vessels"
+    },
+    {
+      "testName": "No Organ Selected - Error State",
+      "organ": "",
+      "inputs": {
+        "organ": "",
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "Error": "Please select the injured organ to calculate the AAST grade."
+      },
+      "calculationSteps": "Step 1: Check for organ selection. Step 2: No organ selected. Step 3: Return error message requesting organ selection.",
+      "medicalReference": "N/A - Input validation"
+    },
+    {
+      "testName": "No Injury Finding Selected - Error State",
+      "organ": "liver",
+      "inputs": {
+        "organ": "liver",
+        "liver_hematoma": "none",
+        "liver_laceration": "none",
+        "liver_vascular": "none",
+        "liver_major_vein": false,
+        "multiple_injuries": false
+      },
+      "expectedOutputs": {
+        "Error": "Please select at least one injury finding to calculate the AAST grade."
+      },
+      "calculationSteps": "Step 1: Identify organ (Liver). Step 2: No hematoma selected. Step 3: No laceration selected. Step 4: No vascular injury. Step 5: Grade = 0 (no findings). Step 6: Return error message requesting injury findings.",
+      "medicalReference": "N/A - Input validation"
+    }
+  ],
+  "metadata": {
+    "calculator": "AAST Trauma Grading",
+    "version": "2018 Revision (AAST-OIS)",
+    "totalTestCases": 35,
+    "testCaseBreakdown": {
+      "liver": {
+        "total": 10,
+        "gradeI": 2,
+        "gradeII": 2,
+        "gradeIII": 2,
+        "gradeIV": 2,
+        "gradeV": 2
+      },
+      "spleen": {
+        "total": 10,
+        "gradeI": 1,
+        "gradeII": 2,
+        "gradeIII": 2,
+        "gradeIV": 2,
+        "gradeV": 3
+      },
+      "kidney": {
+        "total": 13,
+        "gradeI": 2,
+        "gradeII": 1,
+        "gradeIII": 4,
+        "gradeIV": 4,
+        "gradeV": 3
+      },
+      "errorStates": 2
+    },
+    "key2018Updates": {
+      "vascularInjuryIntegration": "Pseudoaneurysm and arteriovenous fistula criteria added to imaging grading",
+      "activeBleedingLocation": "Contained vs. extending beyond organ now affects grade",
+      "liverChanges": "Couinaud hepatic segments removed from injury quantification",
+      "spleenChanges": "Trabecular vessel involvement removed; PSA/AVF added as Grade IV criteria",
+      "kidneyChanges": "Urinary extravasation downgraded to Grade III; hematoma rim distance (HRD) used for classification"
+    },
+    "multipleInjuryRule": {
+      "description": "Advance one grade for multiple injuries in same organ",
+      "maxAdvancement": "Up to Grade III only",
+      "applicability": "Applies when base grade is I or II"
+    },
+    "managementPrinciples": {
+      "hemodynamicStability": "PRIMARY determinant of management approach",
+      "gradeVsManagement": "Anatomic grade alone does NOT dictate operative vs. non-operative management",
+      "lowGrade": "Grade I-II: Usually non-operative management",
+      "highGrade": "Grade III-V: May still be managed non-operatively if hemodynamically stable"
+    },
+    "wsesGuidelines": {
+      "liver": "WSES 2020 Liver Trauma Guidelines (Coccolini et al.)",
+      "spleen": "WSES Classification and Guidelines 2017 (Coccolini et al.)",
+      "kidney": "WSES-AAST Guidelines 2019 (Coccolini et al.)"
+    },
+    "primaryReferences": [
+      {
+        "citation": "Kozar RA, et al. Organ injury scaling 2018 update: Spleen, liver, and kidney. J Trauma Acute Care Surg. 2018;85(6):1119-1122.",
+        "doi": "10.1097/TA.0000000000002058",
+        "pmid": "30462622"
+      },
+      {
+        "citation": "Santo IDE, et al. Grading Abdominal Trauma: Changes in and Implications of the Revised 2018 AAST-OIS. RadioGraphics. 2023;43(9):e230040.",
+        "doi": "10.1148/rg.230040"
+      },
+      {
+        "citation": "Moore EE, et al. Organ injury scaling: spleen, liver, and kidney. J Trauma. 1989;29(12):1664-1666.",
+        "pmid": "2593197",
+        "note": "Original AAST-OIS publication"
+      }
+    ],
+    "gradingCriteria": {
+      "liver": {
+        "gradeI": {
+          "hematoma": "Subcapsular, <10% surface area",
+          "laceration": "Capsular tear, <1 cm parenchymal depth"
+        },
+        "gradeII": {
+          "hematoma": "Subcapsular 10-50% surface area OR intraparenchymal <10 cm",
+          "laceration": "1-3 cm parenchymal depth, <10 cm length"
+        },
+        "gradeIII": {
+          "hematoma": "Subcapsular >50% OR ruptured OR intraparenchymal >10 cm",
+          "laceration": ">3 cm parenchymal depth",
+          "vascular": "Active bleeding contained within liver parenchyma"
+        },
+        "gradeIV": {
+          "laceration": "Parenchymal disruption 25-75% of hepatic lobe",
+          "vascular": "Active bleeding extending beyond liver into peritoneum"
+        },
+        "gradeV": {
+          "laceration": "Parenchymal disruption >75% of hepatic lobe",
+          "vascular": "Juxtahepatic venous injury (retrohepatic IVC/central hepatic veins)"
+        }
+      },
+      "spleen": {
+        "gradeI": {
+          "hematoma": "Subcapsular, <10% surface area",
+          "laceration": "Capsular tear, <1 cm parenchymal depth"
+        },
+        "gradeII": {
+          "hematoma": "Subcapsular 10-50% surface area OR intraparenchymal <5 cm",
+          "laceration": "1-3 cm parenchymal depth"
+        },
+        "gradeIII": {
+          "hematoma": "Subcapsular >50% OR intraparenchymal >=5 cm OR ruptured",
+          "laceration": ">3 cm parenchymal depth"
+        },
+        "gradeIV": {
+          "laceration": "Segmental or hilar vessels with >25% devascularization",
+          "vascular": "Pseudoaneurysm, AV fistula, OR contained active bleeding"
+        },
+        "gradeV": {
+          "laceration": "Shattered spleen",
+          "vascular": "Active bleeding into peritoneum OR hilar vascular injury with complete devascularization"
+        }
+      },
+      "kidney": {
+        "gradeI": {
+          "hematoma": "Subcapsular hematoma HRD <3.5 cm OR parenchymal contusion"
+        },
+        "gradeII": {
+          "hematoma": "Perinephric hematoma HRD <3.5 cm",
+          "laceration": "<2.5 cm parenchymal depth, no collecting system involvement"
+        },
+        "gradeIII": {
+          "hematoma": "HRD >=3.5 cm",
+          "laceration": ">=2.5 cm depth OR extending into collecting system with urinary extravasation",
+          "vascular": "Pseudoaneurysm, AV fistula, or contained active bleeding",
+          "infarction": "Partial/segmental infarction"
+        },
+        "gradeIV": {
+          "laceration": "Deep laceration involving calyces, renal pelvis, or UPJ disruption OR multifragmented without active bleeding",
+          "vascular": "Segmental artery/vein injury without active bleeding OR active bleeding beyond Gerota fascia",
+          "infarction": "Segmental infarction without active bleeding"
+        },
+        "gradeV": {
+          "laceration": "Shattered/multifragmented kidney WITH active bleeding",
+          "vascular": "Main renal artery or vein laceration/transection with active bleeding",
+          "infarction": "Complete kidney infarction with active bleeding"
+        }
+      }
+    }
+  }
+}

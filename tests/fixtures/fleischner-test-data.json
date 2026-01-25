@@ -1,0 +1,880 @@
+{
+  "calculator": "Fleischner Society Guidelines (2017)",
+  "description": "Comprehensive test cases for pulmonary nodule management recommendations covering solid nodules, ground-glass nodules, and part-solid nodules with all size ranges and risk stratification",
+  "primaryReference": "MacMahon H, et al. Guidelines for Management of Incidental Pulmonary Nodules Detected on CT Images: From the Fleischner Society 2017. Radiology. 2017;284(1):228-243.",
+  "testCases": [
+    {
+      "testName": "Solid Single <6mm Low Risk - No Follow-up",
+      "category": "Solid Nodules",
+      "subcategory": "Single <6mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "4",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "No routine follow-up",
+        "Follow-up Interval": "None required",
+        "Rationale": "Very low probability of malignancy (<1%) for nodules <6mm in low-risk patients",
+        "Nodule Characteristics": "Solid, single, 4mm",
+        "Risk Assessment": "Low risk"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as solid. Step 2: Single nodule. Step 3: Size 4mm is <6mm threshold. Step 4: Low risk patient. Step 5: Per Fleischner 2017 Table 1, no routine follow-up recommended.",
+      "medicalReference": "Fleischner 2017, Table 1: Solid nodules - Single <6mm, Low risk"
+    },
+    {
+      "testName": "Solid Single <6mm High Risk - Optional Follow-up",
+      "category": "Solid Nodules",
+      "subcategory": "Single <6mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "5",
+        "risk_level": "high",
+        "smoking": "current",
+        "upper_lobe": true,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "Optional CT at 12 months",
+        "Follow-up Interval": "12 months (optional)",
+        "Rationale": "Low-risk morphology but high-risk patient; optional follow-up may be considered",
+        "Nodule Characteristics": "Solid, single, 5mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Current smoker, Upper lobe location"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as solid. Step 2: Single nodule. Step 3: Size 5mm is <6mm threshold. Step 4: High risk due to current smoker + upper lobe location. Step 5: Per Fleischner 2017, optional 12-month follow-up for high-risk patients.",
+      "medicalReference": "Fleischner 2017, Table 1: Solid nodules - Single <6mm, High risk"
+    },
+    {
+      "testName": "Solid Single 6-8mm Low Risk - Single Follow-up",
+      "category": "Solid Nodules",
+      "subcategory": "Single 6-8mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "7",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 6-12 months",
+        "Follow-up Interval": "6-12 months",
+        "Rationale": "Intermediate probability; single follow-up usually sufficient for low-risk patients",
+        "Nodule Characteristics": "Solid, single, 7mm",
+        "Risk Assessment": "Low risk"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as solid. Step 2: Single nodule. Step 3: Size 7mm falls in 6-8mm range. Step 4: Low risk patient. Step 5: Per Fleischner 2017 Table 1, CT at 6-12 months.",
+      "medicalReference": "Fleischner 2017, Table 1: Solid nodules - Single 6-8mm, Low risk"
+    },
+    {
+      "testName": "Solid Single 6-8mm High Risk - Two Follow-ups",
+      "category": "Solid Nodules",
+      "subcategory": "Single 6-8mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "7",
+        "risk_level": "high",
+        "smoking": "former",
+        "upper_lobe": false,
+        "spiculated": true,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 6-12 months, then CT at 18-24 months",
+        "Follow-up Interval": "6-12 months, then 18-24 months",
+        "Rationale": "Intermediate probability; two follow-up scans recommended for high-risk patients",
+        "Nodule Characteristics": "Solid, single, 7mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Former smoker, Spiculated/irregular margins"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as solid. Step 2: Single nodule. Step 3: Size 7mm falls in 6-8mm range. Step 4: High risk due to former smoker + spiculated margins. Step 5: Per Fleischner 2017 Table 1, CT at 6-12 months, then 18-24 months.",
+      "medicalReference": "Fleischner 2017, Table 1: Solid nodules - Single 6-8mm, High risk"
+    },
+    {
+      "testName": "Solid Single >8mm - PET/CT or Biopsy Consideration",
+      "category": "Solid Nodules",
+      "subcategory": "Single >8mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "12",
+        "risk_level": "high",
+        "smoking": "current",
+        "upper_lobe": true,
+        "spiculated": true,
+        "family_history": true,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "Consider CT at 3 months, PET/CT, or tissue sampling",
+        "Follow-up Interval": "3 months or immediate workup",
+        "Rationale": "Higher probability of malignancy; more aggressive evaluation warranted",
+        "Nodule Characteristics": "Solid, single, 12mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Current smoker, Upper lobe location, Spiculated/irregular margins, Family history of lung cancer",
+        "Additional Notes": "Options include: short-interval CT (3 months), PET/CT, or biopsy based on probability of malignancy and patient preferences"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as solid. Step 2: Single nodule. Step 3: Size 12mm is >8mm threshold. Step 4: Multiple high-risk factors present. Step 5: Per Fleischner 2017 Table 1, consider CT at 3 months, PET/CT, or tissue sampling.",
+      "medicalReference": "Fleischner 2017, Table 1: Solid nodules - Single >8mm"
+    },
+    {
+      "testName": "Solid Single >8mm Low Risk - Still Aggressive Workup",
+      "category": "Solid Nodules",
+      "subcategory": "Single >8mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "15",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "Consider CT at 3 months, PET/CT, or tissue sampling",
+        "Follow-up Interval": "3 months or immediate workup",
+        "Rationale": "Higher probability of malignancy; more aggressive evaluation warranted",
+        "Nodule Characteristics": "Solid, single, 15mm",
+        "Risk Assessment": "Low risk",
+        "Additional Notes": "Options include: short-interval CT (3 months), PET/CT, or biopsy based on probability of malignancy and patient preferences"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as solid. Step 2: Single nodule. Step 3: Size 15mm is >8mm threshold. Step 4: Low risk patient but size alone warrants workup. Step 5: Per Fleischner 2017 Table 1, consider CT at 3 months, PET/CT, or tissue sampling regardless of risk level.",
+      "medicalReference": "Fleischner 2017, Table 1: Solid nodules - Single >8mm (same recommendation regardless of risk)"
+    },
+    {
+      "testName": "Solid Multiple <6mm Low Risk - No Follow-up",
+      "category": "Solid Nodules",
+      "subcategory": "Multiple <6mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "multiple",
+        "nodule_size": "4",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "No routine follow-up",
+        "Follow-up Interval": "None required",
+        "Rationale": "Multiple small nodules (<6mm) have very low malignancy risk",
+        "Nodule Characteristics": "Solid, multiple, 4mm",
+        "Risk Assessment": "Low risk"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as solid. Step 2: Multiple nodules. Step 3: Size 4mm (largest) is <6mm. Step 4: Low risk patient. Step 5: Per Fleischner 2017 Table 2, no routine follow-up for low-risk patients.",
+      "medicalReference": "Fleischner 2017, Table 2: Multiple solid nodules - <6mm, Low risk"
+    },
+    {
+      "testName": "Solid Multiple <6mm High Risk - Optional Follow-up",
+      "category": "Solid Nodules",
+      "subcategory": "Multiple <6mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "multiple",
+        "nodule_size": "5",
+        "risk_level": "high",
+        "smoking": "former",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": true
+      },
+      "expectedOutputs": {
+        "Recommendation": "Optional CT at 12 months",
+        "Follow-up Interval": "12 months (optional)",
+        "Rationale": "Multiple small nodules in high-risk patient; optional follow-up",
+        "Nodule Characteristics": "Solid, multiple, 5mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Former smoker, Emphysema/pulmonary fibrosis"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as solid. Step 2: Multiple nodules. Step 3: Size 5mm (largest) is <6mm. Step 4: High risk due to former smoker + emphysema. Step 5: Per Fleischner 2017 Table 2, optional 12-month follow-up.",
+      "medicalReference": "Fleischner 2017, Table 2: Multiple solid nodules - <6mm, High risk"
+    },
+    {
+      "testName": "Solid Multiple >=6mm - Standard Follow-up",
+      "category": "Solid Nodules",
+      "subcategory": "Multiple >=6mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "multiple",
+        "nodule_size": "8",
+        "risk_level": "high",
+        "smoking": "current",
+        "upper_lobe": true,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 3-6 months, then CT at 18-24 months",
+        "Follow-up Interval": "3-6 months, then 18-24 months",
+        "Rationale": "Multiple nodules >=6mm require closer follow-up; assess for interval change",
+        "Nodule Characteristics": "Solid, multiple, 8mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Current smoker, Upper lobe location",
+        "Additional Notes": "Management based on the most suspicious nodule"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as solid. Step 2: Multiple nodules. Step 3: Size 8mm (largest) is >=6mm. Step 4: High risk patient. Step 5: Per Fleischner 2017 Table 2, CT at 3-6 months, then 18-24 months.",
+      "medicalReference": "Fleischner 2017, Table 2: Multiple solid nodules - >=6mm"
+    },
+    {
+      "testName": "Ground-Glass Single <6mm - No Follow-up",
+      "category": "Ground-Glass Nodules",
+      "subcategory": "Single <6mm",
+      "inputs": {
+        "nodule_type": "ground_glass",
+        "nodule_count": "single",
+        "nodule_size": "4",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "No routine follow-up",
+        "Follow-up Interval": "None required",
+        "Rationale": "Pure ground-glass nodules <6mm rarely progress; follow-up not routinely recommended",
+        "Nodule Characteristics": "Ground-glass, single, 4mm",
+        "Risk Assessment": "Low risk",
+        "Additional Notes": "Pure GGN should be measured using lung window settings"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as ground-glass (pure GGN). Step 2: Single nodule. Step 3: Size 4mm is <6mm. Step 4: Per Fleischner 2017 Table 3, no routine follow-up for GGN <6mm.",
+      "medicalReference": "Fleischner 2017, Table 3: Subsolid nodules - GGN <6mm"
+    },
+    {
+      "testName": "Ground-Glass Single >=6mm - Long-term Surveillance",
+      "category": "Ground-Glass Nodules",
+      "subcategory": "Single >=6mm",
+      "inputs": {
+        "nodule_type": "ground_glass",
+        "nodule_count": "single",
+        "nodule_size": "8",
+        "risk_level": "high",
+        "smoking": "former",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 6-12 months, then CT every 2 years for 5 years",
+        "Follow-up Interval": "6-12 months, then biennial for 5 years",
+        "Rationale": "Pure GGN >=6mm may represent adenocarcinoma in situ or minimally invasive adenocarcinoma; long-term surveillance needed",
+        "Nodule Characteristics": "Ground-glass, single, 8mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Former smoker",
+        "Additional Notes": "Pure GGN should be measured using lung window settings"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as ground-glass (pure GGN). Step 2: Single nodule. Step 3: Size 8mm is >=6mm. Step 4: Per Fleischner 2017 Table 3, CT at 6-12 months, then every 2 years for 5 years total.",
+      "medicalReference": "Fleischner 2017, Table 3: Subsolid nodules - Single GGN >=6mm"
+    },
+    {
+      "testName": "Ground-Glass Multiple <6mm - No Follow-up",
+      "category": "Ground-Glass Nodules",
+      "subcategory": "Multiple <6mm",
+      "inputs": {
+        "nodule_type": "ground_glass",
+        "nodule_count": "multiple",
+        "nodule_size": "5",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "No routine follow-up",
+        "Follow-up Interval": "None required",
+        "Rationale": "Pure ground-glass nodules <6mm rarely progress; follow-up not routinely recommended",
+        "Nodule Characteristics": "Ground-glass, multiple, 5mm",
+        "Risk Assessment": "Low risk",
+        "Additional Notes": "Pure GGN should be measured using lung window settings"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as ground-glass (pure GGN). Step 2: Multiple nodules. Step 3: Size 5mm (largest) is <6mm. Step 4: Per Fleischner 2017 Table 3, no routine follow-up for GGN <6mm.",
+      "medicalReference": "Fleischner 2017, Table 3: Subsolid nodules - Multiple GGN <6mm"
+    },
+    {
+      "testName": "Ground-Glass Multiple >=6mm - Long-term Surveillance",
+      "category": "Ground-Glass Nodules",
+      "subcategory": "Multiple >=6mm",
+      "inputs": {
+        "nodule_type": "ground_glass",
+        "nodule_count": "multiple",
+        "nodule_size": "10",
+        "risk_level": "high",
+        "smoking": "current",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 3-6 months; if stable, CT at 2 years and 4 years",
+        "Follow-up Interval": "3-6 months, then 2 and 4 years",
+        "Rationale": "Multiple ground-glass nodules may represent multifocal adenocarcinoma spectrum; long-term follow-up needed",
+        "Nodule Characteristics": "Ground-glass, multiple, 10mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Current smoker",
+        "Additional Notes": "Pure GGN should be measured using lung window settings"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as ground-glass (pure GGN). Step 2: Multiple nodules. Step 3: Size 10mm (largest) is >=6mm. Step 4: Per Fleischner 2017 Table 3, CT at 3-6 months, then 2 and 4 years if stable.",
+      "medicalReference": "Fleischner 2017, Table 3: Subsolid nodules - Multiple GGN >=6mm"
+    },
+    {
+      "testName": "Part-Solid Single <6mm - No Follow-up",
+      "category": "Part-Solid Nodules",
+      "subcategory": "Single <6mm",
+      "inputs": {
+        "nodule_type": "part_solid",
+        "nodule_count": "single",
+        "nodule_size": "5",
+        "solid_component": "2",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "No routine follow-up",
+        "Follow-up Interval": "None required",
+        "Rationale": "Part-solid nodules <6mm total size have very low likelihood of invasive component",
+        "Nodule Characteristics": "Part-solid, single, 5mm",
+        "Risk Assessment": "Low risk",
+        "Solid Component": "2mm",
+        "Additional Notes": "Solid component should be measured using mediastinal window settings"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as part-solid. Step 2: Single nodule. Step 3: Total size 5mm is <6mm. Step 4: Per Fleischner 2017 Table 3, no routine follow-up for part-solid <6mm.",
+      "medicalReference": "Fleischner 2017, Table 3: Subsolid nodules - Part-solid <6mm"
+    },
+    {
+      "testName": "Part-Solid Single >=6mm Small Solid Component",
+      "category": "Part-Solid Nodules",
+      "subcategory": "Single >=6mm",
+      "inputs": {
+        "nodule_type": "part_solid",
+        "nodule_count": "single",
+        "nodule_size": "12",
+        "solid_component": "4",
+        "risk_level": "high",
+        "smoking": "former",
+        "upper_lobe": true,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 3-6 months to confirm persistence, then annual CT for 5 years",
+        "Follow-up Interval": "3-6 months, then annual for 5 years",
+        "Rationale": "Part-solid nodules have higher malignancy risk than pure GGN; solid component determines aggressiveness",
+        "Nodule Characteristics": "Part-solid, single, 12mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Former smoker, Upper lobe location",
+        "Solid Component": "4mm",
+        "Additional Notes": "Solid component <6mm (4mm): Annual CT for minimum 5 years if nodule persists; Solid component should be measured using mediastinal window settings"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as part-solid. Step 2: Single nodule. Step 3: Total size 12mm is >=6mm. Step 4: Solid component 4mm is <6mm. Step 5: Per Fleischner 2017 Table 3, CT at 3-6 months, then annual for 5 years.",
+      "medicalReference": "Fleischner 2017, Table 3: Subsolid nodules - Single part-solid >=6mm with solid <6mm"
+    },
+    {
+      "testName": "Part-Solid Single >=6mm Large Solid Component - PET/Biopsy",
+      "category": "Part-Solid Nodules",
+      "subcategory": "Single >=6mm",
+      "inputs": {
+        "nodule_type": "part_solid",
+        "nodule_count": "single",
+        "nodule_size": "18",
+        "solid_component": "8",
+        "risk_level": "high",
+        "smoking": "current",
+        "upper_lobe": true,
+        "spiculated": true,
+        "family_history": true,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 3-6 months to confirm persistence, then annual CT for 5 years",
+        "Follow-up Interval": "3-6 months, then annual for 5 years",
+        "Rationale": "Part-solid nodules have higher malignancy risk than pure GGN; solid component determines aggressiveness",
+        "Nodule Characteristics": "Part-solid, single, 18mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Current smoker, Upper lobe location, Spiculated/irregular margins, Family history of lung cancer",
+        "Solid Component": "8mm",
+        "Additional Notes": "Solid component >=6mm (8mm): Consider PET/CT or biopsy if persistent; Solid component should be measured using mediastinal window settings"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as part-solid. Step 2: Single nodule. Step 3: Total size 18mm is >=6mm. Step 4: Solid component 8mm is >=6mm. Step 5: Per Fleischner 2017 Table 3, consider PET/CT or biopsy if persistent.",
+      "medicalReference": "Fleischner 2017, Table 3: Subsolid nodules - Single part-solid >=6mm with solid >=6mm"
+    },
+    {
+      "testName": "Part-Solid Multiple >=6mm",
+      "category": "Part-Solid Nodules",
+      "subcategory": "Multiple >=6mm",
+      "inputs": {
+        "nodule_type": "part_solid",
+        "nodule_count": "multiple",
+        "nodule_size": "14",
+        "solid_component": "5",
+        "risk_level": "high",
+        "smoking": "former",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": true
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 3-6 months; subsequent management based on most suspicious nodule",
+        "Follow-up Interval": "3-6 months, then based on dominant nodule",
+        "Rationale": "Multiple part-solid nodules may represent synchronous primary adenocarcinomas",
+        "Nodule Characteristics": "Part-solid, multiple, 14mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Former smoker, Emphysema/pulmonary fibrosis",
+        "Solid Component": "5mm",
+        "Additional Notes": "Solid component should be measured using mediastinal window settings"
+      },
+      "calculationSteps": "Step 1: Identify nodule type as part-solid. Step 2: Multiple nodules. Step 3: Total size 14mm (largest) is >=6mm. Step 4: Per Fleischner 2017 Table 3, CT at 3-6 months, then manage based on most suspicious nodule.",
+      "medicalReference": "Fleischner 2017, Table 3: Subsolid nodules - Multiple part-solid >=6mm"
+    },
+    {
+      "testName": "Boundary Test: Exactly 6mm Solid Single Low Risk",
+      "category": "Boundary Cases",
+      "subcategory": "Size Thresholds",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "6",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 6-12 months",
+        "Follow-up Interval": "6-12 months",
+        "Rationale": "Intermediate probability; single follow-up usually sufficient for low-risk patients",
+        "Nodule Characteristics": "Solid, single, 6mm",
+        "Risk Assessment": "Low risk"
+      },
+      "calculationSteps": "Step 1: Size 6mm falls in 6-8mm range (>=6 and <=8). Step 2: Per Fleischner 2017, 6mm is the threshold where follow-up begins for solid nodules.",
+      "medicalReference": "Fleischner 2017, Table 1: 6mm is lower bound of 6-8mm category"
+    },
+    {
+      "testName": "Boundary Test: Exactly 8mm Solid Single High Risk",
+      "category": "Boundary Cases",
+      "subcategory": "Size Thresholds",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "8",
+        "risk_level": "high",
+        "smoking": "current",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 6-12 months, then CT at 18-24 months",
+        "Follow-up Interval": "6-12 months, then 18-24 months",
+        "Rationale": "Intermediate probability; two follow-up scans recommended for high-risk patients",
+        "Nodule Characteristics": "Solid, single, 8mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Current smoker"
+      },
+      "calculationSteps": "Step 1: Size 8mm is upper bound of 6-8mm range (>=6 and <=8). Step 2: Per Fleischner 2017, 8mm still in intermediate category.",
+      "medicalReference": "Fleischner 2017, Table 1: 8mm is upper bound of 6-8mm category"
+    },
+    {
+      "testName": "Boundary Test: Just Over 8mm (8.1mm)",
+      "category": "Boundary Cases",
+      "subcategory": "Size Thresholds",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "8.1",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "Consider CT at 3 months, PET/CT, or tissue sampling",
+        "Follow-up Interval": "3 months or immediate workup",
+        "Rationale": "Higher probability of malignancy; more aggressive evaluation warranted",
+        "Nodule Characteristics": "Solid, single, 8.1mm",
+        "Risk Assessment": "Low risk",
+        "Additional Notes": "Options include: short-interval CT (3 months), PET/CT, or biopsy based on probability of malignancy and patient preferences"
+      },
+      "calculationSteps": "Step 1: Size 8.1mm is >8mm threshold. Step 2: Per Fleischner 2017, nodules >8mm warrant more aggressive workup.",
+      "medicalReference": "Fleischner 2017, Table 1: >8mm requires more aggressive approach"
+    },
+    {
+      "testName": "Boundary Test: Just Under 6mm (5.9mm)",
+      "category": "Boundary Cases",
+      "subcategory": "Size Thresholds",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "5.9",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "No routine follow-up",
+        "Follow-up Interval": "None required",
+        "Rationale": "Very low probability of malignancy (<1%) for nodules <6mm in low-risk patients",
+        "Nodule Characteristics": "Solid, single, 5.9mm",
+        "Risk Assessment": "Low risk"
+      },
+      "calculationSteps": "Step 1: Size 5.9mm is <6mm threshold. Step 2: Per Fleischner 2017, nodules <6mm in low-risk patients do not require follow-up.",
+      "medicalReference": "Fleischner 2017, Table 1: <6mm category"
+    },
+    {
+      "testName": "Risk Factor Inference: No Explicit Risk Level, All Factors Present",
+      "category": "Risk Factor Testing",
+      "subcategory": "Automatic Risk Inference",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "7",
+        "risk_level": "",
+        "smoking": "current",
+        "upper_lobe": true,
+        "spiculated": true,
+        "family_history": true,
+        "emphysema": true
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 6-12 months, then CT at 18-24 months",
+        "Follow-up Interval": "6-12 months, then 18-24 months",
+        "Rationale": "Intermediate probability; two follow-up scans recommended for high-risk patients",
+        "Nodule Characteristics": "Solid, single, 7mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Current smoker, Upper lobe location, Spiculated/irregular margins, Family history of lung cancer, Emphysema/pulmonary fibrosis"
+      },
+      "calculationSteps": "Step 1: No explicit risk_level provided. Step 2: System infers high risk from presence of multiple risk factors. Step 3: Apply high-risk recommendation for 6-8mm solid nodule.",
+      "medicalReference": "Fleischner 2017, Risk factors section"
+    },
+    {
+      "testName": "Risk Factor Inference: No Explicit Risk Level, No Factors Present",
+      "category": "Risk Factor Testing",
+      "subcategory": "Automatic Risk Inference",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "7",
+        "risk_level": "",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 6-12 months",
+        "Follow-up Interval": "6-12 months",
+        "Rationale": "Intermediate probability; single follow-up usually sufficient for low-risk patients",
+        "Nodule Characteristics": "Solid, single, 7mm",
+        "Risk Assessment": "Low risk"
+      },
+      "calculationSteps": "Step 1: No explicit risk_level provided. Step 2: System infers low risk from absence of risk factors (never smoker, no other factors). Step 3: Apply low-risk recommendation for 6-8mm solid nodule.",
+      "medicalReference": "Fleischner 2017, Risk factors section"
+    },
+    {
+      "testName": "Large Nodule 25mm - Aggressive Workup",
+      "category": "Large Nodules",
+      "subcategory": ">8mm",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "25",
+        "risk_level": "high",
+        "smoking": "current",
+        "upper_lobe": true,
+        "spiculated": true,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "Consider CT at 3 months, PET/CT, or tissue sampling",
+        "Follow-up Interval": "3 months or immediate workup",
+        "Rationale": "Higher probability of malignancy; more aggressive evaluation warranted",
+        "Nodule Characteristics": "Solid, single, 25mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Current smoker, Upper lobe location, Spiculated/irregular margins",
+        "Additional Notes": "Options include: short-interval CT (3 months), PET/CT, or biopsy based on probability of malignancy and patient preferences"
+      },
+      "calculationSteps": "Step 1: Size 25mm is well >8mm threshold. Step 2: Multiple high-risk factors. Step 3: Per Fleischner 2017, nodules this size almost certainly require tissue diagnosis.",
+      "medicalReference": "Fleischner 2017, Table 1: >8mm category"
+    },
+    {
+      "testName": "Emphysema Only as Risk Factor",
+      "category": "Risk Factor Testing",
+      "subcategory": "Individual Risk Factors",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "5",
+        "risk_level": "",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": true
+      },
+      "expectedOutputs": {
+        "Recommendation": "Optional CT at 12 months",
+        "Follow-up Interval": "12 months (optional)",
+        "Rationale": "Low-risk morphology but high-risk patient; optional follow-up may be considered",
+        "Nodule Characteristics": "Solid, single, 5mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Emphysema/pulmonary fibrosis"
+      },
+      "calculationSteps": "Step 1: Size 5mm is <6mm. Step 2: Emphysema present makes patient high-risk. Step 3: Per Fleischner 2017, optional 12-month follow-up for high-risk patients.",
+      "medicalReference": "Fleischner 2017, Risk factors: Emphysema is independent risk factor"
+    },
+    {
+      "testName": "Family History Only as Risk Factor",
+      "category": "Risk Factor Testing",
+      "subcategory": "Individual Risk Factors",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "5",
+        "risk_level": "",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": true,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "Optional CT at 12 months",
+        "Follow-up Interval": "12 months (optional)",
+        "Rationale": "Low-risk morphology but high-risk patient; optional follow-up may be considered",
+        "Nodule Characteristics": "Solid, single, 5mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Family history of lung cancer"
+      },
+      "calculationSteps": "Step 1: Size 5mm is <6mm. Step 2: Family history present makes patient high-risk. Step 3: Per Fleischner 2017, optional 12-month follow-up for high-risk patients.",
+      "medicalReference": "Fleischner 2017, Risk factors: Family history is independent risk factor"
+    },
+    {
+      "testName": "Former Smoker Risk Inference",
+      "category": "Risk Factor Testing",
+      "subcategory": "Smoking Status",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "7",
+        "risk_level": "",
+        "smoking": "former",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 6-12 months, then CT at 18-24 months",
+        "Follow-up Interval": "6-12 months, then 18-24 months",
+        "Rationale": "Intermediate probability; two follow-up scans recommended for high-risk patients",
+        "Nodule Characteristics": "Solid, single, 7mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Former smoker"
+      },
+      "calculationSteps": "Step 1: Size 7mm in 6-8mm range. Step 2: Former smoker status infers high risk. Step 3: Per Fleischner 2017, two follow-up CTs for high-risk 6-8mm solid nodule.",
+      "medicalReference": "Fleischner 2017, Risk factors: Former smoker qualifies as high risk"
+    },
+    {
+      "testName": "Ground-Glass 20mm - Long Surveillance",
+      "category": "Ground-Glass Nodules",
+      "subcategory": "Large GGN",
+      "inputs": {
+        "nodule_type": "ground_glass",
+        "nodule_count": "single",
+        "nodule_size": "20",
+        "risk_level": "high",
+        "smoking": "current",
+        "upper_lobe": true,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "CT at 6-12 months, then CT every 2 years for 5 years",
+        "Follow-up Interval": "6-12 months, then biennial for 5 years",
+        "Rationale": "Pure GGN >=6mm may represent adenocarcinoma in situ or minimally invasive adenocarcinoma; long-term surveillance needed",
+        "Nodule Characteristics": "Ground-glass, single, 20mm",
+        "Risk Assessment": "High risk",
+        "Risk Factors Present": "Current smoker, Upper lobe location",
+        "Additional Notes": "Pure GGN should be measured using lung window settings"
+      },
+      "calculationSteps": "Step 1: Pure GGN 20mm is well >=6mm. Step 2: Per Fleischner 2017, long-term surveillance for pure GGN >=6mm. Step 3: Note that even large pure GGN often represent indolent disease.",
+      "medicalReference": "Fleischner 2017, Table 3: Pure GGN >=6mm requires long-term follow-up"
+    },
+    {
+      "testName": "Part-Solid Multiple <6mm",
+      "category": "Part-Solid Nodules",
+      "subcategory": "Multiple <6mm",
+      "inputs": {
+        "nodule_type": "part_solid",
+        "nodule_count": "multiple",
+        "nodule_size": "5",
+        "solid_component": "2",
+        "risk_level": "low",
+        "smoking": "never",
+        "upper_lobe": false,
+        "spiculated": false,
+        "family_history": false,
+        "emphysema": false
+      },
+      "expectedOutputs": {
+        "Recommendation": "No routine follow-up",
+        "Follow-up Interval": "None required",
+        "Rationale": "Part-solid nodules <6mm total size have very low likelihood of invasive component",
+        "Nodule Characteristics": "Part-solid, multiple, 5mm",
+        "Risk Assessment": "Low risk",
+        "Solid Component": "2mm",
+        "Additional Notes": "Solid component should be measured using mediastinal window settings"
+      },
+      "calculationSteps": "Step 1: Part-solid nodules, multiple. Step 2: Total size 5mm is <6mm. Step 3: Per Fleischner 2017, no routine follow-up for part-solid <6mm regardless of number.",
+      "medicalReference": "Fleischner 2017, Table 3: Part-solid <6mm"
+    },
+    {
+      "testName": "Missing Required Fields - Error",
+      "category": "Error Handling",
+      "subcategory": "Validation",
+      "inputs": {
+        "nodule_type": "",
+        "nodule_count": "",
+        "nodule_size": "",
+        "risk_level": ""
+      },
+      "expectedOutputs": {
+        "Error": "Please specify nodule type, count, and size to get follow-up recommendations."
+      },
+      "calculationSteps": "Step 1: Required fields (nodule_type, nodule_count, nodule_size) are empty. Step 2: Return validation error.",
+      "medicalReference": "N/A - Validation check"
+    },
+    {
+      "testName": "Invalid Size - Error",
+      "category": "Error Handling",
+      "subcategory": "Validation",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "-5",
+        "risk_level": "low"
+      },
+      "expectedOutputs": {
+        "Error": "Please enter a valid nodule size in millimeters."
+      },
+      "calculationSteps": "Step 1: Size -5 is invalid (negative number). Step 2: Return validation error.",
+      "medicalReference": "N/A - Validation check"
+    },
+    {
+      "testName": "Zero Size - Error",
+      "category": "Error Handling",
+      "subcategory": "Validation",
+      "inputs": {
+        "nodule_type": "solid",
+        "nodule_count": "single",
+        "nodule_size": "0",
+        "risk_level": "low"
+      },
+      "expectedOutputs": {
+        "Error": "Please enter a valid nodule size in millimeters."
+      },
+      "calculationSteps": "Step 1: Size 0 is invalid. Step 2: Return validation error.",
+      "medicalReference": "N/A - Validation check"
+    }
+  ],
+  "metadata": {
+    "calculator": "Fleischner Society Guidelines",
+    "version": "2017",
+    "totalTestCases": 30,
+    "categoryBreakdown": {
+      "solidNodules": 9,
+      "groundGlassNodules": 5,
+      "partSolidNodules": 5,
+      "boundaryCases": 4,
+      "riskFactorTesting": 5,
+      "errorHandling": 3
+    },
+    "sizeThresholds": {
+      "solid": {
+        "small": "<6mm",
+        "intermediate": "6-8mm",
+        "large": ">8mm"
+      },
+      "subsolid": {
+        "small": "<6mm",
+        "requiresFollowUp": ">=6mm"
+      }
+    },
+    "riskFactors": [
+      "Smoking history (current or former)",
+      "Family history of lung cancer",
+      "Upper lobe location",
+      "Spiculated or irregular margins",
+      "Emphysema or pulmonary fibrosis"
+    ],
+    "guidelinesScope": {
+      "applies": [
+        "Incidental nodules on CT",
+        "Patients aged >=35 years",
+        "Immunocompetent patients"
+      ],
+      "doesNotApply": [
+        "Lung cancer screening studies",
+        "Immunocompromised patients",
+        "Patients with known primary cancer"
+      ]
+    },
+    "measurementNotes": {
+      "solidNodules": "Average of long and short axis diameters on same image",
+      "groundGlassNodules": "Measure using lung window settings",
+      "partSolidSolidComponent": "Measure solid component using mediastinal window settings"
+    },
+    "followUpIntervalSummary": {
+      "noFollowUp": "Solid <6mm low risk, GGN <6mm, Part-solid <6mm",
+      "optional12Months": "Solid <6mm high risk, Multiple solid <6mm high risk",
+      "6to12Months": "Solid 6-8mm low risk, Single GGN >=6mm (initial)",
+      "6to12ThenBiennial": "Single GGN >=6mm (long-term)",
+      "6to12Then18to24": "Solid 6-8mm high risk",
+      "3to6Months": "Multiple solid >=6mm (initial), Multiple GGN >=6mm, Part-solid >=6mm (initial)",
+      "3MonthsOrWorkup": "Solid >8mm"
+    },
+    "importantCaveats": "Guidelines apply to incidental nodules in adults >=35 years. NOT for lung cancer screening, immunocompromised patients, or known malignancy."
+  }
+}

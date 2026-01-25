@@ -1,0 +1,1232 @@
+{
+  "calculator": "Khoury Catheter Selector",
+  "description": "Comprehensive test data for the Khoury Catheter Selector - an interactive microcatheter selection tool for interventional radiology and neurointerventional procedures. Tests cover embolic agent compatibility, size requirements, feature filters, and priming volume calculations.",
+  "version": "1.0",
+  "lastUpdated": "2026-01-25",
+  "catheterDatabase": {
+    "totalCatheters": 30,
+    "categories": {
+      "Balloon Occlusion": 5,
+      "General Purpose": 12,
+      "Detachable-Tip": 2,
+      "Flow-Directed": 4,
+      "Peripheral": 7
+    },
+    "manufacturers": [
+      "TerumoNeuro (MicroVention)",
+      "Embolx",
+      "Stryker",
+      "Medtronic",
+      "Balt",
+      "Terumo",
+      "Boston Scientific",
+      "Merit Medical",
+      "Sequent Medical (MicroVention)",
+      "Cerenovus (J&J)"
+    ]
+  },
+  "catheterSpecifications": [
+    {
+      "id": "scepter-c",
+      "name": "Scepter C",
+      "manufacturer": "TerumoNeuro (MicroVention)",
+      "category": "Balloon Occlusion",
+      "specs": {
+        "innerDiameter": 0.0165,
+        "outerDiameter": 0.027,
+        "workingLength": [142, 148],
+        "deadSpace": 0.44,
+        "maxInjectionPressure": 500,
+        "maxCoilDiameter": 0.0165,
+        "maxMicrosphereDiameter": 900
+      },
+      "deadSpaceOptions": [
+        { "type": "standard", "volume": 0.44, "label": "Standard" },
+        { "type": "phil", "volume": 0.23, "label": "With PHIL Adaptor" }
+      ],
+      "features": {
+        "balloonOcclusion": true,
+        "detachableTip": false,
+        "flowDirected": false,
+        "dmsoCompatible": true
+      },
+      "embolicsCompatible": {
+        "onyx18": true,
+        "onyx34": true,
+        "onyx500": false,
+        "phil25": true,
+        "phil30": true,
+        "phil35": true,
+        "squid12": true,
+        "squid18": true,
+        "squid34": false,
+        "nbca": false,
+        "coils": true,
+        "microspheres": true,
+        "y90": false
+      }
+    },
+    {
+      "id": "scepter-xc",
+      "name": "Scepter XC",
+      "manufacturer": "TerumoNeuro (MicroVention)",
+      "category": "Balloon Occlusion",
+      "specs": {
+        "innerDiameter": 0.0165,
+        "outerDiameter": 0.027,
+        "workingLength": [142, 148],
+        "deadSpace": 0.44,
+        "maxInjectionPressure": 500,
+        "maxCoilDiameter": 0.0165,
+        "maxMicrosphereDiameter": 900
+      },
+      "deadSpaceOptions": [
+        { "type": "standard", "volume": 0.44, "label": "Standard" },
+        { "type": "phil", "volume": 0.23, "label": "With PHIL Adaptor" }
+      ],
+      "features": {
+        "balloonOcclusion": true,
+        "detachableTip": false,
+        "flowDirected": false,
+        "dmsoCompatible": true
+      }
+    },
+    {
+      "id": "scepter-mini",
+      "name": "Scepter Mini",
+      "manufacturer": "TerumoNeuro (MicroVention)",
+      "category": "Balloon Occlusion",
+      "specs": {
+        "innerDiameter": 0.008,
+        "outerDiameter": 0.02,
+        "workingLength": [165],
+        "deadSpace": 0.2,
+        "maxInjectionPressure": 500,
+        "maxCoilDiameter": 0,
+        "maxMicrosphereDiameter": 500
+      },
+      "features": {
+        "balloonOcclusion": true,
+        "detachableTip": false,
+        "flowDirected": false,
+        "dmsoCompatible": true
+      }
+    },
+    {
+      "id": "sniper",
+      "name": "Sniper",
+      "manufacturer": "Embolx",
+      "category": "Balloon Occlusion",
+      "specs": {
+        "innerDiameter": 0.0165,
+        "outerDiameter": 0.027,
+        "workingLength": [110, 130, 150, 165],
+        "deadSpace": 0.4,
+        "maxInjectionPressure": 900,
+        "maxCoilDiameter": 0.0165,
+        "maxMicrosphereDiameter": 900
+      },
+      "features": {
+        "balloonOcclusion": true,
+        "detachableTip": false,
+        "flowDirected": false,
+        "dmsoCompatible": true
+      },
+      "embolicsCompatible": {
+        "y90": true
+      }
+    },
+    {
+      "id": "transform",
+      "name": "TransForm",
+      "manufacturer": "Stryker",
+      "category": "Balloon Occlusion",
+      "specs": {
+        "innerDiameter": 0.014,
+        "outerDiameter": 0.025,
+        "workingLength": [150],
+        "deadSpace": 0.3,
+        "maxInjectionPressure": 150,
+        "maxCoilDiameter": 0.014,
+        "maxMicrosphereDiameter": 0
+      },
+      "features": {
+        "balloonOcclusion": true,
+        "detachableTip": false,
+        "flowDirected": false,
+        "dmsoCompatible": false
+      },
+      "notes": "Coils only - NOT DMSO compatible"
+    },
+    {
+      "id": "headway-duo",
+      "name": "Headway Duo",
+      "manufacturer": "TerumoNeuro (MicroVention)",
+      "category": "General Purpose",
+      "specs": {
+        "innerDiameter": 0.0165,
+        "outerDiameter": 0.02,
+        "workingLength": [156, 167],
+        "deadSpace": 0.34,
+        "maxInjectionPressure": 600,
+        "maxCoilDiameter": 0.0165,
+        "maxMicrosphereDiameter": 700
+      },
+      "deadSpaceOptions": [
+        { "type": "standard", "volume": 0.34, "label": "Standard" },
+        {
+          "type": "microvention",
+          "volume": 0.18,
+          "label": "With MicroVention Adaptor (estimated)"
+        }
+      ],
+      "features": {
+        "balloonOcclusion": false,
+        "detachableTip": false,
+        "flowDirected": false,
+        "dmsoCompatible": true
+      }
+    },
+    {
+      "id": "headway-17",
+      "name": "Headway 17",
+      "manufacturer": "TerumoNeuro (MicroVention)",
+      "category": "General Purpose",
+      "specs": {
+        "innerDiameter": 0.017,
+        "outerDiameter": 0.022,
+        "workingLength": [150, 156],
+        "deadSpace": 0.41,
+        "maxInjectionPressure": 600,
+        "maxCoilDiameter": 0.017,
+        "maxMicrosphereDiameter": 700
+      },
+      "deadSpaceOptions": [
+        { "type": "standard", "volume": 0.41, "label": "Standard" },
+        {
+          "type": "microvention",
+          "volume": 0.26,
+          "label": "With MicroVention Hub Adaptor"
+        }
+      ],
+      "embolicsCompatible": {
+        "squid34": true
+      }
+    },
+    {
+      "id": "headway-21",
+      "name": "Headway 21",
+      "manufacturer": "TerumoNeuro (MicroVention)",
+      "category": "General Purpose",
+      "specs": {
+        "innerDiameter": 0.021,
+        "outerDiameter": 0.025,
+        "workingLength": [150, 156],
+        "deadSpace": 0.5,
+        "maxInjectionPressure": 600,
+        "maxCoilDiameter": 0.021,
+        "maxMicrosphereDiameter": 900
+      },
+      "embolicsCompatible": {
+        "onyx500": true,
+        "squid34": true
+      }
+    },
+    {
+      "id": "headway-27",
+      "name": "Headway 27",
+      "manufacturer": "TerumoNeuro (MicroVention)",
+      "category": "General Purpose",
+      "specs": {
+        "innerDiameter": 0.027,
+        "outerDiameter": 0.03,
+        "workingLength": [150],
+        "deadSpace": 0.6,
+        "maxInjectionPressure": 600,
+        "maxCoilDiameter": 0.027,
+        "maxMicrosphereDiameter": 900
+      },
+      "embolicsCompatible": {
+        "onyx500": true,
+        "squid34": true
+      }
+    },
+    {
+      "id": "excelsior-sl10",
+      "name": "Excelsior SL-10",
+      "manufacturer": "Stryker",
+      "category": "General Purpose",
+      "specs": {
+        "innerDiameter": 0.0165,
+        "outerDiameter": 0.022,
+        "workingLength": [150],
+        "deadSpace": 0.29,
+        "maxInjectionPressure": 600,
+        "maxCoilDiameter": 0.0165,
+        "maxMicrosphereDiameter": 700
+      },
+      "notes": "Lower dead space than Headway Duo (0.29 vs 0.34 mL)"
+    },
+    {
+      "id": "sonic",
+      "name": "Sonic",
+      "manufacturer": "TerumoNeuro (MicroVention)",
+      "category": "Detachable-Tip",
+      "specs": {
+        "innerDiameter": 0.0165,
+        "outerDiameter": 0.022,
+        "workingLength": [150, 165],
+        "deadSpace": 0.32,
+        "maxInjectionPressure": 600,
+        "maxCoilDiameter": 0,
+        "maxMicrosphereDiameter": 0
+      },
+      "deadSpaceOptions": [
+        {
+          "type": "standard",
+          "volume": 0.32,
+          "label": "Standard (without adaptor)"
+        },
+        {
+          "type": "microvention",
+          "volume": 0.24,
+          "label": "With MicroVention Adaptor"
+        }
+      ],
+      "features": {
+        "balloonOcclusion": false,
+        "detachableTip": true,
+        "flowDirected": false,
+        "dmsoCompatible": true
+      }
+    },
+    {
+      "id": "apollo",
+      "name": "Apollo",
+      "manufacturer": "Medtronic",
+      "category": "Detachable-Tip",
+      "specs": {
+        "innerDiameter": 0.013,
+        "outerDiameter": 0.019,
+        "workingLength": [165],
+        "deadSpace": 0.25,
+        "maxInjectionPressure": 150,
+        "maxCoilDiameter": 0,
+        "maxMicrosphereDiameter": 0
+      },
+      "features": {
+        "balloonOcclusion": false,
+        "detachableTip": true,
+        "flowDirected": false,
+        "dmsoCompatible": true
+      }
+    },
+    {
+      "id": "marathon",
+      "name": "Marathon",
+      "manufacturer": "Medtronic",
+      "category": "Flow-Directed",
+      "specs": {
+        "innerDiameter": 0.013,
+        "outerDiameter": 0.019,
+        "workingLength": [165],
+        "deadSpace": 0.23,
+        "maxInjectionPressure": 600,
+        "maxCoilDiameter": 0.013,
+        "maxMicrosphereDiameter": 0
+      },
+      "features": {
+        "balloonOcclusion": false,
+        "detachableTip": false,
+        "flowDirected": true,
+        "dmsoCompatible": true
+      }
+    },
+    {
+      "id": "magic-12",
+      "name": "Magic 1.2",
+      "manufacturer": "Balt",
+      "category": "Flow-Directed",
+      "specs": {
+        "innerDiameter": 0.008,
+        "outerDiameter": 0.015,
+        "workingLength": [165],
+        "deadSpace": 0.2,
+        "maxInjectionPressure": 500,
+        "maxCoilDiameter": 0,
+        "maxMicrosphereDiameter": 300
+      },
+      "features": {
+        "balloonOcclusion": false,
+        "detachableTip": false,
+        "flowDirected": true,
+        "dmsoCompatible": true
+      },
+      "notes": "First flow-directed microcatheter. For hyperselective catheterization <1mm vessels."
+    },
+    {
+      "id": "progreat-24",
+      "name": "Progreat 2.4F",
+      "manufacturer": "Terumo",
+      "category": "Peripheral",
+      "specs": {
+        "innerDiameter": 0.019,
+        "outerDiameter": 0.03,
+        "workingLength": [110, 130, 150],
+        "deadSpace": 0.6,
+        "maxInjectionPressure": 800,
+        "maxCoilDiameter": 0.018,
+        "maxMicrosphereDiameter": 500
+      },
+      "embolicsCompatible": {
+        "onyx500": true,
+        "squid34": true,
+        "y90": true
+      }
+    },
+    {
+      "id": "truselect",
+      "name": "TruSelect",
+      "manufacturer": "Boston Scientific",
+      "category": "Peripheral",
+      "specs": {
+        "innerDiameter": 0.021,
+        "outerDiameter": 0.025,
+        "workingLength": [105, 130, 155, 175],
+        "deadSpace": 0.55,
+        "maxInjectionPressure": 800,
+        "maxCoilDiameter": 0.018,
+        "maxMicrosphereDiameter": 700
+      },
+      "embolicsCompatible": {
+        "onyx500": true,
+        "squid34": true,
+        "y90": true
+      },
+      "notes": "First 175cm microcatheter"
+    },
+    {
+      "id": "direxion-21",
+      "name": "Direxion 21",
+      "manufacturer": "Boston Scientific",
+      "category": "Peripheral",
+      "specs": {
+        "innerDiameter": 0.021,
+        "outerDiameter": 0.026,
+        "workingLength": [130],
+        "deadSpace": 0.52,
+        "maxInjectionPressure": 1200,
+        "maxCoilDiameter": 0.021,
+        "maxMicrosphereDiameter": 900
+      },
+      "embolicsCompatible": {
+        "onyx500": true,
+        "squid34": true,
+        "y90": true
+      },
+      "notes": "First nitinol microcatheter. Power injections up to 1200 psi."
+    }
+  ],
+  "testCases": [
+    {
+      "id": "filter-onyx18-basic",
+      "name": "Filter by Onyx 18 - Basic liquid embolic",
+      "category": "Embolic Agent Filtering",
+      "description": "Onyx 18 is the lowest viscosity Onyx, compatible with most DMSO-compatible catheters",
+      "inputs": {
+        "emboilcAgent": "onyx18",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 28,
+        "shouldInclude": [
+          "scepter-c",
+          "scepter-xc",
+          "headway-duo",
+          "excelsior-sl10",
+          "marathon",
+          "sonic"
+        ],
+        "shouldExclude": ["transform"],
+        "reason": "TransForm is the only catheter not compatible with Onyx 18 (not DMSO compatible)"
+      }
+    },
+    {
+      "id": "filter-onyx500-high-viscosity",
+      "name": "Filter by Onyx 500 - High viscosity embolic",
+      "category": "Embolic Agent Filtering",
+      "description": "Onyx 500 requires larger lumen catheters (typically 0.021 inch or greater)",
+      "inputs": {
+        "emboilcAgent": "onyx500",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 15,
+        "shouldInclude": [
+          "headway-21",
+          "headway-27",
+          "excelsior-xt27",
+          "phenom-21",
+          "phenom-27",
+          "progreat-24",
+          "truselect",
+          "renegade-hiflo",
+          "direxion-21",
+          "direxion-27"
+        ],
+        "shouldExclude": [
+          "scepter-c",
+          "scepter-mini",
+          "excelsior-sl10",
+          "marathon",
+          "apollo"
+        ],
+        "reason": "Onyx 500 requires larger lumens due to high viscosity"
+      }
+    },
+    {
+      "id": "filter-nbca-glue",
+      "name": "Filter by NBCA (n-Butyl Cyanoacrylate)",
+      "category": "Embolic Agent Filtering",
+      "description": "NBCA is NOT compatible with balloon occlusion catheters",
+      "inputs": {
+        "emboilcAgent": "nbca",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 21,
+        "shouldInclude": [
+          "headway-duo",
+          "headway-17",
+          "excelsior-sl10",
+          "marathon",
+          "magic-15",
+          "magic-18"
+        ],
+        "shouldExclude": [
+          "scepter-c",
+          "scepter-xc",
+          "scepter-mini",
+          "sniper",
+          "transform",
+          "sonic",
+          "apollo"
+        ],
+        "reason": "Balloon occlusion catheters are contraindicated with NBCA"
+      }
+    },
+    {
+      "id": "filter-y90-radioembolization",
+      "name": "Filter by Y-90 Microspheres",
+      "category": "Embolic Agent Filtering",
+      "description": "Y-90 is typically delivered through peripheral microcatheters",
+      "inputs": {
+        "emboilcAgent": "y90",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 8,
+        "shouldInclude": [
+          "sniper",
+          "progreat-24",
+          "truselect",
+          "maestro",
+          "renegade-hiflo",
+          "direxion-21",
+          "direxion-27"
+        ],
+        "shouldExclude": [
+          "scepter-c",
+          "headway-duo",
+          "excelsior-sl10",
+          "marathon",
+          "phenom-21"
+        ],
+        "reason": "Y-90 is primarily used in peripheral/hepatic embolization"
+      }
+    },
+    {
+      "id": "filter-coils-only",
+      "name": "Filter by Coils - All coil-compatible catheters",
+      "category": "Embolic Agent Filtering",
+      "description": "Test filtering for coil delivery compatibility",
+      "inputs": {
+        "emboilcAgent": "coils",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 24,
+        "shouldInclude": [
+          "scepter-c",
+          "transform",
+          "headway-duo",
+          "excelsior-sl10",
+          "marathon"
+        ],
+        "shouldExclude": [
+          "scepter-mini",
+          "sonic",
+          "apollo",
+          "magic-12",
+          "magic-15",
+          "magic-18"
+        ],
+        "reason": "Detachable-tip and flow-directed catheters typically do not deliver coils"
+      }
+    },
+    {
+      "id": "filter-coil-size-0165",
+      "name": "Filter by Coil Size 0.0165 inch",
+      "category": "Coil Size Filtering",
+      "description": "Standard coil size requiring ID >= 0.0165 inch",
+      "inputs": {
+        "emboilcAgent": "",
+        "coilSize": "0.0165",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 20,
+        "shouldInclude": [
+          "scepter-c",
+          "sniper",
+          "headway-duo",
+          "headway-17",
+          "headway-21",
+          "headway-27",
+          "excelsior-sl10",
+          "excelsior-xt27"
+        ],
+        "shouldExclude": [
+          "scepter-mini",
+          "transform",
+          "marathon",
+          "magic-12",
+          "magic-15"
+        ],
+        "reason": "Catheters with maxCoilDiameter >= 0.0165 inch"
+      }
+    },
+    {
+      "id": "filter-coil-size-021",
+      "name": "Filter by Coil Size 0.021 inch",
+      "category": "Coil Size Filtering",
+      "description": "Large coil size requiring ID >= 0.021 inch",
+      "inputs": {
+        "emboilcAgent": "",
+        "coilSize": "0.021",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 12,
+        "shouldInclude": [
+          "headway-21",
+          "headway-27",
+          "excelsior-xt27",
+          "via-27",
+          "phenom-21",
+          "phenom-27",
+          "marksman",
+          "rebar-18",
+          "trevo-trak21",
+          "prowler-select-plus",
+          "direxion-21",
+          "direxion-27"
+        ],
+        "shouldExclude": [
+          "scepter-c",
+          "headway-duo",
+          "excelsior-sl10",
+          "marathon"
+        ],
+        "reason": "Only large-lumen catheters support 0.021 inch coils"
+      }
+    },
+    {
+      "id": "filter-microsphere-300",
+      "name": "Filter by Microsphere Size 300 microns",
+      "category": "Microsphere Size Filtering",
+      "description": "Small microspheres compatible with most catheters",
+      "inputs": {
+        "emboilcAgent": "",
+        "coilSize": "",
+        "microsphereSize": "300",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 24,
+        "shouldInclude": [
+          "scepter-c",
+          "scepter-mini",
+          "magic-12",
+          "headway-duo"
+        ],
+        "shouldExclude": ["transform", "sonic", "apollo", "marathon"],
+        "reason": "Microspheres require appropriate lumen size and are not for detachable-tip catheters"
+      }
+    },
+    {
+      "id": "filter-microsphere-900",
+      "name": "Filter by Microsphere Size 900 microns",
+      "category": "Microsphere Size Filtering",
+      "description": "Large microspheres requiring larger catheters",
+      "inputs": {
+        "emboilcAgent": "",
+        "coilSize": "",
+        "microsphereSize": "900",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 15,
+        "shouldInclude": [
+          "scepter-c",
+          "sniper",
+          "headway-21",
+          "headway-27",
+          "excelsior-xt27",
+          "maestro",
+          "renegade-hiflo",
+          "direxion-21"
+        ],
+        "shouldExclude": [
+          "scepter-mini",
+          "magic-12",
+          "magic-15",
+          "headway-duo"
+        ],
+        "reason": "Only catheters with maxMicrosphereDiameter >= 900 microns"
+      }
+    },
+    {
+      "id": "filter-balloon-occlusion",
+      "name": "Filter by Balloon Occlusion Required",
+      "category": "Feature Filtering",
+      "description": "Only show balloon occlusion catheters for anti-reflux embolization",
+      "inputs": {
+        "emboilcAgent": "",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": true,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 5,
+        "shouldInclude": [
+          "scepter-c",
+          "scepter-xc",
+          "scepter-mini",
+          "sniper",
+          "transform"
+        ],
+        "shouldExclude": ["headway-duo", "sonic", "marathon", "progreat-24"],
+        "reason": "Only 5 catheters have balloon occlusion capability"
+      }
+    },
+    {
+      "id": "filter-detachable-tip",
+      "name": "Filter by Detachable Tip Required",
+      "category": "Feature Filtering",
+      "description": "Detachable-tip catheters for leaving tip in embolic cast",
+      "inputs": {
+        "emboilcAgent": "",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": true,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 2,
+        "shouldInclude": ["sonic", "apollo"],
+        "shouldExclude": ["scepter-c", "headway-duo", "marathon"],
+        "reason": "Only Sonic and Apollo have detachable tips"
+      }
+    },
+    {
+      "id": "filter-combined-onyx-balloon",
+      "name": "Combined Filter: Onyx 18 with Balloon Occlusion",
+      "category": "Combined Filtering",
+      "description": "AVM embolization with balloon protection - Onyx 18 compatible balloon catheters",
+      "inputs": {
+        "emboilcAgent": "onyx18",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": true,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 4,
+        "shouldInclude": ["scepter-c", "scepter-xc", "scepter-mini", "sniper"],
+        "shouldExclude": ["transform"],
+        "reason": "TransForm is not DMSO compatible so cannot be used with Onyx"
+      }
+    },
+    {
+      "id": "filter-search-medtronic",
+      "name": "Search by Manufacturer: Medtronic",
+      "category": "Search Filtering",
+      "description": "Test search functionality filtering by manufacturer name",
+      "inputs": {
+        "emboilcAgent": "",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": "Medtronic"
+      },
+      "expectedResults": {
+        "matchCount": 5,
+        "shouldInclude": [
+          "apollo",
+          "marathon",
+          "phenom-21",
+          "phenom-27",
+          "marksman"
+        ],
+        "reason": "All Medtronic-manufactured catheters"
+      }
+    },
+    {
+      "id": "filter-search-headway",
+      "name": "Search by Product Name: Headway",
+      "category": "Search Filtering",
+      "description": "Test search functionality filtering by product name",
+      "inputs": {
+        "emboilcAgent": "",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": "Headway"
+      },
+      "expectedResults": {
+        "matchCount": 4,
+        "shouldInclude": [
+          "headway-duo",
+          "headway-17",
+          "headway-21",
+          "headway-27"
+        ],
+        "reason": "All Headway product line catheters"
+      }
+    },
+    {
+      "id": "filter-no-results",
+      "name": "Filter Combination with No Results",
+      "category": "Edge Cases",
+      "description": "Y-90 with balloon occlusion and detachable tip - impossible combination",
+      "inputs": {
+        "emboilcAgent": "y90",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": true,
+        "needsDetachableTip": true,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "matchCount": 0,
+        "reason": "No catheter exists with both balloon occlusion AND detachable tip AND Y-90 compatibility"
+      }
+    },
+    {
+      "id": "priming-scepter-standard",
+      "name": "Priming Volume: Scepter C Standard",
+      "category": "Priming Volume Calculation",
+      "description": "Calculate priming volume for Scepter C without adaptor",
+      "inputs": {
+        "selectedCatheter": "scepter-c",
+        "selectedAdaptorType": "standard"
+      },
+      "expectedResults": {
+        "primingVolume": 0.44,
+        "unit": "mL",
+        "label": "Standard"
+      }
+    },
+    {
+      "id": "priming-scepter-phil-adaptor",
+      "name": "Priming Volume: Scepter C with PHIL Adaptor",
+      "category": "Priming Volume Calculation",
+      "description": "Calculate reduced priming volume with PHIL adaptor (48% reduction)",
+      "inputs": {
+        "selectedCatheter": "scepter-c",
+        "selectedAdaptorType": "phil"
+      },
+      "expectedResults": {
+        "primingVolume": 0.23,
+        "unit": "mL",
+        "label": "With PHIL Adaptor",
+        "percentReduction": 47.7
+      }
+    },
+    {
+      "id": "priming-headway17-microvention",
+      "name": "Priming Volume: Headway 17 with MicroVention Hub Adaptor",
+      "category": "Priming Volume Calculation",
+      "description": "Calculate reduced priming volume with MicroVention adaptor (37% reduction)",
+      "inputs": {
+        "selectedCatheter": "headway-17",
+        "selectedAdaptorType": "microvention"
+      },
+      "expectedResults": {
+        "primingVolume": 0.26,
+        "unit": "mL",
+        "label": "With MicroVention Hub Adaptor",
+        "percentReduction": 36.6
+      }
+    },
+    {
+      "id": "priming-sonic-adaptor",
+      "name": "Priming Volume: Sonic with MicroVention Adaptor",
+      "category": "Priming Volume Calculation",
+      "description": "Calculate priming volume for detachable-tip catheter",
+      "inputs": {
+        "selectedCatheter": "sonic",
+        "selectedAdaptorType": "microvention"
+      },
+      "expectedResults": {
+        "primingVolume": 0.24,
+        "unit": "mL",
+        "label": "With MicroVention Adaptor",
+        "percentReduction": 25.0
+      }
+    },
+    {
+      "id": "priming-marathon-no-adaptor",
+      "name": "Priming Volume: Marathon (No Adaptor Options)",
+      "category": "Priming Volume Calculation",
+      "description": "Catheter with single dead space option",
+      "inputs": {
+        "selectedCatheter": "marathon",
+        "selectedAdaptorType": "standard"
+      },
+      "expectedResults": {
+        "primingVolume": 0.23,
+        "unit": "mL",
+        "label": "Standard",
+        "hasMultipleOptions": false
+      }
+    },
+    {
+      "id": "clinical-avm-embolization",
+      "name": "Clinical Scenario: AVM Embolization with Onyx",
+      "category": "Clinical Scenarios",
+      "description": "Select catheter for brain AVM embolization using Onyx 18 with balloon protection",
+      "clinicalContext": "26-year-old with right parietal AVM requiring embolization prior to radiosurgery",
+      "inputs": {
+        "emboilcAgent": "onyx18",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": true,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "recommendedOptions": [
+          "scepter-c",
+          "scepter-xc",
+          "scepter-mini",
+          "sniper"
+        ],
+        "clinicalNotes": "Scepter C/XC preferred for neuro AVM. Sniper for peripheral AVMs.",
+        "primingConsideration": "Use PHIL adaptor to reduce dead space from 0.44 to 0.23 mL"
+      }
+    },
+    {
+      "id": "clinical-y90-tare",
+      "name": "Clinical Scenario: Y-90 TARE for HCC",
+      "category": "Clinical Scenarios",
+      "description": "Select catheter for Y-90 transarterial radioembolization",
+      "clinicalContext": "65-year-old with unresectable HCC requiring Y-90 radioembolization",
+      "inputs": {
+        "emboilcAgent": "y90",
+        "coilSize": "",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "recommendedOptions": [
+          "progreat-24",
+          "truselect",
+          "maestro",
+          "renegade-hiflo"
+        ],
+        "clinicalNotes": "Peripheral catheters with Y-90 compatibility. Sniper can provide balloon occlusion if needed.",
+        "pressureConsideration": "TruSelect and Maestro support up to 800 psi injection pressure"
+      }
+    },
+    {
+      "id": "clinical-pae-microspheres",
+      "name": "Clinical Scenario: PAE with Large Microspheres",
+      "category": "Clinical Scenarios",
+      "description": "Select catheter for prostate artery embolization with 500-700 micron microspheres",
+      "clinicalContext": "72-year-old with BPH undergoing PAE with 500-700 micron Embospheres",
+      "inputs": {
+        "emboilcAgent": "microspheres",
+        "coilSize": "",
+        "microsphereSize": "700",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "recommendedOptions": [
+          "headway-duo",
+          "headway-17",
+          "truselect",
+          "maestro"
+        ],
+        "clinicalNotes": "Mid-sized catheters optimal for PAE. Headway Duo widely used.",
+        "sizeLimit": "Catheters must support microspheres up to 700 microns"
+      }
+    },
+    {
+      "id": "clinical-aneurysm-coiling",
+      "name": "Clinical Scenario: Intracranial Aneurysm Coiling",
+      "category": "Clinical Scenarios",
+      "description": "Select catheter for aneurysm coiling with 0.0165 inch coils",
+      "clinicalContext": "55-year-old with 7mm MCA aneurysm for elective coiling",
+      "inputs": {
+        "emboilcAgent": "coils",
+        "coilSize": "0.0165",
+        "microsphereSize": "",
+        "needsBalloon": false,
+        "needsDetachableTip": false,
+        "searchTerm": ""
+      },
+      "expectedResults": {
+        "recommendedOptions": ["excelsior-sl10", "headway-duo", "headway-17"],
+        "clinicalNotes": "Excelsior SL-10 has lower dead space (0.29 mL). Headway Duo widely used.",
+        "balloonOption": "TransForm available for balloon-assisted coiling"
+      }
+    }
+  ],
+  "safetyWarnings": [
+    {
+      "id": "nbca-balloon-contraindication",
+      "severity": "CRITICAL",
+      "message": "NBCA (n-BCA) is NOT compatible with balloon occlusion catheters (Scepter, Sniper, TransForm)",
+      "affectedEmbolics": ["nbca"],
+      "affectedCategories": ["Balloon Occlusion"]
+    },
+    {
+      "id": "dmso-compatibility",
+      "severity": "HIGH",
+      "message": "Always verify catheter DMSO compatibility before using Onyx, PHIL, or Squid",
+      "affectedEmbolics": [
+        "onyx18",
+        "onyx34",
+        "onyx500",
+        "phil25",
+        "phil30",
+        "phil35",
+        "squid12",
+        "squid18",
+        "squid34"
+      ],
+      "incompatibleCatheters": ["transform"]
+    },
+    {
+      "id": "injection-pressure-limits",
+      "severity": "HIGH",
+      "message": "Observe maximum injection pressure limits to prevent catheter rupture",
+      "pressureRanges": {
+        "low": { "max": 150, "catheters": ["transform", "apollo"] },
+        "standard": {
+          "max": 500,
+          "catheters": ["scepter-c", "scepter-xc", "scepter-mini", "magic-12"]
+        },
+        "medium": {
+          "max": 600,
+          "catheters": [
+            "headway-duo",
+            "headway-17",
+            "headway-21",
+            "headway-27",
+            "excelsior-sl10",
+            "excelsior-xt27",
+            "sonic",
+            "marathon",
+            "phenom-21",
+            "phenom-27",
+            "marksman",
+            "rebar-18",
+            "trevo-trak21",
+            "prowler-select-plus"
+          ]
+        },
+        "high": {
+          "max": 800,
+          "catheters": ["progreat-24", "truselect", "maestro", "renegade-hiflo"]
+        },
+        "veryHigh": { "max": 900, "catheters": ["sniper"] },
+        "maximum": { "max": 1200, "catheters": ["direxion-21", "direxion-27"] }
+      }
+    },
+    {
+      "id": "dead-space-verification",
+      "severity": "MEDIUM",
+      "message": "Dead space values may be estimated - verify with manufacturer IFU before clinical use"
+    }
+  ],
+  "primingInstructions": [
+    {
+      "step": 1,
+      "instruction": "Flush microcatheter with sterile saline (5 mL recommended)"
+    },
+    {
+      "step": 2,
+      "instruction": "Fill dead space with DMSO or manufacturer-specified solvent"
+    },
+    {
+      "step": 3,
+      "instruction": "Use calculated priming volume for selected catheter"
+    },
+    {
+      "step": 4,
+      "instruction": "Slowly inject liquid embolic under fluoroscopic guidance"
+    },
+    {
+      "step": 5,
+      "instruction": "Follow manufacturer IFU for injection rate and technique"
+    }
+  ],
+  "embolicAgentReference": {
+    "onyx": {
+      "manufacturer": "Medtronic",
+      "variants": {
+        "onyx18": {
+          "viscosity": "low",
+          "cStokes": 18,
+          "useCase": "Small feeding vessels, AVMs"
+        },
+        "onyx34": {
+          "viscosity": "medium",
+          "cStokes": 34,
+          "useCase": "Standard AVM embolization"
+        },
+        "onyx500": {
+          "viscosity": "high",
+          "cStokes": 500,
+          "useCase": "Large-vessel occlusion, fistulas"
+        }
+      },
+      "solvent": "DMSO"
+    },
+    "phil": {
+      "manufacturer": "MicroVention",
+      "variants": {
+        "phil25": { "concentration": "25%", "viscosity": "low" },
+        "phil30": { "concentration": "30%", "viscosity": "medium" },
+        "phil35": { "concentration": "35%", "viscosity": "high" }
+      },
+      "solvent": "DMSO"
+    },
+    "squid": {
+      "manufacturer": "Balt",
+      "variants": {
+        "squid12": { "viscosity": "low", "cStokes": 12 },
+        "squid18": { "viscosity": "medium", "cStokes": 18 },
+        "squid34": { "viscosity": "high", "cStokes": 34 }
+      },
+      "solvent": "DMSO"
+    },
+    "nbca": {
+      "genericName": "n-Butyl Cyanoacrylate",
+      "brandNames": ["Histoacryl", "Trufill"],
+      "solvent": "Lipiodol (for dilution)",
+      "contraindications": ["Balloon occlusion catheters"]
+    },
+    "microspheres": {
+      "types": ["Embospheres", "Bead Block", "LC Bead", "HepaSphere"],
+      "sizeRanges": ["100-300", "300-500", "500-700", "700-900", "900-1200"],
+      "unit": "microns"
+    },
+    "y90": {
+      "products": ["TheraSphere", "SIR-Spheres"],
+      "useCase": "Hepatic radioembolization",
+      "specialRequirements": "Radiation safety protocols"
+    }
+  },
+  "metadata": {
+    "totalTestCases": 25,
+    "testCategoryCounts": {
+      "Embolic Agent Filtering": 5,
+      "Coil Size Filtering": 2,
+      "Microsphere Size Filtering": 2,
+      "Feature Filtering": 2,
+      "Combined Filtering": 1,
+      "Search Filtering": 2,
+      "Edge Cases": 1,
+      "Priming Volume Calculation": 5,
+      "Clinical Scenarios": 5
+    },
+    "references": [
+      {
+        "title": "TerumoNeuro (MicroVention) - Scepter Family, Headway Portfolio, Sonic Detachable-Tip Microcatheters",
+        "url": "https://www.terumoneuro.com/"
+      },
+      {
+        "title": "Medtronic Neurovascular - Marathon Flow-Directed, Apollo Detachable-Tip, Phenom Access Catheters",
+        "url": "https://www.medtronic.com/us-en/healthcare-professionals/therapies-procedures/cardiovascular/neurovascular.html"
+      },
+      {
+        "title": "Stryker Neurovascular - Excelsior, TransForm, Trevo Microcatheters",
+        "url": "https://www.stryker.com/us/en/neurovascular.html"
+      },
+      {
+        "title": "Boston Scientific Peripheral Interventions - TruSelect, Renegade HI-FLO, Direxion Microcatheters",
+        "url": "https://www.bostonscientific.com/en-US/products/embolization.html"
+      },
+      {
+        "title": "Balt - Magic Flow-Directed Microcatheter Family",
+        "url": "https://baltgroup.com/"
+      },
+      {
+        "title": "Merit Medical - Maestro Multipurpose Microcatheter",
+        "url": "https://www.merit.com/peripheral-intervention/embolization/"
+      },
+      {
+        "title": "Terumo Interventional Systems - Progreat Peripheral Microcatheters",
+        "url": "https://www.terumois.com/"
+      },
+      {
+        "title": "Embolx - Sniper Balloon Occlusion Catheter for Pressure-Directed Therapy",
+        "url": "https://embolx.com/"
+      }
+    ]
+  }
+}

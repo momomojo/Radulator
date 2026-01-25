@@ -1,0 +1,853 @@
+{
+  "description": "Test data for AVS Cortisol (Adrenal Vein Sampling for ACTH-Independent Cushing) Calculator",
+  "references": [
+    {
+      "citation": "Young WF et al. The clinical conundrum of corticotropin-independent autonomous cortisol secretion in patients with bilateral adrenal masses. World J Surg 2008;32:856-862",
+      "doi": "10.1007/s00268-007-9332-8",
+      "pmid": "18074172"
+    },
+    {
+      "citation": "Acharya R et al. Outcomes of adrenal venous sampling in patients with bilateral adrenal masses and ACTH-independent Cushing's syndrome. World J Surg 2019;43(2):527-533",
+      "doi": "10.1007/s00268-018-4788-2",
+      "pmid": "30232569"
+    }
+  ],
+  "criteria": {
+    "epinephrineValidation": {
+      "threshold": 100,
+      "unit": "pg/mL",
+      "description": "AV epinephrine must exceed IVC epinephrine by >100 pg/mL to confirm successful cannulation"
+    },
+    "avPvRatioThresholds": {
+      "dominantSide": {
+        "threshold": 6.5,
+        "operator": ">",
+        "description": "AV/PV cortisol ratio >6.5 indicates cortisol-secreting adenoma"
+      },
+      "contralateralSide": {
+        "threshold": 3.3,
+        "operator": "<=",
+        "description": "AV/PV cortisol ratio <=3.3 on contralateral side confirms suppression"
+      }
+    },
+    "clrThresholds": {
+      "unilateralDisease": {
+        "threshold": 2.3,
+        "operator": ">=",
+        "description": "CLR >=2.3 confirms unilateral disease"
+      },
+      "bilateralHypersecretion": {
+        "threshold": 2,
+        "operator": "<=",
+        "description": "CLR <=2 suggests bilateral cortisol hypersecretion"
+      }
+    },
+    "unitConversions": {
+      "cortisol": {
+        "factor": 27.59,
+        "from": "ug/dL",
+        "to": "nmol/L",
+        "formula": "nmol/L = ug/dL * 27.59"
+      }
+    }
+  },
+  "testCases": [
+    {
+      "id": "TC001",
+      "name": "Clear Left Unilateral Adenoma - All Criteria Met",
+      "description": "Classic case of left-sided cortisol-secreting adenoma with successful bilateral cannulation and clear lateralization",
+      "category": "unilateral",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 12.0,
+        "ivcEpinephrine": 50,
+        "leftSamples": [
+          { "time": "10:30", "cortisol": 95.0, "epinephrine": 450 }
+        ],
+        "rightSamples": [
+          { "time": "10:45", "cortisol": 35.0, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 400.0,
+        "rightEpiDelta": 330.0,
+        "leftRatio": 7.917,
+        "rightRatio": 2.917,
+        "clr": 2.714,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "Left AV/PV = 95/12 = 7.917 (>6.5), Right AV/PV = 35/12 = 2.917 (<=3.3), CLR = 7.917/2.917 = 2.714 (>=2.3)"
+    },
+    {
+      "id": "TC002",
+      "name": "Clear Right Unilateral Adenoma - All Criteria Met",
+      "description": "Classic case of right-sided cortisol-secreting adenoma with successful bilateral cannulation",
+      "category": "unilateral",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 15.0,
+        "ivcEpinephrine": 40,
+        "leftSamples": [
+          { "time": "11:00", "cortisol": 42.0, "epinephrine": 320 }
+        ],
+        "rightSamples": [
+          { "time": "11:15", "cortisol": 120.0, "epinephrine": 510 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 280.0,
+        "rightEpiDelta": 470.0,
+        "leftRatio": 2.8,
+        "rightRatio": 8.0,
+        "clr": 2.857,
+        "dominantSide": "RIGHT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on RIGHT side"
+      },
+      "notes": "Right AV/PV = 120/15 = 8.0 (>6.5), Left AV/PV = 42/15 = 2.8 (<=3.3), CLR = 8.0/2.8 = 2.857 (>=2.3)"
+    },
+    {
+      "id": "TC003",
+      "name": "Bilateral Hypersecretion - Low CLR",
+      "description": "Bilateral adrenal hyperplasia with CLR <=2 indicating bilateral cortisol hypersecretion",
+      "category": "bilateral",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 18.0,
+        "ivcEpinephrine": 55,
+        "leftSamples": [
+          { "time": "09:30", "cortisol": 85.0, "epinephrine": 420 }
+        ],
+        "rightSamples": [
+          { "time": "09:45", "cortisol": 92.0, "epinephrine": 395 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 365.0,
+        "rightEpiDelta": 340.0,
+        "leftRatio": 4.722,
+        "rightRatio": 5.111,
+        "clr": 1.082,
+        "dominantSide": "RIGHT",
+        "interpretation": "Bilateral cortisol hypersecretion likely (CLR <=2)"
+      },
+      "notes": "CLR = 5.111/4.722 = 1.082 (<=2) indicates bilateral hypersecretion"
+    },
+    {
+      "id": "TC004",
+      "name": "Indeterminate Lateralization",
+      "description": "Intermediate ratios that don't meet clear unilateral criteria",
+      "category": "indeterminate",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 14.0,
+        "ivcEpinephrine": 45,
+        "leftSamples": [
+          { "time": "10:00", "cortisol": 70.0, "epinephrine": 380 }
+        ],
+        "rightSamples": [
+          { "time": "10:15", "cortisol": 55.0, "epinephrine": 350 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 335.0,
+        "rightEpiDelta": 305.0,
+        "leftRatio": 5.0,
+        "rightRatio": 3.929,
+        "clr": 1.273,
+        "dominantSide": "LEFT",
+        "interpretation": "Indeterminate lateralization"
+      },
+      "notes": "Left AV/PV = 5.0 (not >6.5), Right AV/PV = 3.929 (not <=3.3), CLR = 1.273 - doesn't meet unilateral or bilateral criteria"
+    },
+    {
+      "id": "TC005",
+      "name": "Left Cannulation Failed - Epinephrine Below Threshold",
+      "description": "Left adrenal vein cannulation failed validation - epinephrine delta <100 pg/mL",
+      "category": "cannulation_failure",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 16.0,
+        "ivcEpinephrine": 60,
+        "leftSamples": [
+          { "time": "11:30", "cortisol": 45.0, "epinephrine": 120 }
+        ],
+        "rightSamples": [
+          { "time": "11:45", "cortisol": 105.0, "epinephrine": 480 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": false,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 60.0,
+        "rightEpiDelta": 420.0,
+        "leftRatio": null,
+        "rightRatio": 6.563,
+        "clr": null,
+        "dominantSide": "INDETERMINATE",
+        "interpretation": "Cannulation unsuccessful on left side"
+      },
+      "notes": "Left Epi Delta = 120-60 = 60 pg/mL (<=100), cannulation failed"
+    },
+    {
+      "id": "TC006",
+      "name": "Right Cannulation Failed - Epinephrine Below Threshold",
+      "description": "Right adrenal vein cannulation failed validation",
+      "category": "cannulation_failure",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 13.0,
+        "ivcEpinephrine": 75,
+        "leftSamples": [
+          { "time": "14:00", "cortisol": 88.0, "epinephrine": 420 }
+        ],
+        "rightSamples": [
+          { "time": "14:15", "cortisol": 52.0, "epinephrine": 150 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": false,
+        "leftEpiDelta": 345.0,
+        "rightEpiDelta": 75.0,
+        "leftRatio": 6.769,
+        "rightRatio": null,
+        "clr": null,
+        "dominantSide": "INDETERMINATE",
+        "interpretation": "Cannulation unsuccessful on right side"
+      },
+      "notes": "Right Epi Delta = 150-75 = 75 pg/mL (<=100), cannulation failed"
+    },
+    {
+      "id": "TC007",
+      "name": "Bilateral Cannulation Failed",
+      "description": "Both adrenal vein cannulations failed epinephrine validation",
+      "category": "cannulation_failure",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 20.0,
+        "ivcEpinephrine": 80,
+        "leftSamples": [
+          { "time": "15:00", "cortisol": 55.0, "epinephrine": 160 }
+        ],
+        "rightSamples": [
+          { "time": "15:15", "cortisol": 62.0, "epinephrine": 145 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": false,
+        "rightAdrenalBlood": false,
+        "leftEpiDelta": 80.0,
+        "rightEpiDelta": 65.0,
+        "leftRatio": null,
+        "rightRatio": null,
+        "clr": null,
+        "dominantSide": "INDETERMINATE",
+        "interpretation": "Cannulation unsuccessful on both sides"
+      },
+      "notes": "Left Epi Delta = 80 (<=100), Right Epi Delta = 65 (<=100)"
+    },
+    {
+      "id": "TC008",
+      "name": "Multiple Left Samples - Averaging",
+      "description": "Two left adrenal vein samples with averaging of valid samples",
+      "category": "multi_sample",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 11.0,
+        "ivcEpinephrine": 50,
+        "leftSamples": [
+          { "time": "10:00", "cortisol": 80.0, "epinephrine": 420 },
+          { "time": "10:05", "cortisol": 90.0, "epinephrine": 450 }
+        ],
+        "rightSamples": [
+          { "time": "10:20", "cortisol": 30.0, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftAvgCort": 85.0,
+        "leftAvgEpi": 435.0,
+        "leftEpiDelta": 385.0,
+        "rightEpiDelta": 330.0,
+        "leftRatio": 7.727,
+        "rightRatio": 2.727,
+        "clr": 2.833,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "Left avg cortisol = (80+90)/2 = 85, Left AV/PV = 85/11 = 7.727"
+    },
+    {
+      "id": "TC009",
+      "name": "Multiple Right Samples - Three Valid",
+      "description": "Three right adrenal vein samples all passing epinephrine validation",
+      "category": "multi_sample",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 10.0,
+        "ivcEpinephrine": 40,
+        "leftSamples": [
+          { "time": "09:00", "cortisol": 28.0, "epinephrine": 350 }
+        ],
+        "rightSamples": [
+          { "time": "09:15", "cortisol": 72.0, "epinephrine": 420 },
+          { "time": "09:20", "cortisol": 75.0, "epinephrine": 440 },
+          { "time": "09:25", "cortisol": 78.0, "epinephrine": 460 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "rightAvgCort": 75.0,
+        "rightAvgEpi": 440.0,
+        "leftEpiDelta": 310.0,
+        "rightEpiDelta": 400.0,
+        "leftRatio": 2.8,
+        "rightRatio": 7.5,
+        "clr": 2.679,
+        "dominantSide": "RIGHT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on RIGHT side"
+      },
+      "notes": "Right avg cortisol = (72+75+78)/3 = 75, Right AV/PV = 75/10 = 7.5"
+    },
+    {
+      "id": "TC010",
+      "name": "Mixed Sample Validity - Some Pass Some Fail",
+      "description": "Multiple right samples where only one passes epinephrine validation",
+      "category": "multi_sample",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 12.0,
+        "ivcEpinephrine": 55,
+        "leftSamples": [
+          { "time": "11:00", "cortisol": 35.0, "epinephrine": 320 }
+        ],
+        "rightSamples": [
+          { "time": "11:15", "cortisol": 60.0, "epinephrine": 130 },
+          { "time": "11:20", "cortisol": 95.0, "epinephrine": 480 },
+          { "time": "11:25", "cortisol": 55.0, "epinephrine": 140 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "rightAvgCort": 70.0,
+        "rightEpiDelta": 425.0,
+        "leftRatio": 2.917,
+        "rightRatio": 7.917,
+        "clr": 2.714,
+        "dominantSide": "RIGHT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on RIGHT side"
+      },
+      "notes": "Only sample 2 passes epi validation (480-55=425>100), so right ratio uses only sample 2 cortisol (95)"
+    },
+    {
+      "id": "TC011",
+      "name": "nmol/L Units - Left Adenoma",
+      "description": "Test with cortisol values in nmol/L requiring unit conversion",
+      "category": "unit_conversion",
+      "inputs": {
+        "cortUnits": "nmol/L",
+        "ivcCortisol": 331.08,
+        "ivcEpinephrine": 50,
+        "leftSamples": [
+          { "time": "10:30", "cortisol": 2621.05, "epinephrine": 450 }
+        ],
+        "rightSamples": [
+          { "time": "10:45", "cortisol": 965.585, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftRatio": 7.917,
+        "rightRatio": 2.917,
+        "clr": 2.714,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "331.08 nmol/L = 12 ug/dL, 2621.05 nmol/L = 95 ug/dL, 965.585 nmol/L = 35 ug/dL (conversion factor: 27.59)"
+    },
+    {
+      "id": "TC012",
+      "name": "nmol/L Units - Bilateral Hypersecretion",
+      "description": "Bilateral case with nmol/L cortisol units",
+      "category": "unit_conversion",
+      "inputs": {
+        "cortUnits": "nmol/L",
+        "ivcCortisol": 496.62,
+        "ivcEpinephrine": 55,
+        "leftSamples": [
+          { "time": "09:30", "cortisol": 2345.15, "epinephrine": 420 }
+        ],
+        "rightSamples": [
+          { "time": "09:45", "cortisol": 2538.28, "epinephrine": 395 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftRatio": 4.722,
+        "rightRatio": 5.111,
+        "clr": 1.082,
+        "dominantSide": "RIGHT",
+        "interpretation": "Bilateral cortisol hypersecretion likely (CLR <=2)"
+      },
+      "notes": "496.62 nmol/L = 18 ug/dL, ratios match TC003"
+    },
+    {
+      "id": "TC013",
+      "name": "Borderline CLR - Just Above 2.3",
+      "description": "CLR exactly at threshold for unilateral disease determination",
+      "category": "boundary",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 10.0,
+        "ivcEpinephrine": 45,
+        "leftSamples": [
+          { "time": "13:00", "cortisol": 69.0, "epinephrine": 400 }
+        ],
+        "rightSamples": [
+          { "time": "13:15", "cortisol": 30.0, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftRatio": 6.9,
+        "rightRatio": 3.0,
+        "clr": 2.3,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "CLR = 6.9/3.0 = 2.3 (exactly at threshold, >=2.3 criteria met)"
+    },
+    {
+      "id": "TC014",
+      "name": "Borderline CLR - Just Below 2.3",
+      "description": "CLR just below threshold - indeterminate result",
+      "category": "boundary",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 10.0,
+        "ivcEpinephrine": 45,
+        "leftSamples": [
+          { "time": "13:30", "cortisol": 68.0, "epinephrine": 400 }
+        ],
+        "rightSamples": [
+          { "time": "13:45", "cortisol": 30.0, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftRatio": 6.8,
+        "rightRatio": 3.0,
+        "clr": 2.267,
+        "dominantSide": "LEFT",
+        "interpretation": "Indeterminate lateralization"
+      },
+      "notes": "CLR = 6.8/3.0 = 2.267 (<2.3) - doesn't meet unilateral criteria"
+    },
+    {
+      "id": "TC015",
+      "name": "Borderline AV/PV - Dominant Side Just Above 6.5",
+      "description": "Left AV/PV ratio exactly at 6.5 threshold",
+      "category": "boundary",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 10.0,
+        "ivcEpinephrine": 40,
+        "leftSamples": [
+          { "time": "14:00", "cortisol": 65.1, "epinephrine": 420 }
+        ],
+        "rightSamples": [
+          { "time": "14:15", "cortisol": 28.0, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftRatio": 6.51,
+        "rightRatio": 2.8,
+        "clr": 2.325,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "Left AV/PV = 65.1/10 = 6.51 (>6.5 criteria met)"
+    },
+    {
+      "id": "TC016",
+      "name": "Borderline AV/PV - Contralateral Just Below 3.3",
+      "description": "Contralateral AV/PV ratio just at suppression threshold",
+      "category": "boundary",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 10.0,
+        "ivcEpinephrine": 40,
+        "leftSamples": [
+          { "time": "14:30", "cortisol": 75.0, "epinephrine": 420 }
+        ],
+        "rightSamples": [
+          { "time": "14:45", "cortisol": 33.0, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftRatio": 7.5,
+        "rightRatio": 3.3,
+        "clr": 2.273,
+        "dominantSide": "LEFT",
+        "interpretation": "Indeterminate lateralization"
+      },
+      "notes": "Right AV/PV = 3.3 (<=3.3 met but CLR = 2.273 < 2.3, so indeterminate)"
+    },
+    {
+      "id": "TC017",
+      "name": "Epinephrine Delta Exactly at 100",
+      "description": "Epinephrine delta equals threshold - should fail validation",
+      "category": "boundary",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 15.0,
+        "ivcEpinephrine": 100,
+        "leftSamples": [
+          { "time": "15:00", "cortisol": 80.0, "epinephrine": 200 }
+        ],
+        "rightSamples": [
+          { "time": "15:15", "cortisol": 95.0, "epinephrine": 450 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": false,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 100.0,
+        "rightEpiDelta": 350.0,
+        "leftRatio": null,
+        "rightRatio": 6.333,
+        "clr": null,
+        "dominantSide": "INDETERMINATE",
+        "interpretation": "Cannulation unsuccessful on left side"
+      },
+      "notes": "Left Epi Delta = 200-100 = 100 pg/mL (NOT >100, must be strictly greater)"
+    },
+    {
+      "id": "TC018",
+      "name": "Epinephrine Delta at 101",
+      "description": "Epinephrine delta just above threshold - should pass validation",
+      "category": "boundary",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 15.0,
+        "ivcEpinephrine": 100,
+        "leftSamples": [
+          { "time": "15:30", "cortisol": 100.0, "epinephrine": 201 }
+        ],
+        "rightSamples": [
+          { "time": "15:45", "cortisol": 40.0, "epinephrine": 450 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 101.0,
+        "rightEpiDelta": 350.0,
+        "leftRatio": 6.667,
+        "rightRatio": 2.667,
+        "clr": 2.5,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "Left Epi Delta = 201-100 = 101 pg/mL (>100, passes validation)"
+    },
+    {
+      "id": "TC019",
+      "name": "Suprarenal IVC Preferred Over Infrarenal",
+      "description": "When both IVC values provided, suprarenal should be used",
+      "category": "ivc_selection",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "infrarenalIVCCortisol": 18.0,
+        "infrarenalIVCEpinephrine": 60,
+        "suprarenalIVCCortisol": 12.0,
+        "suprarenalIVCEpinephrine": 50,
+        "leftSamples": [
+          { "time": "16:00", "cortisol": 95.0, "epinephrine": 450 }
+        ],
+        "rightSamples": [
+          { "time": "16:15", "cortisol": 35.0, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftRatio": 7.917,
+        "rightRatio": 2.917,
+        "clr": 2.714,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "Uses suprarenal IVC (12 ug/dL) not infrarenal (18 ug/dL)"
+    },
+    {
+      "id": "TC020",
+      "name": "Very High Cortisol Values",
+      "description": "Extreme cortisol values representing severely autonomous secretion",
+      "category": "extreme_values",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 25.0,
+        "ivcEpinephrine": 60,
+        "leftSamples": [
+          { "time": "09:00", "cortisol": 250.0, "epinephrine": 550 }
+        ],
+        "rightSamples": [
+          { "time": "09:15", "cortisol": 45.0, "epinephrine": 420 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 490.0,
+        "rightEpiDelta": 360.0,
+        "leftRatio": 10.0,
+        "rightRatio": 1.8,
+        "clr": 5.556,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "Very high left AV cortisol (250 ug/dL) with clear lateralization"
+    },
+    {
+      "id": "TC021",
+      "name": "Low Cortisol Values - Subclinical Cushing",
+      "description": "Lower cortisol values in subclinical Cushing syndrome",
+      "category": "subclinical",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 5.0,
+        "ivcEpinephrine": 35,
+        "leftSamples": [
+          { "time": "08:30", "cortisol": 38.0, "epinephrine": 280 }
+        ],
+        "rightSamples": [
+          { "time": "08:45", "cortisol": 14.0, "epinephrine": 260 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 245.0,
+        "rightEpiDelta": 225.0,
+        "leftRatio": 7.6,
+        "rightRatio": 2.8,
+        "clr": 2.714,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "Lower absolute values but clear lateralization ratios"
+    },
+    {
+      "id": "TC022",
+      "name": "CLR Exactly 2.0 - Bilateral Threshold",
+      "description": "CLR at bilateral hypersecretion threshold",
+      "category": "boundary",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 10.0,
+        "ivcEpinephrine": 50,
+        "leftSamples": [
+          { "time": "11:00", "cortisol": 60.0, "epinephrine": 400 }
+        ],
+        "rightSamples": [
+          { "time": "11:15", "cortisol": 30.0, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftRatio": 6.0,
+        "rightRatio": 3.0,
+        "clr": 2.0,
+        "dominantSide": "LEFT",
+        "interpretation": "Bilateral cortisol hypersecretion likely (CLR <=2)"
+      },
+      "notes": "CLR = 6/3 = 2.0 (<=2 indicates bilateral)"
+    },
+    {
+      "id": "TC023",
+      "name": "CLR at 2.1 - Between Bilateral and Unilateral",
+      "description": "CLR in the gap between bilateral (<=2) and unilateral (>=2.3) thresholds",
+      "category": "indeterminate",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 10.0,
+        "ivcEpinephrine": 50,
+        "leftSamples": [
+          { "time": "12:00", "cortisol": 63.0, "epinephrine": 400 }
+        ],
+        "rightSamples": [
+          { "time": "12:15", "cortisol": 30.0, "epinephrine": 380 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftRatio": 6.3,
+        "rightRatio": 3.0,
+        "clr": 2.1,
+        "dominantSide": "LEFT",
+        "interpretation": "Indeterminate lateralization"
+      },
+      "notes": "CLR = 2.1 (>2 but <2.3) - in indeterminate zone"
+    },
+    {
+      "id": "TC024",
+      "name": "All Four Right Samples - One Valid",
+      "description": "Maximum 4 right samples where only one passes epinephrine validation",
+      "category": "multi_sample",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 10.0,
+        "ivcEpinephrine": 80,
+        "leftSamples": [
+          { "time": "10:00", "cortisol": 25.0, "epinephrine": 350 }
+        ],
+        "rightSamples": [
+          { "time": "10:15", "cortisol": 50.0, "epinephrine": 150 },
+          { "time": "10:20", "cortisol": 55.0, "epinephrine": 165 },
+          { "time": "10:25", "cortisol": 85.0, "epinephrine": 480 },
+          { "time": "10:30", "cortisol": 48.0, "epinephrine": 170 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 270.0,
+        "rightEpiDelta": 400.0,
+        "leftRatio": 2.5,
+        "rightRatio": 8.5,
+        "clr": 3.4,
+        "dominantSide": "RIGHT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on RIGHT side"
+      },
+      "notes": "Only sample 3 (Epi 480) passes validation (480-80=400>100), uses cortisol 85"
+    },
+    {
+      "id": "TC025",
+      "name": "High IVC Epinephrine - Still Valid Cannulation",
+      "description": "Higher than typical IVC epinephrine but still achieves validation",
+      "category": "clinical_variation",
+      "inputs": {
+        "cortUnits": "ug/dL",
+        "ivcCortisol": 14.0,
+        "ivcEpinephrine": 150,
+        "leftSamples": [
+          { "time": "13:00", "cortisol": 98.0, "epinephrine": 520 }
+        ],
+        "rightSamples": [
+          { "time": "13:15", "cortisol": 38.0, "epinephrine": 480 }
+        ]
+      },
+      "expectedResults": {
+        "leftAdrenalBlood": true,
+        "rightAdrenalBlood": true,
+        "leftEpiDelta": 370.0,
+        "rightEpiDelta": 330.0,
+        "leftRatio": 7.0,
+        "rightRatio": 2.714,
+        "clr": 2.579,
+        "dominantSide": "LEFT",
+        "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+      },
+      "notes": "Higher baseline IVC Epi (150) but still valid: 520-150=370>100, 480-150=330>100"
+    }
+  ],
+  "validationFormulas": {
+    "epinephrineDelta": {
+      "formula": "AV_Epinephrine - IVC_Epinephrine",
+      "validIf": "> 100 pg/mL"
+    },
+    "avPvRatio": {
+      "formula": "AV_Cortisol / IVC_Cortisol",
+      "note": "Only calculated for samples passing epinephrine validation"
+    },
+    "clr": {
+      "formula": "max(Left_Ratio, Right_Ratio) / min(Left_Ratio, Right_Ratio)",
+      "note": "Only calculated when both sides have successful cannulation"
+    },
+    "avgCortisol": {
+      "formula": "sum(valid_sample_cortisols) / count(valid_samples)",
+      "note": "Average of samples passing epinephrine validation only"
+    },
+    "unitConversion": {
+      "cortisolToNmol": "ug/dL * 27.59 = nmol/L",
+      "cortisolToUgDl": "nmol/L / 27.59 = ug/dL"
+    }
+  },
+  "interpretationRules": {
+    "unilateralLeft": {
+      "conditions": ["leftRatio > 6.5", "rightRatio <= 3.3", "clr >= 2.3"],
+      "interpretation": "Unilateral cortisol-secreting adenoma on LEFT side"
+    },
+    "unilateralRight": {
+      "conditions": ["rightRatio > 6.5", "leftRatio <= 3.3", "clr >= 2.3"],
+      "interpretation": "Unilateral cortisol-secreting adenoma on RIGHT side"
+    },
+    "bilateral": {
+      "conditions": ["clr <= 2"],
+      "interpretation": "Bilateral cortisol hypersecretion likely"
+    },
+    "indeterminate": {
+      "conditions": ["Does not meet unilateral or bilateral criteria"],
+      "interpretation": "Indeterminate lateralization"
+    },
+    "cannulationFailed": {
+      "conditions": ["epinephrineDelta <= 100 for one or both sides"],
+      "interpretation": "Cannulation unsuccessful - ratios cannot be reliably interpreted"
+    }
+  },
+  "edgeCases": [
+    {
+      "name": "Zero IVC Cortisol",
+      "description": "Division by zero scenario - should return error or handle gracefully",
+      "inputs": {
+        "ivcCortisol": 0,
+        "ivcEpinephrine": 50,
+        "leftSamples": [{ "cortisol": 80, "epinephrine": 400 }],
+        "rightSamples": [{ "cortisol": 60, "epinephrine": 380 }]
+      },
+      "expectedBehavior": "Error or infinite ratio handling"
+    },
+    {
+      "name": "Negative Epinephrine Delta",
+      "description": "AV epinephrine lower than IVC (impossible in successful cannulation)",
+      "inputs": {
+        "ivcEpinephrine": 500,
+        "leftSamples": [{ "cortisol": 80, "epinephrine": 300 }]
+      },
+      "expectedBehavior": "Cannulation failure indicated"
+    },
+    {
+      "name": "Missing Required Data",
+      "description": "Insufficient samples for calculation",
+      "inputs": {
+        "ivcCortisol": 12,
+        "leftSamples": [],
+        "rightSamples": [{ "cortisol": 80, "epinephrine": 400 }]
+      },
+      "expectedBehavior": "Error: Insufficient data"
+    }
+  ]
+}

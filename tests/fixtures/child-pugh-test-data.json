@@ -1,0 +1,781 @@
+{
+  "calculator": "Child-Pugh Score",
+  "description": "Comprehensive test cases for Child-Pugh classification of chronic liver disease and cirrhosis, covering all classes (A, B, C), parameter scoring, and boundary conditions",
+  "scoringReference": {
+    "parameters": {
+      "bilirubin": {
+        "1point": "<2.0 mg/dL",
+        "2points": "2.0-3.0 mg/dL",
+        "3points": ">3.0 mg/dL"
+      },
+      "albumin": {
+        "1point": ">3.5 g/dL",
+        "2points": "2.8-3.5 g/dL",
+        "3points": "<2.8 g/dL"
+      },
+      "inr": {
+        "1point": "<1.7",
+        "2points": "1.7-2.2",
+        "3points": ">2.2"
+      },
+      "ascites": {
+        "1point": "None",
+        "2points": "Slight",
+        "3points": "Moderate to Severe"
+      },
+      "encephalopathy": {
+        "1point": "None",
+        "2points": "Grade 1-2 (mild)",
+        "3points": "Grade 3-4 (severe)"
+      }
+    },
+    "classification": {
+      "A": {
+        "range": "5-6 points",
+        "description": "Well-compensated disease",
+        "mortality1yr": "5-10%",
+        "surgicalRisk": "10%"
+      },
+      "B": {
+        "range": "7-9 points",
+        "description": "Significant functional compromise",
+        "mortality1yr": "15-20%",
+        "surgicalRisk": "30%"
+      },
+      "C": {
+        "range": "10-15 points",
+        "description": "Decompensated disease",
+        "mortality1yr": "45-55%",
+        "surgicalRisk": "70-80%"
+      }
+    }
+  },
+  "testCases": [
+    {
+      "name": "Class A Minimum (5 points): All optimal values",
+      "category": "Class A",
+      "description": "Best possible liver function - all parameters score 1 point each",
+      "inputs": {
+        "bilirubin": "0.8",
+        "albumin": "4.5",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "5 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "mortality1yr": "5-10%",
+        "perioperativeMortality": "10%",
+        "breakdown": {
+          "bilirubin": { "value": "0.8", "points": 1 },
+          "albumin": { "value": "4.5", "points": 1 },
+          "inr": { "value": "1.0", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Class A Maximum (6 points): One parameter elevated",
+      "category": "Class A",
+      "description": "Upper boundary of Class A - single 2-point parameter",
+      "inputs": {
+        "bilirubin": "2.5",
+        "albumin": "4.0",
+        "inr": "1.2",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "6 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "mortality1yr": "5-10%",
+        "perioperativeMortality": "10%",
+        "breakdown": {
+          "bilirubin": { "value": "2.5", "points": 2 },
+          "albumin": { "value": "4.0", "points": 1 },
+          "inr": { "value": "1.2", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Class A (6 points): Slight ascites with good labs",
+      "category": "Class A",
+      "description": "Mild clinical findings with compensated labs",
+      "inputs": {
+        "bilirubin": "1.5",
+        "albumin": "3.8",
+        "inr": "1.3",
+        "ascites": "slight",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "6 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "mortality1yr": "5-10%",
+        "perioperativeMortality": "10%",
+        "breakdown": {
+          "bilirubin": { "value": "1.5", "points": 1 },
+          "albumin": { "value": "3.8", "points": 1 },
+          "inr": { "value": "1.3", "points": 1 },
+          "ascites": { "value": "slight", "points": 2 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Class B Minimum (7 points): Transition from A to B",
+      "category": "Class B",
+      "description": "Lower boundary of Class B - two 2-point parameters",
+      "inputs": {
+        "bilirubin": "2.0",
+        "albumin": "3.5",
+        "inr": "1.7",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "7 points",
+        "childPughClass": "B",
+        "classification": "Significant functional compromise",
+        "mortality1yr": "15-20%",
+        "perioperativeMortality": "30%",
+        "breakdown": {
+          "bilirubin": { "value": "2.0", "points": 2 },
+          "albumin": { "value": "3.5", "points": 2 },
+          "inr": { "value": "1.7", "points": 2 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Class B Mid-range (8 points): Mixed decompensation",
+      "category": "Class B",
+      "description": "Moderate dysfunction across multiple parameters",
+      "inputs": {
+        "bilirubin": "2.5",
+        "albumin": "3.0",
+        "inr": "1.9",
+        "ascites": "slight",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "8 points",
+        "childPughClass": "B",
+        "classification": "Significant functional compromise",
+        "mortality1yr": "15-20%",
+        "perioperativeMortality": "30%",
+        "breakdown": {
+          "bilirubin": { "value": "2.5", "points": 2 },
+          "albumin": { "value": "3.0", "points": 2 },
+          "inr": { "value": "1.9", "points": 2 },
+          "ascites": { "value": "slight", "points": 2 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Class B Maximum (9 points): Upper boundary before C",
+      "category": "Class B",
+      "description": "Upper boundary of Class B - approaching decompensation",
+      "inputs": {
+        "bilirubin": "3.0",
+        "albumin": "2.8",
+        "inr": "2.2",
+        "ascites": "slight",
+        "encephalopathy": "grade1-2"
+      },
+      "expectedResults": {
+        "totalScore": "9 points",
+        "childPughClass": "B",
+        "classification": "Significant functional compromise",
+        "mortality1yr": "15-20%",
+        "perioperativeMortality": "30%",
+        "breakdown": {
+          "bilirubin": { "value": "3.0", "points": 2 },
+          "albumin": { "value": "2.8", "points": 2 },
+          "inr": { "value": "2.2", "points": 2 },
+          "ascites": { "value": "slight", "points": 2 },
+          "encephalopathy": { "value": "grade1-2", "points": 2 }
+        }
+      }
+    },
+    {
+      "name": "Class B (7 points): Mild encephalopathy only",
+      "category": "Class B",
+      "description": "Hepatic encephalopathy with otherwise compensated function",
+      "inputs": {
+        "bilirubin": "1.8",
+        "albumin": "3.6",
+        "inr": "1.5",
+        "ascites": "none",
+        "encephalopathy": "grade1-2"
+      },
+      "expectedResults": {
+        "totalScore": "7 points",
+        "childPughClass": "B",
+        "classification": "Significant functional compromise",
+        "mortality1yr": "15-20%",
+        "perioperativeMortality": "30%",
+        "breakdown": {
+          "bilirubin": { "value": "1.8", "points": 1 },
+          "albumin": { "value": "3.6", "points": 1 },
+          "inr": { "value": "1.5", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "grade1-2", "points": 2 }
+        }
+      }
+    },
+    {
+      "name": "Class C Minimum (10 points): Transition to decompensated",
+      "category": "Class C",
+      "description": "Lower boundary of Class C - decompensated disease begins",
+      "inputs": {
+        "bilirubin": "3.1",
+        "albumin": "2.7",
+        "inr": "2.3",
+        "ascites": "slight",
+        "encephalopathy": "grade1-2"
+      },
+      "expectedResults": {
+        "totalScore": "10 points",
+        "childPughClass": "C",
+        "classification": "Decompensated disease",
+        "mortality1yr": "45-55%",
+        "perioperativeMortality": "70-80%",
+        "breakdown": {
+          "bilirubin": { "value": "3.1", "points": 3 },
+          "albumin": { "value": "2.7", "points": 3 },
+          "inr": { "value": "2.3", "points": 3 },
+          "ascites": { "value": "slight", "points": 2 },
+          "encephalopathy": { "value": "grade1-2", "points": 2 }
+        }
+      }
+    },
+    {
+      "name": "Class C Mid-range (12 points): Severe decompensation",
+      "category": "Class C",
+      "description": "Moderate-severe decompensation with clinical manifestations",
+      "inputs": {
+        "bilirubin": "4.5",
+        "albumin": "2.5",
+        "inr": "2.5",
+        "ascites": "moderate",
+        "encephalopathy": "grade1-2"
+      },
+      "expectedResults": {
+        "totalScore": "12 points",
+        "childPughClass": "C",
+        "classification": "Decompensated disease",
+        "mortality1yr": "45-55%",
+        "perioperativeMortality": "70-80%",
+        "breakdown": {
+          "bilirubin": { "value": "4.5", "points": 3 },
+          "albumin": { "value": "2.5", "points": 3 },
+          "inr": { "value": "2.5", "points": 3 },
+          "ascites": { "value": "moderate", "points": 3 },
+          "encephalopathy": { "value": "grade1-2", "points": 2 }
+        }
+      }
+    },
+    {
+      "name": "Class C Maximum (15 points): End-stage liver disease",
+      "category": "Class C",
+      "description": "Worst possible score - all parameters at maximum",
+      "inputs": {
+        "bilirubin": "8.0",
+        "albumin": "2.0",
+        "inr": "3.5",
+        "ascites": "moderate",
+        "encephalopathy": "grade3-4"
+      },
+      "expectedResults": {
+        "totalScore": "15 points",
+        "childPughClass": "C",
+        "classification": "Decompensated disease",
+        "mortality1yr": "45-55%",
+        "perioperativeMortality": "70-80%",
+        "breakdown": {
+          "bilirubin": { "value": "8.0", "points": 3 },
+          "albumin": { "value": "2.0", "points": 3 },
+          "inr": { "value": "3.5", "points": 3 },
+          "ascites": { "value": "moderate", "points": 3 },
+          "encephalopathy": { "value": "grade3-4", "points": 3 }
+        }
+      }
+    },
+    {
+      "name": "Class C (11 points): Severe encephalopathy dominant",
+      "category": "Class C",
+      "description": "Severe hepatic encephalopathy with moderate lab abnormalities",
+      "inputs": {
+        "bilirubin": "2.5",
+        "albumin": "3.2",
+        "inr": "1.9",
+        "ascites": "moderate",
+        "encephalopathy": "grade3-4"
+      },
+      "expectedResults": {
+        "totalScore": "11 points",
+        "childPughClass": "C",
+        "classification": "Decompensated disease",
+        "mortality1yr": "45-55%",
+        "perioperativeMortality": "70-80%",
+        "breakdown": {
+          "bilirubin": { "value": "2.5", "points": 2 },
+          "albumin": { "value": "3.2", "points": 2 },
+          "inr": { "value": "1.9", "points": 2 },
+          "ascites": { "value": "moderate", "points": 3 },
+          "encephalopathy": { "value": "grade3-4", "points": 3 }
+        }
+      }
+    },
+    {
+      "name": "Boundary: Bilirubin exactly 2.0 mg/dL (2 points)",
+      "category": "Boundary Testing",
+      "description": "Bilirubin at lower threshold of 2-point range",
+      "inputs": {
+        "bilirubin": "2.0",
+        "albumin": "4.0",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "6 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "breakdown": {
+          "bilirubin": { "value": "2.0", "points": 2 },
+          "albumin": { "value": "4.0", "points": 1 },
+          "inr": { "value": "1.0", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Boundary: Bilirubin exactly 3.0 mg/dL (2 points)",
+      "category": "Boundary Testing",
+      "description": "Bilirubin at upper threshold of 2-point range",
+      "inputs": {
+        "bilirubin": "3.0",
+        "albumin": "4.0",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "6 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "breakdown": {
+          "bilirubin": { "value": "3.0", "points": 2 },
+          "albumin": { "value": "4.0", "points": 1 },
+          "inr": { "value": "1.0", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Boundary: Bilirubin 3.01 mg/dL (3 points)",
+      "category": "Boundary Testing",
+      "description": "Bilirubin just above 3.0 threshold",
+      "inputs": {
+        "bilirubin": "3.01",
+        "albumin": "4.0",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "7 points",
+        "childPughClass": "B",
+        "classification": "Significant functional compromise",
+        "breakdown": {
+          "bilirubin": { "value": "3.01", "points": 3 },
+          "albumin": { "value": "4.0", "points": 1 },
+          "inr": { "value": "1.0", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Boundary: Albumin exactly 3.5 g/dL (2 points)",
+      "category": "Boundary Testing",
+      "description": "Albumin at lower threshold of 2-point range",
+      "inputs": {
+        "bilirubin": "1.0",
+        "albumin": "3.5",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "6 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "breakdown": {
+          "bilirubin": { "value": "1.0", "points": 1 },
+          "albumin": { "value": "3.5", "points": 2 },
+          "inr": { "value": "1.0", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Boundary: Albumin exactly 2.8 g/dL (2 points)",
+      "category": "Boundary Testing",
+      "description": "Albumin at lower threshold of 2-point range",
+      "inputs": {
+        "bilirubin": "1.0",
+        "albumin": "2.8",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "6 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "breakdown": {
+          "bilirubin": { "value": "1.0", "points": 1 },
+          "albumin": { "value": "2.8", "points": 2 },
+          "inr": { "value": "1.0", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Boundary: Albumin 2.79 g/dL (3 points)",
+      "category": "Boundary Testing",
+      "description": "Albumin just below 2.8 threshold",
+      "inputs": {
+        "bilirubin": "1.0",
+        "albumin": "2.79",
+        "inr": "1.0",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "7 points",
+        "childPughClass": "B",
+        "classification": "Significant functional compromise",
+        "breakdown": {
+          "bilirubin": { "value": "1.0", "points": 1 },
+          "albumin": { "value": "2.79", "points": 3 },
+          "inr": { "value": "1.0", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Boundary: INR exactly 1.7 (2 points)",
+      "category": "Boundary Testing",
+      "description": "INR at lower threshold of 2-point range",
+      "inputs": {
+        "bilirubin": "1.0",
+        "albumin": "4.0",
+        "inr": "1.7",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "6 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "breakdown": {
+          "bilirubin": { "value": "1.0", "points": 1 },
+          "albumin": { "value": "4.0", "points": 1 },
+          "inr": { "value": "1.7", "points": 2 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Boundary: INR exactly 2.2 (2 points)",
+      "category": "Boundary Testing",
+      "description": "INR at upper threshold of 2-point range",
+      "inputs": {
+        "bilirubin": "1.0",
+        "albumin": "4.0",
+        "inr": "2.2",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "6 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "breakdown": {
+          "bilirubin": { "value": "1.0", "points": 1 },
+          "albumin": { "value": "4.0", "points": 1 },
+          "inr": { "value": "2.2", "points": 2 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Boundary: INR 2.21 (3 points)",
+      "category": "Boundary Testing",
+      "description": "INR just above 2.2 threshold",
+      "inputs": {
+        "bilirubin": "1.0",
+        "albumin": "4.0",
+        "inr": "2.21",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "7 points",
+        "childPughClass": "B",
+        "classification": "Significant functional compromise",
+        "breakdown": {
+          "bilirubin": { "value": "1.0", "points": 1 },
+          "albumin": { "value": "4.0", "points": 1 },
+          "inr": { "value": "2.21", "points": 3 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Clinical Scenario: Alcoholic cirrhosis - stable",
+      "category": "Clinical Scenarios",
+      "description": "Typical stable alcoholic cirrhosis patient",
+      "inputs": {
+        "bilirubin": "1.2",
+        "albumin": "3.3",
+        "inr": "1.4",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "6 points",
+        "childPughClass": "A",
+        "classification": "Well-compensated disease",
+        "mortality1yr": "5-10%",
+        "perioperativeMortality": "10%",
+        "breakdown": {
+          "bilirubin": { "value": "1.2", "points": 1 },
+          "albumin": { "value": "3.3", "points": 2 },
+          "inr": { "value": "1.4", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Clinical Scenario: Hepatitis C cirrhosis with portal hypertension",
+      "category": "Clinical Scenarios",
+      "description": "HCV cirrhosis with early decompensation",
+      "inputs": {
+        "bilirubin": "2.2",
+        "albumin": "3.0",
+        "inr": "1.6",
+        "ascites": "slight",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "8 points",
+        "childPughClass": "B",
+        "classification": "Significant functional compromise",
+        "mortality1yr": "15-20%",
+        "perioperativeMortality": "30%",
+        "breakdown": {
+          "bilirubin": { "value": "2.2", "points": 2 },
+          "albumin": { "value": "3.0", "points": 2 },
+          "inr": { "value": "1.6", "points": 1 },
+          "ascites": { "value": "slight", "points": 2 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Clinical Scenario: Acute-on-chronic liver failure",
+      "category": "Clinical Scenarios",
+      "description": "Acute decompensation on chronic liver disease",
+      "inputs": {
+        "bilirubin": "6.5",
+        "albumin": "2.3",
+        "inr": "2.8",
+        "ascites": "moderate",
+        "encephalopathy": "grade3-4"
+      },
+      "expectedResults": {
+        "totalScore": "15 points",
+        "childPughClass": "C",
+        "classification": "Decompensated disease",
+        "mortality1yr": "45-55%",
+        "perioperativeMortality": "70-80%",
+        "breakdown": {
+          "bilirubin": { "value": "6.5", "points": 3 },
+          "albumin": { "value": "2.3", "points": 3 },
+          "inr": { "value": "2.8", "points": 3 },
+          "ascites": { "value": "moderate", "points": 3 },
+          "encephalopathy": { "value": "grade3-4", "points": 3 }
+        }
+      }
+    },
+    {
+      "name": "Clinical Scenario: Primary biliary cholangitis",
+      "category": "Clinical Scenarios",
+      "description": "PBC with isolated hyperbilirubinemia",
+      "inputs": {
+        "bilirubin": "4.0",
+        "albumin": "3.6",
+        "inr": "1.2",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedResults": {
+        "totalScore": "7 points",
+        "childPughClass": "B",
+        "classification": "Significant functional compromise",
+        "mortality1yr": "15-20%",
+        "perioperativeMortality": "30%",
+        "breakdown": {
+          "bilirubin": { "value": "4.0", "points": 3 },
+          "albumin": { "value": "3.6", "points": 1 },
+          "inr": { "value": "1.2", "points": 1 },
+          "ascites": { "value": "none", "points": 1 },
+          "encephalopathy": { "value": "none", "points": 1 }
+        }
+      }
+    },
+    {
+      "name": "Clinical Scenario: Pre-transplant evaluation",
+      "category": "Clinical Scenarios",
+      "description": "Typical transplant candidate evaluation",
+      "inputs": {
+        "bilirubin": "3.5",
+        "albumin": "2.6",
+        "inr": "2.0",
+        "ascites": "moderate",
+        "encephalopathy": "grade1-2"
+      },
+      "expectedResults": {
+        "totalScore": "13 points",
+        "childPughClass": "C",
+        "classification": "Decompensated disease",
+        "mortality1yr": "45-55%",
+        "perioperativeMortality": "70-80%",
+        "breakdown": {
+          "bilirubin": { "value": "3.5", "points": 3 },
+          "albumin": { "value": "2.6", "points": 3 },
+          "inr": { "value": "2.0", "points": 2 },
+          "ascites": { "value": "moderate", "points": 3 },
+          "encephalopathy": { "value": "grade1-2", "points": 2 }
+        }
+      }
+    }
+  ],
+  "validationCases": [
+    {
+      "name": "Error: Missing bilirubin",
+      "category": "Input Validation",
+      "description": "Should return error for missing bilirubin",
+      "inputs": {
+        "bilirubin": "",
+        "albumin": "3.5",
+        "inr": "1.2",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedError": "Please enter a valid bilirubin value"
+    },
+    {
+      "name": "Error: Missing albumin",
+      "category": "Input Validation",
+      "description": "Should return error for missing albumin",
+      "inputs": {
+        "bilirubin": "1.5",
+        "albumin": "",
+        "inr": "1.2",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedError": "Please enter a valid albumin value"
+    },
+    {
+      "name": "Error: Missing INR",
+      "category": "Input Validation",
+      "description": "Should return error for missing INR",
+      "inputs": {
+        "bilirubin": "1.5",
+        "albumin": "3.5",
+        "inr": "",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedError": "Please enter a valid INR value"
+    },
+    {
+      "name": "Error: Missing ascites selection",
+      "category": "Input Validation",
+      "description": "Should return error for missing ascites",
+      "inputs": {
+        "bilirubin": "1.5",
+        "albumin": "3.5",
+        "inr": "1.2",
+        "ascites": null,
+        "encephalopathy": "none"
+      },
+      "expectedError": "Please select ascites status"
+    },
+    {
+      "name": "Error: Missing encephalopathy selection",
+      "category": "Input Validation",
+      "description": "Should return error for missing encephalopathy",
+      "inputs": {
+        "bilirubin": "1.5",
+        "albumin": "3.5",
+        "inr": "1.2",
+        "ascites": "none",
+        "encephalopathy": null
+      },
+      "expectedError": "Please select encephalopathy grade"
+    },
+    {
+      "name": "Error: Negative bilirubin",
+      "category": "Input Validation",
+      "description": "Should return error for negative bilirubin",
+      "inputs": {
+        "bilirubin": "-1.0",
+        "albumin": "3.5",
+        "inr": "1.2",
+        "ascites": "none",
+        "encephalopathy": "none"
+      },
+      "expectedError": "Please enter a valid bilirubin value"
+    }
+  ],
+  "notes": [
+    "Child-Pugh scoring was originally developed by Child and Turcotte in 1964 for assessing surgical risk in cirrhotic patients",
+    "Modified by Pugh et al. in 1973 to include INR instead of prothrombin time",
+    "Score range: 5 (minimum) to 15 (maximum) points",
+    "Class A (5-6 points): Well-compensated, good surgical candidate",
+    "Class B (7-9 points): Significant compromise, moderate surgical risk",
+    "Class C (10-15 points): Decompensated, high surgical risk, transplant consideration",
+    "1-year survival: Class A ~95%, Class B ~80-85%, Class C ~45-55%",
+    "2-year survival: Class A ~85%, Class B ~60%, Class C ~35%",
+    "Limitations: Does not account for etiology, does not predict acute deterioration",
+    "MELD score often used alongside Child-Pugh for transplant allocation",
+    "Ascites: 'slight' = diuretic-responsive, 'moderate' = refractory or tense",
+    "Encephalopathy: Grade 1-2 = mild confusion/asterixis, Grade 3-4 = somnolent/comatose"
+  ]
+}

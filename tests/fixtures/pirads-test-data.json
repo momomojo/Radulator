@@ -1,0 +1,971 @@
+{
+  "calculator": "PI-RADS v2.1",
+  "description": "Comprehensive test cases for Prostate Imaging Reporting and Data System v2.1 calculator, covering zone-based scoring (PZ vs TZ), DCE upgrade rules, DWI upgrade rules, EPE/SVI staging, and all score combinations",
+  "references": [
+    "Turkbey B, et al. Prostate Imaging Reporting and Data System Version 2.1: 2019 Update. Eur Urol. 2019;76(3):340-351",
+    "Weinreb JC, et al. PI-RADS Prostate Imaging - Reporting and Data System: 2015, Version 2. Eur Urol. 2016;69(1):16-40",
+    "ACR PI-RADS v2.1 Document (2019)"
+  ],
+  "testCases": [
+    {
+      "testName": "PZ PI-RADS 1 - Very Low Risk",
+      "category": "Peripheral Zone - Basic Scoring",
+      "description": "Normal peripheral zone with DWI score 1 - no abnormality detected",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "",
+        "t2w_score": "1",
+        "dwi_score": "1",
+        "dce": "negative",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "1 - Very Low",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (1)",
+        "Cancer Probability": "Clinically significant cancer highly unlikely (<3%)",
+        "Biopsy Recommendation": "Biopsy not recommended",
+        "T2W Score": "1",
+        "DWI/ADC Score": "1",
+        "DCE Status": "Negative"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, so DWI is dominant sequence. Step 2: DWI score = 1. Step 3: No upgrade criteria met. Step 4: Final PI-RADS = 1.",
+      "medicalReference": "PI-RADS v2.1, Table 2 - PZ Assessment"
+    },
+    {
+      "testName": "PZ PI-RADS 2 - Low Risk",
+      "category": "Peripheral Zone - Basic Scoring",
+      "description": "Peripheral zone with DWI score 2 - linear/wedge-shaped hypointensity",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "0.8",
+        "t2w_score": "2",
+        "dwi_score": "2",
+        "dce": "negative",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "2 - Low",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (2)",
+        "Cancer Probability": "Clinically significant cancer unlikely (3-10%)",
+        "Biopsy Recommendation": "Biopsy generally not recommended",
+        "T2W Score": "2",
+        "DWI/ADC Score": "2",
+        "DCE Status": "Negative",
+        "Lesion Size": "0.8 cm"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, so DWI is dominant sequence. Step 2: DWI score = 2. Step 3: No upgrade criteria met. Step 4: Final PI-RADS = 2.",
+      "medicalReference": "PI-RADS v2.1, Table 2 - PZ Assessment"
+    },
+    {
+      "testName": "PZ PI-RADS 3 - Intermediate (No DCE Upgrade)",
+      "category": "Peripheral Zone - Basic Scoring",
+      "description": "Peripheral zone with DWI score 3 and negative DCE - remains PI-RADS 3",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.0",
+        "t2w_score": "3",
+        "dwi_score": "3",
+        "dce": "negative",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "3 - Intermediate",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (3)",
+        "Cancer Probability": "Equivocal - clinically significant cancer possible (10-20%)",
+        "Biopsy Recommendation": "Individualized decision based on PSA density, prior biopsy, clinical factors",
+        "T2W Score": "3",
+        "DWI/ADC Score": "3",
+        "DCE Status": "Negative",
+        "Lesion Size": "1 cm"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, so DWI is dominant sequence. Step 2: DWI score = 3. Step 3: DCE is negative, so no upgrade. Step 4: Final PI-RADS = 3.",
+      "medicalReference": "PI-RADS v2.1, Figure 8 - PZ DCE Upgrade Rule"
+    },
+    {
+      "testName": "PZ PI-RADS 3 to 4 - DCE Upgrade Rule",
+      "category": "Peripheral Zone - DCE Upgrade",
+      "description": "Critical PZ upgrade rule: DWI 3 + positive DCE = PI-RADS 4",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.2",
+        "t2w_score": "3",
+        "dwi_score": "3",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "DWI score 3 upgraded to PI-RADS 4 due to positive DCE",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "3",
+        "DWI/ADC Score": "3",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.2 cm"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, so DWI is dominant sequence. Step 2: DWI score = 3. Step 3: DCE is positive, triggering upgrade from 3 to 4. Step 4: Final PI-RADS = 4.",
+      "medicalReference": "PI-RADS v2.1, Figure 8 - PZ DCE Upgrade Rule: 'In PZ, positive DCE upgrades DWI 3 to PI-RADS 4'"
+    },
+    {
+      "testName": "PZ PI-RADS 4 - DWI Dominant (High Risk)",
+      "category": "Peripheral Zone - Basic Scoring",
+      "description": "Peripheral zone with DWI score 4 - focal markedly hypointense lesion <1.5cm",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.3",
+        "t2w_score": "3",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (4)",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "3",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.3 cm"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, so DWI is dominant sequence. Step 2: DWI score = 4 (markedly hypointense, <1.5cm). Step 3: Final PI-RADS = 4 (DCE upgrade only applies to DWI 3).",
+      "medicalReference": "PI-RADS v2.1, Table 2 - PZ Assessment"
+    },
+    {
+      "testName": "PZ PI-RADS 5 - Very High Risk (DWI 5)",
+      "category": "Peripheral Zone - Basic Scoring",
+      "description": "Peripheral zone with DWI score 5 - markedly hypointense lesion >=1.5cm",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.8",
+        "t2w_score": "4",
+        "dwi_score": "5",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (5)",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "4",
+        "DWI/ADC Score": "5",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.8 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, so DWI is dominant sequence. Step 2: DWI score = 5 (markedly hypointense, >=1.5cm). Step 3: Final PI-RADS = 5.",
+      "medicalReference": "PI-RADS v2.1, Table 2 - PZ Assessment, size threshold 1.5cm"
+    },
+    {
+      "testName": "PZ PI-RADS 4 - DCE Not Performed",
+      "category": "Peripheral Zone - DCE Variations",
+      "description": "PZ with DWI 3 but DCE not performed - cannot upgrade, remains 3",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.1",
+        "t2w_score": "3",
+        "dwi_score": "3",
+        "dce": "not_performed",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "3 - Intermediate",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (3)",
+        "Cancer Probability": "Equivocal - clinically significant cancer possible (10-20%)",
+        "Biopsy Recommendation": "Individualized decision based on PSA density, prior biopsy, clinical factors",
+        "T2W Score": "3",
+        "DWI/ADC Score": "3",
+        "Clinical Notes": "DCE not performed - cannot assess for upgrade from PI-RADS 3 to 4; Consider PSA density (>=0.15 ng/mL/cc favors biopsy), prior negative biopsy history, family history"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, so DWI is dominant sequence. Step 2: DWI score = 3. Step 3: DCE not performed, cannot assess upgrade. Step 4: Final PI-RADS = 3 with clinical note.",
+      "medicalReference": "PI-RADS v2.1, Section on biparametric MRI (bpMRI) limitations"
+    },
+    {
+      "testName": "TZ PI-RADS 1 - Very Low Risk",
+      "category": "Transition Zone - Basic Scoring",
+      "description": "Normal transition zone with T2W score 1 - heterogeneous signal typical of BPH",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "",
+        "t2w_score": "1",
+        "dwi_score": "1",
+        "dce": "negative",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "1 - Very Low",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "PI-RADS category based on T2W score (1)",
+        "Cancer Probability": "Clinically significant cancer highly unlikely (<3%)",
+        "Biopsy Recommendation": "Biopsy not recommended",
+        "T2W Score": "1",
+        "DWI/ADC Score": "1",
+        "DCE Status": "Negative"
+      },
+      "calculationSteps": "Step 1: Zone = TZ, so T2W is dominant sequence. Step 2: T2W score = 1. Step 3: DWI (1) is not > T2W (1), no upgrade. Step 4: Final PI-RADS = 1.",
+      "medicalReference": "PI-RADS v2.1, Table 3 - TZ Assessment"
+    },
+    {
+      "testName": "TZ PI-RADS 2 - Low Risk",
+      "category": "Transition Zone - Basic Scoring",
+      "description": "Transition zone with T2W score 2 - circumscribed hypointense nodule (typical BPH)",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "1.5",
+        "t2w_score": "2",
+        "dwi_score": "2",
+        "dce": "negative",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "2 - Low",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "PI-RADS category based on T2W score (2)",
+        "Cancer Probability": "Clinically significant cancer unlikely (3-10%)",
+        "Biopsy Recommendation": "Biopsy generally not recommended",
+        "T2W Score": "2",
+        "DWI/ADC Score": "2",
+        "DCE Status": "Negative",
+        "Lesion Size": "1.5 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)"
+      },
+      "calculationSteps": "Step 1: Zone = TZ, so T2W is dominant sequence. Step 2: T2W score = 2. Step 3: DWI (2) is not > T2W (2), no upgrade. Step 4: Final PI-RADS = 2.",
+      "medicalReference": "PI-RADS v2.1, Table 3 - TZ Assessment"
+    },
+    {
+      "testName": "TZ PI-RADS 3 - Intermediate (No DWI Upgrade)",
+      "category": "Transition Zone - Basic Scoring",
+      "description": "Transition zone with T2W score 3, DWI score 3 - heterogeneous non-circumscribed",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "1.2",
+        "t2w_score": "3",
+        "dwi_score": "3",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "3 - Intermediate",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "PI-RADS category based on T2W score (3)",
+        "Cancer Probability": "Equivocal - clinically significant cancer possible (10-20%)",
+        "Biopsy Recommendation": "Individualized decision based on PSA density, prior biopsy, clinical factors",
+        "T2W Score": "3",
+        "DWI/ADC Score": "3",
+        "DCE Status": "Positive"
+      },
+      "calculationSteps": "Step 1: Zone = TZ, so T2W is dominant sequence. Step 2: T2W score = 3. Step 3: DWI (3) is not > T2W (3), no upgrade. Note: DCE does NOT upgrade TZ lesions. Step 4: Final PI-RADS = 3.",
+      "medicalReference": "PI-RADS v2.1, Figure 9 - TZ DWI Upgrade Rule (DCE not applicable for TZ upgrade)"
+    },
+    {
+      "testName": "TZ PI-RADS 3 to 4 - DWI Upgrade Rule",
+      "category": "Transition Zone - DWI Upgrade",
+      "description": "Critical TZ upgrade rule: T2W 3 + DWI >=4 = PI-RADS 4",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "1.3",
+        "t2w_score": "3",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "T2W score 3 upgraded to PI-RADS 4 due to DWI score 4",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "3",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Positive"
+      },
+      "calculationSteps": "Step 1: Zone = TZ, so T2W is dominant sequence. Step 2: T2W score = 3. Step 3: DWI (4) > T2W (3), AND T2W = 3 AND DWI >= 4, so upgrade to 4. Step 4: Final PI-RADS = 4.",
+      "medicalReference": "PI-RADS v2.1, Figure 9 - TZ DWI Upgrade Rule: 'In TZ, if T2W = 3 and DWI >= 4, upgrade to PI-RADS 4'"
+    },
+    {
+      "testName": "TZ PI-RADS 3 to 4 - DWI 5 Upgrade",
+      "category": "Transition Zone - DWI Upgrade",
+      "description": "TZ with T2W 3 and DWI 5 - DWI upgrades to PI-RADS 4",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "1.6",
+        "t2w_score": "3",
+        "dwi_score": "5",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "T2W score 3 upgraded to PI-RADS 4 due to DWI score 5",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "3",
+        "DWI/ADC Score": "5",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.6 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)"
+      },
+      "calculationSteps": "Step 1: Zone = TZ, so T2W is dominant sequence. Step 2: T2W score = 3. Step 3: DWI (5) > T2W (3), AND T2W = 3 AND DWI >= 4, so upgrade to 4 (not 5, capped at 4 for this rule). Step 4: Final PI-RADS = 4.",
+      "medicalReference": "PI-RADS v2.1, Figure 9 - Note: DWI upgrade in TZ caps at category 4 for T2W 3 lesions"
+    },
+    {
+      "testName": "TZ PI-RADS 2 to 4 - DWI Override",
+      "category": "Transition Zone - DWI Upgrade",
+      "description": "TZ with low T2W (2) but high DWI (4) - DWI takes precedence",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "1.1",
+        "t2w_score": "2",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (4) which exceeds T2W score (2)",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "2",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Positive"
+      },
+      "calculationSteps": "Step 1: Zone = TZ, so T2W is dominant sequence. Step 2: T2W score = 2. Step 3: DWI (4) > T2W (2), AND T2W < 3 AND DWI >= 4, so use DWI score. Step 4: Final PI-RADS = 4.",
+      "medicalReference": "PI-RADS v2.1, Figure 9 - TZ Assessment: when DWI >> T2W and DWI >= 4, DWI score may be used"
+    },
+    {
+      "testName": "TZ PI-RADS 4 - T2W Dominant",
+      "category": "Transition Zone - Basic Scoring",
+      "description": "Transition zone with T2W score 4 - lenticular circumscribed homogeneous <1.5cm",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "1.3",
+        "t2w_score": "4",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "PI-RADS category based on T2W score (4)",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "4",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Positive"
+      },
+      "calculationSteps": "Step 1: Zone = TZ, so T2W is dominant sequence. Step 2: T2W score = 4. Step 3: DWI (4) is not > T2W (4), no upgrade needed. Step 4: Final PI-RADS = 4.",
+      "medicalReference": "PI-RADS v2.1, Table 3 - TZ Assessment"
+    },
+    {
+      "testName": "TZ PI-RADS 5 - Very High Risk",
+      "category": "Transition Zone - Basic Scoring",
+      "description": "Transition zone with T2W score 5 - same as 4 but >=1.5cm OR EPE",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "2.1",
+        "t2w_score": "5",
+        "dwi_score": "5",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "PI-RADS category based on T2W score (5)",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "5",
+        "DWI/ADC Score": "5",
+        "DCE Status": "Positive",
+        "Lesion Size": "2.1 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)"
+      },
+      "calculationSteps": "Step 1: Zone = TZ, so T2W is dominant sequence. Step 2: T2W score = 5 (>=1.5cm or EPE). Step 3: Final PI-RADS = 5.",
+      "medicalReference": "PI-RADS v2.1, Table 3 - TZ Assessment, size threshold 1.5cm"
+    },
+    {
+      "testName": "Central Zone - Uses PZ Criteria",
+      "category": "Central Zone",
+      "description": "Central zone lesion uses PZ scoring rules (DWI dominant)",
+      "inputs": {
+        "zone": "cz",
+        "lesion_size": "1.2",
+        "t2w_score": "3",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (4)",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "3",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Positive"
+      },
+      "calculationSteps": "Step 1: Zone = CZ (Central Zone), which uses PZ criteria per PI-RADS v2.1. Step 2: DWI is dominant sequence. Step 3: DWI score = 4. Step 4: Final PI-RADS = 4.",
+      "medicalReference": "PI-RADS v2.1: 'The central zone... is assessed using PZ criteria'"
+    },
+    {
+      "testName": "Central Zone - DCE Upgrade",
+      "category": "Central Zone",
+      "description": "Central zone with DWI 3 and positive DCE - upgrades like PZ",
+      "inputs": {
+        "zone": "cz",
+        "lesion_size": "0.9",
+        "t2w_score": "3",
+        "dwi_score": "3",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "DWI score 3 upgraded to PI-RADS 4 due to positive DCE",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "3",
+        "DWI/ADC Score": "3",
+        "DCE Status": "Positive"
+      },
+      "calculationSteps": "Step 1: Zone = CZ uses PZ criteria. Step 2: DWI is dominant, score = 3. Step 3: DCE positive triggers upgrade to 4. Step 4: Final PI-RADS = 4.",
+      "medicalReference": "PI-RADS v2.1: CZ uses PZ criteria including DCE upgrade rule"
+    },
+    {
+      "testName": "Anterior Fibromuscular Stroma - Uses TZ Criteria",
+      "category": "Anterior Fibromuscular Stroma",
+      "description": "AFS lesion uses TZ scoring rules (T2W dominant)",
+      "inputs": {
+        "zone": "afs",
+        "lesion_size": "1.0",
+        "t2w_score": "3",
+        "dwi_score": "3",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "3 - Intermediate",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "PI-RADS category based on T2W score (3)",
+        "Cancer Probability": "Equivocal - clinically significant cancer possible (10-20%)",
+        "Biopsy Recommendation": "Individualized decision based on PSA density, prior biopsy, clinical factors",
+        "T2W Score": "3",
+        "DWI/ADC Score": "3",
+        "DCE Status": "Positive"
+      },
+      "calculationSteps": "Step 1: Zone = AFS (Anterior Fibromuscular Stroma), which uses TZ criteria per PI-RADS v2.1. Step 2: T2W is dominant sequence. Step 3: T2W score = 3. Step 4: DCE does NOT upgrade TZ-type lesions. Step 5: Final PI-RADS = 3.",
+      "medicalReference": "PI-RADS v2.1: 'The anterior fibromuscular stroma... is assessed using TZ criteria'"
+    },
+    {
+      "testName": "AFS - DWI Upgrade",
+      "category": "Anterior Fibromuscular Stroma",
+      "description": "AFS with T2W 3 and DWI 4 - DWI upgrades like TZ",
+      "inputs": {
+        "zone": "afs",
+        "lesion_size": "1.4",
+        "t2w_score": "3",
+        "dwi_score": "4",
+        "dce": "negative",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "T2W score 3 upgraded to PI-RADS 4 due to DWI score 4",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "3",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Negative"
+      },
+      "calculationSteps": "Step 1: Zone = AFS uses TZ criteria. Step 2: T2W is dominant, score = 3. Step 3: DWI (4) > T2W (3), triggers upgrade to 4. Step 4: Final PI-RADS = 4.",
+      "medicalReference": "PI-RADS v2.1: AFS uses TZ criteria including DWI upgrade rule"
+    },
+    {
+      "testName": "EPE - Upgrade to PI-RADS 5 (from 3)",
+      "category": "Extraprostatic Extension",
+      "description": "Definite EPE upgrades any PI-RADS category to 5",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.2",
+        "t2w_score": "3",
+        "dwi_score": "3",
+        "dce": "negative",
+        "epe": "definite",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (3); Upgraded to PI-RADS 5 due to definite extraprostatic extension or SVI",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "3",
+        "DWI/ADC Score": "3",
+        "Staging Notes": "Definite EPE present (>=T3a)"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, DWI dominant. Step 2: DWI score = 3 (initial PI-RADS 3). Step 3: Definite EPE present. Step 4: EPE upgrades to PI-RADS 5. Step 5: Final PI-RADS = 5 with T3a staging.",
+      "medicalReference": "PI-RADS v2.1, Section 3.3: 'Definite EPE... indicates stage T3a and upgrades the assessment category to PI-RADS 5'"
+    },
+    {
+      "testName": "EPE - Upgrade to PI-RADS 5 (from 4)",
+      "category": "Extraprostatic Extension",
+      "description": "Definite EPE upgrades PI-RADS 4 to 5",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.4",
+        "t2w_score": "4",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "definite",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (4); Upgraded to PI-RADS 5 due to definite extraprostatic extension or SVI",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "4",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Positive",
+        "Staging Notes": "Definite EPE present (>=T3a)"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, DWI dominant. Step 2: DWI score = 4 (initial PI-RADS 4). Step 3: Definite EPE present. Step 4: EPE upgrades to PI-RADS 5. Step 5: Final PI-RADS = 5.",
+      "medicalReference": "PI-RADS v2.1, Section 3.3: EPE criteria"
+    },
+    {
+      "testName": "SVI - Upgrade to PI-RADS 5",
+      "category": "Seminal Vesicle Invasion",
+      "description": "Definite SVI upgrades any PI-RADS category to 5 (T3b staging)",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.5",
+        "t2w_score": "4",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "definite"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (4); Upgraded to PI-RADS 5 due to definite extraprostatic extension or SVI",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "4",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.5 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)",
+        "Staging Notes": "Definite SVI present (T3b)"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, DWI dominant. Step 2: DWI score = 4. Step 3: Definite SVI present. Step 4: SVI upgrades to PI-RADS 5 and indicates T3b staging. Step 5: Final PI-RADS = 5.",
+      "medicalReference": "PI-RADS v2.1, Section 3.4: 'Definite SVI... indicates stage T3b'"
+    },
+    {
+      "testName": "EPE and SVI - Both Present",
+      "category": "Extraprostatic Extension",
+      "description": "Both definite EPE and SVI present - both noted in staging",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "2.2",
+        "t2w_score": "5",
+        "dwi_score": "5",
+        "dce": "positive",
+        "epe": "definite",
+        "svi": "definite"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (5); Upgraded to PI-RADS 5 due to definite extraprostatic extension or SVI",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "5",
+        "DWI/ADC Score": "5",
+        "DCE Status": "Positive",
+        "Lesion Size": "2.2 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)",
+        "Staging Notes": "Definite EPE present (>=T3a); Definite SVI present (T3b)"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, DWI dominant. Step 2: DWI score = 5 (already PI-RADS 5). Step 3: Both EPE and SVI present. Step 4: Both staging notes recorded. Step 5: Final PI-RADS = 5.",
+      "medicalReference": "PI-RADS v2.1, Sections 3.3-3.4: Combined staging notes"
+    },
+    {
+      "testName": "EPE Suspected - No Upgrade",
+      "category": "Extraprostatic Extension",
+      "description": "Suspected (not definite) EPE does not upgrade PI-RADS",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.3",
+        "t2w_score": "4",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "suspected",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (4)",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "4",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Positive",
+        "Staging Notes": "EPE suspected - requires clinical correlation"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, DWI dominant. Step 2: DWI score = 4. Step 3: EPE is 'suspected' not 'definite' - no upgrade. Step 4: Final PI-RADS = 4 with staging note.",
+      "medicalReference": "PI-RADS v2.1: Only 'definite' EPE upgrades to category 5"
+    },
+    {
+      "testName": "Size Threshold - Below 1.5cm (Score 4)",
+      "category": "Size Considerations",
+      "description": "Lesion at 1.4cm - remains score 4 per size criteria",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.4",
+        "t2w_score": "4",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (4)",
+        "Cancer Probability": "Clinically significant cancer likely (25-50%)",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "T2W Score": "4",
+        "DWI/ADC Score": "4",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.4 cm"
+      },
+      "calculationSteps": "Step 1: Zone = PZ. Step 2: DWI score = 4. Step 3: Size = 1.4cm (below 1.5cm threshold). Step 4: No size note displayed. Step 5: Final PI-RADS = 4.",
+      "medicalReference": "PI-RADS v2.1: Size threshold of 1.5cm differentiates score 4 from 5"
+    },
+    {
+      "testName": "Size Threshold - At 1.5cm (Score 5 Eligible)",
+      "category": "Size Considerations",
+      "description": "Lesion exactly at 1.5cm threshold - qualifies for score 5",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.5",
+        "t2w_score": "5",
+        "dwi_score": "5",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (5)",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "5",
+        "DWI/ADC Score": "5",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.5 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)"
+      },
+      "calculationSteps": "Step 1: Zone = PZ. Step 2: DWI score = 5. Step 3: Size = 1.5cm (meets threshold). Step 4: Size note displayed. Step 5: Final PI-RADS = 5.",
+      "medicalReference": "PI-RADS v2.1: >=1.5cm with markedly hypointense ADC = score 5"
+    },
+    {
+      "testName": "Discordant T2W and DWI in PZ",
+      "category": "Edge Cases",
+      "description": "PZ with high T2W (5) but low DWI (2) - DWI still dominant in PZ",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.8",
+        "t2w_score": "5",
+        "dwi_score": "2",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "2 - Low",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (2)",
+        "Cancer Probability": "Clinically significant cancer unlikely (3-10%)",
+        "Biopsy Recommendation": "Biopsy generally not recommended",
+        "T2W Score": "5",
+        "DWI/ADC Score": "2",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.8 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)"
+      },
+      "calculationSteps": "Step 1: Zone = PZ, DWI is always dominant regardless of T2W. Step 2: DWI score = 2 (despite T2W = 5). Step 3: DCE upgrade only applies to DWI 3. Step 4: Final PI-RADS = 2.",
+      "medicalReference": "PI-RADS v2.1: In PZ, DWI is dominant regardless of T2W findings"
+    },
+    {
+      "testName": "Discordant T2W and DWI in TZ - Low T2W",
+      "category": "Edge Cases",
+      "description": "TZ with low T2W (1) but high DWI (5) - DWI overrides",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "1.6",
+        "t2w_score": "1",
+        "dwi_score": "5",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (5) which exceeds T2W score (1)",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "1",
+        "DWI/ADC Score": "5",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.6 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)"
+      },
+      "calculationSteps": "Step 1: Zone = TZ, T2W is dominant. Step 2: T2W score = 1. Step 3: DWI (5) >> T2W (1), AND DWI >= 4, so DWI takes precedence. Step 4: Final PI-RADS = 5.",
+      "medicalReference": "PI-RADS v2.1, Figure 9: When DWI significantly exceeds T2W in TZ, DWI may override"
+    },
+    {
+      "testName": "TZ - DWI 5 vs T2W 2 Override",
+      "category": "Edge Cases",
+      "description": "TZ with T2W 2 but DWI 5 - demonstrates DWI override for low T2W",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "1.7",
+        "t2w_score": "2",
+        "dwi_score": "5",
+        "dce": "negative",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "T2W (Transition Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (5) which exceeds T2W score (2)",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "2",
+        "DWI/ADC Score": "5",
+        "DCE Status": "Negative",
+        "Lesion Size": "1.7 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)"
+      },
+      "calculationSteps": "Step 1: Zone = TZ. Step 2: T2W score = 2. Step 3: DWI (5) > T2W (2), AND T2W < 3, so DWI overrides. Step 4: Final PI-RADS = 5.",
+      "medicalReference": "PI-RADS v2.1: In TZ, when T2W < 3 and DWI >= 4, DWI score is used"
+    },
+    {
+      "testName": "Validation Error - Missing Zone",
+      "category": "Validation",
+      "description": "Error when zone is not selected",
+      "inputs": {
+        "zone": "",
+        "lesion_size": "1.2",
+        "t2w_score": "3",
+        "dwi_score": "3",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "Error": "Please select the anatomic zone and provide T2W and DWI scores to calculate PI-RADS category."
+      },
+      "calculationSteps": "Validation check: zone is empty. Return error message.",
+      "medicalReference": "N/A - Validation case"
+    },
+    {
+      "testName": "Validation Error - Missing T2W Score",
+      "category": "Validation",
+      "description": "Error when T2W score is not provided",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.2",
+        "t2w_score": "",
+        "dwi_score": "3",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "Error": "Please select the anatomic zone and provide T2W and DWI scores to calculate PI-RADS category."
+      },
+      "calculationSteps": "Validation check: t2w_score is empty. Return error message.",
+      "medicalReference": "N/A - Validation case"
+    },
+    {
+      "testName": "Validation Error - Missing DWI Score",
+      "category": "Validation",
+      "description": "Error when DWI score is not provided",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.2",
+        "t2w_score": "3",
+        "dwi_score": "",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "Error": "Please select the anatomic zone and provide T2W and DWI scores to calculate PI-RADS category."
+      },
+      "calculationSteps": "Validation check: dwi_score is empty. Return error message.",
+      "medicalReference": "N/A - Validation case"
+    },
+    {
+      "testName": "Complete Scoring - All Fields Populated",
+      "category": "Complete Cases",
+      "description": "All fields filled - comprehensive output verification",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.8",
+        "t2w_score": "4",
+        "dwi_score": "5",
+        "dce": "positive",
+        "epe": "suspected",
+        "svi": "suspected"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "5 - Very High",
+        "Dominant Sequence": "DWI (Peripheral Zone)",
+        "Scoring Logic": "PI-RADS category based on DWI score (5)",
+        "Cancer Probability": "Clinically significant cancer highly likely (50-90%)",
+        "Biopsy Recommendation": "Biopsy strongly recommended (MRI-targeted)",
+        "T2W Score": "4",
+        "DWI/ADC Score": "5",
+        "DCE Status": "Positive",
+        "Lesion Size": "1.8 cm",
+        "Size Note": ">=1.5 cm (size criterion for score 5)",
+        "Staging Notes": "EPE suspected - requires clinical correlation; SVI suspected - requires clinical correlation",
+        "Clinical Notes": "MRI-targeted biopsy (cognitive or software fusion) recommended over systematic biopsy alone"
+      },
+      "calculationSteps": "Step 1: Zone = PZ. Step 2: DWI dominant, score = 5. Step 3: Suspected EPE/SVI noted but don't upgrade (only 'definite' does). Step 4: Final PI-RADS = 5 with clinical notes.",
+      "medicalReference": "PI-RADS v2.1, comprehensive assessment"
+    },
+    {
+      "testName": "Clinical Notes - PI-RADS 4 Biopsy Recommendation",
+      "category": "Clinical Guidance",
+      "description": "Verify PI-RADS 4 includes MRI-targeted biopsy recommendation",
+      "inputs": {
+        "zone": "pz",
+        "lesion_size": "1.3",
+        "t2w_score": "4",
+        "dwi_score": "4",
+        "dce": "positive",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "4 - High",
+        "Biopsy Recommendation": "Biopsy recommended (MRI-targeted)",
+        "Clinical Notes": "MRI-targeted biopsy (cognitive or software fusion) recommended over systematic biopsy alone"
+      },
+      "calculationSteps": "PI-RADS 4 triggers clinical note about MRI-targeted biopsy being preferred over systematic biopsy.",
+      "medicalReference": "PI-RADS v2.1: MRI-targeted biopsy recommendations based on PRECISION trial"
+    },
+    {
+      "testName": "Clinical Notes - PI-RADS 3 Decision Factors",
+      "category": "Clinical Guidance",
+      "description": "Verify PI-RADS 3 includes PSA density and clinical factor guidance",
+      "inputs": {
+        "zone": "tz",
+        "lesion_size": "1.2",
+        "t2w_score": "3",
+        "dwi_score": "3",
+        "dce": "negative",
+        "epe": "no",
+        "svi": "no"
+      },
+      "expectedOutputs": {
+        "PI-RADS Category": "3 - Intermediate",
+        "Biopsy Recommendation": "Individualized decision based on PSA density, prior biopsy, clinical factors",
+        "Clinical Notes": "Consider PSA density (>=0.15 ng/mL/cc favors biopsy), prior negative biopsy history, family history"
+      },
+      "calculationSteps": "PI-RADS 3 triggers clinical note about decision factors including PSA density threshold.",
+      "medicalReference": "PI-RADS v2.1: PSA density >=0.15 ng/mL/cc favors biopsy for PI-RADS 3 lesions"
+    }
+  ],
+  "scoringRulesReference": {
+    "peripheralZone": {
+      "dominantSequence": "DWI",
+      "applies_to": ["pz", "cz"],
+      "scoring": "PI-RADS category = DWI score",
+      "dceUpgradeRule": "If DWI = 3 AND DCE = positive, upgrade to PI-RADS 4",
+      "epeRule": "If EPE = definite OR SVI = definite, upgrade to PI-RADS 5"
+    },
+    "transitionZone": {
+      "dominantSequence": "T2W",
+      "applies_to": ["tz", "afs"],
+      "scoring": "PI-RADS category = T2W score (baseline)",
+      "dwiUpgradeRule": {
+        "condition1": "If T2W = 3 AND DWI >= 4, upgrade to PI-RADS 4",
+        "condition2": "If T2W < 3 AND DWI >= 4, use DWI score",
+        "condition3": "If DWI > T2W AND DWI >= 4, DWI may override"
+      },
+      "dceNote": "DCE does NOT play a role in TZ upgrade decisions",
+      "epeRule": "If EPE = definite OR SVI = definite, upgrade to PI-RADS 5"
+    },
+    "sizeThresholds": {
+      "score4vs5": "1.5 cm - lesions >=1.5cm with appropriate features = score 5",
+      "note": "Size alone does not determine PI-RADS category, but is a criterion for scores 4 vs 5"
+    },
+    "staging": {
+      "T3a": "Definite extraprostatic extension (EPE)",
+      "T3b": "Definite seminal vesicle invasion (SVI)",
+      "upgradeTrigger": "Only 'definite' (not 'suspected') EPE or SVI upgrades to PI-RADS 5"
+    }
+  },
+  "cancerProbabilityRanges": {
+    "1": "<3% - Clinically significant cancer highly unlikely",
+    "2": "3-10% - Clinically significant cancer unlikely",
+    "3": "10-20% - Equivocal, clinically significant cancer possible",
+    "4": "25-50% - Clinically significant cancer likely",
+    "5": "50-90% - Clinically significant cancer highly likely"
+  },
+  "notes": [
+    "PI-RADS v2.1 was published in 2019 as an update to PI-RADS v2 (2015)",
+    "Peripheral Zone (PZ) and Central Zone (CZ) use DWI as dominant sequence",
+    "Transition Zone (TZ) and Anterior Fibromuscular Stroma (AFS) use T2W as dominant sequence",
+    "DCE upgrade rule (3 to 4) ONLY applies to PZ/CZ, NOT to TZ/AFS",
+    "DWI upgrade rule for TZ: T2W 3 + DWI >=4 = PI-RADS 4",
+    "Only 'definite' EPE or SVI upgrades to PI-RADS 5, 'suspected' does not",
+    "1.5cm is the size threshold differentiating scores 4 and 5",
+    "Clinically significant cancer is defined as Gleason score >=7 (ISUP grade group >=2)",
+    "bpMRI (biparametric MRI without DCE) has specific limitations noted in clinical output"
+  ]
+}

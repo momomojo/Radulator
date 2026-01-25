@@ -1,0 +1,473 @@
+{
+  "description": "Test data for Spleen Size ULN Calculator based on Chow et al. 2016",
+  "source": {
+    "title": "Chow KU, Luxembourg B, Seifried E, et al. Spleen Size Is Significantly Influenced by Body Height and Sex: Establishment of Normal Values for Spleen Size at US with a Cohort of 1200 Healthy Individuals.",
+    "journal": "Radiology. 2016 Apr;279(1):306-13",
+    "doi": "10.1148/radiol.2015150887",
+    "url": "https://doi.org/10.1148/radiol.2015150887"
+  },
+  "formulas": {
+    "female": {
+      "spleenLength": "0.0282 * height + 7.5526",
+      "spleenVolume": "7.0996 * height - 939.5",
+      "validatedRange": "155-180 cm"
+    },
+    "male": {
+      "spleenLength": "0.0544 * height + 3.6693",
+      "spleenVolume": "4.3803 * height - 457.15",
+      "validatedRange": "165-200 cm"
+    }
+  },
+  "splenomegalyClassification": {
+    "note": "These are general reference thresholds for clinical interpretation. The Chow et al. study provides height/sex-adjusted ULN values, so splenomegaly should be assessed against the calculated ULN rather than fixed thresholds.",
+    "general": {
+      "normalUpperLimit": "12 cm (traditional)",
+      "heightAdjustedUpperLimit": "Use calculator",
+      "mildSplenomegaly": "13-15 cm",
+      "moderateSplenomegaly": "15-20 cm",
+      "massiveSplenomegaly": ">20 cm"
+    },
+    "volumeBased": {
+      "massiveThreshold": ">943 cm3 (5 SD above mean)"
+    }
+  },
+  "testCases": [
+    {
+      "name": "Female - Short Height (155 cm) - Lower Validated Boundary",
+      "category": "female_validated",
+      "input": {
+        "gender": "female",
+        "height": 155
+      },
+      "expected": {
+        "spleenLengthULN": "11.9",
+        "spleenVolumeULN": "161",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0282 * 155 + 7.5526 = 11.9236",
+        "volumeFormula": "7.0996 * 155 - 939.5 = 161.038"
+      }
+    },
+    {
+      "name": "Female - Average Height (165 cm)",
+      "category": "female_validated",
+      "input": {
+        "gender": "female",
+        "height": 165
+      },
+      "expected": {
+        "spleenLengthULN": "12.2",
+        "spleenVolumeULN": "232",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0282 * 165 + 7.5526 = 12.2056",
+        "volumeFormula": "7.0996 * 165 - 939.5 = 231.934"
+      }
+    },
+    {
+      "name": "Female - Tall Height (175 cm)",
+      "category": "female_validated",
+      "input": {
+        "gender": "female",
+        "height": 175
+      },
+      "expected": {
+        "spleenLengthULN": "12.5",
+        "spleenVolumeULN": "303",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0282 * 175 + 7.5526 = 12.4876",
+        "volumeFormula": "7.0996 * 175 - 939.5 = 302.93"
+      }
+    },
+    {
+      "name": "Female - Upper Validated Boundary (180 cm)",
+      "category": "female_validated",
+      "input": {
+        "gender": "female",
+        "height": 180
+      },
+      "expected": {
+        "spleenLengthULN": "12.6",
+        "spleenVolumeULN": "338",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0282 * 180 + 7.5526 = 12.6286",
+        "volumeFormula": "7.0996 * 180 - 939.5 = 338.428"
+      }
+    },
+    {
+      "name": "Male - Lower Validated Boundary (165 cm)",
+      "category": "male_validated",
+      "input": {
+        "gender": "male",
+        "height": 165
+      },
+      "expected": {
+        "spleenLengthULN": "12.6",
+        "spleenVolumeULN": "266",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0544 * 165 + 3.6693 = 12.6453",
+        "volumeFormula": "4.3803 * 165 - 457.15 = 265.6"
+      }
+    },
+    {
+      "name": "Male - Average Height (175 cm)",
+      "category": "male_validated",
+      "input": {
+        "gender": "male",
+        "height": 175
+      },
+      "expected": {
+        "spleenLengthULN": "13.2",
+        "spleenVolumeULN": "310",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0544 * 175 + 3.6693 = 13.1893",
+        "volumeFormula": "4.3803 * 175 - 457.15 = 309.4"
+      }
+    },
+    {
+      "name": "Male - Tall Height (185 cm)",
+      "category": "male_validated",
+      "input": {
+        "gender": "male",
+        "height": 185
+      },
+      "expected": {
+        "spleenLengthULN": "13.7",
+        "spleenVolumeULN": "353",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0544 * 185 + 3.6693 = 13.7333",
+        "volumeFormula": "4.3803 * 185 - 457.15 = 353.205"
+      }
+    },
+    {
+      "name": "Male - Very Tall Height (195 cm)",
+      "category": "male_validated",
+      "input": {
+        "gender": "male",
+        "height": 195
+      },
+      "expected": {
+        "spleenLengthULN": "14.3",
+        "spleenVolumeULN": "397",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0544 * 195 + 3.6693 = 14.2773",
+        "volumeFormula": "4.3803 * 195 - 457.15 = 397.0"
+      }
+    },
+    {
+      "name": "Male - Upper Validated Boundary (200 cm)",
+      "category": "male_validated",
+      "input": {
+        "gender": "male",
+        "height": 200
+      },
+      "expected": {
+        "spleenLengthULN": "14.5",
+        "spleenVolumeULN": "419",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0544 * 200 + 3.6693 = 14.5493",
+        "volumeFormula": "4.3803 * 200 - 457.15 = 418.91"
+      }
+    },
+    {
+      "name": "Female - Below Validated Range (150 cm)",
+      "category": "female_outside_range",
+      "input": {
+        "gender": "female",
+        "height": 150
+      },
+      "expected": {
+        "spleenLengthULN": "11.8",
+        "spleenVolumeULN": "125",
+        "warning": "Height outside validated range (155-180 cm). Results may be less accurate.",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals (extrapolated beyond validated range).",
+        "withinValidatedRange": false
+      },
+      "calculation": {
+        "lengthFormula": "0.0282 * 150 + 7.5526 = 11.7826",
+        "volumeFormula": "7.0996 * 150 - 939.5 = 125.44"
+      }
+    },
+    {
+      "name": "Female - Above Validated Range (185 cm)",
+      "category": "female_outside_range",
+      "input": {
+        "gender": "female",
+        "height": 185
+      },
+      "expected": {
+        "spleenLengthULN": "12.8",
+        "spleenVolumeULN": "374",
+        "warning": "Height outside validated range (155-180 cm). Results may be less accurate.",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals (extrapolated beyond validated range).",
+        "withinValidatedRange": false
+      },
+      "calculation": {
+        "lengthFormula": "0.0282 * 185 + 7.5526 = 12.7696",
+        "volumeFormula": "7.0996 * 185 - 939.5 = 373.926"
+      }
+    },
+    {
+      "name": "Male - Below Validated Range (160 cm)",
+      "category": "male_outside_range",
+      "input": {
+        "gender": "male",
+        "height": 160
+      },
+      "expected": {
+        "spleenLengthULN": "12.4",
+        "spleenVolumeULN": "244",
+        "warning": "Height outside validated range (165-200 cm). Results may be less accurate.",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals (extrapolated beyond validated range).",
+        "withinValidatedRange": false
+      },
+      "calculation": {
+        "lengthFormula": "0.0544 * 160 + 3.6693 = 12.3733",
+        "volumeFormula": "4.3803 * 160 - 457.15 = 243.698"
+      }
+    },
+    {
+      "name": "Male - Above Validated Range (205 cm)",
+      "category": "male_outside_range",
+      "input": {
+        "gender": "male",
+        "height": 205
+      },
+      "expected": {
+        "spleenLengthULN": "14.8",
+        "spleenVolumeULN": "441",
+        "warning": "Height outside validated range (165-200 cm). Results may be less accurate.",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals (extrapolated beyond validated range).",
+        "withinValidatedRange": false
+      },
+      "calculation": {
+        "lengthFormula": "0.0544 * 205 + 3.6693 = 14.8213",
+        "volumeFormula": "4.3803 * 205 - 457.15 = 440.7115"
+      }
+    },
+    {
+      "name": "Female - Median Height (167 cm)",
+      "category": "female_validated",
+      "input": {
+        "gender": "female",
+        "height": 167
+      },
+      "expected": {
+        "spleenLengthULN": "12.3",
+        "spleenVolumeULN": "246",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0282 * 167 + 7.5526 = 12.262",
+        "volumeFormula": "7.0996 * 167 - 939.5 = 246.13"
+      }
+    },
+    {
+      "name": "Male - Median Height (182 cm)",
+      "category": "male_validated",
+      "input": {
+        "gender": "male",
+        "height": 182
+      },
+      "expected": {
+        "spleenLengthULN": "13.6",
+        "spleenVolumeULN": "340",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals.",
+        "withinValidatedRange": true
+      },
+      "calculation": {
+        "lengthFormula": "0.0544 * 182 + 3.6693 = 13.5701",
+        "volumeFormula": "4.3803 * 182 - 457.15 = 340.0446"
+      }
+    },
+    {
+      "name": "Same Height Comparison - Gender Difference at 170 cm",
+      "category": "gender_comparison",
+      "subcases": [
+        {
+          "name": "Female at 170 cm",
+          "input": {
+            "gender": "female",
+            "height": 170
+          },
+          "expected": {
+            "spleenLengthULN": "12.3",
+            "spleenVolumeULN": "267",
+            "withinValidatedRange": true
+          },
+          "calculation": {
+            "lengthFormula": "0.0282 * 170 + 7.5526 = 12.3466",
+            "volumeFormula": "7.0996 * 170 - 939.5 = 267.432"
+          }
+        },
+        {
+          "name": "Male at 170 cm",
+          "input": {
+            "gender": "male",
+            "height": 170
+          },
+          "expected": {
+            "spleenLengthULN": "12.9",
+            "spleenVolumeULN": "288",
+            "withinValidatedRange": true
+          },
+          "calculation": {
+            "lengthFormula": "0.0544 * 170 + 3.6693 = 12.9173",
+            "volumeFormula": "4.3803 * 170 - 457.15 = 287.501"
+          }
+        }
+      ],
+      "notes": "At the same height, males have higher ULN for both length and volume"
+    },
+    {
+      "name": "Extreme Short Height - Very Small Female (145 cm)",
+      "category": "edge_case",
+      "input": {
+        "gender": "female",
+        "height": 145
+      },
+      "expected": {
+        "spleenLengthULN": "11.6",
+        "spleenVolumeULN": "90",
+        "warning": "Height outside validated range (155-180 cm). Results may be less accurate.",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals (extrapolated beyond validated range).",
+        "withinValidatedRange": false
+      },
+      "calculation": {
+        "lengthFormula": "0.0282 * 145 + 7.5526 = 11.6416",
+        "volumeFormula": "7.0996 * 145 - 939.5 = 89.942"
+      }
+    },
+    {
+      "name": "Extreme Tall Height - Very Tall Male (210 cm)",
+      "category": "edge_case",
+      "input": {
+        "gender": "male",
+        "height": 210
+      },
+      "expected": {
+        "spleenLengthULN": "15.1",
+        "spleenVolumeULN": "463",
+        "warning": "Height outside validated range (165-200 cm). Results may be less accurate.",
+        "interpretation": "The above mentioned spleen size and volume are within 95% of observations in healthy individuals (extrapolated beyond validated range).",
+        "withinValidatedRange": false
+      },
+      "calculation": {
+        "lengthFormula": "0.0544 * 210 + 3.6693 = 15.0933",
+        "volumeFormula": "4.3803 * 210 - 457.15 = 462.713"
+      }
+    }
+  ],
+  "clinicalInterpretation": {
+    "description": "Guidelines for interpreting measured spleen sizes relative to calculated ULN",
+    "categories": [
+      {
+        "category": "Normal",
+        "criteria": "Measured spleen length <= calculated ULN",
+        "note": "Within 95th percentile for height and sex"
+      },
+      {
+        "category": "Borderline Enlarged",
+        "criteria": "Measured length 1-2 cm above calculated ULN",
+        "note": "Mild splenomegaly relative to patient's body habitus"
+      },
+      {
+        "category": "Mildly Enlarged",
+        "criteria": "Measured length 2-4 cm above calculated ULN OR 13-15 cm absolute",
+        "note": "Consider clinical context and etiology"
+      },
+      {
+        "category": "Moderately Enlarged",
+        "criteria": "Measured length 4-8 cm above calculated ULN OR 15-20 cm absolute",
+        "note": "Significant splenomegaly warranting workup"
+      },
+      {
+        "category": "Massively Enlarged",
+        "criteria": "Measured length >8 cm above calculated ULN OR >20 cm absolute",
+        "note": "Associated with hematologic malignancies, portal hypertension, storage diseases"
+      }
+    ]
+  },
+  "referenceValues": {
+    "traditionalFixedThreshold": {
+      "normalUpperLimit": "12 cm",
+      "limitations": "Does not account for height or sex differences; 26% of healthy men exceeded this limit in Chow et al. study"
+    },
+    "heightAdjustedThresholds": {
+      "shortFemale155cm": "11.9 cm",
+      "averageFemale165cm": "12.2 cm",
+      "tallFemale180cm": "12.6 cm",
+      "shortMale165cm": "12.6 cm",
+      "averageMale175cm": "13.2 cm",
+      "tallMale200cm": "14.5 cm"
+    },
+    "volumeThresholds": {
+      "massiveSplenomegaly": ">943 cm3 (5 SD above mean)",
+      "clinicallyRelevant": ">300 cm3 typically considered enlarged"
+    }
+  },
+  "testValidation": {
+    "inputFields": [
+      {
+        "field": "gender",
+        "type": "radio",
+        "values": ["female", "male"],
+        "required": true
+      },
+      {
+        "field": "height",
+        "type": "number",
+        "unit": "cm",
+        "validatedRanges": {
+          "female": "155-180",
+          "male": "165-200"
+        },
+        "required": true
+      }
+    ],
+    "outputFields": [
+      {
+        "field": "Spleen length should not exceed (cm)",
+        "format": "decimal to 1 place"
+      },
+      {
+        "field": "Spleen volume should not exceed (cm3)",
+        "format": "rounded integer"
+      },
+      {
+        "field": "Interpretation",
+        "format": "text string"
+      },
+      {
+        "field": "Warning",
+        "format": "text string (only if outside validated range)"
+      }
+    ]
+  }
+}
