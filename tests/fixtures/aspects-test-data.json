@@ -1,0 +1,862 @@
+{
+  "calculator": "ASPECTS Score",
+  "description": "Comprehensive test cases for Alberta Stroke Program Early CT Score calculator covering all 10 brain regions, score ranges, time windows, and clinical patterns",
+  "version": "1.0.0",
+  "sources": [
+    "Barber PA, et al. Lancet. 2000;355(9216):1670-1674 (Original ASPECTS)",
+    "Powers WJ, et al. Stroke. 2019;50:e344-e418 (AHA/ASA Guidelines)",
+    "Nogueira RG, et al. N Engl J Med. 2018;378:11-21 (DAWN Trial)",
+    "Albers GW, et al. N Engl J Med. 2018;378:708-718 (DEFUSE-3 Trial)",
+    "Sarraj A, et al. N Engl J Med. 2023;388:1259-1271 (SELECT2)",
+    "Huo X, et al. N Engl J Med. 2023;388:1272-1283 (ANGEL-ASPECT)"
+  ],
+  "testCases": [
+    {
+      "testName": "Perfect ASPECTS 10 - No ischemic changes",
+      "category": "ASPECTS 10",
+      "description": "Normal CT with no early ischemic changes - ideal thrombectomy candidate",
+      "inputs": {
+        "laterality": "left",
+        "caudate": false,
+        "lentiform": false,
+        "internal_capsule": false,
+        "insular": false,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "2"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "10 / 10",
+        "Interpretation": "Small or no early ischemic changes",
+        "Affected Hemisphere": "Left",
+        "Regions Affected": "No regions affected (normal CT)",
+        "Regional Breakdown": "Subcortical: 0/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Thrombectomy Eligibility": "Good candidate for mechanical thrombectomy",
+        "Time from Onset": "2 hours",
+        "Time Window Assessment": "Within standard 6-hour window for thrombectomy - Standard eligibility criteria met (per 2015 landmark trials)",
+        "Prognostic Implication": "Favorable prognosis with reperfusion therapy",
+        "Clinical Notes": "Normal ASPECTS (10/10) - No early ischemic changes visible on NCCT. Note: Subtle changes may be missed within first 3 hours of symptom onset",
+        "Guideline Thresholds": "Standard EVT: ASPECTS >= 6 (2019 AHA/ASA) | Large Core EVT: ASPECTS 3-5 (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT 2022-2023)"
+      },
+      "calculationSteps": "Step 1: Count affected regions (0 regions). Step 2: ASPECTS = 10 - 0 = 10. Step 3: Score >= 8 indicates small/no changes. Step 4: Time 2h within 6h window.",
+      "medicalReference": "Barber PA, et al. Lancet 2000 - ASPECTS 10 indicates no early ischemic changes"
+    },
+    {
+      "testName": "ASPECTS 10 - Right hemisphere, hyperacute presentation",
+      "category": "ASPECTS 10",
+      "description": "Hyperacute stroke (<1 hour) with no CT changes yet visible",
+      "inputs": {
+        "laterality": "right",
+        "caudate": false,
+        "lentiform": false,
+        "internal_capsule": false,
+        "insular": false,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "0.5"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "10 / 10",
+        "Affected Hemisphere": "Right",
+        "Time from Onset": "0.5 hours",
+        "Time Window Assessment": "Within standard 6-hour window for thrombectomy - Standard eligibility criteria met (per 2015 landmark trials)",
+        "Clinical Notes": "Normal ASPECTS (10/10) - No early ischemic changes visible on NCCT. Note: Subtle changes may be missed within first 3 hours of symptom onset"
+      },
+      "calculationSteps": "Step 1: All 10 regions normal. Step 2: ASPECTS = 10 - 0 = 10. Step 3: 0.5h is hyperacute - CT changes may not yet be visible.",
+      "medicalReference": "CT changes typically become visible 1-3 hours after stroke onset"
+    },
+    {
+      "testName": "ASPECTS 9 - Isolated insular ribbon sign",
+      "category": "ASPECTS 8-9",
+      "description": "Classic early sign of MCA stroke - loss of insular ribbon",
+      "inputs": {
+        "laterality": "left",
+        "caudate": false,
+        "lentiform": false,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "3"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "9 / 10",
+        "Interpretation": "Small or no early ischemic changes",
+        "Regions Affected": "1 region(s): I (Insular)",
+        "Regional Breakdown": "Subcortical: 1/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Thrombectomy Eligibility": "Good candidate for mechanical thrombectomy",
+        "Prognostic Implication": "Favorable prognosis with reperfusion therapy"
+      },
+      "calculationSteps": "Step 1: Insular cortex affected (1 region). Step 2: ASPECTS = 10 - 1 = 9. Step 3: Score >= 8, favorable for EVT.",
+      "medicalReference": "Insular ribbon sign is one of the earliest and most sensitive CT findings in MCA stroke"
+    },
+    {
+      "testName": "ASPECTS 9 - Isolated lentiform nucleus hypodensity",
+      "category": "ASPECTS 8-9",
+      "description": "Early ischemic change in lentiform nucleus only",
+      "inputs": {
+        "laterality": "right",
+        "caudate": false,
+        "lentiform": true,
+        "internal_capsule": false,
+        "insular": false,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "4"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "9 / 10",
+        "Interpretation": "Small or no early ischemic changes",
+        "Affected Hemisphere": "Right",
+        "Regions Affected": "1 region(s): L (Lentiform)",
+        "Regional Breakdown": "Subcortical: 1/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Thrombectomy Eligibility": "Good candidate for mechanical thrombectomy"
+      },
+      "calculationSteps": "Step 1: Lentiform nucleus affected (1 region). Step 2: ASPECTS = 10 - 1 = 9.",
+      "medicalReference": "Lentiform nucleus is supplied by lenticulostriate arteries from proximal MCA"
+    },
+    {
+      "testName": "ASPECTS 8 - Insular and lentiform (proximal M1 pattern)",
+      "category": "ASPECTS 8-9",
+      "description": "Classic proximal M1 occlusion pattern with poor collaterals",
+      "inputs": {
+        "laterality": "left",
+        "caudate": false,
+        "lentiform": true,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "3.5"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "8 / 10",
+        "Interpretation": "Small or no early ischemic changes",
+        "Regions Affected": "2 region(s): L (Lentiform), I (Insular)",
+        "Regional Breakdown": "Subcortical: 2/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Thrombectomy Eligibility": "Good candidate for mechanical thrombectomy",
+        "Clinical Notes": "Involvement of both insular ribbon and lentiform nucleus suggests proximal M1 occlusion with poor collaterals"
+      },
+      "calculationSteps": "Step 1: Lentiform + Insular affected (2 regions). Step 2: ASPECTS = 10 - 2 = 8. Step 3: Pattern suggests proximal M1 occlusion.",
+      "medicalReference": "Combined insular-lentiform involvement is highly specific for proximal M1 segment occlusion"
+    },
+    {
+      "testName": "ASPECTS 8 - Caudate and internal capsule (lenticulostriate territory)",
+      "category": "ASPECTS 8-9",
+      "description": "Lenticulostriate artery territory infarction pattern",
+      "inputs": {
+        "laterality": "right",
+        "caudate": true,
+        "lentiform": false,
+        "internal_capsule": true,
+        "insular": false,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "5"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "8 / 10",
+        "Interpretation": "Small or no early ischemic changes",
+        "Regions Affected": "2 region(s): C (Caudate), IC (Internal Capsule)",
+        "Regional Breakdown": "Subcortical: 2/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Clinical Notes": "Caudate and internal capsule involvement may indicate lenticulostriate artery territory infarction"
+      },
+      "calculationSteps": "Step 1: Caudate + Internal capsule affected (2 regions). Step 2: ASPECTS = 10 - 2 = 8. Step 3: Pattern indicates lenticulostriate territory.",
+      "medicalReference": "Lenticulostriate arteries supply caudate, lentiform nucleus, and internal capsule"
+    },
+    {
+      "testName": "ASPECTS 7 - Moderate changes within standard window",
+      "category": "ASPECTS 6-7",
+      "description": "Three cortical regions affected at ganglionic level",
+      "inputs": {
+        "laterality": "left",
+        "caudate": false,
+        "lentiform": false,
+        "internal_capsule": false,
+        "insular": false,
+        "m1": true,
+        "m2": true,
+        "m3": true,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "4"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "7 / 10",
+        "Interpretation": "Moderate early ischemic changes",
+        "Regions Affected": "3 region(s): M1, M2, M3",
+        "Regional Breakdown": "Subcortical: 0/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 0/3",
+        "Thrombectomy Eligibility": "May benefit from mechanical thrombectomy (meets standard threshold of ASPECTS >= 6)",
+        "Prognostic Implication": "Moderate prognosis; treatment benefit supported by 2015 landmark trials (MR CLEAN, ESCAPE, SWIFT PRIME)"
+      },
+      "calculationSteps": "Step 1: M1 + M2 + M3 affected (3 regions). Step 2: ASPECTS = 10 - 3 = 7. Step 3: Score >= 6, meets EVT threshold.",
+      "medicalReference": "ASPECTS >= 6 was inclusion criterion for landmark 2015 EVT trials (MR CLEAN, ESCAPE, SWIFT PRIME)"
+    },
+    {
+      "testName": "ASPECTS 6 - Threshold for standard thrombectomy eligibility",
+      "category": "ASPECTS 6-7",
+      "description": "Four regions affected - at threshold for standard EVT criteria",
+      "inputs": {
+        "laterality": "right",
+        "caudate": false,
+        "lentiform": true,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": true,
+        "m2": true,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "5.5"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "6 / 10",
+        "Interpretation": "Moderate early ischemic changes",
+        "Regions Affected": "4 region(s): L (Lentiform), I (Insular), M1, M2",
+        "Regional Breakdown": "Subcortical: 2/4 | Ganglionic cortical (M1-M3): 2/3 | Supraganglionic (M4-M6): 0/3",
+        "Thrombectomy Eligibility": "May benefit from mechanical thrombectomy (meets standard threshold of ASPECTS >= 6)",
+        "Time Window Assessment": "Within standard 6-hour window for thrombectomy - Standard eligibility criteria met (per 2015 landmark trials)"
+      },
+      "calculationSteps": "Step 1: L + I + M1 + M2 affected (4 regions). Step 2: ASPECTS = 10 - 4 = 6. Step 3: At threshold for standard EVT.",
+      "medicalReference": "AHA/ASA 2019 Guidelines: ASPECTS >= 6 for standard EVT eligibility"
+    },
+    {
+      "testName": "ASPECTS 6 - Extended window 6-16h (DEFUSE-3 eligible)",
+      "category": "ASPECTS 6-7",
+      "description": "Moderate changes in extended time window - DEFUSE-3 criteria applicable",
+      "inputs": {
+        "laterality": "left",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": true,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "10"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "6 / 10",
+        "Interpretation": "Moderate early ischemic changes",
+        "Time from Onset": "10 hours",
+        "Time Window Assessment": "Extended window (6-16 hours): DEFUSE-3 criteria may apply",
+        "Thrombectomy Eligibility": "May benefit from mechanical thrombectomy (meets standard threshold of ASPECTS >= 6)"
+      },
+      "calculationSteps": "Step 1: C + L + I + M1 affected (4 regions). Step 2: ASPECTS = 10 - 4 = 6. Step 3: 10h is within DEFUSE-3 window (6-16h). Step 4: ASPECTS 6 meets DEFUSE-3 threshold.",
+      "medicalReference": "DEFUSE-3 Trial (Albers 2018): EVT benefit 6-16h with perfusion mismatch, ASPECTS >= 6"
+    },
+    {
+      "testName": "ASPECTS 6 - Extended window 16-24h (DAWN eligible)",
+      "category": "ASPECTS 6-7",
+      "description": "Moderate changes in late extended window - DAWN criteria applicable",
+      "inputs": {
+        "laterality": "right",
+        "caudate": false,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": true,
+        "m1": false,
+        "m2": true,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "20"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "6 / 10",
+        "Time from Onset": "20 hours",
+        "Time Window Assessment": "Extended window (6-24 hours): DAWN trial criteria may apply - Requires clinical-imaging mismatch assessment"
+      },
+      "calculationSteps": "Step 1: L + IC + I + M2 affected (4 regions). Step 2: ASPECTS = 10 - 4 = 6. Step 3: 20h within DAWN window (6-24h). Step 4: Requires mismatch assessment.",
+      "medicalReference": "DAWN Trial (Nogueira 2018): EVT benefit 6-24h with clinical-core mismatch"
+    },
+    {
+      "testName": "ASPECTS 5 - Large core, standard window (SELECT2 eligible)",
+      "category": "ASPECTS 3-5",
+      "description": "Large ischemic core within 6 hours - recent large core trial eligible",
+      "inputs": {
+        "laterality": "left",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": true,
+        "m1": true,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "4"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "5 / 10",
+        "Interpretation": "Large infarct core (ASPECTS 3-5)",
+        "Regions Affected": "5 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1",
+        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 1/3 | Supraganglionic (M4-M6): 0/3",
+        "Thrombectomy Eligibility": "Consider thrombectomy based on recent large core trials (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT)",
+        "Prognostic Implication": "Higher risk of symptomatic hemorrhage, but EVT still shows benefit in recent RCTs",
+        "Time Window Assessment": "Within standard 6-hour window for thrombectomy - Large core: consider SELECT2/ANGEL-ASPECT criteria"
+      },
+      "calculationSteps": "Step 1: C + L + IC + I + M1 affected (5 regions). Step 2: ASPECTS = 10 - 5 = 5. Step 3: Large core but within SELECT2/ANGEL-ASPECT criteria.",
+      "medicalReference": "SELECT2 Trial (Sarraj 2023): EVT benefit with ASPECTS 3-5 (large core)"
+    },
+    {
+      "testName": "ASPECTS 5 - Complete subcortical involvement pattern",
+      "category": "ASPECTS 3-5",
+      "description": "All subcortical structures plus one cortical region affected",
+      "inputs": {
+        "laterality": "right",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": true,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": true,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "3"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "5 / 10",
+        "Interpretation": "Large infarct core (ASPECTS 3-5)",
+        "Regions Affected": "5 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M4",
+        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 1/3",
+        "Thrombectomy Eligibility": "Consider thrombectomy based on recent large core trials (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT)"
+      },
+      "calculationSteps": "Step 1: All 4 subcortical regions + M4 affected (5 regions). Step 2: ASPECTS = 10 - 5 = 5.",
+      "medicalReference": "Complete subcortical involvement indicates extensive lenticulostriate territory infarction"
+    },
+    {
+      "testName": "ASPECTS 4 - Six regions affected",
+      "category": "ASPECTS 3-5",
+      "description": "Extensive ischemic changes with six regions involved",
+      "inputs": {
+        "laterality": "left",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": true,
+        "m2": true,
+        "m3": true,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "5"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "4 / 10",
+        "Interpretation": "Large infarct core (ASPECTS 3-5)",
+        "Regions Affected": "6 region(s): C (Caudate), L (Lentiform), I (Insular), M1, M2, M3",
+        "Regional Breakdown": "Subcortical: 3/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 0/3",
+        "Thrombectomy Eligibility": "Consider thrombectomy based on recent large core trials (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT)"
+      },
+      "calculationSteps": "Step 1: C + L + I + M1 + M2 + M3 affected (6 regions). Step 2: ASPECTS = 10 - 6 = 4. Step 3: Large core, EVT still considered per 2023 trials.",
+      "medicalReference": "ANGEL-ASPECT Trial (Huo 2023): EVT benefit demonstrated in ASPECTS 3-5"
+    },
+    {
+      "testName": "ASPECTS 3 - Lower threshold for large core EVT",
+      "category": "ASPECTS 3-5",
+      "description": "Seven regions affected - at lower threshold for recent large core trials",
+      "inputs": {
+        "laterality": "right",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": true,
+        "m1": true,
+        "m2": true,
+        "m3": true,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "4.5"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "3 / 10",
+        "Interpretation": "Large infarct core (ASPECTS 3-5)",
+        "Regions Affected": "7 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1, M2, M3",
+        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 0/3",
+        "Thrombectomy Eligibility": "Consider thrombectomy based on recent large core trials (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT)",
+        "Prognostic Implication": "Higher risk of symptomatic hemorrhage, but EVT still shows benefit in recent RCTs"
+      },
+      "calculationSteps": "Step 1: All subcortical (4) + all ganglionic cortical (3) = 7 regions. Step 2: ASPECTS = 10 - 7 = 3. Step 3: At lower bound for SELECT2/ANGEL criteria.",
+      "medicalReference": "SELECT2 included ASPECTS 3-5; ANGEL-ASPECT included ASPECTS 3-5"
+    },
+    {
+      "testName": "ASPECTS 3 - Extended window with large core",
+      "category": "ASPECTS 3-5",
+      "description": "Large core in extended window - note DEFUSE-3 excluded ASPECTS < 6",
+      "inputs": {
+        "laterality": "left",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": true,
+        "m1": false,
+        "m2": true,
+        "m3": true,
+        "m4": true,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "12"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "3 / 10",
+        "Interpretation": "Large infarct core (ASPECTS 3-5)",
+        "Time from Onset": "12 hours",
+        "Time Window Assessment": "Extended window (6-16 hours): DEFUSE-3 criteria may apply - Note: DEFUSE-3 excluded ASPECTS < 6",
+        "Thrombectomy Eligibility": "Consider thrombectomy based on recent large core trials (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT)"
+      },
+      "calculationSteps": "Step 1: 7 regions affected. Step 2: ASPECTS = 3. Step 3: 12h in extended window but DEFUSE-3 excluded ASPECTS < 6.",
+      "medicalReference": "DEFUSE-3 inclusion criterion was ASPECTS >= 6; large core trials had 24h window"
+    },
+    {
+      "testName": "ASPECTS 2 - Very large infarct core",
+      "category": "ASPECTS 0-2",
+      "description": "Eight regions affected - beyond current trial eligibility thresholds",
+      "inputs": {
+        "laterality": "right",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": true,
+        "m1": true,
+        "m2": true,
+        "m3": true,
+        "m4": true,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "5"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "2 / 10",
+        "Interpretation": "Very large infarct core (ASPECTS 0-2)",
+        "Regions Affected": "8 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1, M2, M3, M4",
+        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 1/3",
+        "Thrombectomy Eligibility": "Historically excluded from EVT trials; emerging data suggests some patients may benefit (individualized decision)",
+        "Prognostic Implication": "Poor prognosis; high risk of hemorrhagic transformation; consider goals of care discussion"
+      },
+      "calculationSteps": "Step 1: 8 regions affected. Step 2: ASPECTS = 10 - 8 = 2. Step 3: Below SELECT2/ANGEL thresholds. Step 4: Individualized decision required.",
+      "medicalReference": "ASPECTS 0-2 historically excluded from RCTs; limited evidence for EVT benefit"
+    },
+    {
+      "testName": "ASPECTS 1 - Near-complete MCA territory involvement",
+      "category": "ASPECTS 0-2",
+      "description": "Nine regions affected - extensive infarction",
+      "inputs": {
+        "laterality": "left",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": true,
+        "m1": true,
+        "m2": true,
+        "m3": true,
+        "m4": true,
+        "m5": true,
+        "m6": false,
+        "time_from_onset": "6"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "1 / 10",
+        "Interpretation": "Very large infarct core (ASPECTS 0-2)",
+        "Regions Affected": "9 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1, M2, M3, M4, M5",
+        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 2/3",
+        "Thrombectomy Eligibility": "Historically excluded from EVT trials; emerging data suggests some patients may benefit (individualized decision)",
+        "Prognostic Implication": "Poor prognosis; high risk of hemorrhagic transformation; consider goals of care discussion"
+      },
+      "calculationSteps": "Step 1: 9 of 10 regions affected. Step 2: ASPECTS = 10 - 9 = 1. Step 3: Very large core with poor prognosis.",
+      "medicalReference": "Very low ASPECTS associated with high mortality and morbidity regardless of treatment"
+    },
+    {
+      "testName": "ASPECTS 0 - Complete MCA territory infarction",
+      "category": "ASPECTS 0-2",
+      "description": "All 10 regions affected - complete MCA territory involvement",
+      "inputs": {
+        "laterality": "right",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": true,
+        "m1": true,
+        "m2": true,
+        "m3": true,
+        "m4": true,
+        "m5": true,
+        "m6": true,
+        "time_from_onset": "8"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "0 / 10",
+        "Interpretation": "Very large infarct core (ASPECTS 0-2)",
+        "Regions Affected": "10 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1, M2, M3, M4, M5, M6",
+        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 3/3",
+        "Thrombectomy Eligibility": "Historically excluded from EVT trials; emerging data suggests some patients may benefit (individualized decision)",
+        "Prognostic Implication": "Poor prognosis; high risk of hemorrhagic transformation; consider goals of care discussion",
+        "Clinical Notes": "Complete cortical MCA involvement suggests very poor collateral circulation"
+      },
+      "calculationSteps": "Step 1: All 10 regions affected. Step 2: ASPECTS = 10 - 10 = 0. Step 3: Complete MCA territory infarction with poor collaterals.",
+      "medicalReference": "ASPECTS 0 indicates complete MCA territory early ischemic changes"
+    },
+    {
+      "testName": "Complete cortical involvement only (M1-M6)",
+      "category": "Clinical Patterns",
+      "description": "All cortical regions affected with spared subcortical structures",
+      "inputs": {
+        "laterality": "left",
+        "caudate": false,
+        "lentiform": false,
+        "internal_capsule": false,
+        "insular": false,
+        "m1": true,
+        "m2": true,
+        "m3": true,
+        "m4": true,
+        "m5": true,
+        "m6": true,
+        "time_from_onset": "5"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "4 / 10",
+        "Interpretation": "Large infarct core (ASPECTS 3-5)",
+        "Regions Affected": "6 region(s): M1, M2, M3, M4, M5, M6",
+        "Regional Breakdown": "Subcortical: 0/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 3/3",
+        "Clinical Notes": "Complete cortical MCA involvement suggests very poor collateral circulation"
+      },
+      "calculationSteps": "Step 1: All 6 cortical regions (M1-M6) affected. Step 2: ASPECTS = 10 - 6 = 4. Step 3: Complete cortical involvement pattern.",
+      "medicalReference": "Pure cortical involvement with subcortical sparing may indicate M2 division occlusion"
+    },
+    {
+      "testName": "Predominantly subcortical pattern (3 of 4)",
+      "category": "Clinical Patterns",
+      "description": "Three subcortical regions with no cortical involvement - lenticulostriate territory",
+      "inputs": {
+        "laterality": "right",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": false,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "4"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "7 / 10",
+        "Interpretation": "Moderate early ischemic changes",
+        "Regions Affected": "3 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule)",
+        "Regional Breakdown": "Subcortical: 3/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Clinical Notes": "Predominantly subcortical involvement - consider lenticulostriate territory infarction"
+      },
+      "calculationSteps": "Step 1: C + L + IC affected (3 subcortical regions). Step 2: ASPECTS = 10 - 3 = 7. Step 3: Pattern suggests lenticulostriate territory.",
+      "medicalReference": "Lenticulostriate infarction may occur with M1 occlusion or perforator disease"
+    },
+    {
+      "testName": "Supraganglionic only pattern (M4-M6)",
+      "category": "Clinical Patterns",
+      "description": "Only supraganglionic cortical regions affected",
+      "inputs": {
+        "laterality": "left",
+        "caudate": false,
+        "lentiform": false,
+        "internal_capsule": false,
+        "insular": false,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": true,
+        "m5": true,
+        "m6": true,
+        "time_from_onset": "3"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "7 / 10",
+        "Interpretation": "Moderate early ischemic changes",
+        "Regions Affected": "3 region(s): M4, M5, M6",
+        "Regional Breakdown": "Subcortical: 0/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 3/3",
+        "Thrombectomy Eligibility": "May benefit from mechanical thrombectomy (meets standard threshold of ASPECTS >= 6)"
+      },
+      "calculationSteps": "Step 1: M4 + M5 + M6 affected (3 regions). Step 2: ASPECTS = 10 - 3 = 7.",
+      "medicalReference": "Isolated supraganglionic involvement may indicate distal M2/M3 branch occlusion"
+    },
+    {
+      "testName": "Time window > 24 hours",
+      "category": "Time Windows",
+      "description": "Beyond all standard thrombectomy time windows",
+      "inputs": {
+        "laterality": "right",
+        "caudate": false,
+        "lentiform": true,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": true,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "30"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "7 / 10",
+        "Time from Onset": "30 hours",
+        "Time Window Assessment": "Beyond standard thrombectomy time windows (>24 hours)"
+      },
+      "calculationSteps": "Step 1: 3 regions affected. Step 2: ASPECTS = 7. Step 3: 30h exceeds all standard EVT windows.",
+      "medicalReference": "No RCT evidence for EVT benefit beyond 24 hours from symptom onset"
+    },
+    {
+      "testName": "Exactly 6 hours (boundary of standard window)",
+      "category": "Time Windows",
+      "description": "At exact boundary between standard and extended windows",
+      "inputs": {
+        "laterality": "left",
+        "caudate": false,
+        "lentiform": false,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": true,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "6"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "8 / 10",
+        "Time from Onset": "6 hours",
+        "Time Window Assessment": "Within standard 6-hour window for thrombectomy - Standard eligibility criteria met (per 2015 landmark trials)"
+      },
+      "calculationSteps": "Step 1: I + M1 affected (2 regions). Step 2: ASPECTS = 8. Step 3: 6h is within standard window (<=6h).",
+      "medicalReference": "Standard EVT window is 0-6 hours from symptom onset"
+    },
+    {
+      "testName": "Exactly 16 hours (DEFUSE-3 boundary)",
+      "category": "Time Windows",
+      "description": "At boundary of DEFUSE-3 window (6-16 hours)",
+      "inputs": {
+        "laterality": "right",
+        "caudate": false,
+        "lentiform": true,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": false,
+        "m2": true,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "16"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "7 / 10",
+        "Time from Onset": "16 hours",
+        "Time Window Assessment": "Extended window (6-16 hours): DEFUSE-3 criteria may apply"
+      },
+      "calculationSteps": "Step 1: L + I + M2 affected (3 regions). Step 2: ASPECTS = 7. Step 3: 16h is within DEFUSE-3 window (<=16h).",
+      "medicalReference": "DEFUSE-3 Trial: EVT window 6-16 hours with perfusion mismatch"
+    },
+    {
+      "testName": "Exactly 24 hours (DAWN boundary)",
+      "category": "Time Windows",
+      "description": "At boundary of DAWN trial window (6-24 hours)",
+      "inputs": {
+        "laterality": "left",
+        "caudate": true,
+        "lentiform": false,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": true,
+        "m2": true,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "24"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "6 / 10",
+        "Time from Onset": "24 hours",
+        "Time Window Assessment": "Extended window (6-24 hours): DAWN trial criteria may apply - Requires clinical-imaging mismatch assessment"
+      },
+      "calculationSteps": "Step 1: C + I + M1 + M2 affected (4 regions). Step 2: ASPECTS = 6. Step 3: 24h is within DAWN window (<=24h).",
+      "medicalReference": "DAWN Trial: EVT window 6-24 hours with clinical-core mismatch"
+    },
+    {
+      "testName": "No laterality specified",
+      "category": "Input Variations",
+      "description": "Calculator behavior when laterality is not selected",
+      "inputs": {
+        "laterality": "",
+        "caudate": false,
+        "lentiform": true,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "3"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "8 / 10",
+        "Regions Affected": "2 region(s): L (Lentiform), I (Insular)"
+      },
+      "calculationSteps": "Step 1: L + I affected (2 regions). Step 2: ASPECTS = 8. Step 3: No laterality specified - field omitted from output.",
+      "medicalReference": "Laterality is clinical context, not part of ASPECTS calculation"
+    },
+    {
+      "testName": "No time from onset specified",
+      "category": "Input Variations",
+      "description": "Calculator behavior when time is not provided",
+      "inputs": {
+        "laterality": "left",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": false,
+        "insular": true,
+        "m1": true,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": ""
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "6 / 10",
+        "Interpretation": "Moderate early ischemic changes",
+        "Regions Affected": "4 region(s): C (Caudate), L (Lentiform), I (Insular), M1",
+        "Thrombectomy Eligibility": "May benefit from mechanical thrombectomy (meets standard threshold of ASPECTS >= 6)"
+      },
+      "calculationSteps": "Step 1: C + L + I + M1 affected (4 regions). Step 2: ASPECTS = 6. Step 3: No time specified - time-related fields omitted.",
+      "medicalReference": "Time from onset is optional context for treatment window assessment"
+    },
+    {
+      "testName": "Combined clinical pattern - proximal M1 with lenticulostriate",
+      "category": "Clinical Patterns",
+      "description": "Both proximal M1 and lenticulostriate patterns present",
+      "inputs": {
+        "laterality": "right",
+        "caudate": true,
+        "lentiform": true,
+        "internal_capsule": true,
+        "insular": true,
+        "m1": false,
+        "m2": false,
+        "m3": false,
+        "m4": false,
+        "m5": false,
+        "m6": false,
+        "time_from_onset": "4"
+      },
+      "expectedOutputs": {
+        "ASPECTS Score": "6 / 10",
+        "Regions Affected": "4 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular)",
+        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Clinical Notes": "Involvement of both insular ribbon and lentiform nucleus suggests proximal M1 occlusion with poor collaterals; Caudate and internal capsule involvement may indicate lenticulostriate artery territory infarction"
+      },
+      "calculationSteps": "Step 1: All 4 subcortical regions affected. Step 2: ASPECTS = 6. Step 3: Both proximal M1 and lenticulostriate patterns identified.",
+      "medicalReference": "Combined patterns indicate proximal M1 occlusion affecting both cortical and lenticulostriate territories"
+    }
+  ],
+  "regionDefinitions": {
+    "subcortical": {
+      "C": "Caudate head - nuclei of the striatum",
+      "L": "Lentiform nucleus - putamen and globus pallidus",
+      "IC": "Internal capsule - posterior limb containing motor fibers",
+      "I": "Insular ribbon - insular cortex, early MCA stroke indicator"
+    },
+    "ganglionicCortical": {
+      "M1": "Frontal operculum - anterior MCA cortex at ganglionic level",
+      "M2": "Anterior temporal lobe - lateral to insular ribbon",
+      "M3": "Posterior temporal lobe - posterior MCA cortex at ganglionic level"
+    },
+    "supraganglionicCortical": {
+      "M4": "Anterior MCA territory - immediately superior to M1",
+      "M5": "Lateral MCA territory - immediately superior to M2",
+      "M6": "Posterior MCA territory - immediately superior to M3"
+    }
+  },
+  "scoringInterpretation": {
+    "10": "No early ischemic changes - ideal EVT candidate",
+    "8-9": "Small ischemic changes - good EVT candidate",
+    "6-7": "Moderate changes - meets standard EVT threshold (ASPECTS >= 6)",
+    "3-5": "Large core - consider per SELECT2/ANGEL-ASPECT/RESCUE-Japan LIMIT",
+    "0-2": "Very large core - historically excluded, individualized decision"
+  },
+  "timeWindowCriteria": {
+    "standard": {
+      "window": "0-6 hours",
+      "threshold": "ASPECTS >= 6",
+      "trials": "MR CLEAN, ESCAPE, SWIFT PRIME, EXTEND-IA, REVASCAT (2015)"
+    },
+    "defuse3": {
+      "window": "6-16 hours",
+      "threshold": "ASPECTS >= 6 with perfusion mismatch",
+      "trial": "DEFUSE-3 (Albers 2018)"
+    },
+    "dawn": {
+      "window": "6-24 hours",
+      "threshold": "Clinical-core mismatch",
+      "trial": "DAWN (Nogueira 2018)"
+    },
+    "largeCore": {
+      "window": "Up to 24 hours",
+      "threshold": "ASPECTS 3-5",
+      "trials": "SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT (2022-2023)"
+    }
+  },
+  "notes": [
+    "ASPECTS is calculated by subtracting 1 point from 10 for each affected region",
+    "All 10 regions are assessed at the level of the basal ganglia and immediately above",
+    "Early ischemic changes include: hypodensity, loss of gray-white differentiation, sulcal effacement",
+    "ASPECTS applies only to MCA territory strokes - use pc-ASPECTS for posterior circulation",
+    "Insular ribbon sign is often the earliest CT finding in MCA stroke",
+    "Combined insular + lentiform involvement suggests proximal M1 occlusion with poor collaterals",
+    "Caudate + internal capsule involvement suggests lenticulostriate territory infarction",
+    "Complete cortical (M1-M6) involvement indicates very poor collateral circulation",
+    "ASPECTS >= 6 was the standard threshold for EVT in 2015 landmark trials",
+    "Large core trials (SELECT2, ANGEL-ASPECT) extended EVT benefit to ASPECTS 3-5 in 2022-2023",
+    "Time window assessment requires integration with clinical and perfusion imaging data"
+  ]
+}

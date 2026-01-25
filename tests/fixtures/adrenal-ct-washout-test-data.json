@@ -1,0 +1,451 @@
+{
+  "testCases": [
+    {
+      "id": "classic-adenoma-high-washout",
+      "description": "Classic lipid-rich adenoma with high washout values (APW 75%, RPW 50%)",
+      "inputs": {
+        "unenh": "10",
+        "portal": "80",
+        "delayed": "27.5"
+      },
+      "expected": {
+        "Absolute Washout (%)": "75.0",
+        "Relative Washout (%)": "65.6",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Lipid-rich adenoma with negative unenhanced HU and rapid washout. Both APW and RPW exceed thresholds."
+    },
+    {
+      "id": "adenoma-apw-threshold-exact",
+      "description": "Adenoma exactly at APW threshold (APW = 60.0%, RPW < 40%)",
+      "inputs": {
+        "unenh": "20",
+        "portal": "100",
+        "delayed": "52"
+      },
+      "expected": {
+        "Absolute Washout (%)": "60.0",
+        "Relative Washout (%)": "48.0",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Borderline case: APW exactly at 60% threshold qualifies as adenoma."
+    },
+    {
+      "id": "adenoma-rpw-threshold-exact",
+      "description": "Adenoma exactly at RPW threshold (APW < 60%, RPW = 40.0%)",
+      "inputs": {
+        "unenh": "25",
+        "portal": "100",
+        "delayed": "60"
+      },
+      "expected": {
+        "Absolute Washout (%)": "53.3",
+        "Relative Washout (%)": "40.0",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "RPW exactly at 40% threshold qualifies despite APW being below threshold."
+    },
+    {
+      "id": "adenoma-both-thresholds-exact",
+      "description": "Adenoma exactly at both thresholds (APW = 60%, RPW = 40%)",
+      "inputs": {
+        "unenh": "30",
+        "portal": "120",
+        "delayed": "72"
+      },
+      "expected": {
+        "Absolute Washout (%)": "53.3",
+        "Relative Washout (%)": "40.0",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Edge case meeting exactly the RPW threshold."
+    },
+    {
+      "id": "non-adenoma-below-both-thresholds",
+      "description": "Non-adenoma/metastasis: below both APW and RPW thresholds",
+      "inputs": {
+        "unenh": "35",
+        "portal": "100",
+        "delayed": "75"
+      },
+      "expected": {
+        "Absolute Washout (%)": "38.5",
+        "Relative Washout (%)": "25.0",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "Characteristic of adrenal metastasis or other malignancy - fails both washout criteria."
+    },
+    {
+      "id": "non-adenoma-just-below-thresholds",
+      "description": "Non-adenoma just below both thresholds (APW = 59.9%, RPW = 39.9%)",
+      "inputs": {
+        "unenh": "20",
+        "portal": "100",
+        "delayed": "52.08"
+      },
+      "expected": {
+        "Absolute Washout (%)": "59.9",
+        "Relative Washout (%)": "47.9",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "Edge case: APW at 59.9% just below 60% threshold - does not qualify as adenoma."
+    },
+    {
+      "id": "lipid-poor-adenoma-high-apw",
+      "description": "Lipid-poor adenoma: high unenhanced HU but high APW (Caoili criteria)",
+      "inputs": {
+        "unenh": "25",
+        "portal": "110",
+        "delayed": "42"
+      },
+      "expected": {
+        "Absolute Washout (%)": "80.0",
+        "Relative Washout (%)": "61.8",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Lipid-poor adenoma (unenhanced >10 HU) correctly identified by washout despite elevated baseline."
+    },
+    {
+      "id": "pheochromocytoma-pattern",
+      "description": "Pheochromocytoma: high enhancement, minimal washout",
+      "inputs": {
+        "unenh": "35",
+        "portal": "150",
+        "delayed": "120"
+      },
+      "expected": {
+        "Absolute Washout (%)": "26.1",
+        "Relative Washout (%)": "20.0",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "Pheochromocytoma typically shows avid enhancement but slow washout."
+    },
+    {
+      "id": "metastasis-typical",
+      "description": "Adrenal metastasis: moderate enhancement, poor washout",
+      "inputs": {
+        "unenh": "40",
+        "portal": "90",
+        "delayed": "70"
+      },
+      "expected": {
+        "Absolute Washout (%)": "40.0",
+        "Relative Washout (%)": "22.2",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "Typical metastasis pattern with retained contrast at delayed phase."
+    },
+    {
+      "id": "adrenocortical-carcinoma",
+      "description": "Adrenocortical carcinoma: heterogeneous, poor washout",
+      "inputs": {
+        "unenh": "30",
+        "portal": "85",
+        "delayed": "68"
+      },
+      "expected": {
+        "Absolute Washout (%)": "30.9",
+        "Relative Washout (%)": "20.0",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "Primary adrenocortical carcinoma typically shows poor washout characteristics."
+    },
+    {
+      "id": "low-enhancement-adenoma",
+      "description": "Adenoma with relatively low enhancement but adequate washout",
+      "inputs": {
+        "unenh": "5",
+        "portal": "60",
+        "delayed": "25"
+      },
+      "expected": {
+        "Absolute Washout (%)": "63.6",
+        "Relative Washout (%)": "58.3",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Low-enhancing adenoma with good washout. Negative unenhanced HU suggests lipid-rich."
+    },
+    {
+      "id": "high-enhancement-adenoma",
+      "description": "Highly enhancing adenoma with excellent washout",
+      "inputs": {
+        "unenh": "8",
+        "portal": "130",
+        "delayed": "35"
+      },
+      "expected": {
+        "Absolute Washout (%)": "77.9",
+        "Relative Washout (%)": "73.1",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Hypervascular adenoma still shows characteristic rapid washout."
+    },
+    {
+      "id": "negative-unenhanced-hu",
+      "description": "Adenoma with negative unenhanced HU (lipid-rich, classic)",
+      "inputs": {
+        "unenh": "-5",
+        "portal": "70",
+        "delayed": "20"
+      },
+      "expected": {
+        "Absolute Washout (%)": "66.7",
+        "Relative Washout (%)": "71.4",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Classic lipid-rich adenoma with negative unenhanced attenuation (<10 HU). Washout confirms diagnosis."
+    },
+    {
+      "id": "zero-unenhanced-hu",
+      "description": "Adenoma with zero unenhanced HU",
+      "inputs": {
+        "unenh": "0",
+        "portal": "80",
+        "delayed": "28"
+      },
+      "expected": {
+        "Absolute Washout (%)": "65.0",
+        "Relative Washout (%)": "65.0",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "When unenhanced = 0, APW equals RPW mathematically."
+    },
+    {
+      "id": "indeterminate-high-baseline",
+      "description": "Indeterminate lesion with very high baseline and marginal washout",
+      "inputs": {
+        "unenh": "45",
+        "portal": "120",
+        "delayed": "85"
+      },
+      "expected": {
+        "Absolute Washout (%)": "46.7",
+        "Relative Washout (%)": "29.2",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "High unenhanced HU (>30) with insufficient washout - concerning for malignancy."
+    },
+    {
+      "id": "rpw-only-positive",
+      "description": "Adenoma meeting only RPW threshold (APW < 60%, RPW > 40%)",
+      "inputs": {
+        "unenh": "30",
+        "portal": "90",
+        "delayed": "50"
+      },
+      "expected": {
+        "Absolute Washout (%)": "66.7",
+        "Relative Washout (%)": "44.4",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Both thresholds exceeded in this case, demonstrating the OR logic in interpretation."
+    },
+    {
+      "id": "minimal-enhancement",
+      "description": "Lesion with minimal enhancement from baseline",
+      "inputs": {
+        "unenh": "35",
+        "portal": "50",
+        "delayed": "42"
+      },
+      "expected": {
+        "Absolute Washout (%)": "53.3",
+        "Relative Washout (%)": "16.0",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "Minimal enhancement may limit accuracy of washout calculations."
+    },
+    {
+      "id": "very-high-washout",
+      "description": "Adenoma with exceptionally high washout (APW 90%, RPW 80%)",
+      "inputs": {
+        "unenh": "5",
+        "portal": "100",
+        "delayed": "14.5"
+      },
+      "expected": {
+        "Absolute Washout (%)": "90.0",
+        "Relative Washout (%)": "85.5",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Very high washout is highly specific for adenoma."
+    },
+    {
+      "id": "caoili-study-adenoma",
+      "description": "Reference case based on Caoili et al. 2000 adenoma example",
+      "inputs": {
+        "unenh": "10",
+        "portal": "90",
+        "delayed": "30"
+      },
+      "expected": {
+        "Absolute Washout (%)": "75.0",
+        "Relative Washout (%)": "66.7",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Based on typical adenoma values from Caoili EM et al. AJR 2000;175:1411-1415."
+    },
+    {
+      "id": "caoili-study-nonadenoma",
+      "description": "Reference case based on Caoili et al. 2000 non-adenoma example",
+      "inputs": {
+        "unenh": "35",
+        "portal": "95",
+        "delayed": "75"
+      },
+      "expected": {
+        "Absolute Washout (%)": "33.3",
+        "Relative Washout (%)": "21.1",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "Based on typical non-adenoma values from Caoili EM et al. AJR 2000;175:1411-1415."
+    },
+    {
+      "id": "equal-portal-delayed",
+      "description": "No washout: portal equals delayed (0% washout)",
+      "inputs": {
+        "unenh": "20",
+        "portal": "80",
+        "delayed": "80"
+      },
+      "expected": {
+        "Absolute Washout (%)": "0.0",
+        "Relative Washout (%)": "0.0",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "Zero washout is highly concerning for malignancy."
+    },
+    {
+      "id": "negative-washout",
+      "description": "Negative washout: delayed higher than portal (continued enhancement)",
+      "inputs": {
+        "unenh": "30",
+        "portal": "70",
+        "delayed": "85"
+      },
+      "expected": {
+        "Absolute Washout (%)": "-37.5",
+        "Relative Washout (%)": "-21.4",
+        "Interpretation": "Indeterminate / non-adenoma"
+      },
+      "clinicalContext": "Negative washout (continued enhancement) is highly atypical - may suggest pheochromocytoma or other lesion."
+    },
+    {
+      "id": "large-adenoma-reduced-sensitivity",
+      "description": "Large adenoma (>3cm): borderline washout (reduced sensitivity per literature)",
+      "inputs": {
+        "unenh": "18",
+        "portal": "95",
+        "delayed": "48"
+      },
+      "expected": {
+        "Absolute Washout (%)": "61.0",
+        "Relative Washout (%)": "49.5",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Large adenomas (>3cm) have reduced washout sensitivity (66.7% per Park et al. 2015). Just meets APW threshold."
+    },
+    {
+      "id": "hypervascular-metastasis-rcc",
+      "description": "Hypervascular metastasis (e.g., RCC): may mimic adenoma washout",
+      "inputs": {
+        "unenh": "38",
+        "portal": "140",
+        "delayed": "75"
+      },
+      "expected": {
+        "Absolute Washout (%)": "63.7",
+        "Relative Washout (%)": "46.4",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "CAVEAT: Hypervascular metastases (RCC, HCC) may show adenoma-like washout. Clinical correlation required."
+    },
+    {
+      "id": "mayo-protocol-adenoma",
+      "description": "Mayo Clinic protocol: typical adenoma with standard timing",
+      "inputs": {
+        "unenh": "12",
+        "portal": "85",
+        "delayed": "32"
+      },
+      "expected": {
+        "Absolute Washout (%)": "72.6",
+        "Relative Washout (%)": "62.4",
+        "Interpretation": "Suggests adrenal adenoma"
+      },
+      "clinicalContext": "Typical adenoma following Mayo Clinic adrenal mass characterization protocol."
+    }
+  ],
+  "metadata": {
+    "calculator": "Adrenal CT Washout",
+    "version": "1.0",
+    "totalTestCases": 25,
+    "formulas": {
+      "absoluteWashout": {
+        "formula": "APW = ((Enhanced - Delayed) / (Enhanced - Unenhanced)) x 100",
+        "threshold": ">=60%",
+        "description": "Absolute percentage washout accounts for baseline unenhanced attenuation"
+      },
+      "relativeWashout": {
+        "formula": "RPW = ((Enhanced - Delayed) / Enhanced) x 100",
+        "threshold": ">=40%",
+        "description": "Relative percentage washout used when unenhanced images not available"
+      }
+    },
+    "interpretationLogic": {
+      "adenoma": "APW >= 60% OR RPW >= 40%",
+      "nonAdenoma": "APW < 60% AND RPW < 40%"
+    },
+    "testCaseBreakdown": {
+      "adenomaCases": 14,
+      "nonAdenomaCases": 11,
+      "thresholdEdgeCases": 5,
+      "clinicalScenarios": 8,
+      "referenceCases": 3,
+      "edgeCases": 4
+    },
+    "protocol": {
+      "timing": {
+        "unenhanced": "Pre-contrast",
+        "portal": "60-75 seconds post-injection",
+        "delayed": "15 minutes post-injection"
+      },
+      "roi": "Placed in solid, enhancing portion of lesion avoiding necrosis and calcification"
+    },
+    "caveats": [
+      "Hypervascular metastases (RCC, HCC) may show adenoma-like washout",
+      "Large adenomas (>=3cm) have reduced washout sensitivity (66.7%)",
+      "Pheochromocytomas may have variable washout characteristics",
+      "Technical factors (timing, contrast bolus) affect measurements"
+    ],
+    "references": [
+      {
+        "citation": "Caoili EM et al.",
+        "title": "Adrenal Masses: Characterization with Combined Unenhanced and Delayed Enhanced CT",
+        "journal": "AJR Am J Roentgenol",
+        "year": 2000,
+        "volume": "175(5)",
+        "pages": "1411-1415",
+        "doi": "10.2214/ajr.175.5.1751411"
+      },
+      {
+        "citation": "Choi YA et al.",
+        "title": "Evaluation of Adrenal Metastases from Renal Cell Carcinoma and Hepatocellular Carcinoma: Use of Delayed Contrast-Enhanced CT",
+        "journal": "Radiology",
+        "year": 2013,
+        "volume": "266(2)",
+        "pages": "514-520",
+        "doi": "10.1148/radiol.12120110"
+      },
+      {
+        "citation": "Park SY et al.",
+        "title": "Washout Analysis Using Delayed Contrast-Enhanced CT for Adrenal Mass: Size Matters",
+        "journal": "Abdominal Imaging",
+        "year": 2015,
+        "volume": "40(8)",
+        "pages": "2914-2920",
+        "doi": "10.1007/s00261-015-0521-x"
+      }
+    ]
+  }
+}

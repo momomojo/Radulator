@@ -6,6 +6,8 @@ export const ChildPugh = {
   id: "child-pugh",
   name: "Child-Pugh Score",
   desc: "Classification and prognosis of chronic liver disease and cirrhosis",
+  metaDesc:
+    "Free Child-Pugh Score Calculator. Assess liver cirrhosis severity and prognosis (Class A, B, C). Calculates points for bilirubin, albumin, INR, ascites, and encephalopathy.",
   info: {
     text: "The Child-Pugh score is used to assess the prognosis of chronic liver disease, mainly cirrhosis. It uses five clinical measures: total bilirubin, serum albumin, INR, ascites, and hepatic encephalopathy.\n\nEach parameter is scored from 1 to 3 points, with a total score ranging from 5 to 15 points. The score classifies patients into three classes (A, B, C) that correlate with surgical risk and mortality.",
   },
@@ -14,18 +16,18 @@ export const ChildPugh = {
       id: "bilirubin",
       label: "Total Bilirubin",
       subLabel: "mg/dL",
-      type: "number"
+      type: "number",
     },
     {
       id: "albumin",
       label: "Serum Albumin",
       subLabel: "g/dL",
-      type: "number"
+      type: "number",
     },
     {
       id: "inr",
       label: "INR",
-      type: "number"
+      type: "number",
     },
     {
       id: "ascites",
@@ -34,7 +36,7 @@ export const ChildPugh = {
       opts: [
         { value: "none", label: "None" },
         { value: "slight", label: "Slight" },
-        { value: "moderate", label: "Moderate to Severe" }
+        { value: "moderate", label: "Moderate to Severe" },
       ],
     },
     {
@@ -44,7 +46,7 @@ export const ChildPugh = {
       opts: [
         { value: "none", label: "None" },
         { value: "grade1-2", label: "Grade 1-2 (mild)" },
-        { value: "grade3-4", label: "Grade 3-4 (severe)" }
+        { value: "grade3-4", label: "Grade 3-4 (severe)" },
       ],
     },
   ],
@@ -71,7 +73,11 @@ export const ChildPugh = {
     }
 
     // Calculate points for each parameter
-    let bilirubinPoints, albuminPoints, inrPoints, ascitesPoints, encephalopathyPoints;
+    let bilirubinPoints,
+      albuminPoints,
+      inrPoints,
+      ascitesPoints,
+      encephalopathyPoints;
 
     // Bilirubin scoring: <2 (1pt), 2-3 (2pts), >3 (3pts)
     if (bil < 2.0) {
@@ -119,7 +125,12 @@ export const ChildPugh = {
     }
 
     // Calculate total score
-    const totalScore = bilirubinPoints + albuminPoints + inrPoints + ascitesPoints + encephalopathyPoints;
+    const totalScore =
+      bilirubinPoints +
+      albuminPoints +
+      inrPoints +
+      ascitesPoints +
+      encephalopathyPoints;
 
     // Determine class and prognosis
     let childPughClass, description, mortality1yr, surgicalRisk;
@@ -145,16 +156,16 @@ export const ChildPugh = {
     const result = {
       "Total Score": `${totalScore} points`,
       "Child-Pugh Class": childPughClass,
-      "Classification": description,
+      Classification: description,
       "1-Year Mortality": mortality1yr,
       "Perioperative Mortality": surgicalRisk,
       "": "─────────────────────",
       "Points Breakdown": "",
-      "Bilirubin": `${bil.toFixed(1)} mg/dL → ${bilirubinPoints} point${bilirubinPoints > 1 ? 's' : ''}`,
-      "Albumin": `${alb.toFixed(1)} g/dL → ${albuminPoints} point${albuminPoints > 1 ? 's' : ''}`,
-      "INR": `${inrVal.toFixed(1)} → ${inrPoints} point${inrPoints > 1 ? 's' : ''}`,
-      "Ascites": `${ascites.charAt(0).toUpperCase() + ascites.slice(1).replace('-', ' ')} → ${ascitesPoints} point${ascitesPoints > 1 ? 's' : ''}`,
-      "Encephalopathy": `${encephalopathy === 'none' ? 'None' : encephalopathy.replace('grade', 'Grade ').replace('-', '-')} → ${encephalopathyPoints} point${encephalopathyPoints > 1 ? 's' : ''}`,
+      Bilirubin: `${bil.toFixed(1)} mg/dL → ${bilirubinPoints} point${bilirubinPoints > 1 ? "s" : ""}`,
+      Albumin: `${alb.toFixed(1)} g/dL → ${albuminPoints} point${albuminPoints > 1 ? "s" : ""}`,
+      INR: `${inrVal.toFixed(1)} → ${inrPoints} point${inrPoints > 1 ? "s" : ""}`,
+      Ascites: `${ascites.charAt(0).toUpperCase() + ascites.slice(1).replace("-", " ")} → ${ascitesPoints} point${ascitesPoints > 1 ? "s" : ""}`,
+      Encephalopathy: `${encephalopathy === "none" ? "None" : encephalopathy.replace("grade", "Grade ").replace("-", "-")} → ${encephalopathyPoints} point${encephalopathyPoints > 1 ? "s" : ""}`,
     };
 
     return result;

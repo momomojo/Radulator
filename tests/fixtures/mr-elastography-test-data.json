@@ -1,0 +1,374 @@
+{
+  "calculatorId": "mr-elastography",
+  "calculatorName": "MR Elastography (Liver)",
+  "description": "Comprehensive test cases for MR Elastography liver stiffness calculator with area-weighted mean calculations",
+  "formula": "Area-weighted Mean = Σ(Mi × Ai) / ΣAi where Mi = stiffness of ROI i, Ai = area of ROI i",
+  "references": [
+    {
+      "source": "Venkatesh et al. PMC6176736",
+      "thresholds": "<2.5 normal, 2.5-3.0 borderline, 3.0-3.5 F1-2, 3.5-4.0 F2-3, 4.0-5.0 F3-4, >5.0 F4"
+    },
+    {
+      "source": "SAR/LI-RADS Quantitative WG Consensus",
+      "thresholds": "≥3.0 F1+, ≥3.5 F2+, ≥4.0 F3+, ≥5.0 F4"
+    }
+  ],
+  "testCases": [
+    {
+      "testName": "Normal liver - single ROI",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "2.2",
+        "roi1_area": "50"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "50.00",
+        "Area-weighted Mean (kPa)": "2.20",
+        "Interpretation": "Within normal limits (no significant fibrosis suspected)",
+        "ROIs Used": "1 valid ROI",
+        "Frequency": "60 Hz"
+      },
+      "calculationSteps": "Step 1: Single ROI with 2.2 kPa × 50 cm² = 110; Step 2: Total area = 50 cm²; Step 3: Weighted mean = 110/50 = 2.2 kPa; Step 4: 2.2 < 2.5 = Normal",
+      "medicalReference": "Venkatesh et al. Table 2: <2.5 kPa = Normal"
+    },
+    {
+      "testName": "Normal liver - multiple ROIs uniform",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "2.0",
+        "roi1_area": "40",
+        "roi2_kpa": "2.2",
+        "roi2_area": "45",
+        "roi3_kpa": "2.1",
+        "roi3_area": "50"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "135.00",
+        "Area-weighted Mean (kPa)": "2.10",
+        "Interpretation": "Within normal limits (no significant fibrosis suspected)",
+        "ROIs Used": "3 valid ROIs"
+      },
+      "calculationSteps": "Step 1: (2.0×40) + (2.2×45) + (2.1×50) = 80 + 99 + 105 = 284; Step 2: Total area = 40+45+50 = 135 cm²; Step 3: Weighted mean = 284/135 = 2.10 kPa",
+      "medicalReference": "Normal liver stiffness 2.05-2.44 kPa per Venkatesh"
+    },
+    {
+      "testName": "Borderline elevation - single ROI",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "2.7",
+        "roi1_area": "55"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "55.00",
+        "Area-weighted Mean (kPa)": "2.70",
+        "Interpretation": "Borderline—repeatable mild elevation",
+        "ROIs Used": "1 valid ROI"
+      },
+      "calculationSteps": "Step 1: 2.7 kPa × 55 cm² = 148.5; Step 2: 148.5/55 = 2.7 kPa; Step 3: 2.5 ≤ 2.7 < 3.0 = Borderline",
+      "medicalReference": "2.5-3.0 kPa = Normal or inflammation/borderline"
+    },
+    {
+      "testName": "Borderline - weighted average at threshold",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "2.3",
+        "roi1_area": "60",
+        "roi2_kpa": "2.8",
+        "roi2_area": "40"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "100.00",
+        "Area-weighted Mean (kPa)": "2.50",
+        "Interpretation": "Borderline—repeatable mild elevation",
+        "ROIs Used": "2 valid ROIs"
+      },
+      "calculationSteps": "Step 1: (2.3×60) + (2.8×40) = 138 + 112 = 250; Step 2: 250/100 = 2.50 kPa exactly; Step 3: At 2.5 threshold = Borderline",
+      "medicalReference": "2.5 kPa is threshold between normal and borderline"
+    },
+    {
+      "testName": "Stage F1-F2 fibrosis likely",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "3.2",
+        "roi1_area": "45",
+        "roi2_kpa": "3.4",
+        "roi2_area": "50"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "95.00",
+        "Area-weighted Mean (kPa)": "3.31",
+        "Interpretation": "≥F2 fibrosis likely",
+        "ROIs Used": "2 valid ROIs"
+      },
+      "calculationSteps": "Step 1: (3.2×45) + (3.4×50) = 144 + 170 = 314; Step 2: 314/95 = 3.305 ≈ 3.31 kPa; Step 3: 3.0 ≤ 3.31 < 3.6 = F2+ fibrosis",
+      "medicalReference": "3.0-3.5 kPa threshold for significant fibrosis (≥F2)"
+    },
+    {
+      "testName": "Stage F2-F3 fibrosis - just above F2 threshold",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "3.0",
+        "roi1_area": "50"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "50.00",
+        "Area-weighted Mean (kPa)": "3.00",
+        "Interpretation": "≥F2 fibrosis likely",
+        "ROIs Used": "1 valid ROI"
+      },
+      "calculationSteps": "Step 1: 3.0 × 50 = 150; Step 2: 150/50 = 3.0 kPa; Step 3: At 3.0 threshold = F2+ fibrosis",
+      "medicalReference": "3.0 kPa is consensus threshold for stage F1 or higher"
+    },
+    {
+      "testName": "Advanced fibrosis F3 likely",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "3.7",
+        "roi1_area": "40",
+        "roi2_kpa": "3.9",
+        "roi2_area": "45"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "85.00",
+        "Area-weighted Mean (kPa)": "3.81",
+        "Interpretation": "Advanced fibrosis (≥F3) likely",
+        "ROIs Used": "2 valid ROIs"
+      },
+      "calculationSteps": "Step 1: (3.7×40) + (3.9×45) = 148 + 175.5 = 323.5; Step 2: 323.5/85 = 3.806 ≈ 3.81 kPa; Step 3: 3.6 ≤ 3.81 < 4.0 = F3+ fibrosis",
+      "medicalReference": "3.5-4.0 kPa indicates advanced fibrosis (F3)"
+    },
+    {
+      "testName": "Cirrhosis F4 likely - moderate elevation",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "4.5",
+        "roi1_area": "35",
+        "roi2_kpa": "4.8",
+        "roi2_area": "40"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "75.00",
+        "Area-weighted Mean (kPa)": "4.66",
+        "Interpretation": "Cirrhosis (F4) likely",
+        "ROIs Used": "2 valid ROIs"
+      },
+      "calculationSteps": "Step 1: (4.5×35) + (4.8×40) = 157.5 + 192 = 349.5; Step 2: 349.5/75 = 4.66 kPa; Step 3: ≥4.0 = Cirrhosis likely",
+      "medicalReference": "≥4.0-5.0 kPa indicates cirrhosis (F4)"
+    },
+    {
+      "testName": "Severe cirrhosis - high stiffness",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "6.2",
+        "roi1_area": "30",
+        "roi2_kpa": "5.8",
+        "roi2_area": "35"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "65.00",
+        "Area-weighted Mean (kPa)": "5.98",
+        "Interpretation": "Cirrhosis (F4) likely",
+        "ROIs Used": "2 valid ROIs"
+      },
+      "calculationSteps": "Step 1: (6.2×30) + (5.8×35) = 186 + 203 = 389; Step 2: 389/65 = 5.98 kPa; Step 3: >>5.0 = Definite cirrhosis",
+      "medicalReference": ">5.0 kPa is consensus threshold for cirrhosis (F4)"
+    },
+    {
+      "testName": "Four ROIs with variable stiffness",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "2.8",
+        "roi1_area": "45",
+        "roi2_kpa": "3.1",
+        "roi2_area": "50",
+        "roi3_kpa": "3.4",
+        "roi3_area": "40",
+        "roi4_kpa": "3.0",
+        "roi4_area": "55"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "190.00",
+        "Area-weighted Mean (kPa)": "3.05",
+        "Interpretation": "≥F2 fibrosis likely",
+        "ROIs Used": "4 valid ROIs"
+      },
+      "calculationSteps": "Step 1: (2.8×45)+(3.1×50)+(3.4×40)+(3.0×55) = 126+155+136+165 = 582; Step 2: 582/190 = 3.06 kPa; Step 3: 3.0-3.6 = F2 fibrosis",
+      "medicalReference": "Area-weighted mean accounts for variable ROI sampling"
+    },
+    {
+      "testName": "CSV input - three ROIs",
+      "inputs": {
+        "frequency": "60",
+        "roi_csv": "2.5, 40\n2.8, 45\n2.6, 50"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "135.00",
+        "Area-weighted Mean (kPa)": "2.63",
+        "Interpretation": "Borderline—repeatable mild elevation",
+        "ROIs Used": "3 valid ROIs"
+      },
+      "calculationSteps": "Step 1: Parse CSV: [2.5,40], [2.8,45], [2.6,50]; Step 2: (2.5×40)+(2.8×45)+(2.6×50) = 100+126+130 = 356; Step 3: 356/135 = 2.64 kPa",
+      "medicalReference": "CSV input allows batch ROI entry from PACS export"
+    },
+    {
+      "testName": "40 Hz frequency adjustment - normal",
+      "inputs": {
+        "frequency": "40",
+        "roi1_kpa": "2.0",
+        "roi1_area": "50"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "50.00",
+        "Area-weighted Mean (kPa)": "2.00",
+        "Interpretation": "Within normal limits (no significant fibrosis suspected)",
+        "ROIs Used": "1 valid ROI",
+        "Frequency": "40 Hz"
+      },
+      "calculationSteps": "Step 1: 2.0 × 50 = 100; Step 2: 100/50 = 2.0 kPa; Step 3: 40 Hz factor = 0.9, adjusted = 2.0/0.9 = 2.22 kPa; Step 4: Still < 2.5 = Normal",
+      "medicalReference": "Lower frequency may yield lower stiffness values; adjustment factor applies"
+    },
+    {
+      "testName": "90 Hz frequency - higher threshold",
+      "inputs": {
+        "frequency": "90",
+        "roi1_kpa": "3.8",
+        "roi1_area": "45"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "45.00",
+        "Area-weighted Mean (kPa)": "3.80",
+        "Interpretation": "≥F2 fibrosis likely",
+        "ROIs Used": "1 valid ROI",
+        "Frequency": "90 Hz"
+      },
+      "calculationSteps": "Step 1: 3.8 × 45 = 171; Step 2: 171/45 = 3.8 kPa; Step 3: 90 Hz factor = 1.1, adjusted = 3.8/1.1 = 3.45 kPa; Step 4: 3.0-3.6 = F2 fibrosis",
+      "medicalReference": "Higher frequency sequences may yield higher stiffness values"
+    },
+    {
+      "testName": "Custom frequency (Other) - 70 Hz",
+      "inputs": {
+        "frequency": "Other",
+        "frequency_other": "70",
+        "roi1_kpa": "3.2",
+        "roi1_area": "48"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "48.00",
+        "Area-weighted Mean (kPa)": "3.20",
+        "Interpretation": "≥F2 fibrosis likely",
+        "ROIs Used": "1 valid ROI",
+        "Frequency": "70 Hz"
+      },
+      "calculationSteps": "Step 1: Custom frequency 70 Hz selected; Step 2: 3.2 × 48 = 153.6; Step 3: 153.6/48 = 3.2 kPa; Step 4: 3.0-3.6 = F2 fibrosis",
+      "medicalReference": "Custom frequency for non-standard protocols"
+    },
+    {
+      "testName": "Edge case - very large total area",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "2.5",
+        "roi1_area": "200",
+        "roi2_kpa": "2.6",
+        "roi2_area": "180"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "380.00",
+        "Area-weighted Mean (kPa)": "2.55",
+        "Interpretation": "Borderline—repeatable mild elevation",
+        "ROIs Used": "2 valid ROIs"
+      },
+      "calculationSteps": "Step 1: (2.5×200) + (2.6×180) = 500 + 468 = 968; Step 2: 968/380 = 2.547 ≈ 2.55 kPa; Step 3: Large area increases confidence",
+      "medicalReference": "Larger ROI area improves measurement reproducibility"
+    },
+    {
+      "testName": "Edge case - small ROI areas",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "3.5",
+        "roi1_area": "10",
+        "roi2_kpa": "3.8",
+        "roi2_area": "12"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "22.00",
+        "Area-weighted Mean (kPa)": "3.66",
+        "Interpretation": "Advanced fibrosis (≥F3) likely",
+        "ROIs Used": "2 valid ROIs"
+      },
+      "calculationSteps": "Step 1: (3.5×10) + (3.8×12) = 35 + 45.6 = 80.6; Step 2: 80.6/22 = 3.66 kPa; Step 3: Small ROIs may have higher variability",
+      "medicalReference": "Minimum recommended ROI area is typically >1 cm² per measurement"
+    },
+    {
+      "testName": "No valid ROIs - empty input",
+      "inputs": {
+        "frequency": "60"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "—",
+        "Area-weighted Mean (kPa)": "—",
+        "Interpretation": "Enter at least one valid ROI with stiffness > 0 and area > 0",
+        "ROIs Used": "0 valid ROIs"
+      },
+      "calculationSteps": "No ROIs provided - calculator returns guidance message",
+      "medicalReference": "At least one valid ROI required for calculation"
+    },
+    {
+      "testName": "Invalid ROI - zero area ignored",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "3.0",
+        "roi1_area": "0",
+        "roi2_kpa": "2.8",
+        "roi2_area": "45"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "45.00",
+        "Area-weighted Mean (kPa)": "2.80",
+        "Interpretation": "Borderline—repeatable mild elevation",
+        "ROIs Used": "1 valid ROI"
+      },
+      "calculationSteps": "Step 1: ROI1 has area=0, filtered out; Step 2: Only ROI2 valid: 2.8 × 45 = 126; Step 3: 126/45 = 2.8 kPa",
+      "medicalReference": "Zero area ROIs are invalid and excluded from calculation"
+    },
+    {
+      "testName": "Threshold boundary - exactly 3.6 kPa (F3 boundary)",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "3.6",
+        "roi1_area": "50"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "50.00",
+        "Area-weighted Mean (kPa)": "3.60",
+        "Interpretation": "Advanced fibrosis (≥F3) likely",
+        "ROIs Used": "1 valid ROI"
+      },
+      "calculationSteps": "Step 1: 3.6 × 50 = 180; Step 2: 180/50 = 3.6 kPa exactly; Step 3: At 3.6 threshold = F3+ fibrosis",
+      "medicalReference": "3.6 kPa is threshold for advanced fibrosis (F3+)"
+    },
+    {
+      "testName": "Threshold boundary - exactly 4.0 kPa (F4 boundary)",
+      "inputs": {
+        "frequency": "60",
+        "roi1_kpa": "4.0",
+        "roi1_area": "45"
+      },
+      "expectedOutputs": {
+        "Total Area (cm²)": "45.00",
+        "Area-weighted Mean (kPa)": "4.00",
+        "Interpretation": "Cirrhosis (F4) likely",
+        "ROIs Used": "1 valid ROI"
+      },
+      "calculationSteps": "Step 1: 4.0 × 45 = 180; Step 2: 180/45 = 4.0 kPa exactly; Step 3: At 4.0 threshold = Cirrhosis",
+      "medicalReference": "4.0 kPa is threshold for cirrhosis (F4)"
+    }
+  ],
+  "notes": [
+    "Liver stiffness thresholds vary by etiology (NAFLD vs HCV vs HBV)",
+    "Cutoffs are approximate and should be correlated clinically",
+    "Iron overload can cause MRE technical failure (R2* effect)",
+    "Minimum recommended total ROI area is typically 500-1000 mm² per slice",
+    "Confidence maps should be used to exclude areas of wave interference",
+    "GRE-MRE at 60 Hz is the most validated and widely used protocol"
+  ]
+}

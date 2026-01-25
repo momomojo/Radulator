@@ -1,0 +1,544 @@
+{
+  "description": "Comprehensive test cases for Adrenal MRI Chemical Shift Imaging (CSI) Calculator",
+  "calculator": "adrenal-mri",
+  "references": [
+    {
+      "title": "Blake MA AJR 2012",
+      "url": "https://doi.org/10.2214/AJR.10.4547",
+      "note": "Adrenal MRI CSI thresholds and methodology"
+    },
+    {
+      "title": "Schieda N AJR 2017",
+      "url": "https://doi.org/10.2214/AJR.16.17758",
+      "note": "Signal intensity index and ASR validation"
+    },
+    {
+      "title": "PMC5258164",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5258164/",
+      "note": "Adrenal imaging for adenoma characterization"
+    }
+  ],
+  "formulas": {
+    "signalIntensityIndex": {
+      "description": "Signal Intensity Index (SII) - measures percent signal drop on opposed-phase imaging",
+      "formula": "((Adrenal_IP - Adrenal_OP) / Adrenal_IP) * 100",
+      "threshold": ">=16.5% suggests lipid-rich adenoma",
+      "sensitivity": "71-87% (depending on study)",
+      "specificity": "92-100%"
+    },
+    "adrenalToSpleenRatio": {
+      "description": "Adrenal-to-Spleen CSI Ratio (ASR) - compares signal drop relative to spleen",
+      "formula": "(Adrenal_OP / Spleen_OP) / (Adrenal_IP / Spleen_IP)",
+      "threshold": "<0.71 suggests lipid-rich adenoma",
+      "note": "Spleen used as reference because it has stable signal with no fat or iron"
+    }
+  },
+  "fields": {
+    "a_ip": "Adrenal SI in-phase",
+    "a_op": "Adrenal SI opposed-phase",
+    "s_ip": "Spleen SI in-phase",
+    "s_op": "Spleen SI opposed-phase"
+  },
+  "testCases": [
+    {
+      "id": "classic-lipid-rich-adenoma",
+      "name": "Classic Lipid-Rich Adenoma - High Signal Drop",
+      "description": "Typical lipid-rich adenoma with significant signal loss on opposed-phase imaging",
+      "inputs": {
+        "a_ip": "200",
+        "a_op": "120",
+        "s_ip": "150",
+        "s_op": "145"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "40.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.62",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((200-120)/200)*100 = 40.0%",
+        "ASR": "(120/145)/(200/150) = 0.8276/1.3333 = 0.62"
+      },
+      "notes": "Both SII (40.0% >= 16.5%) and ASR (0.62 < 0.71) indicate adenoma"
+    },
+    {
+      "id": "sii-threshold-exactly-16.5",
+      "name": "SII Threshold Boundary - Exactly 16.5%",
+      "description": "Edge case where SII is exactly at the adenoma threshold",
+      "inputs": {
+        "a_ip": "200",
+        "a_op": "167",
+        "s_ip": "150",
+        "s_op": "145"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "16.5",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.86",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((200-167)/200)*100 = 16.5%",
+        "ASR": "(167/145)/(200/150) = 1.1517/1.3333 = 0.86"
+      },
+      "notes": "SII exactly at threshold (16.5% >= 16.5%), ASR does not meet threshold (0.86 > 0.71)"
+    },
+    {
+      "id": "sii-just-below-threshold",
+      "name": "SII Just Below Threshold - 16.4%",
+      "description": "SII slightly below adenoma threshold, classified as non-adenoma",
+      "inputs": {
+        "a_ip": "250",
+        "a_op": "209",
+        "s_ip": "180",
+        "s_op": "175"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "16.4",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.86",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((250-209)/250)*100 = 16.4%",
+        "ASR": "(209/175)/(250/180) = 1.1943/1.3889 = 0.86"
+      },
+      "notes": "SII just below threshold (16.4% < 16.5%), not classified as adenoma"
+    },
+    {
+      "id": "lipid-poor-lesion-no-signal-drop",
+      "name": "Lipid-Poor Lesion - Minimal Signal Drop",
+      "description": "Lesion with minimal signal drop, consistent with lipid-poor adenoma or metastasis",
+      "inputs": {
+        "a_ip": "180",
+        "a_op": "170",
+        "s_ip": "160",
+        "s_op": "155"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "5.6",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.98",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((180-170)/180)*100 = 5.56%",
+        "ASR": "(170/155)/(180/160) = 1.0968/1.125 = 0.975"
+      },
+      "notes": "Low SII (5.6% < 16.5%), high ASR (0.98 > 0.71) - indeterminate, needs CT washout"
+    },
+    {
+      "id": "no-signal-drop",
+      "name": "No Signal Drop - Zero SII",
+      "description": "Equal signal on in-phase and opposed-phase, no intracellular lipid",
+      "inputs": {
+        "a_ip": "200",
+        "a_op": "200",
+        "s_ip": "150",
+        "s_op": "150"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "0.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "1.00",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((200-200)/200)*100 = 0.0%",
+        "ASR": "(200/150)/(200/150) = 1.3333/1.3333 = 1.00"
+      },
+      "notes": "No signal drop suggests metastasis, pheochromocytoma, or lipid-poor adenoma"
+    },
+    {
+      "id": "moderate-signal-drop",
+      "name": "Moderate Signal Drop - 25% SII",
+      "description": "Moderate signal drop consistent with lipid-rich adenoma",
+      "inputs": {
+        "a_ip": "240",
+        "a_op": "180",
+        "s_ip": "200",
+        "s_op": "190"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "25.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.79",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((240-180)/240)*100 = 25.0%",
+        "ASR": "(180/190)/(240/200) = 0.9474/1.2 = 0.79"
+      },
+      "notes": "SII exceeds threshold (25.0% >= 16.5%), ASR slightly above cutoff (0.79 > 0.71)"
+    },
+    {
+      "id": "high-signal-drop-50-percent",
+      "name": "High Signal Drop - 50% SII",
+      "description": "Significant intracellular lipid causing substantial signal loss",
+      "inputs": {
+        "a_ip": "300",
+        "a_op": "150",
+        "s_ip": "220",
+        "s_op": "210"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "50.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.52",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((300-150)/300)*100 = 50.0%",
+        "ASR": "(150/210)/(300/220) = 0.7143/1.3636 = 0.52"
+      },
+      "notes": "Very high signal drop, both SII (50%) and ASR (0.52) strongly indicate adenoma"
+    },
+    {
+      "id": "asr-below-threshold-sii-below",
+      "name": "ASR Below Threshold but SII Below Threshold",
+      "description": "Case where ASR suggests adenoma but SII does not meet threshold",
+      "inputs": {
+        "a_ip": "200",
+        "a_op": "175",
+        "s_ip": "300",
+        "s_op": "280"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "12.5",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.94",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((200-175)/200)*100 = 12.5%",
+        "ASR": "(175/280)/(200/300) = 0.625/0.667 = 0.94"
+      },
+      "notes": "SII 12.5% < 16.5% threshold - classified as non-adenoma by current criteria"
+    },
+    {
+      "id": "low-signal-intensity-values",
+      "name": "Low Absolute Signal Values",
+      "description": "Test with lower absolute signal intensity values",
+      "inputs": {
+        "a_ip": "80",
+        "a_op": "55",
+        "s_ip": "60",
+        "s_op": "58"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "31.3",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.71",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((80-55)/80)*100 = 31.25%",
+        "ASR": "(55/58)/(80/60) = 0.9483/1.3333 = 0.71"
+      },
+      "notes": "SII 31.3% indicates adenoma; ASR exactly at 0.71 threshold boundary"
+    },
+    {
+      "id": "high-signal-intensity-values",
+      "name": "High Absolute Signal Values",
+      "description": "Test with higher absolute signal intensity values",
+      "inputs": {
+        "a_ip": "500",
+        "a_op": "350",
+        "s_ip": "400",
+        "s_op": "380"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "30.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.74",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((500-350)/500)*100 = 30.0%",
+        "ASR": "(350/380)/(500/400) = 0.9211/1.25 = 0.74"
+      },
+      "notes": "High absolute values, SII 30% indicates adenoma"
+    },
+    {
+      "id": "spleen-dominant-case",
+      "name": "Higher Spleen Signal Than Adrenal",
+      "description": "Case where spleen has higher signal than adrenal lesion",
+      "inputs": {
+        "a_ip": "150",
+        "a_op": "100",
+        "s_ip": "250",
+        "s_op": "240"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "33.3",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.69",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((150-100)/150)*100 = 33.33%",
+        "ASR": "(100/240)/(150/250) = 0.4167/0.6 = 0.69"
+      },
+      "notes": "Both SII (33.3% >= 16.5%) and ASR (0.69 < 0.71) indicate adenoma"
+    },
+    {
+      "id": "borderline-case-17-percent",
+      "name": "Borderline Adenoma - 17% Signal Drop",
+      "description": "Just above adenoma threshold for SII",
+      "inputs": {
+        "a_ip": "300",
+        "a_op": "249",
+        "s_ip": "250",
+        "s_op": "245"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "17.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.85",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((300-249)/300)*100 = 17.0%",
+        "ASR": "(249/245)/(300/250) = 1.0163/1.2 = 0.85"
+      },
+      "notes": "SII just above threshold (17% >= 16.5%), classified as adenoma"
+    },
+    {
+      "id": "typical-metastasis-pattern",
+      "name": "Typical Metastasis Pattern",
+      "description": "Pattern consistent with adrenal metastasis - no significant signal drop",
+      "inputs": {
+        "a_ip": "280",
+        "a_op": "275",
+        "s_ip": "200",
+        "s_op": "195"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "1.8",
+        "Adrenal‑to‑Spleen CSI Ratio": "1.01",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((280-275)/280)*100 = 1.79%",
+        "ASR": "(275/195)/(280/200) = 1.4103/1.4 = 1.01"
+      },
+      "notes": "Very low SII (1.8%) and ASR > 1.0 suggest metastasis or pheochromocytoma"
+    },
+    {
+      "id": "india-ink-artifact-case",
+      "name": "Clear India Ink Artifact Pattern",
+      "description": "Very high signal drop suggesting clear lipid content",
+      "inputs": {
+        "a_ip": "400",
+        "a_op": "160",
+        "s_ip": "300",
+        "s_op": "290"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "60.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.41",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((400-160)/400)*100 = 60.0%",
+        "ASR": "(160/290)/(400/300) = 0.5517/1.3333 = 0.41"
+      },
+      "notes": "Very high 60% signal drop with low ASR strongly confirms adenoma"
+    },
+    {
+      "id": "pheochromocytoma-pattern",
+      "name": "Pheochromocytoma-Like Pattern",
+      "description": "Pattern that may suggest pheochromocytoma - T2 bright, no signal drop",
+      "inputs": {
+        "a_ip": "350",
+        "a_op": "340",
+        "s_ip": "180",
+        "s_op": "175"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "2.9",
+        "Adrenal‑to‑Spleen CSI Ratio": "1.00",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((350-340)/350)*100 = 2.86%",
+        "ASR": "(340/175)/(350/180) = 1.9429/1.9444 = 1.00"
+      },
+      "notes": "High adrenal signal with minimal drop - concerning for pheochromocytoma"
+    },
+    {
+      "id": "subtle-lipid-10-percent",
+      "name": "Subtle Lipid Content - 10% Drop",
+      "description": "Subtle lipid content below adenoma threshold",
+      "inputs": {
+        "a_ip": "220",
+        "a_op": "198",
+        "s_ip": "190",
+        "s_op": "185"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "10.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.92",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((220-198)/220)*100 = 10.0%",
+        "ASR": "(198/185)/(220/190) = 1.0703/1.1579 = 0.92"
+      },
+      "notes": "10% signal drop is below 16.5% threshold - indeterminate, needs washout CT"
+    },
+    {
+      "id": "equal-adrenal-spleen-ratios",
+      "name": "Equal Adrenal and Spleen Signal Behavior",
+      "description": "Adrenal follows spleen signal pattern exactly",
+      "inputs": {
+        "a_ip": "200",
+        "a_op": "180",
+        "s_ip": "200",
+        "s_op": "180"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "10.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "1.00",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((200-180)/200)*100 = 10.0%",
+        "ASR": "(180/180)/(200/200) = 1.0/1.0 = 1.00"
+      },
+      "notes": "ASR = 1.0 indicates no differential signal drop relative to spleen"
+    },
+    {
+      "id": "real-world-case-1",
+      "name": "Real-World Case 1 - Confirmed Adenoma",
+      "description": "Values representative of a histologically confirmed adenoma",
+      "inputs": {
+        "a_ip": "245",
+        "a_op": "165",
+        "s_ip": "195",
+        "s_op": "188"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "32.7",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.70",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((245-165)/245)*100 = 32.65%",
+        "ASR": "(165/188)/(245/195) = 0.8777/1.2564 = 0.70"
+      },
+      "notes": "Both criteria met - SII 32.7% and ASR 0.70 indicate adenoma"
+    },
+    {
+      "id": "real-world-case-2",
+      "name": "Real-World Case 2 - Indeterminate Lesion",
+      "description": "Values for a lesion requiring additional workup",
+      "inputs": {
+        "a_ip": "185",
+        "a_op": "162",
+        "s_ip": "170",
+        "s_op": "165"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "12.4",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.90",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((185-162)/185)*100 = 12.43%",
+        "ASR": "(162/165)/(185/170) = 0.9818/1.0882 = 0.90"
+      },
+      "notes": "SII 12.4% < 16.5% - indeterminate, requires CT washout or follow-up"
+    },
+    {
+      "id": "decimal-precision-test",
+      "name": "Decimal Precision Test",
+      "description": "Test to verify decimal rounding behavior",
+      "inputs": {
+        "a_ip": "333",
+        "a_op": "278",
+        "s_ip": "222",
+        "s_op": "217"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "16.5",
+        "Adrenal‑to‑Spleen CSI Ratio": "0.85",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "calculations": {
+        "SII": "((333-278)/333)*100 = 16.516... rounds to 16.5%",
+        "ASR": "(278/217)/(333/222) = 1.2811/1.5 = 0.8541 rounds to 0.85"
+      },
+      "notes": "Tests decimal precision and rounding to 1 decimal for SII, 2 decimals for ASR"
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "zero-in-phase",
+      "name": "Zero In-Phase Signal",
+      "description": "Edge case with zero in-phase signal (would cause division by zero)",
+      "inputs": {
+        "a_ip": "0",
+        "a_op": "100",
+        "s_ip": "150",
+        "s_op": "145"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "Infinity or NaN",
+        "Adrenal‑to‑Spleen CSI Ratio": "Infinity",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "notes": "Division by zero case - application should handle gracefully"
+    },
+    {
+      "id": "negative-signal-drop",
+      "name": "Negative Signal Drop - OP > IP",
+      "description": "Opposed-phase signal higher than in-phase (paradoxical signal increase)",
+      "inputs": {
+        "a_ip": "150",
+        "a_op": "180",
+        "s_ip": "200",
+        "s_op": "190"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "-20.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "1.26",
+        "Interpretation": "Non‑adenoma / lipid‑poor"
+      },
+      "calculations": {
+        "SII": "((150-180)/150)*100 = -20.0%",
+        "ASR": "(180/190)/(150/200) = 0.9474/0.75 = 1.26"
+      },
+      "notes": "Negative SII indicates signal gain, may indicate iron deposition or artifact"
+    },
+    {
+      "id": "zero-spleen-op",
+      "name": "Zero Spleen OP Signal",
+      "description": "Edge case with zero spleen opposed-phase signal",
+      "inputs": {
+        "a_ip": "200",
+        "a_op": "150",
+        "s_ip": "180",
+        "s_op": "0"
+      },
+      "expected": {
+        "Signal Intensity Index (%)": "25.0",
+        "Adrenal‑to‑Spleen CSI Ratio": "Infinity",
+        "Interpretation": "Suggests lipid‑rich adenoma"
+      },
+      "notes": "Division by zero in ASR calculation - SII still valid"
+    }
+  ],
+  "clinicalContext": {
+    "adenomaCriteria": {
+      "SII": ">=16.5% signal drop suggests lipid-rich adenoma",
+      "ASR": "<0.71 suggests lipid-rich adenoma (not currently used in interpretation)",
+      "combinedApproach": "Either criterion can indicate adenoma; both together increase confidence"
+    },
+    "nonAdenomaDifferential": [
+      "Metastasis (lung, breast, melanoma, renal cell carcinoma)",
+      "Pheochromocytoma",
+      "Adrenocortical carcinoma",
+      "Lipid-poor adenoma (requires CT washout for characterization)"
+    ],
+    "limitations": [
+      "CSI less accurate for lipid-poor adenomas (10-20 HU on unenhanced CT)",
+      "Iron deposition can cause paradoxical signal loss",
+      "May need CT washout for indeterminate lesions"
+    ],
+    "nextSteps": {
+      "ifAdenoma": "Usually benign, follow-up as clinically indicated",
+      "ifIndeterminate": "Recommend dedicated adrenal CT with washout protocol",
+      "ifSuspiciousForMalignancy": "Consider PET/CT, biopsy, or surgical evaluation"
+    }
+  }
+}

@@ -1,0 +1,842 @@
+{
+  "description": "Comprehensive test cases for Radiation Dose Converter calculator",
+  "calculator": "radiation-dose-converter",
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-25",
+  "references": {
+    "ICRP103": "ICRP Publication 103 (2007) - The 2007 Recommendations of the ICRP",
+    "ICRP92": "ICRP Publication 92 (2003) - Radiation Weighting Factors",
+    "ICRP102": "ICRP Publication 102 (2007) - Managing Patient Dose in MDCT",
+    "AAPM96": "AAPM Report No. 96 (2008) - Radiation Dose in CT",
+    "EC1999": "European Commission (1999) - European Guidelines on Quality Criteria for CT"
+  },
+  "conversionFactors": {
+    "absorbedDose": {
+      "Gy_to_mGy": 1000,
+      "Gy_to_cGy": 100,
+      "Gy_to_rad": 100,
+      "rad_to_Gy": 0.01,
+      "cGy_to_Gy": 0.01,
+      "mGy_to_Gy": 0.001
+    },
+    "equivalentDose": {
+      "Sv_to_mSv": 1000,
+      "Sv_to_uSv": 1000000,
+      "Sv_to_rem": 100,
+      "Sv_to_mrem": 100000,
+      "rem_to_Sv": 0.01,
+      "mrem_to_Sv": 0.00001,
+      "mSv_to_Sv": 0.001,
+      "uSv_to_Sv": 0.000001
+    },
+    "activity": {
+      "Ci_to_Bq": 3.7e10,
+      "mCi_to_Bq": 3.7e7,
+      "uCi_to_Bq": 3.7e4,
+      "GBq_to_Bq": 1e9,
+      "MBq_to_Bq": 1e6,
+      "kBq_to_Bq": 1e3
+    },
+    "radiationWeightingFactors": {
+      "photon": 1,
+      "beta": 1,
+      "proton": 2,
+      "alpha": 20,
+      "neutron_low": 5,
+      "neutron_med": 20,
+      "neutron_high": 5
+    },
+    "ctKFactors": {
+      "head": 0.0021,
+      "neck": 0.0059,
+      "chest": 0.014,
+      "abdomen": 0.015,
+      "pelvis": 0.015,
+      "trunk": 0.015
+    },
+    "pediatricAgeMultipliers": {
+      "adult": 1.0,
+      "10yr": 1.2,
+      "5yr": 1.5,
+      "1yr": 1.9,
+      "0yr": 2.25
+    },
+    "doseContextReferences": {
+      "chestXrayPA_mSv": 0.02,
+      "annualBackground_mSv": 3,
+      "backgroundPerDay_mSv": 0.00822
+    }
+  },
+  "testCases": [
+    {
+      "id": "absorbed-001",
+      "testName": "Absorbed Dose: 1 Gy to all units",
+      "category": "absorbed_dose",
+      "inputs": {
+        "conversion_mode": "absorbed",
+        "input_value": "1",
+        "absorbed_unit": "Gy"
+      },
+      "expectedOutputs": {
+        "Gray (Gy)": "1.0000 Gy",
+        "milligray (mGy)": "1,000.0000 mGy",
+        "centigray (cGy)": "100.0000 cGy",
+        "rad": "100.0000 rad"
+      },
+      "calculationSteps": "Step 1: Input = 1 Gy (base unit). Step 2: Convert to mGy = 1 * 1000 = 1000 mGy. Step 3: Convert to cGy = 1 * 100 = 100 cGy. Step 4: Convert to rad = 1 * 100 = 100 rad (since 1 Gy = 100 rad).",
+      "medicalReference": "ICRP 103: 1 Gy = 100 rad = 1 J/kg"
+    },
+    {
+      "id": "absorbed-002",
+      "testName": "Absorbed Dose: 50 mGy to all units (typical CT dose)",
+      "category": "absorbed_dose",
+      "inputs": {
+        "conversion_mode": "absorbed",
+        "input_value": "50",
+        "absorbed_unit": "mGy"
+      },
+      "expectedOutputs": {
+        "Gray (Gy)": "0.050000 Gy",
+        "milligray (mGy)": "50.0000 mGy",
+        "centigray (cGy)": "5.0000 cGy",
+        "rad": "5.0000 rad"
+      },
+      "calculationSteps": "Step 1: Input = 50 mGy. Step 2: Convert to Gy = 50 * 0.001 = 0.05 Gy. Step 3: From Gy to cGy = 0.05 * 100 = 5 cGy. Step 4: From Gy to rad = 0.05 * 100 = 5 rad.",
+      "medicalReference": "AAPM Report 96: Typical CTDIvol range for body CT"
+    },
+    {
+      "id": "absorbed-003",
+      "testName": "Absorbed Dose: 200 cGy to all units (radiation therapy dose)",
+      "category": "absorbed_dose",
+      "inputs": {
+        "conversion_mode": "absorbed",
+        "input_value": "200",
+        "absorbed_unit": "cGy"
+      },
+      "expectedOutputs": {
+        "Gray (Gy)": "2.0000 Gy",
+        "milligray (mGy)": "2,000.0000 mGy",
+        "centigray (cGy)": "200.0000 cGy",
+        "rad": "200.0000 rad"
+      },
+      "calculationSteps": "Step 1: Input = 200 cGy. Step 2: Convert to Gy = 200 * 0.01 = 2 Gy. Step 3: From Gy to mGy = 2 * 1000 = 2000 mGy. Step 4: cGy equals rad numerically (same conversion factor).",
+      "medicalReference": "ICRP 103: Radiation therapy typically uses 2 Gy per fraction"
+    },
+    {
+      "id": "absorbed-004",
+      "testName": "Absorbed Dose: 100 rad to all units (legacy unit conversion)",
+      "category": "absorbed_dose",
+      "inputs": {
+        "conversion_mode": "absorbed",
+        "input_value": "100",
+        "absorbed_unit": "rad"
+      },
+      "expectedOutputs": {
+        "Gray (Gy)": "1.0000 Gy",
+        "milligray (mGy)": "1,000.0000 mGy",
+        "centigray (cGy)": "100.0000 cGy",
+        "rad": "100.0000 rad"
+      },
+      "calculationSteps": "Step 1: Input = 100 rad. Step 2: Convert to Gy = 100 * 0.01 = 1 Gy (1 rad = 0.01 Gy). Step 3: From Gy to mGy = 1 * 1000 = 1000 mGy. Step 4: From Gy to cGy = 1 * 100 = 100 cGy.",
+      "medicalReference": "ICRP 103: Legacy unit rad is replaced by Gy in SI (1 Gy = 100 rad)"
+    },
+    {
+      "id": "absorbed-005",
+      "testName": "Absorbed Dose: Small dose 0.1 mGy",
+      "category": "absorbed_dose",
+      "inputs": {
+        "conversion_mode": "absorbed",
+        "input_value": "0.1",
+        "absorbed_unit": "mGy"
+      },
+      "expectedOutputs": {
+        "Gray (Gy)": "0.000100 Gy",
+        "milligray (mGy)": "0.100000 mGy",
+        "centigray (cGy)": "0.010000 cGy",
+        "rad": "0.010000 rad"
+      },
+      "calculationSteps": "Step 1: Input = 0.1 mGy. Step 2: Convert to Gy = 0.1 * 0.001 = 0.0001 Gy. Step 3: From Gy to cGy = 0.0001 * 100 = 0.01 cGy. Step 4: From Gy to rad = 0.0001 * 100 = 0.01 rad.",
+      "medicalReference": "Typical dental X-ray absorbed dose range"
+    },
+    {
+      "id": "equivalent-001",
+      "testName": "Equivalent Dose: 1 Sv to all units (photons)",
+      "category": "equivalent_dose",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "1",
+        "equivalent_unit": "Sv",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "1.0000 Sv",
+        "millisievert (mSv)": "1,000.0000 mSv",
+        "microsievert (μSv)": "1.0000e+6 μSv",
+        "rem": "100.0000 rem",
+        "millirem (mrem)": "1.0000e+5 mrem",
+        "wR Factor": "1 (X-rays, gamma rays)",
+        "Corresponding Absorbed Dose": "1.0000 Gy"
+      },
+      "calculationSteps": "Step 1: Input = 1 Sv. Step 2: Convert to mSv = 1 * 1000 = 1000 mSv. Step 3: Convert to μSv = 1 * 1,000,000 = 1,000,000 μSv. Step 4: Convert to rem = 1 * 100 = 100 rem. Step 5: Convert to mrem = 1 * 100,000 = 100,000 mrem. Step 6: wR = 1 for photons, so Absorbed Dose = 1 Sv / 1 = 1 Gy.",
+      "medicalReference": "ICRP 103 Table A.2: wR = 1 for photons (X-rays, gamma rays)"
+    },
+    {
+      "id": "equivalent-002",
+      "testName": "Equivalent Dose: 10 mSv to all units (typical CT effective dose)",
+      "category": "equivalent_dose",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "10",
+        "equivalent_unit": "mSv",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "0.010000 Sv",
+        "millisievert (mSv)": "10.0000 mSv",
+        "microsievert (μSv)": "10,000.0000 μSv",
+        "rem": "1.0000 rem",
+        "millirem (mrem)": "1,000.0000 mrem",
+        "wR Factor": "1 (X-rays, gamma rays)",
+        "Corresponding Absorbed Dose": "0.010000 Gy",
+        "Equivalent Background Radiation": "1216.7 days of natural background",
+        "Equivalent Chest X-rays (PA)": "≈ 500 chest X-rays"
+      },
+      "calculationSteps": "Step 1: Input = 10 mSv. Step 2: Convert to Sv = 10 * 0.001 = 0.01 Sv. Step 3: Convert to μSv = 0.01 * 1,000,000 = 10,000 μSv. Step 4: Convert to rem = 0.01 * 100 = 1 rem. Step 5: Convert to mrem = 0.01 * 100,000 = 1000 mrem. Step 6: Background days = 10 / (3/365) = 10 / 0.00822 = 1216.7 days. Step 7: Chest X-rays = 10 / 0.02 = 500.",
+      "medicalReference": "AAPM Report 96: 10 mSv is typical for abdomen/pelvis CT"
+    },
+    {
+      "id": "equivalent-003",
+      "testName": "Equivalent Dose: 100 μSv to all units (chest X-ray range)",
+      "category": "equivalent_dose",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "100",
+        "equivalent_unit": "uSv",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "0.000100 Sv",
+        "millisievert (mSv)": "0.100000 mSv",
+        "microsievert (μSv)": "100.0000 μSv",
+        "rem": "0.010000 rem",
+        "millirem (mrem)": "10.0000 mrem",
+        "wR Factor": "1 (X-rays, gamma rays)",
+        "Corresponding Absorbed Dose": "0.000100 Gy"
+      },
+      "calculationSteps": "Step 1: Input = 100 μSv. Step 2: Convert to Sv = 100 * 0.000001 = 0.0001 Sv. Step 3: Convert to mSv = 0.0001 * 1000 = 0.1 mSv. Step 4: Convert to rem = 0.0001 * 100 = 0.01 rem. Step 5: Convert to mrem = 0.0001 * 100,000 = 10 mrem.",
+      "medicalReference": "ICRP 103: PA+Lat chest X-ray approximately 0.1 mSv"
+    },
+    {
+      "id": "equivalent-004",
+      "testName": "Equivalent Dose: 5 rem to all units (legacy occupational dose)",
+      "category": "equivalent_dose",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "5",
+        "equivalent_unit": "rem",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "0.050000 Sv",
+        "millisievert (mSv)": "50.0000 mSv",
+        "microsievert (μSv)": "50,000.0000 μSv",
+        "rem": "5.0000 rem",
+        "millirem (mrem)": "5,000.0000 mrem",
+        "wR Factor": "1 (X-rays, gamma rays)"
+      },
+      "calculationSteps": "Step 1: Input = 5 rem. Step 2: Convert to Sv = 5 * 0.01 = 0.05 Sv. Step 3: Convert to mSv = 0.05 * 1000 = 50 mSv. Step 4: Convert to μSv = 0.05 * 1,000,000 = 50,000 μSv. Step 5: Convert to mrem = 5 * 1000 = 5000 mrem.",
+      "medicalReference": "ICRP 103: Annual occupational limit is 50 mSv (5 rem)"
+    },
+    {
+      "id": "equivalent-005",
+      "testName": "Equivalent Dose: 500 mrem to all units",
+      "category": "equivalent_dose",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "500",
+        "equivalent_unit": "mrem",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "0.005000 Sv",
+        "millisievert (mSv)": "5.0000 mSv",
+        "microsievert (μSv)": "5,000.0000 μSv",
+        "rem": "0.500000 rem",
+        "millirem (mrem)": "500.0000 mrem"
+      },
+      "calculationSteps": "Step 1: Input = 500 mrem. Step 2: Convert to Sv = 500 * 0.00001 = 0.005 Sv. Step 3: Convert to mSv = 0.005 * 1000 = 5 mSv. Step 4: Convert to μSv = 0.005 * 1,000,000 = 5,000 μSv. Step 5: Convert to rem = 0.005 * 100 = 0.5 rem.",
+      "medicalReference": "NCRP Report 160: 500 mrem approximates 2 months of US average background"
+    },
+    {
+      "id": "equivalent-006",
+      "testName": "Equivalent Dose with Alpha Particles (wR=20): 1 mSv",
+      "category": "equivalent_dose_weighted",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "1",
+        "equivalent_unit": "mSv",
+        "radiation_type": "alpha"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "0.001000 Sv",
+        "millisievert (mSv)": "1.0000 mSv",
+        "wR Factor": "20 (Alpha particles)",
+        "Corresponding Absorbed Dose": "0.000050 Gy"
+      },
+      "calculationSteps": "Step 1: Input = 1 mSv = 0.001 Sv. Step 2: wR for alpha = 20. Step 3: Absorbed Dose = Equivalent Dose / wR = 0.001 Sv / 20 = 0.00005 Gy = 0.05 mGy. Step 4: This means 0.05 mGy of alpha radiation produces 1 mSv equivalent dose.",
+      "medicalReference": "ICRP 103 Table A.2: wR = 20 for alpha particles and heavy nuclei"
+    },
+    {
+      "id": "equivalent-007",
+      "testName": "Equivalent Dose with Protons (wR=2): 5 mSv",
+      "category": "equivalent_dose_weighted",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "5",
+        "equivalent_unit": "mSv",
+        "radiation_type": "proton"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "0.005000 Sv",
+        "millisievert (mSv)": "5.0000 mSv",
+        "wR Factor": "2 (Protons (> 2 MeV))",
+        "Corresponding Absorbed Dose": "0.002500 Gy"
+      },
+      "calculationSteps": "Step 1: Input = 5 mSv = 0.005 Sv. Step 2: wR for protons = 2 (ICRP 103 reduced from 5 in ICRP 60). Step 3: Absorbed Dose = 0.005 Sv / 2 = 0.0025 Gy = 2.5 mGy. Step 4: 2.5 mGy of proton radiation produces 5 mSv equivalent dose.",
+      "medicalReference": "ICRP 103 Table A.2: wR = 2 for protons (reduced from wR = 5 in ICRP 60)"
+    },
+    {
+      "id": "equivalent-008",
+      "testName": "Equivalent Dose with Beta/Electrons (wR=1): 2 mSv",
+      "category": "equivalent_dose_weighted",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "2",
+        "equivalent_unit": "mSv",
+        "radiation_type": "beta"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "0.002000 Sv",
+        "millisievert (mSv)": "2.0000 mSv",
+        "wR Factor": "1 (Beta particles, electrons)",
+        "Corresponding Absorbed Dose": "0.002000 Gy"
+      },
+      "calculationSteps": "Step 1: Input = 2 mSv = 0.002 Sv. Step 2: wR for beta/electrons = 1. Step 3: Absorbed Dose = 0.002 Sv / 1 = 0.002 Gy = 2 mGy. Step 4: For wR = 1, absorbed dose equals equivalent dose numerically.",
+      "medicalReference": "ICRP 103 Table A.2: wR = 1 for electrons and muons"
+    },
+    {
+      "id": "equivalent-009",
+      "testName": "Equivalent Dose with Low-Energy Neutrons (wR=5): 10 mSv",
+      "category": "equivalent_dose_weighted",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "10",
+        "equivalent_unit": "mSv",
+        "radiation_type": "neutron_low"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "0.010000 Sv",
+        "millisievert (mSv)": "10.0000 mSv",
+        "wR Factor": "5 (Neutrons < 10 keV)",
+        "Corresponding Absorbed Dose": "0.002000 Gy"
+      },
+      "calculationSteps": "Step 1: Input = 10 mSv = 0.01 Sv. Step 2: wR for neutrons < 10 keV = 5. Step 3: Absorbed Dose = 0.01 Sv / 5 = 0.002 Gy = 2 mGy. Step 4: Low-energy neutrons have wR = 5 per ICRP 103.",
+      "medicalReference": "ICRP 103: Neutron wR is energy-dependent, ranging from 2.5 to 20.7"
+    },
+    {
+      "id": "equivalent-010",
+      "testName": "Equivalent Dose with Medium-Energy Neutrons (wR=20): 20 mSv",
+      "category": "equivalent_dose_weighted",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "20",
+        "equivalent_unit": "mSv",
+        "radiation_type": "neutron_med"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "0.020000 Sv",
+        "millisievert (mSv)": "20.0000 mSv",
+        "wR Factor": "20 (Neutrons 100 keV - 2 MeV)",
+        "Corresponding Absorbed Dose": "0.001000 Gy"
+      },
+      "calculationSteps": "Step 1: Input = 20 mSv = 0.02 Sv. Step 2: wR for neutrons 100 keV - 2 MeV = 20 (maximum). Step 3: Absorbed Dose = 0.02 Sv / 20 = 0.001 Gy = 1 mGy. Step 4: Medium-energy neutrons have highest wR.",
+      "medicalReference": "ICRP 103: Maximum neutron wR ~20 at approximately 1 MeV"
+    },
+    {
+      "id": "activity-001",
+      "testName": "Activity: 1 Ci to all units",
+      "category": "activity",
+      "inputs": {
+        "conversion_mode": "activity",
+        "input_value": "1",
+        "activity_unit": "Ci"
+      },
+      "expectedOutputs": {
+        "Becquerel (Bq)": "3.7000e+10 Bq",
+        "kilobecquerel (kBq)": "3.7000e+7 kBq",
+        "megabecquerel (MBq)": "37,000.0000 MBq",
+        "gigabecquerel (GBq)": "37.0000 GBq",
+        "Curie (Ci)": "1.0000 Ci",
+        "millicurie (mCi)": "1,000.0000 mCi",
+        "microcurie (μCi)": "1.0000e+6 μCi"
+      },
+      "calculationSteps": "Step 1: Input = 1 Ci. Step 2: Convert to Bq = 1 * 3.7e10 = 3.7e10 Bq (definition: 1 Ci = 3.7e10 disintegrations/second). Step 3: To kBq = 3.7e10 / 1e3 = 3.7e7 kBq. Step 4: To MBq = 3.7e10 / 1e6 = 37,000 MBq. Step 5: To GBq = 3.7e10 / 1e9 = 37 GBq. Step 6: To mCi = 1 * 1000 = 1000 mCi. Step 7: To μCi = 1 * 1e6 = 1e6 μCi.",
+      "medicalReference": "ICRP 103: 1 Ci = 3.7 x 10^10 Bq (based on activity of 1 gram of Ra-226)"
+    },
+    {
+      "id": "activity-002",
+      "testName": "Activity: 370 MBq to all units (typical FDG PET dose)",
+      "category": "activity",
+      "inputs": {
+        "conversion_mode": "activity",
+        "input_value": "370",
+        "activity_unit": "MBq"
+      },
+      "expectedOutputs": {
+        "Becquerel (Bq)": "3.7000e+8 Bq",
+        "kilobecquerel (kBq)": "3.7000e+5 kBq",
+        "megabecquerel (MBq)": "370.0000 MBq",
+        "gigabecquerel (GBq)": "0.370000 GBq",
+        "Curie (Ci)": "0.010000 Ci",
+        "millicurie (mCi)": "10.0000 mCi",
+        "microcurie (μCi)": "10,000.0000 μCi"
+      },
+      "calculationSteps": "Step 1: Input = 370 MBq. Step 2: Convert to Bq = 370 * 1e6 = 3.7e8 Bq. Step 3: To kBq = 3.7e8 / 1e3 = 3.7e5 kBq. Step 4: To GBq = 3.7e8 / 1e9 = 0.37 GBq. Step 5: To Ci = 3.7e8 / 3.7e10 = 0.01 Ci. Step 6: To mCi = 0.01 * 1000 = 10 mCi.",
+      "medicalReference": "EANM Guidelines: 370 MBq (10 mCi) is lower end of typical F-18 FDG PET dose"
+    },
+    {
+      "id": "activity-003",
+      "testName": "Activity: 740 MBq to all units (typical bone scan dose)",
+      "category": "activity",
+      "inputs": {
+        "conversion_mode": "activity",
+        "input_value": "740",
+        "activity_unit": "MBq"
+      },
+      "expectedOutputs": {
+        "Becquerel (Bq)": "7.4000e+8 Bq",
+        "megabecquerel (MBq)": "740.0000 MBq",
+        "gigabecquerel (GBq)": "0.740000 GBq",
+        "Curie (Ci)": "0.020000 Ci",
+        "millicurie (mCi)": "20.0000 mCi"
+      },
+      "calculationSteps": "Step 1: Input = 740 MBq. Step 2: Convert to Bq = 740 * 1e6 = 7.4e8 Bq. Step 3: To GBq = 7.4e8 / 1e9 = 0.74 GBq. Step 4: To Ci = 7.4e8 / 3.7e10 = 0.02 Ci. Step 5: To mCi = 0.02 * 1000 = 20 mCi.",
+      "medicalReference": "SNM Guidelines: 740 MBq (20 mCi) is typical Tc-99m MDP bone scan dose"
+    },
+    {
+      "id": "activity-004",
+      "testName": "Activity: 25 mCi to all units (nuclear medicine dose)",
+      "category": "activity",
+      "inputs": {
+        "conversion_mode": "activity",
+        "input_value": "25",
+        "activity_unit": "mCi"
+      },
+      "expectedOutputs": {
+        "Becquerel (Bq)": "9.2500e+8 Bq",
+        "megabecquerel (MBq)": "925.0000 MBq",
+        "gigabecquerel (GBq)": "0.925000 GBq",
+        "Curie (Ci)": "0.025000 Ci",
+        "millicurie (mCi)": "25.0000 mCi",
+        "microcurie (μCi)": "25,000.0000 μCi"
+      },
+      "calculationSteps": "Step 1: Input = 25 mCi. Step 2: Convert to Bq = 25 * 3.7e7 = 9.25e8 Bq. Step 3: To MBq = 9.25e8 / 1e6 = 925 MBq. Step 4: To GBq = 9.25e8 / 1e9 = 0.925 GBq. Step 5: To Ci = 25 / 1000 = 0.025 Ci. Step 6: To μCi = 25 * 1000 = 25,000 μCi.",
+      "medicalReference": "SNM Guidelines: 25 mCi upper range for Tc-99m bone scans"
+    },
+    {
+      "id": "activity-005",
+      "testName": "Activity: 100 μCi to all units (tracer dose)",
+      "category": "activity",
+      "inputs": {
+        "conversion_mode": "activity",
+        "input_value": "100",
+        "activity_unit": "uCi"
+      },
+      "expectedOutputs": {
+        "Becquerel (Bq)": "3.7000e+6 Bq",
+        "kilobecquerel (kBq)": "3,700.0000 kBq",
+        "megabecquerel (MBq)": "3.7000 MBq",
+        "gigabecquerel (GBq)": "0.003700 GBq",
+        "Curie (Ci)": "0.000100 Ci",
+        "millicurie (mCi)": "0.100000 mCi",
+        "microcurie (μCi)": "100.0000 μCi"
+      },
+      "calculationSteps": "Step 1: Input = 100 μCi. Step 2: Convert to Bq = 100 * 3.7e4 = 3.7e6 Bq. Step 3: To kBq = 3.7e6 / 1e3 = 3,700 kBq. Step 4: To MBq = 3.7e6 / 1e6 = 3.7 MBq. Step 5: To mCi = 100 / 1000 = 0.1 mCi.",
+      "medicalReference": "Typical low-activity tracer or research dose range"
+    },
+    {
+      "id": "activity-006",
+      "testName": "Activity: 3.7 GBq to all units (I-131 therapy low)",
+      "category": "activity",
+      "inputs": {
+        "conversion_mode": "activity",
+        "input_value": "3.7",
+        "activity_unit": "GBq"
+      },
+      "expectedOutputs": {
+        "Becquerel (Bq)": "3.7000e+9 Bq",
+        "megabecquerel (MBq)": "3,700.0000 MBq",
+        "gigabecquerel (GBq)": "3.7000 GBq",
+        "Curie (Ci)": "0.100000 Ci",
+        "millicurie (mCi)": "100.0000 mCi"
+      },
+      "calculationSteps": "Step 1: Input = 3.7 GBq. Step 2: Convert to Bq = 3.7 * 1e9 = 3.7e9 Bq. Step 3: To MBq = 3.7e9 / 1e6 = 3,700 MBq. Step 4: To Ci = 3.7e9 / 3.7e10 = 0.1 Ci. Step 5: To mCi = 0.1 * 1000 = 100 mCi.",
+      "medicalReference": "ATA Guidelines: 3.7 GBq (100 mCi) typical for thyroid cancer I-131 ablation"
+    },
+    {
+      "id": "ct-dose-001",
+      "testName": "CT Head Dose: Adult, CTDIvol 60 mGy, 20 cm scan",
+      "category": "ct_effective_dose",
+      "inputs": {
+        "include_ct_dose": true,
+        "ctdi_vol": "60",
+        "scan_length": "20",
+        "body_region": "head",
+        "patient_age": "adult"
+      },
+      "expectedOutputs": {
+        "Input - CTDIvol": "60.00 mGy",
+        "Input - Scan Length": "20.0 cm",
+        "DLP (Dose Length Product)": "1200.0 mGy·cm",
+        "k-factor": "0.0021 mSv/(mGy·cm) [head, 16 cm phantom]",
+        "Estimated Effective Dose": "2.52 mSv",
+        "Equivalent Chest X-rays": "≈ 126",
+        "Typical Range": "Typical head CT: 1.5-2.5 mSv",
+        "Assessment": "Above typical range"
+      },
+      "calculationSteps": "Step 1: DLP = CTDIvol * scan_length = 60 * 20 = 1200 mGy·cm. Step 2: k-factor for head = 0.0021 mSv/(mGy·cm) from ICRP 102. Step 3: Effective Dose = DLP * k = 1200 * 0.0021 = 2.52 mSv. Step 4: Age multiplier for adult = 1.0. Step 5: Final dose = 2.52 * 1.0 = 2.52 mSv. Step 6: Chest X-ray equiv = 2.52 / 0.02 = 126.",
+      "medicalReference": "AAPM Report 96 Table 1: k = 0.0021 for head (16 cm phantom)"
+    },
+    {
+      "id": "ct-dose-002",
+      "testName": "CT Chest Dose: Adult, CTDIvol 10 mGy, 35 cm scan",
+      "category": "ct_effective_dose",
+      "inputs": {
+        "include_ct_dose": true,
+        "ctdi_vol": "10",
+        "scan_length": "35",
+        "body_region": "chest",
+        "patient_age": "adult"
+      },
+      "expectedOutputs": {
+        "Input - CTDIvol": "10.00 mGy",
+        "Input - Scan Length": "35.0 cm",
+        "DLP (Dose Length Product)": "350.0 mGy·cm",
+        "k-factor": "0.014 mSv/(mGy·cm) [chest, 32 cm phantom]",
+        "Estimated Effective Dose": "4.90 mSv",
+        "Equivalent Chest X-rays": "≈ 245",
+        "Typical Range": "Typical chest CT: 4-8 mSv",
+        "Assessment": "Within typical range"
+      },
+      "calculationSteps": "Step 1: DLP = CTDIvol * scan_length = 10 * 35 = 350 mGy·cm. Step 2: k-factor for chest = 0.014 mSv/(mGy·cm) from ICRP 102. Step 3: Effective Dose = DLP * k = 350 * 0.014 = 4.90 mSv. Step 4: Age multiplier for adult = 1.0. Step 5: Final dose = 4.90 * 1.0 = 4.90 mSv. Step 6: Chest X-ray equiv = 4.90 / 0.02 = 245.",
+      "medicalReference": "AAPM Report 96 Table 1: k = 0.014 for chest (32 cm phantom)"
+    },
+    {
+      "id": "ct-dose-003",
+      "testName": "CT Abdomen/Pelvis Dose: Adult, CTDIvol 15 mGy, 50 cm scan",
+      "category": "ct_effective_dose",
+      "inputs": {
+        "include_ct_dose": true,
+        "ctdi_vol": "15",
+        "scan_length": "50",
+        "body_region": "abdomen",
+        "patient_age": "adult"
+      },
+      "expectedOutputs": {
+        "Input - CTDIvol": "15.00 mGy",
+        "Input - Scan Length": "50.0 cm",
+        "DLP (Dose Length Product)": "750.0 mGy·cm",
+        "k-factor": "0.015 mSv/(mGy·cm) [abdomen, 32 cm phantom]",
+        "Estimated Effective Dose": "11.25 mSv",
+        "Equivalent Chest X-rays": "≈ 563",
+        "Typical Range": "Typical abdomen/pelvis CT: 6-15 mSv",
+        "Assessment": "Within typical range"
+      },
+      "calculationSteps": "Step 1: DLP = CTDIvol * scan_length = 15 * 50 = 750 mGy·cm. Step 2: k-factor for abdomen = 0.015 mSv/(mGy·cm) from ICRP 102. Step 3: Effective Dose = DLP * k = 750 * 0.015 = 11.25 mSv. Step 4: Age multiplier for adult = 1.0. Step 5: Final dose = 11.25 * 1.0 = 11.25 mSv. Step 6: Chest X-ray equiv = 11.25 / 0.02 = 562.5 ≈ 563.",
+      "medicalReference": "AAPM Report 96 Table 1: k = 0.015 for abdomen (32 cm phantom)"
+    },
+    {
+      "id": "ct-dose-004",
+      "testName": "CT Neck Dose: Adult, CTDIvol 25 mGy, 15 cm scan",
+      "category": "ct_effective_dose",
+      "inputs": {
+        "include_ct_dose": true,
+        "ctdi_vol": "25",
+        "scan_length": "15",
+        "body_region": "neck",
+        "patient_age": "adult"
+      },
+      "expectedOutputs": {
+        "Input - CTDIvol": "25.00 mGy",
+        "Input - Scan Length": "15.0 cm",
+        "DLP (Dose Length Product)": "375.0 mGy·cm",
+        "k-factor": "0.0059 mSv/(mGy·cm) [neck, 16 cm phantom]",
+        "Estimated Effective Dose": "2.21 mSv",
+        "Equivalent Chest X-rays": "≈ 111",
+        "Typical Range": "Typical neck CT: 1.5-3.0 mSv",
+        "Assessment": "Within typical range"
+      },
+      "calculationSteps": "Step 1: DLP = CTDIvol * scan_length = 25 * 15 = 375 mGy·cm. Step 2: k-factor for neck = 0.0059 mSv/(mGy·cm) from ICRP 102. Step 3: Effective Dose = DLP * k = 375 * 0.0059 = 2.2125 mSv. Step 4: Age multiplier for adult = 1.0. Step 5: Final dose = 2.21 mSv (rounded). Step 6: Chest X-ray equiv = 2.21 / 0.02 = 110.6 ≈ 111.",
+      "medicalReference": "AAPM Report 96 Table 1: k = 0.0059 for neck (16 cm phantom)"
+    },
+    {
+      "id": "ct-dose-005",
+      "testName": "CT Trunk/CAP Dose: Adult, CTDIvol 12 mGy, 70 cm scan",
+      "category": "ct_effective_dose",
+      "inputs": {
+        "include_ct_dose": true,
+        "ctdi_vol": "12",
+        "scan_length": "70",
+        "body_region": "trunk",
+        "patient_age": "adult"
+      },
+      "expectedOutputs": {
+        "Input - CTDIvol": "12.00 mGy",
+        "Input - Scan Length": "70.0 cm",
+        "DLP (Dose Length Product)": "840.0 mGy·cm",
+        "k-factor": "0.015 mSv/(mGy·cm) [trunk, 32 cm phantom]",
+        "Estimated Effective Dose": "12.60 mSv",
+        "Typical Range": "Typical CAP CT: 8-15 mSv",
+        "Assessment": "Within typical range"
+      },
+      "calculationSteps": "Step 1: DLP = CTDIvol * scan_length = 12 * 70 = 840 mGy·cm. Step 2: k-factor for trunk/CAP = 0.015 mSv/(mGy·cm). Step 3: Effective Dose = DLP * k = 840 * 0.015 = 12.60 mSv. Step 4: Age multiplier for adult = 1.0. Step 5: Final dose = 12.60 mSv.",
+      "medicalReference": "AAPM Report 96: CAP (chest-abdomen-pelvis) uses k = 0.015"
+    },
+    {
+      "id": "ct-dose-006",
+      "testName": "Pediatric CT Head: 5-year-old, CTDIvol 40 mGy, 18 cm scan",
+      "category": "ct_effective_dose_pediatric",
+      "inputs": {
+        "include_ct_dose": true,
+        "ctdi_vol": "40",
+        "scan_length": "18",
+        "body_region": "head",
+        "patient_age": "5yr"
+      },
+      "expectedOutputs": {
+        "Input - CTDIvol": "40.00 mGy",
+        "Input - Scan Length": "18.0 cm",
+        "DLP (Dose Length Product)": "720.0 mGy·cm",
+        "k-factor": "0.0021 mSv/(mGy·cm) [head, 16 cm phantom]",
+        "Age Adjustment": "1.5× multiplier for 5 years",
+        "Adult Effective Dose": "1.51 mSv",
+        "Estimated Effective Dose": "2.27 mSv"
+      },
+      "calculationSteps": "Step 1: DLP = CTDIvol * scan_length = 40 * 18 = 720 mGy·cm. Step 2: k-factor for head = 0.0021 mSv/(mGy·cm). Step 3: Adult Effective Dose = DLP * k = 720 * 0.0021 = 1.512 mSv. Step 4: Pediatric age multiplier for 5-year-old = 1.5. Step 5: Pediatric Effective Dose = 1.512 * 1.5 = 2.268 mSv ≈ 2.27 mSv.",
+      "medicalReference": "ICRP 102 / EC Guidelines: Pediatric patients have higher tissue radiosensitivity"
+    },
+    {
+      "id": "ct-dose-007",
+      "testName": "Pediatric CT Chest: 1-year-old, CTDIvol 5 mGy, 20 cm scan",
+      "category": "ct_effective_dose_pediatric",
+      "inputs": {
+        "include_ct_dose": true,
+        "ctdi_vol": "5",
+        "scan_length": "20",
+        "body_region": "chest",
+        "patient_age": "1yr"
+      },
+      "expectedOutputs": {
+        "Input - CTDIvol": "5.00 mGy",
+        "Input - Scan Length": "20.0 cm",
+        "DLP (Dose Length Product)": "100.0 mGy·cm",
+        "k-factor": "0.014 mSv/(mGy·cm) [chest, 32 cm phantom]",
+        "Age Adjustment": "1.9× multiplier for 1 year",
+        "Adult Effective Dose": "1.40 mSv",
+        "Estimated Effective Dose": "2.66 mSv"
+      },
+      "calculationSteps": "Step 1: DLP = CTDIvol * scan_length = 5 * 20 = 100 mGy·cm. Step 2: k-factor for chest = 0.014 mSv/(mGy·cm). Step 3: Adult Effective Dose = DLP * k = 100 * 0.014 = 1.40 mSv. Step 4: Pediatric age multiplier for 1-year-old = 1.9. Step 5: Pediatric Effective Dose = 1.40 * 1.9 = 2.66 mSv.",
+      "medicalReference": "Image Gently Campaign: Pediatric CT requires significantly reduced protocols"
+    },
+    {
+      "id": "ct-dose-008",
+      "testName": "Pediatric CT Abdomen: Newborn, CTDIvol 3 mGy, 15 cm scan",
+      "category": "ct_effective_dose_pediatric",
+      "inputs": {
+        "include_ct_dose": true,
+        "ctdi_vol": "3",
+        "scan_length": "15",
+        "body_region": "abdomen",
+        "patient_age": "0yr"
+      },
+      "expectedOutputs": {
+        "Input - CTDIvol": "3.00 mGy",
+        "Input - Scan Length": "15.0 cm",
+        "DLP (Dose Length Product)": "45.0 mGy·cm",
+        "k-factor": "0.015 mSv/(mGy·cm) [abdomen, 32 cm phantom]",
+        "Age Adjustment": "2.25× multiplier for Newborn",
+        "Adult Effective Dose": "0.68 mSv",
+        "Estimated Effective Dose": "1.52 mSv"
+      },
+      "calculationSteps": "Step 1: DLP = CTDIvol * scan_length = 3 * 15 = 45 mGy·cm. Step 2: k-factor for abdomen = 0.015 mSv/(mGy·cm). Step 3: Adult Effective Dose = DLP * k = 45 * 0.015 = 0.675 mSv. Step 4: Pediatric age multiplier for newborn = 2.25 (highest). Step 5: Pediatric Effective Dose = 0.675 * 2.25 = 1.519 mSv ≈ 1.52 mSv.",
+      "medicalReference": "ICRP 102: Newborn multiplier 2.25× reflects increased radiosensitivity"
+    },
+    {
+      "id": "ct-dose-009",
+      "testName": "Pediatric CT: 10-year-old chest, CTDIvol 8 mGy, 30 cm scan",
+      "category": "ct_effective_dose_pediatric",
+      "inputs": {
+        "include_ct_dose": true,
+        "ctdi_vol": "8",
+        "scan_length": "30",
+        "body_region": "chest",
+        "patient_age": "10yr"
+      },
+      "expectedOutputs": {
+        "Input - CTDIvol": "8.00 mGy",
+        "Input - Scan Length": "30.0 cm",
+        "DLP (Dose Length Product)": "240.0 mGy·cm",
+        "k-factor": "0.014 mSv/(mGy·cm) [chest, 32 cm phantom]",
+        "Age Adjustment": "1.2× multiplier for 10 years",
+        "Adult Effective Dose": "3.36 mSv",
+        "Estimated Effective Dose": "4.03 mSv"
+      },
+      "calculationSteps": "Step 1: DLP = CTDIvol * scan_length = 8 * 30 = 240 mGy·cm. Step 2: k-factor for chest = 0.014 mSv/(mGy·cm). Step 3: Adult Effective Dose = DLP * k = 240 * 0.014 = 3.36 mSv. Step 4: Pediatric age multiplier for 10-year-old = 1.2. Step 5: Pediatric Effective Dose = 3.36 * 1.2 = 4.032 mSv ≈ 4.03 mSv.",
+      "medicalReference": "ICRP 102: 10-year-old multiplier 1.2× approaching adult values"
+    },
+    {
+      "id": "dose-context-001",
+      "testName": "Dose Context: Less than chest X-ray (0.01 mSv)",
+      "category": "dose_context",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "0.01",
+        "equivalent_unit": "mSv",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "millisievert (mSv)": "0.010000 mSv",
+        "Equivalent Background Radiation": "1.2 days of natural background",
+        "Equivalent Chest X-rays (PA)": "≈ 1 chest X-rays",
+        "Context": "Less than a chest X-ray (0.02 mSv)"
+      },
+      "calculationSteps": "Step 1: Input = 0.01 mSv. Step 2: Background days = 0.01 / (3/365) = 0.01 / 0.00822 = 1.22 days. Step 3: Chest X-rays = 0.01 / 0.02 = 0.5 ≈ 1. Step 4: Context: 0.01 < 0.02, so 'Less than a chest X-ray'.",
+      "medicalReference": "ICRP 103: PA chest X-ray typically 0.02 mSv"
+    },
+    {
+      "id": "dose-context-002",
+      "testName": "Dose Context: Similar to 1 year background (3 mSv)",
+      "category": "dose_context",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "3",
+        "equivalent_unit": "mSv",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "millisievert (mSv)": "3.0000 mSv",
+        "Equivalent Background Radiation": "365.0 days of natural background",
+        "Equivalent Chest X-rays (PA)": "≈ 150 chest X-rays",
+        "Context": "Similar to CT chest range (4-8 mSv)"
+      },
+      "calculationSteps": "Step 1: Input = 3 mSv. Step 2: Background days = 3 / (3/365) = 3 / 0.00822 = 365 days. Step 3: Chest X-rays = 3 / 0.02 = 150. Step 4: Context: 3 mSv is in range 3-8, so 'Similar to CT chest range'.",
+      "medicalReference": "NCRP Report 160: US average background ~3 mSv/year"
+    },
+    {
+      "id": "dose-context-003",
+      "testName": "Dose Context: Approaching occupational limit (45 mSv)",
+      "category": "dose_context",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "45",
+        "equivalent_unit": "mSv",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "millisievert (mSv)": "45.0000 mSv",
+        "Equivalent Background Radiation": "5475.0 days of natural background",
+        "Equivalent Chest X-rays (PA)": "≈ 2250 chest X-rays",
+        "Context": "Approaching annual occupational limit (50 mSv)"
+      },
+      "calculationSteps": "Step 1: Input = 45 mSv. Step 2: Background days = 45 / 0.00822 = 5474.5 ≈ 5475 days (~15 years). Step 3: Chest X-rays = 45 / 0.02 = 2250. Step 4: Context: 15 < 45 < 50, so 'Approaching annual occupational limit'.",
+      "medicalReference": "ICRP 103: Annual occupational limit 50 mSv, 5-year average 20 mSv"
+    },
+    {
+      "id": "dose-context-004",
+      "testName": "Dose Context: Exceeds occupational limit (75 mSv)",
+      "category": "dose_context",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "75",
+        "equivalent_unit": "mSv",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "millisievert (mSv)": "75.0000 mSv",
+        "Equivalent Chest X-rays (PA)": "≈ 3750 chest X-rays",
+        "Context": "Exceeds annual occupational limit (50 mSv)"
+      },
+      "calculationSteps": "Step 1: Input = 75 mSv. Step 2: Chest X-rays = 75 / 0.02 = 3750. Step 3: Context: 75 > 50, so 'Exceeds annual occupational limit'.",
+      "medicalReference": "ICRP 103: Exceeding 50 mSv annual limit requires dose reduction measures"
+    },
+    {
+      "id": "edge-001",
+      "testName": "Edge Case: Zero input value",
+      "category": "edge_cases",
+      "inputs": {
+        "conversion_mode": "absorbed",
+        "input_value": "0",
+        "absorbed_unit": "Gy"
+      },
+      "expectedOutputs": {
+        "Gray (Gy)": "0 Gy",
+        "milligray (mGy)": "0 mGy",
+        "centigray (cGy)": "0 cGy",
+        "rad": "0 rad"
+      },
+      "calculationSteps": "Step 1: Input = 0 Gy. Step 2: All conversions = 0 (multiplication by 0). Step 3: Display '0 [unit]' format.",
+      "medicalReference": "N/A - boundary condition test"
+    },
+    {
+      "id": "edge-002",
+      "testName": "Edge Case: Very large activity value",
+      "category": "edge_cases",
+      "inputs": {
+        "conversion_mode": "activity",
+        "input_value": "1000",
+        "activity_unit": "Ci"
+      },
+      "expectedOutputs": {
+        "Becquerel (Bq)": "3.7000e+13 Bq",
+        "gigabecquerel (GBq)": "37,000.0000 GBq",
+        "Curie (Ci)": "1,000.0000 Ci"
+      },
+      "calculationSteps": "Step 1: Input = 1000 Ci. Step 2: Convert to Bq = 1000 * 3.7e10 = 3.7e13 Bq. Step 3: Large values use exponential notation. Step 4: To GBq = 3.7e13 / 1e9 = 37,000 GBq.",
+      "medicalReference": "Industrial/reactor source level activity"
+    },
+    {
+      "id": "edge-003",
+      "testName": "Edge Case: Very small dose value",
+      "category": "edge_cases",
+      "inputs": {
+        "conversion_mode": "equivalent",
+        "input_value": "0.001",
+        "equivalent_unit": "uSv",
+        "radiation_type": "photon"
+      },
+      "expectedOutputs": {
+        "Sievert (Sv)": "1.0000e-9 Sv",
+        "millisievert (mSv)": "0.000001 mSv",
+        "microsievert (μSv)": "0.001000 μSv"
+      },
+      "calculationSteps": "Step 1: Input = 0.001 μSv = 1e-9 Sv. Step 2: Very small values display with appropriate precision. Step 3: To mSv = 1e-9 * 1000 = 1e-6 mSv.",
+      "medicalReference": "Negligible dose level, below measurement threshold"
+    }
+  ],
+  "validationNotes": {
+    "conversionAccuracy": "All conversion factors verified against ICRP 103 (2007) and AAPM Report 96 (2008)",
+    "kFactorSource": "k-factors from ICRP Publication 102 and European Commission EUR 16262",
+    "pediatricMultipliers": "Age-specific multipliers based on EC Guidelines and ICRP 102",
+    "roundingBehavior": "Results use toFixed(4) for values >= 1, toFixed(6) for values 0.0001-1, exponential for very small/large",
+    "doseContextThresholds": {
+      "lessThanChestXray": "< 0.02 mSv",
+      "similarToChestXray": "0.02-0.1 mSv",
+      "fewChestXrays": "0.1-1 mSv",
+      "oneYearBackground": "1-3 mSv",
+      "ctChestRange": "3-8 mSv",
+      "ctAbdomenPelvisRange": "8-15 mSv",
+      "approachingOccLimit": "15-50 mSv",
+      "exceedsOccLimit": "> 50 mSv"
+    }
+  }
+}

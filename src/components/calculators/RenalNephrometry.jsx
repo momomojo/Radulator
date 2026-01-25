@@ -2,8 +2,11 @@ export const RenalNephrometry = {
   id: "renal-nephrometry",
   name: "RENAL Nephrometry Score",
   desc: "Quantifies anatomical characteristics of renal tumours for surgical planning and risk assessment.",
+  metaDesc:
+    "Free R.E.N.A.L. Nephrometry Score Calculator. Assess renal tumor complexity for surgical planning. Calculate low, moderate, or high complexity based on size, location, and anatomy.",
   info: {
-    text: "The R.E.N.A.L. score standardizes assessment of renal tumor anatomy. " +
+    text:
+      "The R.E.N.A.L. score standardizes assessment of renal tumor anatomy. " +
       "It evaluates:\n" +
       "• R - Radius (tumor size)\n" +
       "• E - Exophytic/endophytic properties\n" +
@@ -16,8 +19,8 @@ export const RenalNephrometry = {
       "Can be calculated from CT or MRI. Coronal images are best for polar line assessment, axial for anterior/posterior location.",
     link: {
       label: "View RENAL Score Diagram",
-      url: "https://radiopaedia.org/articles/renal-nephrometry-scoring-system-2"
-    }
+      url: "https://radiopaedia.org/articles/renal-nephrometry-scoring-system-2",
+    },
   },
   fields: [
     {
@@ -76,7 +79,7 @@ export const RenalNephrometry = {
   ],
   compute: (v) => {
     const { radius, exophytic, nearness, polar, anterior, hilar } = v;
-    
+
     // Determine points for radius
     let rPts = 0;
     const d = parseFloat(radius);
@@ -85,40 +88,40 @@ export const RenalNephrometry = {
       else if (d < 7) rPts = 2;
       else rPts = 3;
     }
-    
+
     // Points for exophytic/endophytic nature
     let ePts = 0;
     if (exophytic === ">=50") ePts = 1;
     else if (exophytic === "<50") ePts = 2;
     else if (exophytic === "endophytic") ePts = 3;
-    
+
     // Points for nearness to collecting system
     let nPts = 0;
     if (nearness === ">=7") nPts = 1;
     else if (nearness === "4-7") nPts = 2;
     else if (nearness === "<=4") nPts = 3;
-    
+
     // Points for polar location
     let lPts = 0;
     if (polar === "above/below") lPts = 1;
     else if (polar === "crosses") lPts = 2;
     else if (polar === "central") lPts = 3;
-    
+
     const total = rPts + ePts + nPts + lPts;
-    
+
     // Determine complexity category
     let complexity = "";
     if (total >= 10) complexity = "High complexity";
     else if (total >= 7) complexity = "Moderate complexity";
     else complexity = "Low complexity";
-    
+
     // Build suffix for descriptor
     let suffix = "";
     if (anterior === "Anterior") suffix = "a";
     else if (anterior === "Posterior") suffix = "p";
     else suffix = "x";
     if (hilar) suffix += "h";
-    
+
     // Interpretation based on complexity
     let interpretation;
     if (total >= 10) {
@@ -139,11 +142,11 @@ export const RenalNephrometry = {
         "In studies, 94% were successfully treated with partial nephrectomy, with only 6% requiring radical nephrectomy. " +
         "Minimally invasive techniques or thermal ablation are often feasible.";
     }
-    
+
     return {
       "Total Score": `${total}${suffix}`,
-      "Complexity": complexity,
-      "Interpretation": interpretation,
+      Complexity: complexity,
+      Interpretation: interpretation,
     };
   },
   refs: [

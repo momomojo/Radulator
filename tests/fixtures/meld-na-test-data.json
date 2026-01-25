@@ -1,0 +1,1107 @@
+{
+  "calculator": "MELD-Na Score",
+  "description": "Test cases for Model for End-Stage Liver Disease with Sodium (MELD-Na) calculator. Covers MELD and MELD-Na formula calculations, sodium correction factor, dialysis adjustments, score capping rules (6-40), and 90-day mortality estimates per OPTN/UNOS guidelines.",
+  "formulas": {
+    "meld": {
+      "equation": "MELD = [0.957 × ln(Cr) + 0.378 × ln(Bili) + 1.120 × ln(INR) + 0.643] × 10",
+      "source": "Kamath PS et al. Hepatology 2001; Wiesner R et al. Liver Transpl 2003"
+    },
+    "meldNa": {
+      "equation": "MELD-Na = MELD + 1.32 × (137 - Na) - [0.033 × MELD × (137 - Na)]",
+      "source": "Kim WR et al. Gastroenterology 2008",
+      "note": "Only applies when MELD > 11"
+    },
+    "bounds": {
+      "creatinine": {
+        "lowerBound": 1.0,
+        "upperBound": 4.0,
+        "dialysisValue": 4.0,
+        "note": "If Cr < 1.0, set to 1.0. If dialysis ≥2x/week or 24hr CVVHD, set to 4.0. If Cr > 4.0, cap at 4.0"
+      },
+      "bilirubin": {
+        "lowerBound": 1.0,
+        "note": "If Bili < 1.0, set to 1.0"
+      },
+      "inr": {
+        "lowerBound": 1.0,
+        "note": "If INR < 1.0, set to 1.0"
+      },
+      "sodium": {
+        "lowerBound": 125,
+        "upperBound": 137,
+        "unit": "mEq/L",
+        "note": "For MELD-Na calculation, Na is capped between 125-137"
+      },
+      "meldScore": {
+        "minimum": 6,
+        "maximum": 40,
+        "note": "Final MELD and MELD-Na scores are capped at 6-40 range"
+      }
+    }
+  },
+  "mortalityRanges": [
+    {
+      "meldNaRange": "≤9",
+      "mortality3Month": "1.9%",
+      "riskCategory": "Low risk"
+    },
+    {
+      "meldNaRange": "10-19",
+      "mortality3Month": "6.0%",
+      "riskCategory": "Moderate risk"
+    },
+    {
+      "meldNaRange": "20-29",
+      "mortality3Month": "19.6%",
+      "riskCategory": "High risk"
+    },
+    {
+      "meldNaRange": "30-39",
+      "mortality3Month": "52.6%",
+      "riskCategory": "Very high risk"
+    },
+    {
+      "meldNaRange": "40",
+      "mortality3Month": ">70%",
+      "riskCategory": "Critical risk"
+    }
+  ],
+  "testCases": [
+    {
+      "name": "Typical Low MELD: Compensated cirrhosis",
+      "category": "Basic Calculations",
+      "description": "Patient with compensated cirrhosis, low MELD score. MELD ≤ 11 so MELD-Na equals MELD.",
+      "inputs": {
+        "creatinine": "0.9",
+        "bilirubin": "1.2",
+        "inr": "1.1",
+        "sodium": "138",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.0,
+          "adjustedCrNote": "Cr 0.9 < 1.0, set to lower bound 1.0",
+          "adjustedBili": 1.2,
+          "adjustedBiliNote": "Bili 1.2 ≥ 1.0, no adjustment",
+          "adjustedINR": 1.1,
+          "adjustedINRNote": "INR 1.1 ≥ 1.0, no adjustment"
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.0,
+          "ln_Bili": 0.1823,
+          "ln_INR": 0.0953,
+          "formula": "(0.957 × 0.0 + 0.378 × 0.1823 + 1.120 × 0.0953 + 0.643) × 10",
+          "rawValue": 7.848,
+          "roundedMELD": 8
+        },
+        "step3_capMELD": {
+          "finalMELD": 8,
+          "note": "8 is within 6-40 range, no capping needed"
+        },
+        "step4_calculateMELDNa": {
+          "applies": false,
+          "note": "MELD 8 ≤ 11, sodium correction does not apply",
+          "finalMELDNa": 8
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "8",
+        "MELD-Na Score": "8",
+        "3-Month Mortality": "1.9%",
+        "Risk Category": "Low risk",
+        "Clinical Notes": "Creatinine set to lower bound of 1.0 mg/dL; MELD-Na equals MELD (sodium correction only applies when MELD > 11)"
+      }
+    },
+    {
+      "name": "Moderate MELD with Normal Sodium",
+      "category": "Basic Calculations",
+      "description": "Patient with moderate liver disease. MELD > 11 but sodium is normal (137), so no sodium benefit.",
+      "inputs": {
+        "creatinine": "1.5",
+        "bilirubin": "3.0",
+        "inr": "1.8",
+        "sodium": "137",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.5,
+          "adjustedBili": 3.0,
+          "adjustedINR": 1.8,
+          "notes": "All values ≥ 1.0, no adjustments needed"
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.4055,
+          "ln_Bili": 1.0986,
+          "ln_INR": 0.5878,
+          "formula": "(0.957 × 0.4055 + 0.378 × 1.0986 + 1.120 × 0.5878 + 0.643) × 10",
+          "rawValue": 18.057,
+          "roundedMELD": 18
+        },
+        "step3_capMELD": {
+          "finalMELD": 18,
+          "note": "18 is within 6-40 range"
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 137,
+          "naCorrection": "1.32 × (137 - 137) - 0.033 × 18 × (137 - 137) = 0",
+          "rawMELDNa": 18.0,
+          "finalMELDNa": 18
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "18",
+        "MELD-Na Score": "18",
+        "3-Month Mortality": "6.0%",
+        "Risk Category": "Moderate risk"
+      }
+    },
+    {
+      "name": "Moderate MELD with Hyponatremia",
+      "category": "Sodium Correction",
+      "description": "Patient with MELD 18 and sodium 130. Demonstrates sodium correction factor increasing the score.",
+      "inputs": {
+        "creatinine": "1.5",
+        "bilirubin": "3.0",
+        "inr": "1.8",
+        "sodium": "130",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.5,
+          "adjustedBili": 3.0,
+          "adjustedINR": 1.8,
+          "notes": "All values ≥ 1.0, no adjustments needed"
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.4055,
+          "ln_Bili": 1.0986,
+          "ln_INR": 0.5878,
+          "rawValue": 18.057,
+          "roundedMELD": 18
+        },
+        "step3_capMELD": {
+          "finalMELD": 18
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 130,
+          "naDifference": 7,
+          "term1": "1.32 × 7 = 9.24",
+          "term2": "0.033 × 18 × 7 = 4.158",
+          "naCorrection": "9.24 - 4.158 = 5.082",
+          "rawMELDNa": 23.082,
+          "finalMELDNa": 23
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "18",
+        "MELD-Na Score": "23",
+        "3-Month Mortality": "19.6%",
+        "Risk Category": "High risk"
+      }
+    },
+    {
+      "name": "Severe Hyponatremia (Na < 125)",
+      "category": "Sodium Correction",
+      "description": "Sodium below 125 is capped at 125 for calculation. Tests lower sodium bound.",
+      "inputs": {
+        "creatinine": "2.0",
+        "bilirubin": "5.0",
+        "inr": "2.0",
+        "sodium": "118",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 2.0,
+          "adjustedBili": 5.0,
+          "adjustedINR": 2.0,
+          "notes": "All values ≥ 1.0"
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.6931,
+          "ln_Bili": 1.6094,
+          "ln_INR": 0.6931,
+          "formula": "(0.957 × 0.6931 + 0.378 × 1.6094 + 1.120 × 0.6931 + 0.643) × 10",
+          "rawValue": 24.476,
+          "roundedMELD": 24
+        },
+        "step3_capMELD": {
+          "finalMELD": 24
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "inputNa": 118,
+          "adjustedNa": 125,
+          "adjustedNaNote": "Na 118 < 125, capped at 125",
+          "naDifference": 12,
+          "term1": "1.32 × 12 = 15.84",
+          "term2": "0.033 × 24 × 12 = 9.504",
+          "naCorrection": "15.84 - 9.504 = 6.336",
+          "rawMELDNa": 30.336,
+          "finalMELDNa": 30
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "24",
+        "MELD-Na Score": "30",
+        "3-Month Mortality": "52.6%",
+        "Risk Category": "Very high risk",
+        "Clinical Notes": "Sodium set to lower bound of 125 mEq/L for MELD-Na calculation"
+      }
+    },
+    {
+      "name": "Hypernatremia (Na > 137)",
+      "category": "Sodium Correction",
+      "description": "Sodium above 137 is capped at 137 for calculation (no benefit). Tests upper sodium bound.",
+      "inputs": {
+        "creatinine": "1.8",
+        "bilirubin": "4.0",
+        "inr": "1.6",
+        "sodium": "145",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.8,
+          "adjustedBili": 4.0,
+          "adjustedINR": 1.6
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.5878,
+          "ln_Bili": 1.3863,
+          "ln_INR": 0.47,
+          "rawValue": 18.971,
+          "roundedMELD": 19
+        },
+        "step3_capMELD": {
+          "finalMELD": 19
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "inputNa": 145,
+          "adjustedNa": 137,
+          "adjustedNaNote": "Na 145 > 137, capped at 137",
+          "naDifference": 0,
+          "naCorrection": 0,
+          "finalMELDNa": 19
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "19",
+        "MELD-Na Score": "19",
+        "3-Month Mortality": "6.0%",
+        "Risk Category": "Moderate risk",
+        "Clinical Notes": "Sodium set to upper bound of 137 mEq/L for MELD-Na calculation"
+      }
+    },
+    {
+      "name": "Dialysis Patient: Creatinine Override",
+      "category": "Dialysis Adjustments",
+      "description": "Patient on dialysis ≥2x/week. Creatinine automatically set to 4.0 regardless of actual value.",
+      "inputs": {
+        "creatinine": "1.2",
+        "bilirubin": "2.5",
+        "inr": "1.5",
+        "sodium": "132",
+        "dialysis": true
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "inputCr": 1.2,
+          "adjustedCr": 4.0,
+          "adjustedCrNote": "Dialysis checked: Cr set to 4.0 mg/dL",
+          "adjustedBili": 2.5,
+          "adjustedINR": 1.5
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 1.3863,
+          "ln_Bili": 0.9163,
+          "ln_INR": 0.4055,
+          "formula": "(0.957 × 1.3863 + 0.378 × 0.9163 + 1.120 × 0.4055 + 0.643) × 10",
+          "rawValue": 26.586,
+          "roundedMELD": 27
+        },
+        "step3_capMELD": {
+          "finalMELD": 27
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 132,
+          "naDifference": 5,
+          "term1": "1.32 × 5 = 6.6",
+          "term2": "0.033 × 27 × 5 = 4.455",
+          "naCorrection": "6.6 - 4.455 = 2.145",
+          "rawMELDNa": 29.145,
+          "finalMELDNa": 29
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "27",
+        "MELD-Na Score": "29",
+        "3-Month Mortality": "19.6%",
+        "Risk Category": "High risk",
+        "Clinical Notes": "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)"
+      }
+    },
+    {
+      "name": "Dialysis with High Actual Creatinine",
+      "category": "Dialysis Adjustments",
+      "description": "Dialysis patient with Cr 6.5. Dialysis rule takes precedence (Cr = 4.0).",
+      "inputs": {
+        "creatinine": "6.5",
+        "bilirubin": "3.5",
+        "inr": "1.8",
+        "sodium": "128",
+        "dialysis": true
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "inputCr": 6.5,
+          "adjustedCr": 4.0,
+          "adjustedCrNote": "Dialysis checked: Cr set to 4.0 (dialysis rule, not cap)",
+          "adjustedBili": 3.5,
+          "adjustedINR": 1.8
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 1.3863,
+          "ln_Bili": 1.2528,
+          "ln_INR": 0.5878,
+          "rawValue": 28.505,
+          "roundedMELD": 29
+        },
+        "step3_capMELD": {
+          "finalMELD": 29
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 128,
+          "naDifference": 9,
+          "term1": "1.32 × 9 = 11.88",
+          "term2": "0.033 × 29 × 9 = 8.613",
+          "naCorrection": "11.88 - 8.613 = 3.267",
+          "rawMELDNa": 32.267,
+          "finalMELDNa": 32
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "29",
+        "MELD-Na Score": "32",
+        "3-Month Mortality": "52.6%",
+        "Risk Category": "Very high risk",
+        "Clinical Notes": "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)"
+      }
+    },
+    {
+      "name": "High Creatinine Capped at 4.0 (No Dialysis)",
+      "category": "Creatinine Bounds",
+      "description": "Non-dialysis patient with Cr > 4.0. Creatinine capped at 4.0.",
+      "inputs": {
+        "creatinine": "5.8",
+        "bilirubin": "2.0",
+        "inr": "1.4",
+        "sodium": "135",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "inputCr": 5.8,
+          "adjustedCr": 4.0,
+          "adjustedCrNote": "Cr 5.8 > 4.0, capped at 4.0",
+          "adjustedBili": 2.0,
+          "adjustedINR": 1.4
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 1.3863,
+          "ln_Bili": 0.6931,
+          "ln_INR": 0.3365,
+          "rawValue": 23.696,
+          "roundedMELD": 24
+        },
+        "step3_capMELD": {
+          "finalMELD": 24
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 135,
+          "naDifference": 2,
+          "term1": "1.32 × 2 = 2.64",
+          "term2": "0.033 × 24 × 2 = 1.584",
+          "naCorrection": "2.64 - 1.584 = 1.056",
+          "rawMELDNa": 25.056,
+          "finalMELDNa": 25
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "24",
+        "MELD-Na Score": "25",
+        "3-Month Mortality": "19.6%",
+        "Risk Category": "High risk",
+        "Clinical Notes": "Creatinine capped at 4.0 mg/dL"
+      }
+    },
+    {
+      "name": "All Values Below Lower Bounds",
+      "category": "Lower Bounds",
+      "description": "All lab values below 1.0. Tests simultaneous lower bound adjustments.",
+      "inputs": {
+        "creatinine": "0.6",
+        "bilirubin": "0.5",
+        "inr": "0.9",
+        "sodium": "140",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.0,
+          "adjustedCrNote": "Cr 0.6 < 1.0, set to 1.0",
+          "adjustedBili": 1.0,
+          "adjustedBiliNote": "Bili 0.5 < 1.0, set to 1.0",
+          "adjustedINR": 1.0,
+          "adjustedINRNote": "INR 0.9 < 1.0, set to 1.0"
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.0,
+          "ln_Bili": 0.0,
+          "ln_INR": 0.0,
+          "formula": "(0.957 × 0 + 0.378 × 0 + 1.120 × 0 + 0.643) × 10",
+          "rawValue": 6.43,
+          "roundedMELD": 6
+        },
+        "step3_capMELD": {
+          "finalMELD": 6,
+          "note": "6 is the minimum MELD score"
+        },
+        "step4_calculateMELDNa": {
+          "applies": false,
+          "note": "MELD 6 ≤ 11, sodium correction does not apply",
+          "finalMELDNa": 6
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "6",
+        "MELD-Na Score": "6",
+        "3-Month Mortality": "1.9%",
+        "Risk Category": "Low risk",
+        "Clinical Notes": "Creatinine set to lower bound of 1.0 mg/dL; Bilirubin set to lower bound of 1.0 mg/dL; INR set to lower bound of 1.0; MELD-Na equals MELD (sodium correction only applies when MELD > 11)"
+      }
+    },
+    {
+      "name": "MELD Capped at Minimum 6",
+      "category": "Score Capping",
+      "description": "Edge case where raw MELD calculation would be below 6 (theoretically not possible with bounds, but tests cap).",
+      "inputs": {
+        "creatinine": "0.5",
+        "bilirubin": "0.3",
+        "inr": "0.85",
+        "sodium": "142",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.0,
+          "adjustedBili": 1.0,
+          "adjustedINR": 1.0,
+          "notes": "All values adjusted to lower bounds of 1.0"
+        },
+        "step2_calculateMELD": {
+          "rawValue": 6.43,
+          "roundedMELD": 6
+        },
+        "step3_capMELD": {
+          "finalMELD": 6,
+          "note": "Minimum MELD is 6"
+        },
+        "step4_calculateMELDNa": {
+          "applies": false,
+          "finalMELDNa": 6
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "6",
+        "MELD-Na Score": "6",
+        "3-Month Mortality": "1.9%",
+        "Risk Category": "Low risk"
+      }
+    },
+    {
+      "name": "MELD Capped at Maximum 40",
+      "category": "Score Capping",
+      "description": "Extreme values resulting in MELD > 40. Tests upper cap.",
+      "inputs": {
+        "creatinine": "4.0",
+        "bilirubin": "35.0",
+        "inr": "6.5",
+        "sodium": "120",
+        "dialysis": true
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 4.0,
+          "adjustedCrNote": "Dialysis: Cr set to 4.0",
+          "adjustedBili": 35.0,
+          "adjustedINR": 6.5
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 1.3863,
+          "ln_Bili": 3.5553,
+          "ln_INR": 1.8718,
+          "formula": "(0.957 × 1.3863 + 0.378 × 3.5553 + 1.120 × 1.8718 + 0.643) × 10",
+          "rawValue": 48.81,
+          "roundedMELD": 49
+        },
+        "step3_capMELD": {
+          "uncappedMELD": 49,
+          "finalMELD": 40,
+          "note": "MELD 49 > 40, capped at maximum 40"
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "inputNa": 120,
+          "adjustedNa": 125,
+          "adjustedNaNote": "Na 120 < 125, capped at 125",
+          "naDifference": 12,
+          "term1": "1.32 × 12 = 15.84",
+          "term2": "0.033 × 40 × 12 = 15.84",
+          "naCorrection": "15.84 - 15.84 = 0",
+          "rawMELDNa": 40.0,
+          "finalMELDNa": 40,
+          "note": "At MELD 40, sodium correction is zero by design"
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "40",
+        "MELD-Na Score": "40",
+        "3-Month Mortality": ">70%",
+        "Risk Category": "Critical risk",
+        "Clinical Notes": "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD); MELD score capped at maximum of 40; Sodium set to lower bound of 125 mEq/L for MELD-Na calculation"
+      }
+    },
+    {
+      "name": "Boundary: MELD Exactly 11",
+      "category": "Sodium Threshold",
+      "description": "MELD = 11 exactly. Sodium correction should NOT apply (only when MELD > 11).",
+      "inputs": {
+        "creatinine": "1.0",
+        "bilirubin": "2.0",
+        "inr": "1.3",
+        "sodium": "125",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.0,
+          "adjustedBili": 2.0,
+          "adjustedINR": 1.3
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.0,
+          "ln_Bili": 0.6931,
+          "ln_INR": 0.2624,
+          "rawValue": 11.041,
+          "roundedMELD": 11
+        },
+        "step3_capMELD": {
+          "finalMELD": 11
+        },
+        "step4_calculateMELDNa": {
+          "applies": false,
+          "note": "MELD = 11, not > 11, so sodium correction does NOT apply",
+          "finalMELDNa": 11
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "11",
+        "MELD-Na Score": "11",
+        "3-Month Mortality": "6.0%",
+        "Risk Category": "Moderate risk",
+        "Clinical Notes": "MELD-Na equals MELD (sodium correction only applies when MELD > 11)"
+      }
+    },
+    {
+      "name": "Boundary: MELD Exactly 12",
+      "category": "Sodium Threshold",
+      "description": "MELD = 12. Sodium correction SHOULD apply (MELD > 11).",
+      "inputs": {
+        "creatinine": "1.1",
+        "bilirubin": "2.2",
+        "inr": "1.4",
+        "sodium": "128",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.1,
+          "adjustedBili": 2.2,
+          "adjustedINR": 1.4
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.0953,
+          "ln_Bili": 0.7885,
+          "ln_INR": 0.3365,
+          "rawValue": 12.389,
+          "roundedMELD": 12
+        },
+        "step3_capMELD": {
+          "finalMELD": 12
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 128,
+          "naDifference": 9,
+          "term1": "1.32 × 9 = 11.88",
+          "term2": "0.033 × 12 × 9 = 3.564",
+          "naCorrection": "11.88 - 3.564 = 8.316",
+          "rawMELDNa": 20.316,
+          "finalMELDNa": 20
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "12",
+        "MELD-Na Score": "20",
+        "3-Month Mortality": "19.6%",
+        "Risk Category": "High risk"
+      }
+    },
+    {
+      "name": "Transplant Threshold: MELD-Na 15",
+      "category": "Clinical Interpretation",
+      "description": "MELD-Na = 15 is the threshold for transplant evaluation consideration.",
+      "inputs": {
+        "creatinine": "1.2",
+        "bilirubin": "2.8",
+        "inr": "1.5",
+        "sodium": "135",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.2,
+          "adjustedBili": 2.8,
+          "adjustedINR": 1.5
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.1823,
+          "ln_Bili": 1.0296,
+          "ln_INR": 0.4055,
+          "rawValue": 14.969,
+          "roundedMELD": 15
+        },
+        "step3_capMELD": {
+          "finalMELD": 15
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 135,
+          "naDifference": 2,
+          "term1": "1.32 × 2 = 2.64",
+          "term2": "0.033 × 15 × 2 = 0.99",
+          "naCorrection": "2.64 - 0.99 = 1.65",
+          "rawMELDNa": 16.65,
+          "finalMELDNa": 17
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "15",
+        "MELD-Na Score": "17",
+        "3-Month Mortality": "6.0%",
+        "Risk Category": "Moderate risk",
+        "Interpretation": "Moderate risk of 3-month mortality without transplantation. Patient meets criteria for liver transplant evaluation (MELD-Na ≥15). Candidate for transplant listing."
+      }
+    },
+    {
+      "name": "High Priority Transplant: MELD-Na 25+",
+      "category": "Clinical Interpretation",
+      "description": "MELD-Na ≥ 25 indicates high priority for transplantation.",
+      "inputs": {
+        "creatinine": "2.5",
+        "bilirubin": "6.0",
+        "inr": "2.2",
+        "sodium": "126",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 2.5,
+          "adjustedBili": 6.0,
+          "adjustedINR": 2.2
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.9163,
+          "ln_Bili": 1.7918,
+          "ln_INR": 0.7885,
+          "rawValue": 27.413,
+          "roundedMELD": 27
+        },
+        "step3_capMELD": {
+          "finalMELD": 27
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 126,
+          "naDifference": 11,
+          "term1": "1.32 × 11 = 14.52",
+          "term2": "0.033 × 27 × 11 = 9.801",
+          "naCorrection": "14.52 - 9.801 = 4.719",
+          "rawMELDNa": 31.719,
+          "finalMELDNa": 32
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "27",
+        "MELD-Na Score": "32",
+        "3-Month Mortality": "52.6%",
+        "Risk Category": "Very high risk",
+        "Interpretation": "Very high risk of 3-month mortality without transplantation. Patient meets criteria for liver transplant evaluation (MELD-Na ≥15). High priority for transplantation."
+      }
+    },
+    {
+      "name": "Low MELD with Severe Hyponatremia",
+      "category": "Sodium Correction",
+      "description": "MELD 10 with sodium 115. Sodium correction does not apply when MELD ≤ 11.",
+      "inputs": {
+        "creatinine": "0.8",
+        "bilirubin": "1.8",
+        "inr": "1.2",
+        "sodium": "115",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.0,
+          "adjustedCrNote": "Cr 0.8 < 1.0, set to 1.0",
+          "adjustedBili": 1.8,
+          "adjustedINR": 1.2
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.0,
+          "ln_Bili": 0.5878,
+          "ln_INR": 0.1823,
+          "rawValue": 9.89,
+          "roundedMELD": 10
+        },
+        "step3_capMELD": {
+          "finalMELD": 10
+        },
+        "step4_calculateMELDNa": {
+          "applies": false,
+          "note": "MELD 10 ≤ 11, sodium correction does NOT apply despite severe hyponatremia",
+          "finalMELDNa": 10
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "10",
+        "MELD-Na Score": "10",
+        "3-Month Mortality": "6.0%",
+        "Risk Category": "Moderate risk",
+        "Clinical Notes": "Creatinine set to lower bound of 1.0 mg/dL; MELD-Na equals MELD (sodium correction only applies when MELD > 11)"
+      }
+    },
+    {
+      "name": "Sodium Exactly 125 (Lower Bound)",
+      "category": "Sodium Bounds",
+      "description": "Sodium exactly at lower bound of 125. No capping note should appear.",
+      "inputs": {
+        "creatinine": "2.0",
+        "bilirubin": "4.5",
+        "inr": "1.9",
+        "sodium": "125",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 2.0,
+          "adjustedBili": 4.5,
+          "adjustedINR": 1.9
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.6931,
+          "ln_Bili": 1.5041,
+          "ln_INR": 0.6419,
+          "rawValue": 23.482,
+          "roundedMELD": 23
+        },
+        "step3_capMELD": {
+          "finalMELD": 23
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 125,
+          "naDifference": 12,
+          "term1": "1.32 × 12 = 15.84",
+          "term2": "0.033 × 23 × 12 = 9.108",
+          "naCorrection": "15.84 - 9.108 = 6.732",
+          "rawMELDNa": 29.732,
+          "finalMELDNa": 30
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "23",
+        "MELD-Na Score": "30",
+        "3-Month Mortality": "52.6%",
+        "Risk Category": "Very high risk"
+      }
+    },
+    {
+      "name": "Sodium Exactly 137 (Upper Bound)",
+      "category": "Sodium Bounds",
+      "description": "Sodium exactly at upper bound of 137. No sodium correction applied.",
+      "inputs": {
+        "creatinine": "1.6",
+        "bilirubin": "3.2",
+        "inr": "1.7",
+        "sodium": "137",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.6,
+          "adjustedBili": 3.2,
+          "adjustedINR": 1.7
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.47,
+          "ln_Bili": 1.1632,
+          "ln_INR": 0.5306,
+          "rawValue": 17.957,
+          "roundedMELD": 18
+        },
+        "step3_capMELD": {
+          "finalMELD": 18
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 137,
+          "naDifference": 0,
+          "naCorrection": 0,
+          "finalMELDNa": 18
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "18",
+        "MELD-Na Score": "18",
+        "3-Month Mortality": "6.0%",
+        "Risk Category": "Moderate risk"
+      }
+    },
+    {
+      "name": "Maximum Sodium Correction Effect",
+      "category": "Sodium Correction",
+      "description": "MELD 20 with sodium 125 (maximum correction possible). Shows largest sodium-driven score increase.",
+      "inputs": {
+        "creatinine": "1.8",
+        "bilirubin": "4.0",
+        "inr": "1.8",
+        "sodium": "125",
+        "dialysis": false
+      },
+      "stepByStepCalculation": {
+        "step1_adjustInputs": {
+          "adjustedCr": 1.8,
+          "adjustedBili": 4.0,
+          "adjustedINR": 1.8
+        },
+        "step2_calculateMELD": {
+          "ln_Cr": 0.5878,
+          "ln_Bili": 1.3863,
+          "ln_INR": 0.5878,
+          "rawValue": 20.461,
+          "roundedMELD": 20
+        },
+        "step3_capMELD": {
+          "finalMELD": 20
+        },
+        "step4_calculateMELDNa": {
+          "applies": true,
+          "adjustedNa": 125,
+          "naDifference": 12,
+          "term1": "1.32 × 12 = 15.84",
+          "term2": "0.033 × 20 × 12 = 7.92",
+          "naCorrection": "15.84 - 7.92 = 7.92",
+          "rawMELDNa": 27.92,
+          "finalMELDNa": 28,
+          "note": "Maximum sodium correction at MELD 20 adds 8 points (7.92 rounded)"
+        }
+      },
+      "expectedResults": {
+        "MELD Score": "20",
+        "MELD-Na Score": "28",
+        "3-Month Mortality": "19.6%",
+        "Risk Category": "High risk"
+      }
+    }
+  ],
+  "validationRules": [
+    {
+      "field": "creatinine",
+      "validRange": { "min": 0.1, "max": 15.0 },
+      "unit": "mg/dL",
+      "errorMessage": "Creatinine must be between 0.1 and 15.0 mg/dL"
+    },
+    {
+      "field": "bilirubin",
+      "validRange": { "min": 0.1, "max": 50.0 },
+      "unit": "mg/dL",
+      "errorMessage": "Bilirubin must be between 0.1 and 50.0 mg/dL"
+    },
+    {
+      "field": "inr",
+      "validRange": { "min": 0.8, "max": 10.0 },
+      "errorMessage": "INR must be between 0.8 and 10.0"
+    },
+    {
+      "field": "sodium",
+      "validRange": { "min": 110, "max": 160 },
+      "unit": "mEq/L",
+      "errorMessage": "Sodium must be between 110 and 160 mEq/L"
+    }
+  ],
+  "errorTestCases": [
+    {
+      "name": "Missing Creatinine",
+      "inputs": {
+        "creatinine": "",
+        "bilirubin": "2.0",
+        "inr": "1.5",
+        "sodium": "135",
+        "dialysis": false
+      },
+      "expectedError": "Please enter all required values (creatinine, bilirubin, INR, and sodium)."
+    },
+    {
+      "name": "Creatinine Too Low",
+      "inputs": {
+        "creatinine": "0.05",
+        "bilirubin": "2.0",
+        "inr": "1.5",
+        "sodium": "135",
+        "dialysis": false
+      },
+      "expectedError": "Creatinine must be between 0.1 and 15.0 mg/dL"
+    },
+    {
+      "name": "Creatinine Too High",
+      "inputs": {
+        "creatinine": "16.0",
+        "bilirubin": "2.0",
+        "inr": "1.5",
+        "sodium": "135",
+        "dialysis": false
+      },
+      "expectedError": "Creatinine must be between 0.1 and 15.0 mg/dL"
+    },
+    {
+      "name": "Bilirubin Too Low",
+      "inputs": {
+        "creatinine": "1.0",
+        "bilirubin": "0.05",
+        "inr": "1.5",
+        "sodium": "135",
+        "dialysis": false
+      },
+      "expectedError": "Bilirubin must be between 0.1 and 50.0 mg/dL"
+    },
+    {
+      "name": "Bilirubin Too High",
+      "inputs": {
+        "creatinine": "1.0",
+        "bilirubin": "55.0",
+        "inr": "1.5",
+        "sodium": "135",
+        "dialysis": false
+      },
+      "expectedError": "Bilirubin must be between 0.1 and 50.0 mg/dL"
+    },
+    {
+      "name": "INR Too Low",
+      "inputs": {
+        "creatinine": "1.0",
+        "bilirubin": "2.0",
+        "inr": "0.5",
+        "sodium": "135",
+        "dialysis": false
+      },
+      "expectedError": "INR must be between 0.8 and 10.0"
+    },
+    {
+      "name": "INR Too High",
+      "inputs": {
+        "creatinine": "1.0",
+        "bilirubin": "2.0",
+        "inr": "12.0",
+        "sodium": "135",
+        "dialysis": false
+      },
+      "expectedError": "INR must be between 0.8 and 10.0"
+    },
+    {
+      "name": "Sodium Too Low",
+      "inputs": {
+        "creatinine": "1.0",
+        "bilirubin": "2.0",
+        "inr": "1.5",
+        "sodium": "105",
+        "dialysis": false
+      },
+      "expectedError": "Sodium must be between 110 and 160 mEq/L"
+    },
+    {
+      "name": "Sodium Too High",
+      "inputs": {
+        "creatinine": "1.0",
+        "bilirubin": "2.0",
+        "inr": "1.5",
+        "sodium": "165",
+        "dialysis": false
+      },
+      "expectedError": "Sodium must be between 110 and 160 mEq/L"
+    }
+  ],
+  "references": [
+    {
+      "title": "Kamath PS et al. Hepatology 2001 - Original MELD Score",
+      "url": "https://doi.org/10.1053/jhep.2001.22172",
+      "description": "Original development and validation of MELD score"
+    },
+    {
+      "title": "Wiesner R et al. Liver Transpl 2003 - MELD for Transplant Allocation",
+      "url": "https://doi.org/10.1053/jlts.2003.50040",
+      "description": "MELD adoption for liver transplant allocation in the US"
+    },
+    {
+      "title": "Kim WR et al. Gastroenterology 2008 - MELD-Na Development",
+      "url": "https://doi.org/10.1053/j.gastro.2008.01.029",
+      "description": "Development of MELD-Na formula incorporating serum sodium"
+    },
+    {
+      "title": "Biggins SW et al. Hepatology 2021 - MELD-Na Implementation",
+      "url": "https://doi.org/10.1002/hep.31565",
+      "description": "National implementation and outcomes of MELD-Na"
+    },
+    {
+      "title": "UNOS Policy 9 - Allocation of Livers",
+      "url": "https://optn.transplant.hrsa.gov/media/eavh5bf3/optn_policies.pdf",
+      "description": "Official UNOS liver allocation policy"
+    },
+    {
+      "title": "Sharma P et al. Am J Transplant 2008 - MELD Exceptions",
+      "url": "https://doi.org/10.1111/j.1600-6143.2008.02391.x",
+      "description": "MELD exception points and special cases"
+    }
+  ],
+  "notes": [
+    "MELD-Na is the standard for liver transplant allocation in the United States (OPTN/UNOS)",
+    "The sodium correction only applies when MELD > 11; otherwise MELD-Na = MELD",
+    "At MELD 40, the sodium correction formula mathematically approaches zero",
+    "UNOS implemented MELD-Na nationally on January 11, 2016",
+    "All lab values used for MELD calculation must be from the same time period (within 48 hours)",
+    "Exception points may be granted for specific conditions (e.g., hepatocellular carcinoma)",
+    "The formula uses natural logarithm (ln), not log base 10",
+    "Rounding is done to the nearest integer after each score calculation",
+    "3-month mortality estimates are approximations based on original validation studies"
+  ]
+}

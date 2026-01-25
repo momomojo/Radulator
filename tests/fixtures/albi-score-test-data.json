@@ -1,0 +1,615 @@
+{
+  "description": "Comprehensive test cases for ALBI Score (Albumin-Bilirubin Grade) Calculator",
+  "calculator": "albi-score",
+  "reference": "Johnson PJ, et al. J Clin Oncol. 2015;33(6):550-558. DOI: 10.1200/JCO.2014.57.9151",
+  "formula": {
+    "equation": "ALBI Score = (log10(bilirubin [umol/L]) x 0.66) + (albumin [g/L] x -0.0852)",
+    "grading": {
+      "grade1": "<= -2.60 (Best liver function)",
+      "grade2": "> -2.60 to <= -1.39 (Intermediate)",
+      "grade3": "> -1.39 (Worst liver function)"
+    },
+    "unitConversions": {
+      "bilirubin_mgdL_to_umolL": "multiply by 17.104",
+      "albumin_gdL_to_gL": "multiply by 10"
+    }
+  },
+  "testCases": [
+    {
+      "id": "grade1-excellent-liver-function-si",
+      "name": "Grade 1 - Excellent Liver Function (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "42",
+        "bilirubin": "10"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(10) = 1.0000",
+        "step2_bilirubin_component": "1.0000 x 0.66 = 0.6600",
+        "step3_albumin_component": "42 x -0.0852 = -3.5784",
+        "step4_albi_score": "0.6600 + (-3.5784) = -2.9184"
+      },
+      "expected": {
+        "ALBI Score": "-2.918",
+        "ALBI Grade": "Grade 1",
+        "Interpretation": "Best liver function - well-compensated",
+        "Bilirubin (SI)": "10.0 umol/L",
+        "Albumin (SI)": "42.0 g/L"
+      },
+      "notes": "Normal albumin (42 g/L) and bilirubin (10 umol/L) - classic Grade 1 patient"
+    },
+    {
+      "id": "grade1-boundary-exact-si",
+      "name": "Grade 1 - Exact Boundary Value (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "35",
+        "bilirubin": "17"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(17) = 1.2304",
+        "step2_bilirubin_component": "1.2304 x 0.66 = 0.8121",
+        "step3_albumin_component": "35 x -0.0852 = -2.982",
+        "step4_albi_score": "0.8121 + (-2.982) = -2.1699",
+        "boundary_note": "This is > -2.60, so Grade 2"
+      },
+      "expected": {
+        "ALBI Score": "-2.170",
+        "ALBI Grade": "Grade 2",
+        "Interpretation": "Intermediate liver function - moderately compensated",
+        "Bilirubin (SI)": "17.0 umol/L",
+        "Albumin (SI)": "35.0 g/L"
+      },
+      "notes": "Testing near Grade 1/2 boundary - falls into Grade 2"
+    },
+    {
+      "id": "grade1-just-below-boundary-si",
+      "name": "Grade 1 - Just Below -2.60 Boundary (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "45",
+        "bilirubin": "12"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(12) = 1.0792",
+        "step2_bilirubin_component": "1.0792 x 0.66 = 0.7123",
+        "step3_albumin_component": "45 x -0.0852 = -3.834",
+        "step4_albi_score": "0.7123 + (-3.834) = -3.1217"
+      },
+      "expected": {
+        "ALBI Score": "-3.122",
+        "ALBI Grade": "Grade 1",
+        "Interpretation": "Best liver function - well-compensated",
+        "Bilirubin (SI)": "12.0 umol/L",
+        "Albumin (SI)": "45.0 g/L"
+      },
+      "notes": "High albumin, low bilirubin - clearly Grade 1"
+    },
+    {
+      "id": "grade2-middle-range-si",
+      "name": "Grade 2 - Middle of Range (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "30",
+        "bilirubin": "25"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(25) = 1.3979",
+        "step2_bilirubin_component": "1.3979 x 0.66 = 0.9226",
+        "step3_albumin_component": "30 x -0.0852 = -2.556",
+        "step4_albi_score": "0.9226 + (-2.556) = -1.6334"
+      },
+      "expected": {
+        "ALBI Score": "-1.633",
+        "ALBI Grade": "Grade 2",
+        "Interpretation": "Intermediate liver function - moderately compensated",
+        "Bilirubin (SI)": "25.0 umol/L",
+        "Albumin (SI)": "30.0 g/L"
+      },
+      "notes": "Classic Grade 2 presentation - moderate liver dysfunction"
+    },
+    {
+      "id": "grade2-near-grade1-boundary-si",
+      "name": "Grade 2 - Near Grade 1 Boundary (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "38",
+        "bilirubin": "15"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(15) = 1.1761",
+        "step2_bilirubin_component": "1.1761 x 0.66 = 0.7762",
+        "step3_albumin_component": "38 x -0.0852 = -3.2376",
+        "step4_albi_score": "0.7762 + (-3.2376) = -2.4614"
+      },
+      "expected": {
+        "ALBI Score": "-2.461",
+        "ALBI Grade": "Grade 2",
+        "Interpretation": "Intermediate liver function - moderately compensated",
+        "Bilirubin (SI)": "15.0 umol/L",
+        "Albumin (SI)": "38.0 g/L"
+      },
+      "notes": "Just above Grade 1 cutoff (-2.60) - borderline Grade 2"
+    },
+    {
+      "id": "grade2-near-grade3-boundary-si",
+      "name": "Grade 2 - Near Grade 3 Boundary (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "28",
+        "bilirubin": "35"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(35) = 1.5441",
+        "step2_bilirubin_component": "1.5441 x 0.66 = 1.0191",
+        "step3_albumin_component": "28 x -0.0852 = -2.3856",
+        "step4_albi_score": "1.0191 + (-2.3856) = -1.3665"
+      },
+      "expected": {
+        "ALBI Score": "-1.367",
+        "ALBI Grade": "Grade 3",
+        "Interpretation": "Worst liver function - poorly compensated",
+        "Bilirubin (SI)": "35.0 umol/L",
+        "Albumin (SI)": "28.0 g/L"
+      },
+      "notes": "Just above Grade 2 cutoff (-1.39) - borderline Grade 3"
+    },
+    {
+      "id": "grade3-moderate-dysfunction-si",
+      "name": "Grade 3 - Moderate Dysfunction (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "25",
+        "bilirubin": "50"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(50) = 1.6990",
+        "step2_bilirubin_component": "1.6990 x 0.66 = 1.1213",
+        "step3_albumin_component": "25 x -0.0852 = -2.130",
+        "step4_albi_score": "1.1213 + (-2.130) = -1.0087"
+      },
+      "expected": {
+        "ALBI Score": "-1.009",
+        "ALBI Grade": "Grade 3",
+        "Interpretation": "Worst liver function - poorly compensated",
+        "Bilirubin (SI)": "50.0 umol/L",
+        "Albumin (SI)": "25.0 g/L"
+      },
+      "notes": "Clear Grade 3 with low albumin and elevated bilirubin"
+    },
+    {
+      "id": "grade3-severe-dysfunction-si",
+      "name": "Grade 3 - Severe Dysfunction (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "20",
+        "bilirubin": "100"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(100) = 2.0000",
+        "step2_bilirubin_component": "2.0000 x 0.66 = 1.3200",
+        "step3_albumin_component": "20 x -0.0852 = -1.704",
+        "step4_albi_score": "1.3200 + (-1.704) = -0.384"
+      },
+      "expected": {
+        "ALBI Score": "-0.384",
+        "ALBI Grade": "Grade 3",
+        "Interpretation": "Worst liver function - poorly compensated",
+        "Bilirubin (SI)": "100.0 umol/L",
+        "Albumin (SI)": "20.0 g/L"
+      },
+      "notes": "Severe liver dysfunction - very high ALBI score"
+    },
+    {
+      "id": "grade1-us-units-conversion",
+      "name": "Grade 1 - US Units with Conversion Verification",
+      "inputs": {
+        "unit_system": "US",
+        "albumin": "4.2",
+        "bilirubin": "0.6"
+      },
+      "calculation": {
+        "step1_convert_albumin": "4.2 g/dL x 10 = 42 g/L",
+        "step2_convert_bilirubin": "0.6 mg/dL x 17.104 = 10.2624 umol/L",
+        "step3_log10_bilirubin": "log10(10.2624) = 1.0113",
+        "step4_bilirubin_component": "1.0113 x 0.66 = 0.6675",
+        "step5_albumin_component": "42 x -0.0852 = -3.5784",
+        "step6_albi_score": "0.6675 + (-3.5784) = -2.9109"
+      },
+      "expected": {
+        "ALBI Score": "-2.911",
+        "ALBI Grade": "Grade 1",
+        "Interpretation": "Best liver function - well-compensated",
+        "Converted Bilirubin (SI)": "10.3 umol/L",
+        "Converted Albumin (SI)": "42.0 g/L",
+        "Note": "Calculation performed using SI units (shown above)"
+      },
+      "notes": "Standard US lab values - normal albumin 4.2 g/dL, bilirubin 0.6 mg/dL"
+    },
+    {
+      "id": "grade2-us-units-conversion",
+      "name": "Grade 2 - US Units with Conversion Verification",
+      "inputs": {
+        "unit_system": "US",
+        "albumin": "3.0",
+        "bilirubin": "1.5"
+      },
+      "calculation": {
+        "step1_convert_albumin": "3.0 g/dL x 10 = 30 g/L",
+        "step2_convert_bilirubin": "1.5 mg/dL x 17.104 = 25.656 umol/L",
+        "step3_log10_bilirubin": "log10(25.656) = 1.4092",
+        "step4_bilirubin_component": "1.4092 x 0.66 = 0.9301",
+        "step5_albumin_component": "30 x -0.0852 = -2.556",
+        "step6_albi_score": "0.9301 + (-2.556) = -1.6259"
+      },
+      "expected": {
+        "ALBI Score": "-1.626",
+        "ALBI Grade": "Grade 2",
+        "Interpretation": "Intermediate liver function - moderately compensated",
+        "Converted Bilirubin (SI)": "25.7 umol/L",
+        "Converted Albumin (SI)": "30.0 g/L",
+        "Note": "Calculation performed using SI units (shown above)"
+      },
+      "notes": "Moderate liver dysfunction in US units"
+    },
+    {
+      "id": "grade3-us-units-conversion",
+      "name": "Grade 3 - US Units with Conversion Verification",
+      "inputs": {
+        "unit_system": "US",
+        "albumin": "2.5",
+        "bilirubin": "3.0"
+      },
+      "calculation": {
+        "step1_convert_albumin": "2.5 g/dL x 10 = 25 g/L",
+        "step2_convert_bilirubin": "3.0 mg/dL x 17.104 = 51.312 umol/L",
+        "step3_log10_bilirubin": "log10(51.312) = 1.7103",
+        "step4_bilirubin_component": "1.7103 x 0.66 = 1.1288",
+        "step5_albumin_component": "25 x -0.0852 = -2.130",
+        "step6_albi_score": "1.1288 + (-2.130) = -1.0012"
+      },
+      "expected": {
+        "ALBI Score": "-1.001",
+        "ALBI Grade": "Grade 3",
+        "Interpretation": "Worst liver function - poorly compensated",
+        "Converted Bilirubin (SI)": "51.3 umol/L",
+        "Converted Albumin (SI)": "25.0 g/L",
+        "Note": "Calculation performed using SI units (shown above)"
+      },
+      "notes": "Severe liver dysfunction in US units - low albumin, elevated bilirubin"
+    },
+    {
+      "id": "boundary-grade1-grade2-exact-si",
+      "name": "Boundary Test - Exact -2.60 Cutoff (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "40",
+        "bilirubin": "14.35"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(14.35) = 1.1569",
+        "step2_bilirubin_component": "1.1569 x 0.66 = 0.7636",
+        "step3_albumin_component": "40 x -0.0852 = -3.408",
+        "step4_albi_score": "0.7636 + (-3.408) = -2.6444"
+      },
+      "expected": {
+        "ALBI Score": "-2.644",
+        "ALBI Grade": "Grade 1",
+        "Interpretation": "Best liver function - well-compensated",
+        "Bilirubin (SI)": "14.4 umol/L",
+        "Albumin (SI)": "40.0 g/L"
+      },
+      "notes": "Designed to be just at or below -2.60 cutoff for Grade 1"
+    },
+    {
+      "id": "boundary-grade2-grade3-exact-si",
+      "name": "Boundary Test - Near -1.39 Cutoff (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "29",
+        "bilirubin": "30"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(30) = 1.4771",
+        "step2_bilirubin_component": "1.4771 x 0.66 = 0.9749",
+        "step3_albumin_component": "29 x -0.0852 = -2.4708",
+        "step4_albi_score": "0.9749 + (-2.4708) = -1.4959"
+      },
+      "expected": {
+        "ALBI Score": "-1.496",
+        "ALBI Grade": "Grade 2",
+        "Interpretation": "Intermediate liver function - moderately compensated",
+        "Bilirubin (SI)": "30.0 umol/L",
+        "Albumin (SI)": "29.0 g/L"
+      },
+      "notes": "Designed to be just at or below -1.39 cutoff for Grade 2"
+    },
+    {
+      "id": "clinical-hcc-early-stage-si",
+      "name": "Clinical Case - Early HCC Patient (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "40",
+        "bilirubin": "18"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(18) = 1.2553",
+        "step2_bilirubin_component": "1.2553 x 0.66 = 0.8285",
+        "step3_albumin_component": "40 x -0.0852 = -3.408",
+        "step4_albi_score": "0.8285 + (-3.408) = -2.5795"
+      },
+      "expected": {
+        "ALBI Score": "-2.580",
+        "ALBI Grade": "Grade 2",
+        "Interpretation": "Intermediate liver function - moderately compensated",
+        "Bilirubin (SI)": "18.0 umol/L",
+        "Albumin (SI)": "40.0 g/L"
+      },
+      "notes": "Typical early HCC patient - near Grade 1/2 boundary, good candidate for curative therapy"
+    },
+    {
+      "id": "clinical-cirrhosis-compensated-us",
+      "name": "Clinical Case - Compensated Cirrhosis (US Units)",
+      "inputs": {
+        "unit_system": "US",
+        "albumin": "3.5",
+        "bilirubin": "1.2"
+      },
+      "calculation": {
+        "step1_convert_albumin": "3.5 g/dL x 10 = 35 g/L",
+        "step2_convert_bilirubin": "1.2 mg/dL x 17.104 = 20.5248 umol/L",
+        "step3_log10_bilirubin": "log10(20.5248) = 1.3123",
+        "step4_bilirubin_component": "1.3123 x 0.66 = 0.8661",
+        "step5_albumin_component": "35 x -0.0852 = -2.982",
+        "step6_albi_score": "0.8661 + (-2.982) = -2.1159"
+      },
+      "expected": {
+        "ALBI Score": "-2.116",
+        "ALBI Grade": "Grade 2",
+        "Interpretation": "Intermediate liver function - moderately compensated",
+        "Converted Bilirubin (SI)": "20.5 umol/L",
+        "Converted Albumin (SI)": "35.0 g/L",
+        "Note": "Calculation performed using SI units (shown above)"
+      },
+      "notes": "Compensated cirrhosis patient - Grade 2, suitable for TACE or systemic therapy"
+    },
+    {
+      "id": "clinical-decompensated-cirrhosis-us",
+      "name": "Clinical Case - Decompensated Cirrhosis (US Units)",
+      "inputs": {
+        "unit_system": "US",
+        "albumin": "2.2",
+        "bilirubin": "4.5"
+      },
+      "calculation": {
+        "step1_convert_albumin": "2.2 g/dL x 10 = 22 g/L",
+        "step2_convert_bilirubin": "4.5 mg/dL x 17.104 = 76.968 umol/L",
+        "step3_log10_bilirubin": "log10(76.968) = 1.8864",
+        "step4_bilirubin_component": "1.8864 x 0.66 = 1.2450",
+        "step5_albumin_component": "22 x -0.0852 = -1.8744",
+        "step6_albi_score": "1.2450 + (-1.8744) = -0.6294"
+      },
+      "expected": {
+        "ALBI Score": "-0.629",
+        "ALBI Grade": "Grade 3",
+        "Interpretation": "Worst liver function - poorly compensated",
+        "Converted Bilirubin (SI)": "77.0 umol/L",
+        "Converted Albumin (SI)": "22.0 g/L",
+        "Note": "Calculation performed using SI units (shown above)"
+      },
+      "notes": "Decompensated cirrhosis - Grade 3, limited treatment options, consider supportive care"
+    },
+    {
+      "id": "low-normal-values-si",
+      "name": "Low-Normal Lab Values (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "35",
+        "bilirubin": "5"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(5) = 0.6990",
+        "step2_bilirubin_component": "0.6990 x 0.66 = 0.4613",
+        "step3_albumin_component": "35 x -0.0852 = -2.982",
+        "step4_albi_score": "0.4613 + (-2.982) = -2.5207"
+      },
+      "expected": {
+        "ALBI Score": "-2.521",
+        "ALBI Grade": "Grade 2",
+        "Interpretation": "Intermediate liver function - moderately compensated",
+        "Bilirubin (SI)": "5.0 umol/L",
+        "Albumin (SI)": "35.0 g/L"
+      },
+      "notes": "Lower range normal values - low bilirubin helps but borderline albumin limits grade"
+    },
+    {
+      "id": "high-normal-albumin-si",
+      "name": "High-Normal Albumin with Mild Hyperbilirubinemia (SI Units)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "50",
+        "bilirubin": "25"
+      },
+      "calculation": {
+        "step1_log10_bilirubin": "log10(25) = 1.3979",
+        "step2_bilirubin_component": "1.3979 x 0.66 = 0.9226",
+        "step3_albumin_component": "50 x -0.0852 = -4.26",
+        "step4_albi_score": "0.9226 + (-4.26) = -3.3374"
+      },
+      "expected": {
+        "ALBI Score": "-3.337",
+        "ALBI Grade": "Grade 1",
+        "Interpretation": "Best liver function - well-compensated",
+        "Bilirubin (SI)": "25.0 umol/L",
+        "Albumin (SI)": "50.0 g/L"
+      },
+      "notes": "High albumin compensates for mildly elevated bilirubin - still Grade 1"
+    },
+    {
+      "id": "gilbert-syndrome-pattern-us",
+      "name": "Gilbert Syndrome Pattern - High Bilirubin, Normal Albumin (US Units)",
+      "inputs": {
+        "unit_system": "US",
+        "albumin": "4.0",
+        "bilirubin": "2.0"
+      },
+      "calculation": {
+        "step1_convert_albumin": "4.0 g/dL x 10 = 40 g/L",
+        "step2_convert_bilirubin": "2.0 mg/dL x 17.104 = 34.208 umol/L",
+        "step3_log10_bilirubin": "log10(34.208) = 1.5342",
+        "step4_bilirubin_component": "1.5342 x 0.66 = 1.0126",
+        "step5_albumin_component": "40 x -0.0852 = -3.408",
+        "step6_albi_score": "1.0126 + (-3.408) = -2.3954"
+      },
+      "expected": {
+        "ALBI Score": "-2.395",
+        "ALBI Grade": "Grade 2",
+        "Interpretation": "Intermediate liver function - moderately compensated",
+        "Converted Bilirubin (SI)": "34.2 umol/L",
+        "Converted Albumin (SI)": "40.0 g/L",
+        "Note": "Calculation performed using SI units (shown above)"
+      },
+      "notes": "Isolated hyperbilirubinemia pattern (like Gilbert syndrome) - Grade 2 despite normal albumin"
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "error-zero-albumin",
+      "name": "Error Case - Zero Albumin",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "0",
+        "bilirubin": "10"
+      },
+      "expected": {
+        "Error": "Please enter valid positive values for albumin and bilirubin."
+      },
+      "notes": "Should return error for zero albumin"
+    },
+    {
+      "id": "error-zero-bilirubin",
+      "name": "Error Case - Zero Bilirubin",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "35",
+        "bilirubin": "0"
+      },
+      "expected": {
+        "Error": "Please enter valid positive values for albumin and bilirubin."
+      },
+      "notes": "Should return error for zero bilirubin (log10(0) is undefined)"
+    },
+    {
+      "id": "error-negative-albumin",
+      "name": "Error Case - Negative Albumin",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "-35",
+        "bilirubin": "10"
+      },
+      "expected": {
+        "Error": "Please enter valid positive values for albumin and bilirubin."
+      },
+      "notes": "Should return error for negative values"
+    },
+    {
+      "id": "error-albumin-out-of-range-high-si",
+      "name": "Error Case - Albumin Out of Range High (SI)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "70",
+        "bilirubin": "10"
+      },
+      "expected": {
+        "Error": "Albumin value 70.0 g/L is outside physiological range (5-60 g/L). Please check unit selection and input."
+      },
+      "notes": "Albumin > 60 g/L triggers range validation error"
+    },
+    {
+      "id": "error-albumin-out-of-range-low-si",
+      "name": "Error Case - Albumin Out of Range Low (SI)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "3",
+        "bilirubin": "10"
+      },
+      "expected": {
+        "Error": "Albumin value 3.0 g/L is outside physiological range (5-60 g/L). Please check unit selection and input."
+      },
+      "notes": "Albumin < 5 g/L triggers range validation error (likely wrong units)"
+    },
+    {
+      "id": "error-bilirubin-out-of-range-high-si",
+      "name": "Error Case - Bilirubin Out of Range High (SI)",
+      "inputs": {
+        "unit_system": "SI",
+        "albumin": "35",
+        "bilirubin": "1500"
+      },
+      "expected": {
+        "Error": "Bilirubin value 1500.0 umol/L is outside physiological range (1-1000 umol/L). Please check unit selection and input."
+      },
+      "notes": "Bilirubin > 1000 umol/L triggers range validation error"
+    }
+  ],
+  "unitConversionVerification": [
+    {
+      "id": "unit-conversion-verify-1",
+      "name": "Unit Conversion Verification - Standard Values",
+      "siInputs": {
+        "albumin_gL": 40,
+        "bilirubin_umolL": 17.104
+      },
+      "usInputs": {
+        "albumin_gdL": 4.0,
+        "bilirubin_mgdL": 1.0
+      },
+      "conversionFactors": {
+        "albumin": "g/dL x 10 = g/L",
+        "bilirubin": "mg/dL x 17.104 = umol/L"
+      },
+      "notes": "Both should yield identical ALBI scores when converted"
+    },
+    {
+      "id": "unit-conversion-verify-2",
+      "name": "Unit Conversion Verification - Higher Values",
+      "siInputs": {
+        "albumin_gL": 25,
+        "bilirubin_umolL": 85.52
+      },
+      "usInputs": {
+        "albumin_gdL": 2.5,
+        "bilirubin_mgdL": 5.0
+      },
+      "conversionFactors": {
+        "albumin": "2.5 x 10 = 25 g/L",
+        "bilirubin": "5.0 x 17.104 = 85.52 umol/L"
+      },
+      "notes": "Verify conversion accuracy with pathological values"
+    }
+  ],
+  "clinicalValidation": {
+    "originalStudy": {
+      "reference": "Johnson PJ et al. J Clin Oncol 2015;33(6):550-558",
+      "medianSurvival": {
+        "grade1": "85.6 months",
+        "grade2": "23.1 months",
+        "grade3": "6.6 months"
+      },
+      "cutoffs": {
+        "grade1_upper": -2.6,
+        "grade2_upper": -1.39
+      }
+    },
+    "formulaVerification": {
+      "coefficients": {
+        "bilirubin_log10": 0.66,
+        "albumin": -0.0852
+      },
+      "units": {
+        "bilirubin": "umol/L (must convert from mg/dL if US units)",
+        "albumin": "g/L (must convert from g/dL if US units)"
+      }
+    }
+  }
+}

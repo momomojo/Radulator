@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect } from "@playwright/test";
 
 /**
  * Calculator Test Helper Utilities for Radulator
@@ -11,10 +11,10 @@ import { expect } from '@playwright/test';
  * @param {string} calculatorName - Name of the calculator to navigate to
  */
 export async function navigateToCalculator(page, calculatorName) {
-  await page.goto('/');
+  await page.goto("/");
 
   // Wait for app to load
-  await page.waitForSelector('h1:has-text("RadCalc")', { timeout: 10000 });
+  await page.waitForSelector('h1:has-text("Radulator")', { timeout: 10000 });
 
   // Click on the calculator in the sidebar
   const calculatorButton = page.locator(`button:has-text("${calculatorName}")`);
@@ -22,7 +22,7 @@ export async function navigateToCalculator(page, calculatorName) {
   await calculatorButton.click();
 
   // Wait for calculator to load
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState("networkidle");
 }
 
 /**
@@ -32,7 +32,11 @@ export async function navigateToCalculator(page, calculatorName) {
  * @param {string|number} value - Value to fill
  */
 export async function fillInput(page, label, value) {
-  const input = page.locator(`label:has-text("${label}") + input, label:has-text("${label}") ~ input`).first();
+  const input = page
+    .locator(
+      `label:has-text("${label}") + input, label:has-text("${label}") ~ input`,
+    )
+    .first();
   await input.clear();
   await input.fill(String(value));
   await input.blur(); // Trigger onChange
@@ -45,7 +49,11 @@ export async function fillInput(page, label, value) {
  * @param {string} value - Value to select
  */
 export async function selectOption(page, label, value) {
-  const select = page.locator(`label:has-text("${label}") + select, label:has-text("${label}") ~ select`).first();
+  const select = page
+    .locator(
+      `label:has-text("${label}") + select, label:has-text("${label}") ~ select`,
+    )
+    .first();
   await select.selectOption(value);
 }
 
@@ -68,8 +76,10 @@ export async function selectRadio(page, label, value) {
  */
 export async function toggleCheckbox(page, label, checked) {
   const checkbox = page.locator(`label:has-text("${label}")`).first();
-  const currentState = await checkbox.locator('button[role="switch"]').getAttribute('aria-checked');
-  const isChecked = currentState === 'true';
+  const currentState = await checkbox
+    .locator('button[role="switch"]')
+    .getAttribute("aria-checked");
+  const isChecked = currentState === "true";
 
   if ((checked && !isChecked) || (!checked && isChecked)) {
     await checkbox.click();
@@ -84,12 +94,14 @@ export async function toggleCheckbox(page, label, checked) {
  */
 export async function getResult(page, resultLabel = null) {
   if (resultLabel) {
-    const resultRow = page.locator(`.grid > div:has-text("${resultLabel}")`).first();
-    const resultValue = resultRow.locator('div').nth(1);
+    const resultRow = page
+      .locator(`.grid > div:has-text("${resultLabel}")`)
+      .first();
+    const resultValue = resultRow.locator("div").nth(1);
     return await resultValue.textContent();
   } else {
     // Get all results
-    const resultsSection = page.locator('.bg-muted\\/50').last();
+    const resultsSection = page.locator(".bg-muted\\/50").last();
     return await resultsSection.textContent();
   }
 }
@@ -101,7 +113,12 @@ export async function getResult(page, resultLabel = null) {
  * @param {string|number} expectedValue - Expected value
  * @param {object} options - Options for assertion (contains, exact, etc.)
  */
-export async function verifyResult(page, label, expectedValue, options = { exact: false }) {
+export async function verifyResult(
+  page,
+  label,
+  expectedValue,
+  options = { exact: false },
+) {
   const resultText = await getResult(page, label);
 
   if (options.exact) {
@@ -120,7 +137,7 @@ export async function verifyResult(page, label, expectedValue, options = { exact
 export async function takeScreenshot(page, calculatorName, testName) {
   await page.screenshot({
     path: `test-results/screenshots/${calculatorName}-${testName}.png`,
-    fullPage: true
+    fullPage: true,
   });
 }
 
@@ -134,7 +151,7 @@ export async function verifyReferenceLinks(page) {
   const brokenLinks = [];
 
   for (const link of links) {
-    const href = await link.getAttribute('href');
+    const href = await link.getAttribute("href");
     try {
       const response = await page.request.get(href);
       if (response.status() >= 400) {
@@ -154,12 +171,12 @@ export async function verifyReferenceLinks(page) {
  */
 export async function verifyThemeConsistency(page) {
   // Check that calculator card is present
-  const calculatorCard = page.locator('.border.rounded-lg').first();
+  const calculatorCard = page.locator(".border.rounded-lg").first();
   await expect(calculatorCard).toBeVisible();
 
   // Verify Tailwind classes are applied
-  const hasBackgroundClass = await calculatorCard.evaluate(el =>
-    el.className.includes('bg-')
+  const hasBackgroundClass = await calculatorCard.evaluate((el) =>
+    el.className.includes("bg-"),
   );
   expect(hasBackgroundClass).toBeTruthy();
 }
@@ -173,8 +190,8 @@ export async function verifyMobileResponsive(page) {
   await page.setViewportSize({ width: 375, height: 667 });
 
   // Verify sidebar is responsive
-  const sidebar = page.locator('aside').first();
-  const sidebarWidth = await sidebar.evaluate(el => el.offsetWidth);
+  const sidebar = page.locator("aside").first();
+  const sidebarWidth = await sidebar.evaluate((el) => el.offsetWidth);
 
   // Mobile sidebar should be narrower (48px)
   expect(sidebarWidth).toBeLessThan(100);
@@ -188,7 +205,9 @@ export async function verifyMobileResponsive(page) {
  * @param {import('@playwright/test').Page} page - Playwright page object
  */
 export async function clearAllInputs(page) {
-  const inputs = await page.locator('input[type="text"], input[type="number"]').all();
+  const inputs = await page
+    .locator('input[type="text"], input[type="number"]')
+    .all();
 
   for (const input of inputs) {
     await input.clear();
@@ -202,14 +221,14 @@ export async function clearAllInputs(page) {
  */
 export async function fillCalculatorFromTestCase(page, testCase) {
   for (const [fieldName, value] of Object.entries(testCase.inputs)) {
-    if (typeof value === 'number' || typeof value === 'string') {
+    if (typeof value === "number" || typeof value === "string") {
       await fillInput(page, fieldName, value);
-    } else if (typeof value === 'object' && value.type) {
-      if (value.type === 'select') {
+    } else if (typeof value === "object" && value.type) {
+      if (value.type === "select") {
         await selectOption(page, fieldName, value.value);
-      } else if (value.type === 'radio') {
+      } else if (value.type === "radio") {
         await selectRadio(page, fieldName, value.value);
-      } else if (value.type === 'checkbox') {
+      } else if (value.type === "checkbox") {
         await toggleCheckbox(page, fieldName, value.value);
       }
     }
@@ -225,7 +244,11 @@ export async function fillCalculatorFromTestCase(page, testCase) {
  * @param {object} expectedResults - Expected results object
  * @param {number} tolerance - Tolerance for numerical comparison (default 0.01)
  */
-export async function verifyCalculationAccuracy(page, expectedResults, tolerance = 0.01) {
+export async function verifyCalculationAccuracy(
+  page,
+  expectedResults,
+  tolerance = 0.01,
+) {
   for (const [label, expectedValue] of Object.entries(expectedResults)) {
     const actualText = await getResult(page, label);
 
@@ -256,11 +279,13 @@ export async function testEdgeCases(page, fieldLabel, edgeCases) {
 
     if (edgeCase.shouldError) {
       // Verify error message appears
-      const errorMessage = page.locator('text=/error|invalid|required/i').first();
+      const errorMessage = page
+        .locator("text=/error|invalid|required/i")
+        .first();
       await expect(errorMessage).toBeVisible({ timeout: 2000 });
     } else {
       // Verify no error
-      const noError = page.locator('text=/error|invalid/i').first();
+      const noError = page.locator("text=/error|invalid/i").first();
       await expect(noError).not.toBeVisible({ timeout: 2000 });
     }
   }

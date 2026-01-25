@@ -1,0 +1,520 @@
+{
+  "calculator": "Milan Criteria (HCC)",
+  "description": "Test cases for Milan and UCSF criteria for HCC liver transplant eligibility assessment. Milan criteria (1996): single tumor ≤5cm OR 2-3 tumors each ≤3cm. UCSF criteria (2001): single tumor ≤6.5cm OR 2-3 tumors with largest ≤4.5cm AND total ≤8cm. Both require NO macrovascular invasion and NO extrahepatic disease.",
+  "testCases": [
+    {
+      "name": "Single Tumor - Meets Both Milan and UCSF",
+      "category": "Milan Eligible",
+      "description": "Small single tumor well within both criteria thresholds",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "3.5",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "3.5 cm",
+        "Macrovascular Invasion": "No",
+        "Extrahepatic Disease": "No",
+        "Milan Criteria": "WITHIN CRITERIA",
+        "Milan Details": "Single tumor 3.5 cm (≤5 cm required)",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "Single tumor 3.5 cm (≤6.5 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets Milan Criteria (standard)",
+        "Expected Outcomes": "Expected 4-year survival >70% (Mazzaferro 1996), 5-year recurrence-free survival 83% (Mazzaferro 2009 validation)"
+      }
+    },
+    {
+      "name": "Single Tumor - Boundary: Exactly 5.0cm (Milan limit)",
+      "category": "Milan Boundary",
+      "description": "Edge case: Single tumor exactly at Milan 5cm threshold",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "5.0",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "5.0 cm",
+        "Milan Criteria": "WITHIN CRITERIA",
+        "Milan Details": "Single tumor 5.0 cm (≤5 cm required)",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "Single tumor 5.0 cm (≤6.5 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets Milan Criteria (standard)"
+      }
+    },
+    {
+      "name": "Single Tumor - Just Beyond Milan (5.1cm), Within UCSF",
+      "category": "UCSF Only",
+      "description": "Single tumor exceeds Milan 5cm but within UCSF 6.5cm limit",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "5.1",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "5.1 cm",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "Single tumor 5.1 cm exceeds 5 cm limit",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "Single tumor 5.1 cm (≤6.5 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets UCSF Criteria (expanded)",
+        "Expected Outcomes": "Expected 5-year survival ~75% (Yao 2001), though not meeting standard Milan criteria"
+      }
+    },
+    {
+      "name": "Single Tumor - Boundary: Exactly 6.5cm (UCSF limit)",
+      "category": "UCSF Boundary",
+      "description": "Edge case: Single tumor exactly at UCSF 6.5cm threshold",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "6.5",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "6.5 cm",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "Single tumor 6.5 cm exceeds 5 cm limit",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "Single tumor 6.5 cm (≤6.5 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets UCSF Criteria (expanded)"
+      }
+    },
+    {
+      "name": "Single Tumor - Beyond Both Milan and UCSF (6.6cm)",
+      "category": "Not Eligible",
+      "description": "Single tumor exceeds both Milan and UCSF size limits",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "6.6",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "6.6 cm",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "Single tumor 6.6 cm exceeds 5 cm limit",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "Single tumor 6.6 cm exceeds 6.5 cm limit",
+        "Transplant Eligibility": "NOT ELIGIBLE - Beyond both Milan and UCSF criteria",
+        "Expected Outcomes": "Consider alternative treatments (ablation, TACE, systemic therapy). Down-staging protocols may be available at some centers."
+      }
+    },
+    {
+      "name": "Two Tumors - Within Milan (both ≤3cm)",
+      "category": "Milan Eligible",
+      "description": "Two tumors both within Milan 3cm per-tumor limit",
+      "inputs": {
+        "tumorCount": "2",
+        "tumor1Size": "2.8",
+        "tumor2Size": "2.5",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "2",
+        "Largest Tumor Diameter": "2.8 cm",
+        "Total Tumor Diameter": "5.3 cm",
+        "Milan Criteria": "WITHIN CRITERIA",
+        "Milan Details": "2 tumors, largest 2.8 cm (each ≤3 cm required)",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "2 tumors, largest 2.8 cm, total 5.3 cm (largest ≤4.5 cm and total ≤8 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets Milan Criteria (standard)"
+      }
+    },
+    {
+      "name": "Two Tumors - Boundary: Each exactly 3.0cm",
+      "category": "Milan Boundary",
+      "description": "Edge case: Two tumors each exactly at Milan 3cm threshold",
+      "inputs": {
+        "tumorCount": "2",
+        "tumor1Size": "3.0",
+        "tumor2Size": "3.0",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "2",
+        "Largest Tumor Diameter": "3.0 cm",
+        "Total Tumor Diameter": "6.0 cm",
+        "Milan Criteria": "WITHIN CRITERIA",
+        "Milan Details": "2 tumors, largest 3.0 cm (each ≤3 cm required)",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "2 tumors, largest 3.0 cm, total 6.0 cm (largest ≤4.5 cm and total ≤8 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets Milan Criteria (standard)"
+      }
+    },
+    {
+      "name": "Two Tumors - Beyond Milan (one 3.1cm), Within UCSF",
+      "category": "UCSF Only",
+      "description": "One tumor exceeds Milan 3cm limit but within UCSF thresholds",
+      "inputs": {
+        "tumorCount": "2",
+        "tumor1Size": "3.1",
+        "tumor2Size": "2.5",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "2",
+        "Largest Tumor Diameter": "3.1 cm",
+        "Total Tumor Diameter": "5.6 cm",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "2 tumors, largest 3.1 cm exceeds 3 cm limit",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "2 tumors, largest 3.1 cm, total 5.6 cm (largest ≤4.5 cm and total ≤8 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets UCSF Criteria (expanded)"
+      }
+    },
+    {
+      "name": "Three Tumors - Within Milan (all ≤3cm)",
+      "category": "Milan Eligible",
+      "description": "Three tumors all within Milan 3cm per-tumor limit",
+      "inputs": {
+        "tumorCount": "3",
+        "tumor1Size": "2.5",
+        "tumor2Size": "2.0",
+        "tumor3Size": "1.5",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "3",
+        "Largest Tumor Diameter": "2.5 cm",
+        "Total Tumor Diameter": "6.0 cm",
+        "Milan Criteria": "WITHIN CRITERIA",
+        "Milan Details": "3 tumors, largest 2.5 cm (each ≤3 cm required)",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "3 tumors, largest 2.5 cm, total 6.0 cm (largest ≤4.5 cm and total ≤8 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets Milan Criteria (standard)"
+      }
+    },
+    {
+      "name": "Three Tumors - Boundary: UCSF largest ≤4.5cm AND total ≤8cm",
+      "category": "UCSF Boundary",
+      "description": "Edge case: Three tumors exactly at UCSF thresholds",
+      "inputs": {
+        "tumorCount": "3",
+        "tumor1Size": "4.5",
+        "tumor2Size": "2.0",
+        "tumor3Size": "1.5",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "3",
+        "Largest Tumor Diameter": "4.5 cm",
+        "Total Tumor Diameter": "8.0 cm",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "3 tumors, largest 4.5 cm exceeds 3 cm limit",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "3 tumors, largest 4.5 cm, total 8.0 cm (largest ≤4.5 cm and total ≤8 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets UCSF Criteria (expanded)"
+      }
+    },
+    {
+      "name": "Three Tumors - Beyond UCSF: Largest exceeds 4.5cm",
+      "category": "Not Eligible",
+      "description": "Largest tumor exceeds UCSF 4.5cm single tumor limit",
+      "inputs": {
+        "tumorCount": "3",
+        "tumor1Size": "4.6",
+        "tumor2Size": "2.0",
+        "tumor3Size": "1.0",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "3",
+        "Largest Tumor Diameter": "4.6 cm",
+        "Total Tumor Diameter": "7.6 cm",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "3 tumors, largest 4.6 cm exceeds 3 cm limit",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "3 tumors, largest 4.6 cm exceeds 4.5 cm limit",
+        "Transplant Eligibility": "NOT ELIGIBLE - Beyond both Milan and UCSF criteria"
+      }
+    },
+    {
+      "name": "Three Tumors - Beyond UCSF: Total exceeds 8cm",
+      "category": "Not Eligible",
+      "description": "Total tumor diameter exceeds UCSF 8cm limit (even though each is ≤4.5cm)",
+      "inputs": {
+        "tumorCount": "3",
+        "tumor1Size": "3.5",
+        "tumor2Size": "3.0",
+        "tumor3Size": "2.0",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "3",
+        "Largest Tumor Diameter": "3.5 cm",
+        "Total Tumor Diameter": "8.5 cm",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "3 tumors, largest 3.5 cm exceeds 3 cm limit",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "3 tumors, total diameter 8.5 cm exceeds 8 cm limit",
+        "Transplant Eligibility": "NOT ELIGIBLE - Beyond both Milan and UCSF criteria"
+      }
+    },
+    {
+      "name": "Four or More Tumors - Automatic Disqualification",
+      "category": "Not Eligible",
+      "description": "Four or more tumors automatically disqualifies from both Milan and UCSF",
+      "inputs": {
+        "tumorCount": "4 or more",
+        "tumor1Size": "2.0",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "4 or more",
+        "Largest Tumor Diameter": "2.0 cm",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "4 or more tumors present (Milan limit: 1-3 tumors)",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "4 or more tumors present (UCSF limit: 1-3 tumors)",
+        "Transplant Eligibility": "NOT ELIGIBLE - Beyond both Milan and UCSF criteria"
+      }
+    },
+    {
+      "name": "Macrovascular Invasion Present - Absolute Contraindication",
+      "category": "Contraindication",
+      "description": "Macrovascular invasion is an absolute contraindication even with favorable tumor burden",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "2.0",
+        "macrovascularInvasion": "yes",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "2.0 cm",
+        "Macrovascular Invasion": "Yes",
+        "Extrahepatic Disease": "No",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "Macrovascular invasion present (absolute contraindication)",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "Macrovascular invasion present (absolute contraindication)",
+        "Transplant Eligibility": "NOT ELIGIBLE - Beyond both Milan and UCSF criteria"
+      }
+    },
+    {
+      "name": "Extrahepatic Disease Present - Absolute Contraindication",
+      "category": "Contraindication",
+      "description": "Extrahepatic disease is an absolute contraindication even with favorable tumor burden",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "2.0",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "yes"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "2.0 cm",
+        "Macrovascular Invasion": "No",
+        "Extrahepatic Disease": "Yes",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "Extrahepatic disease present (absolute contraindication)",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "Extrahepatic disease present (absolute contraindication)",
+        "Transplant Eligibility": "NOT ELIGIBLE - Beyond both Milan and UCSF criteria"
+      }
+    },
+    {
+      "name": "Macrovascular Invasion Unknown - Workup Required",
+      "category": "Indeterminate",
+      "description": "Unknown vascular invasion status requires further diagnostic workup",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "3.0",
+        "macrovascularInvasion": "unknown",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "3.0 cm",
+        "Macrovascular Invasion": "Unknown",
+        "Extrahepatic Disease": "No",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "Macrovascular invasion status unknown - further workup required",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "Macrovascular invasion status unknown - further workup required",
+        "Transplant Eligibility": "INDETERMINATE - Further diagnostic workup required",
+        "Expected Outcomes": "Cannot determine eligibility until vascular invasion and extrahepatic disease status are clarified"
+      }
+    },
+    {
+      "name": "Extrahepatic Disease Unknown - Workup Required",
+      "category": "Indeterminate",
+      "description": "Unknown extrahepatic disease status requires further diagnostic workup",
+      "inputs": {
+        "tumorCount": "2",
+        "tumor1Size": "2.5",
+        "tumor2Size": "2.0",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "unknown"
+      },
+      "expectedResults": {
+        "Number of Tumors": "2",
+        "Largest Tumor Diameter": "2.5 cm",
+        "Total Tumor Diameter": "4.5 cm",
+        "Macrovascular Invasion": "No",
+        "Extrahepatic Disease": "Unknown",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "Extrahepatic disease status unknown - further workup required",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "Extrahepatic disease status unknown - further workup required",
+        "Transplant Eligibility": "INDETERMINATE - Further diagnostic workup required"
+      }
+    },
+    {
+      "name": "Both Unknown - Double Indeterminate",
+      "category": "Indeterminate",
+      "description": "Both vascular invasion and extrahepatic disease unknown - macrovascular invasion checked first",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "4.0",
+        "macrovascularInvasion": "unknown",
+        "extrahepaticDisease": "unknown"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "4.0 cm",
+        "Macrovascular Invasion": "Unknown",
+        "Extrahepatic Disease": "Unknown",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "Macrovascular invasion status unknown - further workup required",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "Macrovascular invasion status unknown - further workup required",
+        "Transplant Eligibility": "INDETERMINATE - Further diagnostic workup required"
+      }
+    },
+    {
+      "name": "Two Tumors - Unsorted sizes (verify largest detection)",
+      "category": "Edge Case",
+      "description": "Second tumor larger than first - verify largest tumor detection",
+      "inputs": {
+        "tumorCount": "2",
+        "tumor1Size": "2.0",
+        "tumor2Size": "2.8",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "2",
+        "Largest Tumor Diameter": "2.8 cm",
+        "Total Tumor Diameter": "4.8 cm",
+        "Milan Criteria": "WITHIN CRITERIA",
+        "Milan Details": "2 tumors, largest 2.8 cm (each ≤3 cm required)",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "Transplant Eligibility": "ELIGIBLE - Meets Milan Criteria (standard)"
+      }
+    },
+    {
+      "name": "Three Tumors - Third largest (verify max detection)",
+      "category": "Edge Case",
+      "description": "Third tumor is largest - verify maximum tumor size detection works across all entries",
+      "inputs": {
+        "tumorCount": "3",
+        "tumor1Size": "1.5",
+        "tumor2Size": "2.0",
+        "tumor3Size": "2.9",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "3",
+        "Largest Tumor Diameter": "2.9 cm",
+        "Total Tumor Diameter": "6.4 cm",
+        "Milan Criteria": "WITHIN CRITERIA",
+        "Milan Details": "3 tumors, largest 2.9 cm (each ≤3 cm required)",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "3 tumors, largest 2.9 cm, total 6.4 cm (largest ≤4.5 cm and total ≤8 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets Milan Criteria (standard)"
+      }
+    },
+    {
+      "name": "Small Single Tumor - Optimal Candidate",
+      "category": "Milan Eligible",
+      "description": "Very small single tumor - ideal transplant candidate with best prognosis",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "1.5",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "1.5 cm",
+        "Milan Criteria": "WITHIN CRITERIA",
+        "Milan Details": "Single tumor 1.5 cm (≤5 cm required)",
+        "UCSF Criteria": "WITHIN CRITERIA",
+        "UCSF Details": "Single tumor 1.5 cm (≤6.5 cm required)",
+        "Transplant Eligibility": "ELIGIBLE - Meets Milan Criteria (standard)"
+      }
+    },
+    {
+      "name": "Large Single Tumor - Beyond All Criteria",
+      "category": "Not Eligible",
+      "description": "Very large single tumor - beyond all transplant criteria",
+      "inputs": {
+        "tumorCount": "1",
+        "tumor1Size": "10.0",
+        "macrovascularInvasion": "no",
+        "extrahepaticDisease": "no"
+      },
+      "expectedResults": {
+        "Number of Tumors": "1",
+        "Largest Tumor Diameter": "10.0 cm",
+        "Milan Criteria": "BEYOND CRITERIA",
+        "Milan Details": "Single tumor 10.0 cm exceeds 5 cm limit",
+        "UCSF Criteria": "BEYOND CRITERIA",
+        "UCSF Details": "Single tumor 10.0 cm exceeds 6.5 cm limit",
+        "Transplant Eligibility": "NOT ELIGIBLE - Beyond both Milan and UCSF criteria",
+        "Expected Outcomes": "Consider alternative treatments (ablation, TACE, systemic therapy). Down-staging protocols may be available at some centers."
+      }
+    }
+  ],
+  "notes": [
+    "Milan Criteria (Mazzaferro et al., N Engl J Med 1996): Single tumor ≤5cm OR 2-3 tumors each ≤3cm, NO macrovascular invasion, NO extrahepatic disease",
+    "UCSF Criteria (Yao et al., Hepatology 2001): Single tumor ≤6.5cm OR 2-3 tumors with largest ≤4.5cm AND total diameter ≤8cm, NO macrovascular invasion, NO extrahepatic disease",
+    "Four or more tumors automatically disqualify from both Milan and UCSF criteria",
+    "Macrovascular invasion and extrahepatic disease are absolute contraindications for both criteria",
+    "Unknown vascular invasion or extrahepatic disease status results in INDETERMINATE eligibility requiring further workup",
+    "Expected outcomes: Milan eligible 4-year survival >70% (Mazzaferro 1996), UCSF eligible 5-year survival ~75% (Yao 2001)",
+    "When evaluating multiple tumors, the calculator finds the maximum tumor size across all entries",
+    "Total tumor diameter is only calculated and displayed when there are 2 or more tumors",
+    "Down-staging protocols may allow patients beyond criteria to become eligible after successful treatment"
+  ],
+  "references": [
+    {
+      "title": "Mazzaferro V et al. N Engl J Med 1996;334:693-9",
+      "description": "Original Milan Criteria publication",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/8594428/"
+    },
+    {
+      "title": "Yao FY et al. Hepatology 2001;33:1394-403",
+      "description": "UCSF Expanded Criteria publication",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/11391528/"
+    },
+    {
+      "title": "Mazzaferro V et al. Lancet Oncol 2009;10:35-43",
+      "description": "Milan Criteria Validation study",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/19058754/"
+    },
+    {
+      "title": "Duffy JP et al. Ann Surg 2007;246(3):502-9",
+      "description": "UCSF vs Milan Outcomes comparison",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/17717454/"
+    }
+  ]
+}

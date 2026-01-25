@@ -1,0 +1,760 @@
+{
+  "calculator": "ACR TI-RADS",
+  "description": "Comprehensive test cases for ACR Thyroid Imaging Reporting and Data System (TI-RADS) based on Tessler FN et al. J Am Coll Radiol. 2017;14(5):587-595",
+  "scoringSystem": {
+    "composition": {
+      "cystic": 0,
+      "spongiform": 0,
+      "mixed": 1,
+      "solid": 2
+    },
+    "echogenicity": {
+      "anechoic": 0,
+      "hyperechoic": 1,
+      "hypoechoic": 2,
+      "very_hypoechoic": 3
+    },
+    "shape": {
+      "wider": 0,
+      "taller": 3
+    },
+    "margin": {
+      "smooth": 0,
+      "ill_defined": 0,
+      "lobulated": 2,
+      "ete": 3
+    },
+    "echogenic_foci": {
+      "none": 0,
+      "macro": 1,
+      "peripheral": 2,
+      "punctate": 3
+    }
+  },
+  "categoryThresholds": {
+    "TR1": { "points": 0, "name": "Benign", "malignancyRisk": "<2%" },
+    "TR2": {
+      "points": [1, 2],
+      "name": "Not Suspicious",
+      "malignancyRisk": "<2%"
+    },
+    "TR3": {
+      "points": 3,
+      "name": "Mildly Suspicious",
+      "malignancyRisk": "~5%"
+    },
+    "TR4": {
+      "points": [4, 5, 6],
+      "name": "Moderately Suspicious",
+      "malignancyRisk": "5-20%"
+    },
+    "TR5": {
+      "points": ">=7",
+      "name": "Highly Suspicious",
+      "malignancyRisk": ">20%"
+    }
+  },
+  "fnaThresholds": {
+    "TR1": { "fna": "Never", "follow": "None needed" },
+    "TR2": { "fna": "Never", "follow": "None needed" },
+    "TR3": { "fna": ">=2.5cm", "follow": ">=1.5cm" },
+    "TR4": { "fna": ">=1.5cm", "follow": ">=1.0cm" },
+    "TR5": { "fna": ">=1.0cm", "follow": ">=0.5cm" }
+  },
+  "testCases": [
+    {
+      "testName": "TR1 - Simple Cyst (0 points)",
+      "category": "TR1",
+      "description": "Pure cystic nodule - always benign, no FNA needed regardless of size",
+      "inputs": {
+        "composition": "cystic",
+        "echogenicity": "anechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": ""
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR1 - Benign",
+        "Total Points": "0 points",
+        "Point Breakdown": "Composition: 0 | Echogenicity: 0 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "<2%",
+        "FNA Recommendation": "No FNA recommended"
+      },
+      "calculationSteps": "Composition: 0 (cystic) + Echogenicity: 0 (anechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 0 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 2 - Benign features"
+    },
+    {
+      "testName": "TR1 - Spongiform Nodule (0 points)",
+      "category": "TR1",
+      "description": "Spongiform composition with benign features - classic benign pattern",
+      "inputs": {
+        "composition": "spongiform",
+        "echogenicity": "anechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "3.5"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR1 - Benign",
+        "Total Points": "0 points",
+        "Point Breakdown": "Composition: 0 | Echogenicity: 0 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "<2%",
+        "FNA Recommendation": "No FNA recommended",
+        "Nodule Size": "3.5 cm",
+        "Clinical Notes": "Spongiform composition is a benign feature (aggregation of multiple microcystic components)"
+      },
+      "calculationSteps": "Composition: 0 (spongiform) + Echogenicity: 0 (anechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 0 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 2 - Spongiform is highly specific for benignity"
+    },
+    {
+      "testName": "TR2 - Mixed Cystic/Solid, Hyperechoic (2 points)",
+      "category": "TR2",
+      "description": "Mixed composition with hyperechoic echogenicity - low suspicion",
+      "inputs": {
+        "composition": "mixed",
+        "echogenicity": "hyperechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "1.8"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR2 - Not Suspicious",
+        "Total Points": "2 points",
+        "Point Breakdown": "Composition: 1 | Echogenicity: 1 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "<2%",
+        "FNA Recommendation": "No FNA recommended",
+        "Nodule Size": "1.8 cm"
+      },
+      "calculationSteps": "Composition: 1 (mixed) + Echogenicity: 1 (hyperechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 2 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 3 - TR2 requires 2 points"
+    },
+    {
+      "testName": "TR2 - Score 1 Edge Case (Solid Only)",
+      "category": "TR2",
+      "description": "Edge case: Score of 1 from solid composition alone - treated as TR2",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "anechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": ""
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR2 - Not Suspicious",
+        "Total Points": "2 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 0 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "<2%",
+        "FNA Recommendation": "No FNA recommended"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 0 (anechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 2 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 3 - Note: Score 1 edge case mapped to TR2"
+    },
+    {
+      "testName": "TR3 - Solid Hyperechoic (3 points)",
+      "category": "TR3",
+      "description": "Solid nodule with hyperechoic/isoechoic echogenicity - mildly suspicious",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hyperechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "2.0"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR3 - Mildly Suspicious",
+        "Total Points": "3 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 1 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "~5%",
+        "FNA Recommendation": "No FNA recommended (<1.5 cm)",
+        "Nodule Size": "2.0 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 1 (hyperechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 3 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 3 - TR3 exactly 3 points"
+    },
+    {
+      "testName": "TR3 - FNA Threshold 2.5cm (Exactly at threshold)",
+      "category": "TR3",
+      "description": "TR3 nodule exactly at 2.5cm threshold - FNA recommended",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hyperechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "2.5"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR3 - Mildly Suspicious",
+        "Total Points": "3 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 1 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "~5%",
+        "FNA Recommendation": "FNA recommended (>=2.5 cm)",
+        "Nodule Size": "2.5 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 1 (hyperechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 3 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - TR3 FNA if >=2.5cm"
+    },
+    {
+      "testName": "TR3 - Follow-up Zone 1.5-2.4cm",
+      "category": "TR3",
+      "description": "TR3 nodule in follow-up zone (1.5-2.4cm)",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hyperechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "1.8"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR3 - Mildly Suspicious",
+        "Total Points": "3 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 1 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "~5%",
+        "FNA Recommendation": "Follow recommended; FNA optional",
+        "Follow-up Recommendation": "Follow at 1, 2, 3, and 5 years",
+        "Nodule Size": "1.8 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 1 (hyperechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 3 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - TR3 follow if >=1.5cm"
+    },
+    {
+      "testName": "TR4 - Solid Hypoechoic (4 points)",
+      "category": "TR4",
+      "description": "Solid nodule with hypoechoic echogenicity - moderately suspicious",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "1.2"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR4 - Moderately Suspicious",
+        "Total Points": "4 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "5-20%",
+        "FNA Recommendation": "Follow recommended; FNA optional",
+        "Follow-up Recommendation": "Follow at 1, 2, 3, and 5 years",
+        "Nodule Size": "1.2 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 4 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 3 - TR4 ranges 4-6 points"
+    },
+    {
+      "testName": "TR4 - Score 5 with Macrocalcifications",
+      "category": "TR4",
+      "description": "TR4 with 5 points including macrocalcifications",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "macro",
+        "nodule_size": "0.9"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR4 - Moderately Suspicious",
+        "Total Points": "5 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 0 | Margin: 0 | Echogenic Foci: 1",
+        "Estimated Malignancy Risk": "5-20%",
+        "FNA Recommendation": "No FNA recommended (<1.0 cm)",
+        "Nodule Size": "0.9 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 1 (macro) = 5 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 3 - TR4 ranges 4-6 points"
+    },
+    {
+      "testName": "TR4 - Score 6 with Lobulated Margin",
+      "category": "TR4",
+      "description": "TR4 upper boundary (6 points) with lobulated margins",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "wider",
+        "margin": "lobulated",
+        "echogenic_foci": "none",
+        "nodule_size": "1.6"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR4 - Moderately Suspicious",
+        "Total Points": "6 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 0 | Margin: 2 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "5-20%",
+        "FNA Recommendation": "FNA recommended (>=1.5 cm)",
+        "Nodule Size": "1.6 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 0 (wider) + Margin: 2 (lobulated) + Foci: 0 (none) = 6 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 3 - TR4 ranges 4-6 points"
+    },
+    {
+      "testName": "TR4 - FNA Threshold 1.5cm",
+      "category": "TR4",
+      "description": "TR4 nodule exactly at 1.5cm FNA threshold",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "1.5"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR4 - Moderately Suspicious",
+        "Total Points": "4 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "5-20%",
+        "FNA Recommendation": "FNA recommended (>=1.5 cm)",
+        "Nodule Size": "1.5 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 4 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - TR4 FNA if >=1.5cm"
+    },
+    {
+      "testName": "TR4 - Follow-up Zone 1.0-1.4cm",
+      "category": "TR4",
+      "description": "TR4 nodule in follow-up zone between 1.0 and 1.4cm",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "1.2"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR4 - Moderately Suspicious",
+        "Total Points": "4 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "5-20%",
+        "FNA Recommendation": "Follow recommended; FNA optional",
+        "Follow-up Recommendation": "Follow at 1, 2, 3, and 5 years",
+        "Nodule Size": "1.2 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 4 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - TR4 follow if >=1.0cm"
+    },
+    {
+      "testName": "TR5 - Very Hypoechoic Solid (7 points)",
+      "category": "TR5",
+      "description": "Solid very hypoechoic nodule with lobulated margins - highly suspicious",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "very_hypoechoic",
+        "shape": "wider",
+        "margin": "lobulated",
+        "echogenic_foci": "none",
+        "nodule_size": "1.1"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "7 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 3 | Shape: 0 | Margin: 2 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "FNA recommended (>=1.0 cm)",
+        "Nodule Size": "1.1 cm",
+        "Clinical Notes": "Very hypoechoic (darker than strap muscles) is highly suspicious"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 3 (very_hypoechoic) + Shape: 0 (wider) + Margin: 2 (lobulated) + Foci: 0 (none) = 7 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 3 - TR5 requires >=7 points"
+    },
+    {
+      "testName": "TR5 - Taller-than-Wide with Punctate Foci (10 points)",
+      "category": "TR5",
+      "description": "Classic papillary thyroid carcinoma features - taller shape with microcalcifications",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "taller",
+        "margin": "smooth",
+        "echogenic_foci": "punctate",
+        "nodule_size": "1.5"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "10 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 3 | Margin: 0 | Echogenic Foci: 3",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "FNA recommended (>=1.0 cm)",
+        "Nodule Size": "1.5 cm",
+        "Clinical Notes": "Punctate echogenic foci may represent psammomatous calcifications, associated with papillary thyroid carcinoma; Taller-than-wide shape suggests growth across tissue planes, suspicious for malignancy"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 3 (taller) + Margin: 0 (smooth) + Foci: 3 (punctate) = 10 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 2 - Highly suspicious features"
+    },
+    {
+      "testName": "TR5 - Maximum Score (14 points)",
+      "category": "TR5",
+      "description": "Maximum possible TI-RADS score with all high-risk features",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "very_hypoechoic",
+        "shape": "taller",
+        "margin": "ete",
+        "echogenic_foci": "punctate",
+        "nodule_size": "2.0"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "14 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 3 | Shape: 3 | Margin: 3 | Echogenic Foci: 3",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "FNA recommended (>=1.0 cm)",
+        "Nodule Size": "2.0 cm",
+        "Clinical Notes": "Extrathyroidal extension is highly suspicious for malignancy and may indicate T3/T4 disease; Punctate echogenic foci may represent psammomatous calcifications, associated with papillary thyroid carcinoma; Taller-than-wide shape suggests growth across tissue planes, suspicious for malignancy; Very hypoechoic (darker than strap muscles) is highly suspicious"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 3 (very_hypoechoic) + Shape: 3 (taller) + Margin: 3 (ETE) + Foci: 3 (punctate) = 14 points",
+      "medicalReference": "ACR TI-RADS 2017 - Maximum theoretical score"
+    },
+    {
+      "testName": "TR5 - Extrathyroidal Extension (ETE)",
+      "category": "TR5",
+      "description": "Extrathyroidal extension - T3/T4 disease indicator",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "wider",
+        "margin": "ete",
+        "echogenic_foci": "none",
+        "nodule_size": "1.8"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "7 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 0 | Margin: 3 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "FNA recommended (>=1.0 cm)",
+        "Nodule Size": "1.8 cm",
+        "Clinical Notes": "Extrathyroidal extension is highly suspicious for malignancy and may indicate T3/T4 disease"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 0 (wider) + Margin: 3 (ETE) + Foci: 0 (none) = 7 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 2 - ETE is highly suspicious"
+    },
+    {
+      "testName": "TR5 - FNA Threshold 1.0cm",
+      "category": "TR5",
+      "description": "TR5 nodule exactly at 1.0cm FNA threshold",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "very_hypoechoic",
+        "shape": "taller",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "1.0"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "8 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 3 | Shape: 3 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "FNA recommended (>=1.0 cm)",
+        "Nodule Size": "1.0 cm",
+        "Clinical Notes": "Taller-than-wide shape suggests growth across tissue planes, suspicious for malignancy; Very hypoechoic (darker than strap muscles) is highly suspicious"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 3 (very_hypoechoic) + Shape: 3 (taller) + Margin: 0 (smooth) + Foci: 0 (none) = 8 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - TR5 FNA if >=1.0cm"
+    },
+    {
+      "testName": "TR5 - Follow-up Zone 0.5-0.9cm",
+      "category": "TR5",
+      "description": "TR5 nodule in follow-up zone between 0.5 and 0.9cm",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "very_hypoechoic",
+        "shape": "taller",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "0.7"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "8 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 3 | Shape: 3 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "Follow recommended; FNA optional",
+        "Follow-up Recommendation": "Annual follow-up recommended",
+        "Nodule Size": "0.7 cm",
+        "Clinical Notes": "Taller-than-wide shape suggests growth across tissue planes, suspicious for malignancy; Very hypoechoic (darker than strap muscles) is highly suspicious"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 3 (very_hypoechoic) + Shape: 3 (taller) + Margin: 0 (smooth) + Foci: 0 (none) = 8 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - TR5 follow if >=0.5cm"
+    },
+    {
+      "testName": "TR5 - Subcentimeter No FNA (<0.5cm)",
+      "category": "TR5",
+      "description": "Very small TR5 nodule - observation reasonable",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "very_hypoechoic",
+        "shape": "taller",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "0.4"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "8 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 3 | Shape: 3 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "No FNA recommended (<0.5 cm)",
+        "Follow-up Recommendation": "Consider follow-up; observation reasonable for very small nodules",
+        "Nodule Size": "0.4 cm",
+        "Clinical Notes": "Taller-than-wide shape suggests growth across tissue planes, suspicious for malignancy; Very hypoechoic (darker than strap muscles) is highly suspicious"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 3 (very_hypoechoic) + Shape: 3 (taller) + Margin: 0 (smooth) + Foci: 0 (none) = 8 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - Very small nodules may be observed"
+    },
+    {
+      "testName": "TR5 - Peripheral Rim Calcification",
+      "category": "TR5",
+      "description": "Peripheral calcification pattern - may indicate capsular invasion",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "taller",
+        "margin": "smooth",
+        "echogenic_foci": "peripheral",
+        "nodule_size": "1.3"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "10 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 3 | Margin: 0 | Echogenic Foci: 2",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "FNA recommended (>=1.0 cm)",
+        "Nodule Size": "1.3 cm",
+        "Clinical Notes": "Taller-than-wide shape suggests growth across tissue planes, suspicious for malignancy"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 3 (taller) + Margin: 0 (smooth) + Foci: 2 (peripheral) = 10 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 2 - Peripheral calcifications"
+    },
+    {
+      "testName": "No Size Entered - Generic Recommendations",
+      "category": "Edge Cases",
+      "description": "TR4 without nodule size - shows generic FNA thresholds",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": ""
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR4 - Moderately Suspicious",
+        "Total Points": "4 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "5-20%",
+        "FNA Recommendation": "FNA if >=1.5 cm; Follow if >=1.0 cm; No FNA if <1.0 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 4 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - Size-based recommendations"
+    },
+    {
+      "testName": "TR3 No Size - Generic Threshold Display",
+      "category": "Edge Cases",
+      "description": "TR3 without nodule size - shows generic FNA thresholds",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hyperechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": ""
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR3 - Mildly Suspicious",
+        "Total Points": "3 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 1 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "~5%",
+        "FNA Recommendation": "FNA if >=2.5 cm; Follow if >=1.5 cm; No FNA if <1.5 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 1 (hyperechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 3 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - TR3 thresholds"
+    },
+    {
+      "testName": "TR5 No Size - Generic Threshold Display",
+      "category": "Edge Cases",
+      "description": "TR5 without nodule size - shows generic FNA thresholds",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "very_hypoechoic",
+        "shape": "taller",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": ""
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "8 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 3 | Shape: 3 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "FNA if >=1.0 cm; Follow if >=0.5 cm; No FNA if <0.5 cm",
+        "Clinical Notes": "Taller-than-wide shape suggests growth across tissue planes, suspicious for malignancy; Very hypoechoic (darker than strap muscles) is highly suspicious"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 3 (very_hypoechoic) + Shape: 3 (taller) + Margin: 0 (smooth) + Foci: 0 (none) = 8 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 4 - TR5 thresholds"
+    },
+    {
+      "testName": "Ill-defined Margin (0 points like smooth)",
+      "category": "Margin Validation",
+      "description": "Ill-defined margins score 0 points same as smooth",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hyperechoic",
+        "shape": "wider",
+        "margin": "ill_defined",
+        "echogenic_foci": "none",
+        "nodule_size": "1.5"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR3 - Mildly Suspicious",
+        "Total Points": "3 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 1 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "~5%",
+        "FNA Recommendation": "No FNA recommended (<1.5 cm)",
+        "Nodule Size": "1.5 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 1 (hyperechoic) + Shape: 0 (wider) + Margin: 0 (ill_defined) + Foci: 0 (none) = 3 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 2 - Ill-defined and smooth both 0 points"
+    },
+    {
+      "testName": "Mixed Composition Alternative Path to TR4",
+      "category": "Composition Validation",
+      "description": "Mixed cystic/solid reaching TR4 through other features",
+      "inputs": {
+        "composition": "mixed",
+        "echogenicity": "hypoechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "macro",
+        "nodule_size": "2.2"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR4 - Moderately Suspicious",
+        "Total Points": "4 points",
+        "Point Breakdown": "Composition: 1 | Echogenicity: 2 | Shape: 0 | Margin: 0 | Echogenic Foci: 1",
+        "Estimated Malignancy Risk": "5-20%",
+        "FNA Recommendation": "FNA recommended (>=1.5 cm)",
+        "Nodule Size": "2.2 cm"
+      },
+      "calculationSteps": "Composition: 1 (mixed) + Echogenicity: 2 (hypoechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 1 (macro) = 4 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 2 - Mixed cystic and solid (1 point)"
+    },
+    {
+      "testName": "Boundary Case: TR3 to TR4 (3 vs 4 points)",
+      "category": "Boundary Testing",
+      "description": "Testing exact boundary between TR3 (3 points) and TR4 (4 points)",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "1.0"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR4 - Moderately Suspicious",
+        "Total Points": "4 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "5-20%",
+        "FNA Recommendation": "Follow recommended; FNA optional",
+        "Follow-up Recommendation": "Follow at 1, 2, 3, and 5 years",
+        "Nodule Size": "1.0 cm"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none) = 4 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 3 - TR4 starts at 4 points"
+    },
+    {
+      "testName": "Boundary Case: TR4 to TR5 (6 vs 7 points)",
+      "category": "Boundary Testing",
+      "description": "Testing exact boundary between TR4 (6 points max) and TR5 (7+ points)",
+      "inputs": {
+        "composition": "solid",
+        "echogenicity": "hypoechoic",
+        "shape": "taller",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "0.8"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR5 - Highly Suspicious",
+        "Total Points": "7 points",
+        "Point Breakdown": "Composition: 2 | Echogenicity: 2 | Shape: 3 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": ">20%",
+        "FNA Recommendation": "Follow recommended; FNA optional",
+        "Follow-up Recommendation": "Annual follow-up recommended",
+        "Nodule Size": "0.8 cm",
+        "Clinical Notes": "Taller-than-wide shape suggests growth across tissue planes, suspicious for malignancy"
+      },
+      "calculationSteps": "Composition: 2 (solid) + Echogenicity: 2 (hypoechoic) + Shape: 3 (taller) + Margin: 0 (smooth) + Foci: 0 (none) = 7 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 3 - TR5 starts at 7 points"
+    },
+    {
+      "testName": "Large Comet-Tail Artifacts (0 points foci)",
+      "category": "Echogenic Foci Validation",
+      "description": "Large comet-tail artifacts score 0 - benign colloid feature",
+      "inputs": {
+        "composition": "mixed",
+        "echogenicity": "hyperechoic",
+        "shape": "wider",
+        "margin": "smooth",
+        "echogenic_foci": "none",
+        "nodule_size": "1.2"
+      },
+      "expectedOutputs": {
+        "TI-RADS Category": "TR2 - Not Suspicious",
+        "Total Points": "2 points",
+        "Point Breakdown": "Composition: 1 | Echogenicity: 1 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        "Estimated Malignancy Risk": "<2%",
+        "FNA Recommendation": "No FNA recommended",
+        "Nodule Size": "1.2 cm"
+      },
+      "calculationSteps": "Composition: 1 (mixed) + Echogenicity: 1 (hyperechoic) + Shape: 0 (wider) + Margin: 0 (smooth) + Foci: 0 (none/comet-tail) = 2 points",
+      "medicalReference": "ACR TI-RADS 2017, Table 2 - Large comet-tail artifacts are benign"
+    }
+  ],
+  "notes": [
+    "ACR TI-RADS uses a 5-category point-based system from the 2017 ACR TI-RADS White Paper",
+    "Points are summed from 5 ultrasound feature categories: Composition, Echogenicity, Shape, Margin, Echogenic Foci",
+    "TR1 (0 pts) = Benign, TR2 (1-2 pts) = Not Suspicious, TR3 (3 pts) = Mildly Suspicious, TR4 (4-6 pts) = Moderately Suspicious, TR5 (>=7 pts) = Highly Suspicious",
+    "FNA thresholds are size-dependent and category-specific: TR3 >=2.5cm, TR4 >=1.5cm, TR5 >=1.0cm",
+    "Follow-up thresholds: TR3 >=1.5cm, TR4 >=1.0cm, TR5 >=0.5cm",
+    "Spongiform composition is highly specific for benignity (virtually 0% malignancy risk)",
+    "Echogenic foci are scored as highest value present, not additive",
+    "Punctate echogenic foci (microcalcifications) are associated with papillary thyroid carcinoma",
+    "Extrathyroidal extension indicates locally advanced disease (T3/T4)",
+    "Taller-than-wide shape indicates growth across tissue planes, a suspicious feature",
+    "Very hypoechoic = darker than anterior strap muscles, highly suspicious",
+    "Score of 1 is an edge case mapped to TR2 in implementation",
+    "Clinical notes are generated for specific high-risk features to aid interpretation"
+  ],
+  "references": [
+    {
+      "title": "Tessler FN, Middleton WD, Grant EG, et al. ACR Thyroid Imaging, Reporting and Data System (TI-RADS): White Paper of the ACR TI-RADS Committee. J Am Coll Radiol. 2017;14(5):587-595.",
+      "doi": "10.1016/j.jacr.2017.01.046",
+      "url": "https://doi.org/10.1016/j.jacr.2017.01.046"
+    },
+    {
+      "title": "Grant EG, Tessler FN, Hoang JK, et al. Thyroid Ultrasound Reporting Lexicon: White Paper of the ACR Thyroid Imaging, Reporting and Data System (TIRADS) Committee. J Am Coll Radiol. 2015;12(12):1272-1279.",
+      "doi": "10.1016/j.jacr.2015.07.011",
+      "url": "https://doi.org/10.1016/j.jacr.2015.07.011"
+    },
+    {
+      "title": "Middleton WD, Teefey SA, Reading CC, et al. Multiinstitutional Analysis of Thyroid Nodule Risk Stratification Using the American College of Radiology Thyroid Imaging Reporting and Data System. AJR Am J Roentgenol. 2017;208(6):1331-1341.",
+      "doi": "10.2214/AJR.16.17613",
+      "url": "https://doi.org/10.2214/AJR.16.17613"
+    },
+    {
+      "title": "Hoang JK, Middleton WD, Farjat AE, et al. Reduction in Thyroid Nodule Biopsies and Improved Accuracy with American College of Radiology Thyroid Imaging Reporting and Data System. Radiology. 2018;287(1):185-193.",
+      "doi": "10.1148/radiol.2018172572",
+      "url": "https://doi.org/10.1148/radiol.2018172572"
+    }
+  ]
+}

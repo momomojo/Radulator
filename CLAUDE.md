@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Radulator** (RadCalc 2.0) is a comprehensive React-based medical calculator web application built with Vite. It provides **20 medical calculators** across radiology, hepatology/liver, urology, and interventional specialties for various clinical measurements, classifications, and decision support.
+**Radulator** (RadCalc 2.0) is a comprehensive React-based medical calculator web application built with Vite. It provides **23 medical calculators** across radiology, hepatology/liver, urology, and interventional specialties for various clinical measurements, classifications, and decision support.
 
 **Repository:** https://github.com/momomojo/Radulator.git
 
@@ -57,7 +57,7 @@ radcalc-2.0/
 ├── src/
 │   ├── App.jsx           # Main application
 │   ├── components/
-│   │   ├── calculators/  # 20 calculator definitions
+│   │   ├── calculators/  # 23 calculator definitions
 │   │   │   └── index.js  # Barrel export
 │   │   └── ui/           # shadcn/ui components
 │   └── lib/
@@ -82,40 +82,43 @@ radcalc-2.0/
 
 All calculators are defined in `src/components/calculators/` and imported into `src/App.jsx`. Organized by medical specialty:
 
-### Radiology (6 calculators)
+### Radiology (8 calculators)
 
 1. **AdrenalCTWashout** - Calculates absolute/relative washout percentages for adrenal lesions
 2. **AdrenalMRICSI** - MRI signal-intensity index and adrenal-to-spleen ratios
-3. **ProstateVolume** - Volume (ellipsoid formula) and PSA-Density calculations
-4. **RenalCystBosniak** - Bosniak classification for cystic renal lesions (I, II, IIF, III, IV)
-5. **SpleenSizeULN** - Height/sex-adjusted spleen size limits (Chow et al. 2016)
-6. **HipDysplasiaIndices** - Age/gender-specific normal values and migration indices
+3. **Fleischner** - 2017 Fleischner Society pulmonary nodule follow-up guidelines
+4. **ProstateVolume** - Volume (ellipsoid formula) and PSA-Density calculations
+5. **RenalCystBosniak** - Bosniak classification for cystic renal lesions (I, II, IIF, III, IV)
+6. **SpleenSizeULN** - Height/sex-adjusted spleen size limits (Chow et al. 2016)
+7. **HipDysplasiaIndices** - Age/gender-specific normal values and migration indices
+8. **TIRADS** - ACR TI-RADS thyroid nodule risk stratification with FNA recommendations
 
 ### Hepatology/Liver (9 calculators)
 
-7. **ALBIScore** - Albumin-Bilirubin grade for liver function in HCC (SI/US units)
-8. **AVSCortisol** - Adrenal Vein Sampling for ACTH-independent hypercortisolism (custom component)
-9. **AVSHyperaldo** - Adrenal Vein Sampling for primary hyperaldosteronism (custom component)
-10. **BCLCStaging** - Barcelona Clinic Liver Cancer staging with treatment recommendations
-11. **ChildPugh** - Child-Pugh score (A/B/C) for cirrhosis severity
-12. **MilanCriteria** - Milan and UCSF criteria for HCC transplant eligibility
-13. **MELDNa** - MELD-Na score for liver transplant prioritization
-14. **MRElastography** - Area-weighted mean liver stiffness across ROIs (dynamic rows)
-15. **Y90RadiationSegmentectomy** - Y-90 Radioembolization dosimetry calculations
+9. **ALBIScore** - Albumin-Bilirubin grade for liver function in HCC (SI/US units)
+10. **AVSCortisol** - Adrenal Vein Sampling for ACTH-independent hypercortisolism (custom component)
+11. **AVSHyperaldo** - Adrenal Vein Sampling for primary hyperaldosteronism (custom component)
+12. **BCLCStaging** - Barcelona Clinic Liver Cancer staging with treatment recommendations
+13. **ChildPugh** - Child-Pugh score (A/B/C) for cirrhosis severity
+14. **MilanCriteria** - Milan and UCSF criteria for HCC transplant eligibility
+15. **MELDNa** - MELD-Na score for liver transplant prioritization
+16. **MRElastography** - Area-weighted mean liver stiffness across ROIs (dynamic rows)
+17. **Y90RadiationSegmentectomy** - Y-90 Radioembolization dosimetry calculations
 
-### Urology (3 calculators)
+### Urology (4 calculators)
 
-16. **IPSS** - Inferior Petrosal Sinus Sampling (dynamic post-CRH samples)
-17. **RenalNephrometry** - R.E.N.A.L. Nephrometry Score for renal mass complexity
-18. **SHIMCalculator** - SHIM/IIEF-5 Score for erectile dysfunction assessment
+18. **IPSS** - Inferior Petrosal Sinus Sampling (dynamic post-CRH samples)
+19. **PIRADS** - PI-RADS v2.1 prostate MRI risk stratification
+20. **RenalNephrometry** - R.E.N.A.L. Nephrometry Score for renal mass complexity
+21. **SHIMCalculator** - SHIM/IIEF-5 Score for erectile dysfunction assessment
 
 ### Interventional (1 calculator)
 
-19. **KhouryCatheterSelector** - Interactive microcatheter selection tool
+22. **KhouryCatheterSelector** - Interactive microcatheter selection tool
 
 ### Feedback
 
-20. **FeedbackForm** - User feedback collection via Formspree (custom component)
+23. **FeedbackForm** - User feedback collection via Formspree (custom component)
 
 ## Calculator Definition Pattern
 
@@ -232,6 +235,55 @@ tests/
 - `verifyResult(page, label, expected)` - Verify calculations
 - `verifyCalculationAccuracy(page, results, tolerance)` - Accuracy testing
 - `verifyMobileResponsive(page)` - Responsive testing
+
+## Deployment Protection & Testing Verification
+
+### CRITICAL: Branch Protection Rules
+
+**NEVER push directly to main.** This application is used by radiology professionals in clinical settings. All changes must be:
+
+1. Developed on a feature branch (e.g., `feature/new-calculators-seo`)
+2. Tested with Playwright E2E tests (`npm run test`)
+3. Visually verified with Agent Browser skill (dev-browser)
+4. Logged in `tests/TESTING_VERIFICATION_DIR.md`
+5. Only merged to main after full regression pass
+
+### Testing Verification Workflow
+
+```
+Feature Branch → Playwright Tests → Agent Browser Verification → Report Logged → PR → Merge to Main
+```
+
+### Verification Tracking
+
+All test results are tracked in `tests/TESTING_VERIFICATION_DIR.md`:
+
+- **Calculator Coverage Matrix**: Which calculators have Playwright tests + Agent Browser verification
+- **SEO/Infrastructure Verification**: Static files, schema, meta tags
+- **Reports Log**: Date, branch, tester, tool, scope, result, report file path
+- **Regression Checklist**: Pre-merge requirements
+
+### Agent Browser Testing
+
+Use the `dev-browser` skill for visual verification:
+
+- Navigate to each calculator on the dev server
+- Fill in test values and verify outputs render correctly
+- Check mobile responsiveness
+- Verify SEO elements (view-source for meta tags, schema)
+- Screenshot evidence saved to `tests/reports/`
+
+### Report Files
+
+All verification reports go in `tests/reports/` with naming convention:
+
+```
+tests/reports/YYYY-MM-DD-<branch>-<scope>.md
+```
+
+Example: `tests/reports/2026-01-20-feature-new-calculators-tirads.md`
+
+After each verification session, update `tests/TESTING_VERIFICATION_DIR.md` with the report entry.
 
 ## CI/CD & Deployment
 

@@ -19,6 +19,8 @@ export const Y90RadiationSegmentectomy = {
   id: "y90-radiation-segmentectomy",
   name: "Y-90 Radiation Segmentectomy",
   desc: "Dosimetry calculator for Y-90 radioembolization using MIRD and partition models",
+  metaDesc:
+    "Free Y-90 Radiation Segmentectomy Calculator. Calculate activity dose for yttrium-90 radioembolization using MIRD and partition models. LSF and lung dose safety limits.",
 
   info: {
     text: `Y-90 Radiation Segmentectomy Dosimetry Calculator
@@ -39,7 +41,7 @@ Safety Limits:
 • Target dose <190 Gy for segmentectomy: WARNING
 • Normal dose >80 Gy in large volumes: WARNING
 
-Enter your parameters and select the appropriate dosimetry model based on your imaging assessment.`
+Enter your parameters and select the appropriate dosimetry model based on your imaging assessment.`,
   },
 
   fields: [
@@ -49,8 +51,8 @@ Enter your parameters and select the appropriate dosimetry model based on your i
       type: "radio",
       opts: [
         { value: "segmentectomy", label: "Segmentectomy" },
-        { value: "lobectomy", label: "Lobectomy" }
-      ]
+        { value: "lobectomy", label: "Lobectomy" },
+      ],
     },
     {
       id: "dosimetry_model",
@@ -58,44 +60,44 @@ Enter your parameters and select the appropriate dosimetry model based on your i
       type: "radio",
       opts: [
         { value: "mird", label: "MIRD (uniform)" },
-        { value: "partition", label: "Partition (tumor/normal)" }
-      ]
+        { value: "partition", label: "Partition (tumor/normal)" },
+      ],
     },
     {
       id: "segment_volume",
       label: "Target Segment Volume",
       type: "number",
-      subLabel: "mL (10-2000)"
+      subLabel: "mL (10-2000)",
     },
     {
       id: "tumor_volume",
       label: "Tumor Volume",
       type: "number",
-      subLabel: "mL (for partition model)"
+      subLabel: "mL (for partition model)",
     },
     {
       id: "target_dose",
       label: "Target Dose",
       type: "number",
-      subLabel: "Gy (80-800) - tumor dose for partition model"
+      subLabel: "Gy (80-800) - tumor dose for partition model",
     },
     {
       id: "lung_shunt",
       label: "Lung Shunt Fraction",
       type: "number",
-      subLabel: "% (0-50)"
+      subLabel: "% (0-50)",
     },
     {
       id: "tn_ratio",
       label: "Tumor-to-Normal Ratio (T/N)",
       type: "number",
-      subLabel: "For partition model (1-50)"
+      subLabel: "For partition model (1-50)",
     },
     {
       id: "vial_residual",
       label: "Expected Vial Residual",
       type: "number",
-      subLabel: "% (default 1%)"
+      subLabel: "% (default 1%)",
     },
     {
       id: "microsphere_type",
@@ -103,21 +105,21 @@ Enter your parameters and select the appropriate dosimetry model based on your i
       type: "radio",
       opts: [
         { value: "glass", label: "Glass (TheraSphere)" },
-        { value: "resin", label: "Resin (SIR-Spheres)" }
-      ]
+        { value: "resin", label: "Resin (SIR-Spheres)" },
+      ],
     },
     {
       id: "patient_weight",
       label: "Patient Weight (optional)",
       type: "number",
-      subLabel: "kg (for BSA calculation)"
+      subLabel: "kg (for BSA calculation)",
     },
     {
       id: "patient_height",
       label: "Patient Height (optional)",
       type: "number",
-      subLabel: "cm (for BSA calculation)"
-    }
+      subLabel: "cm (for BSA calculation)",
+    },
   ],
 
   compute: ({
@@ -131,14 +133,15 @@ Enter your parameters and select the appropriate dosimetry model based on your i
     vial_residual = "1",
     microsphere_type = "",
     patient_weight = "",
-    patient_height = ""
+    patient_height = "",
   }) => {
     const results = {};
 
     // Input validation
     if (!treatment_intent || !dosimetry_model || !microsphere_type) {
       return {
-        "Error": "Please select treatment intent, dosimetry model, and microsphere type"
+        Error:
+          "Please select treatment intent, dosimetry model, and microsphere type",
       };
     }
 
@@ -151,32 +154,45 @@ Enter your parameters and select the appropriate dosimetry model based on your i
 
     // Validate required fields
     if (!segVol || isNaN(segVol) || segVol < 10 || segVol > 2000) {
-      return { "Error": "Target segment volume must be between 10-2000 mL" };
+      return { Error: "Target segment volume must be between 10-2000 mL" };
     }
 
     if (!dose || isNaN(dose) || dose < 80 || dose > 800) {
-      return { "Error": "Target dose must be between 80-800 Gy" };
+      return { Error: "Target dose must be between 80-800 Gy" };
     }
 
     // Validate lung shunt - required field
-    if (lung_shunt === "" || isNaN(lungShuntPercent) || lungShuntPercent < 0 || lungShuntPercent > 50) {
-      return { "Error": "Lung shunt fraction is required and must be between 0-50%" };
+    if (
+      lung_shunt === "" ||
+      isNaN(lungShuntPercent) ||
+      lungShuntPercent < 0 ||
+      lungShuntPercent > 50
+    ) {
+      return {
+        Error: "Lung shunt fraction is required and must be between 0-50%",
+      };
     }
     const lsf = lungShuntPercent / 100; // Convert percentage to fraction
 
     // Validate vial residual
     if (isNaN(residualPercent) || residualPercent < 0 || residualPercent > 20) {
-      return { "Error": "Vial residual must be between 0-20%" };
+      return { Error: "Vial residual must be between 0-20%" };
     }
     const residual = residualPercent / 100;
 
     // Partition model requires tumor volume and T/N ratio
     if (dosimetry_model === "partition") {
       if (!tumVol || isNaN(tumVol) || tumVol <= 0 || tumVol > segVol) {
-        return { "Error": "Tumor volume must be positive and ≤ segment volume for partition model" };
+        return {
+          Error:
+            "Tumor volume must be positive and ≤ segment volume for partition model",
+        };
       }
       if (!tnRatio || isNaN(tnRatio) || tnRatio < 1 || tnRatio > 50) {
-        return { "Error": "Tumor-to-normal ratio must be between 1-50 for partition model" };
+        return {
+          Error:
+            "Tumor-to-normal ratio must be between 1-50 for partition model",
+        };
       }
     }
 
@@ -185,10 +201,10 @@ Enter your parameters and select the appropriate dosimetry model based on your i
       const weight = parseFloat(patient_weight);
       const height = parseFloat(patient_height);
       if (isNaN(weight) || weight <= 0 || weight > 500) {
-        return { "Error": "Patient weight must be between 0-500 kg if provided" };
+        return { Error: "Patient weight must be between 0-500 kg if provided" };
       }
       if (isNaN(height) || height <= 0 || height > 300) {
-        return { "Error": "Patient height must be between 0-300 cm if provided" };
+        return { Error: "Patient height must be between 0-300 cm if provided" };
       }
     }
 
@@ -200,7 +216,10 @@ Enter your parameters and select the appropriate dosimetry model based on your i
 
     // Validate normal mass for partition model (prevent division by zero)
     if (dosimetry_model === "partition" && normalMass <= 0) {
-      return { "Error": "Normal tissue mass must be positive for partition model (tumor cannot equal entire segment)" };
+      return {
+        Error:
+          "Normal tissue mass must be positive for partition model (tumor cannot equal entire segment)",
+      };
     }
 
     // Calculate prescribed activity based on model
@@ -223,10 +242,12 @@ Enter your parameters and select the appropriate dosimetry model based on your i
       tumorDose = dose;
       normalDose = dose / tnRatio;
 
-      activity_GBq = (normalDose * normalMass * (tnRatio + 1) * (1 - lsf)) / 49.67;
+      activity_GBq =
+        (normalDose * normalMass * (tnRatio + 1) * (1 - lsf)) / 49.67;
 
       // Calculate mean segment dose
-      meanSegmentDose = (tumorDose * tumorMass + normalDose * normalMass) / segmentMass;
+      meanSegmentDose =
+        (tumorDose * tumorMass + normalDose * normalMass) / segmentMass;
     }
 
     // Calculate lung dose: D_lung = 49.67 × (A × LSF) / 1.0 kg
@@ -243,25 +264,39 @@ Enter your parameters and select the appropriate dosimetry model based on your i
     const warnings = [];
 
     // CONTRAINDICATIONS
-    if (lsf > 0.20 && microsphere_type === "resin") {
-      contraindications.push("CONTRAINDICATION: Lung shunt >20% with resin microspheres (per manufacturer guidelines)");
+    if (lsf > 0.2 && microsphere_type === "resin") {
+      contraindications.push(
+        "CONTRAINDICATION: Lung shunt >20% with resin microspheres (per manufacturer guidelines)",
+      );
     }
 
     if (lungDose > 30) {
-      contraindications.push(`CONTRAINDICATION: Estimated lung dose ${lungDose.toFixed(1)} Gy exceeds 30 Gy safety limit`);
+      contraindications.push(
+        `CONTRAINDICATION: Estimated lung dose ${lungDose.toFixed(1)} Gy exceeds 30 Gy safety limit`,
+      );
     }
 
     // WARNINGS
     if (treatment_intent === "segmentectomy" && dose < 190) {
-      warnings.push(`WARNING: Target dose ${dose} Gy is below recommended 190 Gy minimum for segmentectomy`);
+      warnings.push(
+        `WARNING: Target dose ${dose} Gy is below recommended 190 Gy minimum for segmentectomy`,
+      );
     }
 
-    if (dosimetry_model === "partition" && normalDose > 80 && normalMass > 0.3) {
-      warnings.push(`WARNING: Normal tissue dose ${normalDose.toFixed(1)} Gy exceeds 80 Gy in large volume (${(normalMass/LIVER_DENSITY).toFixed(0)} mL)`);
+    if (
+      dosimetry_model === "partition" &&
+      normalDose > 80 &&
+      normalMass > 0.3
+    ) {
+      warnings.push(
+        `WARNING: Normal tissue dose ${normalDose.toFixed(1)} Gy exceeds 80 Gy in large volume (${(normalMass / LIVER_DENSITY).toFixed(0)} mL)`,
+      );
     }
 
-    if (lsf > 0.10 && lsf <= 0.20) {
-      warnings.push(`Note: Lung shunt ${(lsf*100).toFixed(1)}% is elevated (10-20%). Monitor lung dose carefully.`);
+    if (lsf > 0.1 && lsf <= 0.2) {
+      warnings.push(
+        `Note: Lung shunt ${(lsf * 100).toFixed(1)}% is elevated (10-20%). Monitor lung dose carefully.`,
+      );
     }
 
     // Determine recommended vial size for glass microspheres
@@ -297,7 +332,8 @@ Enter your parameters and select the appropriate dosimetry model based on your i
 
     // Build results
     results["═══ PRESCRIBED ACTIVITY ═══"] = "";
-    results["Activity to Order"] = `${activityToOrder.toFixed(2)} GBq (${activity_mCi.toFixed(1)} mCi)`;
+    results["Activity to Order"] =
+      `${activityToOrder.toFixed(2)} GBq (${activity_mCi.toFixed(1)} mCi)`;
 
     if (microsphere_type === "glass" && vialSize) {
       results["Recommended Vial Size"] = vialSize;
@@ -318,18 +354,25 @@ Enter your parameters and select the appropriate dosimetry model based on your i
       results["Model Used"] = "Partition (tumor/normal)";
     }
 
-    results["Target Volume"] = `${segVol.toFixed(0)} mL (${(segmentMass * 1000).toFixed(1)} g)`;
+    results["Target Volume"] =
+      `${segVol.toFixed(0)} mL (${(segmentMass * 1000).toFixed(1)} g)`;
 
     if (dosimetry_model === "partition") {
-      results["Tumor Volume"] = `${tumVol.toFixed(0)} mL (${(tumorMass * 1000).toFixed(1)} g)`;
-      results["Normal Volume"] = `${(normalMass / LIVER_DENSITY).toFixed(0)} mL (${(normalMass * 1000).toFixed(1)} g)`;
+      results["Tumor Volume"] =
+        `${tumVol.toFixed(0)} mL (${(tumorMass * 1000).toFixed(1)} g)`;
+      results["Normal Volume"] =
+        `${(normalMass / LIVER_DENSITY).toFixed(0)} mL (${(normalMass * 1000).toFixed(1)} g)`;
     }
 
     results["═══ SAFETY PARAMETERS ═══"] = "";
     results["Lung Shunt Fraction"] = `${(lsf * 100).toFixed(1)}%`;
     results["Estimated Lung Dose"] = `${lungDose.toFixed(1)} Gy`;
-    results["Microsphere Type"] = microsphere_type === "glass" ? "Glass (TheraSphere)" : "Resin (SIR-Spheres)";
-    results["Treatment Intent"] = treatment_intent === "segmentectomy" ? "Segmentectomy" : "Lobectomy";
+    results["Microsphere Type"] =
+      microsphere_type === "glass"
+        ? "Glass (TheraSphere)"
+        : "Resin (SIR-Spheres)";
+    results["Treatment Intent"] =
+      treatment_intent === "segmentectomy" ? "Segmentectomy" : "Lobectomy";
 
     if (bsa) {
       results["Body Surface Area"] = bsa;
@@ -366,9 +409,11 @@ Enter your parameters and select the appropriate dosimetry model based on your i
     let interpretation = "";
 
     if (contraindications.length > 0) {
-      interpretation = "TREATMENT CONTRAINDICATED. Do not proceed without addressing safety concerns above. ";
+      interpretation =
+        "TREATMENT CONTRAINDICATED. Do not proceed without addressing safety concerns above. ";
     } else {
-      interpretation = "Treatment parameters are within acceptable safety limits. ";
+      interpretation =
+        "Treatment parameters are within acceptable safety limits. ";
     }
 
     if (dosimetry_model === "mird") {
@@ -380,15 +425,19 @@ Enter your parameters and select the appropriate dosimetry model based on your i
     if (lungDose < 10) {
       interpretation += "Lung dose is within normal limits (<10 Gy). ";
     } else if (lungDose < 20) {
-      interpretation += "Lung dose is acceptable but monitor for pneumonitis (10-20 Gy). ";
+      interpretation +=
+        "Lung dose is acceptable but monitor for pneumonitis (10-20 Gy). ";
     } else if (lungDose <= 30) {
-      interpretation += "Lung dose approaches upper limit - careful monitoring required (20-30 Gy). ";
+      interpretation +=
+        "Lung dose approaches upper limit - careful monitoring required (20-30 Gy). ";
     }
 
     if (treatment_intent === "segmentectomy" && dose >= 190) {
-      interpretation += "Target dose meets recommended threshold for radiation segmentectomy (≥190 Gy).";
+      interpretation +=
+        "Target dose meets recommended threshold for radiation segmentectomy (≥190 Gy).";
     } else if (treatment_intent === "segmentectomy" && dose < 190) {
-      interpretation += "Consider increasing target dose to ≥190 Gy for optimal segmentectomy outcomes.";
+      interpretation +=
+        "Consider increasing target dose to ≥190 Gy for optimal segmentectomy outcomes.";
     }
 
     results["Clinical Interpretation"] = interpretation;
@@ -397,10 +446,12 @@ Enter your parameters and select the appropriate dosimetry model based on your i
     if (dosimetry_model === "mird") {
       results["Formula"] = "A [GBq] = (D [Gy] × M [kg] × (1-LSF)) / 49.67";
     } else {
-      results["Formula"] = "A [GBq] = (D_N × M_N × (T/N + 1) × (1-LSF)) / 49.67";
+      results["Formula"] =
+        "A [GBq] = (D_N × M_N × (T/N + 1) × (1-LSF)) / 49.67";
     }
 
-    results["Notes"] = "Liver density: 1.03 g/mL. Lung dose assumes 1.0 kg lung mass. All calculations account for decay and vial residual.";
+    results["Notes"] =
+      "Liver density: 1.03 g/mL. Lung dose assumes 1.0 kg lung mass. All calculations account for decay and vial residual.";
 
     return results;
   },
@@ -408,63 +459,63 @@ Enter your parameters and select the appropriate dosimetry model based on your i
   refs: [
     {
       t: "Ho S et al. Partition model for estimating radiation doses from Y-90 microspheres in treating hepatic tumours. Eur J Nucl Med. 1996",
-      u: "https://doi.org/10.1007/BF00949868"
+      u: "https://doi.org/10.1007/BF00949868",
     },
     {
       t: "Lewandowski RJ et al. Radiation segmentectomy: a novel approach for liver tumor treatment. J Vasc Interv Radiol. 2015",
-      u: "https://doi.org/10.1016/j.jvir.2014.10.039"
+      u: "https://doi.org/10.1016/j.jvir.2014.10.039",
     },
     {
       t: "Salem R et al. Radioembolization for hepatocellular carcinoma using Yttrium-90 microspheres: a comprehensive report. Cancer. 2010",
-      u: "https://doi.org/10.1002/cncr.24304"
+      u: "https://doi.org/10.1002/cncr.24304",
     },
     {
       t: "Kennedy A et al. Recommendations for radioembolization of hepatic malignancies using Y-90 resin microspheres. Int J Radiat Oncol Biol Phys. 2007",
-      u: "https://doi.org/10.1016/j.ijrobp.2006.12.029"
+      u: "https://doi.org/10.1016/j.ijrobp.2006.12.029",
     },
     {
       t: "Riaz A et al. Radiation segmentectomy: a novel approach to increase safety and efficacy. Int J Radiat Oncol Biol Phys. 2011",
-      u: "https://doi.org/10.1016/j.ijrobp.2010.11.001"
+      u: "https://doi.org/10.1016/j.ijrobp.2010.11.001",
     },
     {
       t: "Garin E et al. Personalised versus standard dosimetry approach of selective internal radiation therapy in HCC. Lancet Oncol. 2021",
-      u: "https://doi.org/10.1016/S1470-2045(20)30290-9"
+      u: "https://doi.org/10.1016/S1470-2045(20)30290-9",
     },
     {
       t: "Chiesa C et al. EANM dosimetry committee guidance document: radioembolisation. Eur J Nucl Med Mol Imaging. 2021",
-      u: "https://doi.org/10.1007/s00259-021-05340-5"
+      u: "https://doi.org/10.1007/s00259-021-05340-5",
     },
     {
       t: "Pasciak AS et al. The number of microspheres in Y-90 radioembolization. J Nucl Med. 2016",
-      u: "https://doi.org/10.2967/jnumed.115.168948"
+      u: "https://doi.org/10.2967/jnumed.115.168948",
     },
     {
       t: "Strigari L et al. Efficacy and toxicity related to treatment of hepatocellular carcinoma with Y-90. J Nucl Med. 2010",
-      u: "https://doi.org/10.2967/jnumed.110.075861"
+      u: "https://doi.org/10.2967/jnumed.110.075861",
     },
     {
       t: "Kao YH et al. Post-radioembolization yttrium-90 PET/CT - part 1: diagnostic reporting. EJNMMI Res. 2013",
-      u: "https://doi.org/10.1186/2191-219X-3-56"
+      u: "https://doi.org/10.1186/2191-219X-3-56",
     },
     {
       t: "Vouche M et al. Unresectable solitary HCC: long-term toxicity and outcomes after radiation segmentectomy. Radiology. 2015",
-      u: "https://doi.org/10.1148/radiol.14141199"
+      u: "https://doi.org/10.1148/radiol.14141199",
     },
     {
       t: "Chow PKH et al. SIRveNIB: Selective Internal Radiation Therapy Versus Sorafenib. J Clin Oncol. 2018",
-      u: "https://doi.org/10.1200/JCO.2017.76.0892"
+      u: "https://doi.org/10.1200/JCO.2017.76.0892",
     },
     {
       t: "Vilgrain V et al. Efficacy and safety of selective internal radiotherapy with yttrium-90 resin microspheres. Lancet Oncol. 2017",
-      u: "https://doi.org/10.1016/S1470-2045(17)30332-9"
+      u: "https://doi.org/10.1016/S1470-2045(17)30332-9",
     },
     {
       t: "AAPM Task Group Report: Guidance for Y-90 radioembolization dosimetry and treatment planning",
-      u: "https://www.aapm.org/pubs/reports/"
+      u: "https://www.aapm.org/pubs/reports/",
     },
     {
       t: "TheraSphere Y-90 Glass Microspheres Package Insert - Boston Scientific",
-      u: "https://www.bostonscientific.com/en-US/products/cancer-therapies/therasphere-y90-glass-microspheres.html"
-    }
-  ]
+      u: "https://www.bostonscientific.com/en-US/products/cancer-therapies/therasphere-y90-glass-microspheres.html",
+    },
+  ],
 };
