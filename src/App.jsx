@@ -33,6 +33,10 @@ import {
   PIRADS,
   Fleischner,
   LIRADS,
+  ASPECTSScore,
+  ContrastDosing,
+  RadiationDoseConverter,
+  AASTTraumaGrading,
 } from "@/components/calculators";
 import {
   trackCalculatorSelected,
@@ -68,6 +72,10 @@ const calcDefs = [
   Y90RadiationSegmentectomy,
   KhouryCatheterSelector,
   LIRADS,
+  ASPECTSScore,
+  ContrastDosing,
+  RadiationDoseConverter,
+  AASTTraumaGrading,
   FeedbackForm,
 ];
 
@@ -76,13 +84,17 @@ const categories = {
   Radiology: [
     "adrenal-ct",
     "adrenal-mri",
+    "contrast-dosing",
     "fleischner",
     "prostate-volume",
+    "radiation-dose-converter",
     "bosniak",
     "spleen-size",
     "hip-dysplasia",
     "tirads",
   ],
+  Neuroradiology: ["aspects-score"],
+  Trauma: ["aast-trauma-grading"],
   "Hepatology/Liver": [
     "albi-score",
     "avs-cortisol",

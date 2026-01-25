@@ -22,3 +22,7 @@ export { TIRADS } from "./TIRADS";
 export { PIRADS } from "./PIRADS";
 export { Fleischner } from "./Fleischner";
 export { LIRADS } from "./LIRADS";
+export { ASPECTSScore } from "./ASPECTSScore";
+export { ContrastDosing } from "./ContrastDosing";
+export { RadiationDoseConverter } from "./RadiationDoseConverter";
+export { AASTTraumaGrading } from "./AASTTraumaGrading";
