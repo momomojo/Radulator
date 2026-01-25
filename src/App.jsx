@@ -32,6 +32,7 @@ import {
   TIRADS,
   PIRADS,
   Fleischner,
+  LIRADS,
 } from "@/components/calculators";
 import {
   trackCalculatorSelected,
@@ -66,6 +67,7 @@ const calcDefs = [
   TIRADS,
   Y90RadiationSegmentectomy,
   KhouryCatheterSelector,
+  LIRADS,
   FeedbackForm,
 ];
 
@@ -87,6 +89,7 @@ const categories = {
     "avs-hyperaldo",
     "bclc-staging",
     "child-pugh",
+    "lirads",
     "milan-criteria",
     "meld-na",
     "mr-elastography",
