@@ -21,3 +21,4 @@ export { KhouryCatheterSelector } from "./KhouryCatheterSelector";
 export { TIRADS } from "./TIRADS";
 export { PIRADS } from "./PIRADS";
 export { Fleischner } from "./Fleischner";
+export { ASPECTSScore } from "./ASPECTSScore";

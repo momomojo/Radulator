@@ -32,6 +32,7 @@ import {
   TIRADS,
   PIRADS,
   Fleischner,
+  ASPECTSScore,
 } from "@/components/calculators";
 import {
   trackCalculatorSelected,
@@ -66,6 +67,7 @@ const calcDefs = [
   TIRADS,
   Y90RadiationSegmentectomy,
   KhouryCatheterSelector,
+  ASPECTSScore,
   FeedbackForm,
 ];
 
@@ -81,6 +83,7 @@ const categories = {
     "hip-dysplasia",
     "tirads",
   ],
+  Neuroradiology: ["aspects-score"],
   "Hepatology/Liver": [
     "albi-score",
     "avs-cortisol",
