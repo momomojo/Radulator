@@ -492,7 +492,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should select a catheter and display details', async ({ page }) => {
       // Click the first Select button
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Should show selected catheter details
       await expect(page.locator('h3:has-text("Selected Catheter Details")')).toBeVisible();
@@ -530,7 +530,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should highlight selected catheter in results', async ({ page }) => {
       // Select first catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Button should change to "Selected"
       await expect(page.locator('button:has-text("Selected")').first()).toBeVisible();
@@ -538,7 +538,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should switch between selected catheters', async ({ page }) => {
       // Select first catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
       await expect(page.locator('button:has-text("Selected")').first()).toBeVisible();
 
       // Select a different catheter
@@ -563,7 +563,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should display all compatible embolic agents for selected catheter', async ({ page }) => {
       // Select a catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Should show compatible embolics section
       await expect(page.locator('h5:has-text("Compatible Embolic Agents")')).toBeVisible();
@@ -575,7 +575,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should display feature badges for selected catheter', async ({ page }) => {
       // Select a catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Should show features section with badges
       await expect(page.locator('h5:has-text("Features")')).toBeVisible();
@@ -595,7 +595,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should display priming volume for selected catheter', async ({ page }) => {
       // Select a catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Should show priming volume
       await expect(page.locator('h5:has-text("Priming Volume")')).toBeVisible();
@@ -652,7 +652,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should show standard priming volume by default', async ({ page }) => {
       // Select any catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Should show Standard configuration
       await expect(page.locator('option:has-text("Standard")')).toBeVisible();
@@ -719,7 +719,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should clear selected catheter when Clear All is clicked', async ({ page }) => {
       // Select a catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
       await expect(page.locator('h3:has-text("Selected Catheter Details")')).toBeVisible();
 
       // Add a filter
@@ -841,7 +841,7 @@ test.describe('Khoury Catheter Selector', () => {
       await expect(page.locator('span:has-text("2 active")')).toBeVisible();
 
       // Select a catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Filters should still be active
       await expect(page.locator('span:has-text("2 active")')).toBeVisible();
@@ -896,7 +896,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should display IFU link for selected catheter', async ({ page }) => {
       // Select a catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // IFU link should be visible
       const ifuLink = page.locator('a:has-text("View Manufacturer IFU")');
@@ -912,7 +912,7 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should have valid href for IFU link', async ({ page }) => {
       // Select a catheter
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Get the IFU link
       const ifuLink = page.locator('a:has-text("View Manufacturer IFU")');
@@ -1029,7 +1029,7 @@ test.describe('Khoury Catheter Selector', () => {
     test('should display correct catheter specifications', async ({ page }) => {
       // Select Scepter C
       await page.fill('#search', 'Scepter C');
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Verify key specifications are present
       await expect(page.locator('text=Inner Diameter:')).toBeVisible();
@@ -1048,7 +1048,7 @@ test.describe('Khoury Catheter Selector', () => {
       const firstCatheterName = await page.locator('h4.font-semibold.text-base').first().textContent();
 
       // Select it
-      await page.click('button:has-text("Select")').first();
+      await page.locator('button:has-text("Select")').first().click();
 
       // Verify same name in detail view
       const detailName = await page.locator('h4.font-semibold.text-lg').first().textContent();
