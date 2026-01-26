@@ -142,18 +142,182 @@ const categories = {
 };
 
 /*******************************************************************
+  ⬇️  Fields With Sections (Progressive Disclosure)
+*******************************************************************/
+function FieldsWithSections({ fields, vals, update, onFieldChange }) {
+  const [expandedSections, setExpandedSections] = useState({});
+
+  // Filter visible fields
+  const visibleFields = fields.filter((f) => !f.showIf || f.showIf(vals));
+
+  // Group fields by section
+  const groupedFields = visibleFields.reduce((acc, field) => {
+    const section = field.section || "_default";
+    if (!acc[section]) acc[section] = [];
+    acc[section].push(field);
+    return acc;
+  }, {});
+
+  const sections = Object.keys(groupedFields);
+  const hasMultipleSections = sections.length > 1 || !groupedFields["_default"];
+
+  // If no sections defined, render flat
+  if (!hasMultipleSections && groupedFields["_default"]) {
+    return (
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        aria-label="Input fields"
+      >
+        {groupedFields["_default"].map((f) => (
+          <Field key={f.id} f={f} val={vals[f.id]} on={onFieldChange} />
+        ))}
+      </div>
+    );
+  }
+
+  // Initialize all sections as expanded by default
+  const isSectionExpanded = (section) => {
+    return expandedSections[section] !== false; // Default to expanded
+  };
+
+  const toggleSection = (section) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !isSectionExpanded(section),
+    }));
+  };
+
+  return (
+    <div className="space-y-4" aria-label="Input fields">
+      {sections.map((section) => {
+        if (section === "_default") {
+          // Render default section without header
+          return (
+            <div
+              key="_default"
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
+              {groupedFields["_default"].map((f) => (
+                <Field key={f.id} f={f} val={vals[f.id]} on={onFieldChange} />
+              ))}
+            </div>
+          );
+        }
+
+        const isExpanded = isSectionExpanded(section);
+        const fieldCount = groupedFields[section].length;
+
+        return (
+          <div
+            key={section}
+            className="border border-gray-200 rounded-lg overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={() => toggleSection(section)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              aria-expanded={isExpanded}
+            >
+              <span className="font-medium text-gray-700">{section}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">
+                  {fieldCount} field{fieldCount > 1 ? "s" : ""}
+                </span>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </button>
+            {isExpanded && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {groupedFields[section].map((f) => (
+                  <Field key={f.id} f={f} val={vals[f.id]} on={onFieldChange} />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/*******************************************************************
+  ⬇️  Field Label with Tooltip Support
+*******************************************************************/
+function FieldLabel({ htmlFor, label, subLabel, helpText }) {
+  const [showHelp, setShowHelp] = useState(false);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        <Label htmlFor={htmlFor}>
+          {label}
+          {subLabel && (
+            <span className="text-sm text-gray-500 ml-2">({subLabel})</span>
+          )}
+        </Label>
+        {helpText && (
+          <button
+            type="button"
+            onClick={() => setShowHelp(!showHelp)}
+            className="text-gray-400 hover:text-blue-600 focus:outline-none focus:text-blue-600 md:relative md:group"
+            aria-label={`Help for ${label}`}
+            title={helpText}
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {/* Desktop tooltip */}
+            <span className="hidden md:group-hover:block absolute left-0 top-6 z-50 w-64 p-2 text-xs text-left font-normal text-gray-700 bg-white border border-gray-200 rounded-lg shadow-lg">
+              {helpText}
+            </span>
+          </button>
+        )}
+      </div>
+      {/* Mobile help text - shown inline when toggled */}
+      {helpText && showHelp && (
+        <p className="md:hidden text-xs text-gray-600 bg-gray-50 p-2 rounded">
+          {helpText}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/*******************************************************************
   ⬇️  Generic Field Renderer (uses shadcn Switch where needed)
 *******************************************************************/
 function Field({ f, val, on }) {
   if (f.type === "textarea") {
     return (
       <div className="space-y-1 md:col-span-2">
-        <Label htmlFor={f.id}>
-          {f.label}
-          {f.subLabel && (
-            <span className="text-sm text-gray-500 ml-2">({f.subLabel})</span>
-          )}
-        </Label>
+        <FieldLabel
+          htmlFor={f.id}
+          label={f.label}
+          subLabel={f.subLabel}
+          helpText={f.helpText}
+        />
         <textarea
           id={f.id}
           className="w-full border rounded p-2 min-h-[120px] focus:outline-none focus:ring focus:ring-blue-300 font-mono text-sm"
@@ -167,7 +331,7 @@ function Field({ f, val, on }) {
   if (f.type === "select") {
     return (
       <div className="space-y-1">
-        <Label htmlFor={f.id}>{f.label}</Label>
+        <FieldLabel htmlFor={f.id} label={f.label} helpText={f.helpText} />
         <Select
           id={f.id}
           value={val || ""}
@@ -191,7 +355,7 @@ function Field({ f, val, on }) {
   if (f.type === "radio") {
     return (
       <div className="space-y-2 md:col-span-2">
-        <Label>{f.label}</Label>
+        <FieldLabel label={f.label} helpText={f.helpText} />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {f.opts.map((opt) => (
             <div key={opt.value} className="flex items-center space-x-2">
@@ -218,24 +382,26 @@ function Field({ f, val, on }) {
   }
   if (f.type === "checkbox") {
     return (
-      <div className="flex items-center space-x-2">
-        <Switch
-          id={f.id}
-          checked={!!val}
-          onCheckedChange={(c) => on(f.id, c)}
-        />
-        <Label htmlFor={f.id}>{f.label}</Label>
+      <div className="space-y-1">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id={f.id}
+            checked={!!val}
+            onCheckedChange={(c) => on(f.id, c)}
+          />
+          <FieldLabel htmlFor={f.id} label={f.label} helpText={f.helpText} />
+        </div>
       </div>
     );
   }
   return (
     <div className={`space-y-1 ${f.type === "date" ? "md:col-span-2" : ""}`}>
-      <Label htmlFor={f.id}>
-        {f.label}
-        {f.subLabel && (
-          <span className="text-sm text-gray-500 ml-2">({f.subLabel})</span>
-        )}
-      </Label>
+      <FieldLabel
+        htmlFor={f.id}
+        label={f.label}
+        subLabel={f.subLabel}
+        helpText={f.helpText}
+      />
       <Input
         id={f.id}
         type={f.type}
@@ -532,6 +698,80 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
 }
 
 /*******************************************************************
+  ⬇️  Collapsible References Component
+*******************************************************************/
+function CollapsibleReferences({ refs, calculatorId, onLinkClick }) {
+  const [expanded, setExpanded] = useState(false);
+  const VISIBLE_COUNT = 3;
+  const hasMore = refs.length > VISIBLE_COUNT;
+  const visibleRefs = expanded ? refs : refs.slice(0, VISIBLE_COUNT);
+  const hiddenCount = refs.length - VISIBLE_COUNT;
+
+  return (
+    <section className="pt-4 border-t">
+      <h3 className="font-medium mb-2">References</h3>
+      <ul className="list-disc pl-5 space-y-1 text-sm">
+        {visibleRefs.map((r) => (
+          <li key={r.u}>
+            <a
+              href={r.u}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 hover:underline"
+              onClick={() => onLinkClick?.(r.u, "reference", calculatorId)}
+            >
+              {r.t}
+            </a>
+          </li>
+        ))}
+      </ul>
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+        >
+          {expanded ? (
+            <>
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 15l7-7 7 7"
+                />
+              </svg>
+              Show fewer references
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+              Show {hiddenCount} more reference{hiddenCount > 1 ? "s" : ""}
+            </>
+          )}
+        </button>
+      )}
+    </section>
+  );
+}
+
+/*******************************************************************
   ⬇️  Main Component
 *******************************************************************/
 // localStorage key for disclaimer preference (extracted to avoid duplication)
@@ -543,6 +783,7 @@ export default function App() {
   const [out, setOut] = useState(null);
   const [mreRows, setMreRows] = useState([{ kpa: "", area: "" }]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showDisclaimer, setShowDisclaimer] = useState(() => {
     try {
       return localStorage.getItem(DISCLAIMER_STORAGE_KEY) !== "true";
@@ -798,60 +1039,149 @@ export default function App() {
               </svg>
             </button>
           </div>
-          {Object.entries(categories).map(([categoryName, calcIds]) => (
-            <div key={categoryName}>
-              {/* Visual separator before Feedback category */}
-              {categoryName === "Feedback" && (
-                <hr className="border-gray-200 my-3" />
-              )}
-              <div className="space-y-1 mb-3">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 mb-1">
-                  {categoryName}
-                </h3>
-                {calcIds.map((calcId) => {
+
+          {/* Calculator Search */}
+          <div className="relative mb-4">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search calculators..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Search calculators"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                aria-label="Clear search"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Calculator List */}
+          {(() => {
+            const query = searchQuery.toLowerCase().trim();
+            const filteredCategories = Object.entries(categories)
+              .map(([categoryName, calcIds]) => {
+                const filteredCalcs = calcIds.filter((calcId) => {
                   const calc = calcDefs.find((c) => c.id === calcId);
-                  if (!calc) return null;
+                  if (!calc) return false;
+                  if (!query) return true;
                   return (
-                    <button
-                      key={calc.id}
-                      onClick={() => {
-                        setActive(calc.id);
-                        setVals({});
-                        setOut(null);
-                        setMreRows([{ kpa: "", area: "" }]);
-                        setIpssRows([
-                          {
-                            time: "",
-                            leftACTH: "",
-                            rightACTH: "",
-                            periphACTH: "",
-                            leftPRL: "",
-                            rightPRL: "",
-                            periphPRL: "",
-                          },
-                        ]);
-                        // Close sidebar on mobile
-                        setSidebarOpen(false);
-                        // Track calculator selection
-                        trackCalculatorSelected(
-                          calc.id,
-                          calc.name,
-                          categoryName,
-                        );
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
-                        calc.id === active
-                          ? "bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600"
-                          : "hover:bg-gray-50 text-gray-700"
-                      }`}
-                    >
-                      {calc.name}
-                    </button>
+                    calc.name.toLowerCase().includes(query) ||
+                    calc.desc.toLowerCase().includes(query) ||
+                    calc.id.toLowerCase().includes(query)
                   );
-                })}
+                });
+                return [categoryName, filteredCalcs];
+              })
+              .filter(([, calcIds]) => calcIds.length > 0);
+
+            if (query && filteredCategories.length === 0) {
+              return (
+                <div className="text-center py-8 text-gray-500">
+                  <svg
+                    className="w-12 h-12 mx-auto mb-3 text-gray-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p className="text-sm">No calculators found</p>
+                  <p className="text-xs mt-1">Try a different search term</p>
+                </div>
+              );
+            }
+
+            return filteredCategories.map(([categoryName, calcIds]) => (
+              <div key={categoryName}>
+                {/* Visual separator before Feedback category */}
+                {categoryName === "Feedback" && (
+                  <hr className="border-gray-200 my-3" />
+                )}
+                <div className="space-y-1 mb-3">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 mb-1">
+                    {categoryName}
+                  </h3>
+                  {calcIds.map((calcId) => {
+                    const calc = calcDefs.find((c) => c.id === calcId);
+                    if (!calc) return null;
+                    return (
+                      <button
+                        key={calc.id}
+                        onClick={() => {
+                          setActive(calc.id);
+                          setVals({});
+                          setOut(null);
+                          setMreRows([{ kpa: "", area: "" }]);
+                          setIpssRows([
+                            {
+                              time: "",
+                              leftACTH: "",
+                              rightACTH: "",
+                              periphACTH: "",
+                              leftPRL: "",
+                              rightPRL: "",
+                              periphPRL: "",
+                            },
+                          ]);
+                          // Close sidebar on mobile
+                          setSidebarOpen(false);
+                          // Track calculator selection
+                          trackCalculatorSelected(
+                            calc.id,
+                            calc.name,
+                            categoryName,
+                          );
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
+                          calc.id === active
+                            ? "bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600"
+                            : "hover:bg-gray-50 text-gray-700"
+                        }`}
+                      >
+                        {calc.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            ));
+          })()}
         </aside>
 
         {/* Main Panel */}
@@ -909,16 +1239,12 @@ export default function App() {
               {def.isCustomComponent ? (
                 <def.Component />
               ) : (
-                <div
-                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                  aria-label="Input fields"
-                >
-                  {def.fields
-                    .filter((f) => !f.showIf || f.showIf(vals))
-                    .map((f) => (
-                      <Field key={f.id} f={f} val={vals[f.id]} on={update} />
-                    ))}
-                </div>
+                <FieldsWithSections
+                  fields={def.fields}
+                  vals={vals}
+                  update={update}
+                  onFieldChange={update}
+                />
               )}
 
               {def.id === "mr-elastography" && (
@@ -1224,26 +1550,11 @@ export default function App() {
 
               {/* References */}
               {def.refs && def.refs.length > 0 && (
-                <section className="pt-4 border-t">
-                  <h3 className="font-medium mb-2">References</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm">
-                    {def.refs.map((r) => (
-                      <li key={r.u}>
-                        <a
-                          href={r.u}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
-                          onClick={() =>
-                            trackOutboundLink(r.u, "reference", def.id)
-                          }
-                        >
-                          {r.t}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
+                <CollapsibleReferences
+                  refs={def.refs}
+                  calculatorId={def.id}
+                  onLinkClick={trackOutboundLink}
+                />
               )}
             </CardContent>
           </Card>
