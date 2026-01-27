@@ -245,7 +245,9 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
             >
               <div className="flex items-center">
                 {severityIcons[primarySeverity]}
-                <span className="text-sm font-medium opacity-80">{key}</span>
+                <span className="text-sm font-medium opacity-80">
+                  {key}:&nbsp;
+                </span>
               </div>
               <div className="mt-1 text-2xl font-bold">{value}</div>
             </div>
@@ -272,7 +274,7 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
 
         return (
           <div key={key} className="flex items-start justify-between py-1">
-            <span className="text-sm text-gray-600">{key}</span>
+            <span className="text-sm text-gray-600">{key}:&nbsp;</span>
             <span
               className={`text-sm font-medium text-right ${showBadge ? `px-2 py-0.5 rounded ${severityStyles[severity]}` : "text-gray-900"}`}
             >

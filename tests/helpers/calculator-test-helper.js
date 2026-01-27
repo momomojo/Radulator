@@ -9,7 +9,7 @@ import { expect } from "@playwright/test";
  * Open mobile menu if needed (sidebar is collapsed on mobile)
  * @param {import('@playwright/test').Page} page - Playwright page object
  */
-async function openMobileMenuIfNeeded(page) {
+export async function openMobileMenuIfNeeded(page) {
   const menuButton = page.getByRole("button", {
     name: "Open navigation menu",
   });
