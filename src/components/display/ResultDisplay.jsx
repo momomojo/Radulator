@@ -170,7 +170,7 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
   const overallSeverity = getOverallSeverity();
 
   return (
-    <div className="pt-4 border-t space-y-4" aria-live="polite">
+    <section className="pt-4 border-t space-y-4" aria-live="polite">
       {entries.map(([key, value], idx) => {
         // Handle separators
         if (isSeparator(key, value)) {
@@ -281,7 +281,7 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
           </div>
         );
       })}
-    </div>
+    </section>
   );
 }
 

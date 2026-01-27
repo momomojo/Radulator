@@ -6,10 +6,33 @@ import { test, expect } from "@playwright/test";
  * Tests one calculator from each major category.
  */
 
+/**
+ * Helper to open mobile menu if needed (sidebar is collapsed on mobile)
+ */
+async function openMobileMenuIfNeeded(page) {
+  const menuButton = page.getByRole("button", {
+    name: "Open navigation menu",
+  });
+  // Check if we're on mobile (menu button is visible)
+  if (await menuButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await menuButton.click();
+    // Wait for sidebar to be visible after opening
+    await page.locator("aside").waitFor({ state: "visible" });
+  }
+}
+
+/**
+ * Helper to click a calculator button (handles mobile menu)
+ */
+async function clickCalculator(page, calculatorName) {
+  await openMobileMenuIfNeeded(page);
+  await page.click(`button:has-text("${calculatorName}")`);
+}
+
 test.describe("Smoke Tests - Core Functionality", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    // Wait for sidebar heading to be visible (single unique element)
+    // Wait for app to load
     await page
       .getByRole("heading", { name: "Radulator", level: 1 })
       .first()
@@ -22,12 +45,12 @@ test.describe("Smoke Tests - Core Functionality", () => {
   });
 
   test("should navigate to Adrenal Washout CT calculator", async ({ page }) => {
-    await page.click('button:has-text("Adrenal Washout CT")');
+    await clickCalculator(page, "Adrenal Washout CT");
     await expect(page.locator("h2")).toContainText("Adrenal Washout CT");
   });
 
   test("should calculate Adrenal Washout CT", async ({ page }) => {
-    await page.click('button:has-text("Adrenal Washout CT")');
+    await clickCalculator(page, "Adrenal Washout CT");
 
     // Fill in test values using accessible labels
     await page.getByRole("spinbutton", { name: /Pre.*contrast/i }).fill("5");
@@ -42,12 +65,12 @@ test.describe("Smoke Tests - Core Functionality", () => {
   });
 
   test("should navigate to Child-Pugh calculator", async ({ page }) => {
-    await page.click('button:has-text("Child-Pugh Score")');
+    await clickCalculator(page, "Child-Pugh Score");
     await expect(page.locator("h2")).toContainText("Child-Pugh");
   });
 
   test("should calculate Child-Pugh score", async ({ page }) => {
-    await page.click('button:has-text("Child-Pugh Score")');
+    await clickCalculator(page, "Child-Pugh Score");
 
     // Fill numeric values for Class A
     await page.getByRole("spinbutton", { name: /Bilirubin/i }).fill("1.5");
@@ -67,12 +90,12 @@ test.describe("Smoke Tests - Core Functionality", () => {
   });
 
   test("should navigate to Prostate Volume calculator", async ({ page }) => {
-    await page.click('button:has-text("Prostate Volume")');
+    await clickCalculator(page, "Prostate Volume");
     await expect(page.locator("h2")).toContainText("Prostate Volume");
   });
 
   test("should calculate Prostate Volume", async ({ page }) => {
-    await page.click('button:has-text("Prostate Volume")');
+    await clickCalculator(page, "Prostate Volume");
 
     // Fill in dimensions using role selectors
     await page.getByRole("spinbutton", { name: /Length/i }).fill("4");
@@ -87,16 +110,18 @@ test.describe("Smoke Tests - Core Functionality", () => {
   });
 
   test("should navigate to ACR TI-RADS calculator", async ({ page }) => {
-    await page.click('button:has-text("ACR TI-RADS")');
+    await clickCalculator(page, "ACR TI-RADS");
     await expect(page.locator("h2")).toContainText("TI-RADS");
   });
 
   test("should display references section", async ({ page }) => {
-    await page.click('button:has-text("Adrenal Washout CT")');
+    await clickCalculator(page, "Adrenal Washout CT");
     await expect(page.locator("text=/References/i")).toBeVisible();
   });
 
   test("should toggle favorites", async ({ page }) => {
+    // Open mobile menu if needed
+    await openMobileMenuIfNeeded(page);
     // Hover over calculator and click star
     const calcButton = page.locator('button:has-text("Child-Pugh Score")');
     await calcButton.hover();
@@ -107,6 +132,8 @@ test.describe("Smoke Tests - Core Functionality", () => {
   });
 
   test("should search calculators", async ({ page }) => {
+    // Open mobile menu if needed for search
+    await openMobileMenuIfNeeded(page);
     await page.fill('input[placeholder*="Search"]', "liver");
     await expect(
       page.locator('button:has-text("Child-Pugh Score")'),
