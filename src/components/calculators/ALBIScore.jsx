@@ -16,6 +16,7 @@
 
 export const ALBIScore = {
   id: "albi-score",
+  category: "Hepatology/Liver",
   name: "ALBI Score",
   desc: "Albumin-Bilirubin grade for liver function assessment in hepatocellular carcinoma (HCC).",
   metaDesc:

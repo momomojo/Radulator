@@ -1,5 +1,6 @@
 export const AdrenalMRICSI = {
   id: "adrenal-mri",
+  category: "Radiology",
   name: "Adrenal MRI CSI",
   desc: "Signal‑intensity index and adrenal‑to‑spleen CSI ratio.",
   metaDesc:

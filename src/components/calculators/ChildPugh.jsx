@@ -4,6 +4,7 @@
 
 export const ChildPugh = {
   id: "child-pugh",
+  category: "Hepatology/Liver",
   name: "Child-Pugh Score",
   desc: "Classification and prognosis of chronic liver disease and cirrhosis",
   metaDesc:

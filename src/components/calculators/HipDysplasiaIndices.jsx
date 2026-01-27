@@ -1,5 +1,6 @@
 export const HipDysplasiaIndices = {
   id: "hip-dysplasia",
+  category: "Radiology",
   name: "Hip Dysplasia",
   desc: "Calculate migration indices and normal values in hip dysplasia",
   metaDesc:

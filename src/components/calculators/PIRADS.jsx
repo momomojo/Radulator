@@ -15,6 +15,7 @@
 
 export const PIRADS = {
   id: "pirads",
+  category: "Urology",
   name: "PI-RADS v2.1",
   desc: "Prostate MRI risk stratification for clinically significant cancer",
   metaDesc:

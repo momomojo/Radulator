@@ -27,6 +27,7 @@
 
 export const MELDNa = {
   id: "meld-na",
+  category: "Hepatology/Liver",
   name: "MELD-Na Score",
   desc: "Model for End-Stage Liver Disease with Sodium for transplant prioritization",
   metaDesc:

@@ -1,5 +1,6 @@
 /**
  * Milan Criteria Calculator for HCC Liver Transplant Eligibility
+ * Category: Hepatology/Liver
  *
  * Evaluates both Milan and UCSF (University of California San Francisco) criteria
  * for hepatocellular carcinoma patients considering liver transplantation.
@@ -25,6 +26,7 @@
 
 export const MilanCriteria = {
   id: "milan-criteria",
+  category: "Hepatology/Liver",
   name: "Milan Criteria (HCC)",
   desc: "Liver transplant eligibility criteria for hepatocellular carcinoma patients",
   metaDesc:

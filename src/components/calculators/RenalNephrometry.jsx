@@ -1,5 +1,6 @@
 export const RenalNephrometry = {
   id: "renal-nephrometry",
+  category: "Urology",
   name: "RENAL Nephrometry Score",
   desc: "Quantifies anatomical characteristics of renal tumours for surgical planning and risk assessment.",
   metaDesc:

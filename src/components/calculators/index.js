@@ -36,3 +36,13 @@ export { CADRADS } from "./CADRADS";
 export { NIRADS } from "./NIRADS";
 export { BIRADS } from "./BIRADS";
 export { ORADS } from "./ORADS";
+
+// Auto-discovered registry
+export {
+  calcDefs,
+  categories,
+  categoryOrder,
+  getSortedCategories,
+  getCalculatorById,
+  getCalculatorsByCategory,
+} from "./registry";

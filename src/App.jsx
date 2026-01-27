@@ -1,53 +1,17 @@
-// App.jsx – RadCalc Clone v1.0 (shadcn/ui edition)
+// App.jsx – RadCalc Clone v2.0 (Refactored with Context + Hooks)
 // React + Tailwind + shadcn/ui components
 // All formulas mirror radcalc.online calculators with referenced studies.
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FieldsWithSections } from "@/components/forms";
 import { ResultDisplay, CollapsibleReferences } from "@/components/display";
-import {
-  AdrenalCTWashout,
-  AdrenalMRICSI,
-  ALBIScore,
-  ProstateVolume,
-  RenalCystBosniak,
-  SpleenSizeULN,
-  HipDysplasiaIndices,
-  MRElastography,
-  RenalNephrometry,
-  FeedbackForm,
-  AVSCortisol,
-  AVSHyperaldo,
-  BCLCStaging,
-  ChildPugh,
-  SHIMCalculator,
-  IPSS,
-  MilanCriteria,
-  MELDNa,
-  Y90RadiationSegmentectomy,
-  KhouryCatheterSelector,
-  TIRADS,
-  PIRADS,
-  Fleischner,
-  LIRADS,
-  ASPECTSScore,
-  ContrastDosing,
-  RadiationDoseConverter,
-  AASTTraumaGrading,
-  WellsPE,
-  WellsDVT,
-  MehranCIN,
-  DLPDose,
-  CTPancreatitis,
-  LUNGRADS,
-  CADRADS,
-  NIRADS,
-  BIRADS,
-  ORADS,
-} from "@/components/calculators";
+import { CalculatorProvider, useCalculator } from "@/context";
+import { usePreferences, useUrlSync, usePageMeta } from "@/hooks";
+// Auto-discovered calculator registry
+import { calcDefs, categories } from "@/components/calculators";
 import {
   trackCalculatorSelected,
   trackCalculation,
@@ -56,322 +20,114 @@ import {
 } from "@/lib/analytics";
 
 /*******************************************************************
-  Calculator Definitions (100% parity with radcalc.online)
+  App Wrapper - Provides Context
+  Calculator definitions and categories are auto-discovered from registry
 *******************************************************************/
-const calcDefs = [
-  AdrenalCTWashout,
-  AdrenalMRICSI,
-  ALBIScore,
-  AVSCortisol,
-  AVSHyperaldo,
-  BCLCStaging,
-  ChildPugh,
-  Fleischner,
-  IPSS,
-  MilanCriteria,
-  MELDNa,
-  PIRADS,
-  ProstateVolume,
-  RenalCystBosniak,
-  RenalNephrometry,
-  SHIMCalculator,
-  SpleenSizeULN,
-  HipDysplasiaIndices,
-  MRElastography,
-  TIRADS,
-  Y90RadiationSegmentectomy,
-  KhouryCatheterSelector,
-  LIRADS,
-  ASPECTSScore,
-  ContrastDosing,
-  RadiationDoseConverter,
-  AASTTraumaGrading,
-  WellsPE,
-  WellsDVT,
-  MehranCIN,
-  DLPDose,
-  CTPancreatitis,
-  LUNGRADS,
-  CADRADS,
-  NIRADS,
-  BIRADS,
-  ORADS,
-  FeedbackForm,
-];
+export default function App() {
+  // Get initial calculator from URL
+  const { initialId } = useUrlSync(calcDefs, null);
 
-// Category organization for sidebar
-const categories = {
-  Radiology: [
-    "adrenal-ct",
-    "adrenal-mri",
-    "contrast-dosing",
-    "dlp-dose",
-    "fleischner",
-    "lung-rads",
-    "prostate-volume",
-    "radiation-dose-converter",
-    "bosniak",
-    "spleen-size",
-    "hip-dysplasia",
-    "tirads",
-  ],
-  Neuroradiology: ["aspects-score", "nirads"],
-  Trauma: ["aast-trauma-grading"],
-  "Cardiac Imaging": ["cad-rads"],
-  "Breast Imaging": ["birads"],
-  "Women's Imaging": ["orads"],
-  "Clinical Decision": ["wells-pe", "wells-dvt"],
-  "Hepatology/Liver": [
-    "albi-score",
-    "avs-cortisol",
-    "avs-hyperaldo",
-    "bclc-staging",
-    "child-pugh",
-    "ct-pancreatitis",
-    "lirads",
-    "milan-criteria",
-    "meld-na",
-    "mr-elastography",
-    "y90-radiation-segmentectomy",
-  ],
-  Urology: ["ipss", "pirads", "renal-nephrometry", "shim"],
-  Interventional: ["khoury-catheter-selector"],
-  Nephrology: ["mehran-cin"],
-  Feedback: ["feedback-form"],
-};
+  return (
+    <CalculatorProvider defaultCalculatorId={initialId}>
+      <AppContent />
+    </CalculatorProvider>
+  );
+}
 
 /*******************************************************************
-  Main Component
+  Main App Content - Uses Context
 *******************************************************************/
-// localStorage key for disclaimer preference
-const DISCLAIMER_STORAGE_KEY = "radulator-disclaimer-seen";
+function AppContent() {
+  // Calculator state from context
+  const {
+    active,
+    vals,
+    out,
+    mreRows,
+    ipssRows,
+    selectCalculator,
+    updateField,
+    setResults,
+    addMreRow,
+    removeMreRow,
+    updateMreRow,
+    addIpssRow,
+    removeIpssRow,
+    updateIpssRow,
+  } = useCalculator();
 
-export default function App() {
-  // Initialize from URL hash or default to first calculator
-  const [active, setActive] = useState(() => {
-    const hash = window.location.hash.replace("#/", "").replace("#", "");
-    const calc = calcDefs.find((c) => c.id === hash);
-    return calc ? calc.id : calcDefs[0].id;
-  });
-  const [vals, setVals] = useState({});
-  const [out, setOut] = useState(null);
-  const [mreRows, setMreRows] = useState([{ kpa: "", area: "" }]);
+  // User preferences
+  const {
+    favorites,
+    toggleFavorite,
+    isFavorite,
+    recentCalcs,
+    addToRecent,
+    darkMode,
+    toggleDarkMode,
+    showDisclaimer,
+    dismissDisclaimer,
+  } = usePreferences();
+
+  // UI state (local only)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      const stored = localStorage.getItem("radulator-favorites");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
+
+  // Current calculator definition
+  const def = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
+
+  // URL sync
+  const { syncUrlToCalculator } = useUrlSync(calcDefs, (id) => {
+    if (id !== active) {
+      selectCalculator(id);
     }
   });
-  const [recentCalcs, setRecentCalcs] = useState(() => {
-    try {
-      const stored = localStorage.getItem("radulator-recent");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [darkMode, setDarkMode] = useState(() => {
-    try {
-      const stored = localStorage.getItem("radulator-dark-mode");
-      if (stored !== null) return stored === "true";
-      // Fallback to system preference
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
-    } catch {
-      return false;
-    }
-  });
-  const [showDisclaimer, setShowDisclaimer] = useState(() => {
-    try {
-      return localStorage.getItem(DISCLAIMER_STORAGE_KEY) !== "true";
-    } catch {
-      // localStorage unavailable (private mode, storage quota, etc.)
-      return true; // Show disclaimer by default if we can't check
-    }
-  });
-  const [ipssRows, setIpssRows] = useState([
-    {
-      time: "",
-      leftACTH: "",
-      rightACTH: "",
-      periphACTH: "",
-      leftPRL: "",
-      rightPRL: "",
-      periphPRL: "",
-    },
-  ]);
 
-  const def = calcDefs.find((c) => c.id === active);
-  const update = (k, v) => setVals((p) => ({ ...p, [k]: v }));
-
-  // Toggle favorite status for a calculator
-  const toggleFavorite = (calcId) => {
-    setFavorites((prev) => {
-      const newFavorites = prev.includes(calcId)
-        ? prev.filter((id) => id !== calcId)
-        : [...prev, calcId];
-      try {
-        localStorage.setItem(
-          "radulator-favorites",
-          JSON.stringify(newFavorites),
-        );
-      } catch {
-        // Silently fail if localStorage is unavailable
-      }
-      return newFavorites;
-    });
-  };
-
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => {
-      const newMode = !prev;
-      try {
-        localStorage.setItem("radulator-dark-mode", String(newMode));
-      } catch {
-        // Silently fail
-      }
-      return newMode;
-    });
-  };
-
-  // Apply dark mode class to document
+  // Update URL when calculator changes
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
+    syncUrlToCalculator(active);
+  }, [active, syncUrlToCalculator]);
 
-  // Add to recent calculators (max 5)
-  const addToRecent = (calcId) => {
-    setRecentCalcs((prev) => {
-      const filtered = prev.filter((id) => id !== calcId);
-      const newRecent = [calcId, ...filtered].slice(0, 5);
-      try {
-        localStorage.setItem("radulator-recent", JSON.stringify(newRecent));
-      } catch {
-        // Silently fail
-      }
-      return newRecent;
-    });
+  // Page meta tags
+  usePageMeta(def);
+
+  // Sync MRE rows into compute values
+  useEffect(() => {
+    if (def?.id === "mr-elastography") {
+      updateField("roi_rows", mreRows);
+    }
+  }, [def?.id, mreRows, updateField]);
+
+  // Sync IPSS rows into compute values
+  useEffect(() => {
+    if (def?.id === "ipss") {
+      updateField("ipssRows", ipssRows);
+    }
+  }, [def?.id, ipssRows, updateField]);
+
+  // Handle calculator selection
+  const handleSelectCalculator = (calc, categoryName) => {
+    selectCalculator(calc.id);
+    setSidebarOpen(false);
+    addToRecent(calc.id);
+    trackCalculatorSelected(calc.id, calc.name, categoryName);
   };
 
-  const dismissDisclaimer = () => {
-    try {
-      localStorage.setItem(DISCLAIMER_STORAGE_KEY, "true");
-    } catch {
-      // Silently fail - user can still dismiss visually
-    }
-    setShowDisclaimer(false);
-  };
-
+  // Run calculation
   const run = () => {
     const result = def.compute(vals);
-    setOut(result);
+    setResults(result);
 
-    // Find category for tracking
     const category =
       Object.keys(categories).find((cat) => categories[cat].includes(active)) ||
       "Unknown";
-
-    // Track calculation with result status
     const hasResult = result && Object.keys(result).length > 0;
     trackCalculation(def.id, def.name, category, hasResult);
   };
 
-  // Sync dynamic MRE rows into compute values
-  useEffect(() => {
-    if (def?.id === "mr-elastography") {
-      setVals((p) => ({ ...p, roi_rows: mreRows }));
-    }
-  }, [def?.id, mreRows]);
-
-  // Sync dynamic IPSS rows into compute values
-  useEffect(() => {
-    if (def?.id === "ipss") {
-      setVals((p) => ({ ...p, ipssRows: ipssRows }));
-    }
-  }, [def?.id, ipssRows]);
-
-  // Update page title and meta description for SEO
-  useEffect(() => {
-    if (def) {
-      // Update document title
-      document.title = `${def.name} Calculator | Radulator`;
-
-      // Update meta description
-      const metaDescription = document.querySelector(
-        'meta[name="description"]',
-      );
-      if (metaDescription) {
-        const description =
-          def.metaDesc ||
-          def.desc ||
-          `Calculate ${def.name} - free online medical calculator with peer-reviewed references.`;
-        metaDescription.setAttribute("content", description);
-      }
-
-      // Update Open Graph tags
-      const ogTitle = document.querySelector('meta[property="og:title"]');
-      if (ogTitle) {
-        ogTitle.setAttribute("content", `${def.name} Calculator | Radulator`);
-      }
-
-      const ogDesc = document.querySelector('meta[property="og:description"]');
-      if (ogDesc) {
-        const description =
-          def.metaDesc ||
-          def.desc ||
-          `Calculate ${def.name} - free online medical calculator.`;
-        ogDesc.setAttribute("content", description);
-      }
-    }
-  }, [def]);
-
-  // Sync URL hash with active calculator for shareable links
-  useEffect(() => {
-    const newHash = `#/${active}`;
-    if (window.location.hash !== newHash) {
-      window.history.replaceState(null, "", newHash);
-    }
-  }, [active]);
-
-  // Listen for browser back/forward navigation
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace("#/", "").replace("#", "");
-      const calc = calcDefs.find((c) => c.id === hash);
-      if (calc && calc.id !== active) {
-        setActive(calc.id);
-        setVals({});
-        setOut(null);
-        setMreRows([{ kpa: "", area: "" }]);
-        setIpssRows([
-          {
-            time: "",
-            leftACTH: "",
-            rightACTH: "",
-            periphACTH: "",
-            leftPRL: "",
-            rightPRL: "",
-            periphPRL: "",
-          },
-        ]);
-      }
-    };
-
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
-  }, [active]);
-
   // Disable Calculate for MRE until at least one valid ROI pair exists
-  const canRun = (() => {
-    if (def.id !== "mr-elastography") return true;
+  const canRun = useMemo(() => {
+    if (def?.id !== "mr-elastography") return true;
     const parseValue = (val) => {
       if (val === undefined || val === null || val === "") return NaN;
       const parsed = parseFloat(String(val).replace(",", "."));
@@ -420,7 +176,7 @@ export default function App() {
           )
       : [];
     return roisFromFields.length + roisFromCsv.length + roisFromRows.length > 0;
-  })();
+  }, [def?.id, vals, mreRows]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
@@ -485,7 +241,7 @@ export default function App() {
             </svg>
           </button>
           <h1 className="text-lg font-bold text-gray-900">Radulator</h1>
-          <div className="w-10" /> {/* Spacer for centering */}
+          <div className="w-10" />
         </div>
 
         {/* Mobile Overlay */}
@@ -597,13 +353,7 @@ export default function App() {
                   return (
                     <button
                       key={calc.id}
-                      onClick={() => {
-                        setActive(calc.id);
-                        setVals({});
-                        setOut(null);
-                        setSidebarOpen(false);
-                        addToRecent(calc.id);
-                      }}
+                      onClick={() => handleSelectCalculator(calc, "Favorites")}
                       className={`w-full text-left px-3 py-2 rounded-lg transition text-sm flex items-center justify-between ${
                         calc.id === active
                           ? "bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600"
@@ -663,13 +413,7 @@ export default function App() {
                     return (
                       <button
                         key={calc.id}
-                        onClick={() => {
-                          setActive(calc.id);
-                          setVals({});
-                          setOut(null);
-                          setSidebarOpen(false);
-                          addToRecent(calc.id);
-                        }}
+                        onClick={() => handleSelectCalculator(calc, "Recent")}
                         className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
                           calc.id === active
                             ? "bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600"
@@ -685,7 +429,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Calculator List */}
+          {/* Calculator List by Category */}
           {(() => {
             const query = searchQuery.toLowerCase().trim();
             const filteredCategories = Object.entries(categories)
@@ -728,7 +472,6 @@ export default function App() {
 
             return filteredCategories.map(([categoryName, calcIds]) => (
               <div key={categoryName}>
-                {/* Visual separator before Feedback category */}
                 {categoryName === "Feedback" && (
                   <hr className="border-gray-200 my-3" />
                 )}
@@ -742,33 +485,9 @@ export default function App() {
                     return (
                       <button
                         key={calc.id}
-                        onClick={() => {
-                          setActive(calc.id);
-                          setVals({});
-                          setOut(null);
-                          setMreRows([{ kpa: "", area: "" }]);
-                          setIpssRows([
-                            {
-                              time: "",
-                              leftACTH: "",
-                              rightACTH: "",
-                              periphACTH: "",
-                              leftPRL: "",
-                              rightPRL: "",
-                              periphPRL: "",
-                            },
-                          ]);
-                          // Close sidebar on mobile
-                          setSidebarOpen(false);
-                          // Track recent calculators
-                          addToRecent(calc.id);
-                          // Track calculator selection
-                          trackCalculatorSelected(
-                            calc.id,
-                            calc.name,
-                            categoryName,
-                          );
-                        }}
+                        onClick={() =>
+                          handleSelectCalculator(calc, categoryName)
+                        }
                         className={`w-full text-left px-3 py-2 rounded-lg transition text-sm flex items-center justify-between group ${
                           calc.id === active
                             ? "bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600"
@@ -782,23 +501,19 @@ export default function App() {
                             toggleFavorite(calc.id);
                           }}
                           className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-                            favorites.includes(calc.id)
+                            isFavorite(calc.id)
                               ? "opacity-100 text-amber-500"
                               : "text-gray-400 hover:text-amber-500"
                           }`}
                           aria-label={
-                            favorites.includes(calc.id)
+                            isFavorite(calc.id)
                               ? "Remove from favorites"
                               : "Add to favorites"
                           }
                         >
                           <svg
                             className="w-4 h-4"
-                            fill={
-                              favorites.includes(calc.id)
-                                ? "currentColor"
-                                : "none"
-                            }
+                            fill={isFavorite(calc.id) ? "currentColor" : "none"}
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                           >
@@ -877,10 +592,11 @@ export default function App() {
                 <FieldsWithSections
                   fields={def.fields}
                   vals={vals}
-                  onFieldChange={update}
+                  onFieldChange={updateField}
                 />
               )}
 
+              {/* MR Elastography Dynamic Rows */}
               {def.id === "mr-elastography" && (
                 <div className="space-y-3" aria-label="Dynamic ROI table">
                   <h4 className="font-medium">Dynamic ROIs</h4>
@@ -921,11 +637,9 @@ export default function App() {
                           className={kpaInvalid ? "border-red-500" : ""}
                           aria-invalid={kpaInvalid ? "true" : "false"}
                           aria-label={`ROI ${i + 1} stiffness in kPa`}
-                          onChange={(e) => {
-                            const next = mreRows.slice();
-                            next[i] = { ...next[i], kpa: e.target.value };
-                            setMreRows(next);
-                          }}
+                          onChange={(e) =>
+                            updateMreRow(i, { kpa: e.target.value })
+                          }
                         />
                         <div className="flex gap-2">
                           <Input
@@ -935,19 +649,13 @@ export default function App() {
                             className={areaInvalid ? "border-red-500" : ""}
                             aria-invalid={areaInvalid ? "true" : "false"}
                             aria-label={`ROI ${i + 1} area in cm²`}
-                            onChange={(e) => {
-                              const next = mreRows.slice();
-                              next[i] = { ...next[i], area: e.target.value };
-                              setMreRows(next);
-                            }}
+                            onChange={(e) =>
+                              updateMreRow(i, { area: e.target.value })
+                            }
                           />
                           <Button
                             variant="secondary"
-                            onClick={() =>
-                              setMreRows((rows) =>
-                                rows.filter((_, idx) => idx !== i),
-                              )
-                            }
+                            onClick={() => removeMreRow(i)}
                             disabled={mreRows.length <= 1}
                           >
                             Remove
@@ -956,17 +664,13 @@ export default function App() {
                       </div>
                     );
                   })}
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      setMreRows((rows) => [...rows, { kpa: "", area: "" }])
-                    }
-                  >
+                  <Button variant="secondary" onClick={addMreRow}>
                     Add ROI
                   </Button>
                 </div>
               )}
 
+              {/* IPSS Dynamic Rows */}
               {def.id === "ipss" && (
                 <div className="space-y-3" aria-label="Post-CRH Sample Table">
                   <h4 className="font-medium">Post-CRH Stimulation Samples</h4>
@@ -996,112 +700,75 @@ export default function App() {
                           value={r.time}
                           inputMode="decimal"
                           className="text-sm"
-                          onChange={(e) => {
-                            const next = ipssRows.slice();
-                            next[i] = { ...next[i], time: e.target.value };
-                            setIpssRows(next);
-                          }}
+                          onChange={(e) =>
+                            updateIpssRow(i, { time: e.target.value })
+                          }
                         />
                         <Input
                           placeholder="pg/mL"
                           value={r.leftACTH}
                           inputMode="decimal"
                           className="text-sm"
-                          onChange={(e) => {
-                            const next = ipssRows.slice();
-                            next[i] = { ...next[i], leftACTH: e.target.value };
-                            setIpssRows(next);
-                          }}
+                          onChange={(e) =>
+                            updateIpssRow(i, { leftACTH: e.target.value })
+                          }
                         />
                         <Input
                           placeholder="pg/mL"
                           value={r.rightACTH}
                           inputMode="decimal"
                           className="text-sm"
-                          onChange={(e) => {
-                            const next = ipssRows.slice();
-                            next[i] = { ...next[i], rightACTH: e.target.value };
-                            setIpssRows(next);
-                          }}
+                          onChange={(e) =>
+                            updateIpssRow(i, { rightACTH: e.target.value })
+                          }
                         />
                         <Input
                           placeholder="pg/mL"
                           value={r.periphACTH}
                           inputMode="decimal"
                           className="text-sm"
-                          onChange={(e) => {
-                            const next = ipssRows.slice();
-                            next[i] = {
-                              ...next[i],
-                              periphACTH: e.target.value,
-                            };
-                            setIpssRows(next);
-                          }}
+                          onChange={(e) =>
+                            updateIpssRow(i, { periphACTH: e.target.value })
+                          }
                         />
                         <Input
                           placeholder="ng/mL"
                           value={r.leftPRL}
                           inputMode="decimal"
                           className="text-sm"
-                          onChange={(e) => {
-                            const next = ipssRows.slice();
-                            next[i] = { ...next[i], leftPRL: e.target.value };
-                            setIpssRows(next);
-                          }}
+                          onChange={(e) =>
+                            updateIpssRow(i, { leftPRL: e.target.value })
+                          }
                         />
                         <Input
                           placeholder="ng/mL"
                           value={r.rightPRL}
                           inputMode="decimal"
                           className="text-sm"
-                          onChange={(e) => {
-                            const next = ipssRows.slice();
-                            next[i] = { ...next[i], rightPRL: e.target.value };
-                            setIpssRows(next);
-                          }}
+                          onChange={(e) =>
+                            updateIpssRow(i, { rightPRL: e.target.value })
+                          }
                         />
                         <Input
                           placeholder="ng/mL"
                           value={r.periphPRL}
                           inputMode="decimal"
                           className="text-sm"
-                          onChange={(e) => {
-                            const next = ipssRows.slice();
-                            next[i] = { ...next[i], periphPRL: e.target.value };
-                            setIpssRows(next);
-                          }}
+                          onChange={(e) =>
+                            updateIpssRow(i, { periphPRL: e.target.value })
+                          }
                         />
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() =>
-                            setIpssRows((rows) =>
-                              rows.filter((_, idx) => idx !== i),
-                            )
-                          }
+                          onClick={() => removeIpssRow(i)}
                           disabled={ipssRows.length <= 1}
                         >
                           Remove
                         </Button>
                       </div>
                     ))}
-                    <Button
-                      variant="secondary"
-                      onClick={() =>
-                        setIpssRows((rows) => [
-                          ...rows,
-                          {
-                            time: "",
-                            leftACTH: "",
-                            rightACTH: "",
-                            periphACTH: "",
-                            leftPRL: "",
-                            rightPRL: "",
-                            periphPRL: "",
-                          },
-                        ])
-                      }
-                    >
+                    <Button variant="secondary" onClick={addIpssRow}>
                       Add Sample Time Point
                     </Button>
                   </div>
@@ -1227,7 +894,6 @@ export default function App() {
             </a>
           </p>
           <div className="flex items-center gap-4">
-            {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
               className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -1290,12 +956,3 @@ export default function App() {
     </div>
   );
 }
-
-/*******************************************************************
-  Adding new calculators
-  ------------------------------------------------------------------
-  1. Create a new calculator component in src/components/calculators/
-  2. Export it from the index.js file
-  3. Import and add it to the calcDefs array above
-  4. Supported field types: number, date, select {opts:[]}, radio {opts:[{value,label}]}, checkbox.
-*******************************************************************/

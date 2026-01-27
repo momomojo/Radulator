@@ -13,6 +13,7 @@
 
 export const WellsPE = {
   id: "wells-pe",
+  category: "Clinical Decision",
   name: "Wells Criteria for PE",
   desc: "Clinical decision rule for pulmonary embolism probability assessment",
   metaDesc:

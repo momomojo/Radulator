@@ -13,6 +13,7 @@
  */
 
 export const ASPECTSScore = {
+  category: "Neuroradiology",
   id: "aspects-score",
   name: "ASPECTS Score",
   desc: "Alberta Stroke Program Early CT Score for acute MCA stroke assessment",

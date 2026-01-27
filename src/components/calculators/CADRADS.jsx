@@ -11,6 +11,7 @@
 
 export const CADRADS = {
   id: "cad-rads",
+  category: "Cardiac Imaging",
   name: "CAD-RADS 2.0",
   desc: "Coronary Artery Disease Reporting and Data System for coronary CTA",
   metaDesc:

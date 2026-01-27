@@ -7,6 +7,7 @@ import { trackFeedbackSubmission } from "@/lib/analytics";
 
 export const FeedbackForm = {
   id: "feedback-form",
+  category: "Feedback",
   name: "Send Feedback",
   desc: "Help improve Radulator by sharing bugs, feature requests, or general feedback.",
   metaDesc:

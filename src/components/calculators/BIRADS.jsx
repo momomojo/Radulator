@@ -11,6 +11,7 @@
 
 export const BIRADS = {
   id: "birads",
+  category: "Breast Imaging",
   name: "ACR BI-RADS",
   desc: "Breast Imaging Reporting and Data System for mammography, ultrasound, and MRI",
   metaDesc:

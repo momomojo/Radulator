@@ -1,5 +1,6 @@
 export const RenalCystBosniak = {
   id: "bosniak",
+  category: "Radiology",
   name: "Renal Cyst (Bosniak CT)",
   desc: "Classify cystic renal lesions per Bosniak criteria (CT 2005).",
   metaDesc:

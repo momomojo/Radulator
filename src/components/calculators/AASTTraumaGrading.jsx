@@ -13,6 +13,7 @@
 
 export const AASTTraumaGrading = {
   id: "aast-trauma-grading",
+  category: "Trauma",
   name: "AAST Trauma Grading",
   desc: "AAST-OIS 2018 solid organ injury grading for liver, spleen, and kidney trauma",
   metaDesc:

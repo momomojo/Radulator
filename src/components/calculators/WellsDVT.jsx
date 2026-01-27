@@ -13,6 +13,7 @@
 
 export const WellsDVT = {
   id: "wells-dvt",
+  category: "Clinical Decision",
   name: "Wells Criteria for DVT",
   desc: "Clinical decision rule for deep vein thrombosis probability assessment",
   metaDesc:

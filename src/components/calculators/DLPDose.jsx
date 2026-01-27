@@ -14,6 +14,7 @@
 
 export const DLPDose = {
   id: "dlp-dose",
+  category: "Radiology",
   name: "DLP to Effective Dose",
   desc: "Convert CT Dose Length Product to estimated effective radiation dose",
   metaDesc:

@@ -13,6 +13,7 @@
 
 export const CTPancreatitis = {
   id: "ct-pancreatitis",
+  category: "Hepatology/Liver",
   name: "CT Severity Index (CTSI)",
   desc: "Balthazar score with necrosis grading for acute pancreatitis severity",
   metaDesc:

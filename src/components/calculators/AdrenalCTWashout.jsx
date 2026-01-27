@@ -1,5 +1,6 @@
 export const AdrenalCTWashout = {
   id: "adrenal-ct",
+  category: "Radiology",
   name: "Adrenal Washout CT",
   desc: "Absolute & relative washout percentages to differentiate adenoma vs. non‑adenoma.",
   metaDesc:

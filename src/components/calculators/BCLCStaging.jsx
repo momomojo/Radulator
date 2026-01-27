@@ -14,6 +14,7 @@
 
 export const BCLCStaging = {
   id: "bclc-staging",
+  category: "Hepatology/Liver",
   name: "BCLC Staging (HCC)",
   desc: "Barcelona Clinic Liver Cancer staging for hepatocellular carcinoma with treatment recommendations.",
   metaDesc:

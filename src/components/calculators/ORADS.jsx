@@ -12,6 +12,7 @@
 
 export const ORADS = {
   id: "orads",
+  category: "Women's Imaging",
   name: "ACR O-RADS",
   desc: "Ovarian-Adnexal Reporting and Data System for US and MRI",
   metaDesc:

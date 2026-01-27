@@ -11,6 +11,7 @@
 
 export const LUNGRADS = {
   id: "lung-rads",
+  category: "Radiology",
   name: "Lung-RADS v2022",
   desc: "Lung cancer screening CT classification and management recommendations",
   metaDesc:

@@ -11,6 +11,7 @@
 
 export const NIRADS = {
   id: "nirads",
+  category: "Neuroradiology",
   name: "ACR NI-RADS",
   desc: "Neck Imaging Reporting and Data System for post-treatment head and neck cancer surveillance",
   metaDesc:

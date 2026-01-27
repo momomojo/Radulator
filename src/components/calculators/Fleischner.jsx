@@ -14,6 +14,7 @@
 
 export const Fleischner = {
   id: "fleischner",
+  category: "Radiology",
   name: "Fleischner Guidelines",
   desc: "2017 Pulmonary nodule management recommendations for solid and subsolid nodules",
   metaDesc:

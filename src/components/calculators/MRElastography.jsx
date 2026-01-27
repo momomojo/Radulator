@@ -1,5 +1,6 @@
 export const MRElastography = {
   id: "mr-elastography",
+  category: "Hepatology/Liver",
   name: "MR Elastography (Liver)",
   desc: "Area-weighted mean liver stiffness across ROIs/slices.",
   metaDesc:

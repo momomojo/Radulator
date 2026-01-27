@@ -1,5 +1,6 @@
 export const SpleenSizeULN = {
   id: "spleen-size",
+  category: "Radiology",
   name: "Spleen Size",
   desc: "Gender- and height-adjusted upper limits of normal spleen length and volume",
   metaDesc:

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const AVSCortisol = {
+  category: "Hepatology/Liver",
   id: "avs-cortisol",
   name: "AVS – Cortisol (Cushing)",
   desc: "Comprehensive adrenal vein sampling interpretation for ACTH-independent hypercortisolism with multi-sample support.",

@@ -14,6 +14,7 @@
 
 export const TIRADS = {
   id: "tirads",
+  category: "Radiology",
   name: "ACR TI-RADS",
   desc: "Thyroid Imaging Reporting and Data System for thyroid nodule risk stratification",
   metaDesc:

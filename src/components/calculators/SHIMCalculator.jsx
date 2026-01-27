@@ -14,6 +14,7 @@
 
 export const SHIMCalculator = {
   id: "shim",
+  category: "Urology",
   name: "SHIM Score",
   desc: "Sexual Health Inventory for Men (IIEF-5) - Erectile Dysfunction Assessment",
   metaDesc:

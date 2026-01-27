@@ -1909,7 +1909,7 @@ function KhouryCatheterSelectorComponent() {
 export const KhouryCatheterSelector = {
   id: "khoury-catheter-selector",
   name: "Khoury Catheter Selector",
-  category: "interventional",
+  category: "Interventional",
   desc: "Interactive microcatheter selection tool for interventional procedures based on embolic agent, device size, and clinical requirements",
   metaDesc:
     "Free Khoury Catheter Selector Tool. Interactive microcatheter selection for Onyx, PHIL, coils, and microspheres. Filter by embolic agent, size, and dead space calculations.",

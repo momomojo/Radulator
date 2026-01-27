@@ -17,6 +17,7 @@
 
 export const Y90RadiationSegmentectomy = {
   id: "y90-radiation-segmentectomy",
+  category: "Hepatology/Liver",
   name: "Y-90 Radiation Segmentectomy",
   desc: "Dosimetry calculator for Y-90 radioembolization using MIRD and partition models",
   metaDesc:

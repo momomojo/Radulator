@@ -14,6 +14,7 @@
 
 export const ContrastDosing = {
   id: "contrast-dosing",
+  category: "Radiology",
   name: "IV Contrast Dosing",
   desc: "Iodinated contrast dosing calculator for CT studies with renal risk assessment",
   metaDesc:

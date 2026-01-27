@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 
 export const AVSHyperaldo = {
   id: "avs-hyperaldo",
+  category: "Hepatology/Liver",
   name: "AVS – Aldosterone (PA)",
   desc: "Comprehensive primary aldosteronism AVS with CSI/RASI, multi-sample support, and pre/post-ACTH comparison.",
   metaDesc:

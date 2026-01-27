@@ -1,5 +1,6 @@
 export const ProstateVolume = {
   id: "prostate-volume",
+  category: "Radiology",
   name: "Prostate Volume",
   desc: "Ellipsoid volume estimation (MRI/US) and PSA‑Density.",
   metaDesc:

@@ -17,6 +17,7 @@
 
 export const RadiationDoseConverter = {
   id: "radiation-dose-converter",
+  category: "Radiology",
   name: "Radiation Dose Converter",
   desc: "Convert between radiation dose units (Gy, Sv, Bq, etc.) with CT dose estimation",
   metaDesc:

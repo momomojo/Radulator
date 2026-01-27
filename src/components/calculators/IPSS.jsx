@@ -35,6 +35,7 @@
 
 export const IPSS = {
   id: "ipss",
+  category: "Urology",
   name: "IPSS (Petrosal Sinus Sampling)",
   desc: "Inferior Petrosal Sinus Sampling for Cushing's disease diagnosis and lateralization",
   metaDesc:

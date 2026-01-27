@@ -12,6 +12,7 @@
 
 export const MehranCIN = {
   id: "mehran-cin",
+  category: "Nephrology",
   name: "Mehran CIN Risk Score",
   desc: "Predicts risk of contrast-induced nephropathy after angiography/PCI",
   metaDesc:
