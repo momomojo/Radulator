@@ -6,10 +6,17 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      full_suite:
+        description: 'Run full test suite (takes 2+ hours)'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
-  test:
-    timeout-minutes: 60
+  smoke-tests:
+    name: Smoke Tests
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,7 +37,44 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright tests
+      - name: Run smoke tests
+        run: npx playwright test tests/e2e/smoke.spec.js --project=chromium
+        env:
+          CI: true
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-report
+          path: playwright-report/
+          retention-days: 7
+
+  full-tests:
+    name: Full Test Suite
+    if: github.event.inputs.full_suite == 'true'
+    timeout-minutes: 180
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run full test suite
         run: npx playwright test --project=chromium
         env:
           CI: true
@@ -39,7 +83,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
+          name: full-test-report
           path: playwright-report/
           retention-days: 30
 
