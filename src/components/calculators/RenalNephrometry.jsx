@@ -3,6 +3,13 @@ export const RenalNephrometry = {
   category: "Urology",
   name: "RENAL Nephrometry Score",
   desc: "Quantifies anatomical characteristics of renal tumours for surgical planning and risk assessment.",
+  keywords: [
+    "kidney tumor",
+    "renal mass",
+    "partial nephrectomy",
+    "RENAL score",
+    "PADUA",
+  ],
   metaDesc:
     "Free R.E.N.A.L. Nephrometry Score Calculator. Assess renal tumor complexity for surgical planning. Calculate low, moderate, or high complexity based on size, location, and anatomy.",
   info: {

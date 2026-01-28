@@ -14,6 +14,13 @@ export const NIRADS = {
   category: "Neuroradiology",
   name: "ACR NI-RADS",
   desc: "Neck Imaging Reporting and Data System for post-treatment head and neck cancer surveillance",
+  keywords: [
+    "neck imaging",
+    "head and neck",
+    "squamous cell",
+    "SCC",
+    "recurrence",
+  ],
   metaDesc:
     "Free NI-RADS Calculator. ACR standardized reporting for head and neck cancer surveillance imaging with CT, MRI, and PET/CT with recurrence risk and management.",
 

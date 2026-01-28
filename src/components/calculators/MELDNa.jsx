@@ -30,6 +30,13 @@ export const MELDNa = {
   category: "Hepatology/Liver",
   name: "MELD-Na Score",
   desc: "Model for End-Stage Liver Disease with Sodium for transplant prioritization",
+  keywords: [
+    "liver transplant",
+    "cirrhosis",
+    "end-stage liver disease",
+    "ESLD",
+    "transplant priority",
+  ],
   metaDesc:
     "Free MELD-Na Score Calculator. Calculate Model for End-Stage Liver Disease with Sodium for liver transplant prioritization. Includes 90-day mortality estimate and UNOS allocation.",
 

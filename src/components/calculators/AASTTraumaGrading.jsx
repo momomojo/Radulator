@@ -16,6 +16,13 @@ export const AASTTraumaGrading = {
   category: "Trauma",
   name: "AAST Trauma Grading",
   desc: "AAST-OIS 2018 solid organ injury grading for liver, spleen, and kidney trauma",
+  keywords: [
+    "trauma",
+    "organ injury",
+    "spleen injury",
+    "liver injury",
+    "kidney injury",
+  ],
   metaDesc:
     "Free AAST Trauma Grading Calculator. AAST-OIS 2018 revision for liver, spleen, and kidney injury grading. CT-based classification with WSES management guidelines.",
 

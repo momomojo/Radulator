@@ -20,6 +20,17 @@ export const Y90RadiationSegmentectomy = {
   category: "Hepatology/Liver",
   name: "Y-90 Radiation Segmentectomy",
   desc: "Dosimetry calculator for Y-90 radioembolization using MIRD and partition models",
+  keywords: [
+    "MIRD",
+    "TARE",
+    "radioembolization",
+    "SIR-Spheres",
+    "TheraSphere",
+    "liver cancer",
+    "HCC",
+    "microspheres",
+    "yttrium",
+  ],
   metaDesc:
     "Free Y-90 Radiation Segmentectomy Calculator. Calculate activity dose for yttrium-90 radioembolization using MIRD and partition models. LSF and lung dose safety limits.",
 

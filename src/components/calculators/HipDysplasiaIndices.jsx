@@ -3,6 +3,7 @@ export const HipDysplasiaIndices = {
   category: "Radiology",
   name: "Hip Dysplasia",
   desc: "Calculate migration indices and normal values in hip dysplasia",
+  keywords: ["DDH", "developmental dysplasia", "acetabular", "pediatric hip"],
   metaDesc:
     "Free Hip Dysplasia Calculator. Calculate Reimers migration index and age/gender-specific normal values for pediatric hip evaluation. Assess subluxation and dislocation risk.",
   info: {

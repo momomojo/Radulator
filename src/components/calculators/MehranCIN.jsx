@@ -15,6 +15,13 @@ export const MehranCIN = {
   category: "Nephrology",
   name: "Mehran CIN Risk Score",
   desc: "Predicts risk of contrast-induced nephropathy after angiography/PCI",
+  keywords: [
+    "contrast nephropathy",
+    "AKI",
+    "CIN",
+    "kidney injury",
+    "creatinine",
+  ],
   metaDesc:
     "Free Mehran CIN Risk Score Calculator. Predict contrast-induced nephropathy and dialysis risk after PCI or angiography with evidence-based risk stratification.",
 

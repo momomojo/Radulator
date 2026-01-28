@@ -18,6 +18,7 @@ export const PIRADS = {
   category: "Urology",
   name: "PI-RADS v2.1",
   desc: "Prostate MRI risk stratification for clinically significant cancer",
+  keywords: ["prostate", "MRI", "prostate cancer", "PCa", "mpMRI"],
   metaDesc:
     "Free PI-RADS v2.1 Calculator. Prostate Imaging Reporting and Data System for MRI-based risk stratification of clinically significant prostate cancer.",
 

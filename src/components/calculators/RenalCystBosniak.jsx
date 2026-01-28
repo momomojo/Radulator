@@ -3,6 +3,7 @@ export const RenalCystBosniak = {
   category: "Radiology",
   name: "Renal Cyst (Bosniak CT)",
   desc: "Classify cystic renal lesions per Bosniak criteria (CT 2005).",
+  keywords: ["kidney cyst", "renal cyst", "cystic renal mass", "Bosniak"],
   metaDesc:
     "Free Bosniak Classification Calculator for cystic renal masses. Classify kidney cysts (I, II, IIF, III, IV) based on CT imaging features. Evidence-based management recommendations.",
   info: {

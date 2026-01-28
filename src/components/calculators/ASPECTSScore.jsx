@@ -17,6 +17,7 @@ export const ASPECTSScore = {
   id: "aspects-score",
   name: "ASPECTS Score",
   desc: "Alberta Stroke Program Early CT Score for acute MCA stroke assessment",
+  keywords: ["stroke", "MCA", "ischemic", "ASPECTS", "thrombolysis"],
   metaDesc:
     "Free ASPECTS Calculator. Alberta Stroke Program Early CT Score for assessing early ischemic changes in acute MCA stroke. Evidence-based thrombectomy eligibility assessment with DAWN and DEFUSE-3 trial thresholds.",
 

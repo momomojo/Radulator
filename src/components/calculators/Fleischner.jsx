@@ -17,6 +17,13 @@ export const Fleischner = {
   category: "Radiology",
   name: "Fleischner Guidelines",
   desc: "2017 Pulmonary nodule management recommendations for solid and subsolid nodules",
+  keywords: [
+    "pulmonary nodule",
+    "lung nodule",
+    "incidental",
+    "follow-up",
+    "CT chest",
+  ],
   metaDesc:
     "Free Fleischner Society Guidelines Calculator. 2017 pulmonary nodule follow-up recommendations for solid and subsolid lung nodules based on size and risk factors.",
 

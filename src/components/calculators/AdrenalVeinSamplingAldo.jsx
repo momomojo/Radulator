@@ -27,6 +27,7 @@ export const AVSHyperaldo = {
   category: "Hepatology/Liver",
   name: "AVS – Aldosterone (PA)",
   desc: "Comprehensive primary aldosteronism AVS with CSI/RASI, multi-sample support, and pre/post-ACTH comparison.",
+  keywords: ["AVS", "aldosterone", "hyperaldosteronism", "Conn syndrome", "PA"],
   metaDesc:
     "Free Adrenal Vein Sampling Calculator for primary hyperaldosteronism. Calculate selectivity index, lateralization index, CSI, RASI with PASO criteria. CSV export included.",
   isCustomComponent: true,

@@ -22,6 +22,13 @@ export const AVSCortisol = {
   id: "avs-cortisol",
   name: "AVS – Cortisol (Cushing)",
   desc: "Comprehensive adrenal vein sampling interpretation for ACTH-independent hypercortisolism with multi-sample support.",
+  keywords: [
+    "AVS",
+    "cortisol",
+    "Cushing",
+    "hypercortisolism",
+    "ACTH-independent",
+  ],
   metaDesc:
     "Free AVS Cortisol Calculator for Cushing's syndrome. Adrenal vein sampling interpretation with epinephrine validation, lateralization ratios, and Young criteria. CSV export.",
   isCustomComponent: true,

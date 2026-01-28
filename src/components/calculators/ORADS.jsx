@@ -15,6 +15,7 @@ export const ORADS = {
   category: "Women's Imaging",
   name: "ACR O-RADS",
   desc: "Ovarian-Adnexal Reporting and Data System for US and MRI",
+  keywords: ["ovarian", "ovary", "adnexal", "ovarian mass", "cyst"],
   metaDesc:
     "Free O-RADS Calculator. ACR risk stratification for ovarian/adnexal lesions using ultrasound or MRI with malignancy risk and management recommendations.",
 

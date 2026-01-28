@@ -509,7 +509,11 @@ function AppContent() {
                   return (
                     calc.name.toLowerCase().includes(query) ||
                     calc.desc.toLowerCase().includes(query) ||
-                    calc.id.toLowerCase().includes(query)
+                    calc.id.toLowerCase().includes(query) ||
+                    (calc.keywords &&
+                      calc.keywords.some((kw) =>
+                        kw.toLowerCase().includes(query),
+                      ))
                   );
                 });
                 return [categoryName, filteredCalcs];

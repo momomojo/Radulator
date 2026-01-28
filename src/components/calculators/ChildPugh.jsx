@@ -7,6 +7,14 @@ export const ChildPugh = {
   category: "Hepatology/Liver",
   name: "Child-Pugh Score",
   desc: "Classification and prognosis of chronic liver disease and cirrhosis",
+  keywords: [
+    "cirrhosis",
+    "liver function",
+    "hepatic",
+    "ascites",
+    "encephalopathy",
+    "CTP",
+  ],
   metaDesc:
     "Free Child-Pugh Score Calculator. Assess liver cirrhosis severity and prognosis (Class A, B, C). Calculates points for bilirubin, albumin, INR, ascites, and encephalopathy.",
   info: {

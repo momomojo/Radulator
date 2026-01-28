@@ -14,6 +14,7 @@ export const LUNGRADS = {
   category: "Radiology",
   name: "Lung-RADS v2022",
   desc: "Lung cancer screening CT classification and management recommendations",
+  keywords: ["lung cancer screening", "LDCT", "low-dose CT", "Lung-RADS"],
   metaDesc:
     "Free Lung-RADS v2022 Calculator. ACR standardized lung cancer screening CT classification with nodule measurement and management recommendations.",
 

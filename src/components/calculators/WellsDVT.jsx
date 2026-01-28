@@ -16,6 +16,7 @@ export const WellsDVT = {
   category: "Clinical Decision",
   name: "Wells Criteria for DVT",
   desc: "Clinical decision rule for deep vein thrombosis probability assessment",
+  keywords: ["deep vein thrombosis", "DVT", "leg swelling", "venous"],
   metaDesc:
     "Free Wells Criteria for DVT Calculator. Estimate pre-test probability of deep vein thrombosis with evidence-based scoring and diagnostic pathway guidance.",
 
