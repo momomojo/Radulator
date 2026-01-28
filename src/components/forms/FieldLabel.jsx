@@ -11,17 +11,19 @@ function FieldLabel({ htmlFor, label, subLabel, helpText }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1.5">
-        <Label htmlFor={htmlFor}>
+        <Label htmlFor={htmlFor} className="text-foreground">
           {label}
           {subLabel && (
-            <span className="text-sm text-gray-500 ml-2">({subLabel})</span>
+            <span className="text-sm text-muted-foreground ml-2">
+              ({subLabel})
+            </span>
           )}
         </Label>
         {helpText && (
           <button
             type="button"
             onClick={() => setShowHelp(!showHelp)}
-            className="text-gray-400 hover:text-blue-600 focus:outline-none focus:text-blue-600 md:relative md:group"
+            className="text-muted-foreground hover:text-primary focus:outline-none focus:text-primary md:relative md:group transition-colors"
             aria-label={`Help for ${label}`}
             title={helpText}
           >
@@ -39,7 +41,7 @@ function FieldLabel({ htmlFor, label, subLabel, helpText }) {
               />
             </svg>
             {/* Desktop tooltip */}
-            <span className="hidden md:group-hover:block absolute left-0 top-6 z-50 w-64 p-2 text-xs text-left font-normal text-gray-700 bg-white border border-gray-200 rounded-lg shadow-lg">
+            <span className="hidden md:group-hover:block absolute left-0 top-6 z-50 w-64 p-2 text-xs text-left font-normal text-foreground bg-popover border border-border rounded-lg shadow-lg">
               {helpText}
             </span>
           </button>
@@ -47,7 +49,7 @@ function FieldLabel({ htmlFor, label, subLabel, helpText }) {
       </div>
       {/* Mobile help text - shown inline when toggled */}
       {helpText && showHelp && (
-        <p className="md:hidden text-xs text-gray-600 bg-gray-50 p-2 rounded">
+        <p className="md:hidden text-xs text-muted-foreground bg-muted p-2 rounded">
           {helpText}
         </p>
       )}

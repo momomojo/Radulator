@@ -71,21 +71,21 @@ function FieldsWithSections({ fields, vals, onFieldChange }) {
         return (
           <div
             key={section}
-            className="border border-gray-200 rounded-lg overflow-hidden"
+            className="border border-border rounded-lg overflow-hidden"
           >
             <button
               type="button"
               onClick={() => toggleSection(section)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors text-left"
               aria-expanded={isExpanded}
             >
-              <span className="font-medium text-gray-700">{section}</span>
+              <span className="font-medium text-foreground">{section}</span>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                   {fieldCount} field{fieldCount > 1 ? "s" : ""}
                 </span>
                 <svg
-                  className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                  className={`w-5 h-5 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -100,7 +100,7 @@ function FieldsWithSections({ fields, vals, onFieldChange }) {
               </div>
             </button>
             {isExpanded && (
-              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-card">
                 {groupedFields[section].map((f) => (
                   <Field key={f.id} f={f} val={vals[f.id]} on={onFieldChange} />
                 ))}

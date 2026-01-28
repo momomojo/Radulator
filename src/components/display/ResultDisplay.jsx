@@ -73,13 +73,17 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
     return "neutral";
   };
 
-  // Severity badge styles
+  // Severity badge styles - using CSS custom properties for dark mode support
   const severityStyles = {
-    success: "bg-green-100 text-green-800 border-green-200",
-    warning: "bg-amber-100 text-amber-800 border-amber-200",
-    danger: "bg-red-100 text-red-800 border-red-200",
-    error: "bg-red-100 text-red-800 border-red-200",
-    neutral: "bg-gray-100 text-gray-800 border-gray-200",
+    success:
+      "bg-[hsl(var(--result-success-bg))] text-[hsl(var(--result-success))] border-[hsl(var(--result-success-border))]",
+    warning:
+      "bg-[hsl(var(--result-warning-bg))] text-[hsl(var(--result-warning))] border-[hsl(var(--result-warning-border))]",
+    danger:
+      "bg-[hsl(var(--result-danger-bg))] text-[hsl(var(--result-danger))] border-[hsl(var(--result-danger-border))]",
+    error:
+      "bg-[hsl(var(--result-danger-bg))] text-[hsl(var(--result-danger))] border-[hsl(var(--result-danger-border))]",
+    neutral: "bg-muted text-foreground border-border",
   };
 
   // Severity icons (SVG paths)
@@ -170,11 +174,14 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
   const overallSeverity = getOverallSeverity();
 
   return (
-    <section className="pt-4 border-t space-y-4" aria-live="polite">
+    <section
+      className="pt-4 border-t border-border space-y-4"
+      aria-live="polite"
+    >
       {entries.map(([key, value], idx) => {
         // Handle separators
         if (isSeparator(key, value)) {
-          return <hr key={`sep-${idx}`} className="border-gray-200 my-3" />;
+          return <hr key={`sep-${idx}`} className="border-border my-3" />;
         }
 
         // Handle section headers
@@ -182,7 +189,7 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
           return (
             <h4
               key={key}
-              className="text-sm font-semibold text-gray-700 mt-4 mb-2"
+              className="text-sm font-semibold text-foreground mt-4 mb-2"
             >
               {key}
             </h4>
@@ -208,7 +215,7 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
                     link.download = filename;
                     link.click();
                   }}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-md hover:bg-primary/20 transition-colors"
                 >
                   <svg
                     className="w-4 h-4 mr-1.5"
@@ -259,9 +266,9 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
           return (
             <div
               key={key}
-              className="p-4 rounded-lg border bg-red-50 border-red-200"
+              className="p-4 rounded-lg border bg-[hsl(var(--result-danger-bg))] border-[hsl(var(--result-danger-border))]"
             >
-              <div className="flex items-center text-red-800">
+              <div className="flex items-center text-[hsl(var(--result-danger))]">
                 {severityIcons.error}
                 <span className="font-medium">{value}</span>
               </div>
@@ -274,9 +281,9 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
 
         return (
           <div key={key} className="flex items-start justify-between py-1">
-            <span className="text-sm text-gray-600">{key}:&nbsp;</span>
+            <span className="text-sm text-muted-foreground">{key}:&nbsp;</span>
             <span
-              className={`text-sm font-medium text-right ${showBadge ? `px-2 py-0.5 rounded ${severityStyles[severity]}` : "text-gray-900"}`}
+              className={`text-sm font-medium text-right ${showBadge ? `px-2 py-0.5 rounded ${severityStyles[severity]}` : "text-foreground"}`}
             >
               {value}
             </span>

@@ -4,34 +4,34 @@
 
 @layer base {
   :root {
-    /* Light mode colors (HSL values without hsl() wrapper) */
-    --background: 0 0% 98%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light mode - Clean clinical white */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 221.2 83.2% 53.3%;
+    --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
 
     --radius: 0.5rem;
 
@@ -42,63 +42,87 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
 
-    /* Result severity colors (for calculator results) */
+    /* Result severity - Light mode */
     --result-success: 142 76% 36%;
     --result-success-bg: 142 76% 95%;
+    --result-success-border: 142 76% 85%;
     --result-warning: 38 92% 50%;
     --result-warning-bg: 38 92% 95%;
+    --result-warning-border: 38 92% 85%;
     --result-danger: 0 84% 60%;
     --result-danger-bg: 0 84% 95%;
+    --result-danger-border: 0 84% 85%;
     --result-info: 221 83% 53%;
     --result-info-bg: 221 83% 95%;
+    --result-info-border: 221 83% 85%;
+
+    /* Sidebar */
+    --sidebar-bg: 210 20% 98%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-item-hover: 210 40% 96%;
+    --sidebar-item-active: 221 83% 96%;
+    --sidebar-item-active-border: 221 83% 53%;
+    --sidebar-category: 215 16% 47%;
   }
 
   .dark {
-    /* Dark mode colors */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark mode - Clinical Night (PACS-inspired) */
+    --background: 222 47% 8%;
+    --foreground: 210 40% 96%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 96%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 96%;
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 222 47% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 222 47% 8%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62% 50%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --border: 217 33% 20%;
+    --input: 217 33% 17%;
+    --ring: 199 89% 48%;
 
     /* Chart colors (dark mode) */
-    --chart-1: 220 70% 50%;
+    --chart-1: 199 89% 48%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    /* Result severity colors (dark mode) */
-    --result-success: 142 70% 45%;
-    --result-success-bg: 142 50% 15%;
-    --result-warning: 38 85% 45%;
-    --result-warning-bg: 38 50% 15%;
-    --result-danger: 0 75% 50%;
-    --result-danger-bg: 0 50% 15%;
-    --result-info: 221 75% 55%;
-    --result-info-bg: 221 50% 15%;
+    /* Result severity - Dark mode (enhanced contrast) */
+    --result-success: 142 70% 55%;
+    --result-success-bg: 142 40% 12%;
+    --result-success-border: 142 50% 25%;
+    --result-warning: 38 92% 55%;
+    --result-warning-bg: 38 40% 12%;
+    --result-warning-border: 38 50% 25%;
+    --result-danger: 0 72% 55%;
+    --result-danger-bg: 0 40% 12%;
+    --result-danger-border: 0 50% 25%;
+    --result-info: 199 89% 55%;
+    --result-info-bg: 199 40% 12%;
+    --result-info-border: 199 50% 25%;
+
+    /* Sidebar - Dark mode */
+    --sidebar-bg: 222 47% 7%;
+    --sidebar-border: 217 33% 15%;
+    --sidebar-item-hover: 217 33% 14%;
+    --sidebar-item-active: 199 40% 12%;
+    --sidebar-item-active-border: 199 89% 48%;
+    --sidebar-category: 215 20% 55%;
   }
 }
 
@@ -108,7 +132,134 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Smooth transitions for theme switching */
+  body,
+  .dark body {
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+  }
+}
+
+/* Custom scrollbar for dark mode */
+@layer utilities {
+  .dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    background: hsl(222 47% 11%);
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: hsl(217 33% 25%);
+    border-radius: 4px;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: hsl(217 33% 35%);
+  }
+
+  /* Focus ring enhancement for dark mode */
+  .dark .focus-ring {
+    @apply focus:ring-2 focus:ring-[hsl(199,89%,48%)] focus:ring-offset-2 focus:ring-offset-[hsl(222,47%,8%)];
+  }
+
+  /* Subtle glow effect for interactive elements in dark mode */
+  .dark-glow {
+    @apply dark:shadow-[0_0_15px_rgba(14,165,233,0.15)];
+  }
+
+  /* Card elevation in dark mode */
+  .dark .card-elevated {
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -2px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Dark mode specific component styles */
+@layer components {
+  /* Sidebar styling */
+  .sidebar-dark {
+    @apply dark:bg-[hsl(var(--sidebar-bg))] dark:border-[hsl(var(--sidebar-border))];
+  }
+
+  /* Input fields in dark mode */
+  .dark input[type="text"],
+  .dark input[type="number"],
+  .dark input[type="date"],
+  .dark textarea,
+  .dark select {
+    @apply bg-[hsl(217,33%,13%)] border-[hsl(217,33%,22%)] text-[hsl(210,40%,96%)];
+    @apply placeholder:text-[hsl(215,20%,50%)];
+    @apply focus:border-[hsl(199,89%,48%)] focus:ring-[hsl(199,89%,48%)];
+  }
+
+  /* Buttons in dark mode */
+  .dark .btn-primary {
+    @apply bg-[hsl(199,89%,48%)] text-[hsl(222,47%,8%)] hover:bg-[hsl(199,89%,55%)];
+    @apply shadow-lg shadow-[hsl(199,89%,48%)]/20;
+  }
+
+  /* Result cards with severity */
+  .result-card-success {
+    @apply bg-[hsl(var(--result-success-bg))] border-[hsl(var(--result-success-border))] text-[hsl(var(--result-success))];
+  }
+
+  .result-card-warning {
+    @apply bg-[hsl(var(--result-warning-bg))] border-[hsl(var(--result-warning-border))] text-[hsl(var(--result-warning))];
+  }
+
+  .result-card-danger {
+    @apply bg-[hsl(var(--result-danger-bg))] border-[hsl(var(--result-danger-border))] text-[hsl(var(--result-danger))];
+  }
+
+  .result-card-info {
+    @apply bg-[hsl(var(--result-info-bg))] border-[hsl(var(--result-info-border))] text-[hsl(var(--result-info))];
+  }
+
+  /* Info panels in dark mode */
+  .dark .info-panel {
+    @apply bg-[hsl(199,40%,10%)] border-[hsl(199,40%,20%)] text-[hsl(199,50%,75%)];
+  }
+
+  /* Section dividers */
+  .dark hr {
+    @apply border-[hsl(217,33%,18%)];
+  }
+
+  /* Category headers */
+  .dark .category-header {
+    @apply text-[hsl(var(--sidebar-category))];
+  }
+
+  /* Calculator list items */
+  .dark .calc-item {
+    @apply text-[hsl(215,20%,75%)] hover:bg-[hsl(var(--sidebar-item-hover))];
+  }
+
+  .dark .calc-item-active {
+    @apply bg-[hsl(var(--sidebar-item-active))] text-[hsl(199,89%,60%)] border-l-2 border-[hsl(var(--sidebar-item-active-border))];
+  }
+
+  /* Disclaimer banner dark mode */
+  .dark .disclaimer-banner {
+    @apply bg-[hsl(199,40%,12%)] border-[hsl(199,40%,20%)] text-[hsl(199,50%,75%)];
+  }
+
+  /* References section */
+  .dark .references-section {
+    @apply bg-[hsl(217,33%,12%)] border-[hsl(217,33%,18%)];
+  }
+
+  .dark .reference-link {
+    @apply text-[hsl(199,89%,60%)] hover:text-[hsl(199,89%,70%)];
   }
 }
 
@@ -136,6 +287,12 @@
     display: block !important;
   }
 
+  /* Force light mode for printing */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
   /* Add disclaimer footer for print */
   body::after {
     content: "For educational purposes only. Not a substitute for professional medical advice.";
@@ -146,4 +303,21 @@
     font-size: 10pt;
     color: #666;
   }
+}
+
+/* Dark mode toggle animation */
+@keyframes theme-toggle {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(0.9) rotate(180deg);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+.theme-toggle-animate {
+  animation: theme-toggle 0.5s ease-in-out;
 }

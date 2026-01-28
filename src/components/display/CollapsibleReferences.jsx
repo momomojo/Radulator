@@ -12,16 +12,16 @@ function CollapsibleReferences({ refs, calculatorId, onLinkClick }) {
   const hiddenCount = refs.length - VISIBLE_COUNT;
 
   return (
-    <section className="pt-4 border-t">
-      <h3 className="font-medium mb-2">References</h3>
+    <section className="pt-4 border-t border-border references-section rounded-lg p-4 mt-4 bg-muted/30 dark:bg-muted/50">
+      <h3 className="font-medium mb-2 text-foreground">References</h3>
       <ul className="list-disc pl-5 space-y-1 text-sm">
         {visibleRefs.map((r) => (
-          <li key={r.u}>
+          <li key={r.u} className="text-muted-foreground">
             <a
               href={r.u}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 hover:underline"
+              className="text-primary hover:text-primary/80 hover:underline transition-colors reference-link"
               onClick={() => onLinkClick?.(r.u, "reference", calculatorId)}
             >
               {r.t}
@@ -32,7 +32,7 @@ function CollapsibleReferences({ refs, calculatorId, onLinkClick }) {
       {hasMore && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+          className="mt-2 text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
         >
           {expanded ? (
             <>

@@ -179,11 +179,11 @@ function AppContent() {
   }, [def?.id, vals, mreRows]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
       {/* Maintenance Banner */}
       <div
         role="status"
-        className="bg-amber-100 border-b border-amber-300 px-4 py-3 text-sm text-amber-900 text-center"
+        className="bg-amber-100 dark:bg-amber-900/30 border-b border-amber-300 dark:border-amber-700 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 text-center"
       >
         <p>
           <strong>Under Maintenance:</strong> Radulator is currently undergoing
@@ -197,18 +197,21 @@ function AppContent() {
       {showDisclaimer && (
         <div
           role="alert"
-          className="bg-blue-50 border-b border-blue-200 px-4 py-2 text-xs md:text-sm text-blue-800 flex items-center justify-between"
+          className="bg-blue-50 dark:bg-sky-900/30 border-b border-blue-200 dark:border-sky-700 px-4 py-2 text-xs md:text-sm text-blue-800 dark:text-sky-200 flex items-center justify-between"
         >
           <p>
             <strong>Medical Disclaimer:</strong> For educational purposes only.
             Not a substitute for professional medical advice.{" "}
-            <a href="/terms.html" className="underline ml-1">
+            <a
+              href="/terms.html"
+              className="underline ml-1 hover:text-blue-600 dark:hover:text-sky-300"
+            >
               Learn more
             </a>
           </p>
           <button
             onClick={dismissDisclaimer}
-            className="ml-4 text-blue-600 hover:text-blue-800 font-medium text-sm"
+            className="ml-4 text-blue-600 dark:text-sky-400 hover:text-blue-800 dark:hover:text-sky-200 font-medium text-sm transition-colors"
             aria-label="Dismiss medical disclaimer banner"
           >
             Dismiss
@@ -219,15 +222,15 @@ function AppContent() {
       {/* Content wrapper for sidebar + main */}
       <div className="flex flex-1 overflow-hidden">
         {/* Mobile Header with Hamburger */}
-        <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-b dark:border-gray-700 shadow-sm px-4 py-3 flex items-center justify-between">
+        <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border shadow-sm px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-2 -ml-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
             aria-label="Open navigation menu"
             aria-expanded={sidebarOpen}
           >
             <svg
-              className="w-6 h-6 text-gray-600"
+              className="w-6 h-6 text-muted-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -240,14 +243,14 @@ function AppContent() {
               />
             </svg>
           </button>
-          <h1 className="text-lg font-bold text-gray-900">Radulator</h1>
+          <h1 className="text-lg font-bold text-foreground">Radulator</h1>
           <div className="w-10" />
         </div>
 
         {/* Mobile Overlay */}
         {sidebarOpen && (
           <div
-            className="md:hidden fixed inset-0 z-40 bg-black/50 transition-opacity"
+            className="md:hidden fixed inset-0 z-40 bg-black/60 dark:bg-black/70 backdrop-blur-sm transition-opacity"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
@@ -257,22 +260,22 @@ function AppContent() {
         <aside
           className={`
             fixed md:static inset-y-0 left-0 z-50 w-72 md:w-64
-            bg-white dark:bg-gray-900 border-r dark:border-gray-700 shadow-lg md:shadow-sm
-            transform transition-transform duration-300 ease-in-out
+            bg-card border-r border-border shadow-lg md:shadow-sm
+            transform transition-all duration-300 ease-in-out
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
             p-4 space-y-2 overflow-y-auto
           `}
         >
           {/* Close button for mobile */}
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold">Radulator</h1>
+            <h1 className="text-2xl font-bold text-foreground">Radulator</h1>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="md:hidden p-2 -mr-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="md:hidden p-2 -mr-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
               aria-label="Close navigation menu"
             >
               <svg
-                className="w-5 h-5 text-gray-600"
+                className="w-5 h-5 text-muted-foreground"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -290,7 +293,7 @@ function AppContent() {
           {/* Calculator Search */}
           <div className="relative mb-4">
             <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -307,13 +310,13 @@ function AppContent() {
               placeholder="Search calculators..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-8 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground transition-colors"
               aria-label="Search calculators"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Clear search"
               >
                 <svg
@@ -336,7 +339,7 @@ function AppContent() {
           {/* Favorites Section */}
           {favorites.length > 0 && !searchQuery && (
             <div className="mb-4">
-              <h3 className="text-xs font-semibold text-amber-600 uppercase tracking-wide px-2 mb-1 flex items-center gap-1">
+              <h3 className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide px-2 mb-1 flex items-center gap-1">
                 <svg
                   className="w-3 h-3"
                   fill="currentColor"
@@ -354,10 +357,10 @@ function AppContent() {
                     <button
                       key={calc.id}
                       onClick={() => handleSelectCalculator(calc, "Favorites")}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition text-sm flex items-center justify-between ${
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center justify-between ${
                         calc.id === active
-                          ? "bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600"
-                          : "hover:bg-gray-50 text-gray-700"
+                          ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                          : "hover:bg-muted text-foreground"
                       }`}
                     >
                       <span>{calc.name}</span>
@@ -366,7 +369,7 @@ function AppContent() {
                           e.stopPropagation();
                           toggleFavorite(calc.id);
                         }}
-                        className="text-amber-500 hover:text-amber-600"
+                        className="text-amber-500 hover:text-amber-400 transition-colors"
                         aria-label="Remove from favorites"
                       >
                         <svg
@@ -387,7 +390,7 @@ function AppContent() {
           {/* Recent Section */}
           {recentCalcs.length > 0 && !searchQuery && (
             <div className="mb-4">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 mb-1 flex items-center gap-1">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2 mb-1 flex items-center gap-1">
                 <svg
                   className="w-3 h-3"
                   fill="none"
@@ -414,10 +417,10 @@ function AppContent() {
                       <button
                         key={calc.id}
                         onClick={() => handleSelectCalculator(calc, "Recent")}
-                        className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm ${
                           calc.id === active
-                            ? "bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600"
-                            : "hover:bg-gray-50 text-gray-700"
+                            ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                            : "hover:bg-muted text-foreground"
                         }`}
                       >
                         {calc.name}
@@ -425,7 +428,7 @@ function AppContent() {
                     );
                   })}
               </div>
-              <hr className="border-gray-200 my-3" />
+              <hr className="border-border my-3" />
             </div>
           )}
 
@@ -450,9 +453,9 @@ function AppContent() {
 
             if (query && filteredCategories.length === 0) {
               return (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   <svg
-                    className="w-12 h-12 mx-auto mb-3 text-gray-300"
+                    className="w-12 h-12 mx-auto mb-3 opacity-40"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -465,7 +468,9 @@ function AppContent() {
                     />
                   </svg>
                   <p className="text-sm">No calculators found</p>
-                  <p className="text-xs mt-1">Try a different search term</p>
+                  <p className="text-xs mt-1 opacity-75">
+                    Try a different search term
+                  </p>
                 </div>
               );
             }
@@ -473,10 +478,10 @@ function AppContent() {
             return filteredCategories.map(([categoryName, calcIds]) => (
               <div key={categoryName}>
                 {categoryName === "Feedback" && (
-                  <hr className="border-gray-200 my-3" />
+                  <hr className="border-border my-3" />
                 )}
                 <div className="space-y-1 mb-3">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 mb-1">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2 mb-1">
                     {categoryName}
                   </h3>
                   {calcIds.map((calcId) => {
@@ -488,10 +493,10 @@ function AppContent() {
                         onClick={() =>
                           handleSelectCalculator(calc, categoryName)
                         }
-                        className={`w-full text-left px-3 py-2 rounded-lg transition text-sm flex items-center justify-between group ${
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center justify-between group ${
                           calc.id === active
-                            ? "bg-blue-50 text-blue-700 font-medium border-l-2 border-blue-600"
-                            : "hover:bg-gray-50 text-gray-700"
+                            ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                            : "hover:bg-muted text-foreground"
                         }`}
                       >
                         <span>{calc.name}</span>
@@ -512,7 +517,7 @@ function AppContent() {
                           className={`opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer ${
                             isFavorite(calc.id)
                               ? "opacity-100 text-amber-500"
-                              : "text-gray-400 hover:text-amber-500"
+                              : "text-muted-foreground hover:text-amber-500"
                           }`}
                           aria-label={
                             isFavorite(calc.id)
@@ -548,12 +553,14 @@ function AppContent() {
           <Card className="w-full max-w-4xl">
             <CardContent className="space-y-6 p-8">
               <header>
-                <h2 className="text-xl font-semibold mb-1">{def.name}</h2>
-                <p className="text-sm text-gray-600">{def.desc}</p>
+                <h2 className="text-xl font-semibold mb-1 text-foreground">
+                  {def.name}
+                </h2>
+                <p className="text-sm text-muted-foreground">{def.desc}</p>
               </header>
 
               {def.info && (
-                <div className="bg-blue-50/60 border border-blue-200 rounded-md p-4 text-sm space-y-4">
+                <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-md p-4 text-sm space-y-4">
                   <div
                     className={
                       def.info.image
@@ -562,12 +569,12 @@ function AppContent() {
                     }
                   >
                     <div>
-                      <p className="whitespace-pre-line text-gray-800">
+                      <p className="whitespace-pre-line text-foreground/90">
                         {def.info.text}
                       </p>
                       {def.info.link && (
                         <Button
-                          className="mt-2 bg-blue-500 text-white hover:bg-blue-600"
+                          className="mt-2"
                           onClick={() => {
                             trackOutboundLink(
                               def.info.link.url,
@@ -586,7 +593,7 @@ function AppContent() {
                         <img
                           src={def.info.image}
                           alt="Reference diagram"
-                          className="max-w-full h-auto rounded-md border border-gray-200"
+                          className="max-w-full h-auto rounded-md border border-border"
                           style={{ maxHeight: "300px" }}
                         />
                       </div>
@@ -608,12 +615,12 @@ function AppContent() {
               {/* MR Elastography Dynamic Rows */}
               {def.id === "mr-elastography" && (
                 <div className="space-y-3" aria-label="Dynamic ROI table">
-                  <h4 className="font-medium">Dynamic ROIs</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-foreground">Dynamic ROIs</h4>
+                  <p className="text-sm text-muted-foreground">
                     Tip: You can paste multiple pairs in the CSV box above, or
                     add rows here. Use decimals and consistent units.
                   </p>
-                  <div className="grid grid-cols-3 gap-4 font-medium">
+                  <div className="grid grid-cols-3 gap-4 font-medium text-foreground">
                     <div>Slice / ROI</div>
                     <div>Stiffness (kPa)</div>
                     <div>ROI Area</div>
@@ -638,7 +645,7 @@ function AppContent() {
                         key={i}
                         className="grid grid-cols-3 gap-4 items-center"
                       >
-                        <div className="text-gray-500">#{i + 1}</div>
+                        <div className="text-muted-foreground">#{i + 1}</div>
                         <Input
                           placeholder="e.g., 2.8"
                           value={r.kpa}
@@ -682,14 +689,16 @@ function AppContent() {
               {/* IPSS Dynamic Rows */}
               {def.id === "ipss" && (
                 <div className="space-y-3" aria-label="Post-CRH Sample Table">
-                  <h4 className="font-medium">Post-CRH Stimulation Samples</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-foreground">
+                    Post-CRH Stimulation Samples
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
                     Add time-series samples after CRH administration (typically
                     at +3, +6, +9, +15 minutes). These help identify peak ACTH
                     response and improve lateralization accuracy.
                   </p>
                   <div className="overflow-x-auto">
-                    <div className="grid grid-cols-8 gap-2 font-medium text-xs min-w-max">
+                    <div className="grid grid-cols-8 gap-2 font-medium text-xs min-w-max text-foreground">
                       <div>Time</div>
                       <div>Lt ACTH</div>
                       <div>Rt ACTH</div>
@@ -785,7 +794,7 @@ function AppContent() {
               )}
 
               {!canRun && def.id === "mr-elastography" && (
-                <p className="text-xs text-gray-600" role="note">
+                <p className="text-xs text-muted-foreground" role="note">
                   Enter at least one valid ROI (kPa and area &gt; 0) in fields,
                   CSV, or dynamic rows to enable Calculate.
                 </p>
@@ -813,8 +822,8 @@ function AppContent() {
                   {/* Calculator-specific interpretive notes */}
                   {def.id === "adrenal-ct" &&
                     parseFloat(out["Absolute Washout (%)"]) >= 60 && (
-                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <div className="flex items-center text-green-800">
+                      <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-center text-green-800 dark:text-green-300">
                           <svg
                             className="w-4 h-4 mr-2"
                             fill="currentColor"
@@ -836,8 +845,8 @@ function AppContent() {
                     parseFloat(
                       out["Volume (cm³)"]?.replace(/[^\d.]/g, "") || "0",
                     ) <= 30 && (
-                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <div className="flex items-center text-green-800">
+                      <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-center text-green-800 dark:text-green-300">
                           <svg
                             className="w-4 h-4 mr-2"
                             fill="currentColor"
@@ -894,25 +903,28 @@ function AppContent() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3 px-4 text-xs text-gray-500 dark:text-gray-400">
+      <footer className="bg-card border-t border-border py-3 px-4 text-xs text-muted-foreground">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
           <p className="text-center md:text-left">
             For educational purposes only.{" "}
-            <a href="/terms.html" className="hover:underline">
+            <a
+              href="/terms.html"
+              className="hover:underline hover:text-foreground transition-colors"
+            >
               Full disclaimer
             </a>
           </p>
           <div className="flex items-center gap-4">
             <button
               onClick={toggleDarkMode}
-              className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-1.5 rounded-md hover:bg-muted transition-colors theme-toggle-animate"
               aria-label={
                 darkMode ? "Switch to light mode" : "Switch to dark mode"
               }
             >
               {darkMode ? (
                 <svg
-                  className="w-4 h-4"
+                  className="w-4 h-4 text-amber-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -926,7 +938,7 @@ function AppContent() {
                 </svg>
               ) : (
                 <svg
-                  className="w-4 h-4"
+                  className="w-4 h-4 text-slate-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -942,19 +954,19 @@ function AppContent() {
             </button>
             <a
               href="/about.html"
-              className="hover:text-gray-700 dark:hover:text-gray-300 hover:underline"
+              className="hover:text-foreground hover:underline transition-colors"
             >
               About
             </a>
             <a
               href="/privacy.html"
-              className="hover:text-gray-700 dark:hover:text-gray-300 hover:underline"
+              className="hover:text-foreground hover:underline transition-colors"
             >
               Privacy
             </a>
             <a
               href="/terms.html"
-              className="hover:text-gray-700 dark:hover:text-gray-300 hover:underline"
+              className="hover:text-foreground hover:underline transition-colors"
             >
               Terms
             </a>

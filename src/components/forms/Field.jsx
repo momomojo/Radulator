@@ -22,7 +22,7 @@ function Field({ f, val, on }) {
         />
         <textarea
           id={f.id}
-          className="w-full border rounded p-2 min-h-[120px] focus:outline-none focus:ring focus:ring-blue-300 font-mono text-sm"
+          className="w-full border border-input bg-background text-foreground rounded-md p-2 min-h-[120px] focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent font-mono text-sm placeholder:text-muted-foreground transition-colors"
           value={val ?? ""}
           onChange={(e) => on(f.id, e.target.value)}
           placeholder={f.subLabel}
@@ -68,11 +68,11 @@ function Field({ f, val, on }) {
                 value={opt.value}
                 checked={val === opt.value}
                 onChange={(e) => on(f.id, e.target.value)}
-                className="text-blue-600 focus:ring-blue-500"
+                className="text-primary focus:ring-primary accent-primary"
               />
               <Label
                 htmlFor={`${f.id}-${opt.value}`}
-                className="text-sm font-normal cursor-pointer"
+                className="text-sm font-normal cursor-pointer text-foreground"
               >
                 {opt.label}
               </Label>
