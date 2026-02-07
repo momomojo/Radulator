@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
 /**
  * Milan Criteria Calculator E2E Tests
@@ -25,10 +26,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Milan Criteria Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Navigate to Milan Criteria calculator
-    await page.click('text=Milan Criteria (HCC)');
-    // Wait for calculator to load
+    await navigateToCalculator(page, 'Milan Criteria (HCC)');
     await expect(page.locator('h2:has-text("Milan Criteria (HCC)")')).toBeVisible();
   });
 

@@ -17,14 +17,11 @@
  */
 
 import { test, expect } from "@playwright/test";
-
-const BASE_URL = "http://localhost:5173";
+import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
 test.describe("Y-90 Radiation Segmentectomy Calculator", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(BASE_URL);
-    // Navigate to Y-90 calculator
-    await page.click("text=Y-90 Radiation Segmentectomy");
+    await navigateToCalculator(page, "Y-90 Radiation Segmentectomy");
     await expect(page.locator("h2")).toContainText(
       "Y-90 Radiation Segmentectomy",
     );

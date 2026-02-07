@@ -98,7 +98,7 @@ test.describe('AVS Cortisol Calculator', () => {
     for (let i = 0; i < 3; i++) {
       if (await addRightButton.isEnabled()) {
         await addRightButton.click();
-        await page.waitForTimeout(200);
+
       }
     }
 
@@ -138,7 +138,7 @@ test.describe('AVS Cortisol Calculator', () => {
     await page.locator('button:has-text("Calculate")').click();
 
     // Wait for results
-    await page.waitForTimeout(500);
+
 
     // Verify cannulation success
     await expect(page.locator('text=Left Adrenal')).toBeVisible();
@@ -192,7 +192,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Verify interpretation
     const interpretation = page.locator('text=Unilateral cortisol-secreting adenoma on RIGHT side');
@@ -232,7 +232,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Verify CLR suggests bilateral disease (CLR ≤2)
     const clrText = await page.locator('text=CLR').textContent();
@@ -243,7 +243,7 @@ test.describe('AVS Cortisol Calculator', () => {
     }
 
     // Verify interpretation mentions bilateral
-    const interpretation = await page.locator('.bg-blue-50').last().textContent();
+    const interpretation = await page.locator('h3:has-text("Interpretation")').locator('..').locator('p').first().textContent();
     expect(interpretation.toLowerCase()).toContain('bilateral');
   });
 
@@ -275,7 +275,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Verify left cannulation failed
     const leftStatus = page.locator('text=Left Adrenal').locator('..').locator('text=✗ Failed');
@@ -286,7 +286,7 @@ test.describe('AVS Cortisol Calculator', () => {
     await expect(rightStatus).toBeVisible();
 
     // Verify warning in interpretation
-    const interpretation = await page.locator('.bg-blue-50').last().textContent();
+    const interpretation = await page.locator('h3:has-text("Interpretation")').locator('..').locator('p').first().textContent();
     expect(interpretation).toContain('⚠️');
     expect(interpretation.toLowerCase()).toContain('cannulation');
     expect(interpretation.toLowerCase()).toContain('unsuccessful');
@@ -296,7 +296,7 @@ test.describe('AVS Cortisol Calculator', () => {
     // Add second left sample
     const addLeftButton = page.locator('button:has-text("+ Add Left Sample")');
     await addLeftButton.click();
-    await page.waitForTimeout(200);
+
 
     // IVC measurements
     await page.locator('label:has-text("Infrarenal IVC Cortisol") ~ input').first().fill('10');
@@ -326,7 +326,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Verify both samples were successful
     await expect(page.locator('text=✓ Successful').first()).toBeVisible();
@@ -366,7 +366,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Ratios should be the same as µg/dL test case (8.0 and 2.0)
     const leftRatioText = await page.locator('text=Left AV/PV Cortisol Ratio').textContent();
@@ -404,7 +404,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Left AV/PV ratio should be 120/15 = 8.0 (using suprarenal, not infrarenal)
     const leftRatioText = await page.locator('text=Left AV/PV Cortisol Ratio').textContent();
@@ -434,7 +434,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Verify CSV download button appears
     const downloadButton = page.locator('button:has-text("Download Results as CSV")');
@@ -445,7 +445,7 @@ test.describe('AVS Cortisol Calculator', () => {
   test('should show error when insufficient data provided', async ({ page }) => {
     // Click calculate without filling required fields
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(300);
+
 
     // Should show error message
     const errorMessage = page.locator('text=Insufficient data');
@@ -455,7 +455,7 @@ test.describe('AVS Cortisol Calculator', () => {
   test('should allow removal of samples (except when only one remains)', async ({ page }) => {
     // Add a second left sample
     await page.locator('button:has-text("+ Add Left Sample")').click();
-    await page.waitForTimeout(200);
+
 
     // Remove button should be enabled
     const removeButtons = page.locator('button:has-text("Remove")');
@@ -464,7 +464,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Click to remove second sample
     await removeButtons.nth(1).click();
-    await page.waitForTimeout(200);
+
 
     // When only 1 sample remains, remove should be disabled
     const remainingRemoveButton = page.locator('button:has-text("Remove")').first();
@@ -493,7 +493,7 @@ test.describe('AVS Cortisol Calculator', () => {
     await verifyThemeConsistency(page);
 
     // Verify specific AVS Cortisol styling elements
-    const patientInfoSection = page.locator('.bg-blue-50').first();
+    const patientInfoSection = page.locator('h3:has-text("Patient Information")').locator('..');
     await expect(patientInfoSection).toBeVisible();
 
     // Verify border and rounded corners
@@ -542,10 +542,10 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Interpretation should reference Young criteria
-    const interpretation = await page.locator('.bg-blue-50').last().textContent();
+    const interpretation = await page.locator('h3:has-text("Interpretation")').locator('..').locator('p').first().textContent();
     expect(interpretation).toContain('Criteria met');
     expect(interpretation).toContain('>6.5');
     expect(interpretation).toContain('≤3.3');
@@ -575,7 +575,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Should calculate successfully
     const leftRatioText = await page.locator('text=Left AV/PV Cortisol Ratio').textContent();
@@ -604,7 +604,7 @@ test.describe('AVS Cortisol Calculator', () => {
 
     // Calculate
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // With delta exactly at 100, cannulation should FAIL (must be >100, not ≥100)
     const leftStatus = page.locator('text=Left Adrenal').locator('..').locator('text=✗ Failed');
@@ -637,7 +637,7 @@ test.describe('AVS Cortisol Calculator', () => {
     await rightEpiInputs.first().fill('200');
 
     await page.locator('button:has-text("Calculate")').click();
-    await page.waitForTimeout(500);
+
 
     // Take screenshot for documentation
     await takeScreenshot(page, 'avs-cortisol', 'full-example');

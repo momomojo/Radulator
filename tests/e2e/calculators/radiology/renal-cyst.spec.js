@@ -16,17 +16,15 @@
  */
 
 import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:5173';
+import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
 test.describe('Renal Cyst (Bosniak Classification) Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto(BASE_URL);
-    // Navigate to Renal Cyst calculator
-    await page.getByRole('button', { name: 'Renal Cyst (Bosniak CT)' }).click();
-    // Wait for calculator to load
-    await expect(page.getByRole('heading', { name: 'Renal Cyst (Bosniak CT)', level: 2 })).toBeVisible();
+    await navigateToCalculator(page, 'Renal Cyst (Bosniak CT)');
+    await expect(
+      page.getByRole('heading', { name: 'Renal Cyst (Bosniak CT)', level: 2 }),
+    ).toBeVisible();
   });
 
   test('should display calculator title and description', async ({ page }) => {
@@ -35,7 +33,7 @@ test.describe('Renal Cyst (Bosniak Classification) Calculator', () => {
   });
 
   test('should display info panel with clinical guidance', async ({ page }) => {
-    const infoPanel = page.locator('.bg-blue-50\\/60');
+    const infoPanel = page.getByTestId('calculator-info');
     await expect(infoPanel).toBeVisible();
     await expect(infoPanel).toContainText('A homogeneous mass ≥ 70 HU at unenhanced CT');
     await expect(infoPanel).toContainText('Use Bosniak MR criteria if evaluating renal masses on MRI');

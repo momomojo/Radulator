@@ -55,7 +55,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       page,
     }) => {
       await expect(
-        page.locator(".bg-blue-50").getByText("Wells Criteria"),
+        page.getByTestId("calculator-info").getByText("Wells Criteria"),
       ).toBeVisible();
     });
 
@@ -71,56 +71,68 @@ test.describe("Wells Criteria for DVT Calculator", () => {
     }) => {
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "0 points",
-      );
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("0 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("Low");
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Unlikely");
     });
 
     test("should calculate -2 points with only alternative diagnosis", async ({
       page,
     }) => {
-      const altDxSwitch = page
-        .locator("label:has-text('Alternative diagnosis at least as likely')")
-        .locator("..");
-      await altDxSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="alternative_diagnosis"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "-2 points",
-      );
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("-2 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("Low");
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Unlikely");
     });
 
     test("should calculate 1 point with single positive criterion", async ({
       page,
     }) => {
-      const cancerSwitch = page
-        .locator("label:has-text('Active cancer')")
-        .locator("..");
-      await cancerSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="active_cancer"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "1 points",
-      );
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("1 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("Moderate");
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Unlikely");
     });
   });
@@ -130,26 +142,25 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       page,
     }) => {
       // Active cancer (+1) + Entire leg swollen (+1) = 2 pts
-      const cancerSwitch = page
-        .locator("label:has-text('Active cancer')")
-        .locator("..");
-      await cancerSwitch.locator("button[role='switch']").click();
-
-      const legSwitch = page
-        .locator("label:has-text('Entire leg swollen')")
-        .locator("..");
-      await legSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="active_cancer"]').click();
+      await page.locator('button[id="leg_swelling"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "2 points",
-      );
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("2 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("Moderate");
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Likely");
     });
 
@@ -157,36 +168,27 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       page,
     }) => {
       // 3 positive (+3) + alternative diagnosis (-2) = 1 pt
-      const cancerSwitch = page
-        .locator("label:has-text('Active cancer')")
-        .locator("..");
-      await cancerSwitch.locator("button[role='switch']").click();
-
-      const legSwitch = page
-        .locator("label:has-text('Entire leg swollen')")
-        .locator("..");
-      await legSwitch.locator("button[role='switch']").click();
-
-      const pittingSwitch = page
-        .locator("label:has-text('Pitting edema')")
-        .locator("..");
-      await pittingSwitch.locator("button[role='switch']").click();
-
-      const altDxSwitch = page
-        .locator("label:has-text('Alternative diagnosis at least as likely')")
-        .locator("..");
-      await altDxSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="active_cancer"]').click();
+      await page.locator('button[id="leg_swelling"]').click();
+      await page.locator('button[id="pitting_edema"]').click();
+      await page.locator('button[id="alternative_diagnosis"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "1 points",
-      );
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("1 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("Moderate");
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Unlikely");
     });
   });
@@ -196,31 +198,26 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       page,
     }) => {
       // Active cancer (+1) + leg swelling (+1) + calf swelling (+1) = 3 pts
-      const cancerSwitch = page
-        .locator("label:has-text('Active cancer')")
-        .locator("..");
-      await cancerSwitch.locator("button[role='switch']").click();
-
-      const legSwitch = page
-        .locator("label:has-text('Entire leg swollen')")
-        .locator("..");
-      await legSwitch.locator("button[role='switch']").click();
-
-      const calfSwitch = page
-        .locator("label:has-text('Calf swelling >3 cm')")
-        .locator("..");
-      await calfSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="active_cancer"]').click();
+      await page.locator('button[id="leg_swelling"]').click();
+      await page.locator('button[id="calf_swelling"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "3 points",
-      );
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("3 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("High");
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Likely");
     });
 
@@ -238,14 +235,20 @@ test.describe("Wells Criteria for DVT Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "9 points",
-      );
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("9 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("High");
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Likely");
     });
 
@@ -262,11 +265,15 @@ test.describe("Wells Criteria for DVT Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "7 points",
-      );
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("7 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("High");
     });
   });
@@ -274,40 +281,38 @@ test.describe("Wells Criteria for DVT Calculator", () => {
   test.describe("2-Tier Risk Classification", () => {
     test("should show DVT Unlikely for score < 2", async ({ page }) => {
       // Score of 1: single criterion
-      const tendernessSwitch = page
-        .locator("label:has-text('Localized tenderness')")
-        .locator("..");
-      await tendernessSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="tenderness_deep_veins"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "1 points",
-      );
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("1 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Unlikely");
     });
 
     test("should show DVT Likely for score >= 2", async ({ page }) => {
       // Score of 2: two criteria
-      const prevDvtSwitch = page
-        .locator("label:has-text('Previously documented DVT')")
-        .locator("..");
-      await prevDvtSwitch.locator("button[role='switch']").click();
-
-      const collateralSwitch = page
-        .locator("label:has-text('Collateral superficial veins')")
-        .locator("..");
-      await collateralSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="previous_dvt"]').click();
+      await page.locator('button[id="collateral_veins"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "2 points",
-      );
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("2 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Likely");
     });
   });
@@ -316,111 +321,95 @@ test.describe("Wells Criteria for DVT Calculator", () => {
     test("should recommend D-dimer for DVT Unlikely", async ({ page }) => {
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Recommendation:')")).toContainText(
-        "D-dimer",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Recommendation:')",
+        ),
+      ).toContainText("D-dimer");
     });
 
     test("should recommend ultrasound for DVT Likely", async ({ page }) => {
       // Score of 2: two criteria
-      const cancerSwitch = page
-        .locator("label:has-text('Active cancer')")
-        .locator("..");
-      await cancerSwitch.locator("button[role='switch']").click();
-
-      const paralysisSwitch = page
-        .locator("label:has-text('Paralysis, paresis')")
-        .locator("..");
-      await paralysisSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="active_cancer"]').click();
+      await page.locator('button[id="paralysis_paresis"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Recommendation:')")).toContainText(
-        "ultrasound",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Recommendation:')",
+        ),
+      ).toContainText("ultrasound");
     });
   });
 
   test.describe("Clinical Notes", () => {
     test("should display note about negative score", async ({ page }) => {
-      const altDxSwitch = page
-        .locator("label:has-text('Alternative diagnosis at least as likely')")
-        .locator("..");
-      await altDxSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="alternative_diagnosis"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Clinical Notes:')")).toContainText(
-        "Negative score",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+        ),
+      ).toContainText("Negative score");
     });
 
     test("should display note about empiric anticoagulation for high risk", async ({
       page,
     }) => {
       // Get to score of 3+
-      const cancerSwitch = page
-        .locator("label:has-text('Active cancer')")
-        .locator("..");
-      await cancerSwitch.locator("button[role='switch']").click();
-
-      const legSwitch = page
-        .locator("label:has-text('Entire leg swollen')")
-        .locator("..");
-      await legSwitch.locator("button[role='switch']").click();
-
-      const calfSwitch = page
-        .locator("label:has-text('Calf swelling >3 cm')")
-        .locator("..");
-      await calfSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="active_cancer"]').click();
+      await page.locator('button[id="leg_swelling"]').click();
+      await page.locator('button[id="calf_swelling"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Clinical Notes:')")).toContainText(
-        "empiric anticoagulation",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+        ),
+      ).toContainText("empiric anticoagulation");
     });
 
     test("should display note about prior DVT", async ({ page }) => {
-      const prevDvtSwitch = page
-        .locator("label:has-text('Previously documented DVT')")
-        .locator("..");
-      await prevDvtSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="previous_dvt"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Clinical Notes:')")).toContainText(
-        "Prior DVT",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+        ),
+      ).toContainText("Prior DVT");
     });
 
     test("should display note about cancer-associated thrombosis", async ({
       page,
     }) => {
-      const cancerSwitch = page
-        .locator("label:has-text('Active cancer')")
-        .locator("..");
-      await cancerSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="active_cancer"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Clinical Notes:')")).toContainText(
-        "Cancer-associated thrombosis",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+        ),
+      ).toContainText("Cancer-associated thrombosis");
     });
 
     test("should display common alternatives when alternative diagnosis selected", async ({
       page,
     }) => {
-      const altDxSwitch = page
-        .locator("label:has-text('Alternative diagnosis at least as likely')")
-        .locator("..");
-      await altDxSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="alternative_diagnosis"]').click();
 
       await page.click("button:has-text('Calculate')");
 
       await expect(
-        page.locator("p:has-text('Common Alternatives:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Common Alternatives:')",
+        ),
       ).toContainText("Baker's cyst");
     });
   });
@@ -432,24 +421,21 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       await page.click("button:has-text('Calculate')");
 
       await expect(
-        page.locator("p:has-text('Score Breakdown:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Score Breakdown:')",
+        ),
       ).toContainText("No risk factors selected");
     });
 
     test("should show breakdown of selected criteria", async ({ page }) => {
-      const cancerSwitch = page
-        .locator("label:has-text('Active cancer')")
-        .locator("..");
-      await cancerSwitch.locator("button[role='switch']").click();
-
-      const legSwitch = page
-        .locator("label:has-text('Entire leg swollen')")
-        .locator("..");
-      await legSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="active_cancer"]').click();
+      await page.locator('button[id="leg_swelling"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      const breakdown = page.locator("p:has-text('Score Breakdown:')");
+      const breakdown = page.locator(
+        "section[aria-live='polite'] > div:has-text('Score Breakdown:')",
+      );
       await expect(breakdown).toContainText("Active cancer: +1");
       await expect(breakdown).toContainText("Entire leg swollen: +1");
     });
@@ -457,50 +443,50 @@ test.describe("Wells Criteria for DVT Calculator", () => {
 
   test.describe("Edge Cases", () => {
     test("should handle toggling criteria on and off", async ({ page }) => {
-      const cancerSwitch = page
-        .locator("label:has-text('Active cancer')")
-        .locator("..");
-      const switchButton = cancerSwitch.locator("button[role='switch']");
+      const switchButton = page.locator('button[id="active_cancer"]');
 
       // Toggle on
       await switchButton.click();
       await page.click("button:has-text('Calculate')");
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "1 points",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("1 points");
 
       // Toggle off
       await switchButton.click();
       await page.click("button:has-text('Calculate')");
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "0 points",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("0 points");
     });
 
     test("should calculate correctly at 2-tier boundary (score = 2)", async ({
       page,
     }) => {
       // Exactly 2 points - should be DVT Likely (boundary is >= 2)
-      const bedriddenSwitch = page
-        .locator("label:has-text('Recently bedridden')")
-        .locator("..");
-      await bedriddenSwitch.locator("button[role='switch']").click();
-
-      const tendernessSwitch = page
-        .locator("label:has-text('Localized tenderness')")
-        .locator("..");
-      await tendernessSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="bedridden_surgery"]').click();
+      await page.locator('button[id="tenderness_deep_veins"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "2 points",
-      );
       await expect(
-        page.locator("p:has-text('2-Tier Assessment')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("2 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('2-Tier Assessment')",
+        ),
       ).toContainText("DVT Likely");
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("Moderate");
     });
 
@@ -508,28 +494,21 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       page,
     }) => {
       // Exactly 3 points - should be High Probability
-      const bedriddenSwitch = page
-        .locator("label:has-text('Recently bedridden')")
-        .locator("..");
-      await bedriddenSwitch.locator("button[role='switch']").click();
-
-      const tendernessSwitch = page
-        .locator("label:has-text('Localized tenderness')")
-        .locator("..");
-      await tendernessSwitch.locator("button[role='switch']").click();
-
-      const pittingSwitch = page
-        .locator("label:has-text('Pitting edema')")
-        .locator("..");
-      await pittingSwitch.locator("button[role='switch']").click();
+      await page.locator('button[id="bedridden_surgery"]').click();
+      await page.locator('button[id="tenderness_deep_veins"]').click();
+      await page.locator('button[id="pitting_edema"]').click();
 
       await page.click("button:has-text('Calculate')");
 
-      await expect(page.locator("p:has-text('Wells Score:')")).toContainText(
-        "3 points",
-      );
       await expect(
-        page.locator("p:has-text('3-Tier Assessment:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("3 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
       ).toContainText("High");
     });
   });

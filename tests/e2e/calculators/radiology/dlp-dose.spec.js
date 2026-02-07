@@ -34,12 +34,12 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await expect(page.locator("h2")).toContainText("DLP to Effective Dose");
 
     // Verify description
-    await expect(page.locator("p.text-sm.text-gray-600")).toContainText(
+    await expect(page.getByTestId("calculator-description")).toContainText(
       "Convert CT Dose Length Product to estimated effective radiation dose",
     );
 
     // Verify info box is present with relevant information
-    const infoBox = page.locator(".bg-blue-50\\/60");
+    const infoBox = page.getByTestId("calculator-info");
     await expect(infoBox).toBeVisible();
     await expect(infoBox).toContainText("Dose Length Product");
     await expect(infoBox).toContainText("Effective Dose");

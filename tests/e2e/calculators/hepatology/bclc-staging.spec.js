@@ -40,7 +40,7 @@ test.describe('BCLC Staging Calculator', () => {
 
   test('should display calculator info panel with BCLC 2022 Guidelines link', async ({ page }) => {
     // Verify info panel is present
-    const infoPanel = page.locator('.bg-blue-50\\/60');
+    const infoPanel = page.getByTestId('calculator-info');
     await expect(infoPanel).toBeVisible();
 
     // Verify content mentions all stages

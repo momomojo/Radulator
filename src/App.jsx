@@ -622,14 +622,25 @@ function AppContent() {
           <Card className="w-full max-w-4xl">
             <CardContent className="space-y-6 p-8">
               <header>
-                <h2 className="text-xl font-semibold mb-1 text-foreground">
+                <h2
+                  className="text-xl font-semibold mb-1 text-foreground"
+                  data-testid="calculator-title"
+                >
                   {def.name}
                 </h2>
-                <p className="text-sm text-muted-foreground">{def.desc}</p>
+                <p
+                  className="text-sm text-muted-foreground"
+                  data-testid="calculator-description"
+                >
+                  {def.desc}
+                </p>
               </header>
 
               {def.info && (
-                <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-md p-4 text-sm space-y-4">
+                <div
+                  className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-md p-4 text-sm space-y-4"
+                  data-testid="calculator-info"
+                >
                   <div
                     className={
                       def.info.image
@@ -638,7 +649,10 @@ function AppContent() {
                     }
                   >
                     <div>
-                      <p className="whitespace-pre-line text-foreground/90">
+                      <p
+                        className="whitespace-pre-line text-foreground/90"
+                        data-testid="calculator-info-text"
+                      >
                         {def.info.text}
                       </p>
                       {def.info.link && (

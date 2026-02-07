@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
 /**
  * E2E Tests for Prostate Volume Calculator
@@ -14,12 +15,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Prostate Volume Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-
-    // Navigate to Prostate Volume calculator
-    await page.click('button:has-text("Prostate Volume")');
-
-    // Verify calculator loaded
+    await navigateToCalculator(page, 'Prostate Volume');
     await expect(page.locator('h2')).toContainText('Prostate Volume');
   });
 
@@ -37,7 +33,7 @@ test.describe('Prostate Volume Calculator', () => {
     });
 
     test('should display info box with formula explanation', async ({ page }) => {
-      const infoBox = page.locator('.bg-blue-50\\/60');
+      const infoBox = page.getByTestId('calculator-info');
       await expect(infoBox).toBeVisible();
       await expect(infoBox).toContainText('ellipsoid formula');
       await expect(infoBox).toContainText('π/6 is rounded to 0.52');
@@ -81,7 +77,7 @@ test.describe('Prostate Volume Calculator', () => {
     });
 
     test('should provide clinical context in info box', async ({ page }) => {
-      const infoBox = page.locator('.bg-blue-50\\/60');
+      const infoBox = page.getByTestId('calculator-info');
       await expect(infoBox).toContainText('0.08 to 0.15');
       await expect(infoBox).toContainText('clinical context');
     });
@@ -531,7 +527,7 @@ test.describe('Prostate Volume Calculator', () => {
     });
 
     test('should show clinical context for PSA-Density thresholds', async ({ page }) => {
-      const infoBox = page.locator('.bg-blue-50\\/60');
+      const infoBox = page.getByTestId('calculator-info');
 
       // Verify PSA-D threshold guidance is present
       await expect(infoBox).toContainText('0.08 to 0.15');

@@ -16,14 +16,11 @@
  */
 
 import { test, expect } from "@playwright/test";
-
-const BASE_URL = "http://localhost:5173";
+import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
 test.describe("MELD-Na Calculator", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(BASE_URL);
-    // Navigate to MELD-Na calculator
-    await page.click("text=MELD-Na Score");
+    await navigateToCalculator(page, "MELD-Na Score");
     await expect(page.locator("h2")).toContainText("MELD-Na Score");
   });
 

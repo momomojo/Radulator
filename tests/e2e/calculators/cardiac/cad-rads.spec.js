@@ -45,10 +45,10 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
       page,
     }) => {
       await expect(page.locator("h2")).toContainText("CAD-RADS 2.0");
-      // Use more specific selector to find the description paragraph
-      await expect(
-        page.locator("p.text-sm.text-gray-600").first(),
-      ).toContainText("Coronary Artery Disease Reporting and Data System");
+      const description = page.getByTestId("calculator-description");
+      await expect(description).toContainText(
+        "Coronary Artery Disease Reporting and Data System",
+      );
     });
 
     test("should have study quality field visible on load", async ({

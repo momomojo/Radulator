@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
 /**
  * Child-Pugh Score Calculator E2E Tests
@@ -25,10 +26,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Child-Pugh Score Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Navigate to Child-Pugh calculator
-    await page.click('text=Child-Pugh Score');
-    // Wait for calculator to load
+    await navigateToCalculator(page, 'Child-Pugh Score');
     await expect(page.locator('h2:has-text("Child-Pugh Score")')).toBeVisible();
   });
 

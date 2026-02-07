@@ -101,11 +101,15 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("0 - Incomplete");
-      await expect(page.locator("p:has-text('Management:')")).toContainText(
-        "prior CT required",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Management:')",
+        ),
+      ).toContainText("prior CT required");
     });
   });
 
@@ -118,14 +122,20 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("1 - Negative");
       await expect(
-        page.locator("p:has-text('Malignancy Probability:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Malignancy Probability:')",
+        ),
       ).toContainText("<1%");
-      await expect(page.locator("p:has-text('Management:')")).toContainText(
-        "annual screening",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Management:')",
+        ),
+      ).toContainText("annual screening");
     });
 
     test("should classify as Category 1 for no nodules (with prior available)", async ({
@@ -136,7 +146,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("1 - Negative");
     });
   });
@@ -152,14 +164,20 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("2 - Benign Appearance");
       await expect(
-        page.locator("p:has-text('Malignancy Probability:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Malignancy Probability:')",
+        ),
       ).toContainText("<1%");
-      await expect(page.locator("p:has-text('Management:')")).toContainText(
-        "annual screening",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Management:')",
+        ),
+      ).toContainText("annual screening");
     });
 
     test("should classify as Category 2 for solid nodule <6mm (baseline)", async ({
@@ -172,10 +190,14 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("2 - Benign Appearance");
       await expect(
-        page.locator("p:has-text('Malignancy Probability:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Malignancy Probability:')",
+        ),
       ).toContainText("<1%");
     });
 
@@ -190,7 +212,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("2 - Benign Appearance");
     });
 
@@ -203,11 +227,13 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("2 - Benign Appearance");
-      await expect(page.locator("p:has-text('Finding:')")).toContainText(
-        "intrapulmonary lymph node",
-      );
+      await expect(
+        page.locator("section[aria-live='polite'] > div:has-text('Finding:')"),
+      ).toContainText("intrapulmonary lymph node");
     });
 
     test("should classify as Category 2 for small pure GGN <30mm (baseline)", async ({
@@ -219,7 +245,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("2 - Benign Appearance");
     });
   });
@@ -235,14 +263,20 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
       await expect(
-        page.locator("p:has-text('Malignancy Probability:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Malignancy Probability:')",
+        ),
       ).toContainText("1-2%");
-      await expect(page.locator("p:has-text('Management:')")).toContainText(
-        "6-month LDCT",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Management:')",
+        ),
+      ).toContainText("6-month LDCT");
     });
 
     test("should classify as Category 3 for new solid nodule on follow-up", async ({
@@ -256,7 +290,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
     });
 
@@ -269,7 +305,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
     });
 
@@ -283,7 +321,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
     });
 
@@ -296,7 +336,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
     });
 
@@ -313,7 +355,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
     });
 
@@ -326,7 +370,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
     });
   });
@@ -342,14 +388,20 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4A - Suspicious");
       await expect(
-        page.locator("p:has-text('Malignancy Probability:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Malignancy Probability:')",
+        ),
       ).toContainText("5-15%");
-      await expect(page.locator("p:has-text('Management:')")).toContainText(
-        "3-month LDCT",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Management:')",
+        ),
+      ).toContainText("3-month LDCT");
     });
 
     test("should classify as Category 4A for growing solid nodule 6-8mm", async ({
@@ -363,7 +415,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4A - Suspicious");
     });
 
@@ -380,7 +434,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4A - Suspicious");
     });
 
@@ -398,7 +454,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4A - Suspicious");
     });
 
@@ -411,7 +469,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4A - Suspicious");
     });
 
@@ -424,7 +484,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4A - Suspicious");
     });
   });
@@ -440,14 +502,20 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4B - Suspicious");
       await expect(
-        page.locator("p:has-text('Malignancy Probability:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Malignancy Probability:')",
+        ),
       ).toContainText(">15%");
-      await expect(page.locator("p:has-text('Management:')")).toContainText(
-        "PET/CT",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Management:')",
+        ),
+      ).toContainText("PET/CT");
     });
 
     test("should classify as Category 4B for growing solid nodule 8-15mm", async ({
@@ -461,7 +529,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4B - Suspicious");
     });
 
@@ -478,11 +548,15 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4B - Suspicious");
-      await expect(page.locator("p:has-text('Management:')")).toContainText(
-        "Tissue sampling",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Management:')",
+        ),
+      ).toContainText("Tissue sampling");
     });
 
     test("should classify as Category 4B for growing solid component 6-8mm in part-solid", async ({
@@ -499,7 +573,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4B - Suspicious");
     });
   });
@@ -515,9 +591,15 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4AX");
-      await expect(page.locator("p:has-text('4X Modifier:')")).toBeVisible();
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('4X Modifier:')",
+        ),
+      ).toBeVisible();
     });
 
     test("should classify as Category 4BX for 4B with lymphadenopathy", async ({
@@ -530,11 +612,15 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4BX");
-      await expect(page.locator("p:has-text('Management:')")).toContainText(
-        "suspicious features",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Management:')",
+        ),
+      ).toContainText("suspicious features");
     });
 
     test("should classify as Category 4AX for part-solid with other suspicious features", async ({
@@ -550,7 +636,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4AX");
     });
 
@@ -564,10 +652,14 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4A - Suspicious");
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).not.toContainText("4AX");
     });
   });
@@ -580,9 +672,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       // Don't select nodule type
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("p:has-text('Error:')")).toContainText(
-        "select the dominant finding type",
-      );
+      await expect(
+        page.locator("section[aria-live='polite'] > div:has-text('Error:')"),
+      ).toContainText("select the dominant finding type");
     });
 
     test("should show error when solid nodule size not entered", async ({
@@ -593,9 +685,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       // Don't enter size
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("p:has-text('Error:')")).toContainText(
-        "enter the solid nodule size",
-      );
+      await expect(
+        page.locator("section[aria-live='polite'] > div:has-text('Error:')"),
+      ).toContainText("enter the solid nodule size");
     });
 
     test("should show error when part-solid total size not entered", async ({
@@ -608,9 +700,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       // Don't enter total size
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("p:has-text('Error:')")).toContainText(
-        "total part-solid nodule size",
-      );
+      await expect(
+        page.locator("section[aria-live='polite'] > div:has-text('Error:')"),
+      ).toContainText("total part-solid nodule size");
     });
 
     test("should show error when GGN size not entered", async ({ page }) => {
@@ -619,9 +711,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       // Don't enter size
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("p:has-text('Error:')")).toContainText(
-        "ground-glass nodule size",
-      );
+      await expect(
+        page.locator("section[aria-live='polite'] > div:has-text('Error:')"),
+      ).toContainText("ground-glass nodule size");
     });
   });
 
@@ -716,9 +808,11 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("p:has-text('Clinical Notes:')")).toContainText(
-        "Baseline scan",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+        ),
+      ).toContainText("Baseline scan");
     });
 
     test("should show short-term follow-up note for Category 3", async ({
@@ -730,9 +824,11 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("p:has-text('Clinical Notes:')")).toContainText(
-        "Short-term follow-up",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+        ),
+      ).toContainText("Short-term follow-up");
     });
 
     test("should show part-solid malignancy risk note", async ({ page }) => {
@@ -745,9 +841,11 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("p:has-text('Clinical Notes:')")).toContainText(
-        "higher malignancy risk",
-      );
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+        ),
+      ).toContainText("higher malignancy risk");
     });
   });
 
@@ -763,7 +861,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
 
       // 6mm is at lower bound of 6-8mm range = Category 3
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
     });
 
@@ -778,7 +878,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
 
       // 8mm is at upper bound of 6-8mm range for baseline = still 4A
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4A - Suspicious");
     });
 
@@ -793,7 +895,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
 
       // 15mm is >=15mm = Category 4B
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4B - Suspicious");
     });
 
@@ -807,7 +911,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
 
       // 30mm is >=30mm = Category 3
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
     });
 
@@ -821,7 +927,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
 
       // 10mm is >=10mm = Category 3
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("3 - Probably Benign");
     });
 
@@ -834,7 +942,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
 
       // 5.9mm is <6mm = Category 2
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("2 - Benign Appearance");
     });
 
@@ -846,7 +956,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("p:has-text('Lung-RADS Category:')"),
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Lung-RADS Category:')",
+        ),
       ).toContainText("4B - Suspicious");
     });
   });

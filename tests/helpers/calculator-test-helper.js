@@ -1,4 +1,83 @@
 import { expect } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, "..", "..");
+const calculatorsDir = path.join(projectRoot, "src", "components", "calculators");
+const calculatorNameToId = new Map();
+const calculatorIdToName = new Map();
+const mojibakeReplacements = {
+  "â€“": "–",
+  "â€”": "—",
+  "â€‘": "‑",
+  "â‰¤": "≤",
+  "â‰¥": "≥",
+  "Âµ": "µ",
+  "Â°": "°",
+  "Â": "",
+};
+
+function normalizeName(value) {
+  let text = value || "";
+  for (const [bad, good] of Object.entries(mojibakeReplacements)) {
+    text = text.split(bad).join(good);
+  }
+  return text.trim();
+}
+
+function loadCalculatorNameMap() {
+  try {
+    const files = fs
+      .readdirSync(calculatorsDir)
+      .filter((file) => file.endsWith(".jsx"));
+
+    for (const file of files) {
+      const filePath = path.join(calculatorsDir, file);
+      const contents = fs.readFileSync(filePath, "utf-8");
+      const header = contents.split("\n").slice(0, 200).join("\n");
+      const idMatch = header.match(/\bid\s*:\s*["']([^"']+)["']/);
+      const nameMatch = header.match(/\bname\s*:\s*["']([^"']+)["']/);
+      if (idMatch && nameMatch) {
+        const name = nameMatch[1];
+        const id = idMatch[1];
+        calculatorNameToId.set(name, id);
+        calculatorNameToId.set(normalizeName(name), id);
+        calculatorNameToId.set(normalizeName(name).toLowerCase(), id);
+        calculatorIdToName.set(id, name);
+      }
+    }
+  } catch (error) {
+    console.warn("Unable to build calculator name map:", error);
+  }
+}
+
+function resolveCalculatorId(nameOrId) {
+  if (!calculatorNameToId.size) {
+    loadCalculatorNameMap();
+  }
+  if (!nameOrId) return null;
+  const trimmed = nameOrId.trim();
+  const normalized = normalizeName(trimmed);
+  const candidates = [
+    trimmed,
+    normalized,
+    trimmed.toLowerCase(),
+    normalized.toLowerCase(),
+  ];
+  for (const candidate of candidates) {
+    if (calculatorNameToId.has(candidate)) {
+      return calculatorNameToId.get(candidate);
+    }
+  }
+  for (const [, id] of calculatorNameToId) {
+    if (id === trimmed) {
+      return id;
+    }
+  }
+  return null;
+}
 
 /**
  * Calculator Test Helper Utilities for Radulator
@@ -27,7 +106,9 @@ export async function openMobileMenuIfNeeded(page) {
  * @param {string} calculatorName - Name of the calculator to navigate to
  */
 export async function navigateToCalculator(page, calculatorName) {
-  await page.goto("/");
+  const calculatorId = resolveCalculatorId(calculatorName);
+  const targetUrl = calculatorId ? `/#/${calculatorId}` : "/";
+  await page.goto(targetUrl);
 
   // Wait for app to load - use getByRole with first() for reliable matching
   // This approach aligns with smoke tests and handles visibility correctly
@@ -36,18 +117,25 @@ export async function navigateToCalculator(page, calculatorName) {
     .first()
     .waitFor({ state: "visible", timeout: 10000 });
 
-  // Open mobile menu if needed (sidebar is collapsed on mobile)
-  await openMobileMenuIfNeeded(page);
+  if (!calculatorId) {
+    // Open mobile menu if needed (sidebar is collapsed on mobile)
+    await openMobileMenuIfNeeded(page);
 
-  // Click on the calculator in the sidebar
-  const calculatorButton = page
-    .locator(`button:has-text("${calculatorName}")`)
-    .first();
-  await expect(calculatorButton).toBeVisible({ timeout: 5000 });
-  await calculatorButton.click();
+    // Click on the calculator in the sidebar
+    const calculatorButton = page
+      .locator(`button:has-text("${calculatorName}")`)
+      .first();
+    await expect(calculatorButton).toBeVisible({ timeout: 5000 });
+    await calculatorButton.click();
+  }
 
   // Wait for calculator to load
   await page.waitForLoadState("networkidle");
+
+  if (calculatorId) {
+    const expectedName = calculatorIdToName.get(calculatorId) || calculatorName;
+    await expect(page.locator("h2")).toContainText(expectedName);
+  }
 }
 
 /**
@@ -236,8 +324,8 @@ export async function verifyMobileResponsive(page) {
     name: "Open navigation menu",
   });
 
-  // Wait a bit for responsive styles to apply
-  await page.waitForTimeout(300);
+  // Wait for responsive styles to apply - verify sidebar visibility logic directly
+  // instead of sleeping. The subsequent assertions will retry.
 
   // Verify mobile layout - either menu button is visible OR sidebar is narrow
   const isMenuVisible = await menuButton.isVisible().catch(() => false);
@@ -289,8 +377,9 @@ export async function fillCalculatorFromTestCase(page, testCase) {
     }
   }
 
-  // Wait for calculation
-  await page.waitForTimeout(500);
+  // Wait for calculation implicitly by waiting for results in subsequent steps
+  // or use basic structural check if needed immediately
+  // await page.waitForLoadState("networkidle"); // Optional if calc triggers network
 }
 
 /**
@@ -330,7 +419,7 @@ export async function verifyCalculationAccuracy(
 export async function testEdgeCases(page, fieldLabel, edgeCases) {
   for (const edgeCase of edgeCases) {
     await fillInput(page, fieldLabel, edgeCase.value);
-    await page.waitForTimeout(300);
+    // await page.waitForTimeout(300); // Removed fixed sleep
 
     if (edgeCase.shouldError) {
       // Verify error message appears

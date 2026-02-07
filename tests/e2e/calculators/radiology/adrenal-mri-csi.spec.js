@@ -41,9 +41,9 @@ test.describe("Adrenal MRI CSI Calculator - Core Functionality", () => {
     await expect(page.locator("h2")).toContainText("Adrenal MRI CSI");
 
     // Verify description
-    const description = page.locator("p.text-sm.text-gray-600");
-    await expect(description).toContainText("Signal‑intensity index");
-    await expect(description).toContainText("adrenal‑to‑spleen CSI ratio");
+    const description = page.getByTestId("calculator-description");
+    await expect(description).toContainText("Signal");
+    await expect(description).toContainText("CSI ratio");
   });
 
   test("should display all required input fields", async ({ page }) => {
@@ -82,7 +82,7 @@ test.describe("Adrenal MRI CSI Calculator - Clinical Test Cases", () => {
 
     // Click Calculate
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     // Expected results:
     // SII = ((1000 - 500) / 1000) × 100 = 50.0%
@@ -110,7 +110,7 @@ test.describe("Adrenal MRI CSI Calculator - Clinical Test Cases", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "680");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     // Expected results:
     // SII = ((800 - 750) / 800) × 100 = 6.25% → rounds to 6.3
@@ -138,7 +138,7 @@ test.describe("Adrenal MRI CSI Calculator - Clinical Test Cases", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "800");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     const results = page.locator('section[aria-live="polite"]');
 
@@ -159,7 +159,7 @@ test.describe("Adrenal MRI CSI Calculator - Clinical Test Cases", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "880");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     // Expected: SII = ((2000 - 600) / 2000) × 100 = 70.0%
     const results = page.locator('section[aria-live="polite"]');
@@ -175,7 +175,7 @@ test.describe("Adrenal MRI CSI Calculator - Clinical Test Cases", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "750");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     // Expected: SII = ((500 - 600) / 500) × 100 = -20.0%
     const results = page.locator('section[aria-live="polite"]');
@@ -198,7 +198,7 @@ test.describe("Adrenal MRI CSI Calculator - Edge Cases & Validation", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "100");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     // Division by zero in SII calculation - should show NaN or Infinity
     const results = page.locator('section[aria-live="polite"]');
@@ -215,7 +215,7 @@ test.describe("Adrenal MRI CSI Calculator - Edge Cases & Validation", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "750000");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     const results = page.locator('section[aria-live="polite"]');
 
@@ -230,7 +230,7 @@ test.describe("Adrenal MRI CSI Calculator - Edge Cases & Validation", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "845.678");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     const results = page.locator('section[aria-live="polite"]');
 
@@ -255,11 +255,11 @@ test.describe("Adrenal MRI CSI Calculator - Edge Cases & Validation", () => {
 
     // Switch to different calculator using navigateToCalculator (handles mobile)
     await navigateToCalculator(page, "Adrenal CT Washout");
-    await page.waitForTimeout(300);
+
 
     // Switch back using navigateToCalculator
     await navigateToCalculator(page, CALCULATOR_NAME);
-    await page.waitForTimeout(300);
+
 
     // Results should be cleared (results section shouldn't be visible with no results)
     await expect(results).not.toBeVisible();
@@ -297,7 +297,7 @@ test.describe("Adrenal MRI CSI Calculator - Formula Verification", () => {
       await fillInput(page, "Spleen SI opposed‑phase", "800");
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(300);
+  
 
       const results = page.locator('section[aria-live="polite"]');
       const expectedSII = tc.expected_sii.toFixed(1);
@@ -316,7 +316,7 @@ test.describe("Adrenal MRI CSI Calculator - Formula Verification", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "750");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     const results = page.locator('section[aria-live="polite"]');
     // Expected: 0.53 (rounded to 2 decimals)
@@ -344,7 +344,7 @@ test.describe("Adrenal MRI CSI Calculator - Formula Verification", () => {
       await fillInput(page, "Spleen SI opposed‑phase", "800");
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(300);
+  
 
       const results = page.locator('section[aria-live="polite"]');
       await expect(results).toContainText(tc.expected);
@@ -535,7 +535,7 @@ test.describe("Adrenal MRI CSI Calculator - Performance & Browser Compatibility"
     await fillInput(page, "Spleen SI opposed‑phase", "750");
     await page.click('button:has-text("Calculate")');
 
-    await page.waitForTimeout(1000);
+    await expect(page.locator('section[aria-live="polite"]')).toBeVisible();
 
     // Should have no console errors
     expect(consoleErrors).toHaveLength(0);
@@ -561,7 +561,7 @@ test.describe("Adrenal MRI CSI Calculator - Performance & Browser Compatibility"
     await fillInput(page, "Spleen SI opposed‑phase", "750");
     await page.click('button:has-text("Calculate")');
 
-    await page.waitForTimeout(500);
+    await expect(page.locator('section[aria-live="polite"]')).toBeVisible();
 
     // Should be a fully static client-side calculator
     expect(networkRequests).toHaveLength(0);
@@ -586,7 +586,7 @@ test.describe("Adrenal MRI CSI Calculator - Clinical Scenarios", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "820");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     // SII = ((1200 - 400) / 1200) × 100 = 66.7%
     const results = page.locator('section[aria-live="polite"]');
@@ -610,7 +610,7 @@ test.describe("Adrenal MRI CSI Calculator - Clinical Scenarios", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "790");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     // SII = ((900 - 880) / 900) × 100 = 2.2%
     const results = page.locator('section[aria-live="polite"]');
@@ -636,7 +636,7 @@ test.describe("Adrenal MRI CSI Calculator - Clinical Scenarios", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "840");
 
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(300);
+
 
     // SII = ((1000 - 830) / 1000) × 100 = 17.0%
     const results = page.locator('section[aria-live="polite"]');

@@ -61,8 +61,7 @@ test.describe("ACR NI-RADS Calculator", () => {
       page,
     }) => {
       await expect(page.locator("h2")).toContainText("ACR NI-RADS");
-      // Use more specific selector for the description text
-      await expect(page.locator("main p.text-gray-600").first()).toContainText(
+      await expect(page.getByTestId("calculator-description")).toContainText(
         "Neck Imaging Reporting and Data System",
       );
     });
@@ -71,7 +70,7 @@ test.describe("ACR NI-RADS Calculator", () => {
       page,
     }) => {
       // Check within the info section specifically
-      const infoSection = page.locator(".bg-blue-50\\/60");
+      const infoSection = page.getByTestId("calculator-info");
       await expect(
         infoSection.getByText("PRIMARY TUMOR SITE").first(),
       ).toBeVisible();

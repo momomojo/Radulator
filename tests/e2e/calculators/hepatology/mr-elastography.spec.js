@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
 /**
  * MR Elastography (Liver) Calculator E2E Tests
@@ -20,10 +21,7 @@ import { test, expect } from '@playwright/test';
 test.describe('MR Elastography Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Navigate to MR Elastography calculator
-    await page.click('text=MR Elastography');
-    // Wait for calculator to load
+    await navigateToCalculator(page, 'MR Elastography');
     await expect(page.locator('h2:has-text("MR Elastography")')).toBeVisible();
   });
 
@@ -281,7 +279,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       // Check results
       await expect(page.locator('text=/Total Area.*50\.00/i')).toBeVisible();
@@ -295,7 +293,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '45.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Area-weighted Mean.*2\.70/i')).toBeVisible();
       await expect(page.locator('text=/Borderline.*mild elevation/i')).toBeVisible();
@@ -307,7 +305,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Area-weighted Mean.*3\.30/i')).toBeVisible();
       await expect(page.locator('text=/≥F2 fibrosis likely/i')).toBeVisible();
@@ -319,7 +317,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '48.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Area-weighted Mean.*3\.80/i')).toBeVisible();
       await expect(page.locator('text=/Advanced fibrosis.*≥F3.*likely/i')).toBeVisible();
@@ -331,7 +329,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '42.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Area-weighted Mean.*5\.20/i')).toBeVisible();
       await expect(page.locator('text=/Cirrhosis.*F4.*likely/i')).toBeVisible();
@@ -355,7 +353,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi3_area"]', '40.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Total Area.*135\.00/i')).toBeVisible();
       await expect(page.locator('text=/Area-weighted Mean.*2\.46/i')).toBeVisible();
@@ -380,7 +378,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi4_area"]', '50.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Total Area.*205\.00/i')).toBeVisible();
       await expect(page.locator('text=/Area-weighted Mean.*3\.28/i')).toBeVisible();
@@ -395,7 +393,7 @@ test.describe('MR Elastography Calculator', () => {
 
       await csvInput.fill(csvData);
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Total Area.*135\.00/i')).toBeVisible();
       await expect(page.locator('text=/Area-weighted Mean.*3\.07/i')).toBeVisible();
@@ -426,7 +424,7 @@ test.describe('MR Elastography Calculator', () => {
       // Expected: (4.2*50 + 4.5*48 + 3.9*52) / 150 = 628.8 / 150 = 4.19 kPa
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Total Area.*150\.00/i')).toBeVisible();
       await expect(page.locator('text=/Area-weighted Mean.*4\.19/i')).toBeVisible();
@@ -445,7 +443,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Frequency.*40 Hz/i')).toBeVisible();
       // Should adjust interpretation for 40 Hz
@@ -459,7 +457,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Frequency.*90 Hz/i')).toBeVisible();
     });
@@ -475,7 +473,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Frequency.*75 Hz/i')).toBeVisible();
     });
@@ -506,7 +504,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '0.1');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Area-weighted Mean/i')).toBeVisible();
     });
@@ -517,7 +515,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Area-weighted Mean.*10\.00/i')).toBeVisible();
       await expect(page.locator('text=/Cirrhosis.*F4.*likely/i')).toBeVisible();
@@ -530,7 +528,7 @@ test.describe('MR Elastography Calculator', () => {
 
       await csvInput.fill(csvData);
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       // Should only count 3 valid ROIs
       await expect(page.locator('text=/3 valid ROIs/i')).toBeVisible();
@@ -541,7 +539,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.123456');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       // Should display with 2 decimal precision
       await expect(page.locator('text=/Area-weighted Mean.*3\.46/i')).toBeVisible();
@@ -567,7 +565,7 @@ test.describe('MR Elastography Calculator', () => {
       await row1Area.fill('40.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       // Should combine all three inputs (3 ROIs total)
       await expect(page.locator('text=/3 valid ROIs/i')).toBeVisible();
@@ -586,7 +584,7 @@ test.describe('MR Elastography Calculator', () => {
       await csvInput.fill('3.5, 45'); // Valid
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       // Should count only 2 valid ROIs
       await expect(page.locator('text=/2 valid ROIs/i')).toBeVisible();
@@ -600,7 +598,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Formula.*Σ.*Mi.*Ai/i')).toBeVisible();
     });
@@ -610,7 +608,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Cutoffs vary|vendor|frequency|correlate clinically/i')).toBeVisible();
     });
@@ -620,19 +618,19 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '2.0');
       await page.fill('input[id="roi1_area"]', '50.0');
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
       await expect(page.locator('text=/no significant fibrosis/i')).toBeVisible();
 
       // Clear and test F2
       await page.fill('input[id="roi1_kpa"]', '3.3');
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
       await expect(page.locator('text=/≥F2 fibrosis likely/i')).toBeVisible();
 
       // Clear and test F4
       await page.fill('input[id="roi1_kpa"]', '5.0');
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
       await expect(page.locator('text=/Cirrhosis.*likely/i')).toBeVisible();
     });
   });
@@ -714,7 +712,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '3.0');
       await page.fill('input[id="roi1_area"]', '50.0');
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       // Results section should have aria-live
       const results = page.locator('[aria-live="polite"]');
@@ -736,7 +734,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi2_area"]', '40.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Total Area.*100\.00/i')).toBeVisible();
       await expect(page.locator('text=/Area-weighted Mean.*2\.90/i')).toBeVisible();
@@ -753,7 +751,7 @@ test.describe('MR Elastography Calculator', () => {
       await csvInput.fill('2.0, 30\n2.5, 35\n3.0, 40\n3.5, 25\n4.0, 20');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       await expect(page.locator('text=/Total Area.*150\.00/i')).toBeVisible();
       await expect(page.locator('text=/Area-weighted Mean.*2\.90/i')).toBeVisible();
@@ -774,7 +772,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi2_area"]', '10.0');
 
       await page.click('button:has-text("Calculate")');
-      await page.waitForTimeout(500);
+
 
       // Should be 2.30, not 3.50
       await expect(page.locator('text=/Area-weighted Mean.*2\.30/i')).toBeVisible();

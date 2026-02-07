@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
 /**
  * Khoury Catheter Selector E2E Tests
@@ -26,10 +27,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Khoury Catheter Selector', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Navigate to Khoury Catheter Selector
-    await page.click('text=Khoury Catheter Selector');
-    // Wait for calculator to load
+    await navigateToCalculator(page, 'Khoury Catheter Selector');
     await expect(page.locator('h2:has-text("Khoury Catheter Selector")')).toBeVisible();
   });
 
@@ -569,7 +567,10 @@ test.describe('Khoury Catheter Selector', () => {
       await expect(page.locator('h5:has-text("Compatible Embolic Agents")')).toBeVisible();
 
       // Should have at least one embolic agent badge
-      const badges = page.locator('.text-xs.px-2.py-1.bg-gray-100');
+      const embolicSection = page
+        .locator('h5:has-text("Compatible Embolic Agents")')
+        .locator('..');
+      const badges = embolicSection.locator('span');
       await expect(badges.first()).toBeVisible();
     });
 
@@ -629,7 +630,10 @@ test.describe('Khoury Catheter Selector', () => {
       await page.click('button:has-text("Select")');
 
       // Check initial priming volume (standard)
-      const initialVolume = page.locator('.text-3xl.font-bold.text-blue-700');
+      const primingVolumeBox = page
+        .locator('h5:has-text("Priming Volume")')
+        .locator('..');
+      const initialVolume = primingVolumeBox.locator('p').first();
       const initialText = await initialVolume.textContent();
       expect(initialText).toMatch(/\d+\.\d+ mL/);
 
@@ -974,11 +978,19 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should display category badges correctly', async ({ page }) => {
       // Category badges should be visible in results
-      const categoryBadges = page.locator('.text-xs.px-2.py-0\\.5.bg-gray-100');
-      await expect(categoryBadges.first()).toBeVisible();
+      const resultsSection = page
+        .locator('h3:has-text("Compatible Catheters")')
+        .locator('..');
+      const categoryBadge = resultsSection
+        .locator('h4')
+        .first()
+        .locator('..')
+        .locator('span')
+        .first();
+      await expect(categoryBadge).toBeVisible();
 
       // Badge text should be meaningful
-      const firstBadgeText = await categoryBadges.first().textContent();
+      const firstBadgeText = await categoryBadge.textContent();
       expect(firstBadgeText).toBeTruthy();
       expect(firstBadgeText.length).toBeGreaterThan(0);
     });
@@ -1038,20 +1050,31 @@ test.describe('Khoury Catheter Selector', () => {
       await expect(page.locator('text=Max Injection Pressure:')).toBeVisible();
 
       // Verify priming volume is numeric
-      const primingVolume = page.locator('.text-3xl.font-bold.text-blue-700');
+      const primingVolumeBox = page
+        .locator('h5:has-text("Priming Volume")')
+        .locator('..');
+      const primingVolume = primingVolumeBox.locator('p').first();
       const volumeText = await primingVolume.textContent();
       expect(volumeText).toMatch(/\d+\.\d+ mL/);
     });
 
     test('should show consistent data between list view and detail view', async ({ page }) => {
       // Get catheter name from list
-      const firstCatheterName = await page.locator('h4.font-semibold.text-base').first().textContent();
+      const resultsSection = page
+        .locator('h3:has-text("Compatible Catheters")')
+        .locator('..');
+      const firstCatheterName = await resultsSection.locator('h4').first().textContent();
 
       // Select it
       await page.locator('button:has-text("Select")').first().click();
 
       // Verify same name in detail view
-      const detailName = await page.locator('h4.font-semibold.text-lg').first().textContent();
+      const detailName = await page
+        .locator('h3:has-text("Selected Catheter Details")')
+        .locator('..')
+        .locator('h4')
+        .first()
+        .textContent();
       expect(detailName).toBe(firstCatheterName);
     });
 
@@ -1060,7 +1083,10 @@ test.describe('Khoury Catheter Selector', () => {
       await page.selectOption('#embolicAgent', 'phil25');
 
       // Get first result
-      const firstResult = await page.locator('h4.font-semibold.text-base').first().textContent();
+      const resultsSection = page
+        .locator('h3:has-text("Compatible Catheters")')
+        .locator('..');
+      const firstResult = await resultsSection.locator('h4').first().textContent();
 
       // Change filter
       await page.selectOption('#embolicAgent', '');
@@ -1069,7 +1095,7 @@ test.describe('Khoury Catheter Selector', () => {
       await page.selectOption('#embolicAgent', 'phil25');
 
       // Should show same first result
-      const newFirstResult = await page.locator('h4.font-semibold.text-base').first().textContent();
+      const newFirstResult = await resultsSection.locator('h4').first().textContent();
       expect(newFirstResult).toBe(firstResult);
     });
   });

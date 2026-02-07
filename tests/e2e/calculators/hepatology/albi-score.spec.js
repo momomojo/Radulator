@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
 /**
  * ALBI Score Calculator E2E Tests
@@ -17,10 +18,7 @@ import { test, expect } from '@playwright/test';
 test.describe('ALBI Score Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Navigate to ALBI Score calculator
-    await page.click('text=ALBI Score');
-    // Wait for calculator to load
+    await navigateToCalculator(page, 'ALBI Score');
     await expect(page.locator('h2:has-text("ALBI Score")')).toBeVisible();
   });
 
@@ -171,7 +169,7 @@ test.describe('ALBI Score Calculator', () => {
       }
 
       // Wait a moment for calculation
-      await page.waitForTimeout(500);
+
 
       // Check for Grade 1 result
       await expect(page.locator('text=/Grade 1|ALBI Grade.*1/i')).toBeVisible();
@@ -203,7 +201,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Check for Grade 2 result
       await expect(page.locator('text=/Grade 2|ALBI Grade.*2/i')).toBeVisible();
@@ -232,7 +230,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Check for Grade 3 result
       await expect(page.locator('text=/Grade 3|ALBI Grade.*3/i')).toBeVisible();
@@ -260,7 +258,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Should be Grade 2 (just above -2.60)
       await expect(page.locator('text=/Grade [12]/i')).toBeVisible();
@@ -285,7 +283,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Should be Grade 3 (just above -1.39)
       await expect(page.locator('text=/Grade [23]/i')).toBeVisible();
@@ -314,7 +312,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Check for Grade 1
       await expect(page.locator('text=/Grade 1/i')).toBeVisible();
@@ -344,7 +342,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Check for Grade 2
       await expect(page.locator('text=/Grade 2/i')).toBeVisible();
@@ -373,7 +371,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Check for Grade 3
       await expect(page.locator('text=/Grade 3/i')).toBeVisible();
@@ -394,7 +392,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Should show error message
       await expect(page.locator('text=/error|invalid|positive/i')).toBeVisible();
@@ -418,7 +416,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Should still calculate (within physiological range)
       await expect(page.locator('text=/Grade 3/i')).toBeVisible();
@@ -442,7 +440,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Should calculate Grade 3
       await expect(page.locator('text=/Grade 3/i')).toBeVisible();
@@ -466,7 +464,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Should display result with appropriate precision
       const result = page.locator('text=/-2\./i');
@@ -494,7 +492,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Should show prognosis information
       await expect(page.locator('text=/median survival|prognosis|suitable for/i')).toBeVisible();
@@ -518,7 +516,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Should mention treatment limitations for Grade 3
       await expect(page.locator('text=/best supportive care|limited|careful assessment/i')).toBeVisible();
@@ -616,7 +614,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Check for score in range -2.74 to -2.75
       await expect(page.locator('text=/-2\.74|-2\.75/i')).toBeVisible();
@@ -642,7 +640,7 @@ test.describe('ALBI Score Calculator', () => {
         await computeButton.click();
       }
 
-      await page.waitForTimeout(500);
+
 
       // Check converted values are displayed
       await expect(page.locator('text=/35.*g\/L/i')).toBeVisible();

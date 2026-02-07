@@ -12,15 +12,11 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
 test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:5173');
-    await page.waitForLoadState('networkidle');
-
-    // Select IPSS calculator from sidebar
-    await page.click('text=IPSS (Petrosal Sinus Sampling)');
-    await page.waitForTimeout(500);
+    await navigateToCalculator(page, 'IPSS (Petrosal Sinus Sampling)');
   });
 
   test('Test 1: Cushing\'s Disease with Left Lateralization', async ({ page }) => {
@@ -50,7 +46,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Click Calculate
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(500);
+
 
     // Verify catheterization success
     await expect(page.locator('text=Both sides successfully catheterized')).toBeVisible();
@@ -99,7 +95,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Click Calculate
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(500);
+
 
     // Verify catheterization success
     await expect(page.locator('text=Both sides successfully catheterized')).toBeVisible();
@@ -134,7 +130,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Click Calculate
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(500);
+
 
     // Verify failed catheterization
     await expect(page.locator('text=1.11 — ✗ Failed')).toBeVisible(); // Left PRL ratio
@@ -175,7 +171,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Click Calculate
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(500);
+
 
     // Verify catheterization success
     await expect(page.locator('text=Both sides successfully catheterized')).toBeVisible();
@@ -206,32 +202,20 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Click "Add Sample Time Point" button (correct button text)
     await page.click('button:has-text("Add Sample Time Point")');
-    await page.waitForTimeout(200);
-
-    // Should now have 2 rows
-    let newCount = await dataRows.count();
-    expect(newCount).toBe(2);
+    await expect(dataRows).toHaveCount(2);
 
     // Add another row
     await page.click('button:has-text("Add Sample Time Point")');
-    await page.waitForTimeout(200);
-    newCount = await dataRows.count();
-    expect(newCount).toBe(3);
+    await expect(dataRows).toHaveCount(3);
 
     // Remove a row
     const removeButtons = postCrhTable.locator('button:has-text("Remove")');
     await removeButtons.first().click();
-    await page.waitForTimeout(200);
-
-    // Should be back to 2 rows
-    newCount = await dataRows.count();
-    expect(newCount).toBe(2);
+    await expect(dataRows).toHaveCount(2);
 
     // Try to remove down to the last row
     await removeButtons.first().click();
-    await page.waitForTimeout(200);
-    newCount = await dataRows.count();
-    expect(newCount).toBe(1);
+    await expect(dataRows).toHaveCount(1);
 
     // Last remove button should be disabled
     const lastRemoveButton = removeButtons.first();
@@ -259,7 +243,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Add second row: +6 minutes (PEAK)
     await page.click('button:has-text("Add Sample Time Point")');
-    await page.waitForTimeout(200);
+    await expect(dataRows).toHaveCount(2);
     inputs = dataRows.nth(1).locator('input');
     await inputs.nth(0).fill('6');
     await inputs.nth(1).fill('600');
@@ -268,7 +252,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Add third row: +15 minutes (declining)
     await page.click('button:has-text("Add Sample Time Point")');
-    await page.waitForTimeout(200);
+    await expect(dataRows).toHaveCount(3);
     inputs = dataRows.nth(2).locator('input');
     await inputs.nth(0).fill('15');
     await inputs.nth(1).fill('400');
@@ -277,7 +261,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Click Calculate
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(500);
+
 
     // Verify peak is at +6 minutes (highest ratio ~11.54)
     await expect(page.locator('text=+6 minutes')).toBeVisible();
@@ -298,7 +282,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Click Calculate
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(500);
+
 
     // Verify error message
     await expect(page.locator('text=Please enter all basal sample values')).toBeVisible();
@@ -339,7 +323,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
   test('Test 9: References Section', async ({ page }) => {
     // Scroll to bottom to see references
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(300);
+
 
     // Verify references section exists
     await expect(page.locator('text=References')).toBeVisible();
@@ -368,7 +352,7 @@ test.describe('IPSS Calculator - Inferior Petrosal Sinus Sampling', () => {
 
     // Click Calculate
     await page.click('button:has-text("Calculate")');
-    await page.waitForTimeout(500);
+
 
     // Verify borderline status is shown - use .first() since both left and right show borderline
     await expect(page.locator('text=⚠ Borderline').first()).toBeVisible();

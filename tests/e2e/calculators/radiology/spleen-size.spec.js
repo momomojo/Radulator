@@ -15,6 +15,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
 // Test data covering validated ranges and edge cases
 const testCases = [
@@ -113,8 +114,7 @@ const testCases = [
 
 test.describe('Spleen Size Calculator', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:5173/');
-    await page.getByRole('button', { name: 'Spleen Size' }).click();
+    await navigateToCalculator(page, 'Spleen Size');
     await expect(page.getByRole('heading', { name: 'Spleen Size' })).toBeVisible();
   });
 

@@ -37,18 +37,26 @@ test.describe('AVS Hyperaldo Calculator', () => {
       await verifyThemeConsistency(page);
 
       // Verify patient information section has proper styling
-      const patientInfoSection = page.locator('.bg-blue-50.border.border-blue-200').first();
+      const patientInfoSection = page.locator('h3:has-text("Patient Information")').locator('..');
       await expect(patientInfoSection).toBeVisible();
       await expect(patientInfoSection.locator('h3:has-text("Patient Information")')).toBeVisible();
+      const patientClasses = await patientInfoSection.getAttribute('class');
+      expect(patientClasses).toContain('bg-blue-50');
+      expect(patientClasses).toContain('border');
 
       // Verify unit selection section
-      const unitSection = page.locator('.bg-gray-50.border.border-gray-200').first();
+      const unitSection = page.locator('h3:has-text("Laboratory Units")').locator('..');
       await expect(unitSection).toBeVisible();
       await expect(unitSection.locator('h3:has-text("Laboratory Units")')).toBeVisible();
+      const unitClasses = await unitSection.getAttribute('class');
+      expect(unitClasses).toContain('bg-gray-50');
+      expect(unitClasses).toContain('border');
 
       // Verify protocol sections have proper backgrounds
-      const protocolSection = page.locator('.bg-gray-50.border').first();
+      const protocolSection = page.locator('h3:has-text("Post-Cosyntropin Protocol")').locator('..');
       await expect(protocolSection).toBeVisible();
+      const protocolClasses = await protocolSection.getAttribute('class');
+      expect(protocolClasses).toContain('bg-gray-50');
     });
 
     test('should be responsive on mobile devices', async ({ page }) => {
