@@ -17,6 +17,9 @@
  * - Watt T, et al. Eur J Endocrinol. 2010;162(1):137-51. (Validity/reliability)
  */
 
+const SINGLE_MODE = "single";
+const DELTA_MODE = "delta";
+
 // Shared Likert options for all 39 items
 const LIKERT_OPTS = [
   { value: "0", label: "Not at all" },
@@ -139,24 +142,264 @@ const SUBSCALES = [
   },
 ];
 
-// Build fields from subscale definitions
-let questionNumber = 0;
-const fields = SUBSCALES.flatMap((scale) =>
-  scale.items.map((itemLabel, i) => {
-    questionNumber++;
-    return {
-      id: `${scale.prefix}${i + 1}`,
-      label: `${questionNumber}. ${itemLabel}`,
-      subLabel: scale.name,
-      type: "radio",
-      opts: LIKERT_OPTS,
-    };
-  }),
-);
-
 // Composite score uses scales 5-11 (Tiredness through Impaired Daily Life) + QoL item
 // These are indices 4-10 in SUBSCALES (0-indexed), plus index 12 (Overall QoL)
 const COMPOSITE_SCALE_INDICES = [4, 5, 6, 7, 8, 9, 10, 12];
+const KEY_TAE_OUTCOME_SCALES = [
+  "Goiter Symptoms",
+  "Hyperthyroid Symptoms",
+  "Cosmetic Complaints",
+  "Overall QoL",
+];
+
+const showSingleModeFields = (vals) => vals.assessment_mode !== DELTA_MODE;
+const showDeltaModeFields = (vals) => vals.assessment_mode === DELTA_MODE;
+
+function buildQuestionIds(prefix = "") {
+  return SUBSCALES.flatMap((scale) =>
+    scale.items.map((_, index) => `${prefix}${scale.prefix}${index + 1}`),
+  );
+}
+
+function buildQuestionFields({
+  idPrefix = "",
+  labelPrefix = "",
+  sectionPrefix = "",
+  showIf,
+}) {
+  let questionNumber = 0;
+  return SUBSCALES.flatMap((scale) =>
+    scale.items.map((itemLabel, index) => {
+      questionNumber += 1;
+      return {
+        id: `${idPrefix}${scale.prefix}${index + 1}`,
+        label: `${labelPrefix}${questionNumber}. ${itemLabel}`,
+        subLabel: scale.name,
+        type: "radio",
+        opts: LIKERT_OPTS,
+        showIf,
+        section: sectionPrefix
+          ? `${sectionPrefix} - ${scale.name}`
+          : scale.name,
+      };
+    }),
+  );
+}
+
+const SINGLE_QUESTION_IDS = buildQuestionIds();
+const BASELINE_QUESTION_IDS = buildQuestionIds("b_");
+const FOLLOWUP_QUESTION_IDS = buildQuestionIds("f_");
+
+const fields = [
+  {
+    id: "assessment_mode",
+    label: "Assessment Mode",
+    subLabel: "Single assessment or baseline vs follow-up comparison",
+    type: "radio",
+    opts: [
+      { value: SINGLE_MODE, label: "Single assessment" },
+      { value: DELTA_MODE, label: "Baseline vs Follow-up (TAE tracking)" },
+    ],
+    section: "Workflow",
+  },
+  ...buildQuestionFields({
+    idPrefix: "",
+    labelPrefix: "",
+    sectionPrefix: "",
+    showIf: showSingleModeFields,
+  }),
+  ...buildQuestionFields({
+    idPrefix: "b_",
+    labelPrefix: "Baseline ",
+    sectionPrefix: "Baseline",
+    showIf: showDeltaModeFields,
+  }),
+  ...buildQuestionFields({
+    idPrefix: "f_",
+    labelPrefix: "Follow-up ",
+    sectionPrefix: "Follow-up",
+    showIf: showDeltaModeFields,
+  }),
+];
+
+function isMissing(value) {
+  return value === undefined || value === null || value === "";
+}
+
+function parseLikert(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 4) {
+    return NaN;
+  }
+  return parsed;
+}
+
+function findMissingResponses(values, ids) {
+  return ids.filter((id) => isMissing(values[id]));
+}
+
+function formatScore(score) {
+  return `${score.toFixed(1)} / 100`;
+}
+
+function escapeCSV(value) {
+  const str = String(value);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function generateSingleCSV(subscaleScores, compositeScore, severity) {
+  const date = new Date().toISOString().split("T")[0];
+  const headers = [
+    "Date",
+    "Mode",
+    ...SUBSCALES.map((s) => s.name),
+    "Composite Score",
+    "Severity",
+  ];
+  const row = [
+    date,
+    "Single",
+    ...SUBSCALES.map((s) => subscaleScores[s.name].toFixed(1)),
+    compositeScore.toFixed(1),
+    severity,
+  ];
+  const csv = [
+    headers.map(escapeCSV).join(","),
+    row.map(escapeCSV).join(","),
+  ].join("\n");
+  return `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+}
+
+function generateDeltaCSV(baselineScores, followupScores) {
+  const date = new Date().toISOString().split("T")[0];
+  const headers = [
+    "Date",
+    "Scale",
+    "Baseline",
+    "Follow-up",
+    "Delta",
+    "Classification",
+  ];
+  const rows = SUBSCALES.map((s) => {
+    const b = baselineScores.subscaleScores[s.name];
+    const f = followupScores.subscaleScores[s.name];
+    const d = f - b;
+    return [
+      date,
+      s.name,
+      b.toFixed(1),
+      f.toFixed(1),
+      d.toFixed(1),
+      classifyDelta(d),
+    ];
+  });
+  const compDelta =
+    followupScores.compositeScore - baselineScores.compositeScore;
+  rows.push([
+    date,
+    "Composite",
+    baselineScores.compositeScore.toFixed(1),
+    followupScores.compositeScore.toFixed(1),
+    compDelta.toFixed(1),
+    classifyDelta(compDelta),
+  ]);
+  const csv = [
+    headers.map(escapeCSV).join(","),
+    ...rows.map((r) => r.map(escapeCSV).join(",")),
+  ].join("\n");
+  return `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+}
+
+function classifySeverity(score) {
+  if (score <= 25) return "Minimal impact";
+  if (score <= 50) return "Moderate impact";
+  if (score <= 75) return "Significant impact";
+  return "Severe impact";
+}
+
+function classifyDelta(delta) {
+  const absDelta = Math.abs(delta);
+  if (absDelta < 6) return "No meaningful change";
+  if (delta < 0) return "Improved";
+  return "Worsened";
+}
+
+function formatDelta(delta) {
+  return `${delta.toFixed(1)} points (${classifyDelta(delta)})`;
+}
+
+function computeScaleScores(values, idPrefix = "") {
+  const subscaleScores = {};
+  let compositeSum = 0;
+  let compositeItemCount = 0;
+
+  SUBSCALES.forEach((scale, scaleIndex) => {
+    const itemIds = scale.items.map(
+      (_, index) => `${idPrefix}${scale.prefix}${index + 1}`,
+    );
+    const numericValues = itemIds.map((id) => parseLikert(values[id]));
+
+    if (numericValues.some((entry) => !Number.isFinite(entry))) {
+      throw new Error(`Invalid response value detected in ${scale.name}.`);
+    }
+
+    const sum = numericValues.reduce((acc, value) => acc + value, 0);
+    const maxPossible = scale.items.length * 4;
+    const score = (sum / maxPossible) * 100;
+    subscaleScores[scale.name] = score;
+
+    if (COMPOSITE_SCALE_INDICES.includes(scaleIndex)) {
+      compositeSum += sum;
+      compositeItemCount += scale.items.length;
+    }
+  });
+
+  return {
+    subscaleScores,
+    compositeScore: (compositeSum / (compositeItemCount * 4)) * 100,
+  };
+}
+
+function getSingleTimepointInterpretation(compositeScore) {
+  if (compositeScore <= 25) {
+    return "The thyroid condition has minimal overall impact on quality of life. Individual subscale scores may reveal specific areas of concern worth monitoring.";
+  }
+
+  if (compositeScore <= 50) {
+    return "The thyroid condition has a moderate impact on quality of life. Review individual subscale scores to identify specific domains most affected. Consider targeted interventions.";
+  }
+
+  if (compositeScore <= 75) {
+    return "The thyroid condition has a significant impact on quality of life. Multiple domains are likely affected. Comprehensive treatment evaluation and supportive care recommended.";
+  }
+
+  return "The thyroid condition has a severe impact on quality of life. Urgent review of treatment plan recommended. Consider multidisciplinary approach including psychological support.";
+}
+
+function getDeltaInterpretation(compositeDelta) {
+  const absDelta = Math.abs(compositeDelta);
+
+  if (absDelta < 6) {
+    return "Composite change is within a low-change zone. Correlate with symptom trajectory and objective thyroid outcomes.";
+  }
+
+  if (compositeDelta < -14) {
+    return "Composite score shows marked improvement at follow-up, consistent with meaningful QoL gain.";
+  }
+
+  if (compositeDelta < 0) {
+    return "Composite score improved at follow-up. The change is likely meaningful in group-level context.";
+  }
+
+  if (compositeDelta > 14) {
+    return "Composite score worsened substantially at follow-up. Reassess treatment response and consider additional workup.";
+  }
+
+  return "Composite score worsened at follow-up. Review domain-level deltas and clinical context.";
+}
 
 export const ThyPRO39 = {
   id: "thypro-39",
@@ -184,89 +427,135 @@ Patients rate each item based on how much they have been bothered during the pas
 
 Subscale scores are normalized to 0-100, where higher scores indicate worse quality of life. The composite score is derived from scales 5-11 (Tiredness, Cognitive, Anxiety, Depression, Emotional, Social, Daily Life) plus the Overall QoL item.
 
+Assessment modes:
+  - Single assessment: one-time scoring and severity interpretation
+  - Baseline vs Follow-up: longitudinal delta tracking for TAE outcome review
+
 Severity classification:
   0-25: Minimal impact
   26-50: Moderate impact
   51-75: Significant impact
   76-100: Severe impact
 
-The ThyPRO-39 is widely used in thyroid research including evaluation of Thyroid Arterial Embolization (TAE) for nodular/multinodular goiter.`,
+The ThyPRO-39 is widely used in thyroid research including evaluation of Thyroid Arterial Embolization (TAE) for nodular/multinodular goiter.
+
+Licensing: The ThyPRO-39 is a copyrighted instrument developed by Torquil Watt and colleagues. This implementation uses paraphrased item descriptions for educational and research purposes. For formal clinical trials or commercial use, obtain a license from the ThyPRO developers. See thyPRO.dk for licensing information.`,
   },
 
   fields,
 
   compute: (v) => {
-    // Check if all 39 questions are answered
-    const allFieldIds = SUBSCALES.flatMap((scale) =>
-      scale.items.map((_, i) => `${scale.prefix}${i + 1}`),
-    );
+    const mode = v.assessment_mode === DELTA_MODE ? DELTA_MODE : SINGLE_MODE;
 
-    const unanswered = allFieldIds.filter(
-      (id) => v[id] === undefined || v[id] === null || v[id] === "",
-    );
+    if (mode === SINGLE_MODE) {
+      const unanswered = findMissingResponses(v, SINGLE_QUESTION_IDS);
+      if (unanswered.length > 0) {
+        return {
+          Error: `Please answer all 39 questions to calculate the ThyPRO-39 score. ${unanswered.length} question(s) remaining.`,
+        };
+      }
 
-    if (unanswered.length > 0) {
+      let singleScores;
+      try {
+        singleScores = computeScaleScores(v, "");
+      } catch (error) {
+        return {
+          Error:
+            error?.message ||
+            "Invalid response values detected. Please verify all selected responses.",
+        };
+      }
+
+      const subscaleResults = {};
+      for (const [scaleName, score] of Object.entries(
+        singleScores.subscaleScores,
+      )) {
+        subscaleResults[scaleName] = formatScore(score);
+      }
+
+      const severity = classifySeverity(singleScores.compositeScore);
+      const csvUri = generateSingleCSV(
+        singleScores.subscaleScores,
+        singleScores.compositeScore,
+        severity,
+      );
       return {
-        Error: `Please answer all 39 questions to calculate the ThyPRO-39 score. ${unanswered.length} question(s) remaining.`,
+        ...subscaleResults,
+        "Composite Score": `${formatScore(singleScores.compositeScore)} (${severity})`,
+        "Clinical Interpretation": getSingleTimepointInterpretation(
+          singleScores.compositeScore,
+        ),
+        "Download CSV": `<a href="${csvUri}" download="ThyPRO39-scores.csv"></a>`,
       };
     }
 
-    // Calculate each subscale score
-    const subscaleResults = {};
-    let compositeSum = 0;
-    let compositeItemCount = 0;
+    const missingBaseline = findMissingResponses(v, BASELINE_QUESTION_IDS);
+    const missingFollowup = findMissingResponses(v, FOLLOWUP_QUESTION_IDS);
+    const totalMissing = missingBaseline.length + missingFollowup.length;
 
-    SUBSCALES.forEach((scale, scaleIndex) => {
-      const itemIds = scale.items.map((_, i) => `${scale.prefix}${i + 1}`);
-      const sum = itemIds.reduce((acc, id) => acc + parseInt(v[id]), 0);
-      const maxPossible = scale.items.length * 4;
-      const score = (sum / maxPossible) * 100;
-
-      subscaleResults[scale.name] = `${score.toFixed(1)} / 100`;
-
-      // Add to composite if this scale is in the composite set
-      if (COMPOSITE_SCALE_INDICES.includes(scaleIndex)) {
-        compositeSum += sum;
-        compositeItemCount += scale.items.length;
-      }
-    });
-
-    // Calculate composite score
-    const compositeScore = (compositeSum / (compositeItemCount * 4)) * 100;
-
-    // Determine severity
-    let severity;
-    if (compositeScore <= 25) {
-      severity = "Minimal impact";
-    } else if (compositeScore <= 50) {
-      severity = "Moderate impact";
-    } else if (compositeScore <= 75) {
-      severity = "Significant impact";
-    } else {
-      severity = "Severe impact";
+    if (totalMissing > 0) {
+      return {
+        Error: `Please answer all baseline and follow-up questions to calculate longitudinal change. ${totalMissing} question(s) remaining.`,
+      };
     }
 
-    // Build interpretation
-    let interpretation;
-    if (compositeScore <= 25) {
-      interpretation =
-        "The thyroid condition has minimal overall impact on quality of life. Individual subscale scores may reveal specific areas of concern worth monitoring.";
-    } else if (compositeScore <= 50) {
-      interpretation =
-        "The thyroid condition has a moderate impact on quality of life. Review individual subscale scores to identify specific domains most affected. Consider targeted interventions.";
-    } else if (compositeScore <= 75) {
-      interpretation =
-        "The thyroid condition has a significant impact on quality of life. Multiple domains are likely affected. Comprehensive treatment evaluation and supportive care recommended.";
-    } else {
-      interpretation =
-        "The thyroid condition has a severe impact on quality of life. Urgent review of treatment plan recommended. Consider multidisciplinary approach including psychological support.";
+    let baselineScores;
+    let followupScores;
+    try {
+      baselineScores = computeScaleScores(v, "b_");
+      followupScores = computeScaleScores(v, "f_");
+    } catch (error) {
+      return {
+        Error:
+          error?.message ||
+          "Invalid response values detected. Please verify all selected responses.",
+      };
     }
 
-    return {
-      ...subscaleResults,
-      "Composite Score": `${compositeScore.toFixed(1)} / 100 (${severity})`,
-      "Clinical Interpretation": interpretation,
+    const baselineSeverity = classifySeverity(baselineScores.compositeScore);
+    const followupSeverity = classifySeverity(followupScores.compositeScore);
+    const compositeDelta =
+      followupScores.compositeScore - baselineScores.compositeScore;
+    const trajectory = classifyDelta(compositeDelta);
+
+    const out = {
+      "Baseline Scores": "",
     };
+
+    for (const scale of SUBSCALES) {
+      const baseline = baselineScores.subscaleScores[scale.name];
+      out[`${scale.name} (Baseline)`] = formatScore(baseline);
+    }
+    out["Composite Score (Baseline)"] =
+      `${formatScore(baselineScores.compositeScore)} (${baselineSeverity})`;
+
+    out["Follow-up Scores"] = "";
+    for (const scale of SUBSCALES) {
+      const followup = followupScores.subscaleScores[scale.name];
+      out[`${scale.name} (Follow-up)`] = formatScore(followup);
+    }
+    out["Composite Score (Follow-up)"] =
+      `${formatScore(followupScores.compositeScore)} (${followupSeverity})`;
+
+    out["Change Summary (Follow-up - Baseline)"] = "";
+    for (const scaleName of KEY_TAE_OUTCOME_SCALES) {
+      const delta =
+        followupScores.subscaleScores[scaleName] -
+        baselineScores.subscaleScores[scaleName];
+      out[`${scaleName} Δ`] = formatDelta(delta);
+    }
+    out["Composite Score Δ"] = formatDelta(compositeDelta);
+    out["Overall Trajectory"] =
+      trajectory === "No meaningful change" ? "Stable" : trajectory;
+    out["MIC Context"] =
+      "ThyPRO MIC context: group changes around 6.3-14.3 points may be meaningful; interpret with clinical context.";
+    out["Clinical Interpretation"] = getDeltaInterpretation(compositeDelta);
+
+    const csvUri = generateDeltaCSV(baselineScores, followupScores);
+    out["Download CSV"] =
+      `<a href="${csvUri}" download="ThyPRO39-delta.csv"></a>`;
+
+    return out;
   },
 
   refs: [

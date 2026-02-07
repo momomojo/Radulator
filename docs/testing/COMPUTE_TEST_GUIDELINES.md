@@ -31,6 +31,35 @@ Scope: compute-only correctness. UI and component behavior remain in Playwright 
 }
 ```
 
+### Optional `inputPreset` (calculator-specific shorthand)
+
+Fixtures may use a compact `inputPreset` when direct `inputs` would be repetitive.
+Current supported preset is for `thypro-39`:
+
+```
+{
+  "inputPreset": {
+    "mode": "single",
+    "singleValue": "2",
+    "overrides": { "gs1": "4" }
+  }
+}
+```
+
+Delta mode shorthand:
+
+```
+{
+  "inputPreset": {
+    "mode": "delta",
+    "baselineValue": "3",
+    "followupValue": "1",
+    "baselineOverrides": {},
+    "followupOverrides": {}
+  }
+}
+```
+
 ## Expectations
 - Use `equals` for stable, short values.
 - Use `includes` for long sentences or when symbols (>=) may vary by encoding.

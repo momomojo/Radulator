@@ -88,11 +88,28 @@ async function selectAnswer(page, questionNum, likertValue) {
 }
 
 /**
+ * Set calculator workflow mode.
+ */
+async function selectAssessmentMode(page, mode) {
+  await page.locator(`label[for="assessment_mode-${mode}"]`).click();
+}
+
+/**
  * Answer all 39 questions with the same Likert value
  */
 async function answerAllQuestions(page, likertValue) {
   for (let q = 1; q <= 39; q++) {
     await selectAnswer(page, q, likertValue);
+  }
+}
+
+/**
+ * Answer all 39 questions for a prefixed id set (baseline/follow-up).
+ */
+async function answerAllQuestionsWithPrefix(page, prefix, likertValue) {
+  for (const questionId of QUESTION_IDS) {
+    const radioId = `${prefix}${questionId}-${likertValue}`;
+    await page.locator(`label[for="${radioId}"]`).click();
   }
 }
 
@@ -317,6 +334,42 @@ test.describe("ThyPRO-39 Calculator", () => {
       // Score = (42/88)*100 = 47.727... ≈ 47.7
       await expect(results).toContainText("Composite Score: 47.7 / 100");
       await expect(results).toContainText("Moderate impact");
+    });
+  });
+
+  test.describe("Longitudinal Mode", () => {
+    test("Delta mode: baseline high and follow-up low should show improvement", async ({
+      page,
+    }) => {
+      await selectAssessmentMode(page, "delta");
+      await answerAllQuestionsWithPrefix(page, "b_", 3);
+      await answerAllQuestionsWithPrefix(page, "f_", 1);
+
+      await page.locator('button:has-text("Calculate")').click();
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results).toContainText(
+        "Composite Score (Baseline): 75.0 / 100",
+      );
+      await expect(results).toContainText(
+        "Composite Score (Follow-up): 25.0 / 100",
+      );
+      await expect(results).toContainText(
+        "Composite Score Δ: -50.0 points (Improved)",
+      );
+      await expect(results).toContainText("Overall Trajectory: Improved");
+    });
+
+    test("Delta mode should require all 78 responses", async ({ page }) => {
+      await selectAssessmentMode(page, "delta");
+      await answerAllQuestionsWithPrefix(page, "b_", 2);
+
+      await page.locator('button:has-text("Calculate")').click();
+
+      await expect(
+        page.locator("text=Please answer all baseline and follow-up questions"),
+      ).toBeVisible();
+      await expect(page.locator("text=39 question(s) remaining")).toBeVisible();
     });
   });
 

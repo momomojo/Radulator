@@ -1,0 +1,81 @@
+{
+  "calculatorId": "thypro-39",
+  "calculatorName": "ThyPRO-39",
+  "version": "compute-spotcheck-v1",
+  "cases": [
+    {
+      "id": "single-all-some",
+      "description": "All 39 items at value 2 should score 50.0 across scales and composite.",
+      "inputPreset": {
+        "mode": "single",
+        "singleValue": "2"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Goiter Symptoms", "equals": "50.0 / 100" },
+          { "key": "Hyperthyroid Symptoms", "equals": "50.0 / 100" },
+          { "key": "Composite Score", "includes": "50.0 / 100 (Moderate impact)" }
+        ]
+      }
+    },
+    {
+      "id": "single-goiter-max-rest-zero",
+      "description": "Goiter symptoms maxed while all other answers are zero.",
+      "inputPreset": {
+        "mode": "single",
+        "singleValue": "0",
+        "overrides": {
+          "gs1": "4",
+          "gs2": "4",
+          "gs3": "4"
+        }
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Goiter Symptoms", "equals": "100.0 / 100" },
+          { "key": "Composite Score", "includes": "0.0 / 100 (Minimal impact)" }
+        ]
+      }
+    },
+    {
+      "id": "delta-global-improvement",
+      "description": "Baseline high burden and follow-up lower burden should show negative deltas.",
+      "inputPreset": {
+        "mode": "delta",
+        "baselineValue": "3",
+        "followupValue": "1"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Composite Score (Baseline)", "includes": "75.0 / 100" },
+          { "key": "Composite Score (Follow-up)", "includes": "25.0 / 100" },
+          { "key": "Composite Score Δ", "includes": "-50.0 points (Improved)" }
+        ]
+      }
+    },
+    {
+      "id": "delta-goiter-improves-composite-flat",
+      "description": "Goiter improves while composite domains stay unchanged.",
+      "inputPreset": {
+        "mode": "delta",
+        "baselineValue": "2",
+        "followupValue": "2",
+        "followupOverrides": {
+          "gs1": "0",
+          "gs2": "0",
+          "gs3": "0"
+        }
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Goiter Symptoms Δ", "includes": "-50.0 points (Improved)" },
+          { "key": "Composite Score Δ", "includes": "0.0 points (No meaningful change)" }
+        ]
+      }
+    }
+  ]
+}
