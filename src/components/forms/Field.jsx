@@ -57,7 +57,11 @@ function Field({ f, val, on }) {
   if (f.type === "radio") {
     return (
       <div className="space-y-2 md:col-span-2">
-        <FieldLabel label={f.label} helpText={f.helpText} />
+        <FieldLabel
+          label={f.label}
+          subLabel={f.subLabel}
+          helpText={f.helpText}
+        />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {f.opts.map((opt) => (
             <div key={opt.value} className="flex items-center space-x-2">

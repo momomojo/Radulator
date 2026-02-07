@@ -36,6 +36,7 @@ export { CADRADS } from "./CADRADS";
 export { NIRADS } from "./NIRADS";
 export { BIRADS } from "./BIRADS";
 export { ORADS } from "./ORADS";
+export { ThyPRO39 } from "./ThyPRO39";
 
 // Auto-discovered registry
 export {
