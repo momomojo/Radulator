@@ -47,6 +47,7 @@ function AppContent() {
     ipssRows,
     selectCalculator,
     updateField,
+    batchUpdateFields,
     setResults,
     addMreRow,
     removeMreRow,
@@ -692,6 +693,7 @@ function AppContent() {
                   fields={def.fields}
                   vals={vals}
                   onFieldChange={updateField}
+                  onBatchUpdate={batchUpdateFields}
                 />
               )}
 

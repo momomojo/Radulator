@@ -5,7 +5,7 @@ import Field from "./Field";
  * Fields With Sections (Progressive Disclosure)
  * Groups form fields into collapsible sections for better organization
  */
-function FieldsWithSections({ fields, vals, onFieldChange }) {
+function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
   const [expandedSections, setExpandedSections] = useState({});
 
   // Filter visible fields
@@ -30,7 +30,13 @@ function FieldsWithSections({ fields, vals, onFieldChange }) {
         aria-label="Input fields"
       >
         {groupedFields["_default"].map((f) => (
-          <Field key={f.id} f={f} val={vals[f.id]} on={onFieldChange} />
+          <Field
+            key={f.id}
+            f={f}
+            val={vals[f.id]}
+            on={onFieldChange}
+            onBatch={onBatchUpdate}
+          />
         ))}
       </div>
     );
@@ -59,7 +65,13 @@ function FieldsWithSections({ fields, vals, onFieldChange }) {
               className="grid grid-cols-1 md:grid-cols-2 gap-4"
             >
               {groupedFields["_default"].map((f) => (
-                <Field key={f.id} f={f} val={vals[f.id]} on={onFieldChange} />
+                <Field
+                  key={f.id}
+                  f={f}
+                  val={vals[f.id]}
+                  on={onFieldChange}
+                  onBatch={onBatchUpdate}
+                />
               ))}
             </div>
           );
@@ -102,7 +114,13 @@ function FieldsWithSections({ fields, vals, onFieldChange }) {
             {isExpanded && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-card">
                 {groupedFields[section].map((f) => (
-                  <Field key={f.id} f={f} val={vals[f.id]} on={onFieldChange} />
+                  <Field
+                    key={f.id}
+                    f={f}
+                    val={vals[f.id]}
+                    on={onFieldChange}
+                    onBatch={onBatchUpdate}
+                  />
                 ))}
               </div>
             )}

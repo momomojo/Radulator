@@ -13,6 +13,7 @@ import React, {
 const ACTIONS = {
   SELECT_CALCULATOR: "SELECT_CALCULATOR",
   UPDATE_FIELD: "UPDATE_FIELD",
+  BATCH_UPDATE_FIELDS: "BATCH_UPDATE_FIELDS",
   SET_RESULTS: "SET_RESULTS",
   CLEAR_RESULTS: "CLEAR_RESULTS",
   SET_MRE_ROWS: "SET_MRE_ROWS",
@@ -62,6 +63,12 @@ function calculatorReducer(state, action) {
       return {
         ...state,
         vals: { ...state.vals, [action.field]: action.value },
+      };
+
+    case ACTIONS.BATCH_UPDATE_FIELDS:
+      return {
+        ...state,
+        vals: { ...state.vals, ...action.updates },
       };
 
     case ACTIONS.SET_RESULTS:
@@ -142,6 +149,10 @@ export function CalculatorProvider({ children, defaultCalculatorId }) {
     dispatch({ type: ACTIONS.UPDATE_FIELD, field, value });
   }, []);
 
+  const batchUpdateFields = useCallback((updates) => {
+    dispatch({ type: ACTIONS.BATCH_UPDATE_FIELDS, updates });
+  }, []);
+
   const setResults = useCallback((results) => {
     dispatch({ type: ACTIONS.SET_RESULTS, results });
   }, []);
@@ -182,6 +193,7 @@ export function CalculatorProvider({ children, defaultCalculatorId }) {
     // Actions
     selectCalculator,
     updateField,
+    batchUpdateFields,
     setResults,
     clearResults,
     addMreRow,

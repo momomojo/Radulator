@@ -1,16 +1,84 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select } from "@/components/ui/select";
 import FieldLabel from "./FieldLabel";
 
+function FileImportField({ f, onBatch }) {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const fileRef = useRef(null);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    setStatus(null);
+    try {
+      const result = await f.onImport(file, onBatch);
+      setStatus(result);
+    } catch {
+      setStatus({ success: false, error: "Unexpected error reading file." });
+    }
+    setLoading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  return (
+    <div className="space-y-2 md:col-span-2">
+      <FieldLabel label={f.label} subLabel={f.subLabel} />
+      <div className="flex items-center gap-3">
+        <input
+          ref={fileRef}
+          type="file"
+          accept={f.accept || ".csv"}
+          onChange={handleFile}
+          className="hidden"
+          id={f.id}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={loading}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md border border-input bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+            />
+          </svg>
+          {loading ? "Importing..." : "Import from CSV"}
+        </button>
+      </div>
+      {status && (
+        <p
+          className={`text-sm ${status.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+        >
+          {status.success ? status.message : status.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
  * Generic Field Renderer
  * Renders form fields based on field type configuration
- * Supports: number, date, textarea, select, radio, checkbox
+ * Supports: number, date, textarea, select, radio, checkbox, file-import
  */
-function Field({ f, val, on }) {
+function Field({ f, val, on, onBatch }) {
+  if (f.type === "file-import") {
+    return <FileImportField f={f} onBatch={onBatch} />;
+  }
   if (f.type === "textarea") {
     return (
       <div className="space-y-1 md:col-span-2">

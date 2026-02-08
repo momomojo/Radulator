@@ -208,6 +208,17 @@ const fields = [
     sectionPrefix: "",
     showIf: showSingleModeFields,
   }),
+  {
+    id: "import_baseline",
+    label: "Import baseline from prior assessment",
+    subLabel:
+      "Select a previously exported ThyPRO-39 CSV to auto-fill baseline responses",
+    type: "file-import",
+    accept: ".csv",
+    showIf: showDeltaModeFields,
+    section: "Import Baseline (Optional)",
+    onImport: parseBaselineCSV,
+  },
   ...buildQuestionFields({
     idPrefix: "b_",
     labelPrefix: "Baseline ",
@@ -238,6 +249,137 @@ function findMissingResponses(values, ids) {
   return ids.filter((id) => isMissing(values[id]));
 }
 
+// Build lookup: field ID (without prefix) → { questionNumber, scaleName }
+const QUESTION_LOOKUP = (() => {
+  const lookup = {};
+  let qNum = 0;
+  for (const scale of SUBSCALES) {
+    for (let i = 0; i < scale.items.length; i++) {
+      qNum++;
+      lookup[`${scale.prefix}${i + 1}`] = {
+        questionNumber: qNum,
+        scaleName: scale.name,
+      };
+    }
+  }
+  return lookup;
+})();
+
+function formatMissingQuestions(missingIds, idPrefix = "") {
+  const grouped = {};
+  for (const id of missingIds) {
+    const bareId = idPrefix ? id.slice(idPrefix.length) : id;
+    const info = QUESTION_LOOKUP[bareId];
+    if (!info) continue;
+    if (!grouped[info.scaleName]) grouped[info.scaleName] = [];
+    grouped[info.scaleName].push(`Q${info.questionNumber}`);
+  }
+  return Object.entries(grouped)
+    .map(([scale, qs]) => `${scale} (${qs.join(", ")})`)
+    .join(", ");
+}
+
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not read file."));
+    reader.readAsText(file);
+  });
+}
+
+async function parseBaselineCSV(file, batchUpdate) {
+  if (!file.name.toLowerCase().endsWith(".csv")) {
+    return {
+      success: false,
+      error: "Please select a .csv file exported from this calculator.",
+    };
+  }
+
+  let text;
+  try {
+    text = await readFileText(file);
+  } catch {
+    return { success: false, error: "Could not read the file." };
+  }
+
+  if (!text.trim()) {
+    return { success: false, error: "The selected file is empty." };
+  }
+
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) {
+    return {
+      success: false,
+      error: "The CSV file must have a header row and at least one data row.",
+    };
+  }
+
+  const headers = lines[0]
+    .split(",")
+    .map((h) => h.trim().replace(/^"|"$/g, ""));
+  const gs1Index = headers.indexOf("gs1");
+
+  if (gs1Index === -1) {
+    const hasThyPROHeaders = headers.some((h) =>
+      ["Goiter Symptoms", "Hyperthyroid Symptoms", "Composite Score"].includes(
+        h,
+      ),
+    );
+    if (hasThyPROHeaders) {
+      return {
+        success: false,
+        error:
+          "This CSV was exported in an older format that doesn't include raw responses. Please re-run the single assessment and download a new CSV.",
+      };
+    }
+    return {
+      success: false,
+      error:
+        "This doesn't appear to be a ThyPRO-39 export. Expected columns like gs1, hy1, etc.",
+    };
+  }
+
+  const dataValues = lines[1]
+    .split(",")
+    .map((v) => v.trim().replace(/^"|"$/g, ""));
+  const rawIds = SINGLE_QUESTION_IDS;
+  const updates = {};
+  const expectedCount = rawIds.length;
+  const availableCount = dataValues.length - gs1Index;
+
+  if (availableCount < expectedCount) {
+    return {
+      success: false,
+      error: `CSV has only ${availableCount} raw item columns but expected ${expectedCount}. The file may be truncated.`,
+    };
+  }
+
+  for (let i = 0; i < expectedCount; i++) {
+    const rawId = rawIds[i];
+    const val = dataValues[gs1Index + i];
+    const parsed = Number.parseInt(val, 10);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 4) {
+      const info = QUESTION_LOOKUP[rawId];
+      return {
+        success: false,
+        error: `Invalid response value "${val}" for Q${info?.questionNumber ?? "?"} (${rawId}): expected 0-4.`,
+      };
+    }
+    updates[`b_${rawId}`] = String(parsed);
+  }
+
+  batchUpdate(updates);
+
+  const dateCol = headers.indexOf("Date");
+  const dateStr = dateCol >= 0 ? dataValues[dateCol] : "";
+  const suffix = dateStr ? ` from ${dateStr}` : "";
+  return {
+    success: true,
+    message: `Loaded ${expectedCount} baseline responses${suffix}.`,
+  };
+}
+
 function formatScore(score) {
   return `${score.toFixed(1)} / 100`;
 }
@@ -250,14 +392,16 @@ function escapeCSV(value) {
   return str;
 }
 
-function generateSingleCSV(subscaleScores, compositeScore, severity) {
+function generateSingleCSV(subscaleScores, compositeScore, severity, values) {
   const date = new Date().toISOString().split("T")[0];
+  const rawIds = SINGLE_QUESTION_IDS;
   const headers = [
     "Date",
     "Mode",
     ...SUBSCALES.map((s) => s.name),
     "Composite Score",
     "Severity",
+    ...rawIds,
   ];
   const row = [
     date,
@@ -265,6 +409,7 @@ function generateSingleCSV(subscaleScores, compositeScore, severity) {
     ...SUBSCALES.map((s) => subscaleScores[s.name].toFixed(1)),
     compositeScore.toFixed(1),
     severity,
+    ...rawIds.map((id) => values[id] ?? ""),
   ];
   const csv = [
     headers.map(escapeCSV).join(","),
@@ -450,8 +595,9 @@ Licensing: The ThyPRO-39 is a copyrighted instrument developed by Torquil Watt a
     if (mode === SINGLE_MODE) {
       const unanswered = findMissingResponses(v, SINGLE_QUESTION_IDS);
       if (unanswered.length > 0) {
+        const details = formatMissingQuestions(unanswered);
         return {
-          Error: `Please answer all 39 questions to calculate the ThyPRO-39 score. ${unanswered.length} question(s) remaining.`,
+          Error: `Please answer all 39 questions. ${unanswered.length} remaining \u2014 ${details}`,
         };
       }
 
@@ -478,6 +624,7 @@ Licensing: The ThyPRO-39 is a copyrighted instrument developed by Torquil Watt a
         singleScores.subscaleScores,
         singleScores.compositeScore,
         severity,
+        v,
       );
       return {
         ...subscaleResults,
@@ -494,8 +641,19 @@ Licensing: The ThyPRO-39 is a copyrighted instrument developed by Torquil Watt a
     const totalMissing = missingBaseline.length + missingFollowup.length;
 
     if (totalMissing > 0) {
+      const parts = [];
+      if (missingBaseline.length > 0) {
+        parts.push(
+          `Baseline: ${formatMissingQuestions(missingBaseline, "b_")}`,
+        );
+      }
+      if (missingFollowup.length > 0) {
+        parts.push(
+          `Follow-up: ${formatMissingQuestions(missingFollowup, "f_")}`,
+        );
+      }
       return {
-        Error: `Please answer all baseline and follow-up questions to calculate longitudinal change. ${totalMissing} question(s) remaining.`,
+        Error: `Please complete all questions. ${totalMissing} remaining \u2014 ${parts.join("; ")}`,
       };
     }
 

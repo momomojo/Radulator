@@ -366,10 +366,10 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      await expect(
-        page.locator("text=Please answer all baseline and follow-up questions"),
-      ).toBeVisible();
-      await expect(page.locator("text=39 question(s) remaining")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results).toContainText("Please complete all questions");
+      await expect(results).toContainText("39 remaining");
+      await expect(results).toContainText("Follow-up:");
     });
   });
 
@@ -484,10 +484,12 @@ test.describe("ThyPRO-39 Calculator", () => {
     test("should show error with partial answers", async ({ page }) => {
       await answerQuestionRange(page, 1, 10, 0);
       await page.locator('button:has-text("Calculate")').click();
-      await expect(
-        page.locator("text=Please answer all 39 questions"),
-      ).toBeVisible();
-      await expect(page.locator("text=29 question(s) remaining")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results).toContainText("Please answer all 39 questions");
+      await expect(results).toContainText("29 remaining");
+      // Verify the error lists specific missing subscales with question numbers
+      await expect(results).toContainText("Hypothyroid Symptoms (Q11)");
+      await expect(results).toContainText("Overall QoL (Q39)");
     });
   });
 
