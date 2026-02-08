@@ -233,9 +233,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Edge Cases & Validation",
     await expect(results).toBeVisible();
   });
 
-  test.skip("should clear results when switching calculators", async ({
-    page,
-  }) => {
+  test("should clear results when switching calculators", async ({ page }) => {
     // Fill and calculate
     await fillInput(page, "Adrenal SI in‑phase", "1000");
     await fillInput(page, "Adrenal SI opposed‑phase", "500");
