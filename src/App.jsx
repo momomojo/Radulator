@@ -538,8 +538,9 @@ function AppContent() {
                 const filteredCalcs = calcIds.filter((calcId) => {
                   const calc = calcDefs.find((c) => c.id === calcId);
                   if (!calc) return false;
-                  // Tag filter
-                  if (activeTag && !calc.tags?.includes(activeTag)) return false;
+                  // Tag filter (skip when searching, since tag bar is hidden)
+                  if (!query && activeTag && !calc.tags?.includes(activeTag))
+                    return false;
                   if (!query) return true;
                   return (
                     calc.name.toLowerCase().includes(query) ||
