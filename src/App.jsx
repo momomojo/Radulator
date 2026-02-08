@@ -434,99 +434,113 @@ function AppContent() {
             </div>
           )}
 
-          {/* Favorites Section */}
-          {favorites.length > 0 && !searchQuery && (
-            <div className="mb-4">
-              <h3 className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide px-2 mb-1 flex items-center gap-1">
-                <svg
-                  className="w-3 h-3"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                Favorites
-              </h3>
-              <div className="space-y-1">
-                {favorites.map((calcId) => {
-                  const calc = calcDefs.find((c) => c.id === calcId);
-                  if (!calc) return null;
-                  return (
-                    <button
-                      key={calc.id}
-                      onClick={() => handleSelectCalculator(calc, "Favorites")}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center justify-between ${
-                        calc.id === active
-                          ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                          : "hover:bg-muted text-foreground"
-                      }`}
+          {/* Personal Section: Favorites + Recent */}
+          {(favorites.length > 0 || recentCalcs.length > 0) && !searchQuery && (
+            <div className="mb-3 p-2 bg-muted/30 dark:bg-muted/20 border border-border/50 rounded-lg space-y-2">
+              {/* Favorites */}
+              {favorites.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide px-1 mb-1 flex items-center gap-1">
+                    <svg
+                      className="w-3 h-3"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
                     >
-                      <span>{calc.name}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorite(calc.id);
-                        }}
-                        className="text-amber-500 hover:text-amber-400 transition-colors"
-                        aria-label="Remove from favorites"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    Favorites
+                  </h3>
+                  <div className="space-y-0.5">
+                    {favorites.map((calcId) => {
+                      const calc = calcDefs.find((c) => c.id === calcId);
+                      if (!calc) return null;
+                      return (
+                        <button
+                          key={calc.id}
+                          onClick={() =>
+                            handleSelectCalculator(calc, "Favorites")
+                          }
+                          className={`w-full text-left px-2 py-1.5 rounded-md transition-colors text-sm flex items-center justify-between ${
+                            calc.id === active
+                              ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                              : "hover:bg-background/60 dark:hover:bg-background/30 text-foreground"
+                          }`}
                         >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      </button>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                          <span>{calc.name}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(calc.id);
+                            }}
+                            className="text-amber-500 hover:text-amber-400 transition-colors"
+                            aria-label="Remove from favorites"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                          </button>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-          {/* Recent Section */}
-          {recentCalcs.length > 0 && !searchQuery && (
-            <div className="mb-4">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2 mb-1 flex items-center gap-1">
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Recent
-              </h3>
-              <div className="space-y-1">
-                {recentCalcs
-                  .filter((id) => !favorites.includes(id))
-                  .slice(0, 3)
-                  .map((calcId) => {
-                    const calc = calcDefs.find((c) => c.id === calcId);
-                    if (!calc) return null;
-                    return (
-                      <button
-                        key={calc.id}
-                        onClick={() => handleSelectCalculator(calc, "Recent")}
-                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm ${
-                          calc.id === active
-                            ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                            : "hover:bg-muted text-foreground"
-                        }`}
-                      >
-                        {calc.name}
-                      </button>
-                    );
-                  })}
-              </div>
-              <hr className="border-border my-3" />
+              {/* Divider between Favorites and Recent */}
+              {favorites.length > 0 &&
+                recentCalcs.filter((id) => !favorites.includes(id)).length >
+                  0 && <hr className="border-border/40" />}
+
+              {/* Recent */}
+              {recentCalcs.filter((id) => !favorites.includes(id)).length >
+                0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-blue-500/70 dark:text-blue-400/50 uppercase tracking-wide px-1 mb-1 flex items-center gap-1">
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Recent
+                  </h3>
+                  <div className="space-y-0.5">
+                    {recentCalcs
+                      .filter((id) => !favorites.includes(id))
+                      .slice(0, 3)
+                      .map((calcId) => {
+                        const calc = calcDefs.find((c) => c.id === calcId);
+                        if (!calc) return null;
+                        return (
+                          <button
+                            key={calc.id}
+                            onClick={() =>
+                              handleSelectCalculator(calc, "Recent")
+                            }
+                            className={`w-full text-left px-2 py-1.5 rounded-md transition-colors text-sm ${
+                              calc.id === active
+                                ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                                : "hover:bg-background/60 dark:hover:bg-background/30 text-muted-foreground"
+                            }`}
+                          >
+                            {calc.name}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
