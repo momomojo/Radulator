@@ -6,13 +6,13 @@
  *
  * Test Coverage:
  * - UI: Title, all 39 questions, 5 response options, info, references
- * - All-zero score: All subscales = 0, composite = 0, "Minimal"
- * - All-max score: All subscales = 100, composite = 100, "Severe"
+ * - All-zero score: All subscales = 0, composite = 0, "Low (0–25)"
+ * - All-max score: All subscales = 100, composite = 100, "Very High (76–100)"
  * - Single subscale scoring
  * - Mixed scores with individual subscale verification
  * - Severity boundary tests (25/26, 50/51, 75/76)
  * - Validation: incomplete responses
- * - References: 4 DOI links present
+ * - References: 5 DOI links present
  * - Responsive design
  */
 
@@ -145,9 +145,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       await expect(infoPanel).toContainText("39-item");
       await expect(infoPanel).toContainText("13 subscales");
       await expect(infoPanel).toContainText("past 4 weeks");
-      await expect(infoPanel).toContainText("0-100");
-      await expect(infoPanel).toContainText("Minimal impact");
-      await expect(infoPanel).toContainText("Severe impact");
+      await expect(infoPanel).toContainText("0–100");
+      await expect(infoPanel).toContainText("No published severity cutoffs");
+      await expect(infoPanel).toContainText("Minimal Important Change");
     });
 
     test("should display Goiter Symptoms subscale questions (1-3)", async ({
@@ -229,7 +229,7 @@ test.describe("ThyPRO-39 Calculator", () => {
       await expect(results).toContainText("Cosmetic Complaints: 0.0 / 100");
       await expect(results).toContainText("Overall QoL: 0.0 / 100");
       await expect(results).toContainText("Composite Score: 0.0 / 100");
-      await expect(results).toContainText("Minimal impact");
+      await expect(results).toContainText("Low (0–25)");
     });
 
     test("All-max score: all items = 4 should give all subscales 100.0", async ({
@@ -257,7 +257,7 @@ test.describe("ThyPRO-39 Calculator", () => {
       await expect(results).toContainText("Cosmetic Complaints: 100.0 / 100");
       await expect(results).toContainText("Overall QoL: 100.0 / 100");
       await expect(results).toContainText("Composite Score: 100.0 / 100");
-      await expect(results).toContainText("Severe impact");
+      await expect(results).toContainText("Very High (76–100)");
     });
 
     test("Single subscale: goiter items max, rest zero", async ({ page }) => {
@@ -275,7 +275,7 @@ test.describe("ThyPRO-39 Calculator", () => {
       await expect(results).toContainText("Tiredness: 0.0 / 100");
       // Goiter is NOT in composite, so composite should be 0
       await expect(results).toContainText("Composite Score: 0.0 / 100");
-      await expect(results).toContainText("Minimal impact");
+      await expect(results).toContainText("Low (0–25)");
     });
 
     test("Mixed scores: varied selections across subscales", async ({
@@ -333,7 +333,7 @@ test.describe("ThyPRO-39 Calculator", () => {
       // Items: 3+3+3+3+3+3+3+1 = 22, max = 22*4 = 88
       // Score = (42/88)*100 = 47.727... ≈ 47.7
       await expect(results).toContainText("Composite Score: 47.7 / 100");
-      await expect(results).toContainText("Moderate impact");
+      await expect(results).toContainText("Moderate (26–50)");
     });
   });
 
@@ -374,9 +374,7 @@ test.describe("ThyPRO-39 Calculator", () => {
   });
 
   test.describe("Severity Boundaries", () => {
-    test("Composite score at boundary 25.0 -> Minimal impact", async ({
-      page,
-    }) => {
+    test("Composite score at boundary 25.0 -> Low (0–25)", async ({ page }) => {
       // Non-composite scales (Q1-14, Q36-38): value 0
       await answerQuestionRange(page, 1, 14, 0);
       await answerQuestionRange(page, 36, 38, 0);
@@ -389,10 +387,10 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       const results = page.locator('section[aria-live="polite"]');
       await expect(results).toContainText("Composite Score: 25.0 / 100");
-      await expect(results).toContainText("Minimal impact");
+      await expect(results).toContainText("Low (0–25)");
     });
 
-    test("Composite score just above 25 -> Moderate impact", async ({
+    test("Composite score just above 25 -> Moderate (26–50)", async ({
       page,
     }) => {
       await answerQuestionRange(page, 1, 14, 0);
@@ -405,10 +403,10 @@ test.describe("ThyPRO-39 Calculator", () => {
       await page.locator('button:has-text("Calculate")').click();
 
       const results = page.locator('section[aria-live="polite"]');
-      await expect(results).toContainText("Moderate impact");
+      await expect(results).toContainText("Moderate (26–50)");
     });
 
-    test("Composite score at boundary 50.0 -> Moderate impact", async ({
+    test("Composite score at boundary 50.0 -> Moderate (26–50)", async ({
       page,
     }) => {
       await answerQuestionRange(page, 1, 14, 0);
@@ -422,26 +420,24 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       const results = page.locator('section[aria-live="polite"]');
       await expect(results).toContainText("Composite Score: 50.0 / 100");
-      await expect(results).toContainText("Moderate impact");
+      await expect(results).toContainText("Moderate (26–50)");
     });
 
-    test("Composite score just above 50 -> Significant impact", async ({
-      page,
-    }) => {
+    test("Composite score just above 50 -> High (51–75)", async ({ page }) => {
       await answerQuestionRange(page, 1, 14, 0);
       await answerQuestionRange(page, 36, 38, 0);
       // 21 items at 2, QoL at 3 -> sum = 42 + 3 = 45
-      // 45 / 88 * 100 = 51.136... -> Significant
+      // 45 / 88 * 100 = 51.136... -> High
       await answerQuestionRange(page, 15, 35, 2);
       await selectAnswer(page, 39, 3);
 
       await page.locator('button:has-text("Calculate")').click();
 
       const results = page.locator('section[aria-live="polite"]');
-      await expect(results).toContainText("Significant impact");
+      await expect(results).toContainText("High (51–75)");
     });
 
-    test("Composite score at boundary 75.0 -> Significant impact", async ({
+    test("Composite score at boundary 75.0 -> High (51–75)", async ({
       page,
     }) => {
       await answerQuestionRange(page, 1, 14, 0);
@@ -455,21 +451,23 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       const results = page.locator('section[aria-live="polite"]');
       await expect(results).toContainText("Composite Score: 75.0 / 100");
-      await expect(results).toContainText("Significant impact");
+      await expect(results).toContainText("High (51–75)");
     });
 
-    test("Composite score just above 75 -> Severe impact", async ({ page }) => {
+    test("Composite score just above 75 -> Very High (76–100)", async ({
+      page,
+    }) => {
       await answerQuestionRange(page, 1, 14, 0);
       await answerQuestionRange(page, 36, 38, 0);
       // 21 items at 3, QoL at 4 -> sum = 63 + 4 = 67
-      // 67 / 88 * 100 = 76.136... -> Severe
+      // 67 / 88 * 100 = 76.136... -> Very High
       await answerQuestionRange(page, 15, 35, 3);
       await selectAnswer(page, 39, 4);
 
       await page.locator('button:has-text("Calculate")').click();
 
       const results = page.locator('section[aria-live="polite"]');
-      await expect(results).toContainText("Severe impact");
+      await expect(results).toContainText("Very High (76–100)");
     });
   });
 
@@ -494,23 +492,23 @@ test.describe("ThyPRO-39 Calculator", () => {
   });
 
   test.describe("References", () => {
-    test("should display all 4 reference links with DOIs", async ({ page }) => {
+    test("should display all 5 reference links with DOIs", async ({ page }) => {
       // References use the CollapsibleReferences component with class "references-section"
       const refsSection = page.locator(".references-section");
       await refsSection.scrollIntoViewIfNeeded();
       await expect(refsSection).toBeVisible();
 
-      // By default only 3 are shown; expand to see all 4
+      // By default only 3 are shown; expand to see all 5
       const expandButton = refsSection.locator(
-        'button:has-text("Show 1 more reference")',
+        'button:has-text("more reference")',
       );
       if (await expandButton.isVisible().catch(() => false)) {
         await expandButton.click();
       }
 
-      // Verify 4 reference links
+      // Verify 5 reference links
       const referenceLinks = await refsSection.locator('a[href^="http"]').all();
-      expect(referenceLinks.length).toBe(4);
+      expect(referenceLinks.length).toBe(5);
 
       // Verify key references
       await expect(refsSection).toContainText("Watt T, et al");
@@ -519,6 +517,8 @@ test.describe("ThyPRO-39 Calculator", () => {
       await expect(refsSection).toContainText(
         "Cardiovasc Intervent Radiol. 2025",
       );
+      // MIC paper (Watt 2021, Endocrine Connections)
+      await expect(refsSection).toContainText("Endocrine Connections. 2021");
 
       // Verify DOI links
       await expect(
@@ -530,6 +530,7 @@ test.describe("ThyPRO-39 Calculator", () => {
       await expect(
         page.locator('a[href*="10.1210/jc.2014-1322"]'),
       ).toBeVisible();
+      await expect(page.locator('a[href*="10.1530/EC-20-0520"]')).toBeVisible();
     });
   });
 

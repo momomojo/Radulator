@@ -11,7 +11,7 @@ import { ResultDisplay, CollapsibleReferences } from "@/components/display";
 import { CalculatorProvider, useCalculator } from "@/context";
 import { usePreferences, useUrlSync, usePageMeta } from "@/hooks";
 // Auto-discovered calculator registry
-import { calcDefs, categories } from "@/components/calculators";
+import { calcDefs, categories, allTags } from "@/components/calculators";
 import {
   trackCalculatorSelected,
   trackCalculation,
@@ -73,6 +73,7 @@ function AppContent() {
   // UI state (local only)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState(null);
 
   // Current calculator definition
   const def = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
@@ -402,6 +403,37 @@ function AppContent() {
             )}
           </div>
 
+          {/* Tag Filter Bar */}
+          {!searchQuery && (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-1.5">
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() =>
+                      setActiveTag((prev) => (prev === tag ? null : tag))
+                    }
+                    className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+                      activeTag === tag
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              {activeTag && (
+                <button
+                  onClick={() => setActiveTag(null)}
+                  className="mt-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Favorites Section */}
           {favorites.length > 0 && !searchQuery && (
             <div className="mb-4">
@@ -506,6 +538,8 @@ function AppContent() {
                 const filteredCalcs = calcIds.filter((calcId) => {
                   const calc = calcDefs.find((c) => c.id === calcId);
                   if (!calc) return false;
+                  // Tag filter
+                  if (activeTag && !calc.tags?.includes(activeTag)) return false;
                   if (!query) return true;
                   return (
                     calc.name.toLowerCase().includes(query) ||
@@ -514,6 +548,10 @@ function AppContent() {
                     (calc.keywords &&
                       calc.keywords.some((kw) =>
                         kw.toLowerCase().includes(query),
+                      )) ||
+                    (calc.tags &&
+                      calc.tags.some((tag) =>
+                        tag.toLowerCase().includes(query),
                       ))
                   );
                 });

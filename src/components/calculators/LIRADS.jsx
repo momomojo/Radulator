@@ -18,6 +18,7 @@ export const LIRADS = {
   name: "LI-RADS v2018",
   desc: "Liver Imaging Reporting and Data System for hepatocellular carcinoma risk stratification",
   keywords: ["liver", "HCC", "hepatocellular carcinoma", "LR-5", "liver mass"],
+  tags: ["Hepatology", "Radiology", "Oncology"],
   metaDesc:
     "Free LI-RADS v2018 Calculator. Standardized liver imaging classification for HCC risk in at-risk patients. CT/MRI features, categories LR-1 to LR-5, LR-M, LR-TIV with management recommendations.",
 

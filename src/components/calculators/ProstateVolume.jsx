@@ -1,9 +1,10 @@
 export const ProstateVolume = {
   id: "prostate-volume",
   category: "Radiology",
-  name: "Prostate Volume",
+  name: "Prostate Volume & PSA Density",
   desc: "Ellipsoid volume estimation (MRI/US) and PSA‑Density.",
   keywords: ["prostate size", "PSA density", "PSAD", "BPH", "ellipsoid"],
+  tags: ["Radiology", "Urology"],
   metaDesc:
     "Free Prostate Volume and PSA Density Calculator. Calculate prostate volume using ellipsoid formula from MRI/ultrasound measurements. Includes PSA density calculation.",
   info: {

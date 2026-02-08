@@ -1918,6 +1918,7 @@ export const KhouryCatheterSelector = {
     "embolization",
     "angiography",
   ],
+  tags: ["Interventional", "Neuroradiology", "Equipment"],
   metaDesc:
     "Free Khoury Catheter Selector Tool. Interactive microcatheter selection for Onyx, PHIL, coils, and microspheres. Filter by embolic agent, size, and dead space calculations.",
 

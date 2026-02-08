@@ -21,6 +21,7 @@ export const NIRADS = {
     "SCC",
     "recurrence",
   ],
+  tags: ["Neuroradiology", "Oncology", "Head & Neck"],
   metaDesc:
     "Free NI-RADS Calculator. ACR standardized reporting for head and neck cancer surveillance imaging with CT, MRI, and PET/CT with recurrence risk and management.",
 

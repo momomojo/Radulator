@@ -1,7 +1,7 @@
 export const AdrenalCTWashout = {
   id: "adrenal-ct",
   category: "Radiology",
-  name: "Adrenal Washout CT",
+  name: "Adrenal CT Washout",
   desc: "Absolute & relative washout percentages to differentiate adenoma vs. non‑adenoma.",
   keywords: [
     "adrenal mass",
@@ -11,6 +11,7 @@ export const AdrenalCTWashout = {
     "HU",
     "Hounsfield",
   ],
+  tags: ["Radiology", "Adrenal", "Endocrinology"],
   metaDesc:
     "Free Adrenal CT Washout Calculator. Calculate absolute and relative washout percentages to differentiate adrenal adenoma from non-adenoma. Evidence-based with peer-reviewed references.",
   info: {

@@ -17,6 +17,7 @@ export const WellsPE = {
   name: "Wells Criteria for PE",
   desc: "Clinical decision rule for pulmonary embolism probability assessment",
   keywords: ["pulmonary embolism", "PE", "DVT", "thrombosis", "D-dimer"],
+  tags: ["Clinical Decision", "Pulmonary", "Emergency"],
   metaDesc:
     "Free Wells Criteria for PE Calculator. Estimate pre-test probability of pulmonary embolism with evidence-based scoring and D-dimer guidance.",
 

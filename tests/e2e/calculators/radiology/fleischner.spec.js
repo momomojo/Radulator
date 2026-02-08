@@ -28,7 +28,7 @@ import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js
 
 test.describe("Fleischner 2017 Guidelines Calculator", () => {
   test.beforeEach(async ({ page }) => {
-    await navigateToCalculator(page, "Fleischner Guidelines");
+    await navigateToCalculator(page, "Fleischner 2017 Pulmonary Nodules");
   });
 
   test.describe("Visual and UI Tests", () => {
@@ -485,7 +485,7 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     test("should have valid DOI links for primary sources", async ({
       page,
     }) => {
-      // 2017 Fleischner Guidelines (MacMahon et al.)
+      // 2017 Fleischner 2017 Pulmonary Nodules (MacMahon et al.)
       const guideline2017 = page.locator(
         'a[href="https://doi.org/10.1148/radiol.2017161659"]',
       );

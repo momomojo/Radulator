@@ -46,4 +46,6 @@ export {
   getSortedCategories,
   getCalculatorById,
   getCalculatorsByCategory,
+  allTags,
+  getCalculatorsByTag,
 } from "./registry";

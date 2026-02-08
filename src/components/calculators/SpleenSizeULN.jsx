@@ -4,6 +4,7 @@ export const SpleenSizeULN = {
   name: "Spleen Size",
   desc: "Gender- and height-adjusted upper limits of normal spleen length and volume",
   keywords: ["splenomegaly", "spleen enlargement", "splenic"],
+  tags: ["Radiology", "Hematology"],
   metaDesc:
     "Free Spleen Size Calculator. Calculate gender and height-adjusted upper limits of normal for spleen length and volume. Based on Chow et al. 2016 study.",
   info: {

@@ -15,6 +15,7 @@ export const ChildPugh = {
     "encephalopathy",
     "CTP",
   ],
+  tags: ["Hepatology", "Gastroenterology"],
   metaDesc:
     "Free Child-Pugh Score Calculator. Assess liver cirrhosis severity and prognosis (Class A, B, C). Calculates points for bilirubin, albumin, INR, ascites, and encephalopathy.",
   info: {

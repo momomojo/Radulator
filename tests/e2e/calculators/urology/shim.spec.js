@@ -1,5 +1,5 @@
 /**
- * SHIM Score Calculator - E2E Tests
+ * IIEF-5 (SHIM Score) Calculator - E2E Tests
  *
  * Tests the Sexual Health Inventory for Men (IIEF-5) calculator
  * for erectile dysfunction assessment.
@@ -29,14 +29,14 @@ import {
 } from "../../../helpers/calculator-test-helper.js";
 import testCases from "../../../fixtures/shim-test-cases.json" assert { type: "json" };
 
-const CALCULATOR_NAME = "SHIM Score";
+const CALCULATOR_NAME = "IIEF-5 (SHIM Score)";
 
-test.describe("SHIM Score Calculator", () => {
+test.describe("IIEF-5 (SHIM Score) Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator("h2")).toContainText("SHIM Score");
+    await expect(page.locator("h2")).toContainText("IIEF-5 (SHIM Score)");
     await expect(
       page.locator("text=Sexual Health Inventory for Men").first(),
     ).toBeVisible();
@@ -136,7 +136,7 @@ test.describe("SHIM Score Calculator", () => {
     await page.locator('button:has-text("Calculate")').click();
 
     // Verify score format includes "/25"
-    const scoreResult = page.locator("text=Total SHIM Score");
+    const scoreResult = page.locator("text=Total IIEF-5 (SHIM Score)");
     await expect(scoreResult).toBeVisible();
     await expect(scoreResult.locator("..")).toContainText("/ 25");
   });
@@ -171,9 +171,9 @@ test.describe("SHIM Score Calculator", () => {
       const resultsSection = page.locator('section[aria-live="polite"]');
       await expect(resultsSection).toBeVisible();
 
-      // Verify Total SHIM Score
+      // Verify Total IIEF-5 (SHIM Score)
       await expect(resultsSection).toContainText(
-        `Total SHIM Score: ${testCase.expected["Total SHIM Score"]}`,
+        `Total IIEF-5 (SHIM Score): ${testCase.expected["Total IIEF-5 (SHIM Score)"]}`,
       );
 
       // Verify ED Severity
@@ -540,7 +540,9 @@ test.describe("SHIM Score Calculator", () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     // Verify calculator is still usable
-    await expect(page.locator('h2:has-text("SHIM Score")')).toBeVisible();
+    await expect(
+      page.locator('h2:has-text("IIEF-5 (SHIM Score)")'),
+    ).toBeVisible();
 
     // Verify all questions are visible and accessible
     await expect(

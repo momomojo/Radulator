@@ -18,9 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const AVSCortisol = {
-  category: "Hepatology/Liver",
+  category: "Interventional",
   id: "avs-cortisol",
-  name: "AVS – Cortisol (Cushing)",
+  name: "Adrenal Vein Sampling – Cortisol",
   desc: "Comprehensive adrenal vein sampling interpretation for ACTH-independent hypercortisolism with multi-sample support.",
   keywords: [
     "AVS",
@@ -29,6 +29,7 @@ export const AVSCortisol = {
     "hypercortisolism",
     "ACTH-independent",
   ],
+  tags: ["Interventional", "Endocrinology", "Adrenal"],
   metaDesc:
     "Free AVS Cortisol Calculator for Cushing's syndrome. Adrenal vein sampling interpretation with epinephrine validation, lateralization ratios, and Young criteria. CSV export.",
   isCustomComponent: true,

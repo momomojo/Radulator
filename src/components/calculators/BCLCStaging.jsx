@@ -18,6 +18,7 @@ export const BCLCStaging = {
   name: "BCLC Staging (HCC)",
   desc: "Barcelona Clinic Liver Cancer staging for hepatocellular carcinoma with treatment recommendations.",
   keywords: ["HCC", "hepatocellular", "liver cancer", "Barcelona", "staging"],
+  tags: ["Hepatology", "Oncology", "Staging"],
   metaDesc:
     "Free BCLC Staging Calculator for hepatocellular carcinoma. Barcelona Clinic Liver Cancer staging with integrated Child-Pugh, ECOG status, and evidence-based treatment recommendations.",
 

@@ -19,11 +19,11 @@
 import { test, expect } from "@playwright/test";
 import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
-test.describe("Y-90 Radiation Segmentectomy Calculator", () => {
+test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
   test.beforeEach(async ({ page }) => {
-    await navigateToCalculator(page, "Y-90 Radiation Segmentectomy");
+    await navigateToCalculator(page, "Y-90 Radioembolization Dosimetry");
     await expect(page.locator("h2")).toContainText(
-      "Y-90 Radiation Segmentectomy",
+      "Y-90 Radioembolization Dosimetry",
     );
   });
 
@@ -31,7 +31,7 @@ test.describe("Y-90 Radiation Segmentectomy Calculator", () => {
     test("should display calculator with proper layout", async ({ page }) => {
       // Check header
       await expect(page.locator("h2")).toContainText(
-        "Y-90 Radiation Segmentectomy",
+        "Y-90 Radioembolization Dosimetry",
       );
       await expect(
         page.locator("text=Dosimetry calculator for Y-90 radioembolization"),

@@ -21,6 +21,7 @@ export const RadiationDoseConverter = {
   name: "Radiation Dose Converter",
   desc: "Convert between radiation dose units (Gy, Sv, Bq, etc.) with CT dose estimation",
   keywords: ["Gy", "rad", "Sv", "rem", "radiation units"],
+  tags: ["Radiology", "Safety", "Radiation"],
   metaDesc:
     "Free Radiation Dose Unit Converter. Convert between Gray, Sievert, Becquerel, rad, rem, and Curie. Includes CT effective dose calculator with DLP to mSv conversion using ICRP 103 standards.",
 

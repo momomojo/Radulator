@@ -24,10 +24,11 @@ import { Label } from "@/components/ui/label";
 
 export const AVSHyperaldo = {
   id: "avs-hyperaldo",
-  category: "Hepatology/Liver",
-  name: "AVS – Aldosterone (PA)",
+  category: "Interventional",
+  name: "Adrenal Vein Sampling – Aldosterone",
   desc: "Comprehensive primary aldosteronism AVS with CSI/RASI, multi-sample support, and pre/post-ACTH comparison.",
   keywords: ["AVS", "aldosterone", "hyperaldosteronism", "Conn syndrome", "PA"],
+  tags: ["Interventional", "Endocrinology", "Adrenal"],
   metaDesc:
     "Free Adrenal Vein Sampling Calculator for primary hyperaldosteronism. Calculate selectivity index, lateralization index, CSI, RASI with PASO criteria. CSV export included.",
   isCustomComponent: true,

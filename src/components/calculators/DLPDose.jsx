@@ -18,6 +18,7 @@ export const DLPDose = {
   name: "DLP to Effective Dose",
   desc: "Convert CT Dose Length Product to estimated effective radiation dose",
   keywords: ["radiation dose", "effective dose", "CT dose", "DLP", "mSv"],
+  tags: ["Radiology", "Safety", "Radiation"],
   metaDesc:
     "Free DLP to Effective Dose Calculator. Convert CT Dose Length Product (DLP) to effective dose in mSv using ICRP conversion factors for radiation dose tracking.",
 

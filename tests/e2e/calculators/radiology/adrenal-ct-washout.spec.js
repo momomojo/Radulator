@@ -27,14 +27,14 @@ import {
 
 test.describe("Adrenal CT Washout Calculator", () => {
   test.beforeEach(async ({ page }) => {
-    await navigateToCalculator(page, "Adrenal Washout CT");
+    await navigateToCalculator(page, "Adrenal CT Washout");
   });
 
   test("should display calculator with correct title and description", async ({
     page,
   }) => {
     // Verify title
-    await expect(page.locator("h2")).toContainText("Adrenal Washout CT");
+    await expect(page.locator("h2")).toContainText("Adrenal CT Washout");
 
     // Verify description - use header sibling selector instead of color class
     await expect(page.locator("header p")).toContainText(

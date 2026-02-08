@@ -18,6 +18,7 @@ export const ContrastDosing = {
   name: "IV Contrast Dosing",
   desc: "Iodinated contrast dosing calculator for CT studies with renal risk assessment",
   keywords: ["iodine", "contrast media", "IV contrast", "iohexol", "iodixanol"],
+  tags: ["Radiology", "Safety"],
   metaDesc:
     "Free IV Contrast Dosing Calculator for CT. Weight-based iodinated contrast dosing with lean body weight adjustment, iodine delivery rate (IDR), and eGFR-based renal risk assessment.",
 

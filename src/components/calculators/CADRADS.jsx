@@ -15,6 +15,7 @@ export const CADRADS = {
   name: "CAD-RADS 2.0",
   desc: "Coronary Artery Disease Reporting and Data System for coronary CTA",
   keywords: ["coronary", "CCTA", "coronary CTA", "CAD", "stenosis"],
+  tags: ["Cardiac", "Radiology"],
   metaDesc:
     "Free CAD-RADS 2.0 Calculator. Standardized coronary CTA stenosis classification with plaque burden modifiers and management recommendations.",
 

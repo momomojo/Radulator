@@ -1,7 +1,7 @@
 export const AdrenalMRICSI = {
   id: "adrenal-mri",
   category: "Radiology",
-  name: "Adrenal MRI CSI",
+  name: "Adrenal MRI Chemical Shift",
   desc: "Signal‑intensity index and adrenal‑to‑spleen CSI ratio.",
   keywords: [
     "adrenal mass",
@@ -10,6 +10,7 @@ export const AdrenalMRICSI = {
     "adenoma",
     "lipid",
   ],
+  tags: ["Radiology", "Adrenal", "Endocrinology"],
   metaDesc:
     "Free Adrenal MRI Chemical Shift Index Calculator. Calculate signal intensity index and adrenal-to-spleen CSI ratio to characterize adrenal lesions. Differentiate lipid-rich adenomas.",
   fields: [

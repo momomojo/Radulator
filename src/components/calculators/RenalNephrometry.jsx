@@ -10,6 +10,7 @@ export const RenalNephrometry = {
     "RENAL score",
     "PADUA",
   ],
+  tags: ["Urology", "Oncology", "Surgical"],
   metaDesc:
     "Free R.E.N.A.L. Nephrometry Score Calculator. Assess renal tumor complexity for surgical planning. Calculate low, moderate, or high complexity based on size, location, and anatomy.",
   info: {

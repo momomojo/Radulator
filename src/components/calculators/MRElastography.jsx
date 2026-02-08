@@ -4,6 +4,7 @@ export const MRElastography = {
   name: "MR Elastography (Liver)",
   desc: "Area-weighted mean liver stiffness across ROIs/slices.",
   keywords: ["liver stiffness", "fibrosis", "cirrhosis", "MRE", "elastography"],
+  tags: ["Hepatology", "Radiology"],
   metaDesc:
     "Free MR Elastography Calculator for liver fibrosis staging. Calculate area-weighted mean liver stiffness from multiple ROIs. Supports CSV input and fibrosis interpretation.",
   info: {

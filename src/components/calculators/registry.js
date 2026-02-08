@@ -86,4 +86,18 @@ export function getCalculatorsByCategory(category) {
   return ids.map((id) => getCalculatorById(id)).filter(Boolean);
 }
 
+/**
+ * Auto-discover all unique tags from calculator metadata
+ */
+export const allTags = [
+  ...new Set(calcDefs.flatMap((c) => c.tags || [])),
+].sort();
+
+/**
+ * Get calculators filtered by tag
+ */
+export function getCalculatorsByTag(tag) {
+  return calcDefs.filter((c) => c.tags?.includes(tag));
+}
+
 export default calcDefs;

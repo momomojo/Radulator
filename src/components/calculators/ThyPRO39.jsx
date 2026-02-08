@@ -15,6 +15,7 @@
  * - Singh R, et al. Cardiovasc Intervent Radiol. 2025;48:1021-1029. (TAE QoL)
  * - Watt T, et al. J Clin Endocrinol Metab. 2014;99(7):2325-32. (Responsiveness)
  * - Watt T, et al. Eur J Endocrinol. 2010;162(1):137-51. (Validity/reliability)
+ * - Watt T, et al. Endocrine Connections. 2021;10:R42-R50. (MIC values)
  */
 
 const SINGLE_MODE = "single";
@@ -459,14 +460,15 @@ function generateDeltaCSV(baselineScores, followupScores) {
 }
 
 function classifySeverity(score) {
-  if (score <= 25) return "Minimal impact";
-  if (score <= 50) return "Moderate impact";
-  if (score <= 75) return "Significant impact";
-  return "Severe impact";
+  if (score <= 25) return "Low (0–25)";
+  if (score <= 50) return "Moderate (26–50)";
+  if (score <= 75) return "High (51–75)";
+  return "Very High (76–100)";
 }
 
 function classifyDelta(delta) {
   const absDelta = Math.abs(delta);
+  // 6 = lower bound of group-level MIC range (6.3-14.3, Watt 2021)
   if (absDelta < 6) return "No meaningful change";
   if (delta < 0) return "Improved";
   return "Worsened";
@@ -510,40 +512,34 @@ function computeScaleScores(values, idPrefix = "") {
 
 function getSingleTimepointInterpretation(compositeScore) {
   if (compositeScore <= 25) {
-    return "The thyroid condition has minimal overall impact on quality of life. Individual subscale scores may reveal specific areas of concern worth monitoring.";
+    return "Composite score in the low range (0–25). The thyroid condition appears to have limited overall impact on quality of life. Review individual subscales to identify any specific domains of concern. Note: ThyPRO-39 does not define published severity cutoffs — scores are most informative when tracked over time using MIC thresholds (6–14 points).";
   }
-
   if (compositeScore <= 50) {
-    return "The thyroid condition has a moderate impact on quality of life. Review individual subscale scores to identify specific domains most affected. Consider targeted interventions.";
+    return "Composite score in the moderate range (26–50). The thyroid condition is affecting quality of life across multiple domains. Review individual subscale scores to identify the most impacted areas for targeted intervention. Track scores over time — changes of 6–14 points are considered clinically meaningful at the group level (Watt et al. 2021).";
   }
-
   if (compositeScore <= 75) {
-    return "The thyroid condition has a significant impact on quality of life. Multiple domains are likely affected. Comprehensive treatment evaluation and supportive care recommended.";
+    return "Composite score in the high range (51–75). The thyroid condition is substantially affecting quality of life. Multiple domains are likely impacted. Consider comprehensive treatment evaluation. Track scores over time — changes of 6–14 points are considered clinically meaningful at the group level (Watt et al. 2021).";
   }
-
-  return "The thyroid condition has a severe impact on quality of life. Urgent review of treatment plan recommended. Consider multidisciplinary approach including psychological support.";
+  return "Composite score in the very high range (76–100). The thyroid condition is severely affecting quality of life across most domains. Consider multidisciplinary approach. Track scores over time — changes of 6–14 points are considered clinically meaningful at the group level (Watt et al. 2021).";
 }
 
 function getDeltaInterpretation(compositeDelta) {
   const absDelta = Math.abs(compositeDelta);
+  // MIC thresholds: group-level 6.3-14.3, individual-level 8.0-21.1 (Watt 2021)
 
   if (absDelta < 6) {
-    return "Composite change is within a low-change zone. Correlate with symptom trajectory and objective thyroid outcomes.";
+    return "Composite change is below the group-level MIC threshold (<6 points). This change is unlikely to represent a clinically meaningful difference. Correlate with symptom trajectory and objective thyroid outcomes.";
   }
-
   if (compositeDelta < -14) {
-    return "Composite score shows marked improvement at follow-up, consistent with meaningful QoL gain.";
+    return "Composite score improved by more than the upper MIC bound (>14 points), indicating a large and clinically meaningful improvement in quality of life. This exceeds the group-level MIC range of 6–14 points (Watt et al. 2021).";
   }
-
   if (compositeDelta < 0) {
-    return "Composite score improved at follow-up. The change is likely meaningful in group-level context.";
+    return "Composite score improved within the MIC range (6–14 points), suggesting a likely clinically meaningful improvement at the group level. For individual patients, changes of 8–21 points may be needed for confident interpretation (Watt et al. 2021).";
   }
-
   if (compositeDelta > 14) {
-    return "Composite score worsened substantially at follow-up. Reassess treatment response and consider additional workup.";
+    return "Composite score worsened by more than the upper MIC bound (>14 points), indicating a large and clinically meaningful decline in quality of life. Reassess treatment response and consider additional workup.";
   }
-
-  return "Composite score worsened at follow-up. Review domain-level deltas and clinical context.";
+  return "Composite score worsened within the MIC range (6–14 points). This change may be clinically meaningful at the group level. Review domain-level deltas and clinical context. Individual-level MIC is 8–21 points (Watt et al. 2021).";
 }
 
 export const ThyPRO39 = {
@@ -562,6 +558,7 @@ export const ThyPRO39 = {
     "thyroid embolization",
     "nodular goiter",
   ],
+  tags: ["Interventional", "Endocrinology", "Thyroid", "QoL"],
   metaDesc:
     "Free ThyPRO-39 Calculator. Thyroid-specific quality of life assessment with 13 subscales and composite scoring for goiter, thyroid conditions, and TAE outcomes.",
 
@@ -572,15 +569,15 @@ Patients rate each item based on how much they have been bothered during the pas
 
 Subscale scores are normalized to 0-100, where higher scores indicate worse quality of life. The composite score is derived from scales 5-11 (Tiredness, Cognitive, Anxiety, Depression, Emotional, Social, Daily Life) plus the Overall QoL item.
 
-Assessment modes:
-  - Single assessment: one-time scoring and severity interpretation
-  - Baseline vs Follow-up: longitudinal delta tracking for TAE outcome review
+Score interpretation:
+  Higher scores (0–100) = worse quality of life
+  No published severity cutoffs exist for ThyPRO-39
+  Primary clinical utility is in tracking change over time
+  Minimal Important Change (MIC): 6–14 points at group level (Watt et al. 2021)
 
-Severity classification:
-  0-25: Minimal impact
-  26-50: Moderate impact
-  51-75: Significant impact
-  76-100: Severe impact
+Assessment modes:
+  - Single assessment: one-time scoring with descriptive range labels
+  - Baseline vs Follow-up: longitudinal delta tracking for TAE outcome review
 
 The ThyPRO-39 is widely used in thyroid research including evaluation of Thyroid Arterial Embolization (TAE) for nodular/multinodular goiter.
 
@@ -706,7 +703,7 @@ Licensing: The ThyPRO-39 is a copyrighted instrument developed by Torquil Watt a
     out["Overall Trajectory"] =
       trajectory === "No meaningful change" ? "Stable" : trajectory;
     out["MIC Context"] =
-      "ThyPRO MIC context: group changes around 6.3-14.3 points may be meaningful; interpret with clinical context.";
+      "Group-level MIC: 6.3–14.3 points (ROC method). Individual-level MIC: 8.0–21.1 points (Reliable Change Index). Source: Watt et al. Endocrine Connections. 2021;10:R42-R50.";
     out["Clinical Interpretation"] = getDeltaInterpretation(compositeDelta);
 
     const csvUri = generateDeltaCSV(baselineScores, followupScores);
@@ -728,6 +725,10 @@ Licensing: The ThyPRO-39 is a copyrighted instrument developed by Torquil Watt a
     {
       t: "Watt T, et al. Development of a short version of the ThyPRO (ThyPRO-39) and investigation of its properties. Thyroid. 2015;25(10):1069-79.",
       u: "https://doi.org/10.1089/thy.2015.0209",
+    },
+    {
+      t: "Watt T, et al. Determining clinically important changes in scores on the thyroid-specific quality of life questionnaire ThyPRO. Endocrine Connections. 2021;10(2):R42-R50.",
+      u: "https://doi.org/10.1530/EC-20-0520",
     },
     {
       t: "Singh R, et al. Thyroid Arterial Embolization for Nodular/Multinodular Goiter and Its Impact on Quality of Life: A Prospective Single-Center Study. Cardiovasc Intervent Radiol. 2025;48:1021-1029.",

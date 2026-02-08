@@ -44,13 +44,13 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await expect(page.locator("aside")).toBeVisible();
   });
 
-  test("should navigate to Adrenal Washout CT calculator", async ({ page }) => {
-    await clickCalculator(page, "Adrenal Washout CT");
-    await expect(page.locator("h2")).toContainText("Adrenal Washout CT");
+  test("should navigate to Adrenal CT Washout calculator", async ({ page }) => {
+    await clickCalculator(page, "Adrenal CT Washout");
+    await expect(page.locator("h2")).toContainText("Adrenal CT Washout");
   });
 
-  test("should calculate Adrenal Washout CT", async ({ page }) => {
-    await clickCalculator(page, "Adrenal Washout CT");
+  test("should calculate Adrenal CT Washout", async ({ page }) => {
+    await clickCalculator(page, "Adrenal CT Washout");
 
     // Fill in test values using accessible labels
     await page.getByRole("spinbutton", { name: /Pre.*contrast/i }).fill("5");
@@ -89,13 +89,15 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await expect(page.getByText("Child-Pugh Class")).toBeVisible();
   });
 
-  test("should navigate to Prostate Volume calculator", async ({ page }) => {
-    await clickCalculator(page, "Prostate Volume");
+  test("should navigate to Prostate Volume & PSA Density calculator", async ({
+    page,
+  }) => {
+    await clickCalculator(page, "Prostate Volume & PSA Density");
     await expect(page.locator("h2")).toContainText("Prostate Volume");
   });
 
-  test("should calculate Prostate Volume", async ({ page }) => {
-    await clickCalculator(page, "Prostate Volume");
+  test("should calculate Prostate Volume & PSA Density", async ({ page }) => {
+    await clickCalculator(page, "Prostate Volume & PSA Density");
 
     // Fill in dimensions using role selectors
     await page.getByRole("spinbutton", { name: /Length/i }).fill("4");
@@ -115,7 +117,7 @@ test.describe("Smoke Tests - Core Functionality", () => {
   });
 
   test("should display references section", async ({ page }) => {
-    await clickCalculator(page, "Adrenal Washout CT");
+    await clickCalculator(page, "Adrenal CT Washout");
     await expect(page.locator("text=/References/i")).toBeVisible();
   });
 
