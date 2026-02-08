@@ -485,7 +485,7 @@ Licensing: The ThyPRO-39 is a copyrighted instrument developed by Torquil Watt a
         "Clinical Interpretation": getSingleTimepointInterpretation(
           singleScores.compositeScore,
         ),
-        "Download CSV": `<a href="${csvUri}" download="ThyPRO39-scores.csv"></a>`,
+        "Download CSV": `<a href="${csvUri}" download="ThyPRO39-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.csv"></a>`,
       };
     }
 
@@ -553,7 +553,7 @@ Licensing: The ThyPRO-39 is a copyrighted instrument developed by Torquil Watt a
 
     const csvUri = generateDeltaCSV(baselineScores, followupScores);
     out["Download CSV"] =
-      `<a href="${csvUri}" download="ThyPRO39-delta.csv"></a>`;
+      `<a href="${csvUri}" download="ThyPRO39-delta-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.csv"></a>`;
 
     return out;
   },
