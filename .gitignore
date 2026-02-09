@@ -41,3 +41,7 @@ test-results/
 !.claude/
 !.claude/**/*.md
 .claude/settings.local.json
+.claude/settings.json
+
+# Test report screenshots
+tests/reports/*.png
