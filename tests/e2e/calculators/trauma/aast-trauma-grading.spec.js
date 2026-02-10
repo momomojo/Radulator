@@ -38,27 +38,35 @@ test.describe("AAST Trauma Grading Calculator", () => {
       page,
     }) => {
       await expect(page.locator("h2")).toContainText("AAST Trauma Grading");
-      await expect(page.getByText("AAST-OIS 2018")).toBeVisible();
+      await expect(page.getByText("AAST-OIS 2018").first()).toBeVisible();
     });
 
     test("should display info section with grading explanation", async ({
       page,
     }) => {
-      await expect(page.getByText("Grade I")).toBeVisible();
-      await expect(page.getByText("Grade V")).toBeVisible();
-      await expect(page.getByText("Vascular injury criteria")).toBeVisible();
+      await expect(page.getByText("Grade I").first()).toBeVisible();
+      await expect(page.getByText("Grade V").first()).toBeVisible();
+      await expect(
+        page.getByText("Vascular injury criteria").first(),
+      ).toBeVisible();
     });
 
     test("should have organ selection", async ({ page }) => {
-      await expect(page.getByText("Injured Organ")).toBeVisible();
-      await expect(page.getByText("Liver", { exact: true })).toBeVisible();
-      await expect(page.getByText("Spleen", { exact: true })).toBeVisible();
-      await expect(page.getByText("Kidney", { exact: true })).toBeVisible();
+      await expect(page.getByText("Injured Organ").first()).toBeVisible();
+      await expect(
+        page.getByText("Liver", { exact: true }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Spleen", { exact: true }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Kidney", { exact: true }).first(),
+      ).toBeVisible();
     });
 
     test("should have multiple injuries checkbox", async ({ page }) => {
       await expect(
-        page.getByText("Multiple Injuries in Same Organ"),
+        page.getByText("Multiple Injuries in Same Organ").first(),
       ).toBeVisible();
     });
   });
@@ -71,9 +79,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show liver-specific fields when liver selected", async ({
       page,
     }) => {
-      await expect(page.getByText("Liver Hematoma")).toBeVisible();
-      await expect(page.getByText("Liver Laceration")).toBeVisible();
-      await expect(page.getByText("Liver Vascular Injury")).toBeVisible();
+      await expect(page.getByText("Liver Hematoma").first()).toBeVisible();
+      await expect(page.getByText("Liver Laceration").first()).toBeVisible();
+      await expect(
+        page.getByText("Liver Vascular Injury").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade I liver injury - subcapsular hematoma <10%", async ({
@@ -83,10 +93,13 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 1")).toBeVisible();
-      await expect(page.locator("text=Liver")).toBeVisible();
-      await expect(page.locator("text=Minor")).toBeVisible();
-      await expect(page.locator("text=Non-operative management")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 1").first()).toBeVisible();
+      await expect(results.locator("text=Liver").first()).toBeVisible();
+      await expect(results.locator("text=Minor").first()).toBeVisible();
+      await expect(
+        results.locator("text=Non-operative management").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade I liver injury - capsular tear <1cm", async ({
@@ -96,8 +109,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 1")).toBeVisible();
-      await expect(page.locator("text=Capsular tear")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 1").first()).toBeVisible();
+      await expect(results.locator("text=Capsular tear").first()).toBeVisible();
     });
 
     test("should classify Grade II liver injury - laceration 1-3 cm", async ({
@@ -107,8 +121,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 2")).toBeVisible();
-      await expect(page.locator("text=Moderate")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 2").first()).toBeVisible();
+      await expect(results.locator("text=Moderate").first()).toBeVisible();
     });
 
     test("should classify Grade III liver injury - deep laceration >3cm", async ({
@@ -118,9 +133,12 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 3")).toBeVisible();
-      await expect(page.locator("text=Serious")).toBeVisible();
-      await expect(page.locator("text=angioembolization")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+      await expect(results.locator("text=Serious").first()).toBeVisible();
+      await expect(
+        results.locator("text=angioembolization").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade III liver injury - contained active bleeding", async ({
@@ -132,8 +150,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 3")).toBeVisible();
-      await expect(page.locator("text=contained")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+      await expect(results.locator("text=contained").first()).toBeVisible();
     });
 
     test("should classify Grade IV liver injury - 25-75% lobe disruption", async ({
@@ -145,9 +164,10 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 4")).toBeVisible();
-      await expect(page.locator("text=Severe")).toBeVisible();
-      await expect(page.locator("text=33-40%")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+      await expect(results.locator("text=Severe").first()).toBeVisible();
+      await expect(results.locator("text=33-40%").first()).toBeVisible();
     });
 
     test("should classify Grade IV liver injury - intraperitoneal bleeding", async ({
@@ -159,8 +179,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 4")).toBeVisible();
-      await expect(page.locator("text=peritoneum")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+      await expect(results.locator("text=peritoneum").first()).toBeVisible();
     });
 
     test("should classify Grade V liver injury - >75% lobe disruption", async ({
@@ -172,9 +193,12 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 5")).toBeVisible();
-      await expect(page.locator("text=Critical")).toBeVisible();
-      await expect(page.locator("text=damage control surgery")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+      await expect(results.locator("text=Critical").first()).toBeVisible();
+      await expect(
+        results.locator("text=damage control surgery").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade V liver injury - juxtahepatic venous injury", async ({
@@ -184,8 +208,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 5")).toBeVisible();
-      await expect(page.locator("text=retrohepatic IVC")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+      await expect(
+        results.locator("text=retrohepatic IVC").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade V with major hepatic vein checkbox", async ({
@@ -195,7 +222,8 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 5")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
     });
 
     test("should show liver-specific notes for high-grade injury", async ({
@@ -207,8 +235,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
+      const results = page.locator('section[aria-live="polite"]');
       // Grade IV shows 33-40% intervention rate
-      await expect(page.locator("text=Liver")).toBeVisible();
+      await expect(results.locator("text=Liver").first()).toBeVisible();
     });
   });
 
@@ -220,9 +249,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show spleen-specific fields when spleen selected", async ({
       page,
     }) => {
-      await expect(page.getByText("Spleen Hematoma")).toBeVisible();
-      await expect(page.getByText("Spleen Laceration")).toBeVisible();
-      await expect(page.getByText("Spleen Vascular Injury")).toBeVisible();
+      await expect(page.getByText("Spleen Hematoma").first()).toBeVisible();
+      await expect(page.getByText("Spleen Laceration").first()).toBeVisible();
+      await expect(
+        page.getByText("Spleen Vascular Injury").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade I spleen injury", async ({ page }) => {
@@ -230,9 +261,12 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 1")).toBeVisible();
-      await expect(page.locator("text=Spleen")).toBeVisible();
-      await expect(page.locator("text=NOM success rate >95%")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 1").first()).toBeVisible();
+      await expect(results.locator("text=Spleen").first()).toBeVisible();
+      await expect(
+        results.locator("text=NOM success rate >95%").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade III spleen injury - large hematoma", async ({
@@ -242,9 +276,10 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 3")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(
-        page.locator("text=prophylactic angioembolization"),
+        results.locator("text=prophylactic angioembolization").first(),
       ).toBeVisible();
     });
 
@@ -255,8 +290,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 4")).toBeVisible();
-      await expect(page.locator("text=80% splenic salvage")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+      await expect(
+        results.locator("text=80% splenic salvage").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade V spleen injury - shattered", async ({
@@ -266,8 +304,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 5")).toBeVisible();
-      await expect(page.locator("text=splenectomy")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+      await expect(results.locator("text=splenectomy").first()).toBeVisible();
     });
 
     test("should classify Grade V spleen injury - hilar devascularization", async ({
@@ -281,8 +320,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 5")).toBeVisible();
-      await expect(page.locator("text=devascularization")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+      await expect(
+        results.locator("text=devascularization").first(),
+      ).toBeVisible();
     });
 
     test("should show spleen-specific vaccination note for Grade V", async ({
@@ -292,8 +334,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Vaccinations")).toBeVisible();
-      await expect(page.locator("text=pneumococcal")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Vaccinations").first()).toBeVisible();
+      await expect(results.locator("text=pneumococcal").first()).toBeVisible();
     });
   });
 
@@ -305,11 +348,15 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show kidney-specific fields when kidney selected", async ({
       page,
     }) => {
-      await expect(page.getByText("Kidney Hematoma")).toBeVisible();
-      await expect(page.getByText("Kidney Laceration")).toBeVisible();
-      await expect(page.getByText("Urinary Extravasation")).toBeVisible();
-      await expect(page.getByText("Kidney Vascular Injury")).toBeVisible();
-      await expect(page.getByText("Kidney Infarction")).toBeVisible();
+      await expect(page.getByText("Kidney Hematoma").first()).toBeVisible();
+      await expect(page.getByText("Kidney Laceration").first()).toBeVisible();
+      await expect(
+        page.getByText("Urinary Extravasation").first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Kidney Vascular Injury").first(),
+      ).toBeVisible();
+      await expect(page.getByText("Kidney Infarction").first()).toBeVisible();
     });
 
     test("should classify Grade I kidney injury - contusion", async ({
@@ -319,9 +366,10 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 1")).toBeVisible();
-      await expect(page.locator("text=Kidney")).toBeVisible();
-      await expect(page.locator("text=Minor")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 1").first()).toBeVisible();
+      await expect(results.locator("text=Kidney").first()).toBeVisible();
+      await expect(results.locator("text=Minor").first()).toBeVisible();
     });
 
     test("should classify Grade II kidney injury - small laceration", async ({
@@ -333,18 +381,22 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 2")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 2").first()).toBeVisible();
     });
 
     test("should classify Grade III kidney injury - hematoma rim distance >=3.5cm", async ({
       page,
     }) => {
-      await page.getByText("Hematoma rim distance").click();
+      await page.locator('label[for="kidney_hematoma-hrd_gte3_5"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 3")).toBeVisible();
-      await expect(page.locator("text=HRD")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+      await expect(
+        results.locator("text=Hematoma rim distance").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade III kidney injury - collecting system involvement", async ({
@@ -356,8 +408,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 3")).toBeVisible();
-      await expect(page.locator("text=collecting system")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+      await expect(
+        results.locator("text=collecting system").first(),
+      ).toBeVisible();
     });
 
     test("should classify Grade IV kidney injury - UPJ disruption", async ({
@@ -367,8 +422,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 4")).toBeVisible();
-      await expect(page.locator("text=UPJ")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+      await expect(results.locator("text=UPJ").first()).toBeVisible();
     });
 
     test("should classify Grade V kidney injury - main vessel injury", async ({
@@ -380,21 +436,25 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 5")).toBeVisible();
-      await expect(page.locator("text=nephrectomy")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+      await expect(results.locator("text=nephrectomy").first()).toBeVisible();
     });
 
     test("should note urinary extravasation on result", async ({ page }) => {
       await page
         .getByText("<2.5 cm parenchymal depth, no collecting system")
         .click();
-      await page.getByText("Urinary Extravasation").click();
+      await page.locator('label[for="kidney_urinary_extrav"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Urinary extravasation")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Urinary extravasation").first(),
+      ).toBeVisible();
       // Should upgrade to at least Grade 3
-      await expect(page.locator("text=Grade 3")).toBeVisible();
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
     });
 
     test("should show kidney-specific note about urinary extravasation resolution", async ({
@@ -403,12 +463,13 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page
         .getByText("Laceration extending into collecting system")
         .click();
-      await page.getByText("Urinary Extravasation").click();
+      await page.locator('label[for="kidney_urinary_extrav"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=80-90%")).toBeVisible();
-      await expect(page.locator("text=spontaneously")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=80-90%").first()).toBeVisible();
+      await expect(results.locator("text=spontaneously").first()).toBeVisible();
     });
   });
 
@@ -422,12 +483,13 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Grade 2")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 2").first()).toBeVisible();
       await expect(
-        page.locator("text=Multiple injuries (+1 grade)"),
+        results.locator("text=Multiple injuries (+1 grade)").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Base grade 1 advanced to Grade 2"),
+        results.locator("text=Base grade 1 advanced to Grade 2").first(),
       ).toBeVisible();
     });
 
@@ -440,8 +502,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
+      const results = page.locator('section[aria-live="polite"]');
       // Grade III should not advance further due to multiple injuries rule
-      await expect(page.locator("text=Grade 3")).toBeVisible();
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
       // Should not show advancement message since it's already >= Grade III
     });
   });
@@ -455,8 +518,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Non-operative management")).toBeVisible();
-      await expect(page.locator("text=Observation")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Non-operative management").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=Observation").first()).toBeVisible();
     });
 
     test("should show angioembolization consideration for Grade III", async ({
@@ -469,8 +535,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Angioembolization")).toBeVisible();
-      await expect(page.locator("text=15-25%")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Angioembolization").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=15-25%").first()).toBeVisible();
     });
 
     test("should show operative management note for Grade V", async ({
@@ -483,8 +552,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=43-57%")).toBeVisible();
-      await expect(page.locator("text=damage control surgery")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=43-57%").first()).toBeVisible();
+      await expect(
+        results.locator("text=damage control surgery").first(),
+      ).toBeVisible();
     });
   });
 
@@ -497,11 +569,16 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
+      const results = page.locator('section[aria-live="polite"]');
       await expect(
-        page.locator("text=HEMODYNAMIC STABILITY IS PARAMOUNT"),
+        results.locator("text=HEMODYNAMIC STABILITY IS PARAMOUNT").first(),
       ).toBeVisible();
-      await expect(page.locator("text=Unstable patients")).toBeVisible();
-      await expect(page.locator("text=OPERATIVE MANAGEMENT")).toBeVisible();
+      await expect(
+        results.locator("text=Unstable patients").first(),
+      ).toBeVisible();
+      await expect(
+        results.locator("text=OPERATIVE MANAGEMENT").first(),
+      ).toBeVisible();
     });
   });
 
@@ -510,7 +587,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select the injured organ"),
+        page.locator("text=Please select the injured organ").first(),
       ).toBeVisible();
     });
 
@@ -522,7 +599,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select at least one injury finding"),
+        page.locator("text=Please select at least one injury finding").first(),
       ).toBeVisible();
     });
 
@@ -533,7 +610,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select at least one injury finding"),
+        page.locator("text=Please select at least one injury finding").first(),
       ).toBeVisible();
     });
 
@@ -544,7 +621,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select at least one injury finding"),
+        page.locator("text=Please select at least one injury finding").first(),
       ).toBeVisible();
     });
   });
@@ -555,9 +632,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
     }) => {
       await page.getByText("Liver", { exact: true }).click();
 
-      await expect(page.getByText("Liver Hematoma")).toBeVisible();
-      await expect(page.getByText("Spleen Hematoma")).not.toBeVisible();
-      await expect(page.getByText("Kidney Hematoma")).not.toBeVisible();
+      await expect(page.getByText("Liver Hematoma").first()).toBeVisible();
+      await expect(page.getByText("Spleen Hematoma").first()).not.toBeVisible();
+      await expect(page.getByText("Kidney Hematoma").first()).not.toBeVisible();
     });
 
     test("should only show spleen fields when spleen selected", async ({
@@ -565,9 +642,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
     }) => {
       await page.getByText("Spleen", { exact: true }).click();
 
-      await expect(page.getByText("Spleen Hematoma")).toBeVisible();
-      await expect(page.getByText("Liver Hematoma")).not.toBeVisible();
-      await expect(page.getByText("Kidney Hematoma")).not.toBeVisible();
+      await expect(page.getByText("Spleen Hematoma").first()).toBeVisible();
+      await expect(page.getByText("Liver Hematoma").first()).not.toBeVisible();
+      await expect(page.getByText("Kidney Hematoma").first()).not.toBeVisible();
     });
 
     test("should only show kidney fields when kidney selected", async ({
@@ -575,9 +652,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
     }) => {
       await page.getByText("Kidney", { exact: true }).click();
 
-      await expect(page.getByText("Kidney Hematoma")).toBeVisible();
-      await expect(page.getByText("Liver Hematoma")).not.toBeVisible();
-      await expect(page.getByText("Spleen Hematoma")).not.toBeVisible();
+      await expect(page.getByText("Kidney Hematoma").first()).toBeVisible();
+      await expect(page.getByText("Liver Hematoma").first()).not.toBeVisible();
+      await expect(page.getByText("Spleen Hematoma").first()).not.toBeVisible();
     });
   });
 
@@ -593,10 +670,13 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
+      const results = page.locator('section[aria-live="polite"]');
       // Should be Grade III (highest)
-      await expect(page.locator("text=Grade 3")).toBeVisible();
-      await expect(page.locator("text=Subcapsular hematoma")).toBeVisible();
-      await expect(page.locator("text=>3 cm")).toBeVisible();
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+      await expect(
+        results.locator("text=Subcapsular hematoma").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=>3 cm").first()).toBeVisible();
     });
 
     test("should list all findings in results", async ({ page }) => {
@@ -608,11 +688,12 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Key Findings")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Key Findings").first()).toBeVisible();
       await expect(
-        page.locator("text=Subcapsular hematoma 10-50%"),
+        results.locator("text=Subcapsular hematoma 10-50%").first(),
       ).toBeVisible();
-      await expect(page.locator("text=1-3 cm")).toBeVisible();
+      await expect(results.locator("text=1-3 cm").first()).toBeVisible();
     });
   });
 
@@ -621,7 +702,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await expect(
         page.getByRole("heading", { name: "References" }),
       ).toBeVisible();
-      await expect(page.getByText("Kozar RA")).toBeVisible();
+      await expect(page.getByText("Kozar RA").first()).toBeVisible();
     });
 
     test("should have reference to 2018 AAST-OIS update", async ({ page }) => {
@@ -630,11 +711,26 @@ test.describe("AAST Trauma Grading Calculator", () => {
     });
 
     test("should have reference to WSES guidelines", async ({ page }) => {
-      await expect(page.getByText("WSES")).toBeVisible();
-      await expect(page.getByText("World J Emerg Surg")).toBeVisible();
+      const refsSection = page.locator(".references-section");
+      const expandBtn = refsSection.locator(
+        'button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
+      await expect(refsSection.getByText("WSES").first()).toBeVisible();
+      await expect(
+        refsSection.getByText("World J Emerg Surg").first(),
+      ).toBeVisible();
     });
 
     test("should have link to AAST official website", async ({ page }) => {
+      const expandBtn = page.locator(
+        '.references-section button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
       const aastWebsite = page.locator('a[href*="aast.org"]');
       await expect(aastWebsite).toBeVisible();
     });

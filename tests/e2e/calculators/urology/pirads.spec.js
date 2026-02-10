@@ -384,6 +384,14 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     });
 
     test("should have correct number of reference links", async ({ page }) => {
+      // Expand collapsed references to show all 6
+      const expandBtn = page.locator(
+        '.references-section button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
+
       const refLinks = page.locator(
         'a[href^="https://doi.org"], a[href^="https://www.acr.org"]',
       );
@@ -418,6 +426,14 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should have link to ACR PI-RADS official resources", async ({
       page,
     }) => {
+      // Expand collapsed references to show all 6
+      const expandBtn = page.locator(
+        '.references-section button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
+
       const acrLink = page.locator(
         'a[href="https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/PI-RADS"]',
       );

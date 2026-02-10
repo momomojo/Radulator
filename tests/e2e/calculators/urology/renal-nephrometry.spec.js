@@ -893,10 +893,16 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
   test.describe("Reference Links Testing", () => {
     test("should display all reference links", async ({ page }) => {
-      const referencesSection = page.locator(
-        'section:has(h3:has-text("References"))',
-      );
+      const referencesSection = page.locator(".references-section");
       await expect(referencesSection).toBeVisible();
+
+      // Expand collapsed references to show all 4
+      const expandBtn = referencesSection.locator(
+        'button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
 
       // Verify all 4 references are present
       await expect(

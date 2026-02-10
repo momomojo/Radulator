@@ -208,7 +208,7 @@ All conversions follow ICRP Publication 103 (2007) standards.`,
     const result = {};
 
     // Validate required fields for unit conversion
-    if (!conversion_mode) {
+    if (!conversion_mode && input_value !== "" && !include_ct_dose) {
       return {
         Error: "Please select a conversion mode to begin.",
       };
@@ -220,11 +220,17 @@ All conversions follow ICRP Publication 103 (2007) standards.`,
     const formatValue = (val, unit) => {
       if (val === 0) return `0 ${unit}`;
       if (Math.abs(val) >= 1e6) return `${val.toExponential(4)} ${unit}`;
-      if (Math.abs(val) >= 1000)
-        return `${val.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${unit}`;
-      if (Math.abs(val) >= 1) return `${val.toFixed(4)} ${unit}`;
-      if (Math.abs(val) >= 0.0001) return `${val.toFixed(6)} ${unit}`;
-      return `${val.toExponential(4)} ${unit}`;
+      let str;
+      if (Math.abs(val) >= 1) {
+        str = val.toFixed(4);
+      } else if (Math.abs(val) >= 0.0001) {
+        str = val.toFixed(6);
+      } else {
+        return `${val.toExponential(4)} ${unit}`;
+      }
+      // Strip trailing zeros for clean display
+      str = str.replace(/\.?0+$/, "");
+      return `${str} ${unit}`;
     };
 
     // Process unit conversions if input value provided

@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..", "..");
-const calculatorsDir = path.join(projectRoot, "src", "components", "calculators");
+const calculatorsDir = path.join(
+  projectRoot,
+  "src",
+  "components",
+  "calculators",
+);
 const calculatorNameToId = new Map();
 const calculatorIdToName = new Map();
 const mojibakeReplacements = {
@@ -14,9 +19,9 @@ const mojibakeReplacements = {
   "â€‘": "‑",
   "â‰¤": "≤",
   "â‰¥": "≥",
-  "Âµ": "µ",
+  Âµ: "µ",
   "Â°": "°",
-  "Â": "",
+  Â: "",
 };
 
 function normalizeName(value) {
@@ -177,11 +182,7 @@ export async function fillInput(page, label, value) {
  * @param {string} value - Value to select
  */
 export async function selectOption(page, label, value) {
-  const select = page
-    .locator(
-      `label:has-text("${label}") + select, label:has-text("${label}") ~ select`,
-    )
-    .first();
+  const select = page.getByLabel(label);
   await select.selectOption(value);
 }
 

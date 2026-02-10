@@ -58,64 +58,78 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
     test("should have conversion mode selector", async ({ page }) => {
       await expect(page.getByText("Conversion Mode")).toBeVisible();
-      await expect(page.getByText("Absorbed Dose (Gy, rad)")).toBeVisible();
-      await expect(page.getByText("Equivalent Dose (Sv, rem)")).toBeVisible();
-      await expect(page.getByText("Activity (Bq, Ci)")).toBeVisible();
+      await expect(
+        page.locator('label[for="conversion_mode-absorbed"]'),
+      ).toBeVisible();
+      await expect(
+        page.locator('label[for="conversion_mode-equivalent"]'),
+      ).toBeVisible();
+      await expect(
+        page.locator('label[for="conversion_mode-activity"]'),
+      ).toBeVisible();
     });
 
     test("should have CT dose calculator checkbox", async ({ page }) => {
-      await expect(page.getByText("Calculate CT Effective Dose")).toBeVisible();
+      await expect(page.locator('label[for="include_ct_dose"]')).toBeVisible();
     });
   });
 
   test.describe("Absorbed Dose Conversions", () => {
     test("should convert Gray to all absorbed dose units", async ({ page }) => {
-      await page.getByText("Absorbed Dose (Gy, rad)").click();
+      await page.locator('label[for="conversion_mode-absorbed"]').click();
       await page.fill('input[id="input_value"]', "1");
       await page.locator('select[id="absorbed_unit"]').selectOption("Gy");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Gray (Gy)")).toBeVisible();
-      await expect(page.locator("text=1.0000 Gy")).toBeVisible();
-      await expect(page.locator("text=1000 mGy")).toBeVisible();
-      await expect(page.locator("text=100 cGy")).toBeVisible();
-      await expect(page.locator("text=100 rad")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Gray (Gy)").first()).toBeVisible();
+      await expect(results.locator("text=1 Gy").first()).toBeVisible();
+      await expect(results.locator("text=1000 mGy").first()).toBeVisible();
+      await expect(results.locator("text=100 cGy").first()).toBeVisible();
+      await expect(results.locator("text=100 rad").first()).toBeVisible();
     });
 
     test("should convert milliGray correctly", async ({ page }) => {
-      await page.getByText("Absorbed Dose (Gy, rad)").click();
+      await page.locator('label[for="conversion_mode-absorbed"]').click();
       await page.fill('input[id="input_value"]', "500");
       await page.locator('select[id="absorbed_unit"]').selectOption("mGy");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0.5000 Gy")).toBeVisible();
-      await expect(page.locator("text=50 rad")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=0.5 Gy").first()).toBeVisible();
+      await expect(results.locator("text=50 rad").first()).toBeVisible();
     });
 
     test("should convert rad to SI units", async ({ page }) => {
-      await page.getByText("Absorbed Dose (Gy, rad)").click();
+      await page.locator('label[for="conversion_mode-absorbed"]').click();
       await page.fill('input[id="input_value"]', "100");
       await page.locator('select[id="absorbed_unit"]').selectOption("rad");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=1.0000 Gy")).toBeVisible();
-      await expect(page.locator("text=1000 mGy")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=1 Gy").first()).toBeVisible();
+      await expect(results.locator("text=1000 mGy").first()).toBeVisible();
     });
 
     test("should show equivalent dose note for photons", async ({ page }) => {
-      await page.getByText("Absorbed Dose (Gy, rad)").click();
+      await page.locator('label[for="conversion_mode-absorbed"]').click();
       await page.fill('input[id="input_value"]', "1");
       await page.locator('select[id="absorbed_unit"]').selectOption("Gy");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=For X-rays/gamma")).toBeVisible();
-      await expect(page.locator("text=1.0000 Sv")).toBeVisible();
-      await expect(page.locator("text=For alpha particles")).toBeVisible();
-      await expect(page.locator("text=20")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=For X-rays/gamma").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=1 Sv").first()).toBeVisible();
+      await expect(
+        results.locator("text=For alpha particles").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=20").first()).toBeVisible();
     });
   });
 
@@ -123,158 +137,182 @@ test.describe("Radiation Dose Converter Calculator", () => {
     test("should convert Sievert to all equivalent dose units", async ({
       page,
     }) => {
-      await page.getByText("Equivalent Dose (Sv, rem)").click();
+      await page.locator('label[for="conversion_mode-equivalent"]').click();
       await page.fill('input[id="input_value"]', "0.001");
       await page.locator('select[id="equivalent_unit"]').selectOption("Sv");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Sievert (Sv)")).toBeVisible();
-      await expect(page.locator("text=1 mSv")).toBeVisible();
-      await expect(page.locator("text=1000")).toBeVisible();
-      await expect(page.locator("text=0.1")).toBeVisible(); // rem
-      await expect(page.locator("text=100")).toBeVisible(); // mrem
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Sievert (Sv)").first()).toBeVisible();
+      await expect(results.locator("text=1 mSv").first()).toBeVisible();
+      await expect(results.locator("text=1000").first()).toBeVisible();
+      await expect(results.locator("text=0.1").first()).toBeVisible(); // rem
+      await expect(results.locator("text=100").first()).toBeVisible(); // mrem
     });
 
     test("should convert millisievert correctly", async ({ page }) => {
-      await page.getByText("Equivalent Dose (Sv, rem)").click();
+      await page.locator('label[for="conversion_mode-equivalent"]').click();
       await page.fill('input[id="input_value"]', "10");
       await page.locator('select[id="equivalent_unit"]').selectOption("mSv");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0.0100 Sv")).toBeVisible();
-      await expect(page.locator("text=10000")).toBeVisible(); // uSv
-      await expect(page.locator("text=1 rem")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=0.01 Sv").first()).toBeVisible();
+      await expect(results.locator("text=10000").first()).toBeVisible(); // uSv
+      await expect(results.locator("text=1 rem").first()).toBeVisible();
     });
 
     test("should convert rem to SI units", async ({ page }) => {
-      await page.getByText("Equivalent Dose (Sv, rem)").click();
+      await page.locator('label[for="conversion_mode-equivalent"]').click();
       await page.fill('input[id="input_value"]', "5");
       await page.locator('select[id="equivalent_unit"]').selectOption("rem");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0.0500 Sv")).toBeVisible();
-      await expect(page.locator("text=50 mSv")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=0.05 Sv").first()).toBeVisible();
+      await expect(results.locator("text=50 mSv").first()).toBeVisible();
     });
 
     test("should show radiation weighting factor for alpha particles", async ({
       page,
     }) => {
-      await page.getByText("Equivalent Dose (Sv, rem)").click();
+      await page.locator('label[for="conversion_mode-equivalent"]').click();
       await page.fill('input[id="input_value"]', "1");
       await page.locator('select[id="equivalent_unit"]').selectOption("Sv");
       await page.locator('select[id="radiation_type"]').selectOption("alpha");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=wR Factor")).toBeVisible();
-      await expect(page.locator("text=20")).toBeVisible();
-      await expect(page.locator("text=Alpha particles")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=wR Factor").first()).toBeVisible();
+      await expect(results.locator("text=20").first()).toBeVisible();
       await expect(
-        page.locator("text=Corresponding Absorbed Dose"),
+        results.locator("text=Alpha particles").first(),
       ).toBeVisible();
-      await expect(page.locator("text=0.0500 Gy")).toBeVisible(); // 1 Sv / 20
+      await expect(
+        results.locator("text=Corresponding Absorbed Dose").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=0.05 Gy").first()).toBeVisible(); // 1 Sv / 20
     });
 
     test("should show dose context comparisons", async ({ page }) => {
-      await page.getByText("Equivalent Dose (Sv, rem)").click();
+      await page.locator('label[for="conversion_mode-equivalent"]').click();
       await page.fill('input[id="input_value"]', "5");
       await page.locator('select[id="equivalent_unit"]').selectOption("mSv");
 
       await page.click('button:has-text("Calculate")');
 
+      const results = page.locator('section[aria-live="polite"]');
       await expect(
-        page.locator("text=Equivalent Background Radiation"),
+        results.locator("text=Equivalent Background Radiation").first(),
       ).toBeVisible();
-      await expect(page.locator("text=days")).toBeVisible();
-      await expect(page.locator("text=Equivalent Chest X-rays")).toBeVisible();
-      await expect(page.locator("text=chest X-rays")).toBeVisible();
+      await expect(results.locator("text=days").first()).toBeVisible();
+      await expect(
+        results.locator("text=Equivalent Chest X-rays").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=chest X-rays").first()).toBeVisible();
     });
 
     test("should provide context for CT-range doses", async ({ page }) => {
-      await page.getByText("Equivalent Dose (Sv, rem)").click();
+      await page.locator('label[for="conversion_mode-equivalent"]').click();
       await page.fill('input[id="input_value"]', "6");
       await page.locator('select[id="equivalent_unit"]').selectOption("mSv");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=CT chest range")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=CT chest range").first(),
+      ).toBeVisible();
     });
   });
 
   test.describe("Activity Conversions", () => {
     test("should convert Becquerel to all activity units", async ({ page }) => {
-      await page.getByText("Activity (Bq, Ci)").click();
+      await page.locator('label[for="conversion_mode-activity"]').click();
       await page.fill('input[id="input_value"]', "37000000");
       await page.locator('select[id="activity_unit"]').selectOption("Bq");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Activity Conversions")).toBeVisible();
-      await expect(page.locator("text=37000 kBq")).toBeVisible();
-      await expect(page.locator("text=37 MBq")).toBeVisible();
-      await expect(page.locator("text=1 mCi")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Activity Conversions").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=37000 kBq").first()).toBeVisible();
+      await expect(results.locator("text=37 MBq").first()).toBeVisible();
+      await expect(results.locator("text=1 mCi").first()).toBeVisible();
     });
 
     test("should convert megabecquerel correctly", async ({ page }) => {
-      await page.getByText("Activity (Bq, Ci)").click();
+      await page.locator('label[for="conversion_mode-activity"]').click();
       await page.fill('input[id="input_value"]', "370");
       await page.locator('select[id="activity_unit"]').selectOption("MBq");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=10 mCi")).toBeVisible();
-      await expect(page.locator("text=0.3700 GBq")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=10 mCi").first()).toBeVisible();
+      await expect(results.locator("text=0.37 GBq").first()).toBeVisible();
     });
 
     test("should convert Curie to SI units", async ({ page }) => {
-      await page.getByText("Activity (Bq, Ci)").click();
+      await page.locator('label[for="conversion_mode-activity"]').click();
       await page.fill('input[id="input_value"]', "1");
       await page.locator('select[id="activity_unit"]').selectOption("Ci");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=37 GBq")).toBeVisible();
-      await expect(page.locator("text=1000 mCi")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=37 GBq").first()).toBeVisible();
+      await expect(results.locator("text=1000 mCi").first()).toBeVisible();
     });
 
     test("should convert millicurie correctly", async ({ page }) => {
-      await page.getByText("Activity (Bq, Ci)").click();
+      await page.locator('label[for="conversion_mode-activity"]').click();
       await page.fill('input[id="input_value"]', "20");
       await page.locator('select[id="activity_unit"]').selectOption("mCi");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=740 MBq")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=740 MBq").first()).toBeVisible();
     });
 
     test("should show nuclear medicine context", async ({ page }) => {
-      await page.getByText("Activity (Bq, Ci)").click();
+      await page.locator('label[for="conversion_mode-activity"]').click();
       await page.fill('input[id="input_value"]', "400");
       await page.locator('select[id="activity_unit"]').selectOption("MBq");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Nuclear Medicine Context")).toBeVisible();
-      await expect(page.locator("text=FDG PET")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Nuclear Medicine Context").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=FDG PET").first()).toBeVisible();
     });
 
     test("should show quick reference", async ({ page }) => {
-      await page.getByText("Activity (Bq, Ci)").click();
+      await page.locator('label[for="conversion_mode-activity"]').click();
       await page.fill('input[id="input_value"]', "100");
       await page.locator('select[id="activity_unit"]').selectOption("MBq");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=1 mCi = 37 MBq")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=1 mCi = 37 MBq").first(),
+      ).toBeVisible();
     });
   });
 
   test.describe("CT Dose Calculation", () => {
     test("should calculate CT effective dose from DLP", async ({ page }) => {
-      await page.getByText("Calculate CT Effective Dose").click();
+      await page.locator('label[for="include_ct_dose"]').click();
       await page.fill('input[id="ctdi_vol"]', "10");
       await page.fill('input[id="scan_length"]', "30");
       await page.locator('select[id="body_region"]').selectOption("chest");
@@ -282,17 +320,22 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=CT Dose Calculation")).toBeVisible();
-      await expect(page.locator("text=DLP")).toBeVisible();
-      await expect(page.locator("text=300")).toBeVisible(); // DLP = 10 * 30
-      await expect(page.locator("text=mGy")).toBeVisible();
-      await expect(page.locator("text=Estimated Effective Dose")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=CT Dose Calculation").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=DLP").first()).toBeVisible();
+      await expect(results.locator("text=300").first()).toBeVisible(); // DLP = 10 * 30
+      await expect(results.locator("text=mGy").first()).toBeVisible();
+      await expect(
+        results.locator("text=Estimated Effective Dose").first(),
+      ).toBeVisible();
       // 300 mGy*cm * 0.014 = 4.2 mSv
-      await expect(page.locator("text=4.20 mSv")).toBeVisible();
+      await expect(results.locator("text=4.20 mSv").first()).toBeVisible();
     });
 
     test("should show k-factor for body region", async ({ page }) => {
-      await page.getByText("Calculate CT Effective Dose").click();
+      await page.locator('label[for="include_ct_dose"]').click();
       await page.fill('input[id="ctdi_vol"]', "10");
       await page.fill('input[id="scan_length"]', "30");
       await page.locator('select[id="body_region"]').selectOption("head");
@@ -300,13 +343,14 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=k-factor")).toBeVisible();
-      await expect(page.locator("text=0.0021")).toBeVisible();
-      await expect(page.locator("text=16 cm phantom")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=k-factor").first()).toBeVisible();
+      await expect(results.locator("text=0.0021").first()).toBeVisible();
+      await expect(results.locator("text=16 cm phantom").first()).toBeVisible();
     });
 
     test("should apply pediatric age multiplier", async ({ page }) => {
-      await page.getByText("Calculate CT Effective Dose").click();
+      await page.locator('label[for="include_ct_dose"]').click();
       await page.fill('input[id="ctdi_vol"]', "10");
       await page.fill('input[id="scan_length"]', "20");
       await page.locator('select[id="body_region"]').selectOption("abdomen");
@@ -314,16 +358,21 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Age Adjustment")).toBeVisible();
-      await expect(page.locator("text=1.5x")).toBeVisible();
-      await expect(page.locator("text=5 years")).toBeVisible();
-      await expect(page.locator("text=Adult Effective Dose")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Age Adjustment").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=1.5×").first()).toBeVisible();
+      await expect(results.locator("text=5 years").first()).toBeVisible();
+      await expect(
+        results.locator("text=Adult Effective Dose").first(),
+      ).toBeVisible();
     });
 
     test("should show dose assessment compared to typical range", async ({
       page,
     }) => {
-      await page.getByText("Calculate CT Effective Dose").click();
+      await page.locator('label[for="include_ct_dose"]').click();
       await page.fill('input[id="ctdi_vol"]', "15");
       await page.fill('input[id="scan_length"]', "35");
       await page.locator('select[id="body_region"]').selectOption("chest");
@@ -331,13 +380,16 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Typical chest CT")).toBeVisible();
-      await expect(page.locator("text=4-8 mSv")).toBeVisible();
-      await expect(page.locator("text=Assessment")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Typical chest CT").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=4-8 mSv").first()).toBeVisible();
+      await expect(results.locator("text=Assessment").first()).toBeVisible();
     });
 
     test("should show chest X-ray equivalent for CT dose", async ({ page }) => {
-      await page.getByText("Calculate CT Effective Dose").click();
+      await page.locator('label[for="include_ct_dose"]').click();
       await page.fill('input[id="ctdi_vol"]', "10");
       await page.fill('input[id="scan_length"]', "30");
       await page.locator('select[id="body_region"]').selectOption("chest");
@@ -345,14 +397,17 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Equivalent Chest X-rays")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
       await expect(
-        page.locator("text=Equivalent Background Days"),
+        results.locator("text=Equivalent Chest X-rays").first(),
+      ).toBeVisible();
+      await expect(
+        results.locator("text=Equivalent Background Days").first(),
       ).toBeVisible();
     });
 
     test("should show important limitations note", async ({ page }) => {
-      await page.getByText("Calculate CT Effective Dose").click();
+      await page.locator('label[for="include_ct_dose"]').click();
       await page.fill('input[id="ctdi_vol"]', "10");
       await page.fill('input[id="scan_length"]', "30");
       await page.locator('select[id="body_region"]').selectOption("abdomen");
@@ -360,9 +415,12 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Important Limitations")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
       await expect(
-        page.locator("text=Size-Specific Dose Estimates"),
+        results.locator("text=Important Limitations").first(),
+      ).toBeVisible();
+      await expect(
+        results.locator("text=Size-Specific Dose Estimates").first(),
       ).toBeVisible();
     });
   });
@@ -373,23 +431,31 @@ test.describe("Radiation Dose Converter Calculator", () => {
     }) => {
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Common Reference Doses")).toBeVisible();
-      await expect(page.locator("text=Chest X-ray (PA)")).toBeVisible();
-      await expect(page.locator("text=0.02 mSv")).toBeVisible();
-      await expect(page.locator("text=CT Head")).toBeVisible();
-      await expect(page.locator("text=CT Chest")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Common Reference Doses").first(),
+      ).toBeVisible();
+      await expect(
+        results.locator("text=Chest X-ray (PA)").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=0.02 mSv").first()).toBeVisible();
+      await expect(results.locator("text=CT Head").first()).toBeVisible();
+      await expect(results.locator("text=CT Chest").first()).toBeVisible();
     });
 
     test("should show ICRP dose limits", async ({ page }) => {
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Dose Limits")).toBeVisible();
-      await expect(page.locator("text=Annual Background")).toBeVisible();
-      await expect(page.locator("text=~3 mSv/year")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Dose Limits").first()).toBeVisible();
       await expect(
-        page.locator("text=Occupational Annual Limit"),
+        results.locator("text=Annual Background").first(),
       ).toBeVisible();
-      await expect(page.locator("text=50 mSv/year")).toBeVisible();
+      await expect(results.locator("text=~3 mSv/year").first()).toBeVisible();
+      await expect(
+        results.locator("text=Occupational Annual Limit").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=50 mSv/year").first()).toBeVisible();
     });
   });
 
@@ -398,58 +464,63 @@ test.describe("Radiation Dose Converter Calculator", () => {
       await page.fill('input[id="input_value"]', "100");
       await page.click('button:has-text("Calculate")');
 
+      const results = page.locator('section[aria-live="polite"]');
       await expect(
-        page.locator("text=Please select a conversion mode"),
+        results.locator("text=Please select a conversion mode").first(),
       ).toBeVisible();
     });
 
     test("should show error for missing input unit in absorbed dose", async ({
       page,
     }) => {
-      await page.getByText("Absorbed Dose (Gy, rad)").click();
+      await page.locator('label[for="conversion_mode-absorbed"]').click();
       await page.fill('input[id="input_value"]', "100");
       // Don't select unit
       await page.click('button:has-text("Calculate")');
 
+      const results = page.locator('section[aria-live="polite"]');
       await expect(
-        page.locator("text=Please select an input unit"),
+        results.locator("text=Please select an input unit").first(),
       ).toBeVisible();
     });
 
     test("should handle zero input value", async ({ page }) => {
-      await page.getByText("Absorbed Dose (Gy, rad)").click();
+      await page.locator('label[for="conversion_mode-absorbed"]').click();
       await page.fill('input[id="input_value"]', "0");
       await page.locator('select[id="absorbed_unit"]').selectOption("Gy");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0 Gy")).toBeVisible();
-      await expect(page.locator("text=0 mGy")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=0 Gy").first()).toBeVisible();
+      await expect(results.locator("text=0 mGy").first()).toBeVisible();
     });
 
     test("should handle very small values with scientific notation", async ({
       page,
     }) => {
-      await page.getByText("Equivalent Dose (Sv, rem)").click();
+      await page.locator('label[for="conversion_mode-equivalent"]').click();
       await page.fill('input[id="input_value"]', "0.00001");
       await page.locator('select[id="equivalent_unit"]').selectOption("Sv");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=10")).toBeVisible();
-      await expect(page.locator("text=mrem")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=10").first()).toBeVisible();
+      await expect(results.locator("text=mrem").first()).toBeVisible();
     });
 
     test("should handle very large values with scientific notation", async ({
       page,
     }) => {
-      await page.getByText("Activity (Bq, Ci)").click();
+      await page.locator('label[for="conversion_mode-activity"]').click();
       await page.fill('input[id="input_value"]', "1000000000000");
       await page.locator('select[id="activity_unit"]').selectOption("Bq");
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=1000 GBq")).toBeVisible();
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=1000 GBq").first()).toBeVisible();
     });
   });
 
@@ -458,12 +529,12 @@ test.describe("Radiation Dose Converter Calculator", () => {
       page,
     }) => {
       // Set up unit conversion
-      await page.getByText("Equivalent Dose (Sv, rem)").click();
+      await page.locator('label[for="conversion_mode-equivalent"]').click();
       await page.fill('input[id="input_value"]', "5");
       await page.locator('select[id="equivalent_unit"]').selectOption("mSv");
 
       // Also enable CT dose
-      await page.getByText("Calculate CT Effective Dose").click();
+      await page.locator('label[for="include_ct_dose"]').click();
       await page.fill('input[id="ctdi_vol"]', "10");
       await page.fill('input[id="scan_length"]', "30");
       await page.locator('select[id="body_region"]').selectOption("chest");
@@ -472,10 +543,13 @@ test.describe("Radiation Dose Converter Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should show both sections
+      const results = page.locator('section[aria-live="polite"]');
       await expect(
-        page.locator("text=Equivalent Dose Conversions"),
+        results.locator("text=Equivalent Dose Conversions").first(),
       ).toBeVisible();
-      await expect(page.locator("text=CT Dose Calculation")).toBeVisible();
+      await expect(
+        results.locator("text=CT Dose Calculation").first(),
+      ).toBeVisible();
     });
   });
 
@@ -484,7 +558,9 @@ test.describe("Radiation Dose Converter Calculator", () => {
       await expect(
         page.getByRole("heading", { name: "References" }),
       ).toBeVisible();
-      await expect(page.getByText("ICRP Publication 103")).toBeVisible();
+      await expect(
+        page.getByText("ICRP Publication 103").first(),
+      ).toBeVisible();
     });
 
     test("should have link to ICRP Publication 103", async ({ page }) => {
