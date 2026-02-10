@@ -2,7 +2,7 @@
 // React + Tailwind + shadcn/ui components
 // All formulas mirror radcalc.online calculators with referenced studies.
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import {
   trackCalculation,
   trackOutboundLink,
   trackCSVDownload,
+  trackSearch,
+  trackResultViewed,
 } from "@/lib/analytics";
 
 /*******************************************************************
@@ -93,6 +95,35 @@ function AppContent() {
   // Page meta tags
   usePageMeta(def);
 
+  // Track initial page view (GA4 config has send_page_view: false for SPA)
+  useEffect(() => {
+    const sendPageView = (eventName, params) => {
+      if (import.meta.env.DEV) {
+        console.log("[GA4 Dev]", eventName, params);
+        return;
+      }
+      if (typeof window !== "undefined" && typeof window.gtag === "function") {
+        window.gtag("event", eventName, params);
+      }
+    };
+    sendPageView("page_view", {
+      page_title: document.title,
+      page_location: window.location.href,
+    });
+  }, []);
+
+  // Debounced search tracking
+  const searchTimerRef = useRef(null);
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (searchQuery.trim()) {
+      searchTimerRef.current = setTimeout(() => {
+        trackSearch(searchQuery.trim());
+      }, 500);
+    }
+    return () => clearTimeout(searchTimerRef.current);
+  }, [searchQuery]);
+
   // Sync MRE rows into compute values
   useEffect(() => {
     if (def?.id === "mr-elastography") {
@@ -125,6 +156,9 @@ function AppContent() {
       "Unknown";
     const hasResult = result && Object.keys(result).length > 0;
     trackCalculation(def.id, def.name, category, hasResult);
+    if (hasResult) {
+      trackResultViewed(def.id, def.name);
+    }
   };
 
   // Disable Calculate for MRE until at least one valid ROI pair exists

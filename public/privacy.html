@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'unsafe-inline'; img-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Privacy Policy - Radulator</title>
   <style>
     body {
@@ -15,6 +17,7 @@
     }
     h1 { color: #1a1a1a; border-bottom: 2px solid #e5e5e5; padding-bottom: 0.5rem; }
     h2 { color: #333; margin-top: 2rem; }
+    h3 { color: #444; margin-top: 1.5rem; }
     a { color: #2563eb; }
     .back-link { margin-bottom: 2rem; display: inline-block; }
     .updated { color: #666; font-size: 0.9rem; margin-bottom: 2rem; }
@@ -24,106 +27,217 @@
   <a href="/" class="back-link">&larr; Back to Radulator</a>
 
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: January 2026</p>
+  <p class="updated">Effective Date: February 10, 2026</p>
 
-  <h2>Introduction</h2>
+  <h2>1. Introduction</h2>
   <p>
-    Radulator ("we," "our," or "us") respects your privacy. This Privacy Policy explains how we collect,
-    use, and protect information when you use our medical calculator website at radulator.com.
+    Radulator ("we," "our," or "us") operates the website radulator.com (the "Site"), which provides free,
+    evidence-based medical calculators for healthcare professionals and medical learners. This Privacy Policy
+    explains how we collect, use, disclose, and safeguard your information when you visit our Site.
+  </p>
+  <p>
+    By using radulator.com, you agree to the collection and use of information in accordance with this
+    Privacy Policy. If you do not agree, please do not use the Site.
   </p>
 
-  <h2>Information We Collect</h2>
+  <h2>2. Information We Collect</h2>
 
-  <h3>Information You Provide</h3>
+  <h3>2.1 Information You Provide Directly</h3>
   <p>
-    When you use our calculators, you may enter clinical values such as measurements, lab results,
-    or patient parameters. <strong>This data is processed entirely in your browser and is never transmitted
-    to our servers.</strong> We do not store, collect, or have access to any patient data or clinical
-    information you enter.
+    When you submit our website feedback form (powered by Formspree), we may collect the following
+    information. This form is used solely to gather feedback for improving the Site and is not used to
+    collect any clinical or patient data:
   </p>
-
-  <h3>Automatically Collected Information</h3>
-  <p>We may collect certain information automatically, including:</p>
   <ul>
-    <li><strong>Usage Data:</strong> Pages visited, calculators used, time spent on site</li>
-    <li><strong>Device Information:</strong> Browser type, operating system, screen resolution</li>
-    <li><strong>Location Data:</strong> General geographic region (country/city level, not precise location)</li>
+    <li><strong>Name</strong> (required) — to identify the feedback source</li>
+    <li><strong>Email</strong> (required) — to respond to your feedback</li>
+    <li><strong>Feedback Type</strong> (required) — Bug Report, Feature Request, or General Feedback</li>
+    <li><strong>Calculator</strong> (optional) — to identify the relevant calculator</li>
+    <li><strong>Message</strong> (required) — to receive your detailed feedback</li>
   </ul>
-
-  <h2>How We Use Information</h2>
-  <p>We use automatically collected information to:</p>
-  <ul>
-    <li>Understand which calculators are most useful</li>
-    <li>Improve user experience and site performance</li>
-    <li>Analyze aggregate usage patterns</li>
-    <li>Display relevant advertisements (if applicable)</li>
-  </ul>
-
-  <h2>Third-Party Services</h2>
-
-  <h3>Google Analytics</h3>
   <p>
-    We use Google Analytics 4 to understand how visitors use our site. Google Analytics collects
-    information such as how often users visit, what pages they visit, and what other sites they
-    used prior to coming to our site. We use this information to improve our service.
+    <strong>Important:</strong> The feedback form is used solely to collect user suggestions, bug reports,
+    and general feedback to improve the website. We do not collect any patient data, protected health
+    information (PHI), or clinical data through the Site. Our calculators operate entirely in your browser
+    and do not transmit calculation inputs or results to our servers.
   </p>
+
+  <h3>2.2 Information Collected Automatically</h3>
   <p>
-    Google Analytics uses cookies. You can opt out by installing the
+    We use Google Analytics 4 (GA4) to collect anonymized usage data. The following events are tracked:
+  </p>
+  <ul>
+    <li><strong>Calculator Selected:</strong> Which calculator a user opens</li>
+    <li><strong>Calculation Performed:</strong> When a calculation is run (not the inputs or results)</li>
+    <li><strong>Calculator Result Viewed:</strong> When results are displayed</li>
+    <li><strong>File Download:</strong> When a file is downloaded</li>
+    <li><strong>Outbound Link Click:</strong> When an external link is clicked</li>
+    <li><strong>Feedback Submitted:</strong> When the feedback form is submitted</li>
+    <li><strong>Search Queries:</strong> Calculator search terms entered in the search box</li>
+    <li><strong>Reference Link Clicks:</strong> Which external reference links you click from calculator pages</li>
+  </ul>
+  <p>
+    Google Analytics may also collect standard web analytics data such as your IP address (anonymized),
+    browser type, device type, operating system, referring URL, pages visited, and time spent on pages.
+    This data is processed by Google under its own
+    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>.
+  </p>
+
+  <h3>2.3 Cookies and Local Storage</h3>
+  <p>
+    Radulator itself does not set cookies or use browser local storage. However, Google Analytics uses
+    cookies (primarily <code>_ga</code> and <code>_gid</code>) to distinguish unique visitors. You can
+    control cookies through your browser settings or by using the
     <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">Google Analytics Opt-out Browser Add-on</a>.
   </p>
+
+  <h2>3. How We Use Your Information</h2>
+  <p>We use the information we collect for the following purposes:</p>
+  <ul>
+    <li>To respond to your feedback and improve our calculators</li>
+    <li>To understand how users interact with our Site and identify areas for improvement</li>
+    <li>To monitor and analyze usage trends and aggregate statistics</li>
+    <li>To fix bugs, improve performance, and develop new features</li>
+    <li>To display relevant advertisements (if applicable)</li>
+    <li>To comply with legal obligations</li>
+  </ul>
+  <p>We do not sell, rent, or share your personal information with third parties for their marketing purposes.</p>
+
+  <h2>4. Third-Party Service Providers</h2>
+  <p>We use the following third-party services:</p>
+  <ul>
+    <li>
+      <strong>Google Analytics 4</strong> — Website analytics and usage tracking.
+      <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+    </li>
+    <li>
+      <strong>Formspree</strong> — Feedback form submission processing.
+      <a href="https://formspree.io/legal/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>
+    </li>
+    <li>
+      <strong>GitHub Pages</strong> — Website hosting.
+      <a href="https://docs.github.com/en/site-policy/privacy-policies" target="_blank" rel="noopener">Privacy Policy</a>
+    </li>
+  </ul>
 
   <h3>Advertising</h3>
   <p>
     We may display advertisements through Google AdSense or similar services. These services may use
     cookies to serve ads based on your prior visits to this or other websites. You can opt out of
-    personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">Google Ads Settings</a>.
+    personalized advertising by visiting
+    <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">Google Ads Settings</a>.
   </p>
 
-  <h2>Cookies</h2>
   <p>
-    We use cookies and similar technologies to analyze traffic and personalize content. You can
-    control cookies through your browser settings. Note that disabling cookies may affect site functionality.
+    Each of these services may collect additional information as described in their respective privacy
+    policies. We encourage you to review them.
   </p>
 
-  <h2>Data Security</h2>
+  <h2>5. Data Retention</h2>
   <p>
-    Since we do not collect or store personal health information, there is no PHI (Protected Health
-    Information) at risk. All calculations are performed locally in your browser. We use HTTPS to
-    encrypt data in transit.
+    Feedback form data (name, email, message) is retained in Formspree for as long as necessary to respond
+    to your feedback and improve the website. This data is used exclusively for website improvement purposes.
+  </p>
+  <p>
+    Google Analytics data is retained according to Google's default retention settings (14 months for
+    user-level data). You may request deletion of your personal data at any time (see Section 8).
   </p>
 
-  <h3>Calculator Data</h3>
+  <h2>6. Data Security</h2>
+  <p>We take reasonable measures to protect your personal information, including:</p>
+  <ul>
+    <li>Our Site is served over HTTPS, encrypting data in transit</li>
+    <li>We use reputable third-party service providers with their own security measures</li>
+    <li>Our codebase is maintained in a private repository</li>
+    <li>All calculators process data client-side only — no calculation data is transmitted to any server</li>
+  </ul>
   <p>
-    All calculator inputs and results, including patient-reported outcome scores,
-    are processed entirely within your browser.
-    <strong>No patient data, clinical values, or questionnaire responses are
-    transmitted to, stored on, or accessible by our servers.</strong>
-    When you close or refresh the page, all entered data is permanently discarded.
-    CSV exports are generated locally in your browser and downloaded directly to
-    your device.
+    However, no method of transmission over the Internet or electronic storage is 100% secure. We cannot
+    guarantee absolute security.
   </p>
 
-  <h2>Children's Privacy</h2>
+  <h2>7. Children's Privacy</h2>
   <p>
-    Our service is intended for healthcare professionals and is not directed at children under 13.
-    We do not knowingly collect information from children.
+    Radulator is intended for use by healthcare professionals and medical learners. We do not knowingly
+    collect personal information from children under the age of 13. If you believe a child under 13 has
+    provided us with personal information, please contact us and we will promptly delete it.
   </p>
 
-  <h2>Changes to This Policy</h2>
+  <h2>8. Your Privacy Rights</h2>
+  <p>Depending on your location, you may have the following rights regarding your personal information:</p>
+
+  <h3>8.1 For All Users</h3>
+  <ul>
+    <li><strong>Access:</strong> Request a copy of the personal data we hold about you</li>
+    <li><strong>Correction:</strong> Request correction of inaccurate personal data</li>
+    <li><strong>Deletion:</strong> Request deletion of your personal data</li>
+    <li><strong>Opt-Out of Analytics:</strong> Use Google's
+      <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">opt-out browser add-on</a>
+    </li>
+  </ul>
+
+  <h3>8.2 California Residents (CCPA)</h3>
+  <p>If you are a California resident, you have the right to:</p>
+  <ul>
+    <li>Know what personal information we collect and how it is used</li>
+    <li>Request deletion of your personal information</li>
+    <li>Opt out of the sale of personal information (we do not sell personal information)</li>
+    <li>Not be discriminated against for exercising these rights</li>
+  </ul>
+
+  <h3>8.3 European Economic Area Residents (GDPR)</h3>
   <p>
-    We may update this Privacy Policy from time to time. We will notify you of any changes by
-    posting the new policy on this page and updating the "Last updated" date.
+    If you are in the EEA, our legal basis for processing your data is legitimate interest (for analytics)
+    and consent (for feedback form submissions). You have additional rights including data portability, the
+    right to restrict processing, and the right to lodge a complaint with your local supervisory authority.
   </p>
 
-  <h2>Contact Us</h2>
+  <h2>9. Do Not Track Signals</h2>
   <p>
-    If you have questions about this Privacy Policy, please contact us through our
-    <a href="/">feedback form</a>.
+    We do not currently respond to Do Not Track browser signals. However, you can opt out of Google
+    Analytics tracking using Google's
+    <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">opt-out browser add-on</a>.
+  </p>
+
+  <h2>10. International Data Transfers</h2>
+  <p>
+    Your information may be transferred to and maintained on servers located outside your state, province,
+    or country where data protection laws may differ. Google Analytics and Formspree process data on servers
+    in the United States. By using the Site, you consent to such transfers.
+  </p>
+
+  <h2>11. Medical Information Disclaimer</h2>
+  <p>
+    Radulator provides medical calculators for educational and informational purposes only. The calculators
+    are not a substitute for professional medical judgment, diagnosis, or treatment. We do not collect,
+    store, or process any patient health information through our calculators. All calculations are performed
+    locally in your browser.
+  </p>
+  <p>
+    All calculator inputs and results, including patient-reported outcome scores, are processed entirely
+    within your browser. <strong>No patient data, clinical values, or questionnaire responses are
+    transmitted to, stored on, or accessible by our servers.</strong> When you close or refresh the page,
+    all entered data is permanently discarded. CSV exports are generated locally in your browser and
+    downloaded directly to your device.
+  </p>
+
+  <h2>12. Changes to This Privacy Policy</h2>
+  <p>
+    We may update this Privacy Policy from time to time. We will notify you of any changes by posting the
+    new Privacy Policy on this page and updating the "Effective Date" at the top. You are advised to review
+    this Privacy Policy periodically for any changes. Your continued use of the Site after changes are
+    posted constitutes acceptance of the revised Privacy Policy.
+  </p>
+
+  <h2>13. Contact</h2>
+  <p>
+    If you have questions about this Privacy Policy, wish to exercise your privacy rights, or need to
+    report a concern, please contact us through our <a href="/">feedback form</a>.
   </p>
 
   <hr style="margin-top: 3rem;">
   <p style="text-align: center; color: #666;">
-    <a href="/">Radulator</a> | <a href="/terms.html">Terms of Use</a>
+    <a href="/">Radulator</a> | <a href="/terms.html">Terms of Service</a>
   </p>
 </body>
 </html>

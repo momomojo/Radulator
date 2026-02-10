@@ -18,8 +18,13 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
+# Create non-root user
+RUN groupadd -r radulator && useradd -r -g radulator -d /app radulator
+
 # Copy application source
 COPY . .
+RUN chown -R radulator:radulator /app
+USER radulator
 
 # Expose Vite development server port
 EXPOSE 5173
