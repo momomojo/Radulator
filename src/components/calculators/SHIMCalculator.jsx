@@ -183,11 +183,15 @@ This tool is widely used in clinical practice and research to assess ED severity
         "Severe erectile dysfunction (may include no sexual activity). Comprehensive medical evaluation recommended. Consider cardiovascular and endocrine assessment as clinically indicated.";
     }
 
+    const _severity =
+      totalScore >= 22 ? "success" : totalScore >= 12 ? "warning" : "danger";
+
     return {
       "Total SHIM Score": `${totalScore} / 25`,
       "ED Severity": severity,
       "Clinical Interpretation": interpretation,
       Note: "Assessment based on past 6 months. Score ≤21 indicates some degree of erectile dysfunction.",
+      _severity,
     };
   },
 

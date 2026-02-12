@@ -349,6 +349,9 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
     result["Guideline Thresholds"] =
       "Standard EVT: ASPECTS >= 6 (2019 AHA/ASA) | Large Core EVT: ASPECTS 3-5 (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT 2022-2023)";
 
+    result._severity =
+      aspectsScore >= 8 ? "success" : aspectsScore >= 6 ? "warning" : "danger";
+
     return result;
   },
 

@@ -375,6 +375,12 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
       result["Clinical Notes"] = notes.join("; ");
     }
 
+    result._severity =
+      category === "TR1" || category === "TR2"
+        ? "success"
+        : category === "TR3"
+          ? "warning"
+          : "danger";
     return result;
   },
 

@@ -390,6 +390,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         Definition:
           "Image omission or degradation precludes adequate evaluation",
         Recommendation: "Repeat imaging with adequate technique",
+        _severity: "info",
       };
     }
 
@@ -403,6 +404,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         Recommendation: "Multidisciplinary discussion required",
         "Diagnostic Criteria":
           "Unequivocal enhancing soft tissue within a vein",
+        _severity: "danger",
       };
     }
 
@@ -414,6 +416,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         Definition:
           "100% certainty benign (e.g., simple cyst, hemangioma, focal fat)",
         Recommendation: "Return to routine surveillance",
+        _severity: "success",
       };
     }
 
@@ -425,6 +428,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
           "High probability benign; distinctive nodule <20mm without major HCC features",
         Recommendation:
           "Return to routine surveillance; option for alternate imaging modality",
+        _severity: "success",
       };
     }
 
@@ -456,6 +460,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
           "Differential Diagnosis":
             "Atypical HCC, intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
           Recommendation: "Biopsy recommended; multidisciplinary discussion",
+          _severity: "danger",
         };
       }
     }
@@ -473,6 +478,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         "Differential Diagnosis":
           "Intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
         Recommendation: "Biopsy recommended; multidisciplinary discussion",
+        _severity: "danger",
       };
     }
 
@@ -671,6 +677,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       result["Clinical Notes"] = notes.join("; ");
     }
 
+    result._severity = finalCategory === "LR-3" ? "warning" : "danger";
     return result;
   },
 

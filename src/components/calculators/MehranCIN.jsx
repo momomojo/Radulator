@@ -313,6 +313,9 @@ Note: Score was developed for PCI; risk may differ for CT contrast.`,
         `Target: <${targetContrast} mL; Maximum: <${maxContrast} mL (based on eGFR × 2-3)`;
     }
 
+    result._severity =
+      score <= 5 ? "success" : score <= 10 ? "warning" : "danger";
+
     return result;
   },
 

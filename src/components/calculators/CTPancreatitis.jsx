@@ -284,6 +284,8 @@ Note: CT should be performed 48-72 hours after symptom onset for accurate necros
     }
     result["Revised Atlanta Classification"] = atlantaSeverity;
 
+    result._severity = ctsi <= 3 ? "success" : ctsi <= 6 ? "warning" : "danger";
+
     return result;
   },
 

@@ -25,7 +25,7 @@ export const AdrenalCTWashout = {
   compute: ({ unenh = 0, portal = 0, delayed = 0 }) => {
     const apw = ((portal - delayed) / (portal - unenh)) * 100;
     const rpw = ((portal - delayed) / portal) * 100;
-    return {
+    const result = {
       "Absolute Washout (%)": apw.toFixed(1),
       "Relative Washout (%)": rpw.toFixed(1),
       Interpretation:
@@ -33,6 +33,8 @@ export const AdrenalCTWashout = {
           ? "Suggests adrenal adenoma"
           : "Indeterminate / non‑adenoma",
     };
+    result._severity = apw >= 60 || rpw >= 40 ? "success" : "warning";
+    return result;
   },
   refs: [
     {

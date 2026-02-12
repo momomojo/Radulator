@@ -409,6 +409,8 @@ export const IPSS = {
         "For optimal lateralization, use ACTH values from peak post-CRH time point";
     }
 
+    result._severity = isCushings ? "success" : "danger";
+
     return result;
   },
 

@@ -152,11 +152,16 @@ export const RenalNephrometry = {
         "Minimally invasive techniques or thermal ablation are often feasible.";
     }
 
-    return {
+    const result = {
       "Total Score": `${total}${suffix}`,
       Complexity: complexity,
       Interpretation: interpretation,
     };
+
+    result._severity =
+      total <= 6 ? "success" : total <= 9 ? "warning" : "danger";
+
+    return result;
   },
   refs: [
     {

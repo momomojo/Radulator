@@ -327,6 +327,7 @@ Key concepts:
       return {
         "O-RADS Category": `O-RADS ${modality.toUpperCase()} 0 - Incomplete`,
         Management: "Additional imaging required for complete evaluation",
+        _severity: "info",
       };
     }
 
@@ -338,6 +339,7 @@ Key concepts:
         Management: "Referral to gynecologic oncologist",
         "Critical Finding":
           "Peritoneal disease (ascites/nodularity) indicates high malignancy risk",
+        _severity: "danger",
       };
     }
 
@@ -403,6 +405,7 @@ function computeORADSUS(vals) {
       "O-RADS Category": "O-RADS US 1 - Normal/Physiologic",
       "Malignancy Risk": "0%",
       Management: "No follow-up needed",
+      _severity: "success",
     };
   }
 
@@ -417,6 +420,7 @@ function computeORADSUS(vals) {
             ? "No follow-up needed"
             : "Consider 1-year follow-up",
         Lesion: `Simple cyst ${size}cm`,
+        _severity: "success",
       };
     } else {
       return {
@@ -424,6 +428,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "1-10%",
         Management: "Gynecologist evaluation",
         Lesion: `Large simple cyst ${size}cm`,
+        _severity: "warning",
       };
     }
   }
@@ -436,6 +441,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "<1%",
         Management: "Symptomatic management; no imaging follow-up needed",
         Lesion: `Classic benign lesion ${size}cm`,
+        _severity: "success",
       };
     } else {
       return {
@@ -443,6 +449,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "1-10%",
         Management: "Gynecologist evaluation due to size",
         Lesion: `Classic benign lesion ${size}cm (large)`,
+        _severity: "warning",
       };
     }
   }
@@ -455,6 +462,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "≥50%",
         Management: "Gynecologic oncologist referral",
         Lesion: "Unilocular cyst with ≥4 papillary projections",
+        _severity: "danger",
       };
     }
     if (us_solid_component === "papillary_1_3") {
@@ -463,6 +471,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "10-50%",
         Management: "Gynecologist with gyn-oncology consultation",
         Lesion: "Unilocular cyst with 1-3 papillary projections",
+        _severity: "danger",
       };
     }
     if (us_inner_wall === "irregular" || size > 10) {
@@ -471,6 +480,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "1-10%",
         Management: "6-month follow-up US or gynecologist evaluation",
         Lesion: `Unilocular cyst, ${us_inner_wall} wall, ${size}cm`,
+        _severity: "warning",
       };
     }
     return {
@@ -478,6 +488,7 @@ function computeORADSUS(vals) {
       "Malignancy Risk": "<1%",
       Management: "Consider follow-up if symptomatic",
       Lesion: `Unilocular cyst with smooth wall, ${size}cm`,
+      _severity: "success",
     };
   }
 
@@ -493,6 +504,7 @@ function computeORADSUS(vals) {
           "Malignancy Risk": "≥50%",
           Management: "Gynecologic oncologist referral",
           Lesion: `Multilocular with solid component, CS ${cs}`,
+          _severity: "danger",
         };
       } else {
         return {
@@ -500,6 +512,7 @@ function computeORADSUS(vals) {
           "Malignancy Risk": "10-50%",
           Management: "Gynecologist with gyn-oncology consultation",
           Lesion: `Multilocular with solid component, CS ${cs}`,
+          _severity: "danger",
         };
       }
     }
@@ -509,6 +522,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "10-50%",
         Management: "Gynecologist with gyn-oncology consultation; MRI may help",
         Lesion: `Multilocular cyst, ${us_inner_wall} walls, ${size}cm, CS ${cs}`,
+        _severity: "danger",
       };
     }
     return {
@@ -516,6 +530,7 @@ function computeORADSUS(vals) {
       "Malignancy Risk": "1-10%",
       Management: "6-month follow-up US",
       Lesion: `Multilocular cyst with smooth walls, ${size}cm, CS ${cs}`,
+      _severity: "warning",
     };
   }
 
@@ -527,6 +542,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "≥50%",
         Management: "Gynecologic oncologist referral",
         Lesion: "Solid lesion with irregular contour",
+        _severity: "danger",
       };
     }
     if (cs === 4) {
@@ -535,6 +551,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "≥50%",
         Management: "Gynecologic oncologist referral",
         Lesion: "Solid smooth lesion with CS 4",
+        _severity: "danger",
       };
     }
     if (cs === 1 || (us_shadowing === "yes" && cs < 4)) {
@@ -543,6 +560,7 @@ function computeORADSUS(vals) {
         "Malignancy Risk": "1-10%",
         Management: "6-month follow-up; may represent fibroma",
         Lesion: `Solid smooth lesion, CS ${cs}${us_shadowing === "yes" ? ", shadowing" : ""}`,
+        _severity: "warning",
       };
     }
     return {
@@ -550,6 +568,7 @@ function computeORADSUS(vals) {
       "Malignancy Risk": "10-50%",
       Management: "MRI for further characterization; gynecologist referral",
       Lesion: `Solid smooth lesion, CS ${cs}`,
+      _severity: "danger",
     };
   }
 
@@ -575,6 +594,7 @@ function computeORADSMRI(vals) {
       "O-RADS Category": "O-RADS MRI 1 - Normal",
       PPV: "0%",
       Management: "No follow-up needed",
+      _severity: "success",
     };
   }
 
@@ -585,6 +605,7 @@ function computeORADSMRI(vals) {
       PPV: "<0.5%",
       Management: "No follow-up needed",
       Lesion: "Paraovarian cyst/hydrosalpinx",
+      _severity: "success",
     };
   }
 
@@ -596,6 +617,7 @@ function computeORADSMRI(vals) {
         PPV: "<0.5%",
         Management: "No follow-up needed",
         Lesion: "Unilocular simple cyst without wall enhancement",
+        _severity: "success",
       };
     }
     return {
@@ -603,6 +625,7 @@ function computeORADSMRI(vals) {
       PPV: "~5%",
       Management: "Follow-up imaging recommended",
       Lesion: "Unilocular cyst with smooth wall enhancement",
+      _severity: "warning",
     };
   }
 
@@ -615,6 +638,7 @@ function computeORADSMRI(vals) {
         Management:
           "No follow-up needed for endometrioma/hemorrhagic cyst appearance",
         Lesion: "Unilocular cyst with non-simple fluid, no solid tissue",
+        _severity: "success",
       };
     }
     // Has solid tissue - use TIC
@@ -629,6 +653,7 @@ function computeORADSMRI(vals) {
         PPV: "~5%",
         Management: "Follow-up imaging recommended",
         Lesion: "Multilocular cyst without solid tissue",
+        _severity: "warning",
       };
     }
     return computeByTIC(mri_tic, "Multilocular with solid tissue");
@@ -642,6 +667,7 @@ function computeORADSMRI(vals) {
         PPV: "<0.5%",
         Management: "No follow-up needed; manage symptomatically",
         Lesion: "Dermoid without significant solid tissue",
+        _severity: "success",
       };
     }
     return {
@@ -650,6 +676,7 @@ function computeORADSMRI(vals) {
       Management: "Gynecologist with gyn-oncology consultation",
       Lesion:
         "Dermoid with large enhancing solid tissue - malignant transformation?",
+      _severity: "danger",
     };
   }
 
@@ -660,6 +687,7 @@ function computeORADSMRI(vals) {
       PPV: "<0.5%",
       Management: "No follow-up needed; consistent with fibroma/Brenner",
       Lesion: "T2 dark/DWI dark solid tissue (fibrous)",
+      _severity: "success",
     };
   }
 
@@ -677,6 +705,7 @@ function computeByTIC(tic, lesionDesc) {
       "O-RADS Category": "O-RADS MRI 4 or 5 - TIC Needed",
       Management: "TIC analysis required for definitive categorization",
       Lesion: lesionDesc,
+      _severity: "danger",
     };
   }
 
@@ -686,6 +715,7 @@ function computeByTIC(tic, lesionDesc) {
       PPV: "~5%",
       Management: "Follow-up imaging or clinical management",
       Lesion: `${lesionDesc}, low-risk TIC`,
+      _severity: "warning",
     };
   }
   if (tic === "intermediate") {
@@ -694,6 +724,7 @@ function computeByTIC(tic, lesionDesc) {
       PPV: "~50%",
       Management: "Gynecologist with gyn-oncology consultation",
       Lesion: `${lesionDesc}, intermediate-risk TIC`,
+      _severity: "danger",
     };
   }
   return {
@@ -701,5 +732,6 @@ function computeByTIC(tic, lesionDesc) {
     PPV: "~90%",
     Management: "Gynecologic oncologist referral",
     Lesion: `${lesionDesc}, high-risk TIC`,
+    _severity: "danger",
   };
 }

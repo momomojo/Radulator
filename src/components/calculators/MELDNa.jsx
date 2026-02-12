@@ -263,6 +263,9 @@ export const MELDNa = {
       result["Clinical Notes"] = notes.join("; ");
     }
 
+    result._severity =
+      meldNa < 15 ? "success" : meldNa <= 25 ? "warning" : "danger";
+
     return result;
   },
 

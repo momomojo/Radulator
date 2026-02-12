@@ -341,6 +341,13 @@ Endorsed by EASL, AASLD, and EORTC guidelines.`,
       result["Liver Function"] = "Decompensated cirrhosis (Class C)";
     }
 
+    result._severity =
+      bclcStage === "0" || bclcStage === "A"
+        ? "success"
+        : bclcStage === "B"
+          ? "warning"
+          : "danger";
+
     return result;
   },
 

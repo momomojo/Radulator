@@ -150,6 +150,13 @@ export const RenalCystBosniak = {
         "Cystic Lesion: Well-thin Septa (s). Calcifications (s). Water density.\nBosniak category I.\nSimple, benign cyst - No follow up needed";
     }
 
+    result._severity =
+      cat === "I" || cat === "II"
+        ? "success"
+        : cat === "IIF"
+          ? "warning"
+          : "danger";
+
     return result;
   },
   refs: [

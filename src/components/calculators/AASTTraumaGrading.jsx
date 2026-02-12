@@ -837,6 +837,9 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
     result["CRITICAL NOTE"] =
       "HEMODYNAMIC STABILITY IS PARAMOUNT. Unstable patients require OPERATIVE MANAGEMENT regardless of anatomic grade. All management decisions should be made in consultation with trauma surgery.";
 
+    result._severity =
+      grade <= 2 ? "success" : grade === 3 ? "warning" : "danger";
+
     if (organ === "liver" && grade >= 4) {
       result["Liver-Specific Note"] =
         "High-grade liver injuries have significant risk of delayed bleeding, biliary complications, and hepatic necrosis. Consider damage control surgery for unstable patients.";

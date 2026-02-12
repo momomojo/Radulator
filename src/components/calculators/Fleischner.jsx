@@ -366,6 +366,16 @@ Nodule measurement: Average of long and short axis diameters on the same image.`
     result["Important Caveats"] =
       "Guidelines apply to incidental nodules in adults ≥35 years. NOT for lung cancer screening, immunocompromised patients, or known malignancy.";
 
+    if (recommendation.toLowerCase().includes("no routine follow-up"))
+      result._severity = "success";
+    else if (
+      recommendation.toLowerCase().includes("pet") ||
+      recommendation.toLowerCase().includes("biopsy") ||
+      recommendation.toLowerCase().includes("tissue sampling")
+    )
+      result._severity = "danger";
+    else result._severity = "warning";
+
     return result;
   },
 

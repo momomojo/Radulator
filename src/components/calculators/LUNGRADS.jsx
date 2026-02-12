@@ -223,6 +223,7 @@ Lung-RADS 2022 updates include:
         Management:
           "Comparison with prior CT required. Retrieve prior images and reclassify.",
         Note: "Prior lung cancer screening CT expected but not available for comparison.",
+        _severity: "info",
       };
     }
 
@@ -498,6 +499,11 @@ Lung-RADS 2022 updates include:
     if (notes.length > 0) {
       result["Clinical Notes"] = notes.join("; ");
     }
+
+    if (category === "0") result._severity = "info";
+    else if (category === "1" || category === "2") result._severity = "success";
+    else if (category === "3") result._severity = "warning";
+    else result._severity = "danger";
 
     return result;
   },

@@ -151,6 +151,8 @@ Note: ALBI complements but does not replace Child-Pugh in BCLC staging.`,
       result["Albumin (SI)"] = `${albSI.toFixed(1)} g/L`;
     }
 
+    result._severity =
+      albiGrade === 1 ? "success" : albiGrade === 2 ? "warning" : "danger";
     return result;
   },
   refs: [

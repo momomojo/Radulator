@@ -358,6 +358,13 @@ This calculator follows the 2019 PI-RADS v2.1 guidelines.`,
       result["Clinical Notes"] = clinicalNotes.join("; ");
     }
 
+    result._severity =
+      piradsCategory <= 2
+        ? "success"
+        : piradsCategory === 3
+          ? "warning"
+          : "danger";
+
     return result;
   },
 

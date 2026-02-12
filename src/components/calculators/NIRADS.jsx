@@ -230,6 +230,7 @@ Note: Separate categories for primary site and neck should be reported.`,
         Management:
           "Obtain prior imaging for comparison, then reassign category",
         Note: "Prior imaging unavailable but will be procured. Reassign after review.",
+        _severity: "info",
       };
     }
 
@@ -433,6 +434,9 @@ Note: Separate categories for primary site and neck should be reported.`,
     if (notes.length > 0) {
       result["Clinical Notes"] = notes.join("; ");
     }
+
+    result._severity =
+      overallCat <= 1 ? "success" : overallCat <= 2 ? "warning" : "danger";
 
     return result;
   },

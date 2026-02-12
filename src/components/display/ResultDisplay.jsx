@@ -7,7 +7,7 @@ import React from "react";
 function ResultDisplay({ results, calculatorId, onDownload }) {
   if (!results || Object.keys(results).length === 0) return null;
 
-  // Classify result severity based on common patterns
+  // Classify result severity based on common patterns (fallback when _severity not provided)
   const getSeverity = (key, value) => {
     const lowerKey = key.toLowerCase();
     const lowerValue = String(value).toLowerCase();
@@ -15,6 +15,16 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
     // Error patterns
     if (lowerKey === "error" || lowerValue.includes("error")) {
       return "error";
+    }
+
+    // Info patterns (non-diagnostic, incomplete data)
+    if (
+      lowerValue.includes("non-diagnostic") ||
+      lowerValue.includes("ni-rads 0") ||
+      lowerValue.includes("category 0") ||
+      lowerValue.includes("cad-rads n")
+    ) {
+      return "info";
     }
 
     // Success/low-risk patterns
@@ -25,12 +35,33 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
       lowerValue.includes("low risk") ||
       lowerValue.includes("negative") ||
       lowerValue.includes("normal") ||
+      lowerValue.includes("no ed") ||
+      lowerValue.includes("pe unlikely") ||
+      lowerValue.includes("dvt unlikely") ||
+      lowerValue.includes("no routine follow-up") ||
       lowerValue.includes("tr1") ||
       lowerValue.includes("tr2") ||
       lowerValue.includes("bi-rads 1") ||
       lowerValue.includes("bi-rads 2") ||
       lowerValue.includes("li-rads 1") ||
-      lowerValue.includes("li-rads 2")
+      lowerValue.includes("li-rads 2") ||
+      lowerValue.includes("lr-1") ||
+      lowerValue.includes("lr-2") ||
+      lowerValue.includes("pi-rads 1") ||
+      lowerValue.includes("pi-rads 2") ||
+      lowerValue.includes("cad-rads 0") ||
+      lowerValue.includes("cad-rads 1") ||
+      lowerValue.includes("ni-rads 1") ||
+      lowerValue.includes("o-rads 1") ||
+      lowerValue.includes("o-rads 2") ||
+      lowerValue.includes("lung-rads 1") ||
+      lowerValue.includes("lung-rads 2") ||
+      lowerValue.includes("bosniak i ") ||
+      lowerValue.includes("bosniak ii ") ||
+      lowerValue.includes("stage 0") ||
+      lowerValue.includes("stage a") ||
+      lowerValue.includes("low complexity") ||
+      lowerValue.includes("meets milan")
     ) {
       return "success";
     }
@@ -41,9 +72,20 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
       lowerValue.includes("grade 2") ||
       lowerValue.includes("moderate") ||
       lowerValue.includes("intermediate") ||
+      lowerValue.includes("mild ed") ||
       lowerValue.includes("tr3") ||
       lowerValue.includes("bi-rads 3") ||
-      lowerValue.includes("li-rads 3")
+      lowerValue.includes("li-rads 3") ||
+      lowerValue.includes("lr-3") ||
+      lowerValue.includes("pi-rads 3") ||
+      lowerValue.includes("cad-rads 2") ||
+      lowerValue.includes("cad-rads 3") ||
+      lowerValue.includes("ni-rads 2") ||
+      lowerValue.includes("o-rads 3") ||
+      lowerValue.includes("lung-rads 3") ||
+      lowerValue.includes("bosniak iif") ||
+      lowerValue.includes("stage b") ||
+      lowerValue.includes("moderate complexity")
     ) {
       return "warning";
     }
@@ -58,14 +100,35 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
       lowerValue.includes("high risk") ||
       lowerValue.includes("suspicious") ||
       lowerValue.includes("positive") ||
+      lowerValue.includes("severe ed") ||
+      lowerValue.includes("pe likely") ||
+      lowerValue.includes("dvt likely") ||
+      lowerValue.includes("critical risk") ||
       lowerValue.includes("tr4") ||
       lowerValue.includes("tr5") ||
       lowerValue.includes("bi-rads 4") ||
       lowerValue.includes("bi-rads 5") ||
+      lowerValue.includes("bi-rads 6") ||
       lowerValue.includes("li-rads 4") ||
       lowerValue.includes("li-rads 5") ||
+      lowerValue.includes("lr-4") ||
       lowerValue.includes("lr-5") ||
-      lowerValue.includes("lr-m")
+      lowerValue.includes("lr-m") ||
+      lowerValue.includes("lr-tiv") ||
+      lowerValue.includes("pi-rads 4") ||
+      lowerValue.includes("pi-rads 5") ||
+      lowerValue.includes("cad-rads 4") ||
+      lowerValue.includes("cad-rads 5") ||
+      lowerValue.includes("ni-rads 3") ||
+      lowerValue.includes("ni-rads 4") ||
+      lowerValue.includes("o-rads 4") ||
+      lowerValue.includes("o-rads 5") ||
+      lowerValue.includes("lung-rads 4") ||
+      lowerValue.includes("bosniak iii") ||
+      lowerValue.includes("bosniak iv") ||
+      lowerValue.includes("stage c") ||
+      lowerValue.includes("stage d") ||
+      lowerValue.includes("high complexity")
     ) {
       return "danger";
     }
@@ -83,6 +146,7 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
       "bg-[hsl(var(--result-danger-bg))] text-[hsl(var(--result-danger))] border-[hsl(var(--result-danger-border))]",
     error:
       "bg-[hsl(var(--result-danger-bg))] text-[hsl(var(--result-danger))] border-[hsl(var(--result-danger-border))]",
+    info: "bg-[hsl(var(--result-info-bg))] text-[hsl(var(--result-info))] border-[hsl(var(--result-info-border))]",
     neutral: "bg-muted text-foreground border-border",
   };
 
@@ -124,6 +188,15 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
         />
       </svg>
     ),
+    info: (
+      <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          fillRule="evenodd"
+          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+          clipRule="evenodd"
+        />
+      </svg>
+    ),
     neutral: null,
   };
 
@@ -143,8 +216,10 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
     return key.trim() !== "" && String(value).trim() === "";
   };
 
+  // Filter out metadata keys (prefixed with _) from display entries
+  const entries = Object.entries(results).filter(([k]) => !k.startsWith("_"));
+
   // Find the primary result (first non-error, non-separator, non-empty result)
-  const entries = Object.entries(results);
   const primaryIdx = entries.findIndex(([k, v]) => {
     return (
       !isSeparator(k, v) &&
@@ -155,17 +230,24 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
   });
   const primaryKey = primaryIdx >= 0 ? entries[primaryIdx][0] : null;
 
-  // Determine overall severity by scanning all results for severity indicators
-  // This catches cases like Child-Pugh where "Class B" is in a separate field
+  // Determine overall severity - use _severity from compute() if available, fall back to pattern scan
   const getOverallSeverity = () => {
+    if (results._severity) return results._severity;
+
     let foundSeverity = "neutral";
     for (const [key, value] of entries) {
       const severity = getSeverity(key, value);
-      // Priority: error > danger > warning > success > neutral
+      // Priority: error > danger > warning > info > success > neutral
       if (severity === "error") return "error";
       if (severity === "danger") foundSeverity = "danger";
       else if (severity === "warning" && foundSeverity !== "danger")
         foundSeverity = "warning";
+      else if (
+        severity === "info" &&
+        foundSeverity !== "danger" &&
+        foundSeverity !== "warning"
+      )
+        foundSeverity = "info";
       else if (severity === "success" && foundSeverity === "neutral")
         foundSeverity = "success";
     }
@@ -277,7 +359,7 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
         }
 
         // Secondary results with badges for severity
-        const showBadge = severity !== "neutral" && idx < 5;
+        const showBadge = severity !== "neutral";
 
         return (
           <div key={key} className="flex items-start justify-between py-1">

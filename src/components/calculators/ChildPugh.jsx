@@ -178,6 +178,12 @@ export const ChildPugh = {
       Encephalopathy: `${encephalopathy === "none" ? "None" : encephalopathy.replace("grade", "Grade ").replace("-", "-")} → ${encephalopathyPoints} point${encephalopathyPoints > 1 ? "s" : ""}`,
     };
 
+    result._severity =
+      childPughClass === "A"
+        ? "success"
+        : childPughClass === "B"
+          ? "warning"
+          : "danger";
     return result;
   },
   refs: [

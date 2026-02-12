@@ -262,6 +262,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
         Management:
           "Surgical excision when clinically appropriate; imaging for treatment planning and response assessment",
         Note: "Category 6 is used for known biopsy-proven malignancy prior to definitive treatment.",
+        _severity: "danger",
       };
     }
 
@@ -284,6 +285,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
           "Recall for additional imaging evaluation before final assessment",
         "Additional Imaging": additionalType,
         Note: "Category 0 should only be used when additional imaging will help reach a final assessment.",
+        _severity: "info",
       };
     }
 
@@ -302,6 +304,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
             ? "Annual (or per guidelines)"
             : "Return to annual screening",
         Note: "No mammographic findings to report. Routine screening recommended.",
+        _severity: "success",
       };
     }
 
@@ -312,6 +315,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
         "Malignancy Risk": "Essentially 0%",
         Management: "Routine screening mammography",
         Note: "Definitively benign finding described for completeness. No cancer expected.",
+        _severity: "success",
       };
     }
 
@@ -435,6 +439,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       result["Clinical Notes"] = notes.join("; ");
     }
 
+    result._severity = category === "3" ? "warning" : "danger";
     return result;
   },
 

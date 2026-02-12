@@ -219,6 +219,7 @@ High-Risk Plaque Features:
         Management:
           "Repeat CTA with optimized protocol, alternative testing (stress testing, invasive angiography), or clinical correlation",
         Note: "Study is non-diagnostic due to technical limitations. Consider motion, calcification, or poor contrast opacification.",
+        _severity: "info",
       };
     }
 
@@ -405,6 +406,11 @@ High-Risk Plaque Features:
       result["Quality Note"] =
         "Some coronary segments were non-evaluable. Report findings apply to visualized segments only.";
     }
+
+    if (category === "N") result._severity = "info";
+    else if (category === "0" || category === "1") result._severity = "success";
+    else if (category === "2" || category === "3") result._severity = "warning";
+    else result._severity = "danger";
 
     return result;
   },

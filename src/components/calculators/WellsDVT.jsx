@@ -254,6 +254,8 @@ Note: This score is for lower extremity DVT. Upper extremity DVT requires differ
         "Baker's cyst, cellulitis, muscle strain/tear, superficial thrombophlebitis, lymphedema, chronic venous insufficiency";
     }
 
+    result._severity = score < 2 ? "success" : "danger";
+
     return result;
   },
 

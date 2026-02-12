@@ -212,6 +212,8 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
       result["Clinical Notes"] = notes.join("; ");
     }
 
+    result._severity = score <= 4 ? "success" : "danger";
+
     return result;
   },
 

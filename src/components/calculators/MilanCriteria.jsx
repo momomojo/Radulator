@@ -282,6 +282,8 @@ export const MilanCriteria = {
     results["Transplant Eligibility"] = eligibility;
     results["Expected Outcomes"] = expectedOutcome;
 
+    results._severity = milanMet ? "success" : ucsfMet ? "warning" : "danger";
+
     return results;
   },
   refs: [
