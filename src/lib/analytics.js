@@ -13,7 +13,7 @@ const isAnalyticsEnabled = () => {
   }
 
   // Check if gtag is available (loaded from GA4 script)
-  return typeof window !== 'undefined' && typeof window.gtag === 'function';
+  return typeof window !== "undefined" && typeof window.gtag === "function";
 };
 
 /**
@@ -25,15 +25,15 @@ const sendEvent = (eventName, eventParams = {}) => {
   if (!isAnalyticsEnabled()) {
     // Log to console in development for debugging
     if (import.meta.env.DEV) {
-      console.log('[GA4 Dev]', eventName, eventParams);
+      console.log("[GA4 Dev]", eventName, eventParams);
     }
     return;
   }
 
   try {
-    window.gtag('event', eventName, eventParams);
+    window.gtag("event", eventName, eventParams);
   } catch (error) {
-    console.error('GA4 tracking error:', error);
+    console.error("GA4 tracking error:", error);
   }
 };
 
@@ -43,18 +43,22 @@ const sendEvent = (eventName, eventParams = {}) => {
  * @param {string} calculatorName - Display name (e.g., "Prostate Volume")
  * @param {string} category - Calculator category (e.g., "Radiology", "Hepatology")
  */
-export const trackCalculatorSelected = (calculatorId, calculatorName, category = 'Unknown') => {
-  sendEvent('calculator_selected', {
+export const trackCalculatorSelected = (
+  calculatorId,
+  calculatorName,
+  category = "Unknown",
+) => {
+  sendEvent("calculator_selected", {
     calculator_id: calculatorId,
     calculator_name: calculatorName,
     category: category,
-    event_category: 'Navigation',
+    event_category: "Navigation",
     event_label: calculatorName,
   });
 
   // Also send as virtual pageview for better navigation tracking
   if (isAnalyticsEnabled()) {
-    window.gtag('event', 'page_view', {
+    window.gtag("event", "page_view", {
       page_title: `${calculatorName} Calculator`,
       page_location: `${window.location.origin}/calculator/${calculatorId}`,
       page_path: `/calculator/${calculatorId}`,
@@ -69,13 +73,18 @@ export const trackCalculatorSelected = (calculatorId, calculatorName, category =
  * @param {string} category - Calculator category
  * @param {boolean} hasResult - Whether calculation produced a result (vs error)
  */
-export const trackCalculation = (calculatorId, calculatorName, category = 'Unknown', hasResult = true) => {
-  sendEvent('calculation_performed', {
+export const trackCalculation = (
+  calculatorId,
+  calculatorName,
+  category = "Unknown",
+  hasResult = true,
+) => {
+  sendEvent("calculation_performed", {
     calculator_id: calculatorId,
     calculator_name: calculatorName,
     category: category,
     has_result: hasResult,
-    event_category: 'Engagement',
+    event_category: "Engagement",
     event_label: calculatorName,
     value: hasResult ? 1 : 0, // 1 for success, 0 for error
   });
@@ -87,11 +96,11 @@ export const trackCalculation = (calculatorId, calculatorName, category = 'Unkno
  * @param {string} calculatorId - Calculator that generated the CSV
  */
 export const trackCSVDownload = (fileName, calculatorId) => {
-  sendEvent('file_download', {
+  sendEvent("file_download", {
     file_name: fileName,
     calculator_id: calculatorId,
-    file_type: 'csv',
-    event_category: 'Downloads',
+    file_type: "csv",
+    event_category: "Downloads",
     event_label: fileName,
   });
 };
@@ -102,12 +111,16 @@ export const trackCSVDownload = (fileName, calculatorId) => {
  * @param {string} linkType - Type of link ('reference', 'info_button', 'external')
  * @param {string} calculatorId - Current calculator context (optional)
  */
-export const trackOutboundLink = (url, linkType = 'external', calculatorId = null) => {
-  sendEvent('outbound_link_click', {
+export const trackOutboundLink = (
+  url,
+  linkType = "external",
+  calculatorId = null,
+) => {
+  sendEvent("outbound_link_click", {
     link_url: url,
     link_type: linkType,
     calculator_id: calculatorId,
-    event_category: 'Outbound Links',
+    event_category: "Outbound Links",
     event_label: url,
   });
 };
@@ -117,13 +130,30 @@ export const trackOutboundLink = (url, linkType = 'external', calculatorId = nul
  * @param {boolean} success - Whether submission was successful
  * @param {string} formId - Form identifier (default: 'feedback-form')
  */
-export const trackFeedbackSubmission = (success = true, formId = 'feedback-form') => {
-  sendEvent('feedback_submitted', {
+export const trackFeedbackSubmission = (
+  success = true,
+  formId = "feedback-form",
+) => {
+  sendEvent("feedback_submitted", {
     form_id: formId,
     success: success,
-    event_category: 'Forms',
-    event_label: success ? 'Submission Success' : 'Submission Failed',
+    event_category: "Forms",
+    event_label: success ? "Submission Success" : "Submission Failed",
     value: success ? 1 : 0,
+  });
+};
+
+/**
+ * Track when a user copies calculation results to clipboard
+ * @param {string} calculatorId - Unique calculator ID
+ * @param {string} calculatorName - Display name
+ */
+export const trackResultsCopied = (calculatorId, calculatorName) => {
+  sendEvent("results_copied", {
+    calculator_id: calculatorId,
+    calculator_name: calculatorName,
+    event_category: "Engagement",
+    event_label: `${calculatorName} - Results Copied`,
   });
 };
 
@@ -133,11 +163,15 @@ export const trackFeedbackSubmission = (success = true, formId = 'feedback-form'
  * @param {string} calculatorName - Display name
  * @param {number} timeToCalculate - Milliseconds from page load to calculation (optional)
  */
-export const trackResultViewed = (calculatorId, calculatorName, timeToCalculate = null) => {
+export const trackResultViewed = (
+  calculatorId,
+  calculatorName,
+  timeToCalculate = null,
+) => {
   const params = {
     calculator_id: calculatorId,
     calculator_name: calculatorName,
-    event_category: 'Engagement',
+    event_category: "Engagement",
     event_label: `${calculatorName} - Result Viewed`,
   };
 
@@ -146,7 +180,7 @@ export const trackResultViewed = (calculatorId, calculatorName, timeToCalculate 
     params.value = Math.round(timeToCalculate / 1000); // Convert to seconds for value
   }
 
-  sendEvent('calculator_result_viewed', params);
+  sendEvent("calculator_result_viewed", params);
 };
 
 /**
@@ -154,14 +188,16 @@ export const trackResultViewed = (calculatorId, calculatorName, timeToCalculate 
  * @param {string} searchTerm - Search query
  */
 export const trackSearch = (searchTerm) => {
-  sendEvent('search', {
+  sendEvent("search", {
     search_term: searchTerm,
-    event_category: 'Search',
+    event_category: "Search",
     event_label: searchTerm,
   });
 };
 
 // Development helper: Log all events in dev mode
 if (import.meta.env.DEV) {
-  console.log('[GA4] Analytics running in DEVELOPMENT mode - events logged to console only');
+  console.log(
+    "[GA4] Analytics running in DEVELOPMENT mode - events logged to console only",
+  );
 }

@@ -19,6 +19,7 @@ import {
   trackCSVDownload,
   trackSearch,
   trackResultViewed,
+  trackResultsCopied,
 } from "@/lib/analytics";
 
 /*******************************************************************
@@ -76,6 +77,7 @@ function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   // Current calculator definition
   const def = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
@@ -158,6 +160,53 @@ function AppContent() {
     trackCalculation(def.id, def.name, category, hasResult);
     if (hasResult) {
       trackResultViewed(def.id, def.name);
+    }
+  };
+
+  // Format results as plain text for clipboard
+  const formatResultsForClipboard = (results, calculatorName) => {
+    const lines = [];
+    lines.push(`${calculatorName} \u2014 Radulator`);
+    lines.push("\u2500".repeat(36));
+
+    const isSeparator = (key, value) => {
+      const strValue = String(value);
+      return (
+        strValue.includes("\u2500") ||
+        strValue.includes("\u2550") ||
+        (key.trim() === "" && value === "") ||
+        /^[-\u2500\u2550_]{3,}$/.test(strValue)
+      );
+    };
+
+    for (const [key, value] of Object.entries(results)) {
+      if (key.startsWith("_")) continue;
+      if (key === "Download CSV") continue;
+      if (isSeparator(key, value)) {
+        lines.push("");
+        continue;
+      }
+      if (key.trim() !== "" && String(value).trim() === "") {
+        lines.push(`\n${key}`);
+        continue;
+      }
+      lines.push(`${key}: ${value}`);
+    }
+
+    return lines.join("\n");
+  };
+
+  // Copy results to clipboard
+  const handleCopyResults = async () => {
+    if (!out || !def) return;
+    const text = formatResultsForClipboard(out, def.name);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      trackResultsCopied(def.id, def.name);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: silently fail
     }
   };
 
@@ -1036,8 +1085,43 @@ function AppContent() {
                         </div>
                       </div>
                     )}
-                  {/* Print Results Button */}
-                  <div className="mt-4 flex justify-end no-print">
+                  {/* Copy & Print Results Buttons */}
+                  <div className="mt-4 flex justify-end gap-2 no-print">
+                    <button
+                      onClick={handleCopyResults}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      {copied ? (
+                        <svg
+                          className="w-4 h-4 mr-1.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="w-4 h-4 mr-1.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                          />
+                        </svg>
+                      )}
+                      {copied ? "Copied!" : "Copy Results"}
+                    </button>
                     <button
                       onClick={() => window.print()}
                       className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors print-button"
