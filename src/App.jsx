@@ -79,6 +79,11 @@ function AppContent() {
   const [activeTag, setActiveTag] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  // Reset copied state when switching calculators
+  useEffect(() => {
+    setCopied(false);
+  }, [active]);
+
   // Current calculator definition
   const def = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
 
