@@ -32,6 +32,12 @@ dist-ssr
 # Development artifacts and local files
 .dev/
 
+# Sensitive legal documents (patent filings, NDA, risk assessments)
+Radulator Legal/
+
+# Windows artifacts
+nul
+
 # Test artifacts
 playwright-report/
 test-results/

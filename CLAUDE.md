@@ -4,9 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Radulator** (RadCalc 2.0) is a comprehensive React-based medical calculator web application built with Vite. It provides **23 medical calculators** across radiology, hepatology/liver, urology, and interventional specialties for various clinical measurements, classifications, and decision support.
+**Radulator** (RadCalc 2.0) is a comprehensive React-based medical calculator web application built with Vite. It provides **38 medical calculators** across 11 specialties (radiology, neuroradiology, trauma, cardiac imaging, breast imaging, women's imaging, clinical decision, hepatology/liver, urology, interventional, and nephrology) for various clinical measurements, classifications, and decision support.
 
 **Repository:** https://github.com/momomojo/Radulator.git
+
+## Agent Model Requirement
+
+**ALL subagents MUST use Claude Opus 4.6** (`model: "opus"`). Never use Sonnet or Haiku for Radulator work. When spawning agents via the Task tool, always pass `model: "opus"`. This ensures maximum context window and reasoning quality for medical accuracy, complex multi-file operations, and architectural decisions.
 
 ## Key Commands
 
@@ -57,7 +61,7 @@ radcalc-2.0/
 ├── src/
 │   ├── App.jsx           # Main application
 │   ├── components/
-│   │   ├── calculators/  # 23 calculator definitions
+│   │   ├── calculators/  # 38 calculator definitions + registry
 │   │   │   └── index.js  # Barrel export
 │   │   └── ui/           # shadcn/ui components
 │   └── lib/
@@ -80,45 +84,82 @@ radcalc-2.0/
 
 ## Calculator Implementations
 
-All calculators are defined in `src/components/calculators/` and imported into `src/App.jsx`. Organized by medical specialty:
+All calculators are defined in `src/components/calculators/` and auto-discovered via `registry.js` using `import.meta.glob`. Each calculator declares its own `category` field. Organized by medical specialty:
 
-### Radiology (8 calculators)
+### Radiology (12 calculators)
 
 1. **AdrenalCTWashout** - Calculates absolute/relative washout percentages for adrenal lesions
 2. **AdrenalMRICSI** - MRI signal-intensity index and adrenal-to-spleen ratios
-3. **Fleischner** - 2017 Fleischner Society pulmonary nodule follow-up guidelines
-4. **ProstateVolume** - Volume (ellipsoid formula) and PSA-Density calculations
-5. **RenalCystBosniak** - Bosniak classification for cystic renal lesions (I, II, IIF, III, IV)
-6. **SpleenSizeULN** - Height/sex-adjusted spleen size limits (Chow et al. 2016)
-7. **HipDysplasiaIndices** - Age/gender-specific normal values and migration indices
-8. **TIRADS** - ACR TI-RADS thyroid nodule risk stratification with FNA recommendations
+3. **ContrastDosing** - IV contrast dose calculations by weight and concentration
+4. **DLPDose** - DLP to effective dose converter using tissue weighting factors
+5. **Fleischner** - 2017 Fleischner Society pulmonary nodule follow-up guidelines
+6. **HipDysplasiaIndices** - Age/gender-specific normal values and migration indices
+7. **LUNGRADS** - Lung-RADS 2022 lung cancer screening classification
+8. **ProstateVolume** - Volume (ellipsoid formula) and PSA-Density calculations
+9. **RadiationDoseConverter** - Converts between radiation dose units (mSv, mGy, rem, rad)
+10. **RenalCystBosniak** - Bosniak classification for cystic renal lesions (I, II, IIF, III, IV)
+11. **SpleenSizeULN** - Height/sex-adjusted spleen size limits (Chow et al. 2016)
+12. **TIRADS** - ACR TI-RADS thyroid nodule risk stratification with FNA recommendations
+
+### Neuroradiology (2 calculators)
+
+13. **ASPECTSScore** - Alberta Stroke Programme Early CT Score for acute ischemic stroke
+14. **NIRADS** - ACR NI-RADS head and neck cancer surveillance classification
+
+### Trauma (1 calculator)
+
+15. **AASTTraumaGrading** - AAST Organ Injury Scale (OIS 2018) trauma grading
+
+### Cardiac Imaging (1 calculator)
+
+16. **CADRADS** - CAD-RADS 2.0 coronary CTA classification
+
+### Breast Imaging (1 calculator)
+
+17. **BIRADS** - ACR BI-RADS breast imaging classification
+
+### Women's Imaging (1 calculator)
+
+18. **ORADS** - ACR O-RADS ovarian imaging classification (US & MRI)
+
+### Clinical Decision (2 calculators)
+
+19. **WellsPE** - Wells Criteria for Pulmonary Embolism risk stratification
+20. **WellsDVT** - Wells Criteria for Deep Vein Thrombosis risk stratification
 
 ### Hepatology/Liver (9 calculators)
 
-9. **ALBIScore** - Albumin-Bilirubin grade for liver function in HCC (SI/US units)
-10. **AVSCortisol** - Adrenal Vein Sampling for ACTH-independent hypercortisolism (custom component)
-11. **AVSHyperaldo** - Adrenal Vein Sampling for primary hyperaldosteronism (custom component)
-12. **BCLCStaging** - Barcelona Clinic Liver Cancer staging with treatment recommendations
-13. **ChildPugh** - Child-Pugh score (A/B/C) for cirrhosis severity
-14. **MilanCriteria** - Milan and UCSF criteria for HCC transplant eligibility
-15. **MELDNa** - MELD-Na score for liver transplant prioritization
-16. **MRElastography** - Area-weighted mean liver stiffness across ROIs (dynamic rows)
-17. **Y90RadiationSegmentectomy** - Y-90 Radioembolization dosimetry calculations
+21. **ALBIScore** - Albumin-Bilirubin grade for liver function in HCC (SI/US units)
+22. **BCLCStaging** - Barcelona Clinic Liver Cancer staging with treatment recommendations
+23. **ChildPugh** - Child-Pugh score (A/B/C) for cirrhosis severity
+24. **CTPancreatitis** - CT Pancreatitis Severity Index (Balthazar + CTSI)
+25. **LIRADS** - LI-RADS v2018 liver imaging classification
+26. **MELDNa** - MELD-Na score for liver transplant prioritization
+27. **MilanCriteria** - Milan and UCSF criteria for HCC transplant eligibility
+28. **MRElastography** - Area-weighted mean liver stiffness across ROIs (dynamic rows)
+29. **Y90RadiationSegmentectomy** - Y-90 Radioembolization dosimetry calculations
 
-### Urology (4 calculators)
+### Urology (3 calculators)
 
-18. **IPSS** - Inferior Petrosal Sinus Sampling (dynamic post-CRH samples)
-19. **PIRADS** - PI-RADS v2.1 prostate MRI risk stratification
-20. **RenalNephrometry** - R.E.N.A.L. Nephrometry Score for renal mass complexity
-21. **SHIMCalculator** - SHIM/IIEF-5 Score for erectile dysfunction assessment
+30. **PIRADS** - PI-RADS v2.1 prostate MRI risk stratification
+31. **RenalNephrometry** - R.E.N.A.L. Nephrometry Score for renal mass complexity
+32. **SHIMCalculator** - SHIM/IIEF-5 Score for erectile dysfunction assessment
 
-### Interventional (1 calculator)
+### Interventional (5 calculators)
 
-22. **KhouryCatheterSelector** - Interactive microcatheter selection tool
+33. **AVSCortisol** - Adrenal Vein Sampling for ACTH-independent hypercortisolism (custom component)
+34. **AVSHyperaldo** - Adrenal Vein Sampling for primary hyperaldosteronism (custom component)
+35. **IPSS** - Inferior Petrosal Sinus Sampling (dynamic post-CRH samples)
+36. **KhouryCatheterSelector** - Interactive microcatheter selection tool (custom component)
+37. **ThyPRO39** - ThyPRO-39 thyroid-related patient-reported outcomes questionnaire
+
+### Nephrology (1 calculator)
+
+38. **MehranCIN** - Mehran Contrast-Induced Nephropathy risk score
 
 ### Feedback
 
-23. **FeedbackForm** - User feedback collection via Formspree (custom component)
+39. **FeedbackForm** - User feedback collection via Formspree (custom component)
 
 ## Calculator Definition Pattern
 
@@ -129,6 +170,8 @@ export const CalculatorName = {
   id: "unique-kebab-case-id",
   name: "Display Name",
   desc: "Short description",
+  category: "Radiology",       // Sidebar section (auto-discovered by registry.js)
+  tags: ["CT", "Adrenal"],     // Searchable tags (auto-collected into allTags)
   info: { text: "...", link?: {...}, image?: "..." },
   fields: [...],              // Array of field definitions
   compute: (values) => {...}, // Function returning results object
@@ -161,10 +204,11 @@ export const CalculatorName = {
 
 ### Custom Components
 
-Three calculators use `isCustomComponent: true` for complex UIs:
+Four calculators use `isCustomComponent: true` for complex UIs:
 
 - **AVSCortisol** - Dynamic multi-sample management, unit conversion, CSV export
 - **AVSHyperaldo** - Similar to AVSCortisol
+- **KhouryCatheterSelector** - Interactive catheter database with filtering
 - **FeedbackForm** - Formspree integration
 
 ### Dynamic Row Patterns
@@ -198,7 +242,7 @@ Located in `src/components/ui/`:
 
 - **Configuration**: `playwright.config.js`
 - **Test Location**: `tests/e2e/`
-- **Coverage**: All 20 calculators
+- **Coverage**: All 38 calculators (1034 tests across 5 browsers/devices)
 
 ### Browser/Device Coverage
 
@@ -218,10 +262,17 @@ Located in `src/components/ui/`:
 ```
 tests/
 ├── e2e/calculators/
-│   ├── radiology/        # 6 test files
+│   ├── radiology/        # 12 test files
+│   ├── neuroradiology/   # 2 test files
+│   ├── cardiac/          # 1 test file
+│   ├── breast/           # 1 test file
+│   ├── womens-imaging/   # 1 test file
+│   ├── clinical-decision/# 2 test files
+│   ├── trauma/           # 1 test file
 │   ├── hepatology/       # 9 test files
 │   ├── urology/          # 3 test files
-│   └── interventional/   # 1 test file
+│   ├── interventional/   # 5 test files
+│   └── nephrology/       # 1 test file
 ├── fixtures/             # JSON test data
 ├── helpers/
 │   └── calculator-test-helper.js  # Reusable utilities
@@ -326,19 +377,23 @@ docker-compose -f docker-compose.test.yml up
 
 **Simple** (2-4 numeric inputs):
 
-- Adrenal CT Washout, Adrenal MRI CSI, Prostate Volume
+- Adrenal CT Washout, Adrenal MRI CSI, Prostate Volume, Contrast Dosing, DLP Dose, Radiation Dose Converter, Mehran CIN
 
 **Moderate** (5-8 fields with radio/select):
 
-- Child-Pugh, ALBI Score, SHIM, RENAL Nephrometry
+- Child-Pugh, ALBI Score, SHIM, RENAL Nephrometry, ASPECTS, Wells PE, Wells DVT, CT Pancreatitis
 
 **Complex** (10+ fields with conditionals):
 
-- BCLC Staging, Milan Criteria, Renal Cyst Bosniak
+- BCLC Staging, Milan Criteria, Renal Cyst Bosniak, Fleischner, PI-RADS, TI-RADS, LI-RADS, Lung-RADS, CAD-RADS, BI-RADS, NI-RADS, O-RADS, AAST Trauma
 
 **Very Complex** (custom components with state):
 
-- AVS Cortisol, AVS Hyperaldosteronism, IPSS, MR Elastography
+- AVS Cortisol, AVS Hyperaldosteronism, IPSS, MR Elastography, Khoury Catheter Selector
+
+**Survey-Type** (radio-based questionnaires):
+
+- ThyPRO-39 (39 radio fields with scoring)
 
 ## Important Notes
 
@@ -346,7 +401,7 @@ docker-compose -f docker-compose.test.yml up
 - **ESLint**: Configured but no Prettier - follow existing code formatting
 - **Medical Accuracy**: All formulas include references to source studies in comments
 - **State Management**: Controlled components via `vals` object in App.jsx
-- **Adding Calculators**: Create `.jsx` in `src/components/calculators/`, export from `index.js`, add to `calcDefs` array and `categories` object in App.jsx
+- **Adding Calculators**: Create `.jsx` in `src/components/calculators/`, export from `index.js` barrel file. Auto-discovery via `registry.js` using `import.meta.glob` - set `category` field to place in sidebar section. No App.jsx changes needed.
 - **References**: All calculators include `refs` array with academic citations (PubMed, DOI links)
 - **Custom Components**: Use `isCustomComponent: true` for calculators needing complex UI beyond the standard field system
 
@@ -377,9 +432,16 @@ All planning artifacts are in `.dev/planning/` (gitignored, local only):
 
 - **@human**: Decisions, external accounts, medical expertise
 - **@claude**: Code, documentation, implementation
-- **@agent:explore**: Research, codebase analysis
-- **@agent:business**: Market research, competitive analysis
-- **@agent:architect**: System design
+- **@agent:product-lead**: Sprint planning, cross-team coordination, roadmap management
+- **@agent:ux-researcher**: User experience research, competitive analysis
+- **@agent:clinical-content**: Medical content accuracy, guideline validation, PubMed integration
+- **@agent:architect**: System design, feature architecture
+- **@agent:code-impl**: Hands-on code implementation
+- **@agent:qa-lead**: Test planning, Playwright E2E, visual verification
+- **@agent:seo-growth**: SEO strategy, content optimization
+- **@agent:legal**: IP protection, compliance, contract review
+- **@agent:business**: Market research, monetization strategy
+- **@agent:devops**: CI/CD, deployment, monitoring
 - **@tool:playwright**: Test execution
 
 ### Skills Available
@@ -387,6 +449,9 @@ All planning artifacts are in `.dev/planning/` (gitignored, local only):
 - `roadmap-manager`: Task management operations
 - `analytics-review`: Traffic and metrics analysis (requires GA4 MCP)
 - `seo-audit`: Search optimization checks
+- `legal:contract-review`, `legal:nda-triage`, `legal:compliance`: Legal toolkit (via plugin)
+- `radulator-qa-tester`: Automated QA testing suite
+- `dev-browser`: Browser automation for visual verification
 
 ## Autonomous Operation Authority
 

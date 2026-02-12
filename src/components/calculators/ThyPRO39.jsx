@@ -558,7 +558,15 @@ export const ThyPRO39 = {
     "thyroid embolization",
     "nodular goiter",
   ],
-  tags: ["Interventional", "Endocrinology", "Thyroid", "QoL"],
+  tags: [
+    "Interventional",
+    "Endocrinology",
+    "Thyroid",
+    "QoL",
+    "Patient-Reported Outcomes",
+    "PRO",
+    "Survey",
+  ],
   metaDesc:
     "Free ThyPRO-39 Calculator. Thyroid-specific quality of life assessment with 13 subscales and composite scoring for goiter, thyroid conditions, and TAE outcomes.",
 
