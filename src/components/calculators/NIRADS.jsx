@@ -14,6 +14,7 @@ export const NIRADS = {
   category: "Neuroradiology",
   name: "ACR NI-RADS",
   desc: "Neck Imaging Reporting and Data System for post-treatment head and neck cancer surveillance",
+  guidelineVersion: "ACR NI-RADS 2018",
   keywords: [
     "neck imaging",
     "head and neck",

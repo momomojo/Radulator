@@ -1,14 +1,16 @@
 /**
  * AAST Trauma Grading Calculator - E2E Tests
  *
- * Tests the AAST-OIS 2018 solid organ injury grading calculator for
- * liver, spleen, and kidney trauma.
+ * Tests the AAST-OIS solid organ injury grading calculator for
+ * liver, spleen, kidney, and pancreas trauma.
  *
  * Test Coverage:
  * - Liver injury grading (Grades I-V)
  * - Spleen injury grading (Grades I-V)
- * - Kidney injury grading (Grades I-V)
+ * - Kidney injury grading (Grades I-V, 2018 and 2025 OIS)
+ * - Pancreas injury grading (Grades I-V, 2024 OIS)
  * - Vascular injury criteria
+ * - Ductal injury grading (pancreas)
  * - Multiple injury advancement rule
  * - Management recommendations (WSES guidelines)
  * - Hemodynamic stability warnings
@@ -38,7 +40,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
       page,
     }) => {
       await expect(page.locator("h2")).toContainText("AAST Trauma Grading");
-      await expect(page.getByText("AAST-OIS 2018").first()).toBeVisible();
+      await expect(
+        page.getByText("AAST-OIS solid organ").first(),
+      ).toBeVisible();
     });
 
     test("should display info section with grading explanation", async ({
@@ -46,9 +50,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     }) => {
       await expect(page.getByText("Grade I").first()).toBeVisible();
       await expect(page.getByText("Grade V").first()).toBeVisible();
-      await expect(
-        page.getByText("Vascular injury criteria").first(),
-      ).toBeVisible();
+      await expect(page.getByText("Ductal integrity").first()).toBeVisible();
     });
 
     test("should have organ selection", async ({ page }) => {
@@ -61,6 +63,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).toBeVisible();
       await expect(
         page.getByText("Kidney", { exact: true }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Pancreas", { exact: true }).first(),
       ).toBeVisible();
     });
 
@@ -362,7 +367,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade I kidney injury - contusion", async ({
       page,
     }) => {
-      await page.getByText("Parenchymal contusion").click();
+      await page.getByText("Contusion without laceration").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -375,9 +380,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade II kidney injury - small laceration", async ({
       page,
     }) => {
-      await page
-        .getByText("<2.5 cm parenchymal depth, no collecting system")
-        .click();
+      await page.getByText("Laceration <2.5 cm, no collecting system").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -403,7 +406,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       page,
     }) => {
       await page
-        .getByText("Laceration extending into collecting system")
+        .getByText("Collecting system laceration / urinary extravasation")
         .click();
 
       await page.click('button:has-text("Calculate")');
@@ -418,7 +421,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade IV kidney injury - UPJ disruption", async ({
       page,
     }) => {
-      await page.getByText("Ureteropelvic junction (UPJ) disruption").click();
+      await page.getByText("Complete or near-complete UPJ disruption").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -431,7 +434,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       page,
     }) => {
       await page
-        .getByText("Main renal artery or vein laceration/transection")
+        .getByText("Main renal artery or vein laceration with active bleeding")
         .click();
 
       await page.click('button:has-text("Calculate")');
@@ -442,9 +445,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     });
 
     test("should note urinary extravasation on result", async ({ page }) => {
-      await page
-        .getByText("<2.5 cm parenchymal depth, no collecting system")
-        .click();
+      await page.getByText("Laceration <2.5 cm, no collecting system").click();
       await page.locator('label[for="kidney_urinary_extrav"]').click();
 
       await page.click('button:has-text("Calculate")');
@@ -461,7 +462,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       page,
     }) => {
       await page
-        .getByText("Laceration extending into collecting system")
+        .getByText("Collecting system laceration / urinary extravasation")
         .click();
       await page.locator('label[for="kidney_urinary_extrav"]').click();
 
@@ -733,6 +734,605 @@ test.describe("AAST Trauma Grading Calculator", () => {
       }
       const aastWebsite = page.locator('a[href*="aast.org"]');
       await expect(aastWebsite).toBeVisible();
+    });
+  });
+
+  test.describe("Kidney OIS Version Selector", () => {
+    test("should show version selector when kidney is selected", async ({
+      page,
+    }) => {
+      await page.getByText("Kidney", { exact: true }).click();
+      await expect(page.getByText("Kidney OIS Version").first()).toBeVisible();
+      await expect(
+        page.locator('label[for="kidney_ois_version-2025"]'),
+      ).toBeVisible();
+      await expect(
+        page.locator('label[for="kidney_ois_version-2018"]'),
+      ).toBeVisible();
+    });
+
+    test("should not show version selector for liver", async ({ page }) => {
+      await page.getByText("Liver", { exact: true }).click();
+      await expect(
+        page.getByText("Kidney OIS Version").first(),
+      ).not.toBeVisible();
+    });
+
+    test("should not show version selector for spleen", async ({ page }) => {
+      await page.getByText("Spleen", { exact: true }).click();
+      await expect(
+        page.getByText("Kidney OIS Version").first(),
+      ).not.toBeVisible();
+    });
+
+    test("should show OIS version in results for kidney", async ({ page }) => {
+      await page.getByText("Kidney", { exact: true }).click();
+      await page.getByText("Contusion without laceration").click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=OIS Version").first()).toBeVisible();
+    });
+  });
+
+  test.describe("Kidney 2025 OIS Grading", () => {
+    test.beforeEach(async ({ page }) => {
+      await page.getByText("Kidney", { exact: true }).click();
+      await page.locator('label[for="kidney_ois_version-2025"]').click();
+    });
+
+    test("should grade pararenal hematoma extension as Grade IV", async ({
+      page,
+    }) => {
+      await page.getByText("Pararenal hematoma extension").click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+      await expect(
+        results.locator("text=Pararenal hematoma extension").first(),
+      ).toBeVisible();
+    });
+
+    test("should grade PSA/AVF without active bleeding as Grade III", async ({
+      page,
+    }) => {
+      await page.getByText("Vascular injury without active bleeding").click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+      await expect(results.locator("text=PSA/AVF").first()).toBeVisible();
+    });
+
+    test("should grade active bleeding from kidney as Grade IV (key 2025 change)", async ({
+      page,
+    }) => {
+      await page.getByText("Active bleeding from kidney").click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+      await expect(
+        results.locator("text=Active bleeding from kidney").first(),
+      ).toBeVisible();
+    });
+
+    test("should grade complete infarction without bleeding as Grade IV", async ({
+      page,
+    }) => {
+      await page
+        .getByText("Complete/near-complete infarction without active bleeding")
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+    });
+
+    test("should grade complete infarction with bleeding as Grade V", async ({
+      page,
+    }) => {
+      await page
+        .getByText("Complete/near-complete infarction with active bleeding")
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+    });
+
+    test("should grade multifragmented kidney with active bleeding as Grade V", async ({
+      page,
+    }) => {
+      await page.getByText("Multifragmented kidney").click();
+      await page.getByText("Active bleeding from kidney").click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+      await expect(
+        results
+          .locator("text=Multifragmented kidney with active bleeding")
+          .first(),
+      ).toBeVisible();
+    });
+
+    test("should grade multifragmented kidney without active bleeding as Grade IV", async ({
+      page,
+    }) => {
+      await page.getByText("Multifragmented kidney").click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+      await expect(
+        results.locator("text=without active bleeding").first(),
+      ).toBeVisible();
+    });
+
+    test("should grade urinary extravasation as Grade III (downgraded in 2025)", async ({
+      page,
+    }) => {
+      await page.getByText("Laceration <2.5 cm, no collecting system").click();
+      await page.locator('label[for="kidney_urinary_extrav"]').click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+    });
+  });
+
+  test.describe("Kidney 2018 OIS Grading", () => {
+    test.beforeEach(async ({ page }) => {
+      await page.getByText("Kidney", { exact: true }).click();
+      await page.locator('label[for="kidney_ois_version-2018"]').click();
+    });
+
+    test("should show 2018-specific fields", async ({ page }) => {
+      await expect(page.getByText("Kidney Hematoma").first()).toBeVisible();
+      await expect(page.getByText("Kidney Laceration").first()).toBeVisible();
+      await expect(
+        page.getByText("Kidney Vascular Injury").first(),
+      ).toBeVisible();
+    });
+
+    test("should classify Grade I - contusion (2018)", async ({ page }) => {
+      await page
+        .getByText("Subcapsular hematoma and/or parenchymal contusion")
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 1").first()).toBeVisible();
+      await expect(results.locator("text=2018").first()).toBeVisible();
+    });
+
+    test("should classify Grade II - small laceration ≤1cm (2018)", async ({
+      page,
+    }) => {
+      await page
+        .getByText("≤1 cm parenchymal depth without urinary extravasation")
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 2").first()).toBeVisible();
+    });
+
+    test("should classify Grade III - laceration >1cm (2018)", async ({
+      page,
+    }) => {
+      await page
+        .getByText(
+          ">1 cm depth without collecting system rupture or urinary extravasation",
+        )
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+    });
+
+    test("should classify Grade III - contained vascular (2018)", async ({
+      page,
+    }) => {
+      await page
+        .getByText("Vascular injury or active bleeding contained within Gerota")
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+    });
+
+    test("should classify Grade IV - collecting system with urinary extravasation (2018)", async ({
+      page,
+    }) => {
+      await page
+        .getByText("Into collecting system with urinary extravasation")
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+    });
+
+    test("should classify Grade IV - urinary extravasation checkbox (2018)", async ({
+      page,
+    }) => {
+      await page
+        .getByText("Subcapsular hematoma and/or parenchymal contusion")
+        .click();
+      await page.locator('label[for="kidney_2018_urinary_extrav"]').click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      // In 2018, urinary extravasation = Grade IV
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+    });
+
+    test("should classify Grade V - shattered kidney (2018)", async ({
+      page,
+    }) => {
+      await page
+        .getByText("Shattered kidney with loss of identifiable")
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+    });
+
+    test("should classify Grade V - main vessel injury (2018)", async ({
+      page,
+    }) => {
+      await page
+        .getByText("Main renal artery or vein laceration or avulsion")
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+    });
+  });
+
+  // ============================================
+  // PANCREAS INJURY GRADING (2024 OIS)
+  // ============================================
+  test.describe("Pancreas Injury Grading (2024 OIS)", () => {
+    test.beforeEach(async ({ page }) => {
+      await page.locator('label[for="organ-pancreas"]').click();
+    });
+
+    test("should show pancreas-specific fields when pancreas selected", async ({
+      page,
+    }) => {
+      await expect(
+        page.getByText("Pancreatic Parenchymal Injury").first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Pancreatic Duct Injury").first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Destructive Pancreatic Head Injury").first(),
+      ).toBeVisible();
+    });
+
+    test("should not show liver/spleen/kidney fields for pancreas", async ({
+      page,
+    }) => {
+      await expect(page.locator("text=Liver Hematoma")).not.toBeVisible();
+      await expect(page.locator("text=Spleen Hematoma")).not.toBeVisible();
+      await expect(page.locator("text=Kidney Hematoma")).not.toBeVisible();
+    });
+
+    test("should show OIS Version 2024 in results", async ({ page }) => {
+      await page.getByText("Minor contusion without duct injury").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=2024").first()).toBeVisible();
+    });
+
+    // Grade I tests
+    test("should classify Grade I - minor contusion", async ({ page }) => {
+      await page.getByText("Minor contusion without duct injury").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 1").first()).toBeVisible();
+      await expect(
+        results.locator("text=Minor contusion without duct injury").first(),
+      ).toBeVisible();
+    });
+
+    test("should classify Grade I - superficial laceration", async ({
+      page,
+    }) => {
+      await page
+        .getByText("Superficial laceration without duct injury")
+        .click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 1").first()).toBeVisible();
+    });
+
+    // Grade II tests
+    test("should classify Grade II - major contusion", async ({ page }) => {
+      await page
+        .getByText("Major contusion without duct injury or tissue loss")
+        .click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 2").first()).toBeVisible();
+    });
+
+    test("should classify Grade II - major laceration", async ({ page }) => {
+      await page
+        .locator('label[for="pancreas_parenchymal-major_laceration"]')
+        .click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 2").first()).toBeVisible();
+    });
+
+    // Grade III tests - duct injury in body/tail
+    test("should classify Grade III - complete transection body/tail", async ({
+      page,
+    }) => {
+      await page.getByText("Complete ductal transection").click();
+      await page
+        .locator('label[for="pancreas_duct_location-body_tail"]')
+        .click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+      await expect(
+        results.locator("text=neck/body/tail").first(),
+      ).toBeVisible();
+    });
+
+    test("should classify Grade III - partial duct injury body/tail", async ({
+      page,
+    }) => {
+      await page.getByText("Partial ductal injury").click();
+      await page
+        .locator('label[for="pancreas_duct_location-body_tail"]')
+        .click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+    });
+
+    test("should classify Grade III - deep parenchymal without ductal interrogation body/tail", async ({
+      page,
+    }) => {
+      await page.getByText("Deep parenchymal injury without ductal").click();
+      await page
+        .locator('label[for="pancreas_duct_location-body_tail"]')
+        .click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+    });
+
+    // Grade IV tests - duct injury in head
+    test("should classify Grade IV - complete transection head", async ({
+      page,
+    }) => {
+      await page.getByText("Complete ductal transection").click();
+      await page.locator('label[for="pancreas_duct_location-head"]').click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+      await expect(
+        results.locator("text=pancreatic head").first(),
+      ).toBeVisible();
+    });
+
+    test("should classify Grade IV - partial duct injury head", async ({
+      page,
+    }) => {
+      await page.getByText("Partial ductal injury").click();
+      await page.locator('label[for="pancreas_duct_location-head"]').click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+    });
+
+    // Grade V test
+    test("should classify Grade V - destructive head injury", async ({
+      page,
+    }) => {
+      await page.click('label[for="pancreas_destructive"]');
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 5").first()).toBeVisible();
+      await expect(results.locator("text=Destructive").first()).toBeVisible();
+    });
+
+    // Duct location conditional visibility
+    test("should show duct location only when duct injury selected", async ({
+      page,
+    }) => {
+      // Initially no duct injury → location should not be visible
+      await expect(
+        page.locator("text=Location of Duct Injury"),
+      ).not.toBeVisible();
+
+      // Select duct injury → location should appear
+      await page.getByText("Complete ductal transection").click();
+      await expect(
+        page.getByText("Location of Duct Injury").first(),
+      ).toBeVisible();
+    });
+
+    // Ductal injury note
+    test("should show pancreas-specific note for duct injuries", async ({
+      page,
+    }) => {
+      await page.getByText("Complete ductal transection").click();
+      await page
+        .locator('label[for="pancreas_duct_location-body_tail"]')
+        .click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Ductal integrity").first(),
+      ).toBeVisible();
+    });
+
+    // Management recommendations
+    test("should show appropriate management for Grade III", async ({
+      page,
+    }) => {
+      await page.getByText("Partial ductal injury").click();
+      await page
+        .locator('label[for="pancreas_duct_location-body_tail"]')
+        .click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=pancreatectomy").first(),
+      ).toBeVisible();
+    });
+
+    test("should show appropriate management for Grade V", async ({ page }) => {
+      await page.click('label[for="pancreas_destructive"]');
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=damage control").first(),
+      ).toBeVisible();
+    });
+
+    // Multiple injury rule
+    test("should advance grade for multiple injuries (up to Grade III)", async ({
+      page,
+    }) => {
+      await page
+        .getByText("Major contusion without duct injury or tissue loss")
+        .click();
+      await page.click('label[for="multiple_injuries"]');
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+      await expect(
+        results.locator("text=Multiple injuries").first(),
+      ).toBeVisible();
+    });
+  });
+
+  // ============================================
+  // IMAGING GUIDANCE (Task D)
+  // ============================================
+  test.describe("Imaging Recommendation and Pitfalls", () => {
+    test("should show imaging recommendation for liver", async ({ page }) => {
+      await page.getByText("Liver", { exact: true }).click();
+      await page.getByText("Capsular tear, <1 cm").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=Dual-phase CT").first()).toBeVisible();
+    });
+
+    test("should show imaging pitfalls for liver Grade III", async ({
+      page,
+    }) => {
+      await page.getByText("Liver", { exact: true }).click();
+      await page.getByText(">3 cm parenchymal depth").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=sentinel clot").first()).toBeVisible();
+    });
+
+    test("should show imaging recommendation for spleen", async ({ page }) => {
+      await page.getByText("Spleen", { exact: true }).click();
+      await page.getByText("Subcapsular, <10%").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=arterial phase is critical").first(),
+      ).toBeVisible();
+    });
+
+    test("should show delayed rupture pitfall for spleen Grade III", async ({
+      page,
+    }) => {
+      await page.getByText("Spleen", { exact: true }).click();
+      await page.getByText(">3 cm parenchymal depth").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=Delayed splenic rupture").first(),
+      ).toBeVisible();
+    });
+
+    test("should show delayed excretory phase recommendation for kidney", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-kidney"]').click();
+      await page.getByText("Contusion without laceration").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=delayed excretory phase").first(),
+      ).toBeVisible();
+    });
+
+    test("should show MRCP recommendation for pancreas", async ({ page }) => {
+      await page.locator('label[for="organ-pancreas"]').click();
+      await page.getByText("Minor contusion without duct injury").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(results.locator("text=MRCP").first()).toBeVisible();
+    });
+
+    test("should show pancreas CT miss rate pitfall", async ({ page }) => {
+      await page.locator('label[for="organ-pancreas"]').click();
+      await page.getByText("Minor contusion without duct injury").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.locator('section[aria-live="polite"]');
+      await expect(
+        results.locator("text=missed on initial CT").first(),
+      ).toBeVisible();
     });
   });
 

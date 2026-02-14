@@ -17,6 +17,7 @@ export const SHIMCalculator = {
   category: "Urology",
   name: "IIEF-5 (SHIM Score)",
   desc: "Sexual Health Inventory for Men (IIEF-5) - Erectile Dysfunction Assessment",
+  guidelineVersion: "IIEF-5 (Rosen 1999)",
   keywords: [
     "erectile dysfunction",
     "ED",

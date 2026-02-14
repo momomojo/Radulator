@@ -14,6 +14,7 @@ export const CADRADS = {
   category: "Cardiac Imaging",
   name: "CAD-RADS 2.0",
   desc: "Coronary Artery Disease Reporting and Data System for coronary CTA",
+  guidelineVersion: "CAD-RADS 2.0 (2022)",
   keywords: ["coronary", "CCTA", "coronary CTA", "CAD", "stenosis"],
   tags: ["Cardiac", "Radiology"],
   metaDesc:

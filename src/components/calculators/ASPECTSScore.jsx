@@ -17,6 +17,7 @@ export const ASPECTSScore = {
   id: "aspects-score",
   name: "ASPECTS Score",
   desc: "Alberta Stroke Program Early CT Score for acute MCA stroke assessment",
+  guidelineVersion: "ASPECTS (Barber 2000)",
   keywords: ["stroke", "MCA", "ischemic", "ASPECTS", "thrombolysis"],
   tags: ["Neuroradiology", "Stroke", "Neurology"],
   metaDesc:

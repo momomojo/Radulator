@@ -16,6 +16,7 @@ export const WellsDVT = {
   category: "Clinical Decision",
   name: "Wells Criteria for DVT",
   desc: "Clinical decision rule for deep vein thrombosis probability assessment",
+  guidelineVersion: "Wells Criteria (2003)",
   keywords: ["deep vein thrombosis", "DVT", "leg swelling", "venous"],
   tags: ["Clinical Decision", "Vascular", "Emergency"],
   metaDesc:

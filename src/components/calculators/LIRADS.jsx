@@ -17,6 +17,7 @@ export const LIRADS = {
   category: "Hepatology/Liver",
   name: "LI-RADS v2018",
   desc: "Liver Imaging Reporting and Data System for hepatocellular carcinoma risk stratification",
+  guidelineVersion: "LI-RADS v2018",
   keywords: ["liver", "HCC", "hepatocellular carcinoma", "LR-5", "liver mass"],
   tags: ["Hepatology", "Radiology", "Oncology"],
   metaDesc:

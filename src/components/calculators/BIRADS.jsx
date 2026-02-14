@@ -14,6 +14,7 @@ export const BIRADS = {
   category: "Breast Imaging",
   name: "ACR BI-RADS",
   desc: "Breast Imaging Reporting and Data System for mammography, ultrasound, and MRI",
+  guidelineVersion: "ACR BI-RADS 5th Ed. 2013",
   keywords: ["breast", "mammography", "breast cancer", "mammogram"],
   tags: ["Breast", "Radiology", "Oncology"],
   metaDesc:

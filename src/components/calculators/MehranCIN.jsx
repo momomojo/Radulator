@@ -15,6 +15,7 @@ export const MehranCIN = {
   category: "Nephrology",
   name: "Mehran CIN Risk Score",
   desc: "Predicts risk of contrast-induced nephropathy after angiography/PCI",
+  guidelineVersion: "Mehran Score (2004)",
   keywords: [
     "contrast nephropathy",
     "AKI",

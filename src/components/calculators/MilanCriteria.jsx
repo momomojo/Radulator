@@ -29,6 +29,7 @@ export const MilanCriteria = {
   category: "Hepatology/Liver",
   name: "Milan Criteria (HCC)",
   desc: "Liver transplant eligibility criteria for hepatocellular carcinoma patients",
+  guidelineVersion: "Milan Criteria (Mazzaferro 1996)",
   keywords: ["liver transplant", "HCC", "transplant eligibility", "UCSF"],
   tags: ["Hepatology", "Oncology", "Transplant"],
   metaDesc:

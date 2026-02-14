@@ -547,6 +547,7 @@ export const ThyPRO39 = {
   category: "Interventional",
   name: "ThyPRO-39",
   desc: "Thyroid-Related Patient-Reported Outcome - Quality of Life Assessment",
+  guidelineVersion: "ThyPRO-39 (Watt 2014)",
   keywords: [
     "thyroid",
     "quality of life",

@@ -38,6 +38,7 @@ export const IPSS = {
   category: "Interventional",
   name: "Inferior Petrosal Sinus Sampling (IPSS)",
   desc: "Inferior Petrosal Sinus Sampling for Cushing's disease diagnosis and lateralization",
+  guidelineVersion: "IPSS (Oldfield 1991)",
   keywords: [
     "pituitary",
     "Cushing",

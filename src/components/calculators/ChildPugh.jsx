@@ -7,6 +7,7 @@ export const ChildPugh = {
   category: "Hepatology/Liver",
   name: "Child-Pugh Score",
   desc: "Classification and prognosis of chronic liver disease and cirrhosis",
+  guidelineVersion: "Child-Pugh (Pugh 1973)",
   keywords: [
     "cirrhosis",
     "liver function",

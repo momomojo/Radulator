@@ -17,6 +17,7 @@ export const DLPDose = {
   category: "Radiology",
   name: "DLP to Effective Dose",
   desc: "Convert CT Dose Length Product to estimated effective radiation dose",
+  guidelineVersion: "ICRP 103 (2007)",
   keywords: ["radiation dose", "effective dose", "CT dose", "DLP", "mSv"],
   tags: ["Radiology", "Safety", "Radiation"],
   metaDesc:

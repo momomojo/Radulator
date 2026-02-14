@@ -18,6 +18,7 @@ export const PIRADS = {
   category: "Urology",
   name: "PI-RADS v2.1",
   desc: "Prostate MRI risk stratification for clinically significant cancer",
+  guidelineVersion: "PI-RADS v2.1 (2019)",
   keywords: ["prostate", "MRI", "prostate cancer", "PCa", "mpMRI"],
   tags: ["Urology", "Radiology"],
   metaDesc:

@@ -15,6 +15,7 @@ export const ORADS = {
   category: "Women's Imaging",
   name: "ACR O-RADS",
   desc: "Ovarian-Adnexal Reporting and Data System for US and MRI",
+  guidelineVersion: "ACR O-RADS 2020",
   keywords: ["ovarian", "ovary", "adnexal", "ovarian mass", "cyst"],
   tags: ["Women's Imaging", "Radiology", "Oncology"],
   metaDesc:

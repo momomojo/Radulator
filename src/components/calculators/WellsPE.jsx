@@ -16,6 +16,7 @@ export const WellsPE = {
   category: "Clinical Decision",
   name: "Wells Criteria for PE",
   desc: "Clinical decision rule for pulmonary embolism probability assessment",
+  guidelineVersion: "Wells Criteria (2000)",
   keywords: ["pulmonary embolism", "PE", "DVT", "thrombosis", "D-dimer"],
   tags: ["Clinical Decision", "Pulmonary", "Emergency"],
   metaDesc:

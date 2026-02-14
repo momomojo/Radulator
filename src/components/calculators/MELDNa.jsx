@@ -30,6 +30,7 @@ export const MELDNa = {
   category: "Hepatology/Liver",
   name: "MELD-Na Score",
   desc: "Model for End-Stage Liver Disease with Sodium for transplant prioritization",
+  guidelineVersion: "MELD-Na (OPTN 2016)",
   keywords: [
     "liver transplant",
     "cirrhosis",

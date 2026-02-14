@@ -409,9 +409,12 @@ docker-compose -f docker-compose.test.yml up
 
 ### Location
 
-All planning artifacts are in `.dev/planning/` (gitignored, local only):
+All planning artifacts are in `.dev/planning/` (gitignored, local only). **Always check this directory at session start.**
 
-- **ROADMAP.yaml**: Master task tree with all planned work
+Absolute path: `D:\Projects-newgen\radcalc-2.0\.dev\planning\`
+
+- **ORCHESTRATION-DASHBOARD.html**: Master visual dashboard with Mermaid diagrams, Gantt timeline, task checklists, and phase tracking. Open in browser for full view. **This is the primary reference for sprint work.**
+- **ROADMAP.yaml**: Master task tree with all planned work (statuses, priorities, assignees, effort)
 - **ROLES.md**: Role definitions (@human, @claude, @agent:\*, etc.)
 - **DECISIONS.md**: Key decisions with rationale
 - **archive/**: Completed work organized by month

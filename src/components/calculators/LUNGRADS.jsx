@@ -14,6 +14,7 @@ export const LUNGRADS = {
   category: "Radiology",
   name: "Lung-RADS v2022",
   desc: "Lung cancer screening CT classification and management recommendations",
+  guidelineVersion: "Lung-RADS v2022",
   keywords: ["lung cancer screening", "LDCT", "low-dose CT", "Lung-RADS"],
   tags: ["Radiology", "Pulmonary", "Oncology"],
   metaDesc:

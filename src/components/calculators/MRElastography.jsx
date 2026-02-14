@@ -3,6 +3,7 @@ export const MRElastography = {
   category: "Hepatology/Liver",
   name: "MR Elastography (Liver)",
   desc: "Area-weighted mean liver stiffness across ROIs/slices.",
+  guidelineVersion: "MRE Consensus (Manduca 2020)",
   keywords: ["liver stiffness", "fibrosis", "cirrhosis", "MRE", "elastography"],
   tags: ["Hepatology", "Radiology"],
   metaDesc:

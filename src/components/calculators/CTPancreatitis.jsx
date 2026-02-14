@@ -16,6 +16,7 @@ export const CTPancreatitis = {
   category: "Hepatology/Liver",
   name: "CT Severity Index (CTSI)",
   desc: "Balthazar score with necrosis grading for acute pancreatitis severity",
+  guidelineVersion: "Balthazar CTSI (2004)",
   keywords: ["pancreatitis", "Balthazar", "CTSI", "pancreatic necrosis"],
   tags: ["Hepatology", "Gastroenterology", "Radiology"],
   metaDesc:

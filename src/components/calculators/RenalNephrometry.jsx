@@ -3,6 +3,7 @@ export const RenalNephrometry = {
   category: "Urology",
   name: "RENAL Nephrometry Score",
   desc: "Quantifies anatomical characteristics of renal tumours for surgical planning and risk assessment.",
+  guidelineVersion: "R.E.N.A.L. Score (Kutikov 2009)",
   keywords: [
     "kidney tumor",
     "renal mass",

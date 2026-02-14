@@ -20,6 +20,7 @@ export const Y90RadiationSegmentectomy = {
   category: "Hepatology/Liver",
   name: "Y-90 Radioembolization Dosimetry",
   desc: "Dosimetry calculator for Y-90 radioembolization using MIRD and partition models",
+  guidelineVersion: "MIRD Dosimetry (Ho 1996)",
   keywords: [
     "MIRD",
     "TARE",

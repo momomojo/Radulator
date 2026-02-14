@@ -17,6 +17,7 @@ export const BCLCStaging = {
   category: "Hepatology/Liver",
   name: "BCLC Staging (HCC)",
   desc: "Barcelona Clinic Liver Cancer staging for hepatocellular carcinoma with treatment recommendations.",
+  guidelineVersion: "BCLC 2022",
   keywords: ["HCC", "hepatocellular", "liver cancer", "Barcelona", "staging"],
   tags: ["Hepatology", "Oncology", "Staging"],
   metaDesc:

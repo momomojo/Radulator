@@ -17,6 +17,7 @@ export const TIRADS = {
   category: "Radiology",
   name: "ACR TI-RADS",
   desc: "Thyroid Imaging Reporting and Data System for thyroid nodule risk stratification",
+  guidelineVersion: "ACR TI-RADS 2017",
   keywords: ["thyroid", "nodule", "thyroid nodule", "FNA", "biopsy", "ACR"],
   tags: ["Radiology", "Endocrinology", "Thyroid"],
   metaDesc:
