@@ -184,6 +184,20 @@ export const trackResultViewed = (
 };
 
 /**
+ * Track onboarding interactions (welcome card, guide overlay)
+ * @param {string} action - What happened ('guide_opened', 'welcome_dismissed', 'section_viewed')
+ * @param {string} source - Where the action originated ('welcome_card', 'guide_button', 'footer', section id)
+ */
+export const trackOnboarding = (action, source = "unknown") => {
+  sendEvent("onboarding_interaction", {
+    action,
+    source,
+    event_category: "Onboarding",
+    event_label: `${action} - ${source}`,
+  });
+};
+
+/**
  * Track search queries (if search functionality is added later)
  * @param {string} searchTerm - Search query
  */

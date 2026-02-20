@@ -20,7 +20,13 @@ import {
   trackSearch,
   trackResultViewed,
   trackResultsCopied,
+  trackOnboarding,
 } from "@/lib/analytics";
+import {
+  WelcomeCard,
+  GuideButton,
+  GuideOverlay,
+} from "@/components/onboarding";
 
 /*******************************************************************
   App Wrapper - Provides Context
@@ -71,6 +77,8 @@ function AppContent() {
     toggleDarkMode,
     showDisclaimer,
     dismissDisclaimer,
+    showWelcome,
+    dismissWelcome,
   } = usePreferences();
 
   // UI state (local only)
@@ -78,6 +86,7 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   // Reset copied state when switching calculators
   useEffect(() => {
@@ -296,6 +305,17 @@ function AppContent() {
         </div>
       )}
 
+      {/* One-time Welcome Card */}
+      {showWelcome && (
+        <WelcomeCard
+          onDismiss={dismissWelcome}
+          onOpenGuide={() => {
+            dismissWelcome();
+            setGuideOpen(true);
+          }}
+        />
+      )}
+
       {/* Content wrapper for sidebar + main */}
       <div className="flex flex-1 overflow-hidden">
         {/* Mobile Header with Hamburger */}
@@ -321,44 +341,52 @@ function AppContent() {
             </svg>
           </button>
           <h1 className="text-lg font-bold text-foreground">Radulator</h1>
-          {/* Dark Mode Toggle - Mobile */}
-          <button
-            onClick={toggleDarkMode}
-            className="p-2 -mr-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
-            aria-label={
-              darkMode ? "Switch to light mode" : "Switch to dark mode"
-            }
-          >
-            {darkMode ? (
-              <svg
-                className="w-5 h-5 text-amber-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-            ) : (
-              <svg
-                className="w-5 h-5 text-slate-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-            )}
-          </button>
+          <div className="flex items-center gap-0.5">
+            <GuideButton
+              onClick={() => {
+                trackOnboarding("guide_opened", "mobile_header");
+                setGuideOpen(true);
+              }}
+            />
+            {/* Dark Mode Toggle - Mobile */}
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+              aria-label={
+                darkMode ? "Switch to light mode" : "Switch to dark mode"
+              }
+            >
+              {darkMode ? (
+                <svg
+                  className="w-5 h-5 text-amber-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5 text-slate-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                  />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Overlay */}
@@ -384,6 +412,13 @@ function AppContent() {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-foreground">Radulator</h1>
             <div className="flex items-center gap-1">
+              <GuideButton
+                onClick={() => {
+                  trackOnboarding("guide_opened", "sidebar_header");
+                  setGuideOpen(true);
+                }}
+                className="hidden md:flex"
+              />
               {/* Dark Mode Toggle - Desktop (hidden on mobile, shown in mobile header) */}
               <button
                 onClick={toggleDarkMode}
@@ -1221,6 +1256,16 @@ function AppContent() {
                 </svg>
               )}
             </button>
+            <button
+              onClick={() => {
+                trackOnboarding("guide_opened", "footer");
+                setGuideOpen(true);
+              }}
+              className="hover:text-foreground hover:underline transition-colors"
+              data-testid="footer-guide-link"
+            >
+              Guide
+            </button>
             <a
               href="/about.html"
               className="hover:text-foreground hover:underline transition-colors"
@@ -1243,6 +1288,9 @@ function AppContent() {
           </div>
         </div>
       </footer>
+
+      {/* User Guide Overlay */}
+      <GuideOverlay isOpen={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   );
 }

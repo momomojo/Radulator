@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   RECENT: "radulator-recent",
   DARK_MODE: "radulator-dark-mode",
   DISCLAIMER_SEEN: "radulator-disclaimer-seen",
+  WELCOME_SEEN: "radulator-welcome-seen",
 };
 
 const MAX_RECENT = 5;
@@ -65,6 +66,15 @@ export function usePreferences() {
   const [showDisclaimer, setShowDisclaimerState] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEYS.DISCLAIMER_SEEN) !== "true";
+    } catch {
+      return true;
+    }
+  });
+
+  // Welcome card visibility (one-time)
+  const [showWelcome, setShowWelcomeState] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.WELCOME_SEEN) !== "true";
     } catch {
       return true;
     }
@@ -129,6 +139,16 @@ export function usePreferences() {
     setShowDisclaimerState(false);
   }, []);
 
+  // Dismiss welcome card
+  const dismissWelcome = useCallback(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.WELCOME_SEEN, "true");
+    } catch {
+      // Silently fail
+    }
+    setShowWelcomeState(false);
+  }, []);
+
   return {
     // Favorites
     favorites,
@@ -143,6 +163,9 @@ export function usePreferences() {
     // Disclaimer
     showDisclaimer,
     dismissDisclaimer,
+    // Welcome
+    showWelcome,
+    dismissWelcome,
   };
 }
 
