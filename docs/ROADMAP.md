@@ -1,18 +1,18 @@
 # Radulator Roadmap
 
-> Public, milestone-level roadmap. Last updated 2026-06-09. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
+> Public, milestone-level roadmap. Last updated 2026-06-10. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
 
 ## Where we are
 
-38 calculators across 11 specialties, ~1,100 Playwright E2E tests, live at [radulator.com](https://radulator.com). Phase 1 (Fix & Refine) is essentially complete: severity-based result colors, copy-results, guideline version badges, first-time onboarding, and a clinician-feedback sprint that added AAST 2025 kidney OIS (with a 2018/2025 version selector), a pancreas organ module, and per-grade imaging guidance.
+38 calculators across 11 specialties, ~1,100 Playwright E2E tests, live at [radulator.com](https://radulator.com). Phase 1 (Fix & Refine) is essentially complete: severity-based result colors, copy-results, guideline version badges, first-time onboarding, and a clinician-feedback sprint that added AAST 2025 kidney OIS (with a 2018/2025 version selector), a pancreas organ module, and per-grade imaging guidance. Recently landed: per-calculator static pages with full SEO metadata, and a WCAG 2.1 AA accessibility pass.
 
 ## Phase 1 — remaining
 
-- WCAG 2.1 AA accessibility audit and fixes
 - Calculator info/education content expansion
 
 ## Phase 2 — Differentiate
 
+- **Guideline currency**: standing review of guideline revisions against what each calculator implements; items under clinical review: Bosniak v2019 alignment, LI-RADS CT/MRI treatment-response v2024 (new calculator candidate)
 - **Guideline version system**: generalize the AAST-style version selector into a first-class architecture, so calculators can offer current and prior guideline versions side by side (initial targets: Fleischner, CAD-RADS, PI-RADS; then Bosniak, LI-RADS, Milan)
 - **Guided mode**: an optional "walk me through it" flow per calculator, with skill-level preferences for residents and students
 - **Reference depth**: PubMed-validated citations, related-articles surfacing, "next steps" sections, and structured report-text output (copy-paste-ready impressions)
