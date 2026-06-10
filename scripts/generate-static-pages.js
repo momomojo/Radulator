@@ -106,6 +106,13 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// The replaceable SEO block in index.html: spans the generic meta tags, OG/Twitter
+// tags, and both generic JSON-LD scripts. Bounded by explicit markers so build-time
+// transforms (e.g. the GA4 snippet injection, which consumes <!-- GA4_PLACEHOLDER -->
+// when VITE_GA4_MEASUREMENT_ID is set) can never break the anchor. That exact
+// breakage shipped 38 title-less pages canonicalized to the homepage on 2026-06-10.
+const SEO_BLOCK_RE = /<!-- SEO Meta Tags -->[\s\S]*?<!-- \/SEO -->/;
+
 function generateCalculatorPages() {
   const meta = extractCalcMeta();
   const ids = Object.keys(meta).sort();
@@ -113,6 +120,12 @@ function generateCalculatorPages() {
 
   // Read the built index.html as a template
   const mainHtml = readFileSync(join(BASE, "index.html"), "utf8");
+
+  if (!SEO_BLOCK_RE.test(mainHtml)) {
+    throw new Error(
+      "generate-static-pages: SEO block markers (<!-- SEO Meta Tags --> ... <!-- /SEO -->) not found in dist/index.html — a build transform may have altered the template. Refusing to emit broken static pages."
+    );
+  }
 
   // For each calculator, generate /calculators/<id>/index.html
   for (const id of ids) {
@@ -132,12 +145,19 @@ function generateCalculatorPages() {
       })();
     </script>`;
 
-    // Inject per-calculator meta tags and bootstrap
+    // Inject per-calculator meta tags and bootstrap. The template <title> sits
+    // above the SEO block and is replaced by the block's per-calculator title.
     let html = mainHtml
       .replace(/<title>[^<]*<\/title>/, "")
-      .replace(/<meta name="description"[^>]*\/>/, "")
-      .replace(/<!-- SEO Meta Tags -->[\s\S]*?<!-- GA4_PLACEHOLDER -->/, buildMetaTags(calc) + "\n\n    <!-- GA4_PLACEHOLDER -->")
+      .replace(SEO_BLOCK_RE, buildMetaTags(calc))
       .replace("</head>", bootstrapScript + "\n  </head>");
+
+    const canonical = `<link rel="canonical" href="https://radulator.com/calculators/${id}/" />`;
+    if (!html.includes(canonical) || !html.includes(`<title>`)) {
+      throw new Error(
+        `generate-static-pages: injection verification failed for "${id}" — per-calculator canonical/title missing from output.`
+      );
+    }
 
     writeFileSync(join(outDir, "index.html"), html);
   }
@@ -176,11 +196,9 @@ export default function staticCalculatorPages() {
   return {
     name: "static-calculator-pages",
     closeBundle() {
-      try {
-        generateCalculatorPages();
-      } catch (err) {
-        console.error("static-calculator-pages plugin error:", err.message);
-      }
+      // Let failures fail the build: silently shipping pages without their
+      // per-calculator meta is strictly worse than a red deploy.
+      generateCalculatorPages();
     },
   };
 }
