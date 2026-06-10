@@ -279,6 +279,10 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
+      <a href="#main-content" className="skip-link">
+        Skip to calculator
+      </a>
+
       {/* Dismissible Medical Disclaimer Banner */}
       {showDisclaimer && (
         <div
@@ -296,6 +300,7 @@ function AppContent() {
             </a>
           </p>
           <button
+            type="button"
             onClick={dismissDisclaimer}
             className="ml-4 text-blue-600 dark:text-sky-400 hover:text-blue-800 dark:hover:text-sky-200 font-medium text-sm transition-colors"
             aria-label="Dismiss medical disclaimer banner"
@@ -321,10 +326,12 @@ function AppContent() {
         {/* Mobile Header with Hamburger */}
         <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border shadow-sm px-4 py-3 flex items-center justify-between">
           <button
+            type="button"
             onClick={() => setSidebarOpen(true)}
             className="p-2 -ml-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
             aria-label="Open navigation menu"
             aria-expanded={sidebarOpen}
+            aria-controls="calculator-navigation"
           >
             <svg
               className="w-6 h-6 text-muted-foreground"
@@ -350,6 +357,7 @@ function AppContent() {
             />
             {/* Dark Mode Toggle - Mobile */}
             <button
+              type="button"
               onClick={toggleDarkMode}
               className="p-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
               aria-label={
@@ -400,6 +408,8 @@ function AppContent() {
 
         {/* Sidebar */}
         <aside
+          id="calculator-navigation"
+          aria-label="Calculator navigation"
           className={`
             fixed md:static inset-y-0 left-0 z-50 w-72 md:w-64
             bg-card border-r border-border shadow-lg md:shadow-sm
@@ -421,6 +431,7 @@ function AppContent() {
               />
               {/* Dark Mode Toggle - Desktop (hidden on mobile, shown in mobile header) */}
               <button
+                type="button"
                 onClick={toggleDarkMode}
                 className="hidden md:flex p-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
                 aria-label={
@@ -459,6 +470,7 @@ function AppContent() {
               </button>
               {/* Close button for mobile */}
               <button
+                type="button"
                 onClick={() => setSidebarOpen(false)}
                 className="md:hidden p-2 -mr-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
                 aria-label="Close navigation menu"
@@ -482,6 +494,9 @@ function AppContent() {
 
           {/* Calculator Search */}
           <div className="relative mb-4">
+            <label htmlFor="calculator-search" className="sr-only">
+              Search calculators
+            </label>
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
               fill="none"
@@ -496,6 +511,7 @@ function AppContent() {
               />
             </svg>
             <input
+              id="calculator-search"
               type="text"
               placeholder="Search calculators..."
               value={searchQuery}
@@ -505,6 +521,7 @@ function AppContent() {
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Clear search"
@@ -532,10 +549,12 @@ function AppContent() {
               <div className="flex flex-wrap gap-1.5">
                 {allTags.map((tag) => (
                   <button
+                    type="button"
                     key={tag}
                     onClick={() =>
                       setActiveTag((prev) => (prev === tag ? null : tag))
                     }
+                    aria-pressed={activeTag === tag}
                     className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
                       activeTag === tag
                         ? "bg-primary text-primary-foreground border-primary"
@@ -548,6 +567,7 @@ function AppContent() {
               </div>
               {activeTag && (
                 <button
+                  type="button"
                   onClick={() => setActiveTag(null)}
                   className="mt-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -578,25 +598,35 @@ function AppContent() {
                       const calc = calcDefs.find((c) => c.id === calcId);
                       if (!calc) return null;
                       return (
-                        <button
+                        <div
                           key={calc.id}
-                          onClick={() =>
-                            handleSelectCalculator(calc, "Favorites")
-                          }
                           className={`w-full text-left px-2 py-1.5 rounded-md transition-colors text-sm flex items-center justify-between ${
                             calc.id === active
                               ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
                               : "hover:bg-background/60 dark:hover:bg-background/30 text-foreground"
                           }`}
                         >
-                          <span>{calc.name}</span>
                           <button
+                            type="button"
+                            onClick={() =>
+                              handleSelectCalculator(calc, "Favorites")
+                            }
+                            className="min-w-0 flex-1 text-left"
+                            aria-current={
+                              calc.id === active ? "page" : undefined
+                            }
+                          >
+                            <span className="block truncate">{calc.name}</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleFavorite(calc.id);
                             }}
-                            className="text-amber-500 hover:text-amber-400 transition-colors"
-                            aria-label="Remove from favorites"
+                            className="ml-2 shrink-0 rounded p-1 text-amber-500 hover:text-amber-400 transition-colors"
+                            aria-label={`Remove ${calc.name} from favorites`}
+                            aria-pressed="true"
                           >
                             <svg
                               className="w-4 h-4"
@@ -606,7 +636,7 @@ function AppContent() {
                               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                             </svg>
                           </button>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -622,7 +652,7 @@ function AppContent() {
               {recentCalcs.filter((id) => !favorites.includes(id)).length >
                 0 && (
                 <div>
-                  <h3 className="text-xs font-semibold text-blue-500/70 dark:text-blue-400/50 uppercase tracking-wide px-1 mb-1 flex items-center gap-1">
+                  <h3 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide px-1 mb-1 flex items-center gap-1">
                     <svg
                       className="w-3 h-3"
                       fill="none"
@@ -647,9 +677,13 @@ function AppContent() {
                         if (!calc) return null;
                         return (
                           <button
+                            type="button"
                             key={calc.id}
                             onClick={() =>
                               handleSelectCalculator(calc, "Recent")
+                            }
+                            aria-current={
+                              calc.id === active ? "page" : undefined
                             }
                             className={`w-full text-left px-2 py-1.5 rounded-md transition-colors text-sm ${
                               calc.id === active
@@ -734,41 +768,42 @@ function AppContent() {
                     const calc = calcDefs.find((c) => c.id === calcId);
                     if (!calc) return null;
                     return (
-                      <button
+                      <div
                         key={calc.id}
-                        onClick={() =>
-                          handleSelectCalculator(calc, categoryName)
-                        }
-                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center justify-between group ${
+                        className={`w-full rounded-lg transition-colors text-sm flex items-center justify-between group ${
                           calc.id === active
                             ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
                             : "hover:bg-muted text-foreground"
                         }`}
                       >
-                        <span>{calc.name}</span>
-                        <span
-                          role="button"
-                          tabIndex={0}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSelectCalculator(calc, categoryName)
+                          }
+                          aria-current={
+                            calc.id === active ? "page" : undefined
+                          }
+                          className="min-w-0 flex-1 px-3 py-2 text-left"
+                        >
+                          <span className="block truncate">{calc.name}</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleFavorite(calc.id);
                           }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              toggleFavorite(calc.id);
-                            }
-                          }}
-                          className={`opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer ${
+                          className={`mr-2 shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 ${
                             isFavorite(calc.id)
                               ? "opacity-100 text-amber-500"
                               : "text-muted-foreground hover:text-amber-500"
                           }`}
+                          aria-pressed={isFavorite(calc.id)}
                           aria-label={
                             isFavorite(calc.id)
-                              ? "Remove from favorites"
-                              : "Add to favorites"
+                              ? `Remove ${calc.name} from favorites`
+                              : `Add ${calc.name} to favorites`
                           }
                         >
                           <svg
@@ -784,8 +819,8 @@ function AppContent() {
                               d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
                             />
                           </svg>
-                        </span>
-                      </button>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -795,11 +830,17 @@ function AppContent() {
         </aside>
 
         {/* Main Panel */}
-        <main className="flex-1 p-4 pt-16 md:pt-4 md:p-8 flex justify-center overflow-y-auto">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          aria-labelledby="calculator-heading"
+          className="flex-1 p-4 pt-16 md:pt-4 md:p-8 flex justify-center overflow-y-auto"
+        >
           <Card className="w-full max-w-4xl">
             <CardContent className="space-y-6 p-8">
               <header>
                 <h2
+                  id="calculator-heading"
                   className="text-xl font-semibold mb-1 text-foreground"
                   data-testid="calculator-title"
                 >
@@ -843,6 +884,7 @@ function AppContent() {
                       {def.info.link && (
                         <Button
                           className="mt-2"
+                          aria-label={`Open ${def.info.link.label} for ${def.name}`}
                           onClick={() => {
                             trackOutboundLink(
                               def.info.link.url,
@@ -860,7 +902,7 @@ function AppContent() {
                       <div className="flex justify-center">
                         <img
                           src={def.info.image}
-                          alt="Reference diagram"
+                          alt={`${def.name} reference diagram`}
                           className="max-w-full h-auto rounded-md border border-border"
                           style={{ maxHeight: "300px" }}
                         />
@@ -987,6 +1029,7 @@ function AppContent() {
                           value={r.time}
                           inputMode="decimal"
                           className="text-sm"
+                          aria-label={`Post-CRH sample ${i + 1} time in minutes`}
                           onChange={(e) =>
                             updateIpssRow(i, { time: e.target.value })
                           }
@@ -996,6 +1039,7 @@ function AppContent() {
                           value={r.leftACTH}
                           inputMode="decimal"
                           className="text-sm"
+                          aria-label={`Post-CRH sample ${i + 1} left ACTH`}
                           onChange={(e) =>
                             updateIpssRow(i, { leftACTH: e.target.value })
                           }
@@ -1005,6 +1049,7 @@ function AppContent() {
                           value={r.rightACTH}
                           inputMode="decimal"
                           className="text-sm"
+                          aria-label={`Post-CRH sample ${i + 1} right ACTH`}
                           onChange={(e) =>
                             updateIpssRow(i, { rightACTH: e.target.value })
                           }
@@ -1014,6 +1059,7 @@ function AppContent() {
                           value={r.periphACTH}
                           inputMode="decimal"
                           className="text-sm"
+                          aria-label={`Post-CRH sample ${i + 1} peripheral ACTH`}
                           onChange={(e) =>
                             updateIpssRow(i, { periphACTH: e.target.value })
                           }
@@ -1023,6 +1069,7 @@ function AppContent() {
                           value={r.leftPRL}
                           inputMode="decimal"
                           className="text-sm"
+                          aria-label={`Post-CRH sample ${i + 1} left prolactin`}
                           onChange={(e) =>
                             updateIpssRow(i, { leftPRL: e.target.value })
                           }
@@ -1032,6 +1079,7 @@ function AppContent() {
                           value={r.rightPRL}
                           inputMode="decimal"
                           className="text-sm"
+                          aria-label={`Post-CRH sample ${i + 1} right prolactin`}
                           onChange={(e) =>
                             updateIpssRow(i, { rightPRL: e.target.value })
                           }
@@ -1041,6 +1089,7 @@ function AppContent() {
                           value={r.periphPRL}
                           inputMode="decimal"
                           className="text-sm"
+                          aria-label={`Post-CRH sample ${i + 1} peripheral prolactin`}
                           onChange={(e) =>
                             updateIpssRow(i, { periphPRL: e.target.value })
                           }
@@ -1050,6 +1099,7 @@ function AppContent() {
                           size="sm"
                           onClick={() => removeIpssRow(i)}
                           disabled={ipssRows.length <= 1}
+                          aria-label={`Remove Post-CRH sample ${i + 1}`}
                         >
                           Remove
                         </Button>
@@ -1136,8 +1186,10 @@ function AppContent() {
                   {/* Copy & Print Results Buttons */}
                   <div className="mt-4 flex justify-end gap-2 no-print">
                     <button
+                      type="button"
                       onClick={handleCopyResults}
                       className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      aria-label={copied ? "Results copied" : "Copy results"}
                     >
                       {copied ? (
                         <svg
@@ -1168,9 +1220,12 @@ function AppContent() {
                           />
                         </svg>
                       )}
-                      {copied ? "Copied!" : "Copy Results"}
+                      <span aria-live="polite">
+                        {copied ? "Copied!" : "Copy Results"}
+                      </span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => window.print()}
                       className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors print-button"
                     >
@@ -1220,6 +1275,7 @@ function AppContent() {
           </p>
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={toggleDarkMode}
               className="p-1.5 rounded-md hover:bg-muted transition-colors theme-toggle-animate"
               aria-label={
@@ -1257,6 +1313,7 @@ function AppContent() {
               )}
             </button>
             <button
+              type="button"
               onClick={() => {
                 trackOnboarding("guide_opened", "footer");
                 setGuideOpen(true);

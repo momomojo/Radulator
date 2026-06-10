@@ -5,6 +5,7 @@
 export function GuideButton({ onClick, className = "" }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`p-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors ${className}`}
       aria-label="Open user guide"

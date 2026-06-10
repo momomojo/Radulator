@@ -79,6 +79,10 @@ function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
 
         const isExpanded = isSectionExpanded(section);
         const fieldCount = groupedFields[section].length;
+        const sectionId = `input-section-${section
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "")}`;
 
         return (
           <div
@@ -90,6 +94,7 @@ function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
               onClick={() => toggleSection(section)}
               className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors text-left"
               aria-expanded={isExpanded}
+              aria-controls={sectionId}
             >
               <span className="font-medium text-foreground">{section}</span>
               <div className="flex items-center gap-2">
@@ -111,19 +116,21 @@ function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
                 </svg>
               </div>
             </button>
-            {isExpanded && (
-              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-card">
-                {groupedFields[section].map((f) => (
-                  <Field
-                    key={f.id}
-                    f={f}
-                    val={vals[f.id]}
-                    on={onFieldChange}
-                    onBatch={onBatchUpdate}
-                  />
-                ))}
-              </div>
-            )}
+            <div
+              id={sectionId}
+              hidden={!isExpanded}
+              className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-card"
+            >
+              {groupedFields[section].map((f) => (
+                <Field
+                  key={f.id}
+                  f={f}
+                  val={vals[f.id]}
+                  on={onFieldChange}
+                  onBatch={onBatchUpdate}
+                />
+              ))}
+            </div>
           </div>
         );
       })}

@@ -44,7 +44,11 @@ export const FeedbackForm = {
     if (state.succeeded) {
       return (
         <div className="space-y-4">
-          <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          <div
+            className="bg-green-50 border border-green-200 rounded-md p-4"
+            role="status"
+            aria-live="polite"
+          >
             <p className="text-green-800 font-medium">
               Thank you for your feedback!
             </p>
@@ -52,7 +56,11 @@ export const FeedbackForm = {
               We've received your message and will review it soon.
             </p>
           </div>
-          <Button onClick={() => window.location.reload()} className="w-full">
+          <Button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="w-full"
+          >
             Send More Feedback
           </Button>
         </div>
@@ -60,7 +68,11 @@ export const FeedbackForm = {
     }
 
     return (
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4"
+        aria-busy={state.submitting}
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
             <Label htmlFor="name">Name</Label>
@@ -145,7 +157,10 @@ export const FeedbackForm = {
         </div>
 
         {state.errors && Object.keys(state.errors).length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3">
+          <div
+            className="bg-red-50 border border-red-200 rounded-md p-3"
+            role="alert"
+          >
             <p className="text-red-700 text-sm font-medium mb-2">
               There was an error submitting your feedback:
             </p>
@@ -164,7 +179,9 @@ export const FeedbackForm = {
         )}
 
         <Button type="submit" disabled={state.submitting} className="w-full">
-          {state.submitting ? "Sending..." : "Send Feedback"}
+          <span aria-live="polite">
+            {state.submitting ? "Sending..." : "Send Feedback"}
+          </span>
         </Button>
 
         <p className="text-xs text-gray-500 text-center">

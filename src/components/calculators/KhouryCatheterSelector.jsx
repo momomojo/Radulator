@@ -1418,14 +1418,25 @@ function KhouryCatheterSelectorComponent() {
             </div>
             <div className="flex items-center gap-2">
               {activeFilterCount > 0 && (
-                <Button variant="outline" size="sm" onClick={clearFilters}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                >
                   Clear All
                 </Button>
               )}
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
+                aria-expanded={showFilters}
+                aria-controls="khoury-filters"
+                aria-label={
+                  showFilters ? "Hide catheter filters" : "Show catheter filters"
+                }
               >
                 {showFilters ? (
                   <ChevronUp className="h-4 w-4" />
@@ -1437,132 +1448,134 @@ function KhouryCatheterSelectorComponent() {
           </div>
         </CardHeader>
 
-        {showFilters && (
-          <CardContent className="space-y-4">
-            {/* Search */}
-            <div className="space-y-2">
-              <Label htmlFor="search">Search by Name or Manufacturer</Label>
-              <input
-                id="search"
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="e.g., Scepter, Headway, Medtronic..."
-                className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+        <CardContent
+          id="khoury-filters"
+          hidden={!showFilters}
+          className="space-y-4"
+        >
+          {/* Search */}
+          <div className="space-y-2">
+            <Label htmlFor="search">Search by Name or Manufacturer</Label>
+            <input
+              id="search"
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="e.g., Scepter, Headway, Medtronic..."
+              className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-            {/* Embolic Agent */}
+          {/* Embolic Agent */}
+          <div className="space-y-2">
+            <Label htmlFor="embolicAgent">Embolic Agent</Label>
+            <select
+              id="embolicAgent"
+              value={emboilcAgent}
+              onChange={(e) => setEmboilcAgent(e.target.value)}
+              className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Embolic Agents</option>
+              <optgroup label="Onyx">
+                <option value="onyx18">Onyx 18 (low viscosity)</option>
+                <option value="onyx34">Onyx 34 (medium viscosity)</option>
+                <option value="onyx500">Onyx 500 (high viscosity)</option>
+              </optgroup>
+              <optgroup label="PHIL">
+                <option value="phil25">PHIL 25%</option>
+                <option value="phil30">PHIL 30%</option>
+                <option value="phil35">PHIL 35%</option>
+              </optgroup>
+              <optgroup label="Squid">
+                <option value="squid12">Squid 12</option>
+                <option value="squid18">Squid 18</option>
+                <option value="squid34">Squid 34</option>
+              </optgroup>
+              <optgroup label="Other">
+                <option value="nbca">NBCA (n-Butyl Cyanoacrylate)</option>
+                <option value="coils">Coils Only</option>
+                <option value="microspheres">Microspheres</option>
+                <option value="y90">Y-90 Microspheres</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Coil Size */}
             <div className="space-y-2">
-              <Label htmlFor="embolicAgent">Embolic Agent</Label>
+              <Label htmlFor="coilSize">Coil Size (if applicable)</Label>
               <select
-                id="embolicAgent"
-                value={emboilcAgent}
-                onChange={(e) => setEmboilcAgent(e.target.value)}
+                id="coilSize"
+                value={coilSize}
+                onChange={(e) => setCoilSize(e.target.value)}
                 className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">All Embolic Agents</option>
-                <optgroup label="Onyx">
-                  <option value="onyx18">Onyx 18 (low viscosity)</option>
-                  <option value="onyx34">Onyx 34 (medium viscosity)</option>
-                  <option value="onyx500">Onyx 500 (high viscosity)</option>
-                </optgroup>
-                <optgroup label="PHIL">
-                  <option value="phil25">PHIL 25%</option>
-                  <option value="phil30">PHIL 30%</option>
-                  <option value="phil35">PHIL 35%</option>
-                </optgroup>
-                <optgroup label="Squid">
-                  <option value="squid12">Squid 12</option>
-                  <option value="squid18">Squid 18</option>
-                  <option value="squid34">Squid 34</option>
-                </optgroup>
-                <optgroup label="Other">
-                  <option value="nbca">NBCA (n-Butyl Cyanoacrylate)</option>
-                  <option value="coils">Coils Only</option>
-                  <option value="microspheres">Microspheres</option>
-                  <option value="y90">Y-90 Microspheres</option>
-                </optgroup>
+                <option value="">Any / Not Applicable</option>
+                <option value="0.010">0.010 inch</option>
+                <option value="0.013">0.013 inch</option>
+                <option value="0.014">0.014 inch</option>
+                <option value="0.0165">0.0165 inch</option>
+                <option value="0.017">0.017 inch</option>
+                <option value="0.018">0.018 inch</option>
+                <option value="0.021">0.021 inch</option>
               </select>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Coil Size */}
-              <div className="space-y-2">
-                <Label htmlFor="coilSize">Coil Size (if applicable)</Label>
-                <select
-                  id="coilSize"
-                  value={coilSize}
-                  onChange={(e) => setCoilSize(e.target.value)}
-                  className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Any / Not Applicable</option>
-                  <option value="0.010">0.010 inch</option>
-                  <option value="0.013">0.013 inch</option>
-                  <option value="0.014">0.014 inch</option>
-                  <option value="0.0165">0.0165 inch</option>
-                  <option value="0.017">0.017 inch</option>
-                  <option value="0.018">0.018 inch</option>
-                  <option value="0.021">0.021 inch</option>
-                </select>
-              </div>
+            {/* Microsphere Size */}
+            <div className="space-y-2">
+              <Label htmlFor="microsphereSize">
+                Microsphere Size (if applicable)
+              </Label>
+              <select
+                id="microsphereSize"
+                value={microsphereSize}
+                onChange={(e) => setMicrosphereSize(e.target.value)}
+                className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Any / Not Applicable</option>
+                <option value="300">≤300 µm</option>
+                <option value="500">≤500 µm</option>
+                <option value="700">≤700 µm</option>
+                <option value="900">≤900 µm</option>
+              </select>
+            </div>
+          </div>
 
-              {/* Microsphere Size */}
-              <div className="space-y-2">
-                <Label htmlFor="microsphereSize">
-                  Microsphere Size (if applicable)
-                </Label>
-                <select
-                  id="microsphereSize"
-                  value={microsphereSize}
-                  onChange={(e) => setMicrosphereSize(e.target.value)}
-                  className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Any / Not Applicable</option>
-                  <option value="300">≤300 µm</option>
-                  <option value="500">≤500 µm</option>
-                  <option value="700">≤700 µm</option>
-                  <option value="900">≤900 µm</option>
-                </select>
-              </div>
+          {/* Feature Toggles */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="needsBalloon"
+                checked={needsBalloon}
+                onChange={(e) => setNeedsBalloon(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="needsBalloon" className="cursor-pointer">
+                Balloon occlusion required
+              </Label>
             </div>
 
-            {/* Feature Toggles */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="needsBalloon"
-                  checked={needsBalloon}
-                  onChange={(e) => setNeedsBalloon(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="needsBalloon" className="cursor-pointer">
-                  Balloon occlusion required
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="needsDetachableTip"
-                  checked={needsDetachableTip}
-                  onChange={(e) => setNeedsDetachableTip(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="needsDetachableTip" className="cursor-pointer">
-                  Detachable tip required
-                </Label>
-              </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="needsDetachableTip"
+                checked={needsDetachableTip}
+                onChange={(e) => setNeedsDetachableTip(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="needsDetachableTip" className="cursor-pointer">
+                Detachable tip required
+              </Label>
             </div>
-          </CardContent>
-        )}
+          </div>
+        </CardContent>
       </Card>
 
       {/* STEP 2: Filtered Catheter Results */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium text-lg">
+          <h3 className="font-medium text-lg" aria-live="polite">
             Compatible Catheters ({filteredCatheters.length} results)
           </h3>
         </div>
@@ -1573,7 +1586,7 @@ function KhouryCatheterSelectorComponent() {
               <p className="text-gray-500 mb-2">
                 No catheters match your criteria.
               </p>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-600">
                 Try adjusting your filters.
               </p>
             </CardContent>
@@ -1639,11 +1652,18 @@ function KhouryCatheterSelectorComponent() {
                     </div>
 
                     <Button
+                      type="button"
                       size="sm"
                       onClick={() => {
                         setSelectedCatheter(catheter);
                         setSelectedAdaptorType("standard");
                       }}
+                      aria-pressed={selectedCatheter?.id === catheter.id}
+                      aria-label={
+                        selectedCatheter?.id === catheter.id
+                          ? `${catheter.name} selected`
+                          : `Select ${catheter.name}`
+                      }
                       variant={
                         selectedCatheter?.id === catheter.id
                           ? "default"

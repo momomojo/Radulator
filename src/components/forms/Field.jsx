@@ -9,6 +9,7 @@ function FileImportField({ f, onBatch }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const fileRef = useRef(null);
+  const statusId = `${f.id}-import-status`;
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -27,7 +28,7 @@ function FileImportField({ f, onBatch }) {
 
   return (
     <div className="space-y-2 md:col-span-2">
-      <FieldLabel label={f.label} subLabel={f.subLabel} />
+      <FieldLabel htmlFor={f.id} label={f.label} subLabel={f.subLabel} />
       <div className="flex items-center gap-3">
         <input
           ref={fileRef}
@@ -36,12 +37,15 @@ function FileImportField({ f, onBatch }) {
           onChange={handleFile}
           className="hidden"
           id={f.id}
+          aria-describedby={status ? statusId : undefined}
         />
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={loading}
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md border border-input bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          aria-describedby={status ? statusId : undefined}
+          aria-label={`Import ${f.label} from CSV`}
         >
           <svg
             className="w-4 h-4"
@@ -61,6 +65,8 @@ function FileImportField({ f, onBatch }) {
       </div>
       {status && (
         <p
+          id={statusId}
+          role={status.success ? "status" : "alert"}
           className={`text-sm ${status.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
         >
           {status.success ? status.message : status.error}
