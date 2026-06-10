@@ -2,37 +2,36 @@
 
 A comprehensive radiology calculator application built with React and Vite, providing accurate medical calculations for radiologists and clinicians.
 
+**Live site:** [radulator.com](https://radulator.com)
+
 ## Overview
 
-Radulator is a modern web application that provides comprehensive medical calculators for radiology, hepatology, and urology. It features 18 specialized calculators covering common clinical measurements and assessments across multiple specialties, each with evidence-based formulas and proper academic references.
+Radulator is a modern web application providing evidence-based medical calculators for radiology and adjacent specialties. It features **38 specialized calculators across 12 specialty categories**, each with evidence-based formulas, proper academic references, and built-in result interpretation. Calculators are auto-discovered from their own metadata (`src/components/calculators/registry.js`), so this list always reflects the code:
 
 ## Features
 
 ### 📊 **Medical Calculators**
 
-#### Radiology (6 Calculators)
-1. **Adrenal CT Washout** - Calculate absolute and relative washout percentages for adrenal lesion characterization
-2. **Adrenal MRI CSI** - Signal-intensity index and adrenal-to-spleen CSI ratio calculations
-3. **Prostate Volume** - Ellipsoid volume estimation and PSA-Density calculations with PI-RADS integration
-4. **Renal Cyst (Bosniak CT)** - Comprehensive Bosniak classification for cystic renal lesions
-5. **Spleen Size (ULN)** - Gender and height-adjusted upper limits of normal spleen measurements
-6. **Hip Dysplasia** - Migration index calculations with age-specific normal values
+#### Radiology (12)
+ACR TI-RADS · Adrenal CT Washout · Adrenal MRI Chemical Shift · Bosniak Classification (Renal Cysts) · DLP to Effective Dose · Fleischner 2017 Pulmonary Nodules · Hip Dysplasia · IV Contrast Dosing · Lung-RADS v2022 · Prostate Volume & PSA Density · Radiation Dose Converter · Spleen Size
 
-#### Hepatology/Liver (9 Calculators)
-7. **ALBI Score** - Albumin-Bilirubin grade for objective liver function assessment in HCC patients
-8. **Adrenal Vein Sampling (Cortisol)** - Cortisol-corrected aldosterone ratios for PA localization
-9. **Adrenal Vein Sampling (Hyperaldo)** - Comprehensive AVS interpretation with selectivity and lateralization
-10. **BCLC Staging** - Barcelona Clinic Liver Cancer staging system for HCC treatment planning
-11. **Child-Pugh Score** - Liver cirrhosis severity classification
-12. **Milan Criteria** - HCC liver transplant eligibility assessment
-13. **MELD-Na Score** - Model for End-Stage Liver Disease with sodium for transplant prioritization
-14. **MR Elastography** - Liver stiffness to fibrosis stage conversion with multiple scoring systems
-15. **Y-90 Radioembolization** - Dosimetry calculations for radiation segmentectomy planning
+#### Hepatology/Liver (9)
+ALBI Score · BCLC Staging (HCC) · Child-Pugh Score · CT Severity Index (CTSI) · LI-RADS v2018 · MELD-Na Score · Milan Criteria (HCC) · MR Elastography (Liver) · Y-90 Radioembolization Dosimetry
 
-#### Urology (3 Calculators)
-16. **IPSS** - International Prostate Symptom Score for BPH severity assessment
-17. **R.E.N.A.L. Nephrometry** - Standardized scoring system for renal mass complexity
-18. **SHIM Score** - Sexual Health Inventory for Men (erectile dysfunction assessment)
+#### Interventional (4)
+Adrenal Vein Sampling – Aldosterone · Adrenal Vein Sampling – Cortisol · Goiter Symptoms · Inferior Petrosal Sinus Sampling (IPSS)
+
+#### Urology (3)
+IIEF-5 (SHIM Score) · PI-RADS v2.1 · RENAL Nephrometry Score
+
+#### Neuroradiology (2)
+ACR NI-RADS · ASPECTS Score
+
+#### Clinical Decision (2)
+Wells Criteria for DVT · Wells Criteria for PE
+
+#### Additional specialties (6)
+ACR BI-RADS (Breast Imaging) · ACR O-RADS (Women's Imaging) · CAD-RADS 2.0 (Cardiac Imaging) · Mehran CIN Risk Score (Nephrology) · AAST Trauma Grading (Trauma) · Scepter C (Balloon Occlusion)
 
 ### 🎨 **User Interface**
 - **Responsive Design** - Optimized for both desktop and mobile viewing
@@ -56,8 +55,8 @@ Radulator is a modern web application that provides comprehensive medical calcul
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd radcalc-2.0
+   git clone https://github.com/momomojo/Radulator.git
+   cd Radulator
    ```
 
 2. **Install dependencies**
@@ -83,28 +82,22 @@ Radulator is a modern web application that provides comprehensive medical calcul
 ## Project Structure
 
 ```
-radcalc-2.0/
+Radulator/
 ├── public/                    # Static assets and reference images
-│   ├── migration_index_diagram.png
-│   ├── lesion_map.png
-│   └── pirads_map_clone.html
 ├── src/
 │   ├── components/
-│   │   ├── calculators/       # Individual calculator components
-│   │   │   ├── AdrenalCTWashout.jsx
-│   │   │   ├── AdrenalMRICSI.jsx
-│   │   │   ├── ProstateVolume.jsx
-│   │   │   ├── RenalCystBosniak.jsx
-│   │   │   ├── SpleenSizeULN.jsx
-│   │   │   ├── HipDysplasiaIndices.jsx
-│   │   │   └── index.js
+│   │   ├── calculators/       # 38 calculator components (one .jsx each)
+│   │   │   ├── registry.js    # Auto-discovery via import.meta.glob
+│   │   │   └── ...
 │   │   └── ui/                # Reusable UI components (shadcn/ui)
 │   ├── lib/                   # Utility functions
-│   ├── App.jsx               # Main application component
-│   ├── main.jsx              # Application entry point
-│   └── index.css             # Global styles
-├── CLAUDE.md                 # Claude Code guidance file
-└── README.md                 # This file
+│   ├── App.jsx                # Main application component
+│   ├── main.jsx               # Application entry point
+│   └── index.css              # Global styles
+├── docs/
+│   └── ROADMAP.md             # Public development roadmap
+├── CLAUDE.md                  # Claude Code guidance file
+└── README.md                  # This file
 ```
 
 ## Technology Stack
@@ -117,118 +110,11 @@ radcalc-2.0/
 
 ## Calculator Details
 
-### Radiology Calculators
+Every calculator self-documents in the app: formulas, peer-reviewed references with links, input validation, and clinical interpretation of results. Calculators declare their own metadata (`id`, `name`, `category`, references), and `registry.js` auto-discovers them at build time — adding a calculator is a single self-contained `.jsx` file. See the [live site](https://radulator.com) for the full interactive details of each calculator.
 
-#### Adrenal CT Washout
-- Calculates absolute and relative washout percentages
-- Helps differentiate adenomas from non-adenomas
-- Based on Caoili et al. (2000), Choi et al. (2013), Park et al. (2015)
+## Roadmap
 
-#### Adrenal MRI CSI
-- Signal-intensity index calculations
-- Adrenal-to-spleen CSI ratio analysis
-- References: Blake et al. (2012), Schieda et al. (2017)
-
-#### Prostate Volume
-- Ellipsoid formula volume estimation
-- PSA-Density calculations
-- Integrated PI-RADS sector map
-- Based on Paterson et al. (2016), Aminsharifi et al. (2018)
-
-#### Renal Cyst (Bosniak CT)
-- Comprehensive Bosniak classification system
-- Multiple morphological criteria assessment
-- Management recommendations included
-- References: Bosniak (2005), Silverman et al. (2019)
-
-#### Spleen Size (ULN)
-- Gender and height-adjusted normal values
-- 95% confidence intervals
-- Validation ranges for accuracy
-- Based on Chow et al. (2016)
-
-#### Hip Dysplasia
-- Migration index calculations with age-specific interpretation
-- AC-Angle and CCD-Angle normal values
-- Bilateral assessment capability
-- References: Tönnis (1976, 1984), Reimers (1980)
-
-### Hepatology/Liver Calculators
-
-#### ALBI Score
-- Objective liver function assessment using albumin and bilirubin
-- Three-grade classification system
-- Prognostic tool for HCC patients
-- Based on Johnson et al. (2015)
-
-#### Adrenal Vein Sampling (Cortisol)
-- Cortisol-corrected aldosterone ratios for primary aldosteronism
-- Selectivity index calculations
-- Lateralization index for surgical planning
-- References: Rossi et al. (2014), Young et al. (2004)
-
-#### Adrenal Vein Sampling (Hyperaldo)
-- Comprehensive AVS interpretation with bilateral assessment
-- Selectivity and lateralization indices
-- Surgical vs medical management guidance
-- Based on Endocrine Society Clinical Practice Guidelines
-
-#### BCLC Staging
-- Barcelona Clinic Liver Cancer staging system
-- Integrates tumor burden, liver function, and performance status
-- Treatment recommendations for each stage
-- References: Llovet et al. (1999, 2012), Reig et al. (2022)
-
-#### Child-Pugh Score
-- Liver cirrhosis severity classification (Class A/B/C)
-- Five clinical/laboratory parameters
-- Surgical risk assessment and prognosis
-- Based on Child & Turcotte (1964), Pugh et al. (1973)
-
-#### Milan Criteria
-- HCC liver transplant eligibility assessment
-- Single tumor ≤5 cm or up to 3 tumors ≤3 cm each
-- No macrovascular invasion or extrahepatic spread
-- References: Mazzaferro et al. (1996), Yao et al. (2001)
-
-#### MELD-Na Score
-- Model for End-Stage Liver Disease with sodium
-- Liver transplant prioritization
-- 90-day mortality prediction
-- Based on Kamath et al. (2001), Kim et al. (2008)
-
-#### MR Elastography
-- Liver stiffness measurements to fibrosis staging
-- Multiple scoring systems (METAVIR, Ishak, Batts-Ludwig, Scheuer)
-- Non-invasive fibrosis assessment
-- References: Venkatesh et al. (2013), Yin et al. (2007)
-
-#### Y-90 Radioembolization
-- Dosimetry calculations for radiation segmentectomy
-- MIRD and partition model calculations
-- Dose optimization for tumor and normal liver
-- Safety checks and contraindication warnings
-- Based on Ho et al. (1996), Salem & Thurston (2006)
-
-### Urology Calculators
-
-#### IPSS (International Prostate Symptom Score)
-- BPH severity assessment with 7 symptom questions
-- Quality of life impact measure
-- Treatment planning guidance
-- References: Barry et al. (1992), AUA Practice Guidelines
-
-#### R.E.N.A.L. Nephrometry
-- Standardized complexity scoring for renal masses
-- Five anatomic parameters (R-E-N-A-L)
-- Surgical planning and outcome prediction
-- Based on Kutikov & Uzzo (2009)
-
-#### SHIM Score
-- Sexual Health Inventory for Men
-- Erectile dysfunction severity classification
-- 5-item questionnaire assessment
-- References: Rosen et al. (1997, 1999)
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the public development roadmap.
 
 ## Contributing
 
