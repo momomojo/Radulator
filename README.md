@@ -6,7 +6,7 @@ A comprehensive radiology calculator application built with React and Vite, prov
 
 ## Overview
 
-Radulator is a modern web application providing evidence-based medical calculators for radiology and adjacent specialties. It features **38 specialized calculators across 12 specialty categories**, each with evidence-based formulas, proper academic references, and built-in result interpretation. Calculators are auto-discovered from their own metadata (`src/components/calculators/registry.js`), so this list always reflects the code:
+Radulator is a modern web application providing evidence-based medical calculators for radiology and adjacent specialties. It features **38 specialized calculators across 11 specialty categories**, each with evidence-based formulas, proper academic references, and built-in result interpretation. Calculators are auto-discovered from their own metadata (`src/components/calculators/registry.js`), so this list always reflects the code:
 
 ## Features
 
@@ -18,8 +18,8 @@ ACR TI-RADS · Adrenal CT Washout · Adrenal MRI Chemical Shift · Bosniak Class
 #### Hepatology/Liver (9)
 ALBI Score · BCLC Staging (HCC) · Child-Pugh Score · CT Severity Index (CTSI) · LI-RADS v2018 · MELD-Na Score · Milan Criteria (HCC) · MR Elastography (Liver) · Y-90 Radioembolization Dosimetry
 
-#### Interventional (4)
-Adrenal Vein Sampling – Aldosterone · Adrenal Vein Sampling – Cortisol · Goiter Symptoms · Inferior Petrosal Sinus Sampling (IPSS)
+#### Interventional (5)
+Adrenal Vein Sampling – Aldosterone · Adrenal Vein Sampling – Cortisol · Goiter Symptoms · Inferior Petrosal Sinus Sampling (IPSS) · Khoury Catheter Selector
 
 #### Urology (3)
 IIEF-5 (SHIM Score) · PI-RADS v2.1 · RENAL Nephrometry Score
@@ -30,8 +30,8 @@ ACR NI-RADS · ASPECTS Score
 #### Clinical Decision (2)
 Wells Criteria for DVT · Wells Criteria for PE
 
-#### Additional specialties (6)
-ACR BI-RADS (Breast Imaging) · ACR O-RADS (Women's Imaging) · CAD-RADS 2.0 (Cardiac Imaging) · Mehran CIN Risk Score (Nephrology) · AAST Trauma Grading (Trauma) · Scepter C (Balloon Occlusion)
+#### Additional specialties (5)
+ACR BI-RADS (Breast Imaging) · ACR O-RADS (Women's Imaging) · CAD-RADS 2.0 (Cardiac Imaging) · Mehran CIN Risk Score (Nephrology) · AAST Trauma Grading (Trauma)
 
 ### 🎨 **User Interface**
 - **Responsive Design** - Optimized for both desktop and mobile viewing

@@ -50,6 +50,69 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+
+  targeted-tests:
+    name: Targeted Calculator Tests
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Coverage gate: every calculator must have a dedicated spec whose
+      # navigation target resolves against CURRENT registry metadata. Fails on
+      # new untested calculators AND on specs orphaned by renames.
+      - name: Spec coverage check
+        run: node scripts/spec-map.js --check
+
+      - name: Detect changed calculators
+        id: changed
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'src/components/calculators/*.jsx' | grep -vE 'index|registry|FeedbackForm' || true)
+          # Space-joined single line: a multiline output would embed raw
+          # newlines into the ${{ }} substitution downstream, acting as command
+          # separators inside $() and silently dropping all but the first
+          # file's specs (gate finding, PR #17).
+          CHANGED_SPACE=$(printf '%s' "$CHANGED" | tr '\n' ' ')
+          echo "files=$CHANGED_SPACE" >> "$GITHUB_OUTPUT"
+          if [ -n "$CHANGED" ]; then echo "any=true" >> "$GITHUB_OUTPUT"; else echo "any=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Setup Node
+        if: steps.changed.outputs.any == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.changed.outputs.any == 'true'
+        run: npm ci
+
+      - name: Install Playwright browsers
+        if: steps.changed.outputs.any == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run specs for changed calculators
+        if: steps.changed.outputs.any == 'true'
+        run: |
+          SPECS=$(node scripts/spec-map.js --specs-for ${{ steps.changed.outputs.files }})
+          echo "Running: $SPECS"
+          npx playwright test $SPECS --project=chromium
+        env:
+          CI: true
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: targeted-test-report
+          path: playwright-report/
+          retention-days: 7
+
   full-tests:
     name: Full Test Suite
     if: github.event.inputs.full_suite == 'true'

@@ -41,7 +41,11 @@ function loadCalculatorNameMap() {
     for (const file of files) {
       const filePath = path.join(calculatorsDir, file);
       const contents = fs.readFileSync(filePath, "utf-8");
-      const header = contents.split("\n").slice(0, 200).join("\n");
+      // Anchor at the exported calc def: some files hold other id/name pairs
+      // (device databases) before it, and the def may sit beyond any fixed
+      // header window (KhouryCatheterSelector.jsx: line ~1929).
+      const anchorIdx = contents.search(/export\s+(default|const\s+\w+\s*=)\s*{/);
+      const header = anchorIdx >= 0 ? contents.slice(anchorIdx) : contents;
       const idMatch = header.match(/\bid\s*:\s*["']([^"']+)["']/);
       const nameMatch = header.match(/\bname\s*:\s*["']([^"']+)["']/);
       if (idMatch && nameMatch) {

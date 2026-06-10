@@ -28,7 +28,12 @@ function extractCalcMeta() {
   );
 
   for (const file of files) {
-    const content = readFileSync(join(CALC_DIR, file), "utf8");
+    const raw = readFileSync(join(CALC_DIR, file), "utf8");
+    // Anchor at the exported calc def — first-match grabbed a device-database
+    // entry in KhouryCatheterSelector.jsx and shipped a wrong-identity static
+    // page (scepter-c, 2026-06-10).
+    const anchor = raw.search(/export\s+(default|const\s+\w+\s*=)\s*{/);
+    const content = anchor >= 0 ? raw.slice(anchor) : raw;
     const id = content.match(/id:\s*"([^"]+)"/)?.[1];
     if (!id) continue;
 
