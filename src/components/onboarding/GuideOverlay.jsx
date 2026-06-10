@@ -85,16 +85,17 @@ export function GuideOverlay({ isOpen, onClose }) {
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Radulator User Guide"
+        aria-labelledby="guide-title"
         data-testid="guide-panel"
         className="bg-card text-card-foreground rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col"
       >
         {/* Sticky header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2 id="guide-title" className="text-lg font-semibold text-foreground">
             Radulator User Guide
           </h2>
           <button
+            type="button"
             onClick={onClose}
             data-testid="guide-close-button"
             className="p-2 -mr-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
@@ -130,6 +131,7 @@ export function GuideOverlay({ isOpen, onClose }) {
               {guideContent.map((section) => (
                 <li key={section.id}>
                   <button
+                    type="button"
                     onClick={() => scrollToSection(section.id)}
                     className="text-primary hover:underline transition-colors"
                   >

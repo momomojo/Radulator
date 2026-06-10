@@ -685,6 +685,7 @@ export const AVSHyperaldo = {
               <Label className="text-xs">Time</Label>
               <Input
                 type="time"
+                aria-label={`${label} sample ${index + 1} time`}
                 value={sample.time}
                 onChange={(e) =>
                   updateSample(setter, samples, index, "time", e.target.value)
@@ -700,6 +701,7 @@ export const AVSHyperaldo = {
               </Label>
               <Input
                 type="number"
+                aria-label={`${label} sample ${index + 1} aldosterone`}
                 value={sample.aldosterone}
                 onChange={(e) =>
                   updateSample(
@@ -723,6 +725,7 @@ export const AVSHyperaldo = {
               </Label>
               <Input
                 type="number"
+                aria-label={`${label} sample ${index + 1} cortisol`}
                 value={sample.cortisol}
                 onChange={(e) =>
                   updateSample(
@@ -738,20 +741,24 @@ export const AVSHyperaldo = {
               />
             </div>
             <Button
+              type="button"
               variant="destructive"
               size="sm"
               onClick={() => removeSample(setter, samples, index)}
               disabled={samples.length === 1}
+              aria-label={`Remove ${label} sample ${index + 1}`}
             >
               Remove
             </Button>
           </div>
         ))}
         <Button
+          type="button"
           variant="secondary"
           size="sm"
           onClick={() => addSample(setter, samples, maxCount)}
           disabled={samples.length >= maxCount}
+          aria-label={`Add ${label} sample`}
         >
           + Add Sample
         </Button>
@@ -790,6 +797,7 @@ export const AVSHyperaldo = {
               </Label>
               <Input
                 type="number"
+                aria-label={`${prefix} infrarenal IVC aldosterone`}
                 value={infraAld}
                 onChange={(e) => setInfraAld(e.target.value)}
                 placeholder="e.g., 85"
@@ -806,6 +814,7 @@ export const AVSHyperaldo = {
               </Label>
               <Input
                 type="number"
+                aria-label={`${prefix} infrarenal IVC cortisol`}
                 value={infraCort}
                 onChange={(e) => setInfraCort(e.target.value)}
                 placeholder="e.g., 18"
@@ -819,6 +828,7 @@ export const AVSHyperaldo = {
               </Label>
               <Input
                 type="number"
+                aria-label={`${prefix} suprarenal IVC aldosterone`}
                 value={supraAld}
                 onChange={(e) => setSupraAld(e.target.value)}
               />
@@ -830,6 +840,7 @@ export const AVSHyperaldo = {
               </Label>
               <Input
                 type="number"
+                aria-label={`${prefix} suprarenal IVC cortisol`}
                 value={supraCort}
                 onChange={(e) => setSupraCort(e.target.value)}
               />
@@ -842,7 +853,7 @@ export const AVSHyperaldo = {
           leftSamples,
           setLeftSamples,
           2,
-          "Left Adrenal Vein",
+          `${prefix} Left Adrenal Vein`,
         )}
 
         {/* Right AV */}
@@ -850,7 +861,7 @@ export const AVSHyperaldo = {
           rightSamples,
           setRightSamples,
           4,
-          "Right Adrenal Vein",
+          `${prefix} Right Adrenal Vein`,
         )}
       </div>
     );
@@ -862,24 +873,31 @@ export const AVSHyperaldo = {
           <h3 className="font-semibold mb-3">Patient Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Patient Initials</Label>
+              <Label htmlFor="avs-aldo-patient-initials">
+                Patient Initials
+              </Label>
               <Input
+                id="avs-aldo-patient-initials"
                 value={patientInitials}
                 onChange={(e) => setPatientInitials(e.target.value)}
                 placeholder="e.g., JD"
               />
             </div>
             <div className="space-y-1">
-              <Label>Date of Procedure</Label>
+              <Label htmlFor="avs-aldo-procedure-date">
+                Date of Procedure
+              </Label>
               <Input
+                id="avs-aldo-procedure-date"
                 type="date"
                 value={procedureDate}
                 onChange={(e) => setProcedureDate(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <Label>Side of Nodule</Label>
+              <Label htmlFor="avs-aldo-side-of-nodule">Side of Nodule</Label>
               <select
+                id="avs-aldo-side-of-nodule"
                 className="w-full border rounded p-2"
                 value={sideOfNodule}
                 onChange={(e) => setSideOfNodule(e.target.value)}
@@ -892,8 +910,11 @@ export const AVSHyperaldo = {
               </select>
             </div>
             <div className="space-y-1">
-              <Label>Notes (e.g., microcatheter used)</Label>
+              <Label htmlFor="avs-aldo-notes">
+                Notes (e.g., microcatheter used)
+              </Label>
               <Input
+                id="avs-aldo-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Optional"
@@ -907,8 +928,11 @@ export const AVSHyperaldo = {
           <h3 className="font-semibold mb-3">Laboratory Units</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Aldosterone Units</Label>
+              <Label htmlFor="avs-aldo-aldosterone-units">
+                Aldosterone Units
+              </Label>
               <select
+                id="avs-aldo-aldosterone-units"
                 className="w-full border rounded p-2"
                 value={aldoUnits}
                 onChange={(e) => setAldoUnits(e.target.value)}
@@ -919,8 +943,9 @@ export const AVSHyperaldo = {
               <p className="text-xs text-gray-600">1 ng/dL = 10 pg/mL</p>
             </div>
             <div className="space-y-1">
-              <Label>Cortisol Units</Label>
+              <Label htmlFor="avs-aldo-cortisol-units">Cortisol Units</Label>
               <select
+                id="avs-aldo-cortisol-units"
                 className="w-full border rounded p-2"
                 value={cortUnits}
                 onChange={(e) => setCortUnits(e.target.value)}
@@ -938,11 +963,12 @@ export const AVSHyperaldo = {
         </div>
 
         {/* Protocol Selection */}
-        <div>
-          <Label className="font-semibold">Protocol</Label>
+        <fieldset>
+          <legend className="font-semibold text-foreground">Protocol</legend>
           <div className="flex gap-4 mt-2">
             <label className="flex items-center gap-2">
               <input
+                name="avs-aldo-protocol"
                 type="radio"
                 value="pre"
                 checked={protocol === "pre"}
@@ -952,6 +978,7 @@ export const AVSHyperaldo = {
             </label>
             <label className="flex items-center gap-2">
               <input
+                name="avs-aldo-protocol"
                 type="radio"
                 value="post"
                 checked={protocol === "post"}
@@ -961,6 +988,7 @@ export const AVSHyperaldo = {
             </label>
             <label className="flex items-center gap-2">
               <input
+                name="avs-aldo-protocol"
                 type="radio"
                 value="both"
                 checked={protocol === "both"}
@@ -969,7 +997,7 @@ export const AVSHyperaldo = {
               <span>Both (comparison view)</span>
             </label>
           </div>
-        </div>
+        </fieldset>
 
         {/* PRE-ACTH Inputs */}
         {(protocol === "pre" || protocol === "both") &&
@@ -1008,20 +1036,31 @@ export const AVSHyperaldo = {
           )}
 
         {/* Calculate Button */}
-        <Button className="w-full" onClick={calculate}>
+        <Button type="button" className="w-full" onClick={calculate}>
           Calculate
         </Button>
 
         {/* Results */}
         {results && (
-          <div className="border-t pt-4 space-y-4">
+          <div
+            className="border-t pt-4 space-y-4"
+            role="status"
+            aria-live="polite"
+            aria-atomic="false"
+          >
             {results.error ? (
-              <p className="text-red-600 font-medium">{results.error}</p>
+              <p className="text-red-600 font-medium" role="alert">
+                {results.error}
+              </p>
             ) : (
               <>
                 {/* Validation Warnings */}
                 {results.warnings && results.warnings.length > 0 && (
-                  <div className="bg-orange-50 border border-orange-300 rounded-md p-4">
+                  <div
+                    className="bg-orange-50 border border-orange-300 rounded-md p-4"
+                    role="status"
+                    aria-live="polite"
+                  >
                     <h4 className="font-semibold text-orange-900 mb-2">
                       ⚠️ Value Validation Warnings
                     </h4>
@@ -1040,7 +1079,10 @@ export const AVSHyperaldo = {
 
                 {/* Conflicting Criteria Warning */}
                 {results.conflicts && results.conflicts.length > 0 && (
-                  <div className="bg-red-50 border border-red-300 rounded-md p-4">
+                  <div
+                    className="bg-red-50 border border-red-300 rounded-md p-4"
+                    role="alert"
+                  >
                     <h4 className="font-semibold text-red-900 mb-2">
                       ⚠️ Conflicting Criteria Detected
                     </h4>
@@ -1354,6 +1396,7 @@ export const AVSHyperaldo = {
 
                 {/* Download CSV Button */}
                 <Button
+                  type="button"
                   className="w-full"
                   variant="secondary"
                   onClick={downloadCSV}

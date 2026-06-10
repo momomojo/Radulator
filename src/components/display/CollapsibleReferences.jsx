@@ -31,8 +31,10 @@ function CollapsibleReferences({ refs, calculatorId, onLinkClick }) {
       </ul>
       {hasMore && (
         <button
+          type="button"
           onClick={() => setExpanded(!expanded)}
           className="mt-2 text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+          aria-expanded={expanded}
         >
           {expanded ? (
             <>

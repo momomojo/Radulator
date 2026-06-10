@@ -25,6 +25,7 @@ export function WelcomeCard({ onDismiss, onOpenGuide }) {
         <strong>Welcome to Radulator.</strong> 38 evidence-based medical
         calculators across 11 specialties.{" "}
         <button
+          type="button"
           onClick={handleOpenGuide}
           className="underline font-medium text-slate-900 dark:text-slate-100 hover:text-primary transition-colors"
           data-testid="welcome-open-guide"
@@ -34,6 +35,7 @@ export function WelcomeCard({ onDismiss, onOpenGuide }) {
         or use the <strong>?</strong> button in the header anytime.
       </p>
       <button
+        type="button"
         onClick={handleDismiss}
         className="ml-2 shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium text-sm transition-colors"
         aria-label="Dismiss welcome message"

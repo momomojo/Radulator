@@ -432,24 +432,33 @@ export const AVSCortisol = {
           <h3 className="font-semibold mb-3">Patient Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
-              <Label>Patient Initials</Label>
+              <Label htmlFor="avs-cortisol-patient-initials">
+                Patient Initials
+              </Label>
               <Input
+                id="avs-cortisol-patient-initials"
                 value={patientInitials}
                 onChange={(e) => setPatientInitials(e.target.value)}
                 placeholder="e.g., JD"
               />
             </div>
             <div className="space-y-1">
-              <Label>Date of Procedure</Label>
+              <Label htmlFor="avs-cortisol-procedure-date">
+                Date of Procedure
+              </Label>
               <Input
+                id="avs-cortisol-procedure-date"
                 type="date"
                 value={procedureDate}
                 onChange={(e) => setProcedureDate(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <Label>Side of Nodule</Label>
+              <Label htmlFor="avs-cortisol-side-of-nodule">
+                Side of Nodule
+              </Label>
               <select
+                id="avs-cortisol-side-of-nodule"
                 className="w-full border rounded p-2"
                 value={sideOfNodule}
                 onChange={(e) => setSideOfNodule(e.target.value)}
@@ -468,8 +477,11 @@ export const AVSCortisol = {
           <h3 className="font-semibold mb-3">Laboratory Units</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Cortisol Units</Label>
+              <Label htmlFor="avs-cortisol-cortisol-units">
+                Cortisol Units
+              </Label>
               <select
+                id="avs-cortisol-cortisol-units"
                 className="w-full border rounded p-2"
                 value={cortUnits}
                 onChange={(e) => setCortUnits(e.target.value)}
@@ -480,8 +492,11 @@ export const AVSCortisol = {
               <p className="text-xs text-gray-600">1 µg/dL = 27.59 nmol/L</p>
             </div>
             <div className="space-y-1">
-              <Label>Epinephrine Units</Label>
+              <Label htmlFor="avs-cortisol-epinephrine-units">
+                Epinephrine Units
+              </Label>
               <select
+                id="avs-cortisol-epinephrine-units"
                 className="w-full border rounded p-2"
                 value={epiUnits}
                 onChange={(e) => setEpiUnits(e.target.value)}
@@ -511,6 +526,7 @@ export const AVSCortisol = {
               </Label>
               <Input
                 type="number"
+                aria-label="Infrarenal IVC cortisol"
                 value={infrarenalIVCCort}
                 onChange={(e) => setInfrarenalIVCCort(e.target.value)}
               />
@@ -522,6 +538,7 @@ export const AVSCortisol = {
               </Label>
               <Input
                 type="number"
+                aria-label="Infrarenal IVC epinephrine"
                 value={infrarenalIVCEpi}
                 onChange={(e) => setInfrarenalIVCEpi(e.target.value)}
               />
@@ -533,6 +550,7 @@ export const AVSCortisol = {
               </Label>
               <Input
                 type="number"
+                aria-label="Suprarenal IVC cortisol"
                 value={suprarenalIVCCort}
                 onChange={(e) => setSuprarenalIVCCort(e.target.value)}
               />
@@ -544,6 +562,7 @@ export const AVSCortisol = {
               </Label>
               <Input
                 type="number"
+                aria-label="Suprarenal IVC epinephrine"
                 value={suprarenalIVCEpi}
                 onChange={(e) => setSuprarenalIVCEpi(e.target.value)}
               />
@@ -567,6 +586,7 @@ export const AVSCortisol = {
                 <Label>Time Drawn</Label>
                 <Input
                   type="time"
+                  aria-label={`Left adrenal vein sample ${index + 1} time drawn`}
                   value={sample.time}
                   onChange={(e) =>
                     updateLeftSample(index, "time", e.target.value)
@@ -582,6 +602,7 @@ export const AVSCortisol = {
                 </Label>
                 <Input
                   type="number"
+                  aria-label={`Left adrenal vein sample ${index + 1} cortisol`}
                   value={sample.cortisol}
                   onChange={(e) =>
                     updateLeftSample(index, "cortisol", e.target.value)
@@ -595,6 +616,7 @@ export const AVSCortisol = {
                 </Label>
                 <Input
                   type="number"
+                  aria-label={`Left adrenal vein sample ${index + 1} epinephrine`}
                   value={sample.epinephrine}
                   onChange={(e) =>
                     updateLeftSample(index, "epinephrine", e.target.value)
@@ -602,15 +624,18 @@ export const AVSCortisol = {
                 />
               </div>
               <Button
+                type="button"
                 variant="destructive"
                 onClick={() => removeLeftSample(index)}
                 disabled={leftSamples.length === 1}
+                aria-label={`Remove left adrenal vein sample ${index + 1}`}
               >
                 Remove
               </Button>
             </div>
           ))}
           <Button
+            type="button"
             variant="secondary"
             onClick={addLeftSample}
             disabled={leftSamples.length >= 2}
@@ -631,6 +656,7 @@ export const AVSCortisol = {
                 <Label>Time Drawn</Label>
                 <Input
                   type="time"
+                  aria-label={`Right adrenal vein sample ${index + 1} time drawn`}
                   value={sample.time}
                   onChange={(e) =>
                     updateRightSample(index, "time", e.target.value)
@@ -646,6 +672,7 @@ export const AVSCortisol = {
                 </Label>
                 <Input
                   type="number"
+                  aria-label={`Right adrenal vein sample ${index + 1} cortisol`}
                   value={sample.cortisol}
                   onChange={(e) =>
                     updateRightSample(index, "cortisol", e.target.value)
@@ -659,6 +686,7 @@ export const AVSCortisol = {
                 </Label>
                 <Input
                   type="number"
+                  aria-label={`Right adrenal vein sample ${index + 1} epinephrine`}
                   value={sample.epinephrine}
                   onChange={(e) =>
                     updateRightSample(index, "epinephrine", e.target.value)
@@ -666,15 +694,18 @@ export const AVSCortisol = {
                 />
               </div>
               <Button
+                type="button"
                 variant="destructive"
                 onClick={() => removeRightSample(index)}
                 disabled={rightSamples.length === 1}
+                aria-label={`Remove right adrenal vein sample ${index + 1}`}
               >
                 Remove
               </Button>
             </div>
           ))}
           <Button
+            type="button"
             variant="secondary"
             onClick={addRightSample}
             disabled={rightSamples.length >= 4}
@@ -684,15 +715,22 @@ export const AVSCortisol = {
         </div>
 
         {/* Calculate Button */}
-        <Button className="w-full" onClick={calculate}>
+        <Button type="button" className="w-full" onClick={calculate}>
           Calculate
         </Button>
 
         {/* Results */}
         {results && (
-          <div className="border-t pt-4 space-y-3">
+          <div
+            className="border-t pt-4 space-y-3"
+            role="status"
+            aria-live="polite"
+            aria-atomic="false"
+          >
             {results.error ? (
-              <p className="text-red-600 font-medium">{results.error}</p>
+              <p className="text-red-600 font-medium" role="alert">
+                {results.error}
+              </p>
             ) : (
               <>
                 <div className="bg-gray-50 p-4 rounded-md space-y-2">
@@ -763,6 +801,7 @@ export const AVSCortisol = {
 
                 {/* Download CSV Button */}
                 <Button
+                  type="button"
                   className="w-full"
                   variant="secondary"
                   onClick={downloadCSV}

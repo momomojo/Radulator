@@ -258,8 +258,12 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
   return (
     <section
       className="pt-4 border-t border-border space-y-4"
+      role="status"
       aria-live="polite"
+      aria-atomic="false"
+      aria-label="Calculator results"
     >
+      <h3 className="sr-only">Calculator results</h3>
       {entries.map(([key, value], idx) => {
         // Handle separators
         if (isSeparator(key, value)) {
@@ -290,6 +294,7 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
             return (
               <div key={key} className="flex items-center gap-2 mt-3">
                 <button
+                  type="button"
                   onClick={() => {
                     onDownload?.(filename, calculatorId);
                     const link = document.createElement("a");
@@ -298,6 +303,7 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
                     link.click();
                   }}
                   className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-md hover:bg-primary/20 transition-colors"
+                  aria-label={`Download ${filename}`}
                 >
                   <svg
                     className="w-4 h-4 mr-1.5"

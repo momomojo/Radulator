@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { Label } from "@/components/ui/label";
 
 /**
@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
  */
 function FieldLabel({ htmlFor, label, subLabel, helpText }) {
   const [showHelp, setShowHelp] = useState(false);
+  const helpId = useId();
+  const tooltipId = `${helpId}-tooltip`;
 
   return (
     <div className="space-y-1">
@@ -25,6 +27,8 @@ function FieldLabel({ htmlFor, label, subLabel, helpText }) {
             onClick={() => setShowHelp(!showHelp)}
             className="text-muted-foreground hover:text-primary focus:outline-none focus:text-primary md:relative md:group transition-colors"
             aria-label={`Help for ${label}`}
+            aria-expanded={showHelp}
+            aria-describedby={tooltipId}
             title={helpText}
           >
             <svg
@@ -41,7 +45,11 @@ function FieldLabel({ htmlFor, label, subLabel, helpText }) {
               />
             </svg>
             {/* Desktop tooltip */}
-            <span className="hidden md:group-hover:block absolute left-0 top-6 z-50 w-64 p-2 text-xs text-left font-normal text-foreground bg-popover border border-border rounded-lg shadow-lg">
+            <span
+              id={tooltipId}
+              role="tooltip"
+              className="hidden md:group-hover:block md:group-focus:block absolute left-0 top-6 z-50 w-64 p-2 text-xs text-left font-normal text-foreground bg-popover border border-border rounded-lg shadow-lg"
+            >
               {helpText}
             </span>
           </button>
