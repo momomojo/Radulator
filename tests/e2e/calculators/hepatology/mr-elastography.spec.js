@@ -21,7 +21,7 @@ import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js
 test.describe('MR Elastography Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
-    await navigateToCalculator(page, 'MR Elastography');
+    await navigateToCalculator(page, 'MR Elastography (Liver)');
     await expect(page.locator('h2:has-text("MR Elastography")')).toBeVisible();
   });
 

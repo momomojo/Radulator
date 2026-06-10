@@ -18,14 +18,14 @@ test.use({
 
 test.describe("Copy Results Button", () => {
   test("should not show copy button before calculation", async ({ page }) => {
-    await navigateToCalculator(page, "Prostate Volume");
+    await navigateToCalculator(page, "Prostate Volume & PSA Density");
     await expect(
       page.locator('button:has-text("Copy Results")'),
     ).not.toBeVisible();
   });
 
   test("should show copy button after calculation", async ({ page }) => {
-    await navigateToCalculator(page, "Prostate Volume");
+    await navigateToCalculator(page, "Prostate Volume & PSA Density");
 
     await fillInput(page, "Length (craniocaudal, cm):", 5);
     await fillInput(page, "Height (anteroposterior, cm):", 4);
@@ -37,7 +37,7 @@ test.describe("Copy Results Button", () => {
   });
 
   test("should change text to Copied! on click", async ({ page }) => {
-    await navigateToCalculator(page, "Prostate Volume");
+    await navigateToCalculator(page, "Prostate Volume & PSA Density");
 
     await fillInput(page, "Length (craniocaudal, cm):", 5);
     await fillInput(page, "Height (anteroposterior, cm):", 4);
@@ -50,7 +50,7 @@ test.describe("Copy Results Button", () => {
   });
 
   test("should revert to Copy Results after 2 seconds", async ({ page }) => {
-    await navigateToCalculator(page, "Prostate Volume");
+    await navigateToCalculator(page, "Prostate Volume & PSA Density");
 
     await fillInput(page, "Length (craniocaudal, cm):", 5);
     await fillInput(page, "Height (anteroposterior, cm):", 4);
@@ -68,7 +68,7 @@ test.describe("Copy Results Button", () => {
   });
 
   test("should copy formatted results to clipboard", async ({ page }) => {
-    await navigateToCalculator(page, "Prostate Volume");
+    await navigateToCalculator(page, "Prostate Volume & PSA Density");
 
     await fillInput(page, "Length (craniocaudal, cm):", 5);
     await fillInput(page, "Height (anteroposterior, cm):", 4);
