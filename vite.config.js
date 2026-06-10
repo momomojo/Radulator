@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import staticCalculatorPages from "./scripts/generate-static-pages.js";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -11,6 +12,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      staticCalculatorPages(),
       // Plugin to inject GA4 Measurement ID and resource hints into HTML
       {
         name: "html-transform",
