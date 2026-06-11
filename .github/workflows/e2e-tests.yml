@@ -74,9 +74,12 @@ jobs:
           git fetch origin ${{ github.base_ref }} --depth=1
           CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'src/components/calculators/*.jsx' | grep -vE 'index|registry|FeedbackForm' || true)
           # Space-joined single line: a multiline output would embed raw
-          # newlines into the ${{ }} substitution downstream, acting as command
-          # separators inside $() and silently dropping all but the first
-          # file's specs (gate finding, PR #17).
+          # newlines into the github-expression substitution downstream, acting
+          # as command separators inside command substitution and silently
+          # dropping all but the first file's specs (gate finding, PR #17).
+          # NOTE: never write a literal dollar-double-brace expression in these
+          # comments — Actions template-expands run blocks before the shell
+          # sees them, and an empty expression fails the whole workflow file.
           CHANGED_SPACE=$(printf '%s' "$CHANGED" | tr '\n' ' ')
           echo "files=$CHANGED_SPACE" >> "$GITHUB_OUTPUT"
           if [ -n "$CHANGED" ]; then echo "any=true" >> "$GITHUB_OUTPUT"; else echo "any=false" >> "$GITHUB_OUTPUT"; fi

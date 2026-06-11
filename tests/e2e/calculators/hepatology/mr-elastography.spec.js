@@ -1,6 +1,56 @@
 import { test, expect } from '@playwright/test';
 import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
+function calculatorTitle(page) {
+  return page.getByTestId('calculator-title');
+}
+
+function calculatorDescription(page) {
+  return page.getByTestId('calculator-description');
+}
+
+function calculatorInfo(page) {
+  return page.getByTestId('calculator-info');
+}
+
+function dynamicRoiTable(page) {
+  return page.getByLabel('Dynamic ROI table');
+}
+
+function addRoiButton(page) {
+  return dynamicRoiTable(page).getByRole('button', { name: 'Add ROI' });
+}
+
+function removeRoiButtons(page) {
+  return dynamicRoiTable(page).getByRole('button', { name: 'Remove' });
+}
+
+function roiNumber(page, number) {
+  return dynamicRoiTable(page).getByText(`#${number}`, { exact: true });
+}
+
+function calculateControl(page) {
+  return page.getByRole('button', { name: 'Calculate' });
+}
+
+function resultsSection(page) {
+  return page.getByRole('status', { name: 'Calculator results' });
+}
+
+function resultRow(page, label) {
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return resultsSection(page)
+    .locator('span')
+    .filter({ hasText: new RegExp(`^${escapedLabel}:\\s*$`) })
+    .locator(
+      'xpath=ancestor::div[contains(@class, "justify-between") or contains(@class, "rounded-lg")][1]',
+    );
+}
+
+async function expectResult(page, label, expected) {
+  await expect(resultRow(page, label)).toContainText(expected);
+}
+
 /**
  * MR Elastography (Liver) Calculator E2E Tests
  *
@@ -22,22 +72,24 @@ test.describe('MR Elastography Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, 'MR Elastography (Liver)');
-    await expect(page.locator('h2:has-text("MR Elastography")')).toBeVisible();
+    await expect(calculatorTitle(page)).toContainText('MR Elastography');
   });
 
   test.describe('Visual Appeal & Theme Matching', () => {
 
     test('should display calculator with proper styling', async ({ page }) => {
       // Check calculator card is visible
-      const card = page.locator('.card, [class*="card"]').first();
+      const card = page.locator('.card, [class*="card"]').filter({ visible: true }).first();
       await expect(card).toBeVisible();
 
       // Check title is visible and styled
-      const title = page.locator('h2:has-text("MR Elastography")');
+      const title = calculatorTitle(page);
       await expect(title).toBeVisible();
 
       // Check description is present
-      await expect(page.locator('text=Area-weighted mean liver stiffness')).toBeVisible();
+      await expect(calculatorDescription(page)).toContainText(
+        'Area-weighted mean liver stiffness',
+      );
     });
 
     test('should have responsive design on mobile', async ({ page }) => {
@@ -45,33 +97,42 @@ test.describe('MR Elastography Calculator', () => {
       await page.setViewportSize({ width: 375, height: 667 });
 
       // Calculator should still be visible and usable
-      await expect(page.locator('h2:has-text("MR Elastography")')).toBeVisible();
+      await expect(calculatorTitle(page)).toContainText('MR Elastography');
 
       // Fields should be accessible on mobile
-      const frequencySelect = page.locator('select').first();
+      const frequencySelect = page.getByLabel('Driver frequency (Hz)');
       await expect(frequencySelect).toBeVisible();
     });
 
     test('should display info section with proper styling', async ({ page }) => {
       // Check if info section exists
-      const infoSection = page.locator('text=Goal: Compute the area-weighted mean');
+      const infoSection = calculatorInfo(page);
       await expect(infoSection).toBeVisible();
+      await expect(infoSection).toContainText(
+        'Goal: Compute the area-weighted mean',
+      );
 
       // Check for reference link
-      const refLink = page.locator('a:has-text("Manduca")');
+      const refLink = page.getByRole('button', {
+        name: /Open Consensus guidance.*Manduca/i,
+      });
       await expect(refLink).toBeVisible();
-      await expect(refLink).toHaveAttribute('href', /.+/);
     });
 
     test('should display dynamic ROI table with proper styling', async ({ page }) => {
       // Check for dynamic table headers
-      await expect(page.locator('text=Dynamic ROIs')).toBeVisible();
-      await expect(page.locator('text=Slice / ROI')).toBeVisible();
-      await expect(page.locator('text=Stiffness (kPa)')).toBeVisible();
-      await expect(page.locator('text=ROI Area')).toBeVisible();
+      const table = dynamicRoiTable(page);
+      await expect(
+        table.getByRole('heading', { name: 'Dynamic ROIs' }),
+      ).toBeVisible();
+      await expect(table.getByText('Slice / ROI', { exact: true })).toBeVisible();
+      await expect(
+        table.getByText('Stiffness (kPa)', { exact: true }),
+      ).toBeVisible();
+      await expect(table.getByText('ROI Area', { exact: true })).toBeVisible();
 
       // Check for Add ROI button
-      const addButton = page.locator('button:has-text("Add ROI")');
+      const addButton = addRoiButton(page);
       await expect(addButton).toBeVisible();
     });
   });
@@ -79,7 +140,7 @@ test.describe('MR Elastography Calculator', () => {
   test.describe('Frequency Selection', () => {
 
     test('should have frequency dropdown with standard options', async ({ page }) => {
-      const frequencySelect = page.locator('select').first();
+      const frequencySelect = page.getByLabel('Driver frequency (Hz)');
       await expect(frequencySelect).toBeVisible();
 
       // Check for common frequencies
@@ -92,11 +153,11 @@ test.describe('MR Elastography Calculator', () => {
     });
 
     test('should show custom frequency field when "Other" selected', async ({ page }) => {
-      const frequencySelect = page.locator('select').first();
+      const frequencySelect = page.getByLabel('Driver frequency (Hz)');
       await frequencySelect.selectOption('Other');
 
       // Custom frequency field should become visible
-      const customFreq = page.locator('input[type="number"]').first();
+      const customFreq = page.getByLabel('Custom frequency (Hz)');
       await expect(customFreq).toBeVisible();
     });
   });
@@ -134,7 +195,7 @@ test.describe('MR Elastography Calculator', () => {
   test.describe('Input Methods - CSV Paste', () => {
 
     test('should accept CSV input', async ({ page }) => {
-      const csvInput = page.locator('textarea');
+      const csvInput = page.getByLabel('Paste ROI CSV (kPa,Area per line)');
       const csvData = '2.8, 50\n3.2, 45\n3.6, 40';
 
       await csvInput.fill(csvData);
@@ -142,7 +203,7 @@ test.describe('MR Elastography Calculator', () => {
     });
 
     test('should handle various CSV formats', async ({ page }) => {
-      const csvInput = page.locator('textarea');
+      const csvInput = page.getByLabel('Paste ROI CSV (kPa,Area per line)');
 
       // Test semicolon separated
       await csvInput.fill('2.8;50.0\n3.2;45.0');
@@ -155,7 +216,7 @@ test.describe('MR Elastography Calculator', () => {
     });
 
     test('should handle European decimal notation', async ({ page }) => {
-      const csvInput = page.locator('textarea');
+      const csvInput = page.getByLabel('Paste ROI CSV (kPa,Area per line)');
 
       // European format with comma as decimal separator
       await csvInput.fill('2,8;50,0\n3,2;45,0');
@@ -167,7 +228,7 @@ test.describe('MR Elastography Calculator', () => {
 
     test('should have one default dynamic ROI row', async ({ page }) => {
       // Check for first row
-      await expect(page.locator('text=#1')).toBeVisible();
+      await expect(roiNumber(page, 1)).toBeVisible();
 
       // Should have stiffness and area inputs for row 1
       const inputs = await page.locator('input[aria-label*="ROI 1"]').count();
@@ -175,15 +236,15 @@ test.describe('MR Elastography Calculator', () => {
     });
 
     test('should add new dynamic ROI rows', async ({ page }) => {
-      const addButton = page.locator('button:has-text("Add ROI")');
+      const addButton = addRoiButton(page);
 
       // Add a second row
       await addButton.click();
-      await expect(page.locator('text=#2')).toBeVisible();
+      await expect(roiNumber(page, 2)).toBeVisible();
 
       // Add a third row
       await addButton.click();
-      await expect(page.locator('text=#3')).toBeVisible();
+      await expect(roiNumber(page, 3)).toBeVisible();
     });
 
     test('should accept values in dynamic ROI rows', async ({ page }) => {
@@ -199,23 +260,23 @@ test.describe('MR Elastography Calculator', () => {
     });
 
     test('should remove dynamic ROI rows', async ({ page }) => {
-      const addButton = page.locator('button:has-text("Add ROI")');
+      const addButton = addRoiButton(page);
 
       // Add two more rows (total 3)
       await addButton.click();
       await addButton.click();
-      await expect(page.locator('text=#3')).toBeVisible();
+      await expect(roiNumber(page, 3)).toBeVisible();
 
       // Remove the second row
-      const removeButtons = page.locator('button:has-text("Remove")');
+      const removeButtons = removeRoiButtons(page);
       await removeButtons.nth(1).click();
 
       // Should still have 2 rows
-      await expect(page.locator('text=#2')).toBeVisible();
+      await expect(roiNumber(page, 2)).toBeVisible();
     });
 
     test('should not allow removing the last dynamic row', async ({ page }) => {
-      const removeButton = page.locator('button:has-text("Remove")').first();
+      const removeButton = removeRoiButtons(page).first();
 
       // Should be disabled when only one row exists
       await expect(removeButton).toBeDisabled();
@@ -223,7 +284,6 @@ test.describe('MR Elastography Calculator', () => {
 
     test('should validate dynamic row inputs', async ({ page }) => {
       const row1Kpa = page.locator('input[aria-label="ROI 1 stiffness in kPa"]');
-      const row1Area = page.locator('input[aria-label="ROI 1 area in cm²"]');
 
       // Enter invalid value (negative)
       await row1Kpa.fill('-5');
@@ -236,7 +296,7 @@ test.describe('MR Elastography Calculator', () => {
   test.describe('Calculate Button State', () => {
 
     test('should disable Calculate button when no valid ROIs', async ({ page }) => {
-      const calculateButton = page.locator('button:has-text("Calculate")');
+      const calculateButton = calculateControl(page);
 
       // Should be disabled initially
       await expect(calculateButton).toBeDisabled();
@@ -247,15 +307,15 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '2.8');
       await page.fill('input[id="roi1_area"]', '50.0');
 
-      const calculateButton = page.locator('button:has-text("Calculate")');
+      const calculateButton = calculateControl(page);
       await expect(calculateButton).toBeEnabled();
     });
 
     test('should enable Calculate when valid CSV entered', async ({ page }) => {
-      const csvInput = page.locator('textarea');
+      const csvInput = page.getByLabel('Paste ROI CSV (kPa,Area per line)');
       await csvInput.fill('2.8, 50.0');
 
-      const calculateButton = page.locator('button:has-text("Calculate")');
+      const calculateButton = calculateControl(page);
       await expect(calculateButton).toBeEnabled();
     });
 
@@ -266,7 +326,7 @@ test.describe('MR Elastography Calculator', () => {
       await row1Kpa.fill('3.5');
       await row1Area.fill('55.0');
 
-      const calculateButton = page.locator('button:has-text("Calculate")');
+      const calculateButton = calculateControl(page);
       await expect(calculateButton).toBeEnabled();
     });
   });
@@ -278,13 +338,17 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '2.0');
       await page.fill('input[id="roi1_area"]', '50.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
       // Check results
-      await expect(page.locator('text=/Total Area.*50\.00/i')).toBeVisible();
-      await expect(page.locator('text=/Area-weighted Mean.*2\.00/i')).toBeVisible();
-      await expect(page.locator('text=/Within normal limits|no significant fibrosis/i')).toBeVisible();
+      await expectResult(page, 'Total Area (cm²)', '50.00');
+      await expectResult(page, 'Area-weighted Mean (kPa)', '2.00');
+      await expectResult(
+        page,
+        'Interpretation',
+        /Within normal limits|no significant fibrosis/i,
+      );
     });
 
     test('Borderline (F0-F1) - Single ROI', async ({ page }) => {
@@ -292,11 +356,11 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '2.7');
       await page.fill('input[id="roi1_area"]', '45.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Area-weighted Mean.*2\.70/i')).toBeVisible();
-      await expect(page.locator('text=/Borderline.*mild elevation/i')).toBeVisible();
+      await expectResult(page, 'Area-weighted Mean (kPa)', '2.70');
+      await expectResult(page, 'Interpretation', /Borderline.*mild elevation/i);
     });
 
     test('F2 Fibrosis - Single ROI', async ({ page }) => {
@@ -304,11 +368,11 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '3.3');
       await page.fill('input[id="roi1_area"]', '50.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Area-weighted Mean.*3\.30/i')).toBeVisible();
-      await expect(page.locator('text=/≥F2 fibrosis likely/i')).toBeVisible();
+      await expectResult(page, 'Area-weighted Mean (kPa)', '3.30');
+      await expectResult(page, 'Interpretation', /≥F2 fibrosis likely/i);
     });
 
     test('F3 Advanced Fibrosis - Single ROI', async ({ page }) => {
@@ -316,11 +380,11 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '3.8');
       await page.fill('input[id="roi1_area"]', '48.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Area-weighted Mean.*3\.80/i')).toBeVisible();
-      await expect(page.locator('text=/Advanced fibrosis.*≥F3.*likely/i')).toBeVisible();
+      await expectResult(page, 'Area-weighted Mean (kPa)', '3.80');
+      await expectResult(page, 'Interpretation', /Advanced fibrosis.*≥F3.*likely/i);
     });
 
     test('F4 Cirrhosis - Single ROI', async ({ page }) => {
@@ -328,11 +392,11 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '5.2');
       await page.fill('input[id="roi1_area"]', '42.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Area-weighted Mean.*5\.20/i')).toBeVisible();
-      await expect(page.locator('text=/Cirrhosis.*F4.*likely/i')).toBeVisible();
+      await expectResult(page, 'Area-weighted Mean (kPa)', '5.20');
+      await expectResult(page, 'Interpretation', /Cirrhosis.*F4.*likely/i);
     });
   });
 
@@ -343,7 +407,7 @@ test.describe('MR Elastography Calculator', () => {
       // ROI 1: 2.5 kPa, 50 cm²
       // ROI 2: 2.3 kPa, 45 cm²
       // ROI 3: 2.7 kPa, 40 cm²
-      // Expected mean: (2.5*50 + 2.3*45 + 2.7*40) / (50+45+40) = 331.5 / 135 = 2.46 kPa
+      // Expected mean: (2.5*50 + 2.3*45 + 2.7*40) / (50+45+40) = 336.5 / 135 = 2.49 kPa
 
       await page.fill('input[id="roi1_kpa"]', '2.5');
       await page.fill('input[id="roi1_area"]', '50.0');
@@ -352,12 +416,12 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi3_kpa"]', '2.7');
       await page.fill('input[id="roi3_area"]', '40.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Total Area.*135\.00/i')).toBeVisible();
-      await expect(page.locator('text=/Area-weighted Mean.*2\.46/i')).toBeVisible();
-      await expect(page.locator('text=/3 valid ROIs/i')).toBeVisible();
+      await expectResult(page, 'Total Area (cm²)', '135.00');
+      await expectResult(page, 'Area-weighted Mean (kPa)', '2.49');
+      await expectResult(page, 'ROIs Used', '3 valid ROIs');
     });
 
     test('Area-weighted mean with 4 ROIs (F2 range)', async ({ page }) => {
@@ -366,7 +430,7 @@ test.describe('MR Elastography Calculator', () => {
       // ROI 2: 3.4 kPa, 48 cm²
       // ROI 3: 3.1 kPa, 52 cm²
       // ROI 4: 3.5 kPa, 50 cm²
-      // Expected mean: (3.2*55 + 3.4*48 + 3.1*52 + 3.5*50) / (55+48+52+50) = 673.4 / 205 = 3.28 kPa
+      // Expected mean: (3.2*55 + 3.4*48 + 3.1*52 + 3.5*50) / (55+48+52+50) = 675.4 / 205 = 3.29 kPa
 
       await page.fill('input[id="roi1_kpa"]', '3.2');
       await page.fill('input[id="roi1_area"]', '55.0');
@@ -377,32 +441,32 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi4_kpa"]', '3.5');
       await page.fill('input[id="roi4_area"]', '50.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Total Area.*205\.00/i')).toBeVisible();
-      await expect(page.locator('text=/Area-weighted Mean.*3\.28/i')).toBeVisible();
-      await expect(page.locator('text=/4 valid ROIs/i')).toBeVisible();
-      await expect(page.locator('text=/≥F2 fibrosis likely/i')).toBeVisible();
+      await expectResult(page, 'Total Area (cm²)', '205.00');
+      await expectResult(page, 'Area-weighted Mean (kPa)', '3.29');
+      await expectResult(page, 'ROIs Used', '4 valid ROIs');
+      await expectResult(page, 'Interpretation', /≥F2 fibrosis likely/i);
     });
 
     test('Area-weighted averaging via CSV input', async ({ page }) => {
-      const csvInput = page.locator('textarea');
+      const csvInput = page.getByLabel('Paste ROI CSV (kPa,Area per line)');
       const csvData = '2.8, 50\n3.2, 45\n3.6, 40';
-      // Expected: (2.8*50 + 3.2*45 + 3.6*40) / 135 = 414 / 135 = 3.07 kPa
+      // Expected: (2.8*50 + 3.2*45 + 3.6*40) / 135 = 428 / 135 = 3.17 kPa
 
       await csvInput.fill(csvData);
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Total Area.*135\.00/i')).toBeVisible();
-      await expect(page.locator('text=/Area-weighted Mean.*3\.07/i')).toBeVisible();
-      await expect(page.locator('text=/3 valid ROIs/i')).toBeVisible();
+      await expectResult(page, 'Total Area (cm²)', '135.00');
+      await expectResult(page, 'Area-weighted Mean (kPa)', '3.17');
+      await expectResult(page, 'ROIs Used', '3 valid ROIs');
     });
 
     test('Area-weighted averaging via dynamic rows', async ({ page }) => {
       // Add rows and fill values
-      const addButton = page.locator('button:has-text("Add ROI")');
+      const addButton = addRoiButton(page);
       await addButton.click(); // Add 2nd row
       await addButton.click(); // Add 3rd row
 
@@ -423,47 +487,47 @@ test.describe('MR Elastography Calculator', () => {
 
       // Expected: (4.2*50 + 4.5*48 + 3.9*52) / 150 = 628.8 / 150 = 4.19 kPa
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Total Area.*150\.00/i')).toBeVisible();
-      await expect(page.locator('text=/Area-weighted Mean.*4\.19/i')).toBeVisible();
-      await expect(page.locator('text=/Cirrhosis.*F4.*likely/i')).toBeVisible();
+      await expectResult(page, 'Total Area (cm²)', '150.00');
+      await expectResult(page, 'Area-weighted Mean (kPa)', '4.19');
+      await expectResult(page, 'Interpretation', /Cirrhosis.*F4.*likely/i);
     });
   });
 
   test.describe('Frequency-Adjusted Interpretation', () => {
 
     test('40 Hz frequency adjustment', async ({ page }) => {
-      const frequencySelect = page.locator('select').first();
+      const frequencySelect = page.getByLabel('Driver frequency (Hz)');
       await frequencySelect.selectOption('40');
 
       // Enter ROI at 60 Hz F2 threshold
       await page.fill('input[id="roi1_kpa"]', '3.0');
       await page.fill('input[id="roi1_area"]', '50.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Frequency.*40 Hz/i')).toBeVisible();
+      await expectResult(page, 'Frequency', '40 Hz');
       // Should adjust interpretation for 40 Hz
     });
 
     test('90 Hz frequency adjustment', async ({ page }) => {
-      const frequencySelect = page.locator('select').first();
+      const frequencySelect = page.getByLabel('Driver frequency (Hz)');
       await frequencySelect.selectOption('90');
 
       await page.fill('input[id="roi1_kpa"]', '3.0');
       await page.fill('input[id="roi1_area"]', '50.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Frequency.*90 Hz/i')).toBeVisible();
+      await expectResult(page, 'Frequency', '90 Hz');
     });
 
     test('Custom frequency input', async ({ page }) => {
-      const frequencySelect = page.locator('select').first();
+      const frequencySelect = page.getByLabel('Driver frequency (Hz)');
       await frequencySelect.selectOption('Other');
 
       const customFreq = page.locator('input[id="frequency_other"]');
@@ -472,10 +536,10 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '3.5');
       await page.fill('input[id="roi1_area"]', '50.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Frequency.*75 Hz/i')).toBeVisible();
+      await expectResult(page, 'Frequency', '75 Hz');
     });
   });
 
@@ -485,7 +549,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '3.0');
       await page.fill('input[id="roi1_area"]', '0');
 
-      const calculateButton = page.locator('button:has-text("Calculate")');
+      const calculateButton = calculateControl(page);
       // Should remain disabled or show error
       await expect(calculateButton).toBeDisabled();
     });
@@ -503,10 +567,10 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '3.0');
       await page.fill('input[id="roi1_area"]', '0.1');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Area-weighted Mean/i')).toBeVisible();
+      await expect(resultRow(page, 'Area-weighted Mean (kPa)')).toBeVisible();
     });
 
     test('should handle very high stiffness values', async ({ page }) => {
@@ -514,36 +578,36 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '10.0');
       await page.fill('input[id="roi1_area"]', '50.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Area-weighted Mean.*10\.00/i')).toBeVisible();
-      await expect(page.locator('text=/Cirrhosis.*F4.*likely/i')).toBeVisible();
+      await expectResult(page, 'Area-weighted Mean (kPa)', '10.00');
+      await expectResult(page, 'Interpretation', /Cirrhosis.*F4.*likely/i);
     });
 
     test('should filter out invalid rows in CSV', async ({ page }) => {
-      const csvInput = page.locator('textarea');
+      const csvInput = page.getByLabel('Paste ROI CSV (kPa,Area per line)');
       // Mix of valid and invalid rows
       const csvData = '2.8, 50\ninvalid, text\n3.2, 45\n, \n3.6, 40';
 
       await csvInput.fill(csvData);
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
       // Should only count 3 valid ROIs
-      await expect(page.locator('text=/3 valid ROIs/i')).toBeVisible();
+      await expectResult(page, 'ROIs Used', '3 valid ROIs');
     });
 
     test('should handle decimal precision correctly', async ({ page }) => {
       await page.fill('input[id="roi1_kpa"]', '3.456789');
       await page.fill('input[id="roi1_area"]', '50.123456');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
       // Should display with 2 decimal precision
-      await expect(page.locator('text=/Area-weighted Mean.*3\.46/i')).toBeVisible();
-      await expect(page.locator('text=/Total Area.*50\.12/i')).toBeVisible();
+      await expectResult(page, 'Area-weighted Mean (kPa)', '3.46');
+      await expectResult(page, 'Total Area (cm²)', '50.12');
     });
   });
 
@@ -555,7 +619,7 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_area"]', '50.0');
 
       // Add CSV
-      const csvInput = page.locator('textarea');
+      const csvInput = page.getByLabel('Paste ROI CSV (kPa,Area per line)');
       await csvInput.fill('3.2, 45');
 
       // Add dynamic row
@@ -564,12 +628,12 @@ test.describe('MR Elastography Calculator', () => {
       await row1Kpa.fill('3.6');
       await row1Area.fill('40.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
       // Should combine all three inputs (3 ROIs total)
-      await expect(page.locator('text=/3 valid ROIs/i')).toBeVisible();
-      await expect(page.locator('text=/Total Area.*135\.00/i')).toBeVisible();
+      await expectResult(page, 'ROIs Used', '3 valid ROIs');
+      await expectResult(page, 'Total Area (cm²)', '135.00');
     });
 
     test('should prioritize valid inputs from all sources', async ({ page }) => {
@@ -580,14 +644,14 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi2_kpa"]', '3.0'); // Valid
       await page.fill('input[id="roi2_area"]', '50.0');
 
-      const csvInput = page.locator('textarea');
+      const csvInput = page.getByLabel('Paste ROI CSV (kPa,Area per line)');
       await csvInput.fill('3.5, 45'); // Valid
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
       // Should count only 2 valid ROIs
-      await expect(page.locator('text=/2 valid ROIs/i')).toBeVisible();
+      await expectResult(page, 'ROIs Used', '2 valid ROIs');
     });
   });
 
@@ -597,41 +661,45 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi1_kpa"]', '3.0');
       await page.fill('input[id="roi1_area"]', '50.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Formula.*Σ.*Mi.*Ai/i')).toBeVisible();
+      await expectResult(page, 'Formula', /Σ.*Mi.*Ai/i);
     });
 
     test('should display clinical notes about variability', async ({ page }) => {
       await page.fill('input[id="roi1_kpa"]', '3.5');
       await page.fill('input[id="roi1_area"]', '50.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Cutoffs vary|vendor|frequency|correlate clinically/i')).toBeVisible();
+      await expectResult(
+        page,
+        'Notes',
+        /Cutoffs vary|vendor|frequency|correlate clinically/i,
+      );
     });
 
     test('should provide guidance for each fibrosis stage', async ({ page }) => {
       // Test normal
       await page.fill('input[id="roi1_kpa"]', '2.0');
       await page.fill('input[id="roi1_area"]', '50.0');
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
-      await expect(page.locator('text=/no significant fibrosis/i')).toBeVisible();
+      await expectResult(page, 'Interpretation', /no significant fibrosis/i);
 
       // Clear and test F2
       await page.fill('input[id="roi1_kpa"]', '3.3');
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
-      await expect(page.locator('text=/≥F2 fibrosis likely/i')).toBeVisible();
+      await expectResult(page, 'Interpretation', /≥F2 fibrosis likely/i);
 
       // Clear and test F4
       await page.fill('input[id="roi1_kpa"]', '5.0');
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
-      await expect(page.locator('text=/Cirrhosis.*likely/i')).toBeVisible();
+      await expectResult(page, 'Interpretation', /Cirrhosis.*likely/i);
     });
   });
 
@@ -642,13 +710,17 @@ test.describe('MR Elastography Calculator', () => {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
       // Check for Manduca et al. 2020 (primary reference)
-      await expect(page.locator('text=/Manduca.*2020/i')).toBeVisible();
+      await expect(
+        page.getByRole('link', { name: /Manduca.*2020/i }),
+      ).toBeVisible();
 
       // Check for Mariappan review
-      await expect(page.locator('text=/Mariappan.*2010/i')).toBeVisible();
+      await expect(
+        page.getByRole('link', { name: /Mariappan.*2010/i }),
+      ).toBeVisible();
 
       // Check for Resoundant reference
-      await expect(page.locator('text=/Resoundant/i')).toBeVisible();
+      await expect(page.getByRole('link', { name: /Resoundant/i })).toBeVisible();
     });
 
     test('should have working reference links', async ({ page }) => {
@@ -677,9 +749,9 @@ test.describe('MR Elastography Calculator', () => {
   test.describe('Accessibility', () => {
 
     test('should have proper labels for all inputs', async ({ page }) => {
-      await expect(page.locator('label:has-text("Driver frequency")')).toBeVisible();
-      await expect(page.locator('label:has-text("ROI 1 - Stiffness")')).toBeVisible();
-      await expect(page.locator('label:has-text("ROI 1 - Area")')).toBeVisible();
+      await expect(page.getByLabel('Driver frequency (Hz)')).toBeVisible();
+      await expect(page.getByLabel('ROI 1 - Stiffness (kPa)')).toBeVisible();
+      await expect(page.getByLabel('ROI 1 - Area (cm²)')).toBeVisible();
     });
 
     test('should have aria-labels on dynamic row inputs', async ({ page }) => {
@@ -711,11 +783,11 @@ test.describe('MR Elastography Calculator', () => {
     test('should announce results to screen readers', async ({ page }) => {
       await page.fill('input[id="roi1_kpa"]', '3.0');
       await page.fill('input[id="roi1_area"]', '50.0');
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
       // Results section should have aria-live
-      const results = page.locator('[aria-live="polite"]');
+      const results = resultsSection(page);
       await expect(results).toBeVisible();
     });
   });
@@ -733,11 +805,11 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi2_kpa"]', '3.5');
       await page.fill('input[id="roi2_area"]', '40.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Total Area.*100\.00/i')).toBeVisible();
-      await expect(page.locator('text=/Area-weighted Mean.*2\.90/i')).toBeVisible();
+      await expectResult(page, 'Total Area (cm²)', '100.00');
+      await expectResult(page, 'Area-weighted Mean (kPa)', '2.90');
     });
 
     test('should calculate area-weighted mean correctly - 5 ROIs', async ({ page }) => {
@@ -747,15 +819,15 @@ test.describe('MR Elastography Calculator', () => {
       // Total area: 30+35+40+25+20 = 150
       // Mean: 435 / 150 = 2.90 kPa
 
-      const csvInput = page.locator('textarea');
+      const csvInput = page.getByLabel('Paste ROI CSV (kPa,Area per line)');
       await csvInput.fill('2.0, 30\n2.5, 35\n3.0, 40\n3.5, 25\n4.0, 20');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
-      await expect(page.locator('text=/Total Area.*150\.00/i')).toBeVisible();
-      await expect(page.locator('text=/Area-weighted Mean.*2\.90/i')).toBeVisible();
-      await expect(page.locator('text=/5 valid ROIs/i')).toBeVisible();
+      await expectResult(page, 'Total Area (cm²)', '150.00');
+      await expectResult(page, 'Area-weighted Mean (kPa)', '2.90');
+      await expectResult(page, 'ROIs Used', '5 valid ROIs');
     });
 
     test('should verify area-weighting vs simple average', async ({ page }) => {
@@ -771,13 +843,15 @@ test.describe('MR Elastography Calculator', () => {
       await page.fill('input[id="roi2_kpa"]', '5.0');
       await page.fill('input[id="roi2_area"]', '10.0');
 
-      await page.click('button:has-text("Calculate")');
+      await calculateControl(page).click();
 
 
       // Should be 2.30, not 3.50
-      await expect(page.locator('text=/Area-weighted Mean.*2\.30/i')).toBeVisible();
+      await expectResult(page, 'Area-weighted Mean (kPa)', '2.30');
       // Should NOT show 3.5
-      await expect(page.locator('text=/Area-weighted Mean.*3\.5/i')).not.toBeVisible();
+      await expect(resultRow(page, 'Area-weighted Mean (kPa)')).not.toContainText(
+        /3\.5/,
+      );
     });
   });
 
@@ -785,13 +859,16 @@ test.describe('MR Elastography Calculator', () => {
 
     test('should display table with proper column headers', async ({ page }) => {
       // Check all three column headers
-      await expect(page.locator('text=Slice / ROI')).toBeVisible();
-      await expect(page.locator('text=Stiffness (kPa)')).toBeVisible();
-      await expect(page.locator('text=ROI Area')).toBeVisible();
+      const table = dynamicRoiTable(page);
+      await expect(table.getByText('Slice / ROI', { exact: true })).toBeVisible();
+      await expect(
+        table.getByText('Stiffness (kPa)', { exact: true }),
+      ).toBeVisible();
+      await expect(table.getByText('ROI Area', { exact: true })).toBeVisible();
     });
 
     test('should maintain table layout with multiple rows', async ({ page }) => {
-      const addButton = page.locator('button:has-text("Add ROI")');
+      const addButton = addRoiButton(page);
 
       // Add multiple rows
       for (let i = 0; i < 5; i++) {
@@ -800,12 +877,14 @@ test.describe('MR Elastography Calculator', () => {
 
       // Check all row numbers are visible
       for (let i = 1; i <= 6; i++) {
-        await expect(page.locator(`text=#${i}`)).toBeVisible();
+        await expect(roiNumber(page, i)).toBeVisible();
       }
     });
 
     test('should show helpful tip text above table', async ({ page }) => {
-      await expect(page.locator('text=/paste multiple pairs.*CSV.*add rows here/i')).toBeVisible();
+      await expect(dynamicRoiTable(page)).toContainText(
+        /paste multiple pairs.*CSV.*add rows here/i,
+      );
     });
 
     test('should have placeholder text in dynamic row inputs', async ({ page }) => {
