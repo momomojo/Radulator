@@ -71,7 +71,7 @@ async function expectResult(page, label, expected) {
 test.describe('MR Elastography Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
-    await navigateToCalculator(page, 'MR Elastography');
+    await navigateToCalculator(page, 'MR Elastography (Liver)');
     await expect(calculatorTitle(page)).toContainText('MR Elastography');
   });
 
