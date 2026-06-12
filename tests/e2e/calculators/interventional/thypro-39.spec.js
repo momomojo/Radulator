@@ -125,14 +125,14 @@ async function answerQuestionRange(page, start, end, likertValue) {
 test.describe("ThyPRO-39 Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, CALCULATOR_NAME);
-    await expect(page.locator("h2")).toContainText("ThyPRO-39");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("ThyPRO-39");
   });
 
   test.describe("UI Elements", () => {
     test("should display calculator title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("ThyPRO-39");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("ThyPRO-39");
       await expect(
         page.locator("text=Thyroid-Related Patient-Reported Outcome").first(),
       ).toBeVisible();
@@ -207,9 +207,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       page,
     }) => {
       await answerAllQuestions(page, 0);
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       // All subscale scores should be 0.0
@@ -236,9 +236,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       page,
     }) => {
       await answerAllQuestions(page, 4);
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       await expect(results).toContainText("Goiter Symptoms: 100.0 / 100");
@@ -265,9 +265,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerQuestionRange(page, 1, 3, 4);
       await answerQuestionRange(page, 4, 39, 0);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       await expect(results).toContainText("Goiter Symptoms: 100.0 / 100");
@@ -308,9 +308,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       // QoL (Q39): value 3 -> (3/4)*100 = 75.0
       await selectAnswer(page, 39, 3);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       await expect(results).toContainText("Goiter Symptoms: 25.0 / 100");
@@ -345,9 +345,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerAllQuestionsWithPrefix(page, "b_", 3);
       await answerAllQuestionsWithPrefix(page, "f_", 1);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText(
         "Composite Score (Baseline): 75.0 / 100",
       );
@@ -364,9 +364,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       await selectAssessmentMode(page, "delta");
       await answerAllQuestionsWithPrefix(page, "b_", 2);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Please complete all questions");
       await expect(results).toContainText("39 remaining");
       await expect(results).toContainText("Follow-up:");
@@ -383,9 +383,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerQuestionRange(page, 15, 35, 1);
       await selectAnswer(page, 39, 1);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Composite Score: 25.0 / 100");
       await expect(results).toContainText("Low (0–25)");
     });
@@ -400,9 +400,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerQuestionRange(page, 15, 35, 1);
       await selectAnswer(page, 39, 2);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Moderate (26–50)");
     });
 
@@ -416,9 +416,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerQuestionRange(page, 15, 35, 2);
       await selectAnswer(page, 39, 2);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Composite Score: 50.0 / 100");
       await expect(results).toContainText("Moderate (26–50)");
     });
@@ -431,9 +431,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerQuestionRange(page, 15, 35, 2);
       await selectAnswer(page, 39, 3);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("High (51–75)");
     });
 
@@ -447,9 +447,9 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerQuestionRange(page, 15, 35, 3);
       await selectAnswer(page, 39, 3);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Composite Score: 75.0 / 100");
       await expect(results).toContainText("High (51–75)");
     });
@@ -464,16 +464,16 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerQuestionRange(page, 15, 35, 3);
       await selectAnswer(page, 39, 4);
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Very High (76–100)");
     });
   });
 
   test.describe("Validation", () => {
     test("should require all questions to be answered", async ({ page }) => {
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
       await expect(
         page.locator("text=Please answer all 39 questions"),
       ).toBeVisible();
@@ -481,8 +481,8 @@ test.describe("ThyPRO-39 Calculator", () => {
 
     test("should show error with partial answers", async ({ page }) => {
       await answerQuestionRange(page, 1, 10, 0);
-      await page.locator('button:has-text("Calculate")').click();
-      const results = page.locator('section[aria-live="polite"]');
+      await page.getByRole('button', { name: 'Calculate' }).click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Please answer all 39 questions");
       await expect(results).toContainText("29 remaining");
       // Verify the error lists specific missing subscales with question numbers
@@ -541,7 +541,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
     test("should be responsive on mobile", async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
-      await expect(page.locator('h2:has-text("ThyPRO-39")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toBeVisible();
       await expect(page.locator("text=1. Pressure or tightness")).toBeVisible();
       await verifyMobileResponsive(page);
     });
@@ -551,16 +551,16 @@ test.describe("ThyPRO-39 Calculator", () => {
     }) => {
       // First: all zeros
       await answerAllQuestions(page, 0);
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      let results = page.locator('section[aria-live="polite"]');
+      let results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Composite Score: 0.0 / 100");
 
       // Second: all max
       await answerAllQuestions(page, 4);
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      results = page.locator('section[aria-live="polite"]');
+      results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Composite Score: 100.0 / 100");
     });
   });

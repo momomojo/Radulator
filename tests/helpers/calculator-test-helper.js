@@ -14,8 +14,8 @@ const calculatorsDir = path.join(
 const calculatorNameToId = new Map();
 const calculatorIdToName = new Map();
 const mojibakeReplacements = {
-  "â€": "–",
-  "â€”: "—",
+  "â€“": "–",
+  "â€”": "—",
   "â€‘": "‑",
   "â‰¤": "≤",
   "â‰¥": "≥",

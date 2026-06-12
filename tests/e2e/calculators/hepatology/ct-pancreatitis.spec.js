@@ -34,7 +34,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator("h2")).toContainText("CT Severity Index (CTSI)");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("CT Severity Index (CTSI)");
     await expect(
       page.locator("text=Balthazar score with necrosis grading"),
     ).toBeVisible();
@@ -168,7 +168,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify results - CTSI = 0 + 0 = 0 (Mild)
       await expect(
@@ -228,7 +228,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
 
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify results - CTSI = 1 + 0 = 1 (Mild)
       await expect(
@@ -265,7 +265,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
 
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify results - CTSI = 2 + 0 = 2 (Mild)
       await expect(
@@ -301,7 +301,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
 
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify results - CTSI = 0 + 2 = 2 (Mild)
       await expect(
@@ -335,7 +335,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 1 + 2 = 3 (still Mild)
       await expect(
@@ -374,7 +374,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify results - CTSI = 2 + 2 = 4 (Moderate)
       await expect(
@@ -409,7 +409,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 3 + 0 = 3 (still Mild)
       await expect(
@@ -442,7 +442,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 3 + 2 = 5 (Moderate)
       await expect(
@@ -474,7 +474,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 2 + 4 = 6 (upper limit of Moderate)
       await expect(
@@ -512,7 +512,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 4 + 0 = 4 (Moderate, not severe)
       await expect(
@@ -552,7 +552,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 4 + 2 = 6 (Moderate)
       await expect(
@@ -584,7 +584,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 3 + 4 = 7 (Severe)
       await expect(
@@ -624,7 +624,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 4 + 4 = 8 (Severe)
       await expect(
@@ -656,7 +656,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 3 + 6 = 9 (Severe)
       await expect(
@@ -692,7 +692,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // CTSI = 4 + 6 = 10 (Maximum Severe)
       await expect(
@@ -741,7 +741,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
         "One or more: Ascites, pleural effusion, vascular/GI complications",
       );
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Original CTSI = 2 (Mild), Modified CTSI = 2 + 2 = 4 (Moderate)
       await expect(
@@ -788,7 +788,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
         "One or more: Ascites, pleural effusion, vascular/GI complications",
       );
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify both scores
       await expect(
@@ -823,7 +823,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Both CTSI and MCTSI should be Mild
       await expect(
@@ -855,7 +855,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify timing warning is shown
       await expect(page.locator("text=Timing Note:")).toBeVisible();
@@ -890,7 +890,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify timing warning is NOT shown
       await expect(page.locator("text=Timing Note:")).not.toBeVisible();
@@ -913,7 +913,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify timing warning is NOT shown
       await expect(page.locator("text=Timing Note:")).not.toBeVisible();
@@ -942,7 +942,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       await expect(
         page.locator("text=Revised Atlanta Classification:"),
@@ -972,7 +972,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       await expect(
         page.locator("text=Revised Atlanta Classification:"),
@@ -1004,7 +1004,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       await expect(
         page.locator("text=Revised Atlanta Classification:"),
@@ -1042,7 +1042,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
         "One or more: Ascites, pleural effusion, vascular/GI complications",
       );
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Extrapancreatic complications should trigger moderately severe
       await expect(
@@ -1076,7 +1076,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       await expect(
         page.locator(
@@ -1109,7 +1109,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       await expect(
         page.locator(
@@ -1142,7 +1142,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       await expect(
         page.locator(
@@ -1180,7 +1180,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       await expect(
         page.locator(
@@ -1211,7 +1211,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       await expect(
         page.locator("text=Please select a Balthazar CT grade"),
@@ -1235,7 +1235,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       // Skip necrosis extent selection
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       await expect(
         page.locator("text=Please select pancreatic necrosis extent"),
@@ -1271,9 +1271,9 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
 
       // Verify calculator is still usable on mobile
       await expect(
-        page.locator('h2:has-text("CT Severity Index")'),
+        page.getByTestId('calculator-title').first(),
       ).toBeVisible();
-      await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
       // Verify sidebar is present (may be narrower on mobile)
       const sidebar = page.locator("aside").first();
@@ -1305,7 +1305,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       );
       await selectRadio(page, "Extrapancreatic Complications", "None");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
       await expect(
         page.locator(
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 0 points - Mild")',
@@ -1342,7 +1342,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
         "One or more: Ascites, pleural effusion, vascular/GI complications",
       );
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
       await expect(
         page.locator(
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 10 points - Severe")',

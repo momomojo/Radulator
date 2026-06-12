@@ -21,13 +21,13 @@ import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js
 test.describe("MELD-Na Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, "MELD-Na Score");
-    await expect(page.locator("h2")).toContainText("MELD-Na Score");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("MELD-Na Score");
   });
 
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with proper layout", async ({ page }) => {
       // Check header
-      await expect(page.locator("h2")).toContainText("MELD-Na Score");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("MELD-Na Score");
       await expect(
         page.locator("text=Model for End-Stage Liver Disease"),
       ).toBeVisible();
@@ -52,7 +52,7 @@ test.describe("MELD-Na Calculator", () => {
       ).toBeVisible();
 
       // Check Calculate button
-      await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
       // Check References section
       await expect(page.locator("text=References")).toBeVisible();

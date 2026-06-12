@@ -35,7 +35,7 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("Fleischner");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("Fleischner");
       await expect(
         page.locator("text=Pulmonary nodule management"),
       ).toBeVisible();

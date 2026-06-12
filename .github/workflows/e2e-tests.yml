@@ -102,6 +102,14 @@ jobs:
         if: steps.changed.outputs.any == 'true'
         run: npx playwright install --with-deps chromium
 
+      # Playwright's CI webServer is `vite preview`, which serves an existing
+      # dist/ and never builds. Without this step the server never comes up
+      # (120s timeout, zero tests run). Latent until the first PR touching
+      # calculator source post-release-train (PR #30, 2026-06-12).
+      - name: Build application
+        if: steps.changed.outputs.any == 'true'
+        run: npm run build
+
       - name: Run specs for changed calculators
         if: steps.changed.outputs.any == 'true'
         run: |

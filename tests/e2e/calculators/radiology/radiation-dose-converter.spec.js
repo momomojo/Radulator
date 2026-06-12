@@ -33,14 +33,14 @@ test.describe("Radiation Dose Converter Calculator", () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator("h2")).toContainText("Radiation Dose Converter");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("Radiation Dose Converter");
   });
 
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText(
+      await expect(page.getByTestId('calculator-title').first()).toContainText(
         "Radiation Dose Converter",
       );
       await expect(
@@ -82,7 +82,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Gray (Gy)").first()).toBeVisible();
       await expect(results.locator("text=1 Gy").first()).toBeVisible();
       await expect(results.locator("text=1000 mGy").first()).toBeVisible();
@@ -97,7 +97,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=0.5 Gy").first()).toBeVisible();
       await expect(results.locator("text=50 rad").first()).toBeVisible();
     });
@@ -109,7 +109,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=1 Gy").first()).toBeVisible();
       await expect(results.locator("text=1000 mGy").first()).toBeVisible();
     });
@@ -121,7 +121,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=For X-rays/gamma").first(),
       ).toBeVisible();
@@ -143,7 +143,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Sievert (Sv)").first()).toBeVisible();
       await expect(results.locator("text=1 mSv").first()).toBeVisible();
       await expect(results.locator("text=1000").first()).toBeVisible();
@@ -158,7 +158,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=0.01 Sv").first()).toBeVisible();
       await expect(results.locator("text=10000").first()).toBeVisible(); // uSv
       await expect(results.locator("text=1 rem").first()).toBeVisible();
@@ -171,7 +171,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=0.05 Sv").first()).toBeVisible();
       await expect(results.locator("text=50 mSv").first()).toBeVisible();
     });
@@ -186,7 +186,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=wR Factor").first()).toBeVisible();
       await expect(results.locator("text=20").first()).toBeVisible();
       await expect(
@@ -205,7 +205,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Equivalent Background Radiation").first(),
       ).toBeVisible();
@@ -223,7 +223,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=CT chest range").first(),
       ).toBeVisible();
@@ -238,7 +238,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Activity Conversions").first(),
       ).toBeVisible();
@@ -254,7 +254,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=10 mCi").first()).toBeVisible();
       await expect(results.locator("text=0.37 GBq").first()).toBeVisible();
     });
@@ -266,7 +266,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=37 GBq").first()).toBeVisible();
       await expect(results.locator("text=1000 mCi").first()).toBeVisible();
     });
@@ -278,7 +278,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=740 MBq").first()).toBeVisible();
     });
 
@@ -289,7 +289,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Nuclear Medicine Context").first(),
       ).toBeVisible();
@@ -303,7 +303,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=1 mCi = 37 MBq").first(),
       ).toBeVisible();
@@ -320,7 +320,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=CT Dose Calculation").first(),
       ).toBeVisible();
@@ -343,7 +343,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=k-factor").first()).toBeVisible();
       await expect(results.locator("text=0.0021").first()).toBeVisible();
       await expect(results.locator("text=16 cm phantom").first()).toBeVisible();
@@ -358,7 +358,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Age Adjustment").first(),
       ).toBeVisible();
@@ -380,7 +380,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Typical chest CT").first(),
       ).toBeVisible();
@@ -397,7 +397,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Equivalent Chest X-rays").first(),
       ).toBeVisible();
@@ -415,7 +415,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Important Limitations").first(),
       ).toBeVisible();
@@ -431,7 +431,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
     }) => {
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Common Reference Doses").first(),
       ).toBeVisible();
@@ -446,7 +446,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
     test("should show ICRP dose limits", async ({ page }) => {
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Dose Limits").first()).toBeVisible();
       await expect(
         results.locator("text=Annual Background").first(),
@@ -464,7 +464,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
       await page.fill('input[id="input_value"]', "100");
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Please select a conversion mode").first(),
       ).toBeVisible();
@@ -478,7 +478,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
       // Don't select unit
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Please select an input unit").first(),
       ).toBeVisible();
@@ -491,7 +491,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=0 Gy").first()).toBeVisible();
       await expect(results.locator("text=0 mGy").first()).toBeVisible();
     });
@@ -505,7 +505,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=10").first()).toBeVisible();
       await expect(results.locator("text=mrem").first()).toBeVisible();
     });
@@ -519,7 +519,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=1000 GBq").first()).toBeVisible();
     });
   });
@@ -543,7 +543,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should show both sections
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Equivalent Dose Conversions").first(),
       ).toBeVisible();
@@ -582,8 +582,8 @@ test.describe("Radiation Dose Converter Calculator", () => {
       await verifyMobileResponsive(page);
 
       // Verify calculator is still usable on mobile
-      await expect(page.locator("h2")).toContainText("Radiation");
-      await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toContainText("Radiation");
+      await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
     });
   });
 });

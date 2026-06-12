@@ -30,7 +30,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("Lung-RADS");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("Lung-RADS");
       await expect(
         page.getByText("Lung cancer screening CT classification"),
       ).toBeVisible();

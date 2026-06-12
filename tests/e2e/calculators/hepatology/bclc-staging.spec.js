@@ -34,7 +34,7 @@ test.describe('BCLC Staging Calculator', () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator('h2')).toContainText('BCLC Staging (HCC)');
+    await expect(page.getByTestId('calculator-title').first()).toContainText('BCLC Staging (HCC)');
     await expect(page.locator('text=Barcelona Clinic Liver Cancer staging')).toBeVisible();
   });
 
@@ -102,7 +102,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'Yes - eligible for transplant');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -137,7 +137,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'No - not a candidate');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -171,7 +171,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'Yes - eligible for transplant');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -203,7 +203,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'Unknown');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -239,7 +239,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'No - not a candidate');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -274,7 +274,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'No - not a candidate');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -306,7 +306,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'No - not a candidate');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -340,7 +340,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'No - not a candidate');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -370,7 +370,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'Unknown');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify Child-Pugh calculation
     await expect(page.locator('text=5 points (Class A)')).toBeVisible();
@@ -397,7 +397,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Liver Transplant Candidate?', 'Unknown');
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify Child-Pugh calculation
     await expect(page.locator('text=Class B')).toBeVisible();
@@ -421,7 +421,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     await selectRadio(page, 'Liver Transplant Candidate?', 'Yes - eligible for transplant');
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // At exactly 2.0cm, should be Stage 0
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -445,7 +445,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     await selectRadio(page, 'Liver Transplant Candidate?', 'Yes - eligible for transplant');
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should be Stage A, not Stage 0
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -471,7 +471,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     await selectRadio(page, 'Liver Transplant Candidate?', 'Unknown');
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should be Stage A (not 0) due to Child-Pugh B
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -499,7 +499,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     await selectRadio(page, 'Liver Transplant Candidate?', 'No - not a candidate');
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should be Stage C with both mentioned
     await expect(page.locator('text=C')).toBeVisible();
@@ -540,8 +540,8 @@ test.describe('BCLC Staging Calculator', () => {
     await verifyMobileResponsive(page);
 
     // Verify calculator is still usable on mobile
-    await expect(page.locator('h2:has-text("BCLC Staging")')).toBeVisible();
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByTestId('calculator-title').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
   });
 
   test('should display subLabel hints for numeric inputs', async ({ page }) => {
@@ -567,7 +567,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Hepatic Encephalopathy', 'None');
     await selectRadio(page, 'Liver Transplant Candidate?', 'Yes - eligible for transplant');
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should handle decimals properly
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -589,7 +589,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Hepatic Encephalopathy', 'None');
     await selectRadio(page, 'Liver Transplant Candidate?', 'Yes - eligible for transplant');
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Wait for results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
@@ -616,7 +616,7 @@ test.describe('BCLC Staging Calculator', () => {
     await selectRadio(page, 'Hepatic Encephalopathy', 'None');
     await selectRadio(page, 'Liver Transplant Candidate?', 'No - not a candidate');
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Wait for results
     await expect(page.locator('text=Atezolizumab + Bevacizumab')).toBeVisible();
