@@ -455,7 +455,7 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
   test("Test 8: UI Elements and Info Text", async ({ page }) => {
     // Verify calculator title
     await expect(
-      page.getByTestId('calculator-title').first()'),
+      page.getByTestId('calculator-title').first(),
     ).toBeVisible();
 
     // Verify info text is visible (it's in a blue info box) - use .first() to avoid strict mode

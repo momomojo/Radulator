@@ -27,7 +27,7 @@ test.describe('Milan Criteria Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, 'Milan Criteria (HCC)');
-    await expect(page.getByTestId('calculator-title').first()')).toBeVisible();
+    await expect(page.getByTestId('calculator-title').first()).toBeVisible();
   });
 
   test.describe('Visual Appeal & Theme Matching', () => {
@@ -38,7 +38,7 @@ test.describe('Milan Criteria Calculator', () => {
       await expect(card).toBeVisible();
 
       // Check title is visible and styled
-      const title = page.getByTestId('calculator-title').first()');
+      const title = page.getByTestId('calculator-title').first();
       await expect(title).toBeVisible();
 
       // Check description is present
@@ -50,7 +50,7 @@ test.describe('Milan Criteria Calculator', () => {
       await page.setViewportSize({ width: 375, height: 667 });
 
       // Calculator should still be visible and usable
-      await expect(page.getByTestId('calculator-title').first()')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toBeVisible();
 
       // Fields should be visible and accessible
       const tumorCountLabel = page.locator('label:has-text("Number of Tumors")');
