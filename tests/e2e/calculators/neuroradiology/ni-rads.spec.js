@@ -33,7 +33,7 @@ const CALCULATOR_NAME = "ACR NI-RADS";
  */
 async function selectRadioOption(page, labelText) {
   // Target radio labels within the main content area (not sidebar)
-  await page.locator("main").getByText(labelText, { exact: true }).click();
+  await page.locator("main").first().getByText(labelText, { exact: true }).click();
 }
 
 /**
@@ -90,7 +90,7 @@ test.describe("ACR NI-RADS Calculator", () => {
       await expect(
         page.locator("main").getByText("MRI", { exact: true }),
       ).toBeVisible();
-      await expect(page.locator("main").getByText("PET/CT")).toBeVisible();
+      await expect(page.locator("main").first().getByText("PET/CT")).toBeVisible();
     });
 
     test("should have prior imaging availability selection", async ({

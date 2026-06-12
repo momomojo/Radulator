@@ -542,7 +542,7 @@ test.describe("ThyPRO-39 Calculator", () => {
     test("should be responsive on mobile", async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
       await expect(page.getByTestId('calculator-title').first()).toBeVisible();
-      await expect(page.locator("text=1. Pressure or tightness")).toBeVisible();
+      await expect(page.locator("text=1. Pressure or tightness").first()).toBeVisible();
       await verifyMobileResponsive(page);
     });
 

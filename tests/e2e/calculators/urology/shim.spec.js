@@ -62,8 +62,8 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     await expect(
       page.locator("text=1. How do you rate your confidence"),
     ).toBeVisible();
-    await expect(page.locator("text=Very low")).toBeVisible();
-    await expect(page.locator("text=Very high")).toBeVisible();
+    await expect(page.locator("text=Very low").first()).toBeVisible();
+    await expect(page.locator("text=Very high").first()).toBeVisible();
 
     // Question 2: Firmness/Penetration
     await expect(
@@ -72,7 +72,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     await expect(
       page.locator("text=hard enough for penetration"),
     ).toBeVisible();
-    await expect(page.locator("text=No sexual activity")).toBeVisible();
+    await expect(page.locator("text=No sexual activity").first()).toBeVisible();
 
     // Question 3: Maintenance
     await expect(
@@ -90,8 +90,8 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
         "text=4. During sexual intercourse, how difficult was it to maintain",
       ),
     ).toBeVisible();
-    await expect(page.locator("text=Extremely difficult")).toBeVisible();
-    await expect(page.locator("text=Not difficult")).toBeVisible();
+    await expect(page.locator("text=Extremely difficult").first()).toBeVisible();
+    await expect(page.locator("text=Not difficult").first()).toBeVisible();
 
     // Question 5: Satisfaction
     await expect(
@@ -99,7 +99,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
         "text=5. When you attempted sexual intercourse, how often was it satisfactory",
       ),
     ).toBeVisible();
-    await expect(page.locator("text=Almost always or always")).toBeVisible();
+    await expect(page.locator("text=Almost always or always").first()).toBeVisible();
   });
 
   test("should require all questions to be answered", async ({ page }) => {

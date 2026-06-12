@@ -20,12 +20,12 @@ test.describe("Wells Criteria for PE Calculator", () => {
       await expect(
         page.getByText("Clinical signs/symptoms of DVT"),
       ).toBeVisible();
-      await expect(page.getByText("PE is #1 diagnosis")).toBeVisible();
-      await expect(page.getByText("Heart rate >100 bpm")).toBeVisible();
-      await expect(page.getByText("Immobilization")).toBeVisible();
-      await expect(page.getByText("Previous PE or DVT")).toBeVisible();
-      await expect(page.getByText("Hemoptysis")).toBeVisible();
-      await expect(page.getByText("Malignancy")).toBeVisible();
+      await expect(page.getByText("PE is #1 diagnosis").first()).toBeVisible();
+      await expect(page.getByText("Heart rate >100 bpm").first()).toBeVisible();
+      await expect(page.getByText("Immobilization").first()).toBeVisible();
+      await expect(page.getByText("Previous PE or DVT").first()).toBeVisible();
+      await expect(page.getByText("Hemoptysis").first()).toBeVisible();
+      await expect(page.getByText("Malignancy").first()).toBeVisible();
     });
 
     test("should display info section with Wells explanation", async ({

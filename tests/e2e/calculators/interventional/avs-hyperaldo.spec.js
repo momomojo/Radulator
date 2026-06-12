@@ -104,9 +104,9 @@ test.describe("AVS Hyperaldo Calculator", () => {
       ).toBeVisible();
 
       // Protocol selection
-      await expect(page.locator("text=Pre-ACTH only")).toBeVisible();
-      await expect(page.locator("text=Post-ACTH only")).toBeVisible();
-      await expect(page.locator("text=Both (comparison view)")).toBeVisible();
+      await expect(page.locator("text=Pre-ACTH only").first()).toBeVisible();
+      await expect(page.locator("text=Post-ACTH only").first()).toBeVisible();
+      await expect(page.locator("text=Both (comparison view).first()")).toBeVisible();
     });
   });
 
@@ -192,8 +192,8 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await expect(
         page.locator("text=Chow 2024 Unilateral Criteria"),
       ).toBeVisible();
-      await expect(page.locator("text=/CSI:/i")).toBeVisible();
-      await expect(page.locator("text=/RASI:/i")).toBeVisible();
+      await expect(page.locator("text=/CSI:/i").first()).toBeVisible();
+      await expect(page.locator("text=/RASI:/i").first()).toBeVisible();
 
       // Take screenshot
       await takeScreenshot(page, "avs-hyperaldo", "unilateral-left");
@@ -408,7 +408,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await expect(page.locator("text=Pre-ACTH Results")).toBeVisible({
         timeout: 2000,
       });
-      await expect(page.locator("text=Post-ACTH Results")).toBeVisible();
+      await expect(page.locator("text=Post-ACTH Results").first()).toBeVisible();
 
       // Verify both show results in grid layout
       const comparisonGrid = page
@@ -866,12 +866,12 @@ test.describe("AVS Hyperaldo Calculator", () => {
 
     test("should use medical terminology correctly", async ({ page }) => {
       // Verify proper medical terms are used
-      await expect(page.locator("text=/Selectivity Index/i")).toBeVisible();
-      await expect(page.locator("text=/Lateralization Index/i")).toBeVisible();
+      await expect(page.locator("text=/Selectivity Index/i").first()).toBeVisible();
+      await expect(page.locator("text=/Lateralization Index/i").first()).toBeVisible();
       await expect(
         page.locator("text=/Contralateral Suppression/i"),
       ).toBeVisible();
-      await expect(page.locator("text=/ACTH/i")).toBeVisible();
+      await expect(page.locator("text=/ACTH/i").first()).toBeVisible();
     });
 
     test("should provide comprehensive calculation outputs", async ({
@@ -925,12 +925,12 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await expect(page.locator("text=Left SI:")).toBeVisible({
         timeout: 2000,
       });
-      await expect(page.locator("text=Right SI:")).toBeVisible();
-      await expect(page.locator("text=/LI:/i")).toBeVisible();
-      await expect(page.locator("text=/CR:/i")).toBeVisible();
-      await expect(page.locator("text=/CSI:/i")).toBeVisible();
-      await expect(page.locator("text=/RASI:/i")).toBeVisible();
-      await expect(page.locator("text=/AV\\/IVC:/i")).toBeVisible();
+      await expect(page.locator("text=Right SI:").first()).toBeVisible();
+      await expect(page.locator("text=/LI:/i").first()).toBeVisible();
+      await expect(page.locator("text=/CR:/i").first()).toBeVisible();
+      await expect(page.locator("text=/CSI:/i").first()).toBeVisible();
+      await expect(page.locator("text=/RASI:/i").first()).toBeVisible();
+      await expect(page.locator("text=/AV\\/IVC:/i").first()).toBeVisible();
 
       // Verify interpretation provided
       await expect(page.locator('h4:has-text("Interpretation")')).toBeVisible();

@@ -54,20 +54,20 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
     test("should have study quality field visible on load", async ({
       page,
     }) => {
-      await expect(page.getByText("Study Quality")).toBeVisible();
-      await expect(page.getByText("Diagnostic quality")).toBeVisible();
+      await expect(page.getByText("Study Quality").first()).toBeVisible();
+      await expect(page.getByText("Diagnostic quality").first()).toBeVisible();
       await expect(
         page.getByText("Limited - some segments non-evaluable"),
       ).toBeVisible();
-      await expect(page.getByText("Non-diagnostic (CAD-RADS N)")).toBeVisible();
+      await expect(page.getByText("Non-diagnostic (CAD-RADS N).first()")).toBeVisible();
     });
 
     test("should display info section with CAD-RADS explanation", async ({
       page,
     }) => {
-      await expect(page.getByText("Stenosis Categories:")).toBeVisible();
-      await expect(page.getByText("Modifiers (CAD-RADS 2.0):")).toBeVisible();
-      await expect(page.getByText("High-Risk Plaque Features:")).toBeVisible();
+      await expect(page.getByText("Stenosis Categories:").first()).toBeVisible();
+      await expect(page.getByText("Modifiers (CAD-RADS 2.0).first():")).toBeVisible();
+      await expect(page.getByText("High-Risk Plaque Features:").first()).toBeVisible();
     });
 
     test("should show maximum stenosis field when diagnostic quality selected", async ({
@@ -76,7 +76,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
       await page
         .locator('input[name="study_quality"][value="diagnostic"]')
         .click();
-      await expect(page.getByText("Maximum Coronary Stenosis")).toBeVisible();
+      await expect(page.getByText("Maximum Coronary Stenosis").first()).toBeVisible();
     });
 
     test("should hide stenosis fields when non-diagnostic selected", async ({

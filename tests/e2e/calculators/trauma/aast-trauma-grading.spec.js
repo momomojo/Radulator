@@ -78,7 +78,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
   test.describe("Liver Injury Grading", () => {
     test.beforeEach(async ({ page }) => {
-      await page.getByText("Liver", { exact: true }).click();
+      await page.getByText("Liver", { exact: true }).first().click();
     });
 
     test("should show liver-specific fields when liver selected", async ({
@@ -94,7 +94,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade I liver injury - subcapsular hematoma <10%", async ({
       page,
     }) => {
-      await page.getByText("Subcapsular, <10% surface area").click();
+      await page.getByText("Subcapsular, <10% surface area").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -110,7 +110,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade I liver injury - capsular tear <1cm", async ({
       page,
     }) => {
-      await page.getByText("Capsular tear, <1 cm parenchymal depth").click();
+      await page.getByText("Capsular tear, <1 cm parenchymal depth").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -122,7 +122,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade II liver injury - laceration 1-3 cm", async ({
       page,
     }) => {
-      await page.getByText("1-3 cm parenchymal depth, <10 cm length").click();
+      await page.getByText("1-3 cm parenchymal depth, <10 cm length").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -134,7 +134,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade III liver injury - deep laceration >3cm", async ({
       page,
     }) => {
-      await page.getByText(">3 cm parenchymal depth").click();
+      await page.getByText(">3 cm parenchymal depth").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -209,7 +209,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade V liver injury - juxtahepatic venous injury", async ({
       page,
     }) => {
-      await page.getByText("Juxtahepatic venous injury").click();
+      await page.getByText("Juxtahepatic venous injury").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -223,7 +223,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade V with major hepatic vein checkbox", async ({
       page,
     }) => {
-      await page.getByText("Major Hepatic Vein or IVC Injury").click();
+      await page.getByText("Major Hepatic Vein or IVC Injury").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -248,7 +248,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
   test.describe("Spleen Injury Grading", () => {
     test.beforeEach(async ({ page }) => {
-      await page.getByText("Spleen", { exact: true }).click();
+      await page.getByText("Spleen", { exact: true }).first().click();
     });
 
     test("should show spleen-specific fields when spleen selected", async ({
@@ -262,7 +262,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     });
 
     test("should classify Grade I spleen injury", async ({ page }) => {
-      await page.getByText("Subcapsular, <10% surface area").click();
+      await page.getByText("Subcapsular, <10% surface area").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -277,7 +277,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade III spleen injury - large hematoma", async ({
       page,
     }) => {
-      await page.getByText("Subcapsular, >50% surface area").click();
+      await page.getByText("Subcapsular, >50% surface area").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -291,7 +291,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade IV spleen injury - PSA or AVF", async ({
       page,
     }) => {
-      await page.getByText("Pseudoaneurysm or arteriovenous fistula").click();
+      await page.getByText("Pseudoaneurysm or arteriovenous fistula").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -305,7 +305,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade V spleen injury - shattered", async ({
       page,
     }) => {
-      await page.getByText("Shattered spleen").click();
+      await page.getByText("Shattered spleen").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -335,7 +335,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show spleen-specific vaccination note for Grade V", async ({
       page,
     }) => {
-      await page.getByText("Shattered spleen").click();
+      await page.getByText("Shattered spleen").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -347,7 +347,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
   test.describe("Kidney Injury Grading", () => {
     test.beforeEach(async ({ page }) => {
-      await page.getByText("Kidney", { exact: true }).click();
+      await page.getByText("Kidney", { exact: true }).first().click();
     });
 
     test("should show kidney-specific fields when kidney selected", async ({
@@ -367,7 +367,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade I kidney injury - contusion", async ({
       page,
     }) => {
-      await page.getByText("Contusion without laceration").click();
+      await page.getByText("Contusion without laceration").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -380,7 +380,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade II kidney injury - small laceration", async ({
       page,
     }) => {
-      await page.getByText("Laceration <2.5 cm, no collecting system").click();
+      await page.getByText("Laceration <2.5 cm, no collecting system").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -421,7 +421,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade IV kidney injury - UPJ disruption", async ({
       page,
     }) => {
-      await page.getByText("Complete or near-complete UPJ disruption").click();
+      await page.getByText("Complete or near-complete UPJ disruption").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -445,7 +445,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     });
 
     test("should note urinary extravasation on result", async ({ page }) => {
-      await page.getByText("Laceration <2.5 cm, no collecting system").click();
+      await page.getByText("Laceration <2.5 cm, no collecting system").first().click();
       await page.locator('label[for="kidney_urinary_extrav"]').click();
 
       await page.click('button:has-text("Calculate")');
@@ -478,9 +478,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should advance grade by 1 for multiple injuries (Grade I to II)", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
-      await page.getByText("Subcapsular, <10% surface area").click();
-      await page.getByText("Multiple Injuries in Same Organ").click();
+      await page.getByText("Liver", { exact: true }).first().click();
+      await page.getByText("Subcapsular, <10% surface area").first().click();
+      await page.getByText("Multiple Injuries in Same Organ").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -497,9 +497,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should not advance grade beyond III for multiple injuries", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
-      await page.getByText(">3 cm parenchymal depth").click();
-      await page.getByText("Multiple Injuries in Same Organ").click();
+      await page.getByText("Liver", { exact: true }).first().click();
+      await page.getByText(">3 cm parenchymal depth").first().click();
+      await page.getByText("Multiple Injuries in Same Organ").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -514,8 +514,8 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show NOM recommendation for low-grade liver injury", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
-      await page.getByText("Subcapsular, <10% surface area").click();
+      await page.getByText("Liver", { exact: true }).first().click();
+      await page.getByText("Subcapsular, <10% surface area").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -529,7 +529,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show angioembolization consideration for Grade III", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
+      await page.getByText("Liver", { exact: true }).first().click();
       await page
         .getByText("Active bleeding contained within liver parenchyma")
         .click();
@@ -546,7 +546,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show operative management note for Grade V", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
+      await page.getByText("Liver", { exact: true }).first().click();
       await page
         .getByText("Parenchymal disruption >75% of hepatic lobe")
         .click();
@@ -565,8 +565,8 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should always display critical hemodynamic stability note", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
-      await page.getByText("Subcapsular, <10% surface area").click();
+      await page.getByText("Liver", { exact: true }).first().click();
+      await page.getByText("Subcapsular, <10% surface area").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -595,7 +595,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show error when no injury finding selected for liver", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
+      await page.getByText("Liver", { exact: true }).first().click();
       // Don't select any injury findings
       await page.click('button:has-text("Calculate")');
 
@@ -607,7 +607,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show error when no injury finding selected for spleen", async ({
       page,
     }) => {
-      await page.getByText("Spleen", { exact: true }).click();
+      await page.getByText("Spleen", { exact: true }).first().click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -618,7 +618,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show error when no injury finding selected for kidney", async ({
       page,
     }) => {
-      await page.getByText("Kidney", { exact: true }).click();
+      await page.getByText("Kidney", { exact: true }).first().click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -631,7 +631,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should only show liver fields when liver selected", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
+      await page.getByText("Liver", { exact: true }).first().click();
 
       await expect(page.getByText("Liver Hematoma").first()).toBeVisible();
       await expect(page.getByText("Spleen Hematoma").first()).not.toBeVisible();
@@ -641,7 +641,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should only show spleen fields when spleen selected", async ({
       page,
     }) => {
-      await page.getByText("Spleen", { exact: true }).click();
+      await page.getByText("Spleen", { exact: true }).first().click();
 
       await expect(page.getByText("Spleen Hematoma").first()).toBeVisible();
       await expect(page.getByText("Liver Hematoma").first()).not.toBeVisible();
@@ -651,7 +651,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should only show kidney fields when kidney selected", async ({
       page,
     }) => {
-      await page.getByText("Kidney", { exact: true }).click();
+      await page.getByText("Kidney", { exact: true }).first().click();
 
       await expect(page.getByText("Kidney Hematoma").first()).toBeVisible();
       await expect(page.getByText("Liver Hematoma").first()).not.toBeVisible();
@@ -663,11 +663,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should take highest grade when multiple injury types present", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
+      await page.getByText("Liver", { exact: true }).first().click();
 
       // Select Grade I hematoma and Grade III laceration
-      await page.getByText("Subcapsular, <10% surface area").click();
-      await page.getByText(">3 cm parenchymal depth").click();
+      await page.getByText("Subcapsular, <10% surface area").first().click();
+      await page.getByText(">3 cm parenchymal depth").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -681,11 +681,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
     });
 
     test("should list all findings in results", async ({ page }) => {
-      await page.getByText("Spleen", { exact: true }).click();
+      await page.getByText("Spleen", { exact: true }).first().click();
 
       // Select multiple findings
-      await page.getByText("Subcapsular, 10-50% surface area").click();
-      await page.getByText("1-3 cm parenchymal depth").click();
+      await page.getByText("Subcapsular, 10-50% surface area").first().click();
+      await page.getByText("1-3 cm parenchymal depth").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -741,7 +741,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show version selector when kidney is selected", async ({
       page,
     }) => {
-      await page.getByText("Kidney", { exact: true }).click();
+      await page.getByText("Kidney", { exact: true }).first().click();
       await expect(page.getByText("Kidney OIS Version").first()).toBeVisible();
       await expect(
         page.locator('label[for="kidney_ois_version-2025"]'),
@@ -752,22 +752,22 @@ test.describe("AAST Trauma Grading Calculator", () => {
     });
 
     test("should not show version selector for liver", async ({ page }) => {
-      await page.getByText("Liver", { exact: true }).click();
+      await page.getByText("Liver", { exact: true }).first().click();
       await expect(
         page.getByText("Kidney OIS Version").first(),
       ).not.toBeVisible();
     });
 
     test("should not show version selector for spleen", async ({ page }) => {
-      await page.getByText("Spleen", { exact: true }).click();
+      await page.getByText("Spleen", { exact: true }).first().click();
       await expect(
         page.getByText("Kidney OIS Version").first(),
       ).not.toBeVisible();
     });
 
     test("should show OIS version in results for kidney", async ({ page }) => {
-      await page.getByText("Kidney", { exact: true }).click();
-      await page.getByText("Contusion without laceration").click();
+      await page.getByText("Kidney", { exact: true }).first().click();
+      await page.getByText("Contusion without laceration").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -778,14 +778,14 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
   test.describe("Kidney 2025 OIS Grading", () => {
     test.beforeEach(async ({ page }) => {
-      await page.getByText("Kidney", { exact: true }).click();
+      await page.getByText("Kidney", { exact: true }).first().click();
       await page.locator('label[for="kidney_ois_version-2025"]').click();
     });
 
     test("should grade pararenal hematoma extension as Grade IV", async ({
       page,
     }) => {
-      await page.getByText("Pararenal hematoma extension").click();
+      await page.getByText("Pararenal hematoma extension").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -799,7 +799,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should grade PSA/AVF without active bleeding as Grade III", async ({
       page,
     }) => {
-      await page.getByText("Vascular injury without active bleeding").click();
+      await page.getByText("Vascular injury without active bleeding").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -811,7 +811,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should grade active bleeding from kidney as Grade IV (key 2025 change)", async ({
       page,
     }) => {
-      await page.getByText("Active bleeding from kidney").click();
+      await page.getByText("Active bleeding from kidney").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -851,8 +851,8 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should grade multifragmented kidney with active bleeding as Grade V", async ({
       page,
     }) => {
-      await page.getByText("Multifragmented kidney").click();
-      await page.getByText("Active bleeding from kidney").click();
+      await page.getByText("Multifragmented kidney").first().click();
+      await page.getByText("Active bleeding from kidney").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -868,7 +868,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should grade multifragmented kidney without active bleeding as Grade IV", async ({
       page,
     }) => {
-      await page.getByText("Multifragmented kidney").click();
+      await page.getByText("Multifragmented kidney").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -882,7 +882,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should grade urinary extravasation as Grade III (downgraded in 2025)", async ({
       page,
     }) => {
-      await page.getByText("Laceration <2.5 cm, no collecting system").click();
+      await page.getByText("Laceration <2.5 cm, no collecting system").first().click();
       await page.locator('label[for="kidney_urinary_extrav"]').click();
 
       await page.click('button:has-text("Calculate")');
@@ -894,7 +894,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
   test.describe("Kidney 2018 OIS Grading", () => {
     test.beforeEach(async ({ page }) => {
-      await page.getByText("Kidney", { exact: true }).click();
+      await page.getByText("Kidney", { exact: true }).first().click();
       await page.locator('label[for="kidney_ois_version-2018"]').click();
     });
 
@@ -1039,13 +1039,13 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should not show liver/spleen/kidney fields for pancreas", async ({
       page,
     }) => {
-      await expect(page.locator("text=Liver Hematoma")).not.toBeVisible();
-      await expect(page.locator("text=Spleen Hematoma")).not.toBeVisible();
-      await expect(page.locator("text=Kidney Hematoma")).not.toBeVisible();
+      await expect(page.locator("text=Liver Hematoma").first()).not.toBeVisible();
+      await expect(page.locator("text=Spleen Hematoma").first()).not.toBeVisible();
+      await expect(page.locator("text=Kidney Hematoma").first()).not.toBeVisible();
     });
 
     test("should show OIS Version 2024 in results", async ({ page }) => {
-      await page.getByText("Minor contusion without duct injury").click();
+      await page.getByText("Minor contusion without duct injury").first().click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
@@ -1054,7 +1054,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
     // Grade I tests
     test("should classify Grade I - minor contusion", async ({ page }) => {
-      await page.getByText("Minor contusion without duct injury").click();
+      await page.getByText("Minor contusion without duct injury").first().click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
@@ -1101,7 +1101,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade III - complete transection body/tail", async ({
       page,
     }) => {
-      await page.getByText("Complete ductal transection").click();
+      await page.getByText("Complete ductal transection").first().click();
       await page
         .locator('label[for="pancreas_duct_location-body_tail"]')
         .click();
@@ -1117,7 +1117,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade III - partial duct injury body/tail", async ({
       page,
     }) => {
-      await page.getByText("Partial ductal injury").click();
+      await page.getByText("Partial ductal injury").first().click();
       await page
         .locator('label[for="pancreas_duct_location-body_tail"]')
         .click();
@@ -1130,7 +1130,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade III - deep parenchymal without ductal interrogation body/tail", async ({
       page,
     }) => {
-      await page.getByText("Deep parenchymal injury without ductal").click();
+      await page.getByText("Deep parenchymal injury without ductal").first().click();
       await page
         .locator('label[for="pancreas_duct_location-body_tail"]')
         .click();
@@ -1144,7 +1144,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade IV - complete transection head", async ({
       page,
     }) => {
-      await page.getByText("Complete ductal transection").click();
+      await page.getByText("Complete ductal transection").first().click();
       await page.locator('label[for="pancreas_duct_location-head"]').click();
       await page.click('button:has-text("Calculate")');
 
@@ -1158,7 +1158,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade IV - partial duct injury head", async ({
       page,
     }) => {
-      await page.getByText("Partial ductal injury").click();
+      await page.getByText("Partial ductal injury").first().click();
       await page.locator('label[for="pancreas_duct_location-head"]').click();
       await page.click('button:has-text("Calculate")');
 
@@ -1188,7 +1188,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).not.toBeVisible();
 
       // Select duct injury → location should appear
-      await page.getByText("Complete ductal transection").click();
+      await page.getByText("Complete ductal transection").first().click();
       await expect(
         page.getByText("Location of Duct Injury").first(),
       ).toBeVisible();
@@ -1198,7 +1198,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show pancreas-specific note for duct injuries", async ({
       page,
     }) => {
-      await page.getByText("Complete ductal transection").click();
+      await page.getByText("Complete ductal transection").first().click();
       await page
         .locator('label[for="pancreas_duct_location-body_tail"]')
         .click();
@@ -1214,7 +1214,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show appropriate management for Grade III", async ({
       page,
     }) => {
-      await page.getByText("Partial ductal injury").click();
+      await page.getByText("Partial ductal injury").first().click();
       await page
         .locator('label[for="pancreas_duct_location-body_tail"]')
         .click();
@@ -1259,8 +1259,8 @@ test.describe("AAST Trauma Grading Calculator", () => {
   // ============================================
   test.describe("Imaging Recommendation and Pitfalls", () => {
     test("should show imaging recommendation for liver", async ({ page }) => {
-      await page.getByText("Liver", { exact: true }).click();
-      await page.getByText("Capsular tear, <1 cm").click();
+      await page.getByText("Liver", { exact: true }).first().click();
+      await page.getByText("Capsular tear, <1 cm").first().click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
@@ -1270,8 +1270,8 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show imaging pitfalls for liver Grade III", async ({
       page,
     }) => {
-      await page.getByText("Liver", { exact: true }).click();
-      await page.getByText(">3 cm parenchymal depth").click();
+      await page.getByText("Liver", { exact: true }).first().click();
+      await page.getByText(">3 cm parenchymal depth").first().click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
@@ -1279,8 +1279,8 @@ test.describe("AAST Trauma Grading Calculator", () => {
     });
 
     test("should show imaging recommendation for spleen", async ({ page }) => {
-      await page.getByText("Spleen", { exact: true }).click();
-      await page.getByText("Subcapsular, <10%").click();
+      await page.getByText("Spleen", { exact: true }).first().click();
+      await page.getByText("Subcapsular, <10%").first().click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
@@ -1292,8 +1292,8 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should show delayed rupture pitfall for spleen Grade III", async ({
       page,
     }) => {
-      await page.getByText("Spleen", { exact: true }).click();
-      await page.getByText(">3 cm parenchymal depth").click();
+      await page.getByText("Spleen", { exact: true }).first().click();
+      await page.getByText(">3 cm parenchymal depth").first().click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
@@ -1306,7 +1306,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       page,
     }) => {
       await page.locator('label[for="organ-kidney"]').click();
-      await page.getByText("Contusion without laceration").click();
+      await page.getByText("Contusion without laceration").first().click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
@@ -1317,7 +1317,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
     test("should show MRCP recommendation for pancreas", async ({ page }) => {
       await page.locator('label[for="organ-pancreas"]').click();
-      await page.getByText("Minor contusion without duct injury").click();
+      await page.getByText("Minor contusion without duct injury").first().click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
@@ -1326,7 +1326,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
     test("should show pancreas CT miss rate pitfall", async ({ page }) => {
       await page.locator('label[for="organ-pancreas"]').click();
-      await page.getByText("Minor contusion without duct injury").click();
+      await page.getByText("Minor contusion without duct injury").first().click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });

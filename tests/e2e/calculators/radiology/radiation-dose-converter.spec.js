@@ -51,13 +51,13 @@ test.describe("Radiation Dose Converter Calculator", () => {
     test("should display info section with unit relationships", async ({
       page,
     }) => {
-      await expect(page.getByText("1 Gy = 100 rad")).toBeVisible();
-      await expect(page.getByText("1 Sv = 100 rem")).toBeVisible();
-      await expect(page.getByText("1 Ci = 37 GBq")).toBeVisible();
+      await expect(page.getByText("1 Gy = 100 rad").first()).toBeVisible();
+      await expect(page.getByText("1 Sv = 100 rem").first()).toBeVisible();
+      await expect(page.getByText("1 Ci = 37 GBq").first()).toBeVisible();
     });
 
     test("should have conversion mode selector", async ({ page }) => {
-      await expect(page.getByText("Conversion Mode")).toBeVisible();
+      await expect(page.getByText("Conversion Mode").first()).toBeVisible();
       await expect(
         page.locator('label[for="conversion_mode-absorbed"]'),
       ).toBeVisible();
@@ -569,7 +569,7 @@ test.describe("Radiation Dose Converter Calculator", () => {
     });
 
     test("should have reference to AAPM Report 96", async ({ page }) => {
-      await expect(page.getByText("AAPM Report")).toBeVisible();
+      await expect(page.getByText("AAPM Report").first()).toBeVisible();
     });
   });
 

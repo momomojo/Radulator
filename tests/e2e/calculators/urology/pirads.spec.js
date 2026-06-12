@@ -64,7 +64,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should calculate PI-RADS 1 for normal PZ findings", async ({
       page,
     }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page
         .locator('label:has-text("1 - Normal (no abnormality")')
         .click(); // DWI
@@ -82,7 +82,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should calculate PI-RADS 2 for low-risk PZ findings", async ({
       page,
     }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page
         .locator('label:has-text("2 - Linear/wedge-shaped hypointensity")')
         .click(); // DWI
@@ -102,7 +102,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should calculate PI-RADS 3 for equivocal PZ findings", async ({
       page,
     }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page.locator('label:has-text("3 - Focal, mild-moderate")').click(); // DWI = 3
       await page
         .locator('label:has-text("3 - Heterogeneous or non-circumscribed")')
@@ -118,7 +118,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should upgrade PZ from PI-RADS 3 to 4 with positive DCE", async ({
       page,
     }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page.locator('label:has-text("3 - Focal, mild-moderate")').click(); // DWI = 3
       await page
         .locator('label:has-text("3 - Heterogeneous or non-circumscribed")')
@@ -136,7 +136,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should calculate PI-RADS 4 for high-risk PZ findings", async ({
       page,
     }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page
         .locator('label:has-text("4 - Focal, markedly hypointense")')
         .click(); // DWI = 4
@@ -156,7 +156,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should calculate PI-RADS 5 for very high-risk PZ findings", async ({
       page,
     }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       // Select T2W first (unique label)
       await page
         .locator('label:has-text("4 - Circumscribed, homogeneous")')
@@ -177,7 +177,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
 
   test.describe("Transition Zone (TZ) Scoring - T2W Dominant", () => {
     test("should use T2W as dominant sequence for TZ", async ({ page }) => {
-      await page.getByText("Transition Zone (TZ)", { exact: true }).click();
+      await page.getByText("Transition Zone (TZ).first()", { exact: true }).click();
       await page.locator('label:has-text("3 - Focal, mild-moderate")').click(); // DWI = 3
       await page
         .locator('label:has-text("3 - Heterogeneous or non-circumscribed")')
@@ -194,7 +194,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should calculate PI-RADS 2 for TZ with low T2W score", async ({
       page,
     }) => {
-      await page.getByText("Transition Zone (TZ)", { exact: true }).click();
+      await page.getByText("Transition Zone (TZ).first()", { exact: true }).click();
       await page
         .locator('label:has-text("2 - Linear/wedge-shaped hypointensity")')
         .click(); // DWI = 2
@@ -211,7 +211,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should allow DWI to upgrade TZ score if higher than T2W", async ({
       page,
     }) => {
-      await page.getByText("Transition Zone (TZ)", { exact: true }).click();
+      await page.getByText("Transition Zone (TZ).first()", { exact: true }).click();
       // Select T2W 3 first (unique label)
       await page
         .locator('label:has-text("3 - Heterogeneous or non-circumscribed")')
@@ -241,7 +241,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     });
 
     test("should upgrade to PI-RADS 5 with definite EPE", async ({ page }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page
         .locator('label:has-text("4 - Focal, markedly hypointense")')
         .click(); // DWI = 4
@@ -252,7 +252,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
       await page.locator('input[type="number"]').first().fill("1.2");
 
       // Select definite EPE
-      await page.getByText("Definite EPE", { exact: true }).click();
+      await page.getByText("Definite EPE", { exact: true }).first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -262,7 +262,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
 
   test.describe("Lesion Size Assessment", () => {
     test("should display size categorization", async ({ page }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page
         .locator('label:has-text("4 - Focal, markedly hypointense")')
         .click();
@@ -281,7 +281,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
   test.describe("DCE Assessment", () => {
     test("should not upgrade PI-RADS 4 with positive DCE", async ({ page }) => {
       // DCE only upgrades PI-RADS 3, not 4 or 5
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page
         .locator('label:has-text("4 - Focal, markedly hypointense")')
         .click(); // DWI = 4
@@ -296,7 +296,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     });
 
     test("should handle DCE not performed", async ({ page }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page.locator('label:has-text("3 - Focal, mild-moderate")').click();
       await page
         .locator('label:has-text("3 - Heterogeneous or non-circumscribed")')
@@ -317,7 +317,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     });
 
     test("should show error when DWI score not selected", async ({ page }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
       await expect(page.getByText("Please select").first()).toBeVisible();
@@ -328,7 +328,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should recommend against biopsy for PI-RADS 1-2", async ({
       page,
     }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page
         .locator('label:has-text("2 - Linear/wedge-shaped hypointensity")')
         .click();
@@ -347,7 +347,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should indicate individualized decision for PI-RADS 3", async ({
       page,
     }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page.locator('label:has-text("3 - Focal, mild-moderate")').click();
       await page
         .locator('label:has-text("3 - Heterogeneous or non-circumscribed")')
@@ -360,7 +360,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     });
 
     test("should recommend biopsy for PI-RADS 4-5", async ({ page }) => {
-      await page.getByText("Peripheral Zone (PZ)", { exact: true }).click();
+      await page.getByText("Peripheral Zone (PZ).first()", { exact: true }).click();
       await page
         .locator('label:has-text("4 - Focal, markedly hypointense")')
         .click();

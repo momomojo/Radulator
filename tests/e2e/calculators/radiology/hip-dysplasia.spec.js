@@ -48,11 +48,11 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     ).toBeVisible();
 
     // Check for interpretation ranges
-    await expect(page.locator("text=<22%: Normal")).toBeVisible();
-    await expect(page.locator("text=22-32%: Borderline/At risk")).toBeVisible();
-    await expect(page.locator("text=33-59%: Subluxation")).toBeVisible();
-    await expect(page.locator("text=60-89%: Severe subluxation")).toBeVisible();
-    await expect(page.locator("text=≥90%: Dislocation")).toBeVisible();
+    await expect(page.locator("text=<22%: Normal").first()).toBeVisible();
+    await expect(page.locator("text=22-32%: Borderline/At risk").first()).toBeVisible();
+    await expect(page.locator("text=33-59%: Subluxation").first()).toBeVisible();
+    await expect(page.locator("text=60-89%: Severe subluxation").first()).toBeVisible();
+    await expect(page.locator("text=≥90%: Dislocation").first()).toBeVisible();
   });
 
   test("should display reference diagram image", async ({ page }) => {
@@ -101,9 +101,9 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     await page.click('button:has-text("Calculate")');
 
     // Check normal values for newborn female
-    await expect(page.locator("text=Normal AC-Angle")).toBeVisible();
-    await expect(page.locator("text=27 ± 5°")).toBeVisible();
-    await expect(page.locator("text=140-150° (newborn)")).toBeVisible();
+    await expect(page.locator("text=Normal AC-Angle").first()).toBeVisible();
+    await expect(page.locator("text=27 ± 5°").first()).toBeVisible();
+    await expect(page.locator("text=140-150° (newborn).first()")).toBeVisible();
   });
 
   test("should calculate normal values for newborn male (0-3 months)", async ({
@@ -118,8 +118,8 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator("text=25 ± 5°")).toBeVisible();
-    await expect(page.locator("text=140-150° (newborn)")).toBeVisible();
+    await expect(page.locator("text=25 ± 5°").first()).toBeVisible();
+    await expect(page.locator("text=140-150° (newborn).first()")).toBeVisible();
   });
 
   test("should calculate normal values for infant female (4-6 months)", async ({
@@ -134,8 +134,8 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator("text=25 ± 4°")).toBeVisible();
-    await expect(page.locator("text=135-145° (infant)")).toBeVisible();
+    await expect(page.locator("text=25 ± 4°").first()).toBeVisible();
+    await expect(page.locator("text=135-145° (infant).first()")).toBeVisible();
   });
 
   test("should calculate normal values for infant male (4-6 months)", async ({
@@ -150,8 +150,8 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator("text=23 ± 4°")).toBeVisible();
-    await expect(page.locator("text=135-145° (infant)")).toBeVisible();
+    await expect(page.locator("text=23 ± 4°").first()).toBeVisible();
+    await expect(page.locator("text=135-145° (infant).first()")).toBeVisible();
   });
 
   test("should calculate normal values for 1-year-old female", async ({
@@ -166,8 +166,8 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator("text=23 ± 3°")).toBeVisible();
-    await expect(page.locator("text=130-140° (1 year)")).toBeVisible();
+    await expect(page.locator("text=23 ± 3°").first()).toBeVisible();
+    await expect(page.locator("text=130-140° (1 year).first()")).toBeVisible();
   });
 
   test("should calculate normal values for 2-year-old male", async ({
@@ -182,8 +182,8 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator("text=20 ± 3°")).toBeVisible();
-    await expect(page.locator("text=125-135° (2 years)")).toBeVisible();
+    await expect(page.locator("text=20 ± 3°").first()).toBeVisible();
+    await expect(page.locator("text=125-135° (2 years).first()")).toBeVisible();
   });
 
   test("should calculate normal values for preschool child (3-5 years)", async ({
@@ -198,8 +198,8 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator("text=18-22° (preschool)")).toBeVisible();
-    await expect(page.locator("text=125-135° (child)")).toBeVisible();
+    await expect(page.locator("text=18-22° (preschool).first()")).toBeVisible();
+    await expect(page.locator("text=125-135° (child).first()")).toBeVisible();
   });
 
   test("should calculate normal values for school age child (>5 years)", async ({
@@ -214,8 +214,8 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator("text=15-20° (school age)")).toBeVisible();
-    await expect(page.locator("text=125-135° (adult range)")).toBeVisible();
+    await expect(page.locator("text=15-20° (school age).first()")).toBeVisible();
+    await expect(page.locator("text=125-135° (adult range).first()")).toBeVisible();
   });
 
   test("should calculate migration index for right hip - normal range", async ({
@@ -350,10 +350,10 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     await page.click('button:has-text("Calculate")');
 
     // Check both results
-    await expect(page.locator("text=Migration Index (Right)")).toBeVisible();
-    await expect(page.locator("text=15.0%")).toBeVisible();
-    await expect(page.locator("text=Migration Index (Left)")).toBeVisible();
-    await expect(page.locator("text=28.0%")).toBeVisible();
+    await expect(page.locator("text=Migration Index (Right).first()")).toBeVisible();
+    await expect(page.locator("text=15.0%").first()).toBeVisible();
+    await expect(page.locator("text=Migration Index (Left).first()")).toBeVisible();
+    await expect(page.locator("text=28.0%").first()).toBeVisible();
   });
 
   test("should handle infant under 3 years with different interpretation ranges", async ({
@@ -479,8 +479,8 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     await page.click('button:has-text("Calculate")');
 
     // Should still show migration index calculation
-    await expect(page.locator("text=Migration Index (Right)")).toBeVisible();
-    await expect(page.locator("text=20.0%")).toBeVisible();
+    await expect(page.locator("text=Migration Index (Right).first()")).toBeVisible();
+    await expect(page.locator("text=20.0%").first()).toBeVisible();
   });
 
   test("should handle decimal values in migration index", async ({ page }) => {
@@ -498,7 +498,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     await page.click('button:has-text("Calculate")');
 
     // Should calculate correctly: 12.5 / 100 = 12.5%
-    await expect(page.locator("text=12.5%")).toBeVisible();
+    await expect(page.locator("text=12.5%").first()).toBeVisible();
   });
 
   test("should be responsive on mobile viewport", async ({ page }) => {

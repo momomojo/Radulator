@@ -120,7 +120,7 @@ test.describe('Spleen Size Calculator', () => {
 
   test('displays calculator title and description', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Spleen Size' })).toBeVisible();
-    await expect(page.getByText('Gender- and height-adjusted upper limits')).toBeVisible();
+    await expect(page.getByText('Gender- and height-adjusted upper limits').first()).toBeVisible();
   });
 
   test('displays validation information', async ({ page }) => {
@@ -172,14 +172,14 @@ test.describe('Spleen Size Calculator', () => {
 
       // Verify warning message if expected
       if (testCase.shouldShowWarning) {
-        await expect(page.getByText(testCase.warningText)).toBeVisible();
-        await expect(page.getByText(/extrapolated beyond validated range/)).toBeVisible();
+        await expect(page.getByText(testCase.warningText).first()).toBeVisible();
+        await expect(page.getByText(/extrapolated beyond validated range/).first()).toBeVisible();
       } else {
-        await expect(page.getByText(/Height outside validated range/)).not.toBeVisible();
+        await expect(page.getByText(/Height outside validated range/).first()).not.toBeVisible();
       }
 
       // Verify interpretation always appears
-      await expect(page.getByText(/within 95% of observations in healthy individuals/)).toBeVisible();
+      await expect(page.getByText(/within 95% of observations in healthy individuals/).first()).toBeVisible();
     });
   });
 
@@ -188,7 +188,7 @@ test.describe('Spleen Size Calculator', () => {
     await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should not show results
-    await expect(page.getByText(/Spleen length should not exceed/)).not.toBeVisible();
+    await expect(page.getByText(/Spleen length should not exceed/).first()).not.toBeVisible();
   });
 
   test('does not calculate without height entered', async ({ page }) => {
@@ -196,7 +196,7 @@ test.describe('Spleen Size Calculator', () => {
     await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should not show results
-    await expect(page.getByText(/Spleen length should not exceed/)).not.toBeVisible();
+    await expect(page.getByText(/Spleen length should not exceed/).first()).not.toBeVisible();
   });
 
   test('updates calculation when switching gender', async ({ page }) => {
@@ -225,8 +225,8 @@ test.describe('Spleen Size Calculator', () => {
     await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should calculate and display results
-    await expect(page.getByText(/Spleen length should not exceed/)).toBeVisible();
-    await expect(page.getByText(/Spleen volume should not exceed/)).toBeVisible();
+    await expect(page.getByText(/Spleen length should not exceed/).first()).toBeVisible();
+    await expect(page.getByText(/Spleen volume should not exceed/).first()).toBeVisible();
   });
 
   test('responsive design - mobile view', async ({ page }) => {

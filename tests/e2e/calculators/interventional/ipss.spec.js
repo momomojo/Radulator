@@ -95,7 +95,7 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     ).toBeVisible();
 
     // Verify diagnosis - use more specific selector to avoid strict mode violation
-    await expect(page.locator("text=🔵 CUSHING'S DISEASE")).toBeVisible();
+    await expect(page.locator("text=🔵 CUSHING'S DISEASE").first()).toBeVisible();
 
     // Verify lateralization to LEFT - use .first() since both simple and normalized methods show same result
     await expect(
@@ -167,7 +167,7 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     ).toBeVisible();
 
     // Verify basal ratio is below threshold - use more specific selector
-    await expect(page.locator("text=Maximum Basal Ratio: 1.33")).toBeVisible();
+    await expect(page.locator("text=Maximum Basal Ratio: 1.33").first()).toBeVisible();
 
     // Verify peak ratio is below threshold - use more specific selector
     await expect(
@@ -175,7 +175,7 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     ).toBeVisible();
 
     // Verify diagnosis
-    await expect(page.locator("text=🔴 ECTOPIC ACTH SYNDROME")).toBeVisible();
+    await expect(page.locator("text=🔴 ECTOPIC ACTH SYNDROME").first()).toBeVisible();
     await expect(
       page.locator("text=Search for ectopic ACTH source"),
     ).toBeVisible();
@@ -228,10 +228,10 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     // Verify failed catheterization
     await expect(page.locator("text=1.11 — ✗ Failed")).toBeVisible(); // Left PRL ratio
     await expect(page.locator("text=1.22 — ✗ Failed")).toBeVisible(); // Right PRL ratio
-    await expect(page.locator("text=BOTH SIDES FAILED")).toBeVisible();
+    await expect(page.locator("text=BOTH SIDES FAILED").first()).toBeVisible();
 
     // Verify inadequate study message
-    await expect(page.locator("text=INADEQUATE STUDY")).toBeVisible();
+    await expect(page.locator("text=INADEQUATE STUDY").first()).toBeVisible();
     await expect(
       page.locator("text=Repeat procedure recommended"),
     ).toBeVisible();
@@ -301,13 +301,13 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     ).toBeVisible();
 
     // Verify diagnosis is Cushing's - use more specific selector
-    await expect(page.locator("text=🔵 CUSHING'S DISEASE")).toBeVisible();
+    await expect(page.locator("text=🔵 CUSHING'S DISEASE").first()).toBeVisible();
 
     // Verify non-lateralizing - use .first() since it appears in multiple results
     await expect(
       page.locator("text=⚪ Non-lateralizing").first(),
     ).toBeVisible();
-    await expect(page.locator("text=bilateral exploration")).toBeVisible();
+    await expect(page.locator("text=bilateral exploration").first()).toBeVisible();
 
     // Take screenshot
     await page.screenshot({
@@ -419,7 +419,7 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     await page.click('button:has-text("Calculate")');
 
     // Verify peak is at +6 minutes (highest ratio ~11.54)
-    await expect(page.locator("text=+6 minutes")).toBeVisible();
+    await expect(page.locator("text=+6 minutes").first()).toBeVisible();
     await expect(page.locator("text=11.54")).toBeVisible(); // Peak ratio
 
     // Take screenshot
@@ -490,12 +490,12 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     await expect(
       page.locator("text=Post-CRH Stimulation Samples"),
     ).toBeVisible();
-    await expect(page.locator("text=Lt ACTH")).toBeVisible();
-    await expect(page.locator("text=Rt ACTH")).toBeVisible();
-    await expect(page.locator("text=Per ACTH")).toBeVisible();
-    await expect(page.locator("text=Lt PRL")).toBeVisible();
-    await expect(page.locator("text=Rt PRL")).toBeVisible();
-    await expect(page.locator("text=Per PRL")).toBeVisible();
+    await expect(page.locator("text=Lt ACTH").first()).toBeVisible();
+    await expect(page.locator("text=Rt ACTH").first()).toBeVisible();
+    await expect(page.locator("text=Per ACTH").first()).toBeVisible();
+    await expect(page.locator("text=Lt PRL").first()).toBeVisible();
+    await expect(page.locator("text=Rt PRL").first()).toBeVisible();
+    await expect(page.locator("text=Per PRL").first()).toBeVisible();
 
     // Verify Calculate button
     await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
@@ -514,8 +514,8 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     await expect(page.locator("text=References").first()).toBeVisible();
 
     // Verify key references are present
-    await expect(page.locator("text=Oldfield EH")).toBeVisible();
-    await expect(page.locator("text=N Engl J Med")).toBeVisible();
+    await expect(page.locator("text=Oldfield EH").first()).toBeVisible();
+    await expect(page.locator("text=N Engl J Med").first()).toBeVisible();
 
     // Take screenshot of references
     await page.screenshot({

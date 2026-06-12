@@ -49,26 +49,26 @@ test.describe("IV Contrast Dosing Calculator", () => {
     test("should display info section with dosing explanation", async ({
       page,
     }) => {
-      await expect(page.getByText("Weight-based dosing")).toBeVisible();
-      await expect(page.getByText("Iodine Delivery Rate")).toBeVisible();
-      await expect(page.getByText("eGFR-based")).toBeVisible();
+      await expect(page.getByText("Weight-based dosing").first()).toBeVisible();
+      await expect(page.getByText("Iodine Delivery Rate").first()).toBeVisible();
+      await expect(page.getByText("eGFR-based").first()).toBeVisible();
     });
 
     test("should have all required input fields", async ({ page }) => {
       // Patient demographics
-      await expect(page.getByText("Weight Unit")).toBeVisible();
-      await expect(page.getByText("Patient Weight")).toBeVisible();
-      await expect(page.getByText("Height Unit")).toBeVisible();
-      await expect(page.getByText("Patient Height")).toBeVisible();
+      await expect(page.getByText("Weight Unit").first()).toBeVisible();
+      await expect(page.getByText("Patient Weight").first()).toBeVisible();
+      await expect(page.getByText("Height Unit").first()).toBeVisible();
+      await expect(page.getByText("Patient Height").first()).toBeVisible();
       await expect(page.getByText("Sex").first()).toBeVisible();
 
       // Renal function
-      await expect(page.getByText("eGFR")).toBeVisible();
+      await expect(page.getByText("eGFR").first()).toBeVisible();
 
       // Contrast selection
-      await expect(page.getByText("Contrast Agent")).toBeVisible();
-      await expect(page.getByText("Study Type")).toBeVisible();
-      await expect(page.getByText("IV Access Type")).toBeVisible();
+      await expect(page.getByText("Contrast Agent").first()).toBeVisible();
+      await expect(page.getByText("Study Type").first()).toBeVisible();
+      await expect(page.getByText("IV Access Type").first()).toBeVisible();
     });
   });
 
@@ -77,9 +77,9 @@ test.describe("IV Contrast Dosing Calculator", () => {
       page,
     }) => {
       // Patient: 70kg, 175cm, male (BMI ~22.9)
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -94,17 +94,17 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await expect(
         page.locator("text=Recommended Contrast Volume"),
       ).toBeVisible();
-      await expect(page.locator("text=93 mL")).toBeVisible();
-      await expect(page.locator("text=Total Body Weight")).toBeVisible();
+      await expect(page.locator("text=93 mL").first()).toBeVisible();
+      await expect(page.locator("text=Total Body Weight").first()).toBeVisible();
     });
 
     test("should calculate contrast volume for hepatic CT", async ({
       page,
     }) => {
       // Patient: 70kg, 175cm, male
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -116,15 +116,15 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // 70kg * 550 mg I/kg / 350 mg I/mL = 110 mL
-      await expect(page.locator("text=110 mL")).toBeVisible();
-      await expect(page.locator("text=550 mg I/kg")).toBeVisible();
+      await expect(page.locator("text=110 mL").first()).toBeVisible();
+      await expect(page.locator("text=550 mg I/kg").first()).toBeVisible();
     });
 
     test("should calculate contrast volume for CTA", async ({ page }) => {
       // Patient: 80kg, 180cm, male
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "80");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "180");
       await page.getByText("Male").first().click();
 
@@ -136,7 +136,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // 80kg * 350 mg I/kg / 370 mg I/mL = ~76 mL
-      await expect(page.locator("text=76 mL")).toBeVisible();
+      await expect(page.locator("text=76 mL").first()).toBeVisible();
       await expect(
         page.locator("text=bolus tracking or test bolus"),
       ).toBeVisible();
@@ -146,9 +146,9 @@ test.describe("IV Contrast Dosing Calculator", () => {
   test.describe("Lean Body Weight Dosing (BMI >= 30)", () => {
     test("should use LBW-based dosing for obese patient", async ({ page }) => {
       // Patient: 110kg, 170cm, male (BMI ~38)
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "110");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "170");
       await page.getByText("Male").first().click();
 
@@ -158,21 +158,21 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LBW")).toBeVisible();
-      await expect(page.locator("text=BMI")).toBeVisible();
-      await expect(page.locator("text=630 mg I/kg")).toBeVisible();
-      await expect(page.locator("text=Volume reduced")).toBeVisible();
+      await expect(page.locator("text=LBW").first()).toBeVisible();
+      await expect(page.locator("text=BMI").first()).toBeVisible();
+      await expect(page.locator("text=630 mg I/kg").first()).toBeVisible();
+      await expect(page.locator("text=Volume reduced").first()).toBeVisible();
     });
 
     test("should calculate LBW correctly using Boer formula for female", async ({
       page,
     }) => {
       // Patient: 100kg, 165cm, female (BMI ~36.7)
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "100");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "165");
-      await page.getByText("Female").click();
+      await page.getByText("Female").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
       await page.locator('select[id="study_type"]').selectOption("routine");
@@ -180,18 +180,18 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LBW (BMI")).toBeVisible();
+      await expect(page.locator("text=LBW (BMI").first()).toBeVisible();
       // Female LBW = 0.252 * 100 + 0.473 * 165 - 48.3 = ~56.5 kg
-      await expect(page.locator("text=Body Composition")).toBeVisible();
+      await expect(page.locator("text=Body Composition").first()).toBeVisible();
     });
   });
 
   test.describe("Unit Conversions", () => {
     test("should convert pounds to kilograms correctly", async ({ page }) => {
       // Patient: 154 lbs = 70 kg
-      await page.getByText("Pounds (lbs)").click();
+      await page.getByText("Pounds (lbs).first()").click();
       await page.fill('input[id="weight"]', "154");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -202,15 +202,15 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should be similar to 70kg result
-      await expect(page.locator("text=93 mL")).toBeVisible();
+      await expect(page.locator("text=93 mL").first()).toBeVisible();
       await expect(page.locator("text=TBW: 69.")).toBeVisible(); // ~69.9 kg
     });
 
     test("should convert inches to centimeters correctly", async ({ page }) => {
       // Patient: 70kg, 69 inches = 175.26 cm
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Inches (in)").click();
+      await page.getByText("Inches (in).first()").click();
       await page.fill('input[id="height"]', "69");
       await page.getByText("Male").first().click();
 
@@ -220,7 +220,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=93 mL")).toBeVisible();
+      await expect(page.locator("text=93 mL").first()).toBeVisible();
     });
   });
 
@@ -228,9 +228,9 @@ test.describe("IV Contrast Dosing Calculator", () => {
     test("should calculate IDR and show assessment for CTA", async ({
       page,
     }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -240,14 +240,14 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Iodine Delivery Rate")).toBeVisible();
-      await expect(page.locator("text=g I/s")).toBeVisible();
+      await expect(page.locator("text=Iodine Delivery Rate").first()).toBeVisible();
+      await expect(page.locator("text=g I/s").first()).toBeVisible();
     });
 
     test("should warn if IDR is below optimal for CTA", async ({ page }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -258,7 +258,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Below optimal for CTA")).toBeVisible();
+      await expect(page.locator("text=Below optimal for CTA").first()).toBeVisible();
       await expect(
         page.locator("text=consider higher concentration"),
       ).toBeVisible();
@@ -267,9 +267,9 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
   test.describe("IV Access and Flow Rate", () => {
     test("should limit flow rate for hand/wrist IV", async ({ page }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -279,7 +279,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=1.5 mL/s")).toBeVisible();
+      await expect(page.locator("text=1.5 mL/s").first()).toBeVisible();
       await expect(
         page.locator("text=Hand/wrist IV: Flow rate limited"),
       ).toBeVisible();
@@ -288,9 +288,9 @@ test.describe("IV Contrast Dosing Calculator", () => {
     test("should show appropriate flow rate for 18G access", async ({
       page,
     }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -300,15 +300,15 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=4-5 mL/s")).toBeVisible();
+      await expect(page.locator("text=4-5 mL/s").first()).toBeVisible();
     });
   });
 
   test.describe("Renal Risk Assessment (eGFR)", () => {
     test("should show very low risk for eGFR >= 45", async ({ page }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
       await page.fill('input[id="egfr"]', "60");
@@ -319,16 +319,16 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Very Low Risk")).toBeVisible();
+      await expect(page.locator("text=Very Low Risk").first()).toBeVisible();
       await expect(
         page.locator("text=No special precautions needed"),
       ).toBeVisible();
     });
 
     test("should show low-moderate risk for eGFR 30-44", async ({ page }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
       await page.fill('input[id="egfr"]', "38");
@@ -339,15 +339,15 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Low-Moderate Risk")).toBeVisible();
-      await expect(page.locator("text=IV hydration")).toBeVisible();
-      await expect(page.locator("text=eGFR 30-44")).toBeVisible();
+      await expect(page.locator("text=Low-Moderate Risk").first()).toBeVisible();
+      await expect(page.locator("text=IV hydration").first()).toBeVisible();
+      await expect(page.locator("text=eGFR 30-44").first()).toBeVisible();
     });
 
     test("should show high risk for eGFR < 30", async ({ page }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
       await page.fill('input[id="egfr"]', "25");
@@ -358,20 +358,20 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=HIGH RISK")).toBeVisible();
+      await expect(page.locator("text=HIGH RISK").first()).toBeVisible();
       await expect(
         page.locator("text=IV saline prophylaxis strongly recommended"),
       ).toBeVisible();
-      await expect(page.locator("text=contrast-associated AKI")).toBeVisible();
+      await expect(page.locator("text=contrast-associated AKI").first()).toBeVisible();
     });
   });
 
   test.describe("Volume Capping", () => {
     test("should cap volume at 150 mL for large patients", async ({ page }) => {
       // Very large patient
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "150");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -381,8 +381,8 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=150 mL")).toBeVisible();
-      await expect(page.locator("text=Volume capped")).toBeVisible();
+      await expect(page.locator("text=150 mL").first()).toBeVisible();
+      await expect(page.locator("text=Volume capped").first()).toBeVisible();
     });
   });
 
@@ -404,9 +404,9 @@ test.describe("IV Contrast Dosing Calculator", () => {
     test("should show error when contrast selection not complete", async ({
       page,
     }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -422,9 +422,9 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
   test.describe("Protocol Notes", () => {
     test("should show hepatic protocol note", async ({ page }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -440,9 +440,9 @@ test.describe("IV Contrast Dosing Calculator", () => {
     });
 
     test("should show warming recommendation", async ({ page }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -452,15 +452,15 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Warm contrast to 37")).toBeVisible();
+      await expect(page.locator("text=Warm contrast to 37").first()).toBeVisible();
     });
 
     test("should show injection duration and saline flush", async ({
       page,
     }) => {
-      await page.getByText("Kilograms (kg)").click();
+      await page.getByText("Kilograms (kg).first()").click();
       await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
+      await page.getByText("Centimeters (cm).first()").click();
       await page.fill('input[id="height"]', "175");
       await page.getByText("Male").first().click();
 
@@ -470,10 +470,10 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Injection Duration")).toBeVisible();
-      await expect(page.locator("text=seconds")).toBeVisible();
-      await expect(page.locator("text=Saline Flush")).toBeVisible();
-      await expect(page.locator("text=30 mL")).toBeVisible();
+      await expect(page.locator("text=Injection Duration").first()).toBeVisible();
+      await expect(page.locator("text=seconds").first()).toBeVisible();
+      await expect(page.locator("text=Saline Flush").first()).toBeVisible();
+      await expect(page.locator("text=30 mL").first()).toBeVisible();
     });
   });
 
@@ -493,8 +493,8 @@ test.describe("IV Contrast Dosing Calculator", () => {
     });
 
     test("should have reference to ACR/NKF consensus", async ({ page }) => {
-      await expect(page.getByText("Davenport MS")).toBeVisible();
-      await expect(page.getByText("National Kidney Foundation")).toBeVisible();
+      await expect(page.getByText("Davenport MS").first()).toBeVisible();
+      await expect(page.getByText("National Kidney Foundation").first()).toBeVisible();
     });
   });
 

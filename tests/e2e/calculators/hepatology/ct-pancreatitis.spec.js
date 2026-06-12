@@ -96,7 +96,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       await expect(
         page.locator("text=48-72 hours (optimal timing for CTSI)"),
       ).toBeVisible();
-      await expect(page.locator("text=>72 hours")).toBeVisible();
+      await expect(page.locator("text=>72 hours").first()).toBeVisible();
     });
 
     test("should display radio options for Balthazar grades", async ({
@@ -131,11 +131,11 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           "text=No necrosis - pancreas enhances normally (0 points)",
         ),
       ).toBeVisible();
-      await expect(page.locator("text=≤30% necrosis (2 points)")).toBeVisible();
+      await expect(page.locator("text=≤30% necrosis (2 points).first()")).toBeVisible();
       await expect(
         page.locator("text=30-50% necrosis (4 points)"),
       ).toBeVisible();
-      await expect(page.locator("text=>50% necrosis (6 points)")).toBeVisible();
+      await expect(page.locator("text=>50% necrosis (6 points).first()")).toBeVisible();
     });
   });
 
@@ -236,8 +236,8 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 1 points - Mild")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=Grade B (1 points)")).toBeVisible();
-      await expect(page.locator("text=Mild acute pancreatitis")).toBeVisible();
+      await expect(page.locator("text=Grade B (1 points).first()")).toBeVisible();
+      await expect(page.locator("text=Mild acute pancreatitis").first()).toBeVisible();
     });
 
     test("Balthazar Grade C with no necrosis - CTSI 2 (Mild)", async ({
@@ -273,7 +273,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 2 points - Mild")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=Grade C (2 points)")).toBeVisible();
+      await expect(page.locator("text=Grade C (2 points).first()")).toBeVisible();
     });
 
     test("Balthazar Grade A with ≤30% necrosis - CTSI 2 (Mild)", async ({
@@ -309,7 +309,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 2 points - Mild")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=2 points (≤30%)")).toBeVisible();
+      await expect(page.locator("text=2 points (≤30%).first()")).toBeVisible();
       await expect(
         page.locator("text=Necrotizing pancreatitis (minor)"),
       ).toBeVisible();
@@ -382,7 +382,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 4 points - Moderate")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=Grade C (2 points)")).toBeVisible();
+      await expect(page.locator("text=Grade C (2 points).first()")).toBeVisible();
       await expect(page.locator("text=~35%").first()).toBeVisible(); // Morbidity for moderate
       await expect(page.locator("text=~6%").first()).toBeVisible(); // Mortality for moderate
     });
@@ -417,7 +417,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 3 points - Mild")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=Grade D (3 points)")).toBeVisible();
+      await expect(page.locator("text=Grade D (3 points).first()")).toBeVisible();
     });
 
     test("Balthazar Grade D with ≤30% necrosis - CTSI 5 (Moderate)", async ({
@@ -482,7 +482,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 6 points - Moderate")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=4 points (30-50%)")).toBeVisible();
+      await expect(page.locator("text=4 points (30-50%).first()")).toBeVisible();
       await expect(
         page.locator("text=Necrotizing pancreatitis (moderate)"),
       ).toBeVisible();
@@ -520,7 +520,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 4 points - Moderate")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=Grade E (4 points)")).toBeVisible();
+      await expect(page.locator("text=Grade E (4 points).first()")).toBeVisible();
 
       // Clinical implications for Grade E
       await expect(
@@ -599,7 +599,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       await expect(
         page.locator("text=High risk of infected necrosis"),
       ).toBeVisible();
-      await expect(page.locator("text=Consider ICU admission")).toBeVisible();
+      await expect(page.locator("text=Consider ICU admission").first()).toBeVisible();
     });
 
     test("Balthazar Grade E with 30-50% necrosis - CTSI 8 (Severe)", async ({
@@ -664,7 +664,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 9 points - Severe")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=6 points (>50%)")).toBeVisible();
+      await expect(page.locator("text=6 points (>50%).first()")).toBeVisible();
       await expect(
         page.locator("text=Necrotizing pancreatitis (extensive)"),
       ).toBeVisible();
@@ -700,8 +700,8 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 10 points - Severe")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=Grade E (4 points)")).toBeVisible();
-      await expect(page.locator("text=6 points (>50%)")).toBeVisible();
+      await expect(page.locator("text=Grade E (4 points).first()")).toBeVisible();
+      await expect(page.locator("text=6 points (>50%).first()")).toBeVisible();
 
       // Verify Atlanta classification
       await expect(
@@ -749,7 +749,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
           'section[aria-live="polite"] > div:has-text("CT Severity Index (CTSI): 2 points - Mild")',
         ),
       ).toBeVisible();
-      await expect(page.locator("text=Modified CTSI:")).toBeVisible();
+      await expect(page.locator("text=Modified CTSI:").first()).toBeVisible();
       await expect(
         page.locator(
           'section[aria-live="polite"] > div:has-text("Modified CTSI: 4 points - Moderate")',
@@ -758,7 +758,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       await expect(
         page.locator("text=Extrapancreatic Complications:"),
       ).toBeVisible();
-      await expect(page.locator("text=Present (+2 points)")).toBeVisible();
+      await expect(page.locator("text=Present (+2 points).first()")).toBeVisible();
     });
 
     test("Modified CTSI severity thresholds: Mild (0-2), Moderate (3-4), Severe (5+)", async ({
@@ -858,7 +858,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify timing warning is shown
-      await expect(page.locator("text=Timing Note:")).toBeVisible();
+      await expect(page.locator("text=Timing Note:").first()).toBeVisible();
       await expect(
         page.locator(
           "text=CT performed <48 hours may underestimate necrosis extent",
@@ -893,7 +893,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify timing warning is NOT shown
-      await expect(page.locator("text=Timing Note:")).not.toBeVisible();
+      await expect(page.locator("text=Timing Note:").first()).not.toBeVisible();
     });
 
     test("Late timing (>72 hours) does not show timing warning", async ({
@@ -916,7 +916,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify timing warning is NOT shown
-      await expect(page.locator("text=Timing Note:")).not.toBeVisible();
+      await expect(page.locator("text=Timing Note:").first()).not.toBeVisible();
     });
   });
 
@@ -947,7 +947,7 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       await expect(
         page.locator("text=Revised Atlanta Classification:"),
       ).toBeVisible();
-      await expect(page.locator("text=Mild acute pancreatitis")).toBeVisible();
+      await expect(page.locator("text=Mild acute pancreatitis").first()).toBeVisible();
     });
 
     test("Moderately severe acute pancreatitis - with necrosis but low CTSI", async ({

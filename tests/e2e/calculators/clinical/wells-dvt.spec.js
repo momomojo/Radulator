@@ -25,7 +25,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
     });
 
     test("should have all 10 criteria as checkboxes", async ({ page }) => {
-      await expect(page.getByText("Active cancer")).toBeVisible();
+      await expect(page.getByText("Active cancer").first()).toBeVisible();
       await expect(
         page.getByText("Paralysis, paresis, or recent plaster immobilization"),
       ).toBeVisible();
@@ -35,7 +35,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       await expect(
         page.getByText("Localized tenderness along deep venous system"),
       ).toBeVisible();
-      await expect(page.getByText("Entire leg swollen")).toBeVisible();
+      await expect(page.getByText("Entire leg swollen").first()).toBeVisible();
       await expect(
         page.getByText("Calf swelling >3 cm compared to asymptomatic leg"),
       ).toBeVisible();
@@ -45,7 +45,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       await expect(
         page.getByText("Collateral superficial veins (non-varicose)"),
       ).toBeVisible();
-      await expect(page.getByText("Previously documented DVT")).toBeVisible();
+      await expect(page.getByText("Previously documented DVT").first()).toBeVisible();
       await expect(
         page.getByText("Alternative diagnosis at least as likely as DVT"),
       ).toBeVisible();

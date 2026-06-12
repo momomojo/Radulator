@@ -53,7 +53,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await expect(
         page.getByText("Lung-RADS (Lung Imaging Reporting and Data System)"),
       ).toBeVisible();
-      await expect(page.getByText("Category 0: Incomplete")).toBeVisible();
+      await expect(page.getByText("Category 0: Incomplete").first()).toBeVisible();
     });
 
     test("should show solid nodule size field when solid nodule selected", async ({
@@ -65,7 +65,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       ).not.toBeVisible();
 
       // Select solid nodule type
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("Solid nodule or mass").first().click();
 
       // Should now be visible
       await expect(
@@ -95,8 +95,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 0 when prior expected but unavailable", async ({
       page,
     }) => {
-      await page.getByText("No - prior expected but unavailable").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - prior expected but unavailable").first().click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "10");
       await page.click('button:has-text("Calculate")');
 
@@ -117,8 +117,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 1 for no nodules (baseline)", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("No nodules (negative exam)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("No nodules (negative exam).first()").click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -141,8 +141,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 1 for no nodules (with prior available)", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
-      await page.getByText("No nodules (negative exam)").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
+      await page.getByText("No nodules (negative exam).first()").click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -157,7 +157,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 2 for definitely benign nodule", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page
         .getByText("Definitely benign (calcified granuloma, hamartoma)")
         .click();
@@ -183,8 +183,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 2 for solid nodule <6mm (baseline)", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "4");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -204,10 +204,10 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 2 for stable solid nodule 6-8mm", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "7");
-      await page.getByText("Stable (unchanged for").click();
+      await page.getByText("Stable (unchanged for").first().click();
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
@@ -221,8 +221,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 2 for perifissural nodule <10mm", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Perifissural nodule (PFN)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Perifissural nodule (PFN).first()").click();
       await page.fill('input[id="solid_size"]', "8");
       await page.click('button:has-text("Calculate")');
 
@@ -239,8 +239,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 2 for small pure GGN <30mm (baseline)", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Pure ground-glass nodule (pGGN)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Pure ground-glass nodule (pGGN).first()").click();
       await page.fill('input[id="ggn_size"]', "20");
       await page.click('button:has-text("Calculate")');
 
@@ -256,8 +256,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 3 for new solid nodule 6-8mm", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "7");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -282,10 +282,10 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 3 for new solid nodule on follow-up", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "6");
-      await page.getByText("New nodule").click();
+      await page.getByText("New nodule").first().click();
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
@@ -299,8 +299,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 3 for large perifissural nodule >=10mm", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Perifissural nodule (PFN)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Perifissural nodule (PFN).first()").click();
       await page.fill('input[id="solid_size"]', "12");
       await page.click('button:has-text("Calculate")');
 
@@ -314,10 +314,10 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 3 for growing pure GGN <30mm", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
-      await page.getByText("Pure ground-glass nodule (pGGN)").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
+      await page.getByText("Pure ground-glass nodule (pGGN).first()").click();
       await page.fill('input[id="ggn_size"]', "20");
-      await page.getByText("Growing", { exact: true }).click();
+      await page.getByText("Growing", { exact: true }).first().click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -330,8 +330,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 3 for large pure GGN >=30mm", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Pure ground-glass nodule (pGGN)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Pure ground-glass nodule (pGGN).first()").click();
       await page.fill('input[id="ggn_size"]', "35");
       await page.click('button:has-text("Calculate")');
 
@@ -345,7 +345,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 3 for new part-solid nodule with solid <6mm", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page
         .getByText("Part-solid nodule (ground-glass with solid component)")
         .click();
@@ -364,9 +364,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 3 for growing atypical cyst", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page.getByLabel("Atypical pulmonary cyst").click();
-      await page.getByText("Growing", { exact: true }).click();
+      await page.getByText("Growing", { exact: true }).first().click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -381,8 +381,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4A for new solid nodule 8-15mm (baseline)", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "10");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -407,10 +407,10 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4A for growing solid nodule 6-8mm", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "7");
-      await page.getByText("Growing (").click();
+      await page.getByText("Growing (").first().click();
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
@@ -424,7 +424,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4A for new part-solid with solid 6-8mm", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page
         .getByText("Part-solid nodule (ground-glass with solid component)")
         .click();
@@ -443,13 +443,13 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4A for growing solid component in part-solid (solid <6mm)", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
       await page
         .getByText("Part-solid nodule (ground-glass with solid component)")
         .click();
       await page.fill('input[id="part_solid_total"]', "15");
       await page.fill('input[id="part_solid_solid"]', "4");
-      await page.getByText("Growing solid component").click();
+      await page.getByText("Growing solid component").first().click();
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
@@ -463,9 +463,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4A for atypical cyst with thick wall", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page.getByLabel("Atypical pulmonary cyst").click();
-      await page.getByText("Thick wall (>4mm)").click();
+      await page.getByText("Thick wall (>4mm).first()").click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -478,9 +478,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4A for atypical cyst with mural nodule", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page.getByLabel("Atypical pulmonary cyst").click();
-      await page.getByText("Mural nodule present").click();
+      await page.getByText("Mural nodule present").first().click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -495,8 +495,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4B for new solid nodule >=15mm", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "18");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -521,10 +521,10 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4B for growing solid nodule 8-15mm", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "12");
-      await page.getByText("Growing (").click();
+      await page.getByText("Growing (").first().click();
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
@@ -538,7 +538,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4B for part-solid with solid >=8mm", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page
         .getByText("Part-solid nodule (ground-glass with solid component)")
         .click();
@@ -562,13 +562,13 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4B for growing solid component 6-8mm in part-solid", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
       await page
         .getByText("Part-solid nodule (ground-glass with solid component)")
         .click();
       await page.fill('input[id="part_solid_total"]', "18");
       await page.fill('input[id="part_solid_solid"]', "7");
-      await page.getByText("Growing solid component").click();
+      await page.getByText("Growing solid component").first().click();
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
 
@@ -584,10 +584,10 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4AX for 4A with spiculation", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "10");
-      await page.getByText("Spiculation").click();
+      await page.getByText("Spiculation").first().click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -605,10 +605,10 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4BX for 4B with lymphadenopathy", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "18");
-      await page.getByText("Suspicious lymphadenopathy").click();
+      await page.getByText("Suspicious lymphadenopathy").first().click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -626,13 +626,13 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should classify as Category 4AX for part-solid with other suspicious features", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page
         .getByText("Part-solid nodule (ground-glass with solid component)")
         .click();
       await page.fill('input[id="part_solid_total"]', "20");
       await page.fill('input[id="part_solid_solid"]', "6");
-      await page.getByText("Other highly suspicious features").click();
+      await page.getByText("Other highly suspicious features").first().click();
       await page.click('button:has-text("Calculate")');
 
       await expect(
@@ -645,8 +645,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should NOT add X modifier when suspicious features is None", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "10");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -668,7 +668,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should show error when nodule type not selected", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       // Don't select nodule type
       await page.click('button:has-text("Calculate")');
 
@@ -680,8 +680,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should show error when solid nodule size not entered", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       // Don't enter size
       await page.click('button:has-text("Calculate")');
 
@@ -693,7 +693,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should show error when part-solid total size not entered", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page
         .getByText("Part-solid nodule (ground-glass with solid component)")
         .click();
@@ -706,8 +706,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     });
 
     test("should show error when GGN size not entered", async ({ page }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Pure ground-glass nodule (pGGN)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Pure ground-glass nodule (pGGN).first()").click();
       // Don't enter size
       await page.click('button:has-text("Calculate")');
 
@@ -722,15 +722,15 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       page,
     }) => {
       // With baseline (no prior), no change options
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
 
       await expect(
         page.locator('label:has-text("Nodule Change from Prior")'),
       ).not.toBeVisible();
 
       // Select prior available
-      await page.getByText("Yes - prior screening CT available").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
 
       // Now change options should be visible
       await expect(
@@ -741,7 +741,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should show part-solid change options when prior CT and part-solid selected", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
       await page
         .getByText("Part-solid nodule (ground-glass with solid component)")
         .click();
@@ -754,8 +754,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should show GGN change options when prior CT and GGN selected", async ({
       page,
     }) => {
-      await page.getByText("Yes - prior screening CT available").click();
-      await page.getByText("Pure ground-glass nodule (pGGN)").click();
+      await page.getByText("Yes - prior screening CT available").first().click();
+      await page.getByText("Pure ground-glass nodule (pGGN).first()").click();
 
       await expect(
         page.locator('label:has-text("GGN Change from Prior")'),
@@ -765,7 +765,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should show cyst features when atypical cyst selected", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page.getByLabel("Atypical pulmonary cyst").click();
 
       await expect(
@@ -776,10 +776,10 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should show suspicious features only for solid and part-solid nodules", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
 
       // Check solid nodule shows suspicious features
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await expect(
         page.locator('label:has-text("Additional Suspicious Features")'),
       ).toBeVisible();
@@ -793,7 +793,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       ).toBeVisible();
 
       // Check GGN does NOT show suspicious features
-      await page.getByText("Pure ground-glass nodule (pGGN)").click();
+      await page.getByText("Pure ground-glass nodule (pGGN).first()").click();
       await expect(
         page.locator('label:has-text("Additional Suspicious Features")'),
       ).not.toBeVisible();
@@ -802,8 +802,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
 
   test.describe("Clinical Notes", () => {
     test("should show baseline scan note", async ({ page }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "7");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -818,8 +818,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should show short-term follow-up note for Category 3", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "7");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -832,7 +832,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     });
 
     test("should show part-solid malignancy risk note", async ({ page }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
       await page
         .getByText("Part-solid nodule (ground-glass with solid component)")
         .click();
@@ -853,8 +853,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should handle exactly 6mm solid nodule (threshold boundary)", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "6");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -870,8 +870,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should handle exactly 8mm solid nodule (threshold boundary)", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "8");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -887,8 +887,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should handle exactly 15mm solid nodule (threshold boundary)", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "15");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -904,8 +904,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should handle exactly 30mm pure GGN (threshold boundary)", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Pure ground-glass nodule (pGGN)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Pure ground-glass nodule (pGGN).first()").click();
       await page.fill('input[id="ggn_size"]', "30");
       await page.click('button:has-text("Calculate")');
 
@@ -920,8 +920,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should handle exactly 10mm perifissural nodule (threshold boundary)", async ({
       page,
     }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Perifissural nodule (PFN)").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Perifissural nodule (PFN).first()").click();
       await page.fill('input[id="solid_size"]', "10");
       await page.click('button:has-text("Calculate")');
 
@@ -934,8 +934,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     });
 
     test("should handle decimal nodule sizes", async ({ page }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "5.9");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');
@@ -949,8 +949,8 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     });
 
     test("should handle very large nodule", async ({ page }) => {
-      await page.getByText("No - baseline scan (first screening)").click();
-      await page.getByText("Solid nodule or mass").click();
+      await page.getByText("No - baseline scan (first screening).first()").click();
+      await page.getByText("Solid nodule or mass").first().click();
       await page.fill('input[id="solid_size"]', "50");
       await page.getByLabel("None", { exact: true }).click();
       await page.click('button:has-text("Calculate")');

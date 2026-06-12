@@ -56,14 +56,14 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
 
   test("should display all required input fields", async ({ page }) => {
     // Check for all field labels
-    await expect(page.getByText("Walls", { exact: true })).toBeVisible();
-    await expect(page.getByText("Septa", { exact: true })).toBeVisible();
+    await expect(page.getByText("Walls", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Septa", { exact: true }).first()).toBeVisible();
     await expect(
       page.getByText("Calcifications", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByText("Density", { exact: true })).toBeVisible();
-    await expect(page.getByText("Totally intrarenal (n/a)")).toBeVisible();
-    await expect(page.getByText("3cm or larger (n/a)")).toBeVisible();
+    await expect(page.getByText("Density", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Totally intrarenal (n/a).first()")).toBeVisible();
+    await expect(page.getByText("3cm or larger (n/a).first()")).toBeVisible();
     await expect(
       page.getByText("Enhancing soft-tissue component"),
     ).toBeVisible();

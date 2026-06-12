@@ -60,8 +60,8 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     test("should display info section with Fleischner explanation", async ({
       page,
     }) => {
-      await expect(page.locator("text=incidental nodules")).toBeVisible();
-      await expect(page.getByText("Risk Factors for Malignancy")).toBeVisible();
+      await expect(page.locator("text=incidental nodules").first()).toBeVisible();
+      await expect(page.getByText("Risk Factors for Malignancy").first()).toBeVisible();
     });
 
     test("should show solid component field only for part-solid nodules", async ({
@@ -73,7 +73,7 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
       ).not.toBeVisible();
 
       // Select part-solid nodule
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
+      await page.getByText("Part-solid nodule (mixed GGN).first()").click();
 
       // Should now be visible
       await expect(
@@ -86,56 +86,56 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     test("should recommend no follow-up for <6mm in low-risk patient", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
-      await page.getByText("Never smoker").click();
+      await page.getByText("Low risk - No or minimal").first().click();
+      await page.getByText("Never smoker").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
-      await expect(page.getByText("Risk Assessment")).toBeVisible();
+      await expect(page.locator("text=No routine follow-up").first()).toBeVisible();
+      await expect(page.getByText("Risk Assessment").first()).toBeVisible();
     });
 
     test("should recommend optional CT at 12 months for <6mm in high-risk patient", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "5");
-      await page.getByText("High risk - Smoking history").click();
-      await page.getByText("Current smoker").click();
+      await page.getByText("High risk - Smoking history").first().click();
+      await page.getByText("Current smoker").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Optional CT at 12 months")).toBeVisible();
-      await expect(page.getByText("Risk Assessment")).toBeVisible();
+      await expect(page.locator("text=Optional CT at 12 months").first()).toBeVisible();
+      await expect(page.getByText("Risk Assessment").first()).toBeVisible();
     });
 
     test("should recommend CT at 6-12 months for 6-8mm in low-risk patient", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("Low risk - No or minimal").click();
-      await page.getByText("Never smoker").click();
+      await page.getByText("Low risk - No or minimal").first().click();
+      await page.getByText("Never smoker").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=CT at 6-12 months")).toBeVisible();
-      await expect(page.getByText("Follow-up Interval")).toBeVisible();
+      await expect(page.locator("text=CT at 6-12 months").first()).toBeVisible();
+      await expect(page.getByText("Follow-up Interval").first()).toBeVisible();
     });
 
     test("should recommend CT at 6-12 months then 18-24 months for 6-8mm in high-risk patient", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("High risk - Smoking history").click();
-      await page.getByText("Former smoker").click();
+      await page.getByText("High risk - Smoking history").first().click();
+      await page.getByText("Former smoker").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -147,15 +147,15 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     test("should recommend aggressive workup for >8mm nodule", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "12");
-      await page.getByText("High risk - Smoking history").click();
+      await page.getByText("High risk - Smoking history").first().click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(page.getByText("PET/CT").first()).toBeVisible();
-      await expect(page.getByText("Consider CT at 3 months")).toBeVisible();
+      await expect(page.getByText("Consider CT at 3 months").first()).toBeVisible();
     });
   });
 
@@ -163,72 +163,72 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     test("should recommend no follow-up for multiple <6mm in low-risk patient", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Multiple nodules", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Multiple nodules", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
+      await expect(page.locator("text=No routine follow-up").first()).toBeVisible();
     });
 
     test("should recommend CT at 3-6 months then 18-24 months for multiple ≥6mm", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Multiple nodules", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Multiple nodules", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "8");
-      await page.getByText("High risk - Smoking history").click();
+      await page.getByText("High risk - Smoking history").first().click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
         page.locator("text=CT at 3-6 months, then CT at 18-24 months"),
       ).toBeVisible();
-      await expect(page.locator("text=most suspicious nodule")).toBeVisible();
+      await expect(page.locator("text=most suspicious nodule").first()).toBeVisible();
     });
   });
 
   test.describe("Ground-Glass Nodules", () => {
     test("should recommend no follow-up for GGN <6mm", async ({ page }) => {
-      await page.getByText("Ground-glass nodule (pure GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Ground-glass nodule (pure GGN).first()").click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
+      await expect(page.locator("text=No routine follow-up").first()).toBeVisible();
     });
 
     test("should recommend long-term surveillance for single GGN ≥6mm", async ({
       page,
     }) => {
-      await page.getByText("Ground-glass nodule (pure GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Ground-glass nodule (pure GGN).first()").click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "8");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(page.getByText("CT at 6-12 months").first()).toBeVisible();
-      await expect(page.getByText("biennial for 5 years")).toBeVisible();
-      await expect(page.getByText("lung window settings")).toBeVisible();
+      await expect(page.getByText("biennial for 5 years").first()).toBeVisible();
+      await expect(page.getByText("lung window settings").first()).toBeVisible();
     });
 
     test("should recommend shorter initial follow-up for multiple GGN ≥6mm", async ({
       page,
     }) => {
-      await page.getByText("Ground-glass nodule (pure GGN)").click();
-      await page.getByText("Multiple nodules", { exact: true }).click();
+      await page.getByText("Ground-glass nodule (pure GGN).first()").click();
+      await page.getByText("Multiple nodules", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "10");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=CT at 3-6 months")).toBeVisible();
-      await expect(page.locator("text=multifocal")).toBeVisible();
+      await expect(page.locator("text=CT at 3-6 months").first()).toBeVisible();
+      await expect(page.locator("text=multifocal").first()).toBeVisible();
     });
   });
 
@@ -236,96 +236,96 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     test("should recommend no follow-up for part-solid <6mm", async ({
       page,
     }) => {
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Part-solid nodule (mixed GGN).first()").click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
+      await expect(page.locator("text=No routine follow-up").first()).toBeVisible();
     });
 
     test("should recommend CT at 3-6 months then annual for single part-solid ≥6mm", async ({
       page,
     }) => {
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Part-solid nodule (mixed GGN).first()").click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "10");
       await page.fill('input[id="solid_component"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=CT at 3-6 months")).toBeVisible();
-      await expect(page.locator("text=annual CT for 5 years")).toBeVisible();
+      await expect(page.locator("text=CT at 3-6 months").first()).toBeVisible();
+      await expect(page.locator("text=annual CT for 5 years").first()).toBeVisible();
       await expect(
         page.locator("text=mediastinal window settings"),
       ).toBeVisible();
     });
 
     test("should note solid component ≥6mm as concerning", async ({ page }) => {
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Part-solid nodule (mixed GGN).first()").click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "15");
       await page.fill('input[id="solid_component"]', "8");
-      await page.getByText("High risk - Smoking history").click();
+      await page.getByText("High risk - Smoking history").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Solid component ≥6mm")).toBeVisible();
-      await expect(page.locator("text=PET/CT or biopsy")).toBeVisible();
+      await expect(page.locator("text=Solid component ≥6mm").first()).toBeVisible();
+      await expect(page.locator("text=PET/CT or biopsy").first()).toBeVisible();
     });
 
     test("should handle multiple part-solid nodules", async ({ page }) => {
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
-      await page.getByText("Multiple nodules", { exact: true }).click();
+      await page.getByText("Part-solid nodule (mixed GGN).first()").click();
+      await page.getByText("Multiple nodules", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "12");
-      await page.getByText("High risk - Smoking history").click();
+      await page.getByText("High risk - Smoking history").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=CT at 3-6 months")).toBeVisible();
-      await expect(page.locator("text=most suspicious nodule")).toBeVisible();
+      await expect(page.locator("text=CT at 3-6 months").first()).toBeVisible();
+      await expect(page.locator("text=most suspicious nodule").first()).toBeVisible();
     });
   });
 
   test.describe("Risk Factor Assessment", () => {
     test("should infer high risk from smoking history", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "5");
       // Don't select explicit risk level, but select current smoker
-      await page.getByText("Current smoker", { exact: true }).click();
+      await page.getByText("Current smoker", { exact: true }).first().click();
 
       await page.click('button:has-text("Calculate")');
 
       // Results should show high risk was inferred
-      await expect(page.getByText("Optional CT at 12 months")).toBeVisible();
+      await expect(page.getByText("Optional CT at 12 months").first()).toBeVisible();
     });
 
     test("should infer high risk from upper lobe location", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "5");
-      await page.getByText("Never smoker", { exact: true }).click();
+      await page.getByText("Never smoker", { exact: true }).first().click();
       // Check upper lobe checkbox
       await page.locator('label:has-text("Upper Lobe Location")').click();
 
       await page.click('button:has-text("Calculate")');
 
       // Results should show high risk was inferred from upper lobe
-      await expect(page.getByText("Optional CT at 12 months")).toBeVisible();
+      await expect(page.getByText("Optional CT at 12 months").first()).toBeVisible();
     });
 
     test("should display multiple risk factors", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("High risk - Smoking history").click();
-      await page.getByText("Former smoker", { exact: true }).click();
+      await page.getByText("High risk - Smoking history").first().click();
+      await page.getByText("Former smoker", { exact: true }).first().click();
       await page.locator('label:has-text("Upper Lobe Location")').click();
       await page.locator('label:has-text("Spiculated or Irregular")').click();
       await page
@@ -335,7 +335,7 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Results should show risk factors present section
-      await expect(page.getByText("Risk Factors Present:")).toBeVisible();
+      await expect(page.getByText("Risk Factors Present:").first()).toBeVisible();
       await expect(page.getByText("CT at 6-12 months").first()).toBeVisible();
     });
   });
@@ -350,8 +350,8 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     });
 
     test("should show error for invalid nodule size", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "-5");
 
       await page.click('button:has-text("Calculate")');
@@ -364,7 +364,7 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     test("should show error when nodule type not selected", async ({
       page,
     }) => {
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "7");
 
       await page.click('button:has-text("Calculate")');
@@ -377,26 +377,26 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
 
   test.describe("Result Display", () => {
     test("should display nodule characteristics summary", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Nodule Characteristics")).toBeVisible();
-      await expect(page.locator("text=Solid, single, 7mm")).toBeVisible();
+      await expect(page.locator("text=Nodule Characteristics").first()).toBeVisible();
+      await expect(page.locator("text=Solid, single, 7mm").first()).toBeVisible();
     });
 
     test("should display important caveats", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.getByText("Important Caveats")).toBeVisible();
+      await expect(page.getByText("Important Caveats").first()).toBeVisible();
       await expect(
         page.getByText("NOT for lung cancer screening"),
       ).toBeVisible();
@@ -407,35 +407,35 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     test("should handle exactly 6mm solid nodule correctly", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "6");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=CT at 6-12 months")).toBeVisible();
+      await expect(page.locator("text=CT at 6-12 months").first()).toBeVisible();
     });
 
     test("should handle exactly 8mm solid nodule correctly", async ({
       page,
     }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "8");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
       // 8mm is at upper bound of 6-8mm range
-      await expect(page.locator("text=CT at 6-12 months")).toBeVisible();
+      await expect(page.locator("text=CT at 6-12 months").first()).toBeVisible();
     });
 
     test("should handle 8.1mm as >8mm nodule", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "8.1");
-      await page.getByText("High risk - Smoking history").click();
+      await page.getByText("High risk - Smoking history").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -443,27 +443,27 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     });
 
     test("should handle very large nodule (>30mm)", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "35");
-      await page.getByText("High risk - Smoking history").click();
+      await page.getByText("High risk - Smoking history").first().click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(page.getByText("PET/CT").first()).toBeVisible();
-      await expect(page.getByText("tissue sampling")).toBeVisible();
+      await expect(page.getByText("tissue sampling").first()).toBeVisible();
     });
 
     test("should handle decimal nodule sizes", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
+      await page.getByText("Solid nodule", { exact: true }).first().click();
+      await page.getByText("Single nodule", { exact: true }).first().click();
       await page.fill('input[id="nodule_size"]', "5.5");
-      await page.getByText("Low risk - No or minimal").click();
+      await page.getByText("Low risk - No or minimal").first().click();
 
       await page.click('button:has-text("Calculate")');
 
       // 5.5mm is <6mm
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
+      await expect(page.locator("text=No routine follow-up").first()).toBeVisible();
     });
   });
 

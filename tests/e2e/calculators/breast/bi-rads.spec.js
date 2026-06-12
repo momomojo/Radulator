@@ -37,14 +37,14 @@ test.describe("ACR BI-RADS Calculator", () => {
     });
 
     test("should display imaging modality options", async ({ page }) => {
-      await expect(page.getByText("Imaging Modality")).toBeVisible();
+      await expect(page.getByText("Imaging Modality").first()).toBeVisible();
       await expect(page.getByLabel("Mammography")).toBeVisible();
       await expect(page.getByLabel("Ultrasound")).toBeVisible();
       await expect(page.getByLabel("MRI", { exact: true })).toBeVisible();
     });
 
     test("should display study context options", async ({ page }) => {
-      await expect(page.getByText("Study Context")).toBeVisible();
+      await expect(page.getByText("Study Context").first()).toBeVisible();
       await expect(page.getByLabel("Screening examination")).toBeVisible();
       await expect(page.getByLabel("Diagnostic examination")).toBeVisible();
       await expect(
@@ -71,7 +71,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0 - Incomplete")).toBeVisible();
+      await expect(page.locator("text=0 - Incomplete").first()).toBeVisible();
       await expect(
         page.locator("text=Recall for additional imaging evaluation"),
       ).toBeVisible();
@@ -91,7 +91,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0 - Incomplete")).toBeVisible();
+      await expect(page.locator("text=0 - Incomplete").first()).toBeVisible();
       await expect(
         page.locator("text=Mammography if not performed"),
       ).toBeVisible();
@@ -106,7 +106,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0 - Incomplete")).toBeVisible();
+      await expect(page.locator("text=0 - Incomplete").first()).toBeVisible();
       await expect(
         page.locator(
           "text=Prior studies for comparison or additional sequences",
@@ -126,8 +126,8 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=1 - Negative")).toBeVisible();
-      await expect(page.locator("text=Essentially 0%")).toBeVisible();
+      await expect(page.locator("text=1 - Negative").first()).toBeVisible();
+      await expect(page.locator("text=Essentially 0%").first()).toBeVisible();
       await expect(
         page.locator("text=Routine screening mammography"),
       ).toBeVisible();
@@ -146,7 +146,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=1 - Negative")).toBeVisible();
+      await expect(page.locator("text=1 - Negative").first()).toBeVisible();
       await expect(
         page.locator("text=Return to annual screening"),
       ).toBeVisible();
@@ -168,8 +168,8 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=2 - Benign")).toBeVisible();
-      await expect(page.locator("text=Essentially 0%")).toBeVisible();
+      await expect(page.locator("text=2 - Benign").first()).toBeVisible();
+      await expect(page.locator("text=Essentially 0%").first()).toBeVisible();
       await expect(
         page.locator("text=Routine screening mammography"),
       ).toBeVisible();
@@ -190,7 +190,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=2 - Benign")).toBeVisible();
+      await expect(page.locator("text=2 - Benign").first()).toBeVisible();
     });
   });
 
@@ -240,7 +240,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=6-month unilateral")).toBeVisible();
+      await expect(page.locator("text=6-month unilateral").first()).toBeVisible();
       await expect(
         page.locator("text=Biopsy may be considered if patient preference"),
       ).toBeVisible();
@@ -650,7 +650,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.getByLabel("Yes - need additional imaging evaluation").click();
 
       // Finding type should not be visible when additional imaging needed
-      await expect(page.getByText("Finding Type")).not.toBeVisible();
+      await expect(page.getByText("Finding Type").first()).not.toBeVisible();
     });
 
     test("should show mass density only for mammography", async ({ page }) => {
@@ -662,7 +662,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.getByLabel("Oval").click();
       await page.getByLabel("Circumscribed").click();
 
-      await expect(page.getByText("Mass Density")).toBeVisible();
+      await expect(page.getByText("Mass Density").first()).toBeVisible();
     });
 
     test("should hide mass density for ultrasound", async ({ page }) => {
@@ -674,7 +674,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.getByLabel("Oval").click();
       await page.getByLabel("Circumscribed").click();
 
-      await expect(page.getByText("Mass Density")).not.toBeVisible();
+      await expect(page.getByText("Mass Density").first()).not.toBeVisible();
     });
 
     test("should show calcification distribution only for suspicious morphology", async ({
@@ -697,7 +697,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       // Amorphous should show distribution
       await page.getByLabel("Amorphous").click();
-      await expect(page.getByText("Calcification Distribution")).toBeVisible();
+      await expect(page.getByText("Calcification Distribution").first()).toBeVisible();
     });
   });
 
@@ -777,7 +777,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await expect(
         page.locator("text=Calcifications: fine_pleomorphic"),
       ).toBeVisible();
-      await expect(page.locator("text=segmental distribution")).toBeVisible();
+      await expect(page.locator("text=segmental distribution").first()).toBeVisible();
     });
   });
 
@@ -806,7 +806,7 @@ test.describe("ACR BI-RADS Calculator", () => {
     test("should have reference for follow-up guidelines", async ({ page }) => {
       // Sickles 1991 reference
       await expect(page.getByText("Sickles EA").first()).toBeVisible();
-      await expect(page.getByText("Radiology. 1991")).toBeVisible();
+      await expect(page.getByText("Radiology. 1991").first()).toBeVisible();
     });
   });
 
@@ -825,7 +825,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=3 - Probably Benign")).toBeVisible();
+      await expect(page.locator("text=3 - Probably Benign").first()).toBeVisible();
     });
 
     test("should complete full ultrasound workflow", async ({ page }) => {
@@ -842,7 +842,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=3 - Probably Benign")).toBeVisible();
+      await expect(page.locator("text=3 - Probably Benign").first()).toBeVisible();
     });
 
     test("should complete full MRI workflow", async ({ page }) => {

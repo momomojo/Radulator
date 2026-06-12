@@ -77,7 +77,7 @@ test.describe("ASPECTS Score Calculator", () => {
     });
 
     test("should have optional time from onset field", async ({ page }) => {
-      await expect(page.getByText("Time from Symptom Onset")).toBeVisible();
+      await expect(page.getByText("Time from Symptom Onset").first()).toBeVisible();
     });
   });
 

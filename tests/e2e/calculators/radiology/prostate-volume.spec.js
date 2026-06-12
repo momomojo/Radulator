@@ -189,8 +189,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Prostate Volume (mL):")).toBeVisible();
-      await expect(page.locator("text=21.8")).toBeVisible();
+      await expect(page.locator("text=Prostate Volume (mL).first():")).toBeVisible();
+      await expect(page.locator("text=21.8").first()).toBeVisible();
     });
 
     test("should calculate volume correctly - enlarged prostate", async ({
@@ -204,8 +204,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Prostate Volume (mL):")).toBeVisible();
-      await expect(page.locator("text=85.8")).toBeVisible();
+      await expect(page.locator("text=Prostate Volume (mL).first():")).toBeVisible();
+      await expect(page.locator("text=85.8").first()).toBeVisible();
     });
 
     test("should calculate volume correctly - small prostate", async ({
@@ -219,8 +219,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Prostate Volume (mL):")).toBeVisible();
-      await expect(page.locator("text=10.9")).toBeVisible();
+      await expect(page.locator("text=Prostate Volume (mL).first():")).toBeVisible();
+      await expect(page.locator("text=10.9").first()).toBeVisible();
     });
 
     test("should handle zero dimensions", async ({ page }) => {
@@ -231,8 +231,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Prostate Volume (mL):")).toBeVisible();
-      await expect(page.locator("text=0.0")).toBeVisible();
+      await expect(page.locator("text=Prostate Volume (mL).first():")).toBeVisible();
+      await expect(page.locator("text=0.0").first()).toBeVisible();
     });
 
     test("should handle decimal precision", async ({ page }) => {
@@ -244,8 +244,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Prostate Volume (mL):")).toBeVisible();
-      await expect(page.locator("text=35.1")).toBeVisible();
+      await expect(page.locator("text=Prostate Volume (mL).first():")).toBeVisible();
+      await expect(page.locator("text=35.1").first()).toBeVisible();
     });
   });
 
@@ -262,8 +262,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=PSA‑Density:")).toBeVisible();
-      await expect(page.locator("text=0.115")).toBeVisible();
+      await expect(page.locator("text=PSA‑Density:").first()).toBeVisible();
+      await expect(page.locator("text=0.115").first()).toBeVisible();
     });
 
     test("should calculate PSA-Density correctly - elevated PSA", async ({
@@ -278,8 +278,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=PSA‑Density:")).toBeVisible();
-      await expect(page.locator("text=0.171")).toBeVisible();
+      await expect(page.locator("text=PSA‑Density:").first()).toBeVisible();
+      await expect(page.locator("text=0.171").first()).toBeVisible();
     });
 
     test("should calculate PSA-Density correctly - low PSA", async ({
@@ -294,8 +294,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=PSA‑Density:")).toBeVisible();
-      await expect(page.locator("text=0.069")).toBeVisible();
+      await expect(page.locator("text=PSA‑Density:").first()).toBeVisible();
+      await expect(page.locator("text=0.069").first()).toBeVisible();
     });
 
     test("should show dashes when PSA is zero", async ({ page }) => {
@@ -307,8 +307,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=PSA‑Density:")).toBeVisible();
-      await expect(page.locator("text=‑‑")).toBeVisible();
+      await expect(page.locator("text=PSA‑Density:").first()).toBeVisible();
+      await expect(page.locator("text=‑‑").first()).toBeVisible();
     });
 
     test("should show dashes when PSA is not provided", async ({ page }) => {
@@ -319,8 +319,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=PSA‑Density:")).toBeVisible();
-      await expect(page.locator("text=‑‑")).toBeVisible();
+      await expect(page.locator("text=PSA‑Density:").first()).toBeVisible();
+      await expect(page.locator("text=‑‑").first()).toBeVisible();
     });
 
     test("should handle very small PSA values", async ({ page }) => {
@@ -333,8 +333,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=PSA‑Density:")).toBeVisible();
-      await expect(page.locator("text=0.005")).toBeVisible();
+      await expect(page.locator("text=PSA‑Density:").first()).toBeVisible();
+      await expect(page.locator("text=0.005").first()).toBeVisible();
     });
 
     test("should handle very high PSA values", async ({ page }) => {
@@ -348,8 +348,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=PSA‑Density:")).toBeVisible();
-      await expect(page.locator("text=0.350")).toBeVisible();
+      await expect(page.locator("text=PSA‑Density:").first()).toBeVisible();
+      await expect(page.locator("text=0.350").first()).toBeVisible();
     });
   });
 
@@ -363,8 +363,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Prostate Volume (mL):")).toBeVisible();
-      await expect(page.locator("text=445.2")).toBeVisible();
+      await expect(page.locator("text=Prostate Volume (mL).first():")).toBeVisible();
+      await expect(page.locator("text=445.2").first()).toBeVisible();
     });
 
     test("should handle very small dimensions", async ({ page }) => {
@@ -376,8 +376,8 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Prostate Volume (mL):")).toBeVisible();
-      await expect(page.locator("text=0.4")).toBeVisible();
+      await expect(page.locator("text=Prostate Volume (mL).first():")).toBeVisible();
+      await expect(page.locator("text=0.4").first()).toBeVisible();
     });
 
     test("should clear previous results when recalculating", async ({
@@ -390,7 +390,7 @@ test.describe("Prostate Volume Calculator", () => {
       await page.fill("#psa", "2.5");
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=21.8")).toBeVisible();
+      await expect(page.locator("text=21.8").first()).toBeVisible();
 
       // Change values and recalculate
       await page.fill("#length", "5.0");
@@ -400,8 +400,8 @@ test.describe("Prostate Volume Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // New results should be displayed
-      await expect(page.locator("text=46.8")).toBeVisible();
-      await expect(page.locator("text=0.107")).toBeVisible();
+      await expect(page.locator("text=46.8").first()).toBeVisible();
+      await expect(page.locator("text=0.107").first()).toBeVisible();
     });
 
     test("should handle switching calculators and returning", async ({
@@ -460,8 +460,8 @@ test.describe("Prostate Volume Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should still calculate (treating empty as 0)
-      await expect(page.locator("text=Prostate Volume (mL):")).toBeVisible();
-      await expect(page.locator("text=0.0")).toBeVisible();
+      await expect(page.locator("text=Prostate Volume (mL).first():")).toBeVisible();
+      await expect(page.locator("text=0.0").first()).toBeVisible();
     });
 
     test("should maintain precision in calculations", async ({ page }) => {
@@ -551,7 +551,7 @@ test.describe("Prostate Volume Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should show normal message (volume = 21.8 mL)
-      await expect(page.locator("text=Normal prostate volume")).toBeVisible();
+      await expect(page.locator("text=Normal prostate volume").first()).toBeVisible();
     });
 
     test("should not display normal message for enlarged prostate", async ({
@@ -612,7 +612,7 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=21.8")).toBeVisible();
+      await expect(page.locator("text=21.8").first()).toBeVisible();
     });
 
     test("should work on tablet viewport", async ({ page }) => {
@@ -625,7 +625,7 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=21.8")).toBeVisible();
+      await expect(page.locator("text=21.8").first()).toBeVisible();
     });
 
     test("should work on mobile viewport", async ({ page }) => {
@@ -638,7 +638,7 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=21.8")).toBeVisible();
+      await expect(page.locator("text=21.8").first()).toBeVisible();
     });
   });
 });
