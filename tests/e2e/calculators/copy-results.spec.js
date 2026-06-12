@@ -31,7 +31,7 @@ test.describe("Copy Results Button", () => {
     await fillInput(page, "Height (anteroposterior, cm):", 4);
     await fillInput(page, "Width (transverse, cm):", 4.5);
     await fillInput(page, "PSA (ng/mL):", 6);
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     await expect(page.locator('button:has-text("Copy Results")')).toBeVisible();
   });
@@ -43,7 +43,7 @@ test.describe("Copy Results Button", () => {
     await fillInput(page, "Height (anteroposterior, cm):", 4);
     await fillInput(page, "Width (transverse, cm):", 4.5);
     await fillInput(page, "PSA (ng/mL):", 6);
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     await page.locator('button:has-text("Copy Results")').click();
     await expect(page.locator('button:has-text("Copied!")')).toBeVisible();
@@ -56,7 +56,7 @@ test.describe("Copy Results Button", () => {
     await fillInput(page, "Height (anteroposterior, cm):", 4);
     await fillInput(page, "Width (transverse, cm):", 4.5);
     await fillInput(page, "PSA (ng/mL):", 6);
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     await page.locator('button:has-text("Copy Results")').click();
     await expect(page.locator('button:has-text("Copied!")')).toBeVisible();
@@ -74,7 +74,7 @@ test.describe("Copy Results Button", () => {
     await fillInput(page, "Height (anteroposterior, cm):", 4);
     await fillInput(page, "Width (transverse, cm):", 4.5);
     await fillInput(page, "PSA (ng/mL):", 6);
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     await page.locator('button:has-text("Copy Results")').click();
 
@@ -102,7 +102,7 @@ test.describe("Copy Results Button", () => {
     // Select ascites and encephalopathy via radio buttons (value-based IDs)
     await page.locator('label[for="ascites-slight"]').click();
     await page.locator('label[for="encephalopathy-none"]').click();
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     await page.locator('button:has-text("Copy Results")').click();
 

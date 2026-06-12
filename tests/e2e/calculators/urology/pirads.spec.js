@@ -28,7 +28,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("PI-RADS v2.1");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("PI-RADS v2.1");
       await expect(
         page.locator("text=Prostate MRI risk stratification"),
       ).toBeVisible();

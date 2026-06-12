@@ -30,7 +30,7 @@ test.describe("ACR BI-RADS Calculator", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("ACR BI-RADS");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("ACR BI-RADS");
       await expect(
         page.getByText("Breast Imaging Reporting and Data System").first(),
       ).toBeVisible();
@@ -212,7 +212,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=3 - Probably Benign"),
       ).toBeVisible();
@@ -284,7 +284,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=4A - Low Suspicion for Malignancy"),
       ).toBeVisible();
@@ -310,7 +310,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=4A - Low Suspicion for Malignancy"),
       ).toBeVisible();
@@ -336,7 +336,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=4B - Moderate Suspicion for Malignancy"),
       ).toBeVisible();
@@ -362,7 +362,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=4B - Moderate Suspicion for Malignancy"),
       ).toBeVisible();
@@ -388,7 +388,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=4C - High Suspicion for Malignancy"),
       ).toBeVisible();
@@ -457,7 +457,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=5 - Highly Suggestive of Malignancy"),
       ).toBeVisible();
@@ -504,7 +504,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=5 - Highly Suggestive of Malignancy"),
       ).toBeVisible();
@@ -575,7 +575,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=4A - Low Suspicion"),
       ).toBeVisible();
@@ -617,7 +617,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=4B - Moderate Suspicion"),
       ).toBeVisible();
@@ -752,7 +752,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.locator("text=Mass: irregular"),
       ).toBeVisible();

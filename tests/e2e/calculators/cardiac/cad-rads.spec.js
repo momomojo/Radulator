@@ -44,7 +44,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("CAD-RADS 2.0");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("CAD-RADS 2.0");
       const description = page.getByTestId("calculator-description");
       await expect(description).toContainText(
         "Coronary Artery Disease Reporting and Data System",
@@ -104,7 +104,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Use the results section to find the output
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("CAD-RADS Classification:"),
       ).toBeVisible();
@@ -133,7 +133,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("Category: CAD-RADS 1"),
       ).toBeVisible();
@@ -163,7 +163,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("Category: CAD-RADS 2"),
       ).toBeVisible();
@@ -196,7 +196,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("Category: CAD-RADS 3"),
       ).toBeVisible();
@@ -241,7 +241,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 3/I")).toBeVisible();
       await expect(
         resultsSection.getByText("Ischemia testing recommended"),
@@ -277,7 +277,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       // Use Category: prefix to be specific
       await expect(
         resultsSection.getByText("Category: CAD-RADS 4A"),
@@ -314,7 +314,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       // Use Category: prefix to be specific
       await expect(
         resultsSection.getByText("Category: CAD-RADS 4B"),
@@ -350,7 +350,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       // Use Category: prefix to be specific
       await expect(
         resultsSection.getByText("Category: CAD-RADS 4B"),
@@ -378,7 +378,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       // Use Category: prefix to be specific
       await expect(resultsSection.getByText("Category: CAD-RADS 5")).toBeVisible();
       await expect(
@@ -398,7 +398,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       // The compute function returns "CAD-RADS Category" not "Category" for non-diagnostic
       await expect(resultsSection.getByText("CAD-RADS N -")).toBeVisible();
       await expect(resultsSection.getByText("Repeat CTA")).toBeVisible();
@@ -422,7 +422,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 2/P1")).toBeVisible();
       await expect(
         resultsSection.getByText("Mild plaque burden (1-2 segments)"),
@@ -444,7 +444,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 2/P2")).toBeVisible();
       await expect(
         resultsSection.getByText("Moderate plaque burden (3-4 segments)"),
@@ -466,7 +466,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 2/P3")).toBeVisible();
       await expect(
         resultsSection.getByText("Severe plaque burden (5-7 segments)"),
@@ -491,7 +491,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 2/P4")).toBeVisible();
       // Use .first() to avoid strict mode violation since text appears in Modifiers and Clinical Notes
       await expect(
@@ -533,7 +533,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 3/HRP")).toBeVisible();
       await expect(
         resultsSection.getByText("High-risk plaque features present"),
@@ -560,7 +560,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 3/P2/HRP")).toBeVisible();
     });
   });
@@ -580,7 +580,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 2/S")).toBeVisible();
       await expect(resultsSection.getByText("Stent(s): Patent")).toBeVisible();
     });
@@ -599,7 +599,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 2/G")).toBeVisible();
       await expect(resultsSection.getByText("Graft(s): Patent")).toBeVisible();
     });
@@ -621,7 +621,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection.getByText("CAD-RADS 2/S/G")).toBeVisible();
       await expect(resultsSection.getByText("Stent(s): Patent")).toBeVisible();
       await expect(resultsSection.getByText("Graft(s): Patent")).toBeVisible();
@@ -647,7 +647,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("Stent(s): In-stent stenosis"),
       ).toBeVisible();
@@ -673,7 +673,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("Graft(s): Stenosis"),
       ).toBeVisible();
@@ -694,7 +694,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("Category: CAD-RADS 2"),
       ).toBeVisible();
@@ -725,7 +725,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("CAD-RADS 3/P2/HRP/I/S"),
       ).toBeVisible();
@@ -741,7 +741,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("Please select the maximum coronary stenosis"),
       ).toBeVisible();
@@ -800,7 +800,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText(
           "Excellent prognosis with very low annual event rate",
@@ -821,7 +821,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         resultsSection.getByText("antiplatelet therapy"),
       ).toBeVisible();
