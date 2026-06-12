@@ -199,17 +199,12 @@ export async function selectOption(page, label, value) {
  * @param {string} value - The visible label of the radio option to select
  */
 export async function selectRadio(page, label, value) {
-  // Prefer getByRole('radio') with matching accessible name
-  // Fall back to text locator for the radio label
-  const radio = page
-    .getByRole("radio", { name: new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") })
-    .first();
-  if (await radio.count().then((c) => c > 0)) {
-    await radio.click({ force: true });
-  } else {
-    // Fallback: click the label text
-    await page.getByText(value, { exact: false }).first().click();
-  }
+  // Default to clicking the visible label text (what a real user does).
+  // This is actionability-safe — Playwright checks visibility, enabled
+  // state, and pointer-events. For shadcn/Radix custom-styled radios
+  // the native <input type="radio"> is visually hidden, so clicking
+  // the label (which wraps the visible control) is the correct path.
+  await page.getByText(value, { exact: false }).first().click();
 }
 
 /**
