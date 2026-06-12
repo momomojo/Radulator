@@ -73,6 +73,7 @@ jobs:
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
           CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'src/components/calculators/*.jsx' | grep -vE 'index|registry|FeedbackForm' || true)
+          CHANGED_SPECS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'tests/e2e/calculators/**/*.spec.js' || true)
           # Space-joined single line: a multiline output would embed raw
           # newlines into the github-expression substitution downstream, acting
           # as command separators inside command substitution and silently
@@ -81,8 +82,10 @@ jobs:
           # comments — Actions template-expands run blocks before the shell
           # sees them, and an empty expression fails the whole workflow file.
           CHANGED_SPACE=$(printf '%s' "$CHANGED" | tr '\n' ' ')
+          SPECS_SPACE=$(printf '%s' "$CHANGED_SPECS" | tr '\n' ' ')
           echo "files=$CHANGED_SPACE" >> "$GITHUB_OUTPUT"
-          if [ -n "$CHANGED" ]; then echo "any=true" >> "$GITHUB_OUTPUT"; else echo "any=false" >> "$GITHUB_OUTPUT"; fi
+          echo "spec_files=$SPECS_SPACE" >> "$GITHUB_OUTPUT"
+          if [ -n "$CHANGED" ] || [ -n "$CHANGED_SPECS" ]; then echo "any=true" >> "$GITHUB_OUTPUT"; else echo "any=false" >> "$GITHUB_OUTPUT"; fi
 
       - name: Setup Node
         if: steps.changed.outputs.any == 'true'
@@ -110,9 +113,16 @@ jobs:
       - name: Run specs for changed calculators
         if: steps.changed.outputs.any == 'true'
         run: |
-          SPECS=$(node scripts/spec-map.js --specs-for ${{ steps.changed.outputs.files }})
-          echo "Running: $SPECS"
-          npx playwright test $SPECS --project=chromium
+          FILES="${{ steps.changed.outputs.files }}"
+          SPECS="${{ steps.changed.outputs.spec_files }}"
+          if [ -n "$FILES" ]; then
+            CALC_SPECS=$(node scripts/spec-map.js --specs-for $FILES)
+            echo "Running calculator specs: $CALC_SPECS"
+            npx playwright test $CALC_SPECS --project=chromium
+          elif [ -n "$SPECS" ]; then
+            echo "Running changed spec files: $SPECS"
+            npx playwright test $SPECS --project=chromium
+          fi
         env:
           CI: true
 
