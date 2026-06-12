@@ -46,7 +46,9 @@ test.describe("Smoke Tests - Core Functionality", () => {
 
   test("should navigate to Adrenal CT Washout calculator", async ({ page }) => {
     await clickCalculator(page, "Adrenal CT Washout");
-    await expect(page.locator("h2")).toContainText("Adrenal CT Washout");
+    await expect(
+      page.getByTestId("calculator-title").first(),
+    ).toContainText("Adrenal CT Washout");
   });
 
   test("should calculate Adrenal CT Washout", async ({ page }) => {
@@ -57,7 +59,7 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await page.getByRole("spinbutton", { name: /Post.*contrast/i }).fill("80");
     await page.getByRole("spinbutton", { name: /Delayed/i }).fill("35");
 
-    await page.click('button:has-text("Calculate")');
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results appear - use specific text that only appears in results
     await expect(page.getByText("Absolute Washout (%)")).toBeVisible();
@@ -66,7 +68,9 @@ test.describe("Smoke Tests - Core Functionality", () => {
 
   test("should navigate to Child-Pugh calculator", async ({ page }) => {
     await clickCalculator(page, "Child-Pugh Score");
-    await expect(page.locator("h2")).toContainText("Child-Pugh");
+    await expect(
+          page.getByTestId("calculator-title").first(),
+        ).toContainText("Adrenal CT Washout");
   });
 
   test("should calculate Child-Pugh score", async ({ page }) => {
@@ -82,7 +86,7 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await noneRadios.nth(0).check(); // Ascites: None
     await noneRadios.nth(1).check(); // Encephalopathy: None
 
-    await page.click('button:has-text("Calculate")');
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results - check that score and class are shown
     await expect(page.getByText("5 points", { exact: true })).toBeVisible();
@@ -93,7 +97,9 @@ test.describe("Smoke Tests - Core Functionality", () => {
     page,
   }) => {
     await clickCalculator(page, "Prostate Volume & PSA Density");
-    await expect(page.locator("h2")).toContainText("Prostate Volume");
+    await expect(
+          page.getByTestId("calculator-title").first(),
+        ).toContainText("Adrenal CT Washout");
   });
 
   test("should calculate Prostate Volume & PSA Density", async ({ page }) => {
@@ -104,7 +110,7 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await page.getByRole("spinbutton", { name: /Width/i }).fill("4");
     await page.getByRole("spinbutton", { name: /Height/i }).fill("3.5");
 
-    await page.click('button:has-text("Calculate")');
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify volume result - check for specific result text
     await expect(page.getByText("Prostate Volume (mL)")).toBeVisible();
@@ -113,7 +119,9 @@ test.describe("Smoke Tests - Core Functionality", () => {
 
   test("should navigate to ACR TI-RADS calculator", async ({ page }) => {
     await clickCalculator(page, "ACR TI-RADS");
-    await expect(page.locator("h2")).toContainText("TI-RADS");
+    await expect(
+          page.getByTestId("calculator-title").first(),
+        ).toContainText("Adrenal CT Washout");
   });
 
   test("should display references section", async ({ page }) => {

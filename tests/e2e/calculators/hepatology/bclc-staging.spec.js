@@ -34,7 +34,7 @@ test.describe('BCLC Staging Calculator', () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator('h2')).toContainText('BCLC Staging (HCC)');
+    await expect(page.getByTestId('calculator-title').first()).toContainText('BCLC Staging (HCC)');
     await expect(page.locator('text=Barcelona Clinic Liver Cancer staging')).toBeVisible();
   });
 

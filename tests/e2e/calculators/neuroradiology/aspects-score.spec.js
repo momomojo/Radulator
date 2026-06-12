@@ -89,7 +89,7 @@ test.describe("ASPECTS Score Calculator", () => {
       // Don't check any region checkboxes
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=ASPECTS Score").first()).toBeVisible();
       await expect(results.locator("text=10 / 10").first()).toBeVisible();
       await expect(
@@ -111,7 +111,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="laterality-left"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results
           .locator("text=Subtle changes may be missed within first 3 hours")
@@ -128,7 +128,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="insular"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=9 / 10").first()).toBeVisible();
       await expect(
         results.locator("text=1 region(s): I (Insular)").first(),
@@ -148,7 +148,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="lentiform"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=8 / 10").first()).toBeVisible();
       await expect(results.locator("text=2 region(s)").first()).toBeVisible();
       await expect(
@@ -171,7 +171,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="insular"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=6 / 10").first()).toBeVisible();
       await expect(
         results.locator("text=Moderate early ischemic changes").first(),
@@ -190,7 +190,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="insular"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Subcortical: 4/4").first(),
       ).toBeVisible();
@@ -216,7 +216,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="m1"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=5 / 10").first()).toBeVisible();
       await expect(
         results.locator("text=Large infarct core").first(),
@@ -240,7 +240,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="m3"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=3 / 10").first()).toBeVisible();
       await expect(
         results.locator("text=Higher risk of symptomatic hemorrhage").first(),
@@ -264,7 +264,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="m4"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=2 / 10").first()).toBeVisible();
       await expect(
         results.locator("text=Very large infarct core").first(),
@@ -292,7 +292,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="m6"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=0 / 10").first()).toBeVisible();
       await expect(results.locator("text=10 region(s)").first()).toBeVisible();
     });
@@ -305,7 +305,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.fill('input[id="time_from_onset"]', "4");
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=4 hours").first()).toBeVisible();
       await expect(
         results.locator("text=Within standard 6-hour window").first(),
@@ -319,7 +319,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.fill('input[id="time_from_onset"]', "12");
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=12 hours").first()).toBeVisible();
       await expect(results.locator("text=DEFUSE-3").first()).toBeVisible();
       await expect(results.locator("text=6-16 hours").first()).toBeVisible();
@@ -331,7 +331,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.fill('input[id="time_from_onset"]', "20");
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=20 hours").first()).toBeVisible();
       await expect(results.locator("text=DAWN").first()).toBeVisible();
       await expect(
@@ -344,7 +344,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.fill('input[id="time_from_onset"]', "30");
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results
           .locator("text=Beyond standard thrombectomy time windows")
@@ -363,7 +363,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.fill('input[id="time_from_onset"]', "10");
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=DEFUSE-3 excluded ASPECTS < 6").first(),
       ).toBeVisible();
@@ -379,7 +379,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="lentiform"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results
           .locator("text=proximal M1 occlusion with poor collaterals")
@@ -395,7 +395,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="internal_capsule"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=lenticulostriate artery territory").first(),
       ).toBeVisible();
@@ -411,7 +411,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="m6"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Complete cortical MCA involvement").first(),
       ).toBeVisible();
@@ -426,7 +426,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="laterality-left"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Standard EVT: ASPECTS >= 6").first(),
       ).toBeVisible();
@@ -437,7 +437,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="laterality-left"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Large Core EVT: ASPECTS 3-5").first(),
       ).toBeVisible();
@@ -451,7 +451,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="insular"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=9 / 10").first()).toBeVisible();
       await expect(
         results.locator("text=Affected Hemisphere").first(),
@@ -465,7 +465,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.locator('label[for="insular"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       // Should still calculate
       await expect(results.locator("text=9 / 10").first()).toBeVisible();
     });
@@ -475,7 +475,7 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.fill('input[id="time_from_onset"]', "4.5");
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=4.5 hours").first()).toBeVisible();
     });
   });

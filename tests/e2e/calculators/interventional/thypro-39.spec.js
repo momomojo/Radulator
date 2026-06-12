@@ -209,7 +209,7 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerAllQuestions(page, 0);
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       // All subscale scores should be 0.0
@@ -238,7 +238,7 @@ test.describe("ThyPRO-39 Calculator", () => {
       await answerAllQuestions(page, 4);
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       await expect(results).toContainText("Goiter Symptoms: 100.0 / 100");
@@ -267,7 +267,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       await expect(results).toContainText("Goiter Symptoms: 100.0 / 100");
@@ -310,7 +310,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       await expect(results).toContainText("Goiter Symptoms: 25.0 / 100");
@@ -347,7 +347,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText(
         "Composite Score (Baseline): 75.0 / 100",
       );
@@ -366,7 +366,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Please complete all questions");
       await expect(results).toContainText("39 remaining");
       await expect(results).toContainText("Follow-up:");
@@ -385,7 +385,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Composite Score: 25.0 / 100");
       await expect(results).toContainText("Low (0–25)");
     });
@@ -402,7 +402,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Moderate (26–50)");
     });
 
@@ -418,7 +418,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Composite Score: 50.0 / 100");
       await expect(results).toContainText("Moderate (26–50)");
     });
@@ -433,7 +433,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("High (51–75)");
     });
 
@@ -449,7 +449,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Composite Score: 75.0 / 100");
       await expect(results).toContainText("High (51–75)");
     });
@@ -466,7 +466,7 @@ test.describe("ThyPRO-39 Calculator", () => {
 
       await page.locator('button:has-text("Calculate")').click();
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Very High (76–100)");
     });
   });
@@ -482,7 +482,7 @@ test.describe("ThyPRO-39 Calculator", () => {
     test("should show error with partial answers", async ({ page }) => {
       await answerQuestionRange(page, 1, 10, 0);
       await page.locator('button:has-text("Calculate")').click();
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Please answer all 39 questions");
       await expect(results).toContainText("29 remaining");
       // Verify the error lists specific missing subscales with question numbers

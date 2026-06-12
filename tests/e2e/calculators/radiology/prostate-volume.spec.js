@@ -168,7 +168,7 @@ test.describe("Prostate Volume Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results section
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       // Check font-mono styling for result labels
@@ -474,7 +474,7 @@ test.describe("Prostate Volume Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Results should be displayed with proper precision
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Prostate Volume (mL):");
       await expect(results).toContainText("PSA‑Density:");
     });

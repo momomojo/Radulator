@@ -98,7 +98,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 1").first()).toBeVisible();
       await expect(results.locator("text=Liver").first()).toBeVisible();
       await expect(results.locator("text=Minor").first()).toBeVisible();
@@ -114,7 +114,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 1").first()).toBeVisible();
       await expect(results.locator("text=Capsular tear").first()).toBeVisible();
     });
@@ -126,7 +126,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 2").first()).toBeVisible();
       await expect(results.locator("text=Moderate").first()).toBeVisible();
     });
@@ -138,7 +138,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(results.locator("text=Serious").first()).toBeVisible();
       await expect(
@@ -155,7 +155,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(results.locator("text=contained").first()).toBeVisible();
     });
@@ -169,7 +169,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
       await expect(results.locator("text=Severe").first()).toBeVisible();
       await expect(results.locator("text=33-40%").first()).toBeVisible();
@@ -184,7 +184,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
       await expect(results.locator("text=peritoneum").first()).toBeVisible();
     });
@@ -198,7 +198,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
       await expect(results.locator("text=Critical").first()).toBeVisible();
       await expect(
@@ -213,7 +213,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
       await expect(
         results.locator("text=retrohepatic IVC").first(),
@@ -227,7 +227,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
     });
 
@@ -240,7 +240,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       // Grade IV shows 33-40% intervention rate
       await expect(results.locator("text=Liver").first()).toBeVisible();
     });
@@ -266,7 +266,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 1").first()).toBeVisible();
       await expect(results.locator("text=Spleen").first()).toBeVisible();
       await expect(
@@ -281,7 +281,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(
         results.locator("text=prophylactic angioembolization").first(),
@@ -295,7 +295,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
       await expect(
         results.locator("text=80% splenic salvage").first(),
@@ -309,7 +309,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
       await expect(results.locator("text=splenectomy").first()).toBeVisible();
     });
@@ -325,7 +325,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
       await expect(
         results.locator("text=devascularization").first(),
@@ -339,7 +339,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Vaccinations").first()).toBeVisible();
       await expect(results.locator("text=pneumococcal").first()).toBeVisible();
     });
@@ -371,7 +371,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 1").first()).toBeVisible();
       await expect(results.locator("text=Kidney").first()).toBeVisible();
       await expect(results.locator("text=Minor").first()).toBeVisible();
@@ -384,7 +384,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 2").first()).toBeVisible();
     });
 
@@ -395,7 +395,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(
         results.locator("text=Hematoma rim distance").first(),
@@ -411,7 +411,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(
         results.locator("text=collecting system").first(),
@@ -425,7 +425,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
       await expect(results.locator("text=UPJ").first()).toBeVisible();
     });
@@ -439,7 +439,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
       await expect(results.locator("text=nephrectomy").first()).toBeVisible();
     });
@@ -450,7 +450,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Urinary extravasation").first(),
       ).toBeVisible();
@@ -468,7 +468,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=80-90%").first()).toBeVisible();
       await expect(results.locator("text=spontaneously").first()).toBeVisible();
     });
@@ -484,7 +484,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 2").first()).toBeVisible();
       await expect(
         results.locator("text=Multiple injuries (+1 grade)").first(),
@@ -503,7 +503,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       // Grade III should not advance further due to multiple injuries rule
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       // Should not show advancement message since it's already >= Grade III
@@ -519,7 +519,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Non-operative management").first(),
       ).toBeVisible();
@@ -536,7 +536,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Angioembolization").first(),
       ).toBeVisible();
@@ -553,7 +553,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=43-57%").first()).toBeVisible();
       await expect(
         results.locator("text=damage control surgery").first(),
@@ -570,7 +570,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=HEMODYNAMIC STABILITY IS PARAMOUNT").first(),
       ).toBeVisible();
@@ -671,7 +671,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       // Should be Grade III (highest)
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(
@@ -689,7 +689,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Key Findings").first()).toBeVisible();
       await expect(
         results.locator("text=Subcapsular hematoma 10-50%").first(),
@@ -771,7 +771,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=OIS Version").first()).toBeVisible();
     });
   });
@@ -789,7 +789,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
       await expect(
         results.locator("text=Pararenal hematoma extension").first(),
@@ -803,7 +803,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(results.locator("text=PSA/AVF").first()).toBeVisible();
     });
@@ -815,7 +815,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
       await expect(
         results.locator("text=Active bleeding from kidney").first(),
@@ -831,7 +831,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
     });
 
@@ -844,7 +844,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
     });
 
@@ -856,7 +856,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
       await expect(
         results
@@ -872,7 +872,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
       await expect(
         results.locator("text=without active bleeding").first(),
@@ -887,7 +887,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
     });
   });
@@ -913,7 +913,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 1").first()).toBeVisible();
       await expect(results.locator("text=2018").first()).toBeVisible();
     });
@@ -927,7 +927,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 2").first()).toBeVisible();
     });
 
@@ -942,7 +942,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
     });
 
@@ -955,7 +955,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
     });
 
@@ -968,7 +968,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
     });
 
@@ -982,7 +982,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       // In 2018, urinary extravasation = Grade IV
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
     });
@@ -996,7 +996,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
     });
 
@@ -1009,7 +1009,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
     });
   });
@@ -1048,7 +1048,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.getByText("Minor contusion without duct injury").click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=2024").first()).toBeVisible();
     });
 
@@ -1057,7 +1057,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.getByText("Minor contusion without duct injury").click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 1").first()).toBeVisible();
       await expect(
         results.locator("text=Minor contusion without duct injury").first(),
@@ -1072,7 +1072,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
         .click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 1").first()).toBeVisible();
     });
 
@@ -1083,7 +1083,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
         .click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 2").first()).toBeVisible();
     });
 
@@ -1093,7 +1093,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
         .click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 2").first()).toBeVisible();
     });
 
@@ -1107,7 +1107,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
         .click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(
         results.locator("text=neck/body/tail").first(),
@@ -1123,7 +1123,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
         .click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
     });
 
@@ -1136,7 +1136,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
         .click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
     });
 
@@ -1148,7 +1148,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.locator('label[for="pancreas_duct_location-head"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
       await expect(
         results.locator("text=pancreatic head").first(),
@@ -1162,7 +1162,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.locator('label[for="pancreas_duct_location-head"]').click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
     });
 
@@ -1173,7 +1173,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.click('label[for="pancreas_destructive"]');
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 5").first()).toBeVisible();
       await expect(results.locator("text=Destructive").first()).toBeVisible();
     });
@@ -1204,7 +1204,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
         .click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Ductal integrity").first(),
       ).toBeVisible();
@@ -1220,7 +1220,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
         .click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=pancreatectomy").first(),
       ).toBeVisible();
@@ -1230,7 +1230,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.click('label[for="pancreas_destructive"]');
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=damage control").first(),
       ).toBeVisible();
@@ -1246,7 +1246,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.click('label[for="multiple_injuries"]');
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       await expect(
         results.locator("text=Multiple injuries").first(),
@@ -1263,7 +1263,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.getByText("Capsular tear, <1 cm").click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Dual-phase CT").first()).toBeVisible();
     });
 
@@ -1274,7 +1274,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.getByText(">3 cm parenchymal depth").click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=sentinel clot").first()).toBeVisible();
     });
 
@@ -1283,7 +1283,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.getByText("Subcapsular, <10%").click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=arterial phase is critical").first(),
       ).toBeVisible();
@@ -1296,7 +1296,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.getByText(">3 cm parenchymal depth").click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=Delayed splenic rupture").first(),
       ).toBeVisible();
@@ -1309,7 +1309,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.getByText("Contusion without laceration").click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=delayed excretory phase").first(),
       ).toBeVisible();
@@ -1320,7 +1320,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.getByText("Minor contusion without duct injury").click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=MRCP").first()).toBeVisible();
     });
 
@@ -1329,7 +1329,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.getByText("Minor contusion without duct injury").click();
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
         results.locator("text=missed on initial CT").first(),
       ).toBeVisible();

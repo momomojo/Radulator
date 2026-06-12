@@ -239,7 +239,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     await page.click('button:has-text("Calculate")');
 
     // Migration Index = (10 / (10 + 90)) * 100 = 10%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results.locator("text=Migration Index (Right)")).toBeVisible();
     await expect(results.locator("text=10.0%")).toBeVisible();
     await expect(results.locator("text=Normal")).toBeVisible();
@@ -262,7 +262,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results.locator("text=Migration Index (Left)")).toBeVisible();
     await expect(results.locator("text=25.0%")).toBeVisible();
     await expect(results.locator("text=Borderline/At risk")).toBeVisible();
@@ -284,7 +284,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results.locator("text=40.0%")).toBeVisible();
     await expect(results.locator("text=Subluxation")).toBeVisible();
   });
@@ -305,7 +305,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results.locator("text=70.0%")).toBeVisible();
     await expect(results.locator("text=Severe subluxation")).toBeVisible();
   });
@@ -326,7 +326,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results.locator("text=95.0%")).toBeVisible();
     await expect(results.locator("text=Dislocation")).toBeVisible();
   });
@@ -373,7 +373,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results.locator("text=15.0%")).toBeVisible();
     await expect(results.locator("text=At risk")).toBeVisible();
   });
@@ -394,7 +394,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results.locator("text=100.0%")).toBeVisible();
     await expect(results.locator("text=Dislocation")).toBeVisible();
   });
@@ -415,7 +415,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results.locator("text=0.0%")).toBeVisible();
     await expect(results.locator("text=Normal")).toBeVisible();
   });
