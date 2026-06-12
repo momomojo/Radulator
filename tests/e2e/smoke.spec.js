@@ -70,7 +70,7 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await clickCalculator(page, "Child-Pugh Score");
     await expect(
           page.getByTestId("calculator-title").first(),
-        ).toContainText("Adrenal CT Washout");
+        ).toContainText("Child-Pugh");
   });
 
   test("should calculate Child-Pugh score", async ({ page }) => {
@@ -99,7 +99,7 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await clickCalculator(page, "Prostate Volume & PSA Density");
     await expect(
           page.getByTestId("calculator-title").first(),
-        ).toContainText("Adrenal CT Washout");
+        ).toContainText("Prostate Volume");
   });
 
   test("should calculate Prostate Volume & PSA Density", async ({ page }) => {
@@ -121,7 +121,7 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await clickCalculator(page, "ACR TI-RADS");
     await expect(
           page.getByTestId("calculator-title").first(),
-        ).toContainText("Adrenal CT Washout");
+        ).toContainText("TI-RADS");
   });
 
   test("should display references section", async ({ page }) => {
