@@ -33,14 +33,14 @@ test.describe("Radiation Dose Converter Calculator", () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator("h2")).toContainText("Radiation Dose Converter");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("Radiation Dose Converter");
   });
 
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText(
+      await expect(page.getByTestId('calculator-title').first()).toContainText(
         "Radiation Dose Converter",
       );
       await expect(
@@ -582,8 +582,8 @@ test.describe("Radiation Dose Converter Calculator", () => {
       await verifyMobileResponsive(page);
 
       // Verify calculator is still usable on mobile
-      await expect(page.locator("h2")).toContainText("Radiation");
-      await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toContainText("Radiation");
+      await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
     });
   });
 });

@@ -31,7 +31,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     page,
   }) => {
     // Verify title
-    await expect(page.locator("h2")).toContainText("DLP to Effective Dose");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("DLP to Effective Dose");
 
     // Verify description
     await expect(page.getByTestId("calculator-description")).toContainText(
@@ -63,7 +63,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     ).toBeVisible();
 
     // Verify Calculate button is present
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
   });
 
   // ============================================
@@ -76,7 +76,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -93,7 +93,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -107,7 +107,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -125,7 +125,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "chest");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -141,7 +141,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "chest");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -160,7 +160,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "abdomen_pelvis");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -178,7 +178,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "abdomen_pelvis");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -196,7 +196,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "child_10");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -214,7 +214,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "child_5");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -230,7 +230,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "child_1");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -246,7 +246,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "newborn");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -262,7 +262,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "chest");
     await selectOption(page, "Patient Age Group", "child_5");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -280,7 +280,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "abdomen");
     await selectOption(page, "Patient Age Group", "child_1");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -299,7 +299,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "neck");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -315,7 +315,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "pelvis");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -332,7 +332,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "chest_abdomen_pelvis");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -347,7 +347,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "spine_cervical");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -362,7 +362,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "spine_thoracic");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -377,7 +377,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "spine_lumbar");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -393,7 +393,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "extremity");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -414,7 +414,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "abdomen_pelvis");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -430,7 +430,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "chest");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -446,7 +446,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "abdomen_pelvis");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -459,7 +459,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "abdomen_pelvis");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -476,7 +476,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -489,7 +489,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -501,7 +501,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -512,7 +512,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await fillInput(page, "Dose Length Product (DLP)", "500");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -527,7 +527,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     // Don't select age group - should default to adult
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -544,7 +544,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -556,7 +556,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "abdomen_pelvis");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -570,7 +570,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Anatomical Region", "chest");
     await selectOption(page, "Patient Age Group", "adult");
 
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -639,7 +639,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     const dlpInput = page.locator('input[type="number"]');
     await expect(dlpInput).toBeVisible();
 
-    const calculateBtn = page.locator('button:has-text("Calculate")');
+    const calculateBtn = page.getByRole('button', { name: 'Calculate' });
     await expect(calculateBtn).toBeVisible();
 
     // Reset to desktop
@@ -651,13 +651,13 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await fillInput(page, "Dose Length Product (DLP)", "500");
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "adult");
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Immediately change values and recalculate
     await fillInput(page, "Dose Length Product (DLP)", "1000");
     await selectOption(page, "Anatomical Region", "chest");
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results updated correctly
     const results = page.getByRole('status', { name: 'Calculator results' });
@@ -672,7 +672,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Patient Age Group", "adult");
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Clear inputs
@@ -692,7 +692,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await selectOption(page, "Patient Age Group", "adult");
 
     const startTime = Date.now();
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
     const endTime = Date.now();
 
@@ -713,7 +713,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     await fillInput(page, "Dose Length Product (DLP)", "500");
     await selectOption(page, "Anatomical Region", "head");
     await selectOption(page, "Patient Age Group", "adult");
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     expect(consoleErrors).toHaveLength(0);
@@ -741,7 +741,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
     });
 
     // Calculate and screenshot results
-    await page.locator('button:has-text("Calculate")').click();
+await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     await page.screenshot({

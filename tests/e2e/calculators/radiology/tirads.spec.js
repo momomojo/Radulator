@@ -29,7 +29,7 @@ test.describe("ACR TI-RADS Calculator", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("ACR TI-RADS");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("ACR TI-RADS");
       await expect(
         page.getByText("ACR TI-RADS", { exact: true }).first(),
       ).toBeVisible();

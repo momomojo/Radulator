@@ -17,11 +17,11 @@ import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js
 test.describe("Hip Dysplasia Indices Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, "Hip Dysplasia");
-    await expect(page.locator('h2:has-text("Hip Dysplasia")')).toBeVisible();
+    await expect(page.getByTestId('calculator-title').first()).toBeVisible();
   });
 
   test("should display calculator name and description", async ({ page }) => {
-    await expect(page.locator("h2")).toContainText("Hip Dysplasia");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("Hip Dysplasia");
     await expect(
       page.locator(
         "text=Calculate migration indices and normal values in hip dysplasia",
@@ -424,7 +424,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     await expect(page.locator('h3:has-text("References")')).toBeVisible();
 
     // Check for three reference links
-    const references = page.locator('section:has(h3:has-text("References")) a');
+    const references = page.locator('section.references-section a');
     await expect(references).toHaveCount(3);
 
     // Verify reference texts and URLs
@@ -505,15 +505,15 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     await page.setViewportSize({ width: 375, height: 667 }); // iPhone SE size
 
     // Check that calculator is visible and usable
-    await expect(page.locator('h2:has-text("Hip Dysplasia")')).toBeVisible();
+    await expect(page.getByTestId('calculator-title').first()).toBeVisible();
     await expect(page.locator('input[type="date"]')).toBeVisible();
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
   });
 
   test("should be responsive on tablet viewport", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 }); // iPad size
 
-    await expect(page.locator('h2:has-text("Hip Dysplasia")')).toBeVisible();
+    await expect(page.getByTestId('calculator-title').first()).toBeVisible();
     await expect(page.locator('input[type="date"]')).toBeVisible();
   });
 

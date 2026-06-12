@@ -22,7 +22,7 @@ import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js
 test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, "Y-90 Radioembolization Dosimetry");
-    await expect(page.locator("h2")).toContainText(
+    await expect(page.getByTestId('calculator-title').first()).toContainText(
       "Y-90 Radioembolization Dosimetry",
     );
   });
@@ -30,7 +30,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with proper layout", async ({ page }) => {
       // Check header
-      await expect(page.locator("h2")).toContainText(
+      await expect(page.getByTestId('calculator-title').first()).toContainText(
         "Y-90 Radioembolization Dosimetry",
       );
       await expect(
@@ -84,7 +84,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       ).toBeVisible();
 
       // Check Calculate button
-      await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
       // Check References section
       await expect(page.locator("text=References")).toBeVisible();

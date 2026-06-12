@@ -50,7 +50,7 @@ test.describe("AVS Cortisol Calculator", () => {
     ).toBeVisible();
 
     // Verify calculate button is present
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
   });
 
   test("should have correct patient metadata fields", async ({ page }) => {
@@ -182,7 +182,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("200"); // Delta = 150 pg/mL (>100)
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Wait for results
 
@@ -259,7 +259,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("220"); // Delta = 180 (>100)
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify interpretation
     const interpretation = page.locator(
@@ -316,7 +316,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("190"); // Delta = 160 (>100)
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify CLR suggests bilateral disease (CLR ≤2)
     const clrText = await page.locator("text=CLR").textContent();
@@ -379,7 +379,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("200"); // Delta = 150 (>100) - SUCCESS
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify left cannulation failed
     const leftStatus = page
@@ -457,7 +457,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("180");
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify both samples were successful
     await expect(page.locator("text=✓ Successful").first()).toBeVisible();
@@ -516,7 +516,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("180");
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Ratios should be the same as µg/dL test case (8.0 and 2.0)
     const leftRatioText = await page
@@ -579,7 +579,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("180");
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Left AV/PV ratio should be 120/15 = 8.0 (using suprarenal, not infrarenal)
     const leftRatioText = await page
@@ -626,7 +626,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("180");
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify CSV download button appears
     const downloadButton = page.locator(
@@ -640,7 +640,7 @@ test.describe("AVS Cortisol Calculator", () => {
     page,
   }) => {
     // Click calculate without filling required fields
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should show error message
     const errorMessage = page.locator("text=Insufficient data");
@@ -757,7 +757,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("180");
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Interpretation should reference Young criteria
     const interpretation = await page
@@ -810,7 +810,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("200");
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should calculate successfully
     const leftRatioText = await page
@@ -856,7 +856,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightEpiInputs.first().fill("200");
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // With delta exactly at 100, cannulation should FAIL (must be >100, not ≥100)
     const leftStatus = page
@@ -905,7 +905,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await rightCortInputs.first().fill("30");
     await rightEpiInputs.first().fill("200");
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Take screenshot for documentation
     await takeScreenshot(page, "avs-cortisol", "full-example");

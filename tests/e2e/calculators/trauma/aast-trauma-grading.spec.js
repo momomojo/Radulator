@@ -32,14 +32,14 @@ test.describe("AAST Trauma Grading Calculator", () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator("h2")).toContainText("AAST Trauma Grading");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("AAST Trauma Grading");
   });
 
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("AAST Trauma Grading");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("AAST Trauma Grading");
       await expect(
         page.getByText("AAST-OIS solid organ").first(),
       ).toBeVisible();
@@ -1345,8 +1345,8 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await verifyMobileResponsive(page);
 
       // Verify calculator is still usable on mobile
-      await expect(page.locator("h2")).toContainText("AAST");
-      await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toContainText("AAST");
+      await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
     });
   });
 });

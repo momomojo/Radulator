@@ -34,7 +34,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("Mehran CIN Risk Score");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("Mehran CIN Risk Score");
     });
 
     test("should have all clinical risk factor checkboxes", async ({
