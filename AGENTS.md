@@ -1,6 +1,8 @@
 # AGENTS.md — coding harness for Radulator
 
-You are working on **radulator.com** — free medical calculators used by real clinicians. A bad merge ships to production within minutes (push to `main` = deploy). Work like a careful engineer at a medical device company: small, verified, reversible steps.
+You are working on **radulator.com** — free medical calculators used by real clinicians. Push to `main` = production deploy within minutes, which is why feature work never targets it directly. Work like a careful engineer at a medical device company: small, verified, reversible steps.
+
+**Branch model (release train).** Feature/fix PRs target **`develop`** (integration branch; smoke + targeted CI required). Batches are promoted develop→main by an automated promotion PR that runs the **full Playwright suite** and gets a fresh production-gate review of the whole batch — only then does anything deploy. The ONLY PRs that may target `main` directly are hotfixes for live production breakage, and they also require the full suite. If you are unsure which base to use: `develop`.
 
 ## The lifecycle — every task, in order
 
@@ -19,7 +21,7 @@ You are working on **radulator.com** — free medical calculators used by real c
 ## Hard rules
 
 - **Medical content is sacred.** Never change formulas, thresholds, score boundaries, units, interpretation text, or guideline versions unless your task card explicitly authorizes it AND provides the citation. Include the citation in your PR. When in doubt: block and ask — the owner is a physician; medical sign-off is his, not yours.
-- **PR-only.** Never push to `main`. Never merge — the gate merges.
+- **PR-only.** Never push to `main` or `develop` directly. PRs target `develop` (hotfix-to-`main` only for live production breakage). Never merge — the gate merges.
 - **The roadmap is not yours.** `docs/ROADMAP.md` is written EXCLUSIVELY by the Strategist routine (and the owner). Workers never edit it — if your task seems to require a roadmap change, note it in your PR description and the strategist will pick it up. Work arrives as GitHub issues labeled `seed` (`lane:flash` / `lane:codex`) — execute the seed body as written; if it is ambiguous, that is a finding for the seed author, not a license to improvise.
 - **The registry contract.** Every calculator is one self-contained `.jsx` in `src/components/calculators/` exporting `id`, `name`, `category` (double-quoted string literals — build tooling parses them statically). The registry, README counts, sitemap, and static pages all derive from this metadata. Renaming/removing an `id` breaks deep links (`#/<id>`) and static pages (`/calculators/<id>/`) — treat ids as permanent.
 - **GitHub auth (hermes workers):** `export GH_TOKEN="$(sed -n 's/^GH_TOKEN=//p' "$HERMES_HOME/.env" | head -1)"` and verify with `gh api user -q .login` before any GitHub operation. If invalid, block with that fact.
@@ -27,7 +29,7 @@ You are working on **radulator.com** — free medical calculators used by real c
 ## Error classes to think about (these have actually bitten this repo)
 
 - **Env-dependent builds:** CI sets secrets (e.g. `VITE_GA4_MEASUREMENT_ID`) that local builds lack — a transform that runs only in CI once consumed another step's regex anchor and shipped 38 broken pages while local builds looked perfect. For any build-pipeline change, reason explicitly: *what is different in CI?* And make generators **fail loudly** — a thrown error beats a silent no-op every time.
-- **Stale-base work:** workspace clones can lag origin. Always `git fetch` + rebase onto the real `origin/main` before opening a PR.
+- **Stale-base work:** workspace clones can lag origin. Always `git fetch` + rebase onto the real `origin/develop` (or `origin/main` for hotfixes) before opening a PR.
 - **Derived-data drift:** counts, lists, and inventories in docs must be derived from source (registry metadata), never hand-typed.
 - **Accessibility erosion:** keep explicit `type` on buttons, labels on inputs, focus management in dialogs. WCAG compliance is an active investment here.
 - **Partial toolchains:** if `node_modules` is broken, run `npm ci` — do not work around missing tools or skip verification because the environment is inconvenient. If the environment blocks verification (sandbox, network), say so explicitly in your handoff instead of claiming success.
