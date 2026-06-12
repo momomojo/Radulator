@@ -70,7 +70,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       await expect(page.locator('label:has-text("Total Bilirubin")')).toBeVisible();
       await expect(page.locator('text=mg/dL')).toBeVisible();
       await expect(page.locator('label:has-text("Serum Albumin")')).toBeVisible();
-      await expect(page.locator('text=g/dL')).toBeVisible();
+      await expect(page.locator('text=g/dL').first()).toBeVisible();
       await expect(page.locator('label:has-text("INR")')).toBeVisible();
       await expect(page.locator('label:has-text("Ascites")')).toBeVisible();
       await expect(page.locator('label:has-text("Hepatic Encephalopathy")')).toBeVisible();
@@ -196,8 +196,8 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Verify results
       await expect(page.locator('text=5 points')).toBeVisible();
-      await expect(page.locator('text=Child-Pugh Class')).toBeVisible();
-      await expect(page.locator('text=/Class.*A/i')).toBeVisible();
+      await expect(page.locator('text=Child-Pugh Class').first().first()).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class A/i')).toBeVisible();
       await expect(page.locator('text=Well-compensated disease')).toBeVisible();
       await expect(page.locator('text=5-10%').first()).toBeVisible(); // 1-year mortality
       await expect(page.locator('text=10%').nth(1)).toBeVisible(); // Surgical risk
@@ -223,7 +223,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Verify results
       await expect(page.locator('text=6 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*A/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class A/i')).toBeVisible();
       await expect(page.locator('text=Well-compensated disease')).toBeVisible();
     });
 
@@ -265,7 +265,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Verify results
       await expect(page.locator('text=7 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*B/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class B/i')).toBeVisible();
       await expect(page.locator('text=Significant functional compromise')).toBeVisible();
       await expect(page.locator('text=15-20%')).toBeVisible(); // 1-year mortality
       await expect(page.locator('text=30%')).toBeVisible(); // Surgical risk
@@ -290,7 +290,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Verify results
       await expect(page.locator('text=8 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*B/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class B/i')).toBeVisible();
     });
 
     test('should correctly calculate Class B - maximum score (9 points)', async ({ page }) => {
@@ -312,7 +312,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Verify results
       await expect(page.locator('text=9 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*B/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class B/i')).toBeVisible();
       await expect(page.locator('text=Significant functional compromise')).toBeVisible();
     });
 
@@ -350,7 +350,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Verify results
       await expect(page.locator('text=10 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class C/i')).toBeVisible();
       await expect(page.locator('text=Decompensated disease')).toBeVisible();
       await expect(page.locator('text=45-55%')).toBeVisible(); // 1-year mortality
       await expect(page.locator('text=70-80%')).toBeVisible(); // Surgical risk
@@ -374,7 +374,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Verify results
       await expect(page.locator('text=12 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class C/i')).toBeVisible();
     });
 
     test('should correctly calculate Class C - maximum score (15 points)', async ({ page }) => {
@@ -395,7 +395,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Verify results
       await expect(page.locator('text=15 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class C/i')).toBeVisible();
       await expect(page.locator('text=Decompensated disease')).toBeVisible();
     });
 
@@ -559,7 +559,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Should still calculate correctly (maximum 15 points)
       await expect(page.locator('text=15 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class C/i')).toBeVisible();
     });
 
     test('should handle decimal precision', async ({ page }) => {
@@ -592,7 +592,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
-      await expect(page.locator('text=/Class.*A/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class A/i')).toBeVisible();
       await expect(page.locator('text=Well-compensated disease')).toBeVisible();
     });
 
@@ -605,7 +605,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
-      await expect(page.locator('text=/Class.*B/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class B/i')).toBeVisible();
       await expect(page.locator('text=Significant functional compromise')).toBeVisible();
     });
 
@@ -617,7 +617,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.locator('label:has-text("Moderate to Severe")').click();
       await page.locator('label:has-text("Grade 1-2")').click();
 
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class C/i')).toBeVisible();
       await expect(page.locator('text=Decompensated disease')).toBeVisible();
       await expect(page.locator('text=45-55%')).toBeVisible();
     });
@@ -630,7 +630,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
       // Look for reference section
-      const refSection = page.locator('text=References');
+      const refSection = page.locator('text=References').first();
       if (await refSection.isVisible().catch(() => false)) {
         await expect(refSection).toBeVisible();
       }
@@ -660,7 +660,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       await noneEnceph.click();
 
       // Verify Class A
-      await expect(page.locator('text=/Class.*A/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class A/i')).toBeVisible();
 
       // Change to Class C values
       await page.locator('input[type="number"]').first().fill('5.0');
@@ -668,7 +668,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.locator('input[type="number"]').nth(2).fill('3.0');
 
       // Should update to Class C
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
+      await expect(page.locator('text=/Child-Pugh Class C/i')).toBeVisible();
     });
 
     test('should maintain entered values when switching between fields', async ({ page }) => {
@@ -700,7 +700,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
       // Check for all key output fields
       await expect(page.locator('text=Total Score')).toBeVisible();
-      await expect(page.locator('text=Child-Pugh Class')).toBeVisible();
+      await expect(page.locator('text=Child-Pugh Class').first().first()).toBeVisible();
       await expect(page.locator('text=Classification')).toBeVisible();
       await expect(page.locator('text=1-Year Mortality')).toBeVisible();
       await expect(page.locator('text=Perioperative Mortality')).toBeVisible();

@@ -215,7 +215,7 @@ test.describe("Wells Criteria for PE Calculator", () => {
 
   test.describe("References", () => {
     test("should display Wells PE references", async ({ page }) => {
-      await expect(page.getByText("References")).toBeVisible();
+      await expect(page.getByText("References").first()).toBeVisible();
       await expect(page.locator("a[href*='pubmed']").first()).toBeVisible();
     });
   });

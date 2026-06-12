@@ -42,7 +42,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
     }) => {
       await expect(page.locator("h2")).toContainText("LI-RADS v2018");
       await expect(
-        page.getByText("Liver Imaging Reporting and Data System"),
+        page.getByText("Liver Imaging Reporting and Data System").first(),
       ).toBeVisible();
     });
 
@@ -92,7 +92,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-TIV")).toBeVisible();
+      await expect(page.locator("text=LR-TIV").first()).toBeVisible();
       await expect(page.locator("text=Tumor in Vein")).toBeVisible();
       await expect(
         page.locator("text=Contraindication to liver transplantation"),
@@ -108,7 +108,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
       await page.getByText("Study Technically Adequate").click();
 
       // Select definitely benign
-      await page.getByText("Definitely benign").click();
+      await page.getByText("Definitely benign").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -129,7 +129,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
       await page.getByText("Study Technically Adequate").click();
 
       // Select probably benign
-      await page.getByText("Probably benign").click();
+      await page.getByText("Probably benign").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -158,7 +158,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-M")).toBeVisible();
+      await expect(page.locator("text=LR-M").first()).toBeVisible();
       await expect(page.locator("text=Not HCC-Specific")).toBeVisible();
       await expect(page.locator("text=93-100%")).toBeVisible();
       await expect(page.locator("text=Biopsy recommended")).toBeVisible();
@@ -173,11 +173,11 @@ test.describe("LI-RADS v2018 Calculator", () => {
       await page.fill('input[id="observation_size"]', "25");
 
       // Select rim APHE (directly triggers LR-M)
-      await page.getByText("Rim APHE").click();
+      await page.getByText("Rim APHE").first().click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-M")).toBeVisible();
+      await expect(page.locator("text=LR-M").first()).toBeVisible();
       await expect(
         page.locator("text=intrahepatic cholangiocarcinoma"),
       ).toBeVisible();
@@ -201,7 +201,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-3")).toBeVisible();
+      await expect(page.locator("text=LR-3").first().first()).toBeVisible();
       await expect(page.locator("text=Intermediate Probability")).toBeVisible();
       await expect(page.locator("text=38-40%")).toBeVisible();
       await expect(
@@ -225,7 +225,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-3")).toBeVisible();
+      await expect(page.locator("text=LR-3").first().first()).toBeVisible();
     });
   });
 
@@ -246,7 +246,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(page.locator("text=LR-4").first().first()).toBeVisible();
       await expect(page.locator("text=Probably HCC")).toBeVisible();
       await expect(page.locator("text=67-74%")).toBeVisible();
     });
@@ -267,7 +267,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(page.locator("text=LR-4").first().first()).toBeVisible();
     });
 
     test("should classify as LR-4 for 10-19mm with APHE + capsule only", async ({
@@ -286,7 +286,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(page.locator("text=LR-4").first().first()).toBeVisible();
       await expect(
         page.locator(
           "text=capsule alone (without washout or threshold growth) yields LR-4",
@@ -312,7 +312,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-5")).toBeVisible();
+      await expect(page.locator("text=LR-5").first()).toBeVisible();
       await expect(page.locator("text=Definitely HCC")).toBeVisible();
       await expect(page.locator("text=92-95%")).toBeVisible();
       await expect(
@@ -336,7 +336,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-5")).toBeVisible();
+      await expect(page.locator("text=LR-5").first()).toBeVisible();
     });
 
     test("should classify as LR-5 for 10-19mm with APHE + threshold growth", async ({
@@ -355,7 +355,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-5")).toBeVisible();
+      await expect(page.locator("text=LR-5").first()).toBeVisible();
       await expect(page.locator("text=Threshold growth")).toBeVisible();
     });
   });
@@ -382,7 +382,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(page.locator("text=LR-4").first().first()).toBeVisible();
       await expect(
         page.locator("text=Upgraded from LR-3 to LR-4"),
       ).toBeVisible();
@@ -409,7 +409,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(page.locator("text=LR-4").first().first()).toBeVisible();
       await expect(
         page.locator("text=Downgraded from LR-5 to LR-4"),
       ).toBeVisible();
@@ -439,7 +439,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-3")).toBeVisible();
+      await expect(page.locator("text=LR-3").first().first()).toBeVisible();
       await expect(
         page.locator("text=Conflicting ancillary features"),
       ).toBeVisible();
@@ -490,7 +490,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(page.locator("text=LR-4").first().first()).toBeVisible();
       await expect(
         page.locator("text=<10mm cannot be categorized as LR-5"),
       ).toBeVisible();

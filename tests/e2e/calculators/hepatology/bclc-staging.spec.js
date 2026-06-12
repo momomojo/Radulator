@@ -62,7 +62,7 @@ test.describe('BCLC Staging Calculator', () => {
     await expect(page.locator('text=All Tumors ≤3 cm?')).toBeVisible();
 
     // Vascular invasion & metastasis
-    await expect(page.locator('text=Vascular Invasion')).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Vascular Invasion' })).toBeVisible();
     await expect(page.locator('text=Extrahepatic Spread')).toBeVisible();
 
     // Performance status
@@ -106,7 +106,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=0')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: 0')).toBeVisible();
     await expect(page.locator('text=Very early stage')).toBeVisible();
     await expect(page.locator('text=Child-Pugh Score:')).toBeVisible();
     await expect(page.locator('text=5 points (Class A)')).toBeVisible();
@@ -141,7 +141,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=A')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: A')).toBeVisible();
     await expect(page.locator('text=Early stage')).toBeVisible();
     await expect(page.locator('text=Single tumor (4.5 cm)')).toBeVisible();
     await expect(page.locator('text=Resection or ablation')).toBeVisible();
@@ -175,7 +175,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=A')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: A')).toBeVisible();
     await expect(page.locator('text=2-3 tumors, all ≤3 cm (within Milan criteria)')).toBeVisible();
     await expect(page.locator('text=Liver transplant')).toBeVisible();
   });
@@ -207,7 +207,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=B')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: B')).toBeVisible();
     await expect(page.locator('text=Intermediate stage')).toBeVisible();
     await expect(page.locator('text=(>3 tumors)')).toBeVisible();
     await expect(page.locator('text=TACE')).toBeVisible();
@@ -243,7 +243,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=C')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: C')).toBeVisible();
     await expect(page.locator('text=Advanced stage')).toBeVisible();
     await expect(page.locator('text=vascular invasion (portal vein left/right/main trunk)')).toBeVisible();
     await expect(page.locator('text=Atezolizumab + Bevacizumab')).toBeVisible();
@@ -278,7 +278,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=C')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: C')).toBeVisible();
     await expect(page.locator('text=extrahepatic spread (distant metastasis)')).toBeVisible();
     await expect(page.locator('text=Systemic therapy')).toBeVisible();
   });
@@ -310,7 +310,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=D')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: D')).toBeVisible();
     await expect(page.locator('text=Terminal stage')).toBeVisible();
     await expect(page.locator('text=poor performance status (ECOG >2)')).toBeVisible();
     await expect(page.locator('text=Best supportive care')).toBeVisible();
@@ -344,7 +344,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Verify results
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=D')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: D')).toBeVisible();
     await expect(page.locator('text=decompensated cirrhosis (Child-Pugh C)')).toBeVisible();
     await expect(page.locator('text=Child-Pugh Score:')).toBeVisible();
     await expect(page.locator('text=15 points (Class C)')).toBeVisible();
@@ -425,7 +425,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // At exactly 2.0cm, should be Stage 0
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=0')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: 0')).toBeVisible();
   });
 
   test('Edge case: Tumor 2.1cm - should be Stage A, not Stage 0', async ({ page }) => {
@@ -449,7 +449,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Should be Stage A, not Stage 0
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=A')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: A')).toBeVisible();
     await expect(page.locator('text=Early stage')).toBeVisible();
   });
 
@@ -475,7 +475,7 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Should be Stage A (not 0) due to Child-Pugh B
     await expect(page.locator('text=BCLC Stage:')).toBeVisible();
-    await expect(page.locator('text=A')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: A')).toBeVisible();
     await expect(page.locator('text=Class B')).toBeVisible();
   });
 
@@ -502,7 +502,7 @@ test.describe('BCLC Staging Calculator', () => {
     await page.locator('button:has-text("Calculate")').click();
 
     // Should be Stage C with both mentioned
-    await expect(page.locator('text=C')).toBeVisible();
+    await expect(page.locator('text=BCLC Stage: C')).toBeVisible();
     await expect(page.locator('text=vascular invasion')).toBeVisible();
     await expect(page.locator('text=extrahepatic spread')).toBeVisible();
   });

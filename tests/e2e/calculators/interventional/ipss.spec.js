@@ -511,7 +511,7 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
     // Verify references section exists
-    await expect(page.locator("text=References")).toBeVisible();
+    await expect(page.locator("text=References").first()).toBeVisible();
 
     // Verify key references are present
     await expect(page.locator("text=Oldfield EH")).toBeVisible();

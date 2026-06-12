@@ -55,7 +55,7 @@ test.describe("MELD-Na Calculator", () => {
       await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
 
       // Check References section
-      await expect(page.locator("text=References")).toBeVisible();
+      await expect(page.locator("text=References").first()).toBeVisible();
     });
 
     test("should show subLabels with units and ranges", async ({ page }) => {
@@ -165,7 +165,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(page.locator("text=MELD Score: 40")).toBeVisible();
-      await expect(page.locator("text=Critical risk")).toBeVisible();
+      await expect(page.locator("text=Critical risk").first()).toBeVisible();
       await expect(page.locator("text=>70%")).toBeVisible();
     });
   });

@@ -60,7 +60,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await expect(page.getByText("Patient Weight")).toBeVisible();
       await expect(page.getByText("Height Unit")).toBeVisible();
       await expect(page.getByText("Patient Height")).toBeVisible();
-      await expect(page.getByText("Sex")).toBeVisible();
+      await expect(page.getByText("Sex").first()).toBeVisible();
 
       // Renal function
       await expect(page.getByText("eGFR")).toBeVisible();
@@ -81,7 +81,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       // Standard setup
       await page.locator('select[id="contrast_agent"]').selectOption("300");
@@ -106,7 +106,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       // Hepatic CT (550 mg I/kg)
       await page.locator('select[id="contrast_agent"]').selectOption("350");
@@ -126,7 +126,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "80");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "180");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       // CTA (350 mg I/kg)
       await page.locator('select[id="contrast_agent"]').selectOption("370");
@@ -150,7 +150,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "110");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "170");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
       await page.locator('select[id="study_type"]').selectOption("routine");
@@ -193,7 +193,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "154");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
       await page.locator('select[id="study_type"]').selectOption("routine");
@@ -212,7 +212,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Inches (in)").click();
       await page.fill('input[id="height"]', "69");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
       await page.locator('select[id="study_type"]').selectOption("routine");
@@ -232,7 +232,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("370");
       await page.locator('select[id="study_type"]').selectOption("cta");
@@ -249,7 +249,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       // Low concentration with restricted IV access
       await page.locator('select[id="contrast_agent"]').selectOption("300");
@@ -271,7 +271,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
       await page.locator('select[id="study_type"]').selectOption("routine");
@@ -292,7 +292,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("370");
       await page.locator('select[id="study_type"]').selectOption("hepatic");
@@ -310,7 +310,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
       await page.fill('input[id="egfr"]', "60");
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
@@ -330,7 +330,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
       await page.fill('input[id="egfr"]', "38");
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
@@ -349,7 +349,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
       await page.fill('input[id="egfr"]', "25");
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
@@ -373,7 +373,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "150");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
       await page.locator('select[id="study_type"]').selectOption("hepatic");
@@ -408,7 +408,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -426,7 +426,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("350");
       await page.locator('select[id="study_type"]').selectOption("hepatic");
@@ -444,7 +444,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
       await page.locator('select[id="study_type"]').selectOption("routine");
@@ -462,7 +462,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
-      await page.getByText("Male").click();
+      await page.getByText("Male").first().click();
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
       await page.locator('select[id="study_type"]').selectOption("routine");
@@ -482,7 +482,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       await expect(
         page.getByRole("heading", { name: "References" }),
       ).toBeVisible();
-      await expect(page.getByText("ACR Manual")).toBeVisible();
+      await expect(page.getByText("ACR Manual").first()).toBeVisible();
     });
 
     test("should have link to ACR Manual on Contrast Media", async ({

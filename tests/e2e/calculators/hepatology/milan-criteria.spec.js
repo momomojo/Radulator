@@ -67,7 +67,7 @@ test.describe('Milan Criteria Calculator', () => {
       await expect(ucsfInfo).toBeVisible();
 
       // Check for clinical guidance about unknown status
-      const unknownGuidance = page.locator('text=unknown');
+      const unknownGuidance = page.locator('text=unknown').first();
       await expect(unknownGuidance).toBeVisible();
     });
 
@@ -195,7 +195,7 @@ test.describe('Milan Criteria Calculator', () => {
       await page.click('button:has-text("Calculate")');
 
       // Verify results
-      await expect(page.locator('text=WITHIN CRITERIA')).toBeVisible();
+      await expect(page.locator('text=WITHIN CRITERIA').first()).toBeVisible();
       await expect(page.locator('text=ELIGIBLE - Meets Milan Criteria')).toBeVisible();
       await expect(page.locator('text=4-year survival >70%')).toBeVisible();
     });
@@ -589,7 +589,7 @@ test.describe('Milan Criteria Calculator', () => {
       await page.click('button:has-text("Calculate")');
 
       // Check formatted output
-      await expect(page.locator('text=4.6 cm')).toBeVisible();
+      await expect(page.locator('text=4.6 cm').first()).toBeVisible();
     });
 
     test('should capitalize status values properly', async ({ page }) => {

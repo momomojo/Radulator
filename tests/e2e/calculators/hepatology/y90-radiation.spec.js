@@ -87,7 +87,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
 
       // Check References section
-      await expect(page.locator("text=References")).toBeVisible();
+      await expect(page.locator("text=References").first()).toBeVisible();
     });
 
     test("should show subLabels with units and ranges", async ({ page }) => {

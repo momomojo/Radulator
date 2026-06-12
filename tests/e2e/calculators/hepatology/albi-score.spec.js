@@ -172,7 +172,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 1 result
-      await expect(page.locator('text=/Grade 1|ALBI Grade.*1/i')).toBeVisible();
+      await expect(page.locator('text=/ALBI Grade.*1/i')).toBeVisible();
 
       // Check for ALBI score in expected range
       await expect(page.locator('text=/-2.7|-2.8/i')).toBeVisible();
@@ -204,7 +204,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 2 result
-      await expect(page.locator('text=/Grade 2|ALBI Grade.*2/i')).toBeVisible();
+      await expect(page.locator('text=/ALBI Grade.*2/i')).toBeVisible();
 
       // Check for interpretation
       await expect(page.locator('text=/Intermediate|moderately compensated/i')).toBeVisible();
@@ -233,7 +233,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 3 result
-      await expect(page.locator('text=/Grade 3|ALBI Grade.*3/i')).toBeVisible();
+      await expect(page.locator('text=/ALBI Grade.*3/i')).toBeVisible();
 
       // Check for interpretation
       await expect(page.locator('text=/Worst|poorly compensated/i')).toBeVisible();
@@ -261,7 +261,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Should be Grade 2 (just above -2.60)
-      await expect(page.locator('text=/Grade [12]/i')).toBeVisible();
+      await expect(page.locator('text=/ALBI Grade [12]/i')).toBeVisible();
     });
 
     test('Boundary case - Grade 2/3 boundary (ALBI = -1.39)', async ({ page }) => {
@@ -286,7 +286,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Should be Grade 3 (just above -1.39)
-      await expect(page.locator('text=/Grade [23]/i')).toBeVisible();
+      await expect(page.locator('text=/ALBI Grade [23]/i')).toBeVisible();
     });
   });
 
@@ -315,7 +315,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 1
-      await expect(page.locator('text=/Grade 1/i')).toBeVisible();
+      await expect(page.locator('text=/ALBI Grade.*1/i')).toBeVisible();
 
       // Should show converted SI values
       await expect(page.locator('text=/40.*g\/L|Converted.*Albumin/i')).toBeVisible();
@@ -345,7 +345,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 2
-      await expect(page.locator('text=/Grade 2/i')).toBeVisible();
+      await expect(page.locator('text=/ALBI Grade.*2/i')).toBeVisible();
 
       // Should show converted SI values
       await expect(page.locator('text=/35.*g\/L|Converted.*Albumin/i')).toBeVisible();
@@ -530,7 +530,7 @@ test.describe('ALBI Score Calculator', () => {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
       // Check for Johnson et al. 2015 (primary reference)
-      await expect(page.locator('text=/Johnson.*2015/i')).toBeVisible();
+      await expect(page.locator('text=/Johnson.*2015/i').first().first()).toBeVisible();
 
       // Check for multiple references
       const references = page.locator('text=/doi.org|https:\/\//i');
