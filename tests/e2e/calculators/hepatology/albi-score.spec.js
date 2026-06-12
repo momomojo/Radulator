@@ -19,7 +19,7 @@ test.describe('ALBI Score Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, 'ALBI Score');
-    await expect(page.locator('h2:has-text("ALBI Score")')).toBeVisible();
+    await expect(page.getByTestId('calculator-title').first()).toBeVisible();
   });
 
   test.describe('Visual Appeal & Theme Matching', () => {
@@ -30,7 +30,7 @@ test.describe('ALBI Score Calculator', () => {
       await expect(card).toBeVisible();
 
       // Check title is visible and styled
-      const title = page.locator('h2:has-text("ALBI Score")');
+      const title = page.getByTestId('calculator-title').first();
       await expect(title).toBeVisible();
 
       // Check description is present
@@ -42,7 +42,7 @@ test.describe('ALBI Score Calculator', () => {
       await page.setViewportSize({ width: 375, height: 667 });
 
       // Calculator should still be visible and usable
-      await expect(page.locator('h2:has-text("ALBI Score")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toBeVisible();
 
       // Fields should stack vertically on mobile
       const albumin = page.locator('label:has-text("Serum Albumin")');
@@ -587,7 +587,7 @@ test.describe('ALBI Score Calculator', () => {
       await expect(card).toBeVisible();
 
       // Verify text is readable
-      const title = page.locator('h2:has-text("ALBI Score")');
+      const title = page.getByTestId('calculator-title').first();
       await expect(title).toBeVisible();
     });
   });

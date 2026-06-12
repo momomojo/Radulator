@@ -27,7 +27,7 @@ test.describe('Milan Criteria Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, 'Milan Criteria (HCC)');
-    await expect(page.locator('h2:has-text("Milan Criteria (HCC)")')).toBeVisible();
+    await expect(page.getByTestId('calculator-title').first()).toBeVisible();
   });
 
   test.describe('Visual Appeal & Theme Matching', () => {
@@ -38,7 +38,7 @@ test.describe('Milan Criteria Calculator', () => {
       await expect(card).toBeVisible();
 
       // Check title is visible and styled
-      const title = page.locator('h2:has-text("Milan Criteria (HCC)")');
+      const title = page.getByTestId('calculator-title').first();
       await expect(title).toBeVisible();
 
       // Check description is present
@@ -50,7 +50,7 @@ test.describe('Milan Criteria Calculator', () => {
       await page.setViewportSize({ width: 375, height: 667 });
 
       // Calculator should still be visible and usable
-      await expect(page.locator('h2:has-text("Milan Criteria (HCC)")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toBeVisible();
 
       // Fields should be visible and accessible
       const tumorCountLabel = page.locator('label:has-text("Number of Tumors")');
@@ -77,7 +77,7 @@ test.describe('Milan Criteria Calculator', () => {
       await expect(sidebar).toBeVisible();
 
       // Check button styling
-      const calculateButton = page.locator('button:has-text("Calculate")');
+      const calculateButton = page.getByRole('button', { name: 'Calculate' });
       await expect(calculateButton).toBeVisible();
       await expect(calculateButton).toHaveClass(/.*w-full.*/);
     });
@@ -168,7 +168,7 @@ test.describe('Milan Criteria Calculator', () => {
 
     test('should have working PubMed links', async ({ page }) => {
       // Check that all reference links open in new tab
-      const links = page.locator('section:has(h3:has-text("References")) a');
+      const links = page.locator('section.references-section a');
       const count = await links.count();
 
       expect(count).toBe(4);

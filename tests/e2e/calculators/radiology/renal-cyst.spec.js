@@ -108,7 +108,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
       await page.getByRole("button", { name: "Calculate" }).click();
 
       // Verify results
-      const results = page.locator('[aria-live="polite"]');
+      const results = page.getByRole("status", { name: "Calculator results" });
       await expect(results).toBeVisible();
       await expect(results).toContainText("Bosniak Category: I");
       await expect(results).toContainText(
@@ -129,7 +129,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
 
       await page.getByRole("button", { name: "Calculate" }).click();
 
-      const results = page.locator('[aria-live="polite"]');
+      const results = page.getByRole("status", { name: "Calculator results" });
       await expect(results).toContainText("Bosniak Category: II");
       await expect(results).toContainText(
         "Minimally complex benign cyst - No follow up needed",
@@ -149,7 +149,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
 
       await page.getByRole("button", { name: "Calculate" }).click();
 
-      const results = page.locator('[aria-live="polite"]');
+      const results = page.getByRole("status", { name: "Calculator results" });
       await expect(results).toContainText("Bosniak Category: IIF");
       await expect(results).toContainText("Follow up recommended");
     });
@@ -167,7 +167,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
 
       await page.getByRole("button", { name: "Calculate" }).click();
 
-      const results = page.locator('[aria-live="polite"]');
+      const results = page.getByRole("status", { name: "Calculator results" });
       await expect(results).toContainText("Bosniak Category: III");
       await expect(results).toContainText(
         "Indeterminate cystic mass - Surgical resection",
@@ -187,7 +187,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
 
       await page.getByRole("button", { name: "Calculate" }).click();
 
-      const results = page.locator('[aria-live="polite"]');
+      const results = page.getByRole("status", { name: "Calculator results" });
       await expect(results).toContainText("Bosniak Category: IV");
       await expect(results).toContainText(
         "Clearly malignant cystic mass - Surgical resection",

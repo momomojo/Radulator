@@ -27,7 +27,7 @@ test.describe('Child-Pugh Score Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, 'Child-Pugh Score');
-    await expect(page.locator('h2:has-text("Child-Pugh Score")')).toBeVisible();
+    await expect(page.getByTestId('calculator-title').first()).toBeVisible();
   });
 
   test.describe('Visual Appeal & Theme Matching', () => {
@@ -38,7 +38,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       await expect(card).toBeVisible();
 
       // Check title is visible and styled
-      const title = page.locator('h2:has-text("Child-Pugh Score")');
+      const title = page.getByTestId('calculator-title').first();
       await expect(title).toBeVisible();
 
       // Check description is present
@@ -50,7 +50,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.setViewportSize({ width: 375, height: 667 });
 
       // Calculator should still be visible and usable
-      await expect(page.locator('h2:has-text("Child-Pugh Score")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toBeVisible();
 
       // Fields should be visible
       await expect(page.locator('label:has-text("Total Bilirubin")')).toBeVisible();

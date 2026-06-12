@@ -455,7 +455,7 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
   test("Test 8: UI Elements and Info Text", async ({ page }) => {
     // Verify calculator title
     await expect(
-      page.locator('h2:has-text("Inferior Petrosal Sinus Sampling (IPSS)")'),
+      page.getByTestId('calculator-title').first(),
     ).toBeVisible();
 
     // Verify info text is visible (it's in a blue info box) - use .first() to avoid strict mode
@@ -498,7 +498,7 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     await expect(page.locator("text=Per PRL")).toBeVisible();
 
     // Verify Calculate button
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
     // Verify Add button (correct text)
     await expect(

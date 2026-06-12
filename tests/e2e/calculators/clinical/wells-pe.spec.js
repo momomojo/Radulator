@@ -13,7 +13,7 @@ test.describe("Wells Criteria for PE Calculator", () => {
 
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with correct title", async ({ page }) => {
-      await expect(page.locator("h2")).toContainText("Wells Criteria for PE");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("Wells Criteria for PE");
     });
 
     test("should have all 7 criteria as checkboxes", async ({ page }) => {

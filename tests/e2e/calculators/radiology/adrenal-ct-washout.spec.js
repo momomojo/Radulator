@@ -34,7 +34,7 @@ test.describe("Adrenal CT Washout Calculator", () => {
     page,
   }) => {
     // Verify title
-    await expect(page.locator("h2")).toContainText("Adrenal CT Washout");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("Adrenal CT Washout");
 
     // Verify description - use header sibling selector instead of color class
     await expect(page.locator("header p")).toContainText(
@@ -63,7 +63,7 @@ test.describe("Adrenal CT Washout Calculator", () => {
     ).toBeVisible();
 
     // Verify Calculate button is present
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
   });
 
   test("Test Case 1: Typical Adenoma (both washouts meet thresholds)", async ({
@@ -75,15 +75,13 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Delayed HU (15 min)", "40");
 
     // Click calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Wait for results
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Verify absolute washout: ((100 - 40) / (100 - 10)) × 100 = 66.7%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("Absolute Washout (%)");
     await expect(results).toContainText("66.7");
 
@@ -101,13 +99,11 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "80");
     await fillInput(page, "Delayed HU (15 min)", "70");
 
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Verify absolute washout: ((80 - 70) / (80 - 20)) × 100 = 16.7%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("16.7");
 
     // Verify relative washout: ((80 - 70) / 80) × 100 = 12.5%
@@ -129,12 +125,10 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "60");
     await fillInput(page, "Delayed HU (15 min)", "27");
 
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
 
     // Verify calculations
     await expect(results).toContainText("60.0");
@@ -160,12 +154,10 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "100");
     await fillInput(page, "Delayed HU (15 min)", "60");
 
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
 
     // Verify relative is 40%
     await expect(results).toContainText("40.0");
@@ -185,12 +177,10 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "120");
     await fillInput(page, "Delayed HU (15 min)", "110");
 
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("11.1");
     await expect(results).toContainText("8.3");
     await expect(results).toContainText("Indeterminate / non‑adenoma");
@@ -207,12 +197,10 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "85");
     await fillInput(page, "Delayed HU (15 min)", "34");
 
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("85.0");
     await expect(results).toContainText("60.0");
     await expect(results).toContainText("Suggests adrenal adenoma");
@@ -224,12 +212,10 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "50");
     await fillInput(page, "Delayed HU (15 min)", "50");
 
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     // Both should be 0%
     await expect(results).toContainText("0.0");
     await expect(results).toContainText("Indeterminate / non‑adenoma");
@@ -243,14 +229,12 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "80");
     await fillInput(page, "Delayed HU (15 min)", "35");
 
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Absolute: ((80 - 35) / (80 - (-10))) × 100 = (45 / 90) × 100 = 50.0%
     // Relative: ((80 - 35) / 80) × 100 = 56.25%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("50.0");
     await expect(results).toContainText("56.3"); // Rounded
     await expect(results).toContainText("Suggests adrenal adenoma");
@@ -262,14 +246,12 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "100");
     await fillInput(page, "Delayed HU (15 min)", "5");
 
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Absolute: ((100 - 5) / (100 - 0)) × 100 = 95.0%
     // Relative: ((100 - 5) / 100) × 100 = 95.0%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("95.0");
     await expect(results).toContainText("Suggests adrenal adenoma");
   });
@@ -280,14 +262,12 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "98.3");
     await fillInput(page, "Delayed HU (15 min)", "41.7");
 
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Absolute: ((98.3 - 41.7) / (98.3 - 12.5)) × 100 = 65.97%
     // Relative: ((98.3 - 41.7) / 98.3) × 100 = 57.58%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("66.0"); // Rounded to 1 decimal
     await expect(results).toContainText("57.6");
     await expect(results).toContainText("Suggests adrenal adenoma");
@@ -356,7 +336,7 @@ test.describe("Adrenal CT Washout Calculator", () => {
     const inputs = page.locator('input[type="number"]');
     await expect(inputs.first()).toBeVisible();
 
-    const calculateBtn = page.locator('button:has-text("Calculate")');
+    const calculateBtn = page.getByRole('button', { name: 'Calculate' });
     await expect(calculateBtn).toBeVisible();
   });
 
@@ -365,19 +345,17 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Pre‑contrast HU", "10");
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "100");
     await fillInput(page, "Delayed HU (15 min)", "40");
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Test 2 - immediately change values and recalculate
     await fillInput(page, "Pre‑contrast HU", "20");
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "80");
     await fillInput(page, "Delayed HU (15 min)", "70");
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results updated correctly
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("16.7");
     await expect(results).toContainText("12.5");
   });
@@ -389,10 +367,8 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Delayed HU (15 min)", "40");
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Clear all inputs
     await clearAllInputs(page);
@@ -423,10 +399,8 @@ test.describe("Adrenal CT Washout Calculator", () => {
     });
 
     // Calculate and screenshot results
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     await page.screenshot({
       path: "test-results/screenshots/adrenal-ct-washout-results.png",
@@ -440,10 +414,8 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Delayed HU (15 min)", "40");
 
     const startTime = Date.now();
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
     const endTime = Date.now();
 
     const calculationTime = endTime - startTime;
@@ -465,10 +437,8 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await fillInput(page, "Pre‑contrast HU", "10");
     await fillInput(page, "Post‑contrast HU (60‑75 s)", "100");
     await fillInput(page, "Delayed HU (15 min)", "40");
-    await page.locator('button:has-text("Calculate")').click();
-    await page.waitForSelector('section[aria-live="polite"]', {
-      state: "visible",
-    });
+await page.getByRole('button', { name: 'Calculate' }).click();
+    await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     expect(consoleErrors).toHaveLength(0);
   });

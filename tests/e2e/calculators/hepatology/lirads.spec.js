@@ -33,14 +33,14 @@ test.describe("LI-RADS v2018 Calculator", () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator("h2")).toContainText("LI-RADS v2018");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("LI-RADS v2018");
   });
 
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("LI-RADS v2018");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("LI-RADS v2018");
       await expect(
         page.getByText("Liver Imaging Reporting and Data System").first(),
       ).toBeVisible();
@@ -565,8 +565,8 @@ test.describe("LI-RADS v2018 Calculator", () => {
       await verifyMobileResponsive(page);
 
       // Verify calculator is still usable on mobile
-      await expect(page.locator("h2")).toContainText("LI-RADS");
-      await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toContainText("LI-RADS");
+      await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
     });
   });
 });
