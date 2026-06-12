@@ -37,14 +37,14 @@ test.describe("ACR BI-RADS Calculator", () => {
     });
 
     test("should display imaging modality options", async ({ page }) => {
-      await expect(page.getByText("Imaging Modality")).toBeVisible();
+      await expect(page.getByText("Imaging Modality").first()).toBeVisible();
       await expect(page.getByLabel("Mammography")).toBeVisible();
       await expect(page.getByLabel("Ultrasound")).toBeVisible();
       await expect(page.getByLabel("MRI", { exact: true })).toBeVisible();
     });
 
     test("should display study context options", async ({ page }) => {
-      await expect(page.getByText("Study Context")).toBeVisible();
+      await expect(page.getByText("Study Context").first()).toBeVisible();
       await expect(page.getByLabel("Screening examination")).toBeVisible();
       await expect(page.getByLabel("Diagnostic examination")).toBeVisible();
       await expect(
@@ -71,9 +71,9 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0 - Incomplete")).toBeVisible();
+      await expect(page.locator("text=0 - Incomplete").first()).toBeVisible();
       await expect(
-        page.locator("text=Recall for additional imaging evaluation"),
+        page.locator("text=Recall for additional imaging evaluation").first(),
       ).toBeVisible();
       await expect(
         page.locator(
@@ -91,9 +91,9 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0 - Incomplete")).toBeVisible();
+      await expect(page.locator("text=0 - Incomplete").first()).toBeVisible();
       await expect(
-        page.locator("text=Mammography if not performed"),
+        page.locator("text=Mammography if not performed").first(),
       ).toBeVisible();
     });
 
@@ -106,7 +106,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=0 - Incomplete")).toBeVisible();
+      await expect(page.locator("text=0 - Incomplete").first()).toBeVisible();
       await expect(
         page.locator(
           "text=Prior studies for comparison or additional sequences",
@@ -126,13 +126,13 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=1 - Negative")).toBeVisible();
-      await expect(page.locator("text=Essentially 0%")).toBeVisible();
+      await expect(page.locator("text=1 - Negative").first()).toBeVisible();
+      await expect(page.locator("text=Essentially 0%").first()).toBeVisible();
       await expect(
-        page.locator("text=Routine screening mammography"),
+        page.locator("text=Routine screening mammography").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Annual (or per guidelines)"),
+        page.locator("text=Annual (or per guidelines)").first(),
       ).toBeVisible();
     });
 
@@ -146,9 +146,9 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=1 - Negative")).toBeVisible();
+      await expect(page.locator("text=1 - Negative").first()).toBeVisible();
       await expect(
-        page.locator("text=Return to annual screening"),
+        page.locator("text=Return to annual screening").first(),
       ).toBeVisible();
     });
   });
@@ -168,13 +168,13 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=2 - Benign")).toBeVisible();
-      await expect(page.locator("text=Essentially 0%")).toBeVisible();
+      await expect(page.locator("text=2 - Benign").first()).toBeVisible();
+      await expect(page.locator("text=Essentially 0%").first()).toBeVisible();
       await expect(
-        page.locator("text=Routine screening mammography"),
+        page.locator("text=Routine screening mammography").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Definitively benign finding"),
+        page.locator("text=Definitively benign finding").first(),
       ).toBeVisible();
     });
 
@@ -190,7 +190,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=2 - Benign")).toBeVisible();
+      await expect(page.locator("text=2 - Benign").first()).toBeVisible();
     });
   });
 
@@ -212,15 +212,15 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=3 - Probably Benign"),
+        resultsSection.locator("text=3 - Probably Benign").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
+        resultsSection.locator("text=Malignancy Likelihood:").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Short-interval follow-up (6 months)"),
+        resultsSection.locator("text=Short-interval follow-up (6 months)").first(),
       ).toBeVisible();
     });
 
@@ -240,9 +240,9 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=6-month unilateral")).toBeVisible();
+      await expect(page.locator("text=6-month unilateral").first()).toBeVisible();
       await expect(
-        page.locator("text=Biopsy may be considered if patient preference"),
+        page.locator("text=Biopsy may be considered if patient preference").first(),
       ).toBeVisible();
     });
 
@@ -263,7 +263,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       // Typically benign calcifications don't show suspicion level, should show error
       await expect(
-        page.locator("text=Please select the overall suspicion level"),
+        page.locator("text=Please select the overall suspicion level").first(),
       ).toBeVisible();
     });
   });
@@ -284,15 +284,15 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=4A - Low Suspicion for Malignancy"),
+        resultsSection.locator("text=4A - Low Suspicion for Malignancy").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
+        resultsSection.locator("text=Malignancy Likelihood:").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Tissue diagnosis recommended (biopsy)"),
+        resultsSection.locator("text=Tissue diagnosis recommended (biopsy)").first(),
       ).toBeVisible();
     });
 
@@ -310,12 +310,12 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=4A - Low Suspicion for Malignancy"),
+        resultsSection.locator("text=4A - Low Suspicion for Malignancy").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Calcifications: amorphous"),
+        resultsSection.locator("text=Calcifications: amorphous").first(),
       ).toBeVisible();
     });
   });
@@ -336,15 +336,15 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=4B - Moderate Suspicion for Malignancy"),
+        resultsSection.locator("text=4B - Moderate Suspicion for Malignancy").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
+        resultsSection.locator("text=Malignancy Likelihood:").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Tissue diagnosis required (biopsy)"),
+        resultsSection.locator("text=Tissue diagnosis required (biopsy)").first(),
       ).toBeVisible();
     });
 
@@ -362,12 +362,12 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=4B - Moderate Suspicion for Malignancy"),
+        resultsSection.locator("text=4B - Moderate Suspicion for Malignancy").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Calcifications: coarse_heterogeneous"),
+        resultsSection.locator("text=Calcifications: coarse_heterogeneous").first(),
       ).toBeVisible();
     });
   });
@@ -388,14 +388,14 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=4C - High Suspicion for Malignancy"),
+        resultsSection.locator("text=4C - High Suspicion for Malignancy").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
+        resultsSection.locator("text=Malignancy Likelihood:").first(),
       ).toBeVisible();
-      await expect(resultsSection.locator("text=high PPV")).toBeVisible();
+      await expect(resultsSection.locator("text=high PPV").first()).toBeVisible();
     });
 
     test("should show clinical note for spiculated margins", async ({
@@ -433,10 +433,10 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=4C - High Suspicion for Malignancy"),
+        page.locator("text=4C - High Suspicion for Malignancy").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Segmental or linear distribution suggests ductal"),
+        page.locator("text=Segmental or linear distribution suggests ductal").first(),
       ).toBeVisible();
     });
   });
@@ -457,15 +457,15 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=5 - Highly Suggestive of Malignancy"),
+        resultsSection.locator("text=5 - Highly Suggestive of Malignancy").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
+        resultsSection.locator("text=Malignancy Likelihood:").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=appropriate action should be taken"),
+        resultsSection.locator("text=appropriate action should be taken").first(),
       ).toBeVisible();
     });
 
@@ -483,7 +483,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=5 - Highly Suggestive of Malignancy"),
+        page.locator("text=5 - Highly Suggestive of Malignancy").first(),
       ).toBeVisible();
       await expect(
         page.locator(
@@ -504,12 +504,12 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=5 - Highly Suggestive of Malignancy"),
+        resultsSection.locator("text=5 - Highly Suggestive of Malignancy").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Finding Description:"),
+        resultsSection.locator("text=Finding Description:").first(),
       ).toBeVisible();
     });
   });
@@ -524,13 +524,13 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=6 - Known Biopsy-Proven Malignancy"),
+        page.locator("text=6 - Known Biopsy-Proven Malignancy").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Surgical excision when clinically appropriate"),
+        page.locator("text=Surgical excision when clinically appropriate").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=treatment planning and response assessment"),
+        page.locator("text=treatment planning and response assessment").first(),
       ).toBeVisible();
     });
 
@@ -543,7 +543,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=6 - Known Biopsy-Proven Malignancy"),
+        page.locator("text=6 - Known Biopsy-Proven Malignancy").first(),
       ).toBeVisible();
     });
 
@@ -556,7 +556,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=6 - Known Biopsy-Proven Malignancy"),
+        page.locator("text=6 - Known Biopsy-Proven Malignancy").first(),
       ).toBeVisible();
     });
   });
@@ -575,12 +575,12 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=4A - Low Suspicion"),
+        resultsSection.locator("text=4A - Low Suspicion").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Asymmetry: focal"),
+        resultsSection.locator("text=Asymmetry: focal").first(),
       ).toBeVisible();
     });
 
@@ -595,7 +595,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Developing asymmetry warrants tissue diagnosis"),
+        page.locator("text=Developing asymmetry warrants tissue diagnosis").first(),
       ).toBeVisible();
     });
   });
@@ -617,9 +617,9 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=4B - Moderate Suspicion"),
+        resultsSection.locator("text=4B - Moderate Suspicion").first(),
       ).toBeVisible();
       await expect(
         resultsSection.locator(
@@ -638,7 +638,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       // Additional imaging field should not be visible for known cancer
       await expect(
-        page.getByText("Additional Imaging/Assessment Needed"),
+        page.getByText("Additional Imaging/Assessment Needed").first(),
       ).not.toBeVisible();
     });
 
@@ -650,7 +650,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.getByLabel("Yes - need additional imaging evaluation").click();
 
       // Finding type should not be visible when additional imaging needed
-      await expect(page.getByText("Finding Type")).not.toBeVisible();
+      await expect(page.getByText("Finding Type").first()).not.toBeVisible();
     });
 
     test("should show mass density only for mammography", async ({ page }) => {
@@ -662,7 +662,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.getByLabel("Oval").click();
       await page.getByLabel("Circumscribed").click();
 
-      await expect(page.getByText("Mass Density")).toBeVisible();
+      await expect(page.getByText("Mass Density").first()).toBeVisible();
     });
 
     test("should hide mass density for ultrasound", async ({ page }) => {
@@ -674,7 +674,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.getByLabel("Oval").click();
       await page.getByLabel("Circumscribed").click();
 
-      await expect(page.getByText("Mass Density")).not.toBeVisible();
+      await expect(page.getByText("Mass Density").first()).not.toBeVisible();
     });
 
     test("should show calcification distribution only for suspicious morphology", async ({
@@ -692,12 +692,12 @@ test.describe("ACR BI-RADS Calculator", () => {
         )
         .click();
       await expect(
-        page.getByText("Calcification Distribution"),
+        page.getByText("Calcification Distribution").first(),
       ).not.toBeVisible();
 
       // Amorphous should show distribution
       await page.getByLabel("Amorphous").click();
-      await expect(page.getByText("Calcification Distribution")).toBeVisible();
+      await expect(page.getByText("Calcification Distribution").first()).toBeVisible();
     });
   });
 
@@ -712,7 +712,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select the finding type"),
+        page.locator("text=Please select the finding type").first(),
       ).toBeVisible();
     });
 
@@ -731,7 +731,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select the overall suspicion level"),
+        page.locator("text=Please select the overall suspicion level").first(),
       ).toBeVisible();
     });
   });
@@ -752,12 +752,12 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.locator("text=Mass: irregular"),
+        resultsSection.locator("text=Mass: irregular").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Finding Description:"),
+        resultsSection.locator("text=Finding Description:").first(),
       ).toBeVisible();
     });
 
@@ -775,9 +775,9 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Calcifications: fine_pleomorphic"),
+        page.locator("text=Calcifications: fine_pleomorphic").first(),
       ).toBeVisible();
-      await expect(page.locator("text=segmental distribution")).toBeVisible();
+      await expect(page.locator("text=segmental distribution").first()).toBeVisible();
     });
   });
 
@@ -806,7 +806,7 @@ test.describe("ACR BI-RADS Calculator", () => {
     test("should have reference for follow-up guidelines", async ({ page }) => {
       // Sickles 1991 reference
       await expect(page.getByText("Sickles EA").first()).toBeVisible();
-      await expect(page.getByText("Radiology. 1991")).toBeVisible();
+      await expect(page.getByText("Radiology. 1991").first()).toBeVisible();
     });
   });
 
@@ -825,7 +825,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=3 - Probably Benign")).toBeVisible();
+      await expect(page.locator("text=3 - Probably Benign").first()).toBeVisible();
     });
 
     test("should complete full ultrasound workflow", async ({ page }) => {
@@ -842,7 +842,7 @@ test.describe("ACR BI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=3 - Probably Benign")).toBeVisible();
+      await expect(page.locator("text=3 - Probably Benign").first()).toBeVisible();
     });
 
     test("should complete full MRI workflow", async ({ page }) => {
@@ -858,7 +858,7 @@ test.describe("ACR BI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=4C - High Suspicion for Malignancy"),
+        page.locator("text=4C - High Suspicion for Malignancy").first(),
       ).toBeVisible();
     });
   });

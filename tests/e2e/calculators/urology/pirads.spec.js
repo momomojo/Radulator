@@ -30,7 +30,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     }) => {
       await expect(page.getByTestId('calculator-title').first()).toContainText("PI-RADS v2.1");
       await expect(
-        page.locator("text=Prostate MRI risk stratification"),
+        page.locator("text=Prostate MRI risk stratification").first(),
       ).toBeVisible();
     });
 
@@ -236,7 +236,7 @@ test.describe("PI-RADS v2.1 Calculator", () => {
   test.describe("EPE/SVI Staging", () => {
     test("should show EPE staging options", async ({ page }) => {
       await expect(
-        page.getByText("Extraprostatic Extension (EPE)"),
+        page.getByText("Extraprostatic Extension (EPE)").first(),
       ).toBeVisible();
     });
 

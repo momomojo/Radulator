@@ -120,7 +120,7 @@ test.describe('Spleen Size Calculator', () => {
 
   test('displays calculator title and description', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Spleen Size' })).toBeVisible();
-    await expect(page.getByText('Gender- and height-adjusted upper limits')).toBeVisible();
+    await expect(page.getByText('Gender- and height-adjusted upper limits').first()).toBeVisible();
   });
 
   test('displays validation information', async ({ page }) => {
@@ -129,8 +129,8 @@ test.describe('Spleen Size Calculator', () => {
   });
 
   test('shows gender radio buttons', async ({ page }) => {
-    await expect(page.getByRole('radio', { name: 'female' })).toBeVisible();
-    await expect(page.getByRole('radio', { name: 'male' })).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'female' }).first()).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'male' }).first()).toBeVisible();
   });
 
   test('shows height input field', async ({ page }) => {
@@ -233,7 +233,7 @@ test.describe('Spleen Size Calculator', () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     await expect(page.getByRole('heading', { name: 'Spleen Size' })).toBeVisible();
-    await expect(page.getByRole('radio', { name: 'female' })).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'female' }).first()).toBeVisible();
     await expect(page.getByRole('spinbutton', { name: 'Body Height (cm)' })).toBeVisible();
   });
 
@@ -241,7 +241,7 @@ test.describe('Spleen Size Calculator', () => {
     await page.setViewportSize({ width: 768, height: 1024 });
 
     await expect(page.getByRole('heading', { name: 'Spleen Size' })).toBeVisible();
-    await expect(page.getByRole('radio', { name: 'female' })).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'female' }).first()).toBeVisible();
   });
 
   test('citation link opens in new context', async ({ page, context }) => {

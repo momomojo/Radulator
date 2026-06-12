@@ -32,7 +32,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     }) => {
       await expect(page.getByTestId('calculator-title').first()).toContainText("Lung-RADS");
       await expect(
-        page.getByText("Lung cancer screening CT classification"),
+        page.getByText("Lung cancer screening CT classification").first(),
       ).toBeVisible();
     });
 
@@ -51,9 +51,9 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       page,
     }) => {
       await expect(
-        page.getByText("Lung-RADS (Lung Imaging Reporting and Data System)"),
+        page.getByText("Lung-RADS (Lung Imaging Reporting and Data System)").first(),
       ).toBeVisible();
-      await expect(page.getByText("Category 0: Incomplete")).toBeVisible();
+      await expect(page.getByText("Category 0: Incomplete").first()).toBeVisible();
     });
 
     test("should show solid nodule size field when solid nodule selected", async ({

@@ -60,19 +60,19 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
   test("should display all 5 SHIM questions", async ({ page }) => {
     // Question 1: Confidence
     await expect(
-      page.locator("text=1. How do you rate your confidence"),
+      page.locator("text=1. How do you rate your confidence").first(),
     ).toBeVisible();
-    await expect(page.locator("text=Very low")).toBeVisible();
-    await expect(page.locator("text=Very high")).toBeVisible();
+    await expect(page.locator("text=Very low").first()).toBeVisible();
+    await expect(page.locator("text=Very high").first()).toBeVisible();
 
     // Question 2: Firmness/Penetration
     await expect(
-      page.locator("text=2. When you had erections with sexual stimulation"),
+      page.locator("text=2. When you had erections with sexual stimulation").first(),
     ).toBeVisible();
     await expect(
-      page.locator("text=hard enough for penetration"),
+      page.locator("text=hard enough for penetration").first(),
     ).toBeVisible();
-    await expect(page.locator("text=No sexual activity")).toBeVisible();
+    await expect(page.locator("text=No sexual activity").first()).toBeVisible();
 
     // Question 3: Maintenance
     await expect(
@@ -81,7 +81,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       ),
     ).toBeVisible();
     await expect(
-      page.locator("text=Did not attempt intercourse"),
+      page.locator("text=Did not attempt intercourse").first(),
     ).toBeVisible();
 
     // Question 4: Difficulty maintaining
@@ -90,8 +90,8 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
         "text=4. During sexual intercourse, how difficult was it to maintain",
       ),
     ).toBeVisible();
-    await expect(page.locator("text=Extremely difficult")).toBeVisible();
-    await expect(page.locator("text=Not difficult")).toBeVisible();
+    await expect(page.locator("text=Extremely difficult").first()).toBeVisible();
+    await expect(page.locator("text=Not difficult").first()).toBeVisible();
 
     // Question 5: Satisfaction
     await expect(
@@ -99,7 +99,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
         "text=5. When you attempted sexual intercourse, how often was it satisfactory",
       ),
     ).toBeVisible();
-    await expect(page.locator("text=Almost always or always")).toBeVisible();
+    await expect(page.locator("text=Almost always or always").first()).toBeVisible();
   });
 
   test("should require all questions to be answered", async ({ page }) => {
@@ -110,7 +110,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     // Wait for results
 
     // Should show error
-    const errorMessage = page.locator("text=Please answer all 5 questions");
+    const errorMessage = page.locator("text=Please answer all 5 questions").first();
     await expect(errorMessage).toBeVisible();
   });
 
@@ -138,7 +138,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     await page.getByRole("button", { name: "Calculate" }).click();
 
     // Verify score format includes "/25"
-    const resultsSection = page.getByRole("status", { name: "Calculator results" });
+    const resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("Total IIEF-5 (SHIM Score)");
     await expect(resultsSection).toContainText("/ 25");
   });
@@ -170,7 +170,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       await page.getByRole("button", { name: "Calculate" }).click();
 
       // Verify results
-      const resultsSection = page.getByRole("status", { name: "Calculator results" });
+      const resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
       await expect(resultsSection).toBeVisible();
 
       // Verify Total IIEF-5 (SHIM Score)
@@ -218,7 +218,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    const resultsSection = page.getByRole("status", { name: "Calculator results" });
+    const resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
 
     // Verify severe ED classification
     await expect(resultsSection).toContainText("Severe ED");
@@ -248,7 +248,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    const resultsSection = page.getByRole("status", { name: "Calculator results" });
+    const resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
 
     // Verify No ED classification
     await expect(resultsSection).toContainText("No ED");
@@ -288,7 +288,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("21 / 25");
     await expect(resultsSection).toContainText("Mild ED");
     await expect(resultsSection).toContainText("lifestyle modifications");
@@ -298,7 +298,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("22 / 25");
     await expect(resultsSection).toContainText("No ED");
     await expect(resultsSection).toContainText(
@@ -330,7 +330,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("16 / 25");
     await expect(resultsSection).toContainText("Mild-to-Moderate ED");
     await expect(resultsSection).toContainText(
@@ -346,7 +346,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("17 / 25");
     await expect(resultsSection).toContainText("Mild ED");
     await expect(resultsSection).not.toContainText("Mild-to-Moderate");
@@ -376,7 +376,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("11 / 25");
     await expect(resultsSection).toContainText("Moderate ED");
     await expect(resultsSection).not.toContainText("Mild-to-Moderate");
@@ -390,7 +390,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("12 / 25");
     await expect(resultsSection).toContainText("Mild-to-Moderate ED");
   });
@@ -419,7 +419,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("7 / 25");
     await expect(resultsSection).toContainText("Severe ED");
 
@@ -432,7 +432,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("8 / 25");
     await expect(resultsSection).toContainText("Moderate ED");
     await expect(resultsSection).not.toContainText("Severe");
@@ -458,7 +458,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    const resultsSection = page.getByRole("status", { name: "Calculator results" });
+    const resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
 
     // Score should be 1
     await expect(resultsSection).toContainText("1 / 25");
@@ -590,7 +590,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("5 / 25");
     await expect(resultsSection).toContainText("Severe ED");
 
@@ -611,7 +611,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("25 / 25");
     await expect(resultsSection).toContainText("No ED");
   });
@@ -638,14 +638,14 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q1 to Very high (5 points)
     await selectRadio(page, "confidence", "Very high");
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("17 / 25");
   });
 
@@ -671,7 +671,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q2 to Almost always or always (5 points)
@@ -682,7 +682,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     );
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("17 / 25");
   });
 
@@ -704,14 +704,14 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q3 to Almost always or always (5 points)
     await selectRadio(page, "able to maintain", "Almost always or always");
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("17 / 25");
   });
 
@@ -737,14 +737,14 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q4 to Not difficult (5 points)
     await selectRadio(page, "how difficult", "Not difficult");
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("17 / 25");
   });
 
@@ -770,7 +770,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.getByRole("status", { name: "Calculator results" });
+    let resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q5 to Almost always or always (5 points)
@@ -781,7 +781,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     );
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.getByRole("status", { name: "Calculator results" });
+    resultsSection = page.getByRole("status", { name: "Calculator results" }).first();
     await expect(resultsSection).toContainText("17 / 25");
   });
 });

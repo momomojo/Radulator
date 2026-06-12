@@ -178,7 +178,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 4a (1+1+1+1 = 4)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4a");
@@ -202,7 +202,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4a");
@@ -224,7 +224,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 5a (2+1+1+1 = 5)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("5a");
@@ -246,7 +246,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (3+1+1+1 = 6)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("6a");
@@ -266,7 +266,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (3+1+1+1 = 6)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("6a");
@@ -287,7 +287,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4a");
@@ -307,7 +307,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 5a (1+2+1+1 = 5)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("5a");
@@ -331,7 +331,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (1+3+1+1 = 6)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("6a");
@@ -354,7 +354,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4a");
@@ -376,7 +376,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 5a (1+1+2+1 = 5)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("5a");
@@ -398,7 +398,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (1+1+3+1 = 6)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("6a");
@@ -421,7 +421,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4a");
@@ -441,7 +441,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 5a (1+1+1+2 = 5)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("5a");
@@ -463,7 +463,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (1+1+1+3 = 6)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("6a");
@@ -484,7 +484,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4a");
@@ -505,7 +505,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4p");
@@ -530,7 +530,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4x");
@@ -554,7 +554,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4ah");
@@ -576,7 +576,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       const scoreText = await results
         .locator('> div:has-text("Total Score")')
         .textContent();
@@ -600,7 +600,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4ph");
@@ -626,7 +626,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("4xh");
@@ -652,7 +652,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("6a");
@@ -677,7 +677,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("7a");
@@ -700,7 +700,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("10a");
@@ -730,7 +730,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("6a");
@@ -754,7 +754,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("7a");
@@ -778,7 +778,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("9a");
@@ -802,7 +802,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator('> div:has-text("Total Score")'),
       ).toContainText("10a");
@@ -828,7 +828,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       const interpretation = await results
         .locator('> div:has-text("Interpretation")')
         .textContent();
@@ -852,7 +852,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       const interpretation = await results
         .locator('> div:has-text("Interpretation")')
         .textContent();
@@ -880,7 +880,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       const interpretation = await results
         .locator('> div:has-text("Interpretation")')
         .textContent();

@@ -42,25 +42,25 @@ test.describe("ACR O-RADS Calculator", () => {
     });
 
     test("should have modality selection for US and MRI", async ({ page }) => {
-      await expect(page.getByText("Imaging Modality")).toBeVisible();
+      await expect(page.getByText("Imaging Modality").first()).toBeVisible();
       await expect(page.locator('label[for="modality-us"]')).toBeVisible();
       await expect(page.locator('label[for="modality-mri"]')).toBeVisible();
     });
 
     test("should have study complete field", async ({ page }) => {
-      await expect(page.getByText("Study Complete/Diagnostic")).toBeVisible();
+      await expect(page.getByText("Study Complete/Diagnostic").first()).toBeVisible();
     });
 
     test("should display info section with O-RADS explanation", async ({
       page,
     }) => {
       await expect(
-        page.getByText("O-RADS (Ovarian-Adnexal Reporting and Data System)"),
+        page.getByText("O-RADS (Ovarian-Adnexal Reporting and Data System)").first(),
       ).toBeVisible();
       await expect(
-        page.getByText("ULTRASOUND (O-RADS US v2022)"),
+        page.getByText("ULTRASOUND (O-RADS US v2022)").first(),
       ).toBeVisible();
-      await expect(page.getByText("MRI (O-RADS MRI):")).toBeVisible();
+      await expect(page.getByText("MRI (O-RADS MRI):").first()).toBeVisible();
     });
   });
 
@@ -73,9 +73,9 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 0 - Incomplete")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 0 - Incomplete").first()).toBeVisible();
       await expect(
-        page.locator("text=Additional imaging required"),
+        page.locator("text=Additional imaging required").first(),
       ).toBeVisible();
     });
   });
@@ -90,10 +90,10 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS US 1 - Normal/Physiologic"),
+        page.locator("text=O-RADS US 1 - Normal/Physiologic").first(),
       ).toBeVisible();
-      await expect(page.getByText("Malignancy Risk: 0%")).toBeVisible();
-      await expect(page.locator("text=No follow-up needed")).toBeVisible();
+      await expect(page.getByText("Malignancy Risk: 0%").first()).toBeVisible();
+      await expect(page.locator("text=No follow-up needed").first()).toBeVisible();
     });
   });
 
@@ -111,9 +111,9 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS US 2 - Almost Certainly Benign"),
+        page.locator("text=O-RADS US 2 - Almost Certainly Benign").first(),
       ).toBeVisible();
-      await expect(page.getByText("Malignancy Risk: <1%")).toBeVisible();
+      await expect(page.getByText("Malignancy Risk: <1%").first()).toBeVisible();
     });
 
     test("should return Category 2 for classic benign lesion <10cm", async ({
@@ -129,9 +129,9 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS US 2 - Almost Certainly Benign"),
+        page.locator("text=O-RADS US 2 - Almost Certainly Benign").first(),
       ).toBeVisible();
-      await expect(page.getByText("Malignancy Risk: <1%")).toBeVisible();
+      await expect(page.getByText("Malignancy Risk: <1%").first()).toBeVisible();
     });
 
     test("should return Category 2 for unilocular cyst with smooth wall", async ({
@@ -149,7 +149,7 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS US 2 - Almost Certainly Benign"),
+        page.locator("text=O-RADS US 2 - Almost Certainly Benign").first(),
       ).toBeVisible();
     });
   });
@@ -167,9 +167,9 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 3 - Low Risk")).toBeVisible();
-      await expect(page.getByText("Malignancy Risk: 1-10%")).toBeVisible();
-      await expect(page.locator("text=Gynecologist evaluation")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 3 - Low Risk").first()).toBeVisible();
+      await expect(page.getByText("Malignancy Risk: 1-10%").first()).toBeVisible();
+      await expect(page.locator("text=Gynecologist evaluation").first()).toBeVisible();
     });
 
     test("should return Category 3 for classic benign >=10cm", async ({
@@ -184,8 +184,8 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 3 - Low Risk")).toBeVisible();
-      await expect(page.getByText("Malignancy Risk: 1-10%")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 3 - Low Risk").first()).toBeVisible();
+      await expect(page.getByText("Malignancy Risk: 1-10%").first()).toBeVisible();
     });
 
     test("should return Category 3 for unilocular cyst with irregular wall", async ({
@@ -202,8 +202,8 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 3 - Low Risk")).toBeVisible();
-      await expect(page.getByText("Malignancy Risk: 1-10%")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 3 - Low Risk").first()).toBeVisible();
+      await expect(page.getByText("Malignancy Risk: 1-10%").first()).toBeVisible();
     });
 
     test("should return Category 3 for multilocular cyst with smooth walls, small size, low CS", async ({
@@ -221,8 +221,8 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 3 - Low Risk")).toBeVisible();
-      await expect(page.locator("text=6-month follow-up US")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 3 - Low Risk").first()).toBeVisible();
+      await expect(page.locator("text=6-month follow-up US").first()).toBeVisible();
     });
 
     test("should return Category 3 for solid smooth lesion with CS 1", async ({
@@ -239,8 +239,8 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 3 - Low Risk")).toBeVisible();
-      await expect(page.locator("text=may represent fibroma")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 3 - Low Risk").first()).toBeVisible();
+      await expect(page.locator("text=may represent fibroma").first()).toBeVisible();
     });
   });
 
@@ -262,11 +262,11 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS US 4 - Intermediate Risk"),
+        page.locator("text=O-RADS US 4 - Intermediate Risk").first(),
       ).toBeVisible();
-      await expect(page.getByText("Malignancy Risk: 10-50%")).toBeVisible();
+      await expect(page.getByText("Malignancy Risk: 10-50%").first()).toBeVisible();
       await expect(
-        page.locator("text=gyn-oncology consultation"),
+        page.locator("text=gyn-oncology consultation").first(),
       ).toBeVisible();
     });
 
@@ -286,9 +286,9 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS US 4 - Intermediate Risk"),
+        page.locator("text=O-RADS US 4 - Intermediate Risk").first(),
       ).toBeVisible();
-      await expect(page.getByText("Malignancy Risk: 10-50%")).toBeVisible();
+      await expect(page.getByText("Malignancy Risk: 10-50%").first()).toBeVisible();
     });
 
     test("should return Category 4 for multilocular with solid component and low CS", async ({
@@ -307,7 +307,7 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS US 4 - Intermediate Risk"),
+        page.locator("text=O-RADS US 4 - Intermediate Risk").first(),
       ).toBeVisible();
     });
 
@@ -326,10 +326,10 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS US 4 - Intermediate Risk"),
+        page.locator("text=O-RADS US 4 - Intermediate Risk").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=MRI for further characterization"),
+        page.locator("text=MRI for further characterization").first(),
       ).toBeVisible();
     });
   });
@@ -351,10 +351,10 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 5 - High Risk")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 5 - High Risk").first()).toBeVisible();
       await expect(page.getByText(/Malignancy Risk:.*50%/)).toBeVisible();
       await expect(
-        page.locator("text=Gynecologic oncologist referral"),
+        page.locator("text=Gynecologic oncologist referral").first(),
       ).toBeVisible();
     });
 
@@ -373,7 +373,7 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 5 - High Risk")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 5 - High Risk").first()).toBeVisible();
     });
 
     test("should return Category 5 for solid lesion with irregular contour", async ({
@@ -389,9 +389,9 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 5 - High Risk")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 5 - High Risk").first()).toBeVisible();
       await expect(
-        page.locator("text=Gynecologic oncologist referral"),
+        page.locator("text=Gynecologic oncologist referral").first(),
       ).toBeVisible();
     });
 
@@ -409,7 +409,7 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 5 - High Risk")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 5 - High Risk").first()).toBeVisible();
     });
   });
 
@@ -423,10 +423,10 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS MRI 0 - Incomplete"),
+        page.locator("text=O-RADS MRI 0 - Incomplete").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Additional imaging required"),
+        page.locator("text=Additional imaging required").first(),
       ).toBeVisible();
     });
   });
@@ -441,9 +441,9 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS MRI 1 - Normal")).toBeVisible();
-      await expect(page.getByText("PPV: 0%")).toBeVisible();
-      await expect(page.locator("text=No follow-up needed")).toBeVisible();
+      await expect(page.locator("text=O-RADS MRI 1 - Normal").first()).toBeVisible();
+      await expect(page.getByText("PPV: 0%").first()).toBeVisible();
+      await expect(page.locator("text=No follow-up needed").first()).toBeVisible();
     });
   });
 
@@ -457,9 +457,9 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign"),
+        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign").first(),
       ).toBeVisible();
-      await expect(page.getByText("PPV: <0.5%")).toBeVisible();
+      await expect(page.getByText("PPV: <0.5%").first()).toBeVisible();
     });
 
     test("should return Category 2 for unilocular simple cyst without wall enhancement", async ({
@@ -474,9 +474,9 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign"),
+        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign").first(),
       ).toBeVisible();
-      await expect(page.getByText("PPV: <0.5%")).toBeVisible();
+      await expect(page.getByText("PPV: <0.5%").first()).toBeVisible();
     });
 
     test("should return Category 2 for unilocular non-simple without solid tissue", async ({
@@ -493,10 +493,10 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign"),
+        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=endometrioma/hemorrhagic cyst"),
+        page.locator("text=endometrioma/hemorrhagic cyst").first(),
       ).toBeVisible();
     });
 
@@ -512,9 +512,9 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign"),
+        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign").first(),
       ).toBeVisible();
-      await expect(page.getByText("Lesion: Dermoid")).toBeVisible();
+      await expect(page.getByText("Lesion: Dermoid").first()).toBeVisible();
     });
 
     test("should return Category 2 for T2 dark/DWI dark solid (fibroma-type)", async ({
@@ -528,9 +528,9 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign"),
+        page.locator("text=O-RADS MRI 2 - Almost Certainly Benign").first(),
       ).toBeVisible();
-      await expect(page.getByText("consistent with fibroma")).toBeVisible();
+      await expect(page.getByText("consistent with fibroma").first()).toBeVisible();
     });
   });
 
@@ -546,9 +546,9 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS MRI 3 - Low Risk")).toBeVisible();
-      await expect(page.getByText("PPV: ~5%")).toBeVisible();
-      await expect(page.locator("text=Follow-up imaging")).toBeVisible();
+      await expect(page.locator("text=O-RADS MRI 3 - Low Risk").first()).toBeVisible();
+      await expect(page.getByText("PPV: ~5%").first()).toBeVisible();
+      await expect(page.locator("text=Follow-up imaging").first()).toBeVisible();
     });
 
     test("should return Category 3 for multilocular cyst without solid tissue", async ({
@@ -562,8 +562,8 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS MRI 3 - Low Risk")).toBeVisible();
-      await expect(page.getByText("PPV: ~5%")).toBeVisible();
+      await expect(page.locator("text=O-RADS MRI 3 - Low Risk").first()).toBeVisible();
+      await expect(page.getByText("PPV: ~5%").first()).toBeVisible();
     });
 
     test("should return Category 3 for solid tissue with low-risk TIC", async ({
@@ -577,9 +577,9 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS MRI 3 - Low Risk")).toBeVisible();
+      await expect(page.locator("text=O-RADS MRI 3 - Low Risk").first()).toBeVisible();
       await expect(
-        page.getByText("Lesion: Enhancing solid tissue, low-risk TIC"),
+        page.getByText("Lesion: Enhancing solid tissue, low-risk TIC").first(),
       ).toBeVisible();
     });
   });
@@ -597,10 +597,10 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS MRI 4 - Intermediate Risk"),
+        page.locator("text=O-RADS MRI 4 - Intermediate Risk").first(),
       ).toBeVisible();
-      await expect(page.getByText("PPV: ~50%")).toBeVisible();
-      await expect(page.locator("text=malignant transformation")).toBeVisible();
+      await expect(page.getByText("PPV: ~50%").first()).toBeVisible();
+      await expect(page.locator("text=malignant transformation").first()).toBeVisible();
     });
 
     test("should return Category 4 for solid tissue with intermediate-risk TIC", async ({
@@ -615,9 +615,9 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS MRI 4 - Intermediate Risk"),
+        page.locator("text=O-RADS MRI 4 - Intermediate Risk").first(),
       ).toBeVisible();
-      await expect(page.getByText("PPV: ~50%")).toBeVisible();
+      await expect(page.getByText("PPV: ~50%").first()).toBeVisible();
     });
 
     test("should return Category 4 for multilocular with solid tissue and intermediate TIC", async ({
@@ -633,7 +633,7 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=O-RADS MRI 4 - Intermediate Risk"),
+        page.locator("text=O-RADS MRI 4 - Intermediate Risk").first(),
       ).toBeVisible();
     });
   });
@@ -650,10 +650,10 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS MRI 5 - High Risk")).toBeVisible();
-      await expect(page.getByText("PPV: ~90%")).toBeVisible();
+      await expect(page.locator("text=O-RADS MRI 5 - High Risk").first()).toBeVisible();
+      await expect(page.getByText("PPV: ~90%").first()).toBeVisible();
       await expect(
-        page.locator("text=Gynecologic oncologist referral"),
+        page.locator("text=Gynecologic oncologist referral").first(),
       ).toBeVisible();
     });
 
@@ -669,8 +669,8 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS MRI 5 - High Risk")).toBeVisible();
-      await expect(page.getByText("PPV: ~90%")).toBeVisible();
+      await expect(page.locator("text=O-RADS MRI 5 - High Risk").first()).toBeVisible();
+      await expect(page.getByText("PPV: ~90%").first()).toBeVisible();
     });
   });
 
@@ -687,9 +687,9 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS US 5 - High Risk")).toBeVisible();
+      await expect(page.locator("text=O-RADS US 5 - High Risk").first()).toBeVisible();
       await expect(page.getByText(/Malignancy Risk:.*50%/)).toBeVisible();
-      await expect(page.locator("text=Peritoneal disease")).toBeVisible();
+      await expect(page.locator("text=Peritoneal disease").first()).toBeVisible();
     });
 
     test("should return MRI Category 5 when peritoneal disease present", async ({
@@ -703,9 +703,9 @@ test.describe("ACR O-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=O-RADS MRI 5 - High Risk")).toBeVisible();
-      await expect(page.getByText("Malignancy Risk: ~90%")).toBeVisible();
-      await expect(page.locator("text=Peritoneal disease")).toBeVisible();
+      await expect(page.locator("text=O-RADS MRI 5 - High Risk").first()).toBeVisible();
+      await expect(page.getByText("Malignancy Risk: ~90%").first()).toBeVisible();
+      await expect(page.locator("text=Peritoneal disease").first()).toBeVisible();
     });
   });
 
@@ -714,7 +714,7 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select imaging modality"),
+        page.locator("text=Please select imaging modality").first(),
       ).toBeVisible();
     });
 
@@ -729,7 +729,7 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select the primary US finding"),
+        page.locator("text=Please select the primary US finding").first(),
       ).toBeVisible();
     });
 
@@ -743,7 +743,7 @@ test.describe("ACR O-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select the primary MRI finding"),
+        page.locator("text=Please select the primary MRI finding").first(),
       ).toBeVisible();
     });
   });

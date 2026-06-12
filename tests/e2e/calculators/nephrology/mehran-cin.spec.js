@@ -86,7 +86,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
       await expect(
         infoSection.getByText("Contrast-Induced Nephropathy").first(),
       ).toBeVisible();
-      await expect(infoSection.getByText("Risk Categories")).toBeVisible();
+      await expect(infoSection.getByText("Risk Categories").first()).toBeVisible();
     });
   });
 
@@ -111,8 +111,8 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
       await page.click("button:has-text('Calculate')");
 
       // Target the results section (section with aria-live="polite")
-      const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(results.locator("text=Low Risk")).toBeVisible();
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(results.locator("text=Low Risk").first()).toBeVisible();
     });
 
     test("should calculate when only eGFR is provided", async ({ page }) => {
@@ -120,8 +120,8 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
       await page.click("button:has-text('Calculate')");
 
       // Target the results section
-      const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(results.locator("text=Low Risk")).toBeVisible();
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(results.locator("text=Low Risk").first()).toBeVisible();
     });
   });
 
@@ -137,7 +137,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
       await page.click("button:has-text('Calculate')");
 
       // Target the results section
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Risk Category:')"),
       ).toContainText("Low Risk");
@@ -158,7 +158,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("3 points");
@@ -178,7 +178,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("3 points");
@@ -197,7 +197,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("3 points");
@@ -216,7 +216,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("4 points");
@@ -238,7 +238,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("6 points");
@@ -265,7 +265,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("10 points");
@@ -285,7 +285,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("10 points");
@@ -307,7 +307,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Risk Category:')"),
       ).toContainText("Moderate Risk");
@@ -327,7 +327,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("11 points");
@@ -354,7 +354,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("12 points");
@@ -375,7 +375,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("12 points");
@@ -396,7 +396,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("15 points");
@@ -420,7 +420,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("16 points");
@@ -447,7 +447,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("17 points");
@@ -473,7 +473,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Risk Category:')"),
       ).toContainText("Very High Risk");
@@ -497,7 +497,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("19 points");
@@ -518,7 +518,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Score Breakdown:')"),
       ).toContainText("Hypotension: +5");
@@ -535,7 +535,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Score Breakdown:')"),
       ).toContainText("Contrast volume (250 mL): +2");
@@ -546,7 +546,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Score Breakdown:')"),
       ).toContainText("eGFR 20-40: +4");
@@ -561,7 +561,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Score Breakdown:')"),
       ).toContainText("Creatinine >1.5: +4");
@@ -575,7 +575,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
       await page.click("button:has-text('Calculate')");
 
       // Target: <120 mL (60 * 2); Maximum: <180 mL (60 * 3)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Contrast Limits:')"),
       ).toContainText("Target: <120 mL");
@@ -592,7 +592,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
       await page.click("button:has-text('Calculate')");
 
       // Target: <60 mL (30 * 2); Maximum: <90 mL (30 * 3)
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Contrast Limits:')"),
       ).toContainText("Target: <60 mL");
@@ -608,7 +608,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Prevention Recommendations:')"),
       ).toContainText("Standard hydration protocol");
@@ -625,7 +625,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Prevention Recommendations:')"),
       ).toContainText("Aggressive hydration");
@@ -647,7 +647,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Prevention Recommendations:')"),
       ).toContainText("Nephrology consultation");
@@ -665,7 +665,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Estimated eGFR:')"),
       ).toBeVisible();
@@ -681,7 +681,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("0 points");
@@ -695,7 +695,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
       await page.click("button:has-text('Calculate')");
 
       // eGFR 40 is in the 40-60 range = +2 pts
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Score Breakdown:')"),
       ).toContainText("eGFR 40-60: +2");
@@ -709,7 +709,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
       await page.click("button:has-text('Calculate')");
 
       // eGFR 20 is in the 20-40 range = +4 pts
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Score Breakdown:')"),
       ).toContainText("eGFR 20-40: +4");
@@ -722,7 +722,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
       await page.click("button:has-text('Calculate')");
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         results.locator("> div:has-text('Mehran Score:')"),
       ).toContainText("0 points");

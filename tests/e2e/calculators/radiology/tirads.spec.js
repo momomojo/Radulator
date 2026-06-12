@@ -50,14 +50,14 @@ test.describe("ACR TI-RADS Calculator", () => {
     });
 
     test("should have nodule size input field", async ({ page }) => {
-      await expect(page.getByText("Maximum Nodule Dimension")).toBeVisible();
+      await expect(page.getByText("Maximum Nodule Dimension").first()).toBeVisible();
     });
 
     test("should display info section with TI-RADS explanation", async ({
       page,
     }) => {
       await expect(
-        page.getByText("5 ultrasound feature categories"),
+        page.getByText("5 ultrasound feature categories").first(),
       ).toBeVisible();
       await expect(page.getByText("TI-RADS category").first()).toBeVisible();
     });
@@ -80,10 +80,10 @@ test.describe("ACR TI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=TR1 - Benign")).toBeVisible();
-      await expect(page.locator("text=0 points")).toBeVisible();
-      await expect(page.locator("text=<2%")).toBeVisible();
-      await expect(page.locator("text=No FNA recommended")).toBeVisible();
+      await expect(page.locator("text=TR1 - Benign").first()).toBeVisible();
+      await expect(page.locator("text=0 points").first()).toBeVisible();
+      await expect(page.locator("text=<2%").first()).toBeVisible();
+      await expect(page.locator("text=No FNA recommended").first()).toBeVisible();
     });
   });
 
@@ -99,8 +99,8 @@ test.describe("ACR TI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=TR2 - Not Suspicious")).toBeVisible();
-      await expect(page.getByText("Total Points: 2 points")).toBeVisible();
+      await expect(page.locator("text=TR2 - Not Suspicious").first()).toBeVisible();
+      await expect(page.getByText("Total Points: 2 points").first()).toBeVisible();
       await expect(page.getByText("<2%").first()).toBeVisible();
     });
   });
@@ -117,8 +117,8 @@ test.describe("ACR TI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=TR3 - Mildly Suspicious")).toBeVisible();
-      await expect(page.getByText("Total Points: 3 points")).toBeVisible();
+      await expect(page.locator("text=TR3 - Mildly Suspicious").first()).toBeVisible();
+      await expect(page.getByText("Total Points: 3 points").first()).toBeVisible();
       await expect(page.getByText("~5%").first()).toBeVisible();
     });
 
@@ -134,8 +134,8 @@ test.describe("ACR TI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=FNA recommended")).toBeVisible();
-      await expect(page.locator("text=2.5 cm")).toBeVisible();
+      await expect(page.locator("text=FNA recommended").first()).toBeVisible();
+      await expect(page.locator("text=2.5 cm").first()).toBeVisible();
     });
   });
 
@@ -152,10 +152,10 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=TR4 - Moderately Suspicious"),
+        page.locator("text=TR4 - Moderately Suspicious").first(),
       ).toBeVisible();
-      await expect(page.locator("text=4 points")).toBeVisible();
-      await expect(page.locator("text=5-20%")).toBeVisible();
+      await expect(page.locator("text=4 points").first()).toBeVisible();
+      await expect(page.locator("text=5-20%").first()).toBeVisible();
     });
 
     test("should calculate TR4 for 6 points", async ({ page }) => {
@@ -170,9 +170,9 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=TR4 - Moderately Suspicious"),
+        page.locator("text=TR4 - Moderately Suspicious").first(),
       ).toBeVisible();
-      await expect(page.locator("text=6 points")).toBeVisible();
+      await expect(page.locator("text=6 points").first()).toBeVisible();
     });
 
     test("should recommend FNA for TR4 ≥1.5 cm", async ({ page }) => {
@@ -187,8 +187,8 @@ test.describe("ACR TI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=FNA recommended")).toBeVisible();
-      await expect(page.locator("text=1.5 cm")).toBeVisible();
+      await expect(page.locator("text=FNA recommended").first()).toBeVisible();
+      await expect(page.locator("text=1.5 cm").first()).toBeVisible();
     });
   });
 
@@ -204,9 +204,9 @@ test.describe("ACR TI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=TR5 - Highly Suspicious")).toBeVisible();
-      await expect(page.locator("text=7 points")).toBeVisible();
-      await expect(page.locator("text=>20%")).toBeVisible();
+      await expect(page.locator("text=TR5 - Highly Suspicious").first()).toBeVisible();
+      await expect(page.locator("text=7 points").first()).toBeVisible();
+      await expect(page.locator("text=>20%").first()).toBeVisible();
     });
 
     test("should calculate high-risk nodule with all suspicious features (12+ pts)", async ({
@@ -221,9 +221,9 @@ test.describe("ACR TI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=TR5 - Highly Suspicious")).toBeVisible();
-      await expect(page.locator("text=12 points")).toBeVisible();
-      await expect(page.locator("text=FNA recommended")).toBeVisible();
+      await expect(page.locator("text=TR5 - Highly Suspicious").first()).toBeVisible();
+      await expect(page.locator("text=12 points").first()).toBeVisible();
+      await expect(page.locator("text=FNA recommended").first()).toBeVisible();
     });
 
     test("should recommend FNA for TR5 ≥1.0 cm", async ({ page }) => {
@@ -238,9 +238,9 @@ test.describe("ACR TI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=TR5 - Highly Suspicious")).toBeVisible();
-      await expect(page.locator("text=FNA recommended")).toBeVisible();
-      await expect(page.locator("text=1.0 cm")).toBeVisible();
+      await expect(page.locator("text=TR5 - Highly Suspicious").first()).toBeVisible();
+      await expect(page.locator("text=FNA recommended").first()).toBeVisible();
+      await expect(page.locator("text=1.0 cm").first()).toBeVisible();
     });
 
     test("should show clinical notes for extrathyroidal extension", async ({
@@ -257,7 +257,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Extrathyroidal extension is highly suspicious"),
+        page.locator("text=Extrathyroidal extension is highly suspicious").first(),
       ).toBeVisible();
     });
   });
@@ -272,11 +272,11 @@ test.describe("ACR TI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Composition: 2")).toBeVisible();
-      await expect(page.locator("text=Echogenicity: 2")).toBeVisible();
-      await expect(page.locator("text=Shape: 3")).toBeVisible();
-      await expect(page.locator("text=Margin: 2")).toBeVisible();
-      await expect(page.locator("text=Echogenic Foci: 3")).toBeVisible();
+      await expect(page.locator("text=Composition: 2").first()).toBeVisible();
+      await expect(page.locator("text=Echogenicity: 2").first()).toBeVisible();
+      await expect(page.locator("text=Shape: 3").first()).toBeVisible();
+      await expect(page.locator("text=Margin: 2").first()).toBeVisible();
+      await expect(page.locator("text=Echogenic Foci: 3").first()).toBeVisible();
     });
   });
 
@@ -293,7 +293,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Spongiform composition is a benign feature"),
+        page.locator("text=Spongiform composition is a benign feature").first(),
       ).toBeVisible();
     });
 
@@ -307,10 +307,10 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=psammomatous calcifications"),
+        page.locator("text=psammomatous calcifications").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=papillary thyroid carcinoma"),
+        page.locator("text=papillary thyroid carcinoma").first(),
       ).toBeVisible();
     });
 
@@ -326,7 +326,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=growth across tissue planes"),
+        page.locator("text=growth across tissue planes").first(),
       ).toBeVisible();
     });
   });
@@ -336,7 +336,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please complete all ultrasound feature assessments"),
+        page.locator("text=Please complete all ultrasound feature assessments").first(),
       ).toBeVisible();
     });
 
@@ -350,7 +350,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please complete all ultrasound feature assessments"),
+        page.locator("text=Please complete all ultrasound feature assessments").first(),
       ).toBeVisible();
     });
   });

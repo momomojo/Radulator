@@ -34,15 +34,15 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
         "Y-90 Radioembolization Dosimetry",
       );
       await expect(
-        page.locator("text=Dosimetry calculator for Y-90 radioembolization"),
+        page.locator("text=Dosimetry calculator for Y-90 radioembolization").first(),
       ).toBeVisible();
 
       // Check info section
       await expect(
-        page.locator("text=Y-90 Radiation Segmentectomy Dosimetry Calculator"),
+        page.locator("text=Y-90 Radiation Segmentectomy Dosimetry Calculator").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=MIRD Model: Uniform dose distribution"),
+        page.locator("text=MIRD Model: Uniform dose distribution").first(),
       ).toBeVisible();
       await expect(
         page.locator(
@@ -87,20 +87,20 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
       // Check References section
-      await expect(page.locator("text=References")).toBeVisible();
+      await expect(page.locator("text=References").first()).toBeVisible();
     });
 
     test("should show subLabels with units and ranges", async ({ page }) => {
-      await expect(page.locator("text=mL (10-2000)")).toBeVisible();
-      await expect(page.locator("text=mL (for partition model)")).toBeVisible();
-      await expect(page.locator("text=Gy (80-800)")).toBeVisible();
-      await expect(page.locator("text=% (0-50)")).toBeVisible();
+      await expect(page.locator("text=mL (10-2000)").first()).toBeVisible();
+      await expect(page.locator("text=mL (for partition model)").first()).toBeVisible();
+      await expect(page.locator("text=Gy (80-800)").first()).toBeVisible();
+      await expect(page.locator("text=% (0-50)").first()).toBeVisible();
       await expect(
-        page.locator("text=For partition model (1-50)"),
+        page.locator("text=For partition model (1-50)").first(),
       ).toBeVisible();
-      await expect(page.locator("text=% (default 1%)")).toBeVisible();
-      await expect(page.locator("text=kg (for BSA calculation)")).toBeVisible();
-      await expect(page.locator("text=cm (for BSA calculation)")).toBeVisible();
+      await expect(page.locator("text=% (default 1%)").first()).toBeVisible();
+      await expect(page.locator("text=kg (for BSA calculation)").first()).toBeVisible();
+      await expect(page.locator("text=cm (for BSA calculation)").first()).toBeVisible();
     });
 
     test("should have working radio buttons for treatment intent", async ({
@@ -172,59 +172,59 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Check prescribed activity section
       await expect(
-        page.locator("text=═══ PRESCRIBED ACTIVITY ═══"),
+        page.locator("text=═══ PRESCRIBED ACTIVITY ═══").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=/Activity to Order.*GBq.*mCi/"),
+        page.locator("text=/Activity to Order.*GBq.*mCi/").first(),
       ).toBeVisible();
-      await expect(page.locator("text=Recommended Vial Size")).toBeVisible();
+      await expect(page.locator("text=Recommended Vial Size").first()).toBeVisible();
       await expect(
-        page.locator("text=Vial Residual Correction: 1.0%"),
+        page.locator("text=Vial Residual Correction: 1.0%").first(),
       ).toBeVisible();
 
       // Check dosimetry results
       await expect(
-        page.locator("text=═══ DOSIMETRY RESULTS ═══"),
+        page.locator("text=═══ DOSIMETRY RESULTS ═══").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Mean Segment Dose: 205.0 Gy"),
+        page.locator("text=Mean Segment Dose: 205.0 Gy").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Model Used: MIRD (uniform distribution)"),
+        page.locator("text=Model Used: MIRD (uniform distribution)").first(),
       ).toBeVisible();
-      await expect(page.locator("text=/Target Volume.*200 mL/")).toBeVisible();
+      await expect(page.locator("text=/Target Volume.*200 mL/").first()).toBeVisible();
 
       // Check safety parameters
       await expect(
-        page.locator("text=═══ SAFETY PARAMETERS ═══"),
+        page.locator("text=═══ SAFETY PARAMETERS ═══").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Lung Shunt Fraction: 5.0%"),
+        page.locator("text=Lung Shunt Fraction: 5.0%").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=/Estimated Lung Dose.*Gy/"),
+        page.locator("text=/Estimated Lung Dose.*Gy/").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Microsphere Type: Glass (TheraSphere)"),
+        page.locator("text=Microsphere Type: Glass (TheraSphere)").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Treatment Intent: Segmentectomy"),
+        page.locator("text=Treatment Intent: Segmentectomy").first(),
       ).toBeVisible();
 
       // Should have no contraindications
       await expect(
-        page.locator("text=Safety Status: ✓ Within safety parameters"),
+        page.locator("text=Safety Status: ✓ Within safety parameters").first(),
       ).toBeVisible();
 
       // Check interpretation
-      await expect(page.locator("text=═══ INTERPRETATION ═══")).toBeVisible();
+      await expect(page.locator("text=═══ INTERPRETATION ═══").first()).toBeVisible();
       await expect(
         page.locator(
           "text=/Treatment parameters are within acceptable safety limits/",
         ),
       ).toBeVisible();
       await expect(
-        page.locator("text=/MIRD model assumes uniform dose distribution/"),
+        page.locator("text=/MIRD model assumes uniform dose distribution/").first(),
       ).toBeVisible();
 
       // Check formula
@@ -250,7 +250,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Recommended Vial Size: 3 GBq vial"),
+        page.locator("text=Recommended Vial Size: 3 GBq vial").first(),
       ).toBeVisible();
     });
 
@@ -270,12 +270,12 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Check that it calculated successfully
       await expect(
-        page.locator("text=Mean Segment Dose: 120.0 Gy"),
+        page.locator("text=Mean Segment Dose: 120.0 Gy").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Treatment Intent: Lobectomy"),
+        page.locator("text=Treatment Intent: Lobectomy").first(),
       ).toBeVisible();
-      await expect(page.locator("text=/Target Volume.*800 mL/")).toBeVisible();
+      await expect(page.locator("text=/Target Volume.*800 mL/").first()).toBeVisible();
     });
   });
 
@@ -297,23 +297,23 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check dosimetry results - partition model specific
-      await expect(page.locator("text=/Tumor Dose.*400.0 Gy/")).toBeVisible();
-      await expect(page.locator("text=/Normal Tissue Dose.*Gy/")).toBeVisible();
-      await expect(page.locator("text=/Mean Segment Dose.*Gy/")).toBeVisible();
+      await expect(page.locator("text=/Tumor Dose.*400.0 Gy/").first()).toBeVisible();
+      await expect(page.locator("text=/Normal Tissue Dose.*Gy/").first()).toBeVisible();
+      await expect(page.locator("text=/Mean Segment Dose.*Gy/").first()).toBeVisible();
       await expect(
-        page.locator("text=Tumor-to-Normal Ratio: 3.0"),
+        page.locator("text=Tumor-to-Normal Ratio: 3.0").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Model Used: Partition (tumor/normal)"),
+        page.locator("text=Model Used: Partition (tumor/normal)").first(),
       ).toBeVisible();
 
       // Check volume breakdown
-      await expect(page.locator("text=/Tumor Volume.*100 mL/")).toBeVisible();
-      await expect(page.locator("text=/Normal Volume.*200 mL/")).toBeVisible();
+      await expect(page.locator("text=/Tumor Volume.*100 mL/").first()).toBeVisible();
+      await expect(page.locator("text=/Normal Volume.*200 mL/").first()).toBeVisible();
 
       // Check interpretation mentions partition model
       await expect(
-        page.locator("text=/Partition model predicts.*Gy to tumor/"),
+        page.locator("text=/Partition model predicts.*Gy to tumor/").first(),
       ).toBeVisible();
 
       // Check formula
@@ -341,12 +341,12 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Tumor-to-Normal Ratio: 10.0"),
+        page.locator("text=Tumor-to-Normal Ratio: 10.0").first(),
       ).toBeVisible();
-      await expect(page.locator("text=/Tumor Dose.*500.0 Gy/")).toBeVisible();
+      await expect(page.locator("text=/Tumor Dose.*500.0 Gy/").first()).toBeVisible();
       // Normal dose should be tumor dose / T/N ratio = 500/10 = 50 Gy
       await expect(
-        page.locator("text=/Normal Tissue Dose.*50.0 Gy/"),
+        page.locator("text=/Normal Tissue Dose.*50.0 Gy/").first(),
       ).toBeVisible();
     });
 
@@ -367,12 +367,12 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Tumor-to-Normal Ratio: 2.0"),
+        page.locator("text=Tumor-to-Normal Ratio: 2.0").first(),
       ).toBeVisible();
-      await expect(page.locator("text=/Tumor Dose.*300.0 Gy/")).toBeVisible();
+      await expect(page.locator("text=/Tumor Dose.*300.0 Gy/").first()).toBeVisible();
       // Normal dose should be 300/2 = 150 Gy
       await expect(
-        page.locator("text=/Normal Tissue Dose.*150.0 Gy/"),
+        page.locator("text=/Normal Tissue Dose.*150.0 Gy/").first(),
       ).toBeVisible();
     });
   });
@@ -393,10 +393,10 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Should show contraindication
       await expect(
-        page.locator("text=Safety Status: ⚠️ CONTRAINDICATED - See below"),
+        page.locator("text=Safety Status: ⚠️ CONTRAINDICATED - See below").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=═══ CONTRAINDICATIONS ═══"),
+        page.locator("text=═══ CONTRAINDICATIONS ═══").first(),
       ).toBeVisible();
       await expect(
         page.locator(
@@ -404,7 +404,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
         ),
       ).toBeVisible();
       await expect(
-        page.locator("text=/TREATMENT CONTRAINDICATED/"),
+        page.locator("text=/TREATMENT CONTRAINDICATED/").first(),
       ).toBeVisible();
     });
 
@@ -424,7 +424,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Should show contraindication for lung dose
       await expect(
-        page.locator("text=Safety Status: ⚠️ CONTRAINDICATED - See below"),
+        page.locator("text=Safety Status: ⚠️ CONTRAINDICATED - See below").first(),
       ).toBeVisible();
       await expect(
         page.locator(
@@ -448,16 +448,16 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Should show warning (not contraindication)
       await expect(
-        page.locator("text=Safety Status: ⚠️ Warnings present - Review below"),
+        page.locator("text=Safety Status: ⚠️ Warnings present - Review below").first(),
       ).toBeVisible();
-      await expect(page.locator("text=═══ WARNINGS & NOTES ═══")).toBeVisible();
+      await expect(page.locator("text=═══ WARNINGS & NOTES ═══").first()).toBeVisible();
       await expect(
         page.locator(
           "text=/WARNING: Target dose 150 Gy is below recommended 190 Gy/",
         ),
       ).toBeVisible();
       await expect(
-        page.locator("text=/Consider increasing target dose to ≥190 Gy/"),
+        page.locator("text=/Consider increasing target dose to ≥190 Gy/").first(),
       ).toBeVisible();
     });
 
@@ -479,7 +479,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Should show warning for high normal dose
       await expect(
-        page.locator("text=/WARNING: Normal tissue dose.*exceeds 80 Gy/"),
+        page.locator("text=/WARNING: Normal tissue dose.*exceeds 80 Gy/").first(),
       ).toBeVisible();
     });
 
@@ -496,7 +496,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Should show note about elevated lung shunt
       await expect(
-        page.locator("text=/Note: Lung shunt.*is elevated.*10-20%/"),
+        page.locator("text=/Note: Lung shunt.*is elevated.*10-20%/").first(),
       ).toBeVisible();
     });
 
@@ -514,7 +514,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Should show safe status
       await expect(
-        page.locator("text=Safety Status: ✓ Within safety parameters"),
+        page.locator("text=Safety Status: ✓ Within safety parameters").first(),
       ).toBeVisible();
       await expect(
         page.locator(
@@ -537,7 +537,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Recommended Vial Size: 3 GBq vial"),
+        page.locator("text=Recommended Vial Size: 3 GBq vial").first(),
       ).toBeVisible();
     });
 
@@ -555,7 +555,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Recommended Vial Size: 5 GBq vial"),
+        page.locator("text=Recommended Vial Size: 5 GBq vial").first(),
       ).toBeVisible();
     });
 
@@ -573,7 +573,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Recommended Vial Size: 10 GBq vial"),
+        page.locator("text=Recommended Vial Size: 10 GBq vial").first(),
       ).toBeVisible();
     });
 
@@ -591,7 +591,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Recommended Vial Size: 20 GBq vial"),
+        page.locator("text=Recommended Vial Size: 20 GBq vial").first(),
       ).toBeVisible();
     });
 
@@ -610,7 +610,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // No vial size recommendation for resin
       await expect(
-        page.locator("text=Recommended Vial Size"),
+        page.locator("text=Recommended Vial Size").first(),
       ).not.toBeVisible();
     });
   });
@@ -632,7 +632,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should show BSA calculation
-      await expect(page.locator("text=/Body Surface Area.*m²/")).toBeVisible();
+      await expect(page.locator("text=/Body Surface Area.*m²/").first()).toBeVisible();
     });
 
     test("should not show BSA when only weight provided", async ({ page }) => {
@@ -648,7 +648,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should NOT show BSA
-      await expect(page.locator("text=Body Surface Area")).not.toBeVisible();
+      await expect(page.locator("text=Body Surface Area").first()).not.toBeVisible();
     });
 
     test("should not show BSA when only height provided", async ({ page }) => {
@@ -664,7 +664,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should NOT show BSA
-      await expect(page.locator("text=Body Surface Area")).not.toBeVisible();
+      await expect(page.locator("text=Body Surface Area").first()).not.toBeVisible();
     });
   });
 
@@ -716,7 +716,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Error: Target dose must be between 80-800 Gy"),
+        page.locator("text=Error: Target dose must be between 80-800 Gy").first(),
       ).toBeVisible();
     });
 
@@ -766,7 +766,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Error: Vial residual must be between 0-20%"),
+        page.locator("text=Error: Vial residual must be between 0-20%").first(),
       ).toBeVisible();
     });
 
@@ -784,7 +784,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Tumor volume.*partition model/"),
+        page.locator("text=/Error:.*Tumor volume.*partition model/").first(),
       ).toBeVisible();
     });
 
@@ -801,7 +801,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Tumor-to-normal ratio.*partition model/"),
+        page.locator("text=/Error:.*Tumor-to-normal ratio.*partition model/").first(),
       ).toBeVisible();
     });
 
@@ -837,7 +837,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Tumor volume.*≤ segment volume/"),
+        page.locator("text=/Error:.*Tumor volume.*≤ segment volume/").first(),
       ).toBeVisible();
     });
 
@@ -854,7 +854,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Patient weight.*0-500 kg/"),
+        page.locator("text=/Error:.*Patient weight.*0-500 kg/").first(),
       ).toBeVisible();
     });
 
@@ -871,7 +871,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Patient height.*0-300 cm/"),
+        page.locator("text=/Error:.*Patient height.*0-300 cm/").first(),
       ).toBeVisible();
     });
   });
@@ -889,9 +889,9 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should calculate successfully
-      await expect(page.locator("text=Activity to Order")).toBeVisible();
+      await expect(page.locator("text=Activity to Order").first()).toBeVisible();
       await expect(
-        page.locator("text=Lung Shunt Fraction: 0.0%"),
+        page.locator("text=Lung Shunt Fraction: 0.0%").first(),
       ).toBeVisible();
     });
 
@@ -907,7 +907,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should calculate successfully with warnings
-      await expect(page.locator("text=Activity to Order")).toBeVisible();
+      await expect(page.locator("text=Activity to Order").first()).toBeVisible();
     });
 
     test("should handle zero lung shunt correctly", async ({ page }) => {
@@ -922,10 +922,10 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Lung Shunt Fraction: 0.0%"),
+        page.locator("text=Lung Shunt Fraction: 0.0%").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Estimated Lung Dose: 0.0 Gy"),
+        page.locator("text=Estimated Lung Dose: 0.0 Gy").first(),
       ).toBeVisible();
     });
 
@@ -945,9 +945,9 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Tumor and normal dose should be equal
-      await expect(page.locator("text=Tumor Dose: 400.0 Gy")).toBeVisible();
+      await expect(page.locator("text=Tumor Dose: 400.0 Gy").first()).toBeVisible();
       await expect(
-        page.locator("text=Normal Tissue Dose: 400.0 Gy"),
+        page.locator("text=Normal Tissue Dose: 400.0 Gy").first(),
       ).toBeVisible();
     });
 
@@ -966,7 +966,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Lung dose is within normal limits.*<10 Gy/"),
+        page.locator("text=/Lung dose is within normal limits.*<10 Gy/").first(),
       ).toBeVisible();
     });
 
@@ -984,7 +984,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should calculate successfully with decimal values
-      await expect(page.locator("text=Activity to Order")).toBeVisible();
+      await expect(page.locator("text=Activity to Order").first()).toBeVisible();
     });
   });
 
@@ -1019,9 +1019,9 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       page,
     }) => {
       await expect(
-        page.locator("text=TheraSphere Y-90 Glass Microspheres Package Insert"),
+        page.locator("text=TheraSphere Y-90 Glass Microspheres Package Insert").first(),
       ).toBeVisible();
-      await expect(page.locator("text=AAPM Task Group Report")).toBeVisible();
+      await expect(page.locator("text=AAPM Task Group Report").first()).toBeVisible();
     });
   });
 
@@ -1058,7 +1058,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Should show both mL and grams
       await expect(
-        page.locator("text=/Target Volume.*200 mL.*g/"),
+        page.locator("text=/Target Volume.*200 mL.*g/").first(),
       ).toBeVisible();
     });
 
@@ -1075,15 +1075,15 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       // Check all section separators
       await expect(
-        page.locator("text=═══ PRESCRIBED ACTIVITY ═══"),
+        page.locator("text=═══ PRESCRIBED ACTIVITY ═══").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=═══ DOSIMETRY RESULTS ═══"),
+        page.locator("text=═══ DOSIMETRY RESULTS ═══").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=═══ SAFETY PARAMETERS ═══"),
+        page.locator("text=═══ SAFETY PARAMETERS ═══").first(),
       ).toBeVisible();
-      await expect(page.locator("text=═══ INTERPRETATION ═══")).toBeVisible();
+      await expect(page.locator("text=═══ INTERPRETATION ═══").first()).toBeVisible();
     });
   });
 });

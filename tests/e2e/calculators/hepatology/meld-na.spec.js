@@ -29,15 +29,15 @@ test.describe("MELD-Na Calculator", () => {
       // Check header
       await expect(page.getByTestId('calculator-title').first()).toContainText("MELD-Na Score");
       await expect(
-        page.locator("text=Model for End-Stage Liver Disease"),
+        page.locator("text=Model for End-Stage Liver Disease").first(),
       ).toBeVisible();
 
       // Check info section
       await expect(
-        page.locator("text=The MELD-Na score predicts"),
+        page.locator("text=The MELD-Na score predicts").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Interpretation guides allocation priority"),
+        page.locator("text=Interpretation guides allocation priority").first(),
       ).toBeVisible();
 
       // Check all input fields are present
@@ -55,14 +55,14 @@ test.describe("MELD-Na Calculator", () => {
       await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
       // Check References section
-      await expect(page.locator("text=References")).toBeVisible();
+      await expect(page.locator("text=References").first()).toBeVisible();
     });
 
     test("should show subLabels with units and ranges", async ({ page }) => {
-      await expect(page.locator("text=mg/dL (0.1-15.0)")).toBeVisible();
-      await expect(page.locator("text=mg/dL (0.1-50.0)")).toBeVisible();
-      await expect(page.locator("text=0.8-10.0")).toBeVisible();
-      await expect(page.locator("text=mEq/L (110-160)")).toBeVisible();
+      await expect(page.locator("text=mg/dL (0.1-15.0)").first()).toBeVisible();
+      await expect(page.locator("text=mg/dL (0.1-50.0)").first()).toBeVisible();
+      await expect(page.locator("text=0.8-10.0").first()).toBeVisible();
+      await expect(page.locator("text=mEq/L (110-160)").first()).toBeVisible();
     });
 
     test("should have working dialysis checkbox", async ({ page }) => {
@@ -90,10 +90,10 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score:")).toBeVisible();
-      await expect(page.locator("text=MELD-Na Score:")).toBeVisible();
-      await expect(page.locator("text=Low risk")).toBeVisible();
-      await expect(page.locator("text=1.9%")).toBeVisible();
+      await expect(page.locator("text=MELD Score:").first()).toBeVisible();
+      await expect(page.locator("text=MELD-Na Score:").first()).toBeVisible();
+      await expect(page.locator("text=Low risk").first()).toBeVisible();
+      await expect(page.locator("text=1.9%").first()).toBeVisible();
     });
 
     test("should calculate moderate MELD score (10-19)", async ({ page }) => {
@@ -112,8 +112,8 @@ test.describe("MELD-Na Calculator", () => {
       expect(score).toBeGreaterThanOrEqual(10);
       expect(score).toBeLessThanOrEqual(19);
 
-      await expect(page.locator("text=Moderate risk")).toBeVisible();
-      await expect(page.locator("text=6.0%")).toBeVisible();
+      await expect(page.locator("text=Moderate risk").first()).toBeVisible();
+      await expect(page.locator("text=6.0%").first()).toBeVisible();
     });
 
     test("should calculate high MELD score (20-29)", async ({ page }) => {
@@ -132,8 +132,8 @@ test.describe("MELD-Na Calculator", () => {
       expect(score).toBeGreaterThanOrEqual(20);
       expect(score).toBeLessThanOrEqual(29);
 
-      await expect(page.locator("text=High risk")).toBeVisible();
-      await expect(page.locator("text=19.6%")).toBeVisible();
+      await expect(page.locator("text=High risk").first()).toBeVisible();
+      await expect(page.locator("text=19.6%").first()).toBeVisible();
     });
 
     test("should calculate very high MELD score (30-39)", async ({ page }) => {
@@ -152,8 +152,8 @@ test.describe("MELD-Na Calculator", () => {
       expect(score).toBeGreaterThanOrEqual(30);
       expect(score).toBeLessThanOrEqual(39);
 
-      await expect(page.locator("text=Very high risk")).toBeVisible();
-      await expect(page.locator("text=52.6%")).toBeVisible();
+      await expect(page.locator("text=Very high risk").first()).toBeVisible();
+      await expect(page.locator("text=52.6%").first()).toBeVisible();
     });
 
     test("should calculate critical MELD score (40)", async ({ page }) => {
@@ -164,9 +164,9 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score: 40")).toBeVisible();
-      await expect(page.locator("text=Critical risk")).toBeVisible();
-      await expect(page.locator("text=>70%")).toBeVisible();
+      await expect(page.locator("text=MELD Score: 40").first()).toBeVisible();
+      await expect(page.locator("text=Critical risk").first()).toBeVisible();
+      await expect(page.locator("text=>70%").first()).toBeVisible();
     });
   });
 
@@ -203,7 +203,7 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD-Na equals MELD")).toBeVisible();
+      await expect(page.locator("text=MELD-Na equals MELD").first()).toBeVisible();
 
       const meldText = await page
         .locator("text=/MELD Score: \\d+/")
@@ -229,7 +229,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Sodium set to lower bound of 125 mEq/L"),
+        page.locator("text=Sodium set to lower bound of 125 mEq/L").first(),
       ).toBeVisible();
     });
 
@@ -244,7 +244,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Sodium set to upper bound of 137 mEq/L"),
+        page.locator("text=Sodium set to upper bound of 137 mEq/L").first(),
       ).toBeVisible();
     });
   });
@@ -264,7 +264,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Creatinine set to 4.0 mg/dL (dialysis"),
+        page.locator("text=Creatinine set to 4.0 mg/dL (dialysis").first(),
       ).toBeVisible();
     });
 
@@ -283,7 +283,7 @@ test.describe("MELD-Na Calculator", () => {
 
       // Should show dialysis note, not the Cr capped note
       await expect(
-        page.locator("text=Creatinine set to 4.0 mg/dL (dialysis"),
+        page.locator("text=Creatinine set to 4.0 mg/dL (dialysis").first(),
       ).toBeVisible();
     });
   });
@@ -298,7 +298,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Creatinine set to lower bound of 1.0 mg/dL"),
+        page.locator("text=Creatinine set to lower bound of 1.0 mg/dL").first(),
       ).toBeVisible();
     });
 
@@ -311,7 +311,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Bilirubin set to lower bound of 1.0 mg/dL"),
+        page.locator("text=Bilirubin set to lower bound of 1.0 mg/dL").first(),
       ).toBeVisible();
     });
 
@@ -324,7 +324,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=INR set to lower bound of 1.0"),
+        page.locator("text=INR set to lower bound of 1.0").first(),
       ).toBeVisible();
     });
   });
@@ -341,7 +341,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Creatinine capped at 4.0 mg/dL"),
+        page.locator("text=Creatinine capped at 4.0 mg/dL").first(),
       ).toBeVisible();
     });
 
@@ -353,9 +353,9 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score: 6")).toBeVisible();
+      await expect(page.locator("text=MELD Score: 6").first()).toBeVisible();
       await expect(
-        page.locator("text=MELD score capped at minimum of 6"),
+        page.locator("text=MELD score capped at minimum of 6").first(),
       ).toBeVisible();
     });
 
@@ -367,7 +367,7 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score: 40")).toBeVisible();
+      await expect(page.locator("text=MELD Score: 40").first()).toBeVisible();
     });
   });
 
@@ -403,7 +403,7 @@ test.describe("MELD-Na Calculator", () => {
         ),
       ).toBeVisible();
       await expect(
-        page.locator("text=Candidate for transplant listing"),
+        page.locator("text=Candidate for transplant listing").first(),
       ).toBeVisible();
     });
 
@@ -423,7 +423,7 @@ test.describe("MELD-Na Calculator", () => {
         ),
       ).toBeVisible();
       await expect(
-        page.locator("text=High priority for transplantation"),
+        page.locator("text=High priority for transplantation").first(),
       ).toBeVisible();
     });
   });
@@ -433,7 +433,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please enter all required values"),
+        page.locator("text=Please enter all required values").first(),
       ).toBeVisible();
     });
 
@@ -448,7 +448,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Creatinine must be between 0.1 and 15.0 mg/dL"),
+        page.locator("text=Creatinine must be between 0.1 and 15.0 mg/dL").first(),
       ).toBeVisible();
     });
 
@@ -463,7 +463,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Creatinine must be between 0.1 and 15.0 mg/dL"),
+        page.locator("text=Creatinine must be between 0.1 and 15.0 mg/dL").first(),
       ).toBeVisible();
     });
 
@@ -476,7 +476,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Bilirubin must be between 0.1 and 50.0 mg/dL"),
+        page.locator("text=Bilirubin must be between 0.1 and 50.0 mg/dL").first(),
       ).toBeVisible();
     });
 
@@ -489,7 +489,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=INR must be between 0.8 and 10.0"),
+        page.locator("text=INR must be between 0.8 and 10.0").first(),
       ).toBeVisible();
     });
 
@@ -504,7 +504,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Sodium must be between 110 and 160 mEq/L"),
+        page.locator("text=Sodium must be between 110 and 160 mEq/L").first(),
       ).toBeVisible();
     });
 
@@ -519,7 +519,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Sodium must be between 110 and 160 mEq/L"),
+        page.locator("text=Sodium must be between 110 and 160 mEq/L").first(),
       ).toBeVisible();
     });
   });
@@ -533,9 +533,9 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score: 6")).toBeVisible();
-      await expect(page.locator("text=MELD-Na Score: 6")).toBeVisible();
-      await expect(page.locator("text=Low risk")).toBeVisible();
+      await expect(page.locator("text=MELD Score: 6").first()).toBeVisible();
+      await expect(page.locator("text=MELD-Na Score: 6").first()).toBeVisible();
+      await expect(page.locator("text=Low risk").first()).toBeVisible();
     });
 
     test("should handle borderline MELD score (exactly 11)", async ({
@@ -550,7 +550,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // At MELD=11, sodium correction should NOT apply
-      await expect(page.locator("text=MELD-Na equals MELD")).toBeVisible();
+      await expect(page.locator("text=MELD-Na equals MELD").first()).toBeVisible();
     });
 
     test("should handle minimal sodium (125)", async ({ page }) => {
@@ -584,12 +584,12 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Creatinine set to lower bound"),
+        page.locator("text=Creatinine set to lower bound").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Bilirubin set to lower bound"),
+        page.locator("text=Bilirubin set to lower bound").first(),
       ).toBeVisible();
-      await expect(page.locator("text=INR set to lower bound")).toBeVisible();
+      await expect(page.locator("text=INR set to lower bound").first()).toBeVisible();
     });
 
     test("should handle decimal inputs correctly", async ({ page }) => {
@@ -600,8 +600,8 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score:")).toBeVisible();
-      await expect(page.locator("text=MELD-Na Score:")).toBeVisible();
+      await expect(page.locator("text=MELD Score:").first()).toBeVisible();
+      await expect(page.locator("text=MELD-Na Score:").first()).toBeVisible();
     });
   });
 
@@ -623,12 +623,12 @@ test.describe("MELD-Na Calculator", () => {
 
     test("should include key references", async ({ page }) => {
       await expect(
-        page.locator("text=Kamath PS et al. Hepatology 2001"),
+        page.locator("text=Kamath PS et al. Hepatology 2001").first(),
       ).toBeVisible();
       await expect(
-        page.locator("text=Kim WR et al. Gastroenterology 2008"),
+        page.locator("text=Kim WR et al. Gastroenterology 2008").first(),
       ).toBeVisible();
-      await expect(page.locator("text=UNOS Policy 9")).toBeVisible();
+      await expect(page.locator("text=UNOS Policy 9").first()).toBeVisible();
     });
   });
 
@@ -644,11 +644,11 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Step 3: Verify results appear
-      await expect(page.locator("text=MELD Score:")).toBeVisible();
-      await expect(page.locator("text=MELD-Na Score:")).toBeVisible();
-      await expect(page.locator("text=3-Month Mortality:")).toBeVisible();
-      await expect(page.locator("text=Risk Category:")).toBeVisible();
-      await expect(page.locator("text=Interpretation:")).toBeVisible();
+      await expect(page.locator("text=MELD Score:").first()).toBeVisible();
+      await expect(page.locator("text=MELD-Na Score:").first()).toBeVisible();
+      await expect(page.locator("text=3-Month Mortality:").first()).toBeVisible();
+      await expect(page.locator("text=Risk Category:").first()).toBeVisible();
+      await expect(page.locator("text=Interpretation:").first()).toBeVisible();
 
       // Step 4: Update with dialysis
       await page.locator('button[role="switch"]').click();
@@ -656,7 +656,7 @@ test.describe("MELD-Na Calculator", () => {
 
       // Step 5: Verify dialysis note appears
       await expect(
-        page.locator("text=Creatinine set to 4.0 mg/dL (dialysis"),
+        page.locator("text=Creatinine set to 4.0 mg/dL (dialysis").first(),
       ).toBeVisible();
     });
 

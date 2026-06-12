@@ -81,7 +81,7 @@ test.describe("Adrenal CT Washout Calculator", () => {
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Verify absolute washout: ((100 - 40) / (100 - 10)) × 100 = 66.7%
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("Absolute Washout (%)");
     await expect(results).toContainText("66.7");
 
@@ -103,7 +103,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     // Verify absolute washout: ((80 - 70) / (80 - 20)) × 100 = 16.7%
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("16.7");
 
     // Verify relative washout: ((80 - 70) / 80) × 100 = 12.5%
@@ -128,7 +128,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
 
     // Verify calculations
     await expect(results).toContainText("60.0");
@@ -157,7 +157,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
 
     // Verify relative is 40%
     await expect(results).toContainText("40.0");
@@ -180,7 +180,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("11.1");
     await expect(results).toContainText("8.3");
     await expect(results).toContainText("Indeterminate / non‑adenoma");
@@ -200,7 +200,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("85.0");
     await expect(results).toContainText("60.0");
     await expect(results).toContainText("Suggests adrenal adenoma");
@@ -215,7 +215,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     // Both should be 0%
     await expect(results).toContainText("0.0");
     await expect(results).toContainText("Indeterminate / non‑adenoma");
@@ -234,7 +234,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Absolute: ((80 - 35) / (80 - (-10))) × 100 = (45 / 90) × 100 = 50.0%
     // Relative: ((80 - 35) / 80) × 100 = 56.25%
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("50.0");
     await expect(results).toContainText("56.3"); // Rounded
     await expect(results).toContainText("Suggests adrenal adenoma");
@@ -251,7 +251,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Absolute: ((100 - 5) / (100 - 0)) × 100 = 95.0%
     // Relative: ((100 - 5) / 100) × 100 = 95.0%
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("95.0");
     await expect(results).toContainText("Suggests adrenal adenoma");
   });
@@ -267,7 +267,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Absolute: ((98.3 - 41.7) / (98.3 - 12.5)) × 100 = 65.97%
     // Relative: ((98.3 - 41.7) / 98.3) × 100 = 57.58%
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("66.0"); // Rounded to 1 decimal
     await expect(results).toContainText("57.6");
     await expect(results).toContainText("Suggests adrenal adenoma");
@@ -355,7 +355,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results updated correctly
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("16.7");
     await expect(results).toContainText("12.5");
   });

@@ -773,7 +773,7 @@ test.describe('Khoury Catheter Selector', () => {
       const primingVolumeText = detailsHeading(page, 'Priming Volume').locator(
         '..',
       );
-      await expect(primingVolumeText.locator('text=mL')).toBeVisible();
+      await expect(primingVolumeText.locator('text=mL').first()).toBeVisible();
     });
 
     test('should change priming volume when adaptor is selected (Scepter C)', async ({ page }) => {
@@ -1032,37 +1032,37 @@ test.describe('Khoury Catheter Selector', () => {
 
     test('should display NBCA safety warning', async ({ page }) => {
       // Safety warning should be visible
-      await expect(page.locator('text=NBCA (n-BCA) is NOT compatible with balloon occlusion catheters')).toBeVisible();
+      await expect(page.locator('text=NBCA (n-BCA) is NOT compatible with balloon occlusion catheters').first()).toBeVisible();
     });
 
     test('should display DMSO compatibility warning', async ({ page }) => {
       // Warning should be visible
-      await expect(page.locator('text=Always verify catheter DMSO compatibility')).toBeVisible();
+      await expect(page.locator('text=Always verify catheter DMSO compatibility').first()).toBeVisible();
     });
 
     test('should display priming instructions', async ({ page }) => {
       // Priming instructions should be visible
-      await expect(page.locator('text=Priming Instructions for Liquid Embolics')).toBeVisible();
-      await expect(page.locator('text=Flush microcatheter with sterile saline')).toBeVisible();
-      await expect(page.locator('text=Fill dead space with DMSO')).toBeVisible();
+      await expect(page.locator('text=Priming Instructions for Liquid Embolics').first()).toBeVisible();
+      await expect(page.locator('text=Flush microcatheter with sterile saline').first()).toBeVisible();
+      await expect(page.locator('text=Fill dead space with DMSO').first()).toBeVisible();
     });
 
     test('should display maximum injection pressure warning', async ({ page }) => {
       // Warning should be visible
-      await expect(page.locator('text=Observe maximum injection pressure limits')).toBeVisible();
+      await expect(page.locator('text=Observe maximum injection pressure limits').first()).toBeVisible();
     });
 
     test('should display educational disclaimer', async ({ page }) => {
       // Disclaimer should be visible
-      await expect(page.locator('text=This tool is for educational reference only')).toBeVisible();
-      await expect(page.locator('text=not a substitute for clinical judgment')).toBeVisible();
+      await expect(page.locator('text=This tool is for educational reference only').first()).toBeVisible();
+      await expect(page.locator('text=not a substitute for clinical judgment').first()).toBeVisible();
     });
 
     test('should display detailed disclaimer box', async ({ page }) => {
       // Detailed disclaimer should be visible
       await expect(page.locator('text=Disclaimer').nth(1)).toBeVisible();
-      await expect(page.locator('text=This catheter selector provides reference information')).toBeVisible();
-      await expect(page.locator('text=Dead space volumes and specifications should be verified')).toBeVisible();
+      await expect(page.locator('text=This catheter selector provides reference information').first()).toBeVisible();
+      await expect(page.locator('text=Dead space volumes and specifications should be verified').first()).toBeVisible();
     });
   });
 

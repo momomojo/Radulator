@@ -34,7 +34,7 @@ function calculateControl(page) {
 }
 
 function resultsSection(page) {
-  return page.getByRole('status', { name: 'Calculator results' });
+  return page.getByRole('status', { name: 'Calculator results' }).first();
 }
 
 function resultRow(page, label) {

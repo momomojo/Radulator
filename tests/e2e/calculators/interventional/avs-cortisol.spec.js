@@ -88,7 +88,7 @@ test.describe("AVS Cortisol Calculator", () => {
     expect(options.some((opt) => opt.includes("nmol/L"))).toBeTruthy();
 
     // Verify conversion factor is displayed
-    await expect(page.locator("text=1 µg/dL = 27.59 nmol/L")).toBeVisible();
+    await expect(page.locator("text=1 µg/dL = 27.59 nmol/L").first()).toBeVisible();
   });
 
   test("should support multiple left adrenal vein samples (up to 2)", async ({
@@ -187,9 +187,9 @@ test.describe("AVS Cortisol Calculator", () => {
     // Wait for results
 
     // Verify cannulation success
-    await expect(page.locator("text=Left Adrenal")).toBeVisible();
+    await expect(page.locator("text=Left Adrenal").first()).toBeVisible();
     await expect(page.locator("text=✓ Successful").first()).toBeVisible();
-    await expect(page.locator("text=Right Adrenal")).toBeVisible();
+    await expect(page.locator("text=Right Adrenal").first()).toBeVisible();
     await expect(page.locator("text=✓ Successful").nth(1)).toBeVisible();
 
     // Verify AV/PV ratios
@@ -385,14 +385,14 @@ test.describe("AVS Cortisol Calculator", () => {
     const leftStatus = page
       .locator("text=Left Adrenal")
       .locator("..")
-      .locator("text=✗ Failed");
+      .locator("text=✗ Failed").first();
     await expect(leftStatus).toBeVisible();
 
     // Verify right cannulation succeeded
     const rightStatus = page
       .locator("text=Right Adrenal")
       .locator("..")
-      .locator("text=✓ Successful");
+      .locator("text=✓ Successful").first();
     await expect(rightStatus).toBeVisible();
 
     // Verify warning in interpretation
@@ -643,7 +643,7 @@ test.describe("AVS Cortisol Calculator", () => {
     await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Should show error message
-    const errorMessage = page.locator("text=Insufficient data");
+    const errorMessage = page.locator("text=Insufficient data").first();
     await expect(errorMessage).toBeVisible();
   });
 
@@ -862,7 +862,7 @@ test.describe("AVS Cortisol Calculator", () => {
     const leftStatus = page
       .locator("text=Left Adrenal")
       .locator("..")
-      .locator("text=✗ Failed");
+      .locator("text=✗ Failed").first();
     await expect(leftStatus).toBeVisible();
   });
 

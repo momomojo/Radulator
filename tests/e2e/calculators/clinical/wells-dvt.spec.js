@@ -25,29 +25,29 @@ test.describe("Wells Criteria for DVT Calculator", () => {
     });
 
     test("should have all 10 criteria as checkboxes", async ({ page }) => {
-      await expect(page.getByText("Active cancer")).toBeVisible();
+      await expect(page.getByText("Active cancer").first()).toBeVisible();
       await expect(
-        page.getByText("Paralysis, paresis, or recent plaster immobilization"),
+        page.getByText("Paralysis, paresis, or recent plaster immobilization").first(),
       ).toBeVisible();
       await expect(
-        page.getByText("Recently bedridden >3 days or major surgery"),
+        page.getByText("Recently bedridden >3 days or major surgery").first(),
       ).toBeVisible();
       await expect(
-        page.getByText("Localized tenderness along deep venous system"),
+        page.getByText("Localized tenderness along deep venous system").first(),
       ).toBeVisible();
-      await expect(page.getByText("Entire leg swollen")).toBeVisible();
+      await expect(page.getByText("Entire leg swollen").first()).toBeVisible();
       await expect(
-        page.getByText("Calf swelling >3 cm compared to asymptomatic leg"),
-      ).toBeVisible();
-      await expect(
-        page.getByText("Pitting edema confined to symptomatic leg"),
+        page.getByText("Calf swelling >3 cm compared to asymptomatic leg").first(),
       ).toBeVisible();
       await expect(
-        page.getByText("Collateral superficial veins (non-varicose)"),
+        page.getByText("Pitting edema confined to symptomatic leg").first(),
       ).toBeVisible();
-      await expect(page.getByText("Previously documented DVT")).toBeVisible();
       await expect(
-        page.getByText("Alternative diagnosis at least as likely as DVT"),
+        page.getByText("Collateral superficial veins (non-varicose)").first(),
+      ).toBeVisible();
+      await expect(page.getByText("Previously documented DVT").first()).toBeVisible();
+      await expect(
+        page.getByText("Alternative diagnosis at least as likely as DVT").first(),
       ).toBeVisible();
     });
 
@@ -55,7 +55,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       page,
     }) => {
       await expect(
-        page.getByTestId("calculator-info").getByText("Wells Criteria"),
+        page.getByTestId("calculator-info").getByText("Wells Criteria").first(),
       ).toBeVisible();
     });
 
@@ -515,7 +515,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
 
   test.describe("References", () => {
     test("should display Wells DVT references", async ({ page }) => {
-      await expect(page.getByText("References")).toBeVisible();
+      await expect(page.getByText("References").first()).toBeVisible();
       await expect(page.locator("a[href*='doi.org']").first()).toBeVisible();
     });
   });

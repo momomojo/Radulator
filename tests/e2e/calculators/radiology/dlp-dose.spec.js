@@ -79,7 +79,7 @@ test.describe("DLP to Effective Dose Calculator", () => {
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("1.89 mSv");
     await expect(results).toContainText("0.0021");
     await expect(results).toContainText("Head");
@@ -96,7 +96,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("1.05 mSv");
   });
 
@@ -110,7 +110,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("3.15 mSv");
     await expect(results).toContainText("Dose Alert");
   });
@@ -128,7 +128,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("5.60 mSv");
     await expect(results).toContainText("0.014");
     await expect(results).toContainText("Chest");
@@ -144,7 +144,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("2.80 mSv");
   });
 
@@ -163,7 +163,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("11.25 mSv");
     await expect(results).toContainText("0.015");
     await expect(results).toContainText("Abdomen + Pelvis");
@@ -181,7 +181,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("27.00 mSv");
     await expect(results).toContainText("Dose Alert");
   });
@@ -199,7 +199,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("1.35 mSv");
     await expect(results).toContainText("0.0027");
     await expect(results).toContainText("10-year-old");
@@ -217,7 +217,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("1.40 mSv");
     await expect(results).toContainText("0.0035");
     await expect(results).toContainText("5-year-old");
@@ -233,7 +233,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("1.62 mSv");
     await expect(results).toContainText("0.0054");
     await expect(results).toContainText("1-year-old");
@@ -249,7 +249,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("2.20 mSv");
     await expect(results).toContainText("0.011");
     await expect(results).toContainText("Newborn");
@@ -265,7 +265,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("3.45 mSv");
     await expect(results).toContainText("0.023");
     await expect(results).toContainText("Chest");
@@ -283,7 +283,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("4.10 mSv");
     await expect(results).toContainText("0.041");
     await expect(results).toContainText("1-year-old");
@@ -302,7 +302,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("1.77 mSv");
     await expect(results).toContainText("0.0059");
     await expect(results).toContainText("Neck");
@@ -318,7 +318,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("6.75 mSv");
     await expect(results).toContainText("Pelvis");
   });
@@ -335,7 +335,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("15.00 mSv");
     await expect(results).toContainText("Chest + Abdomen + Pelvis");
   });
@@ -350,7 +350,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("1.77 mSv");
     await expect(results).toContainText("Cervical Spine");
   });
@@ -365,7 +365,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("4.90 mSv");
     await expect(results).toContainText("Thoracic Spine");
   });
@@ -380,7 +380,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("6.00 mSv");
     await expect(results).toContainText("Lumbar Spine");
   });
@@ -396,7 +396,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("0.08 mSv");
     await expect(results).toContainText("Extremity");
     // Risk is 0.04%, shown as percentage (not negligible since >= 0.01%)
@@ -417,7 +417,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     // 667 × 0.015 = 10.005 mSv ≈ 100 chest X-rays
     await expect(results).toContainText("~100 chest X-rays equivalent");
   });
@@ -433,7 +433,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     // 100 × 0.014 = 1.4 mSv → (1.4/3)*365 ≈ 170 days
     await expect(results).toContainText("days background radiation");
   });
@@ -449,7 +449,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     // 1000 × 0.015 = 15 mSv → 15/3 = 5.0 years
     await expect(results).toContainText("years background radiation");
   });
@@ -462,7 +462,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText(
       "Estimated Additional Lifetime Cancer Risk",
     );
@@ -479,7 +479,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("Error");
     await expect(results).toContainText("valid DLP value");
   });
@@ -492,7 +492,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("Error");
   });
 
@@ -504,7 +504,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("Error");
   });
 
@@ -515,7 +515,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("Error");
     await expect(results).toContainText("anatomical region");
   });
@@ -530,7 +530,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     // Should use adult k-factor 0.0021
     await expect(results).toContainText("1.05 mSv");
     await expect(results).toContainText("Adult");
@@ -547,7 +547,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     await expect(results).toContainText("0.00 mSv");
   });
 
@@ -559,7 +559,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     // 5000 × 0.015 = 75.00 mSv
     await expect(results).toContainText("75.00 mSv");
     await expect(results).toContainText("Dose Alert");
@@ -573,7 +573,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
 await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     // 123.45 × 0.014 = 1.7283 mSv → 1.73 mSv
     await expect(results).toContainText("1.73 mSv");
   });
@@ -660,7 +660,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('button', { name: 'Calculate' }).click();
 
     // Verify results updated correctly
-    const results = page.getByRole('status', { name: 'Calculator results' });
+    const results = page.getByRole('status', { name: 'Calculator results' }).first();
     // 1000 × 0.014 = 14.00 mSv
     await expect(results).toContainText("14.00 mSv");
   });

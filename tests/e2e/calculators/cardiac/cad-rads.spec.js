@@ -54,20 +54,20 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
     test("should have study quality field visible on load", async ({
       page,
     }) => {
-      await expect(page.getByText("Study Quality")).toBeVisible();
-      await expect(page.getByText("Diagnostic quality")).toBeVisible();
+      await expect(page.getByText("Study Quality").first()).toBeVisible();
+      await expect(page.getByText("Diagnostic quality").first()).toBeVisible();
       await expect(
-        page.getByText("Limited - some segments non-evaluable"),
+        page.getByText("Limited - some segments non-evaluable").first(),
       ).toBeVisible();
-      await expect(page.getByText("Non-diagnostic (CAD-RADS N)")).toBeVisible();
+      await expect(page.getByText("Non-diagnostic (CAD-RADS N)").first()).toBeVisible();
     });
 
     test("should display info section with CAD-RADS explanation", async ({
       page,
     }) => {
-      await expect(page.getByText("Stenosis Categories:")).toBeVisible();
-      await expect(page.getByText("Modifiers (CAD-RADS 2.0):")).toBeVisible();
-      await expect(page.getByText("High-Risk Plaque Features:")).toBeVisible();
+      await expect(page.getByText("Stenosis Categories:").first()).toBeVisible();
+      await expect(page.getByText("Modifiers (CAD-RADS 2.0):").first()).toBeVisible();
+      await expect(page.getByText("High-Risk Plaque Features:").first()).toBeVisible();
     });
 
     test("should show maximum stenosis field when diagnostic quality selected", async ({
@@ -76,7 +76,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
       await page
         .locator('input[name="study_quality"][value="diagnostic"]')
         .click();
-      await expect(page.getByText("Maximum Coronary Stenosis")).toBeVisible();
+      await expect(page.getByText("Maximum Coronary Stenosis").first()).toBeVisible();
     });
 
     test("should hide stenosis fields when non-diagnostic selected", async ({
@@ -86,7 +86,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
         .locator('input[name="study_quality"][value="non_diagnostic"]')
         .click();
       await expect(
-        page.getByText("Maximum Coronary Stenosis"),
+        page.getByText("Maximum Coronary Stenosis").first(),
       ).not.toBeVisible();
     });
   });
@@ -104,17 +104,17 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Use the results section to find the output
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("CAD-RADS Classification:"),
+        resultsSection.getByText("CAD-RADS Classification:").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("Category: CAD-RADS 0"),
+        resultsSection.getByText("Category: CAD-RADS 0").first(),
       ).toBeVisible();
-      await expect(resultsSection.getByText("No CAD")).toBeVisible();
-      await expect(resultsSection.getByText("No further workup")).toBeVisible();
+      await expect(resultsSection.getByText("No CAD").first()).toBeVisible();
+      await expect(resultsSection.getByText("No further workup").first()).toBeVisible();
       await expect(
-        resultsSection.getByText("Excellent prognosis"),
+        resultsSection.getByText("Excellent prognosis").first(),
       ).toBeVisible();
     });
   });
@@ -133,17 +133,17 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("Category: CAD-RADS 1"),
+        resultsSection.getByText("Category: CAD-RADS 1").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("Minimal Non-Obstructive CAD (1-24%)"),
+        resultsSection.getByText("Minimal Non-Obstructive CAD (1-24%)").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("preventive measures"),
+        resultsSection.getByText("preventive measures").first(),
       ).toBeVisible();
-      await expect(resultsSection.getByText("Statin therapy")).toBeVisible();
+      await expect(resultsSection.getByText("Statin therapy").first()).toBeVisible();
     });
   });
 
@@ -163,15 +163,15 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("Category: CAD-RADS 2"),
+        resultsSection.getByText("Category: CAD-RADS 2").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("Mild Non-Obstructive CAD (25-49%)"),
+        resultsSection.getByText("Mild Non-Obstructive CAD (25-49%)").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("Preventive therapy"),
+        resultsSection.getByText("Preventive therapy").first(),
       ).toBeVisible();
     });
   });
@@ -196,15 +196,15 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("Category: CAD-RADS 3"),
+        resultsSection.getByText("Category: CAD-RADS 3").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("Moderate Stenosis (50-69%)"),
+        resultsSection.getByText("Moderate Stenosis (50-69%)").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("Functional testing"),
+        resultsSection.getByText("Functional testing").first(),
       ).toBeVisible();
     });
 
@@ -218,7 +218,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       // The label is "Ischemia Testing Recommended (/I Modifier)"
       await expect(
-        page.getByText("Ischemia Testing Recommended (/I Modifier)"),
+        page.getByText("Ischemia Testing Recommended (/I Modifier)").first(),
       ).toBeVisible();
     });
 
@@ -241,10 +241,10 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 3/I")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 3/I").first()).toBeVisible();
       await expect(
-        resultsSection.getByText("Ischemia testing recommended"),
+        resultsSection.getByText("Ischemia testing recommended").first(),
       ).toBeVisible();
     });
   });
@@ -277,16 +277,16 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       // Use Category: prefix to be specific
       await expect(
-        resultsSection.getByText("Category: CAD-RADS 4A"),
+        resultsSection.getByText("Category: CAD-RADS 4A").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("Severe Stenosis (70-99%)"),
+        resultsSection.getByText("Severe Stenosis (70-99%)").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("invasive coronary angiography"),
+        resultsSection.getByText("invasive coronary angiography").first(),
       ).toBeVisible();
     });
   });
@@ -314,13 +314,13 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       // Use Category: prefix to be specific
       await expect(
-        resultsSection.getByText("Category: CAD-RADS 4B"),
+        resultsSection.getByText("Category: CAD-RADS 4B").first(),
       ).toBeVisible();
-      await expect(resultsSection.getByText("Left Main")).toBeVisible();
-      await expect(resultsSection.getByText("Heart team")).toBeVisible();
+      await expect(resultsSection.getByText("Left Main").first()).toBeVisible();
+      await expect(resultsSection.getByText("Heart team").first()).toBeVisible();
     });
 
     test("should calculate CAD-RADS 4B for 3-vessel severe disease", async ({
@@ -350,13 +350,13 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       // Use Category: prefix to be specific
       await expect(
-        resultsSection.getByText("Category: CAD-RADS 4B"),
+        resultsSection.getByText("Category: CAD-RADS 4B").first(),
       ).toBeVisible();
-      await expect(resultsSection.getByText("3-Vessel")).toBeVisible();
-      await expect(resultsSection.getByText("Revascularization")).toBeVisible();
+      await expect(resultsSection.getByText("3-Vessel").first()).toBeVisible();
+      await expect(resultsSection.getByText("Revascularization").first()).toBeVisible();
     });
   });
 
@@ -378,13 +378,13 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       // Use Category: prefix to be specific
-      await expect(resultsSection.getByText("Category: CAD-RADS 5")).toBeVisible();
+      await expect(resultsSection.getByText("Category: CAD-RADS 5").first()).toBeVisible();
       await expect(
-        resultsSection.getByText("Total Occlusion (100%)"),
+        resultsSection.getByText("Total Occlusion (100%)").first(),
       ).toBeVisible();
-      await expect(resultsSection.getByText("CTO PCI")).toBeVisible();
+      await expect(resultsSection.getByText("CTO PCI").first()).toBeVisible();
     });
   });
 
@@ -398,12 +398,12 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       // The compute function returns "CAD-RADS Category" not "Category" for non-diagnostic
-      await expect(resultsSection.getByText("CAD-RADS N -")).toBeVisible();
-      await expect(resultsSection.getByText("Repeat CTA")).toBeVisible();
+      await expect(resultsSection.getByText("CAD-RADS N -").first()).toBeVisible();
+      await expect(resultsSection.getByText("Repeat CTA").first()).toBeVisible();
       await expect(
-        resultsSection.getByText("technical limitations"),
+        resultsSection.getByText("technical limitations").first(),
       ).toBeVisible();
     });
   });
@@ -422,10 +422,10 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 2/P1")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 2/P1").first()).toBeVisible();
       await expect(
-        resultsSection.getByText("Mild plaque burden (1-2 segments)"),
+        resultsSection.getByText("Mild plaque burden (1-2 segments)").first(),
       ).toBeVisible();
     });
 
@@ -444,10 +444,10 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 2/P2")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 2/P2").first()).toBeVisible();
       await expect(
-        resultsSection.getByText("Moderate plaque burden (3-4 segments)"),
+        resultsSection.getByText("Moderate plaque burden (3-4 segments)").first(),
       ).toBeVisible();
     });
 
@@ -466,13 +466,13 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 2/P3")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 2/P3").first()).toBeVisible();
       await expect(
-        resultsSection.getByText("Severe plaque burden (5-7 segments)"),
+        resultsSection.getByText("Severe plaque burden (5-7 segments)").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("aggressive risk factor modification"),
+        resultsSection.getByText("aggressive risk factor modification").first(),
       ).toBeVisible();
     });
 
@@ -491,8 +491,8 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 2/P4")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 2/P4").first()).toBeVisible();
       // Use .first() to avoid strict mode violation since text appears in Modifiers and Clinical Notes
       await expect(
         resultsSection.getByText("Extensive plaque burden").first(),
@@ -508,7 +508,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
       await page.locator('input[name="max_stenosis"][value="0"]').click();
 
       await expect(
-        page.getByText("Plaque Burden (P Modifier)"),
+        page.getByText("Plaque Burden (P Modifier)").first(),
       ).not.toBeVisible();
     });
   });
@@ -533,13 +533,13 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 3/HRP")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 3/HRP").first()).toBeVisible();
       await expect(
-        resultsSection.getByText("High-risk plaque features present"),
+        resultsSection.getByText("High-risk plaque features present").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("acute coronary syndrome risk"),
+        resultsSection.getByText("acute coronary syndrome risk").first(),
       ).toBeVisible();
     });
 
@@ -560,8 +560,8 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 3/P2/HRP")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 3/P2/HRP").first()).toBeVisible();
     });
   });
 
@@ -580,9 +580,9 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 2/S")).toBeVisible();
-      await expect(resultsSection.getByText("Stent(s): Patent")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 2/S").first()).toBeVisible();
+      await expect(resultsSection.getByText("Stent(s): Patent").first()).toBeVisible();
     });
 
     test("should add G modifier for bypass graft present", async ({ page }) => {
@@ -599,9 +599,9 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 2/G")).toBeVisible();
-      await expect(resultsSection.getByText("Graft(s): Patent")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 2/G").first()).toBeVisible();
+      await expect(resultsSection.getByText("Graft(s): Patent").first()).toBeVisible();
     });
 
     test("should add both S and G modifiers for stents and grafts", async ({
@@ -621,10 +621,10 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultsSection.getByText("CAD-RADS 2/S/G")).toBeVisible();
-      await expect(resultsSection.getByText("Stent(s): Patent")).toBeVisible();
-      await expect(resultsSection.getByText("Graft(s): Patent")).toBeVisible();
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultsSection.getByText("CAD-RADS 2/S/G").first()).toBeVisible();
+      await expect(resultsSection.getByText("Stent(s): Patent").first()).toBeVisible();
+      await expect(resultsSection.getByText("Graft(s): Patent").first()).toBeVisible();
     });
 
     test("should show in-stent stenosis status", async ({ page }) => {
@@ -647,9 +647,9 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("Stent(s): In-stent stenosis"),
+        resultsSection.getByText("Stent(s): In-stent stenosis").first(),
       ).toBeVisible();
     });
 
@@ -673,9 +673,9 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("Graft(s): Stenosis"),
+        resultsSection.getByText("Graft(s): Stenosis").first(),
       ).toBeVisible();
     });
   });
@@ -694,12 +694,12 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("Category: CAD-RADS 2"),
+        resultsSection.getByText("Category: CAD-RADS 2").first(),
       ).toBeVisible();
       await expect(
-        resultsSection.getByText("Some coronary segments were non-evaluable"),
+        resultsSection.getByText("Some coronary segments were non-evaluable").first(),
       ).toBeVisible();
     });
   });
@@ -725,9 +725,9 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("CAD-RADS 3/P2/HRP/I/S"),
+        resultsSection.getByText("CAD-RADS 3/P2/HRP/I/S").first(),
       ).toBeVisible();
     });
   });
@@ -741,9 +741,9 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("Please select the maximum coronary stenosis"),
+        resultsSection.getByText("Please select the maximum coronary stenosis").first(),
       ).toBeVisible();
     });
   });
@@ -800,7 +800,7 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         resultsSection.getByText(
           "Excellent prognosis with very low annual event rate",
@@ -821,9 +821,9 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultsSection.getByText("antiplatelet therapy"),
+        resultsSection.getByText("antiplatelet therapy").first(),
       ).toBeVisible();
     });
   });

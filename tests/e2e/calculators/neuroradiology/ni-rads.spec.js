@@ -43,7 +43,7 @@ async function selectRadioOption(page, labelText) {
  * @param {string} expectedValue - The expected value text to contain
  */
 async function verifyResultContains(page, resultLabel, expectedValue) {
-  const resultSection = page.getByRole('status', { name: 'Calculator results' });
+  const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
   await expect(resultSection.getByText(resultLabel)).toBeVisible();
   await expect(resultSection.getByText(expectedValue)).toBeVisible();
 }
@@ -74,23 +74,23 @@ test.describe("ACR NI-RADS Calculator", () => {
       await expect(
         infoSection.getByText("PRIMARY TUMOR SITE").first(),
       ).toBeVisible();
-      await expect(infoSection.getByText("CERVICAL LYMPH NODES")).toBeVisible();
-      await expect(infoSection.getByText("NI-RADS 0")).toBeVisible();
-      await expect(infoSection.getByText("NI-RADS 1")).toBeVisible();
+      await expect(infoSection.getByText("CERVICAL LYMPH NODES").first()).toBeVisible();
+      await expect(infoSection.getByText("NI-RADS 0").first()).toBeVisible();
+      await expect(infoSection.getByText("NI-RADS 1").first()).toBeVisible();
     });
 
     test("should have imaging modality selection", async ({ page }) => {
       await expect(
-        page.locator("main").getByText("Imaging Modality"),
+        page.locator("main").getByText("Imaging Modality").first(),
       ).toBeVisible();
       await expect(
-        page.locator("main").getByText("Contrast-Enhanced CT"),
+        page.locator("main").getByText("Contrast-Enhanced CT").first(),
       ).toBeVisible();
       // Use exact match for MRI to avoid matching "Adrenal MRI CSI" in sidebar
       await expect(
         page.locator("main").getByText("MRI", { exact: true }),
       ).toBeVisible();
-      await expect(page.locator("main").getByText("PET/CT")).toBeVisible();
+      await expect(page.locator("main").getByText("PET/CT").first()).toBeVisible();
     });
 
     test("should have prior imaging availability selection", async ({
@@ -99,16 +99,16 @@ test.describe("ACR NI-RADS Calculator", () => {
       await expect(
         page
           .locator("main")
-          .getByText("Prior Imaging Available for Comparison"),
+          .getByText("Prior Imaging Available for Comparison").first(),
       ).toBeVisible();
       await expect(
-        page.locator("main").getByText("Yes - prior available"),
+        page.locator("main").getByText("Yes - prior available").first(),
       ).toBeVisible();
       await expect(
-        page.locator("main").getByText("No - will be obtained"),
+        page.locator("main").getByText("No - will be obtained").first(),
       ).toBeVisible();
       await expect(
-        page.locator("main").getByText("No - cannot be obtained"),
+        page.locator("main").getByText("No - cannot be obtained").first(),
       ).toBeVisible();
     });
 
@@ -116,10 +116,10 @@ test.describe("ACR NI-RADS Calculator", () => {
       page,
     }) => {
       await expect(
-        page.locator("main").getByText("PRIMARY SITE ASSESSMENT"),
+        page.locator("main").getByText("PRIMARY SITE ASSESSMENT").first(),
       ).toBeVisible();
       await expect(
-        page.locator("main").getByText("NECK LYMPH NODE ASSESSMENT"),
+        page.locator("main").getByText("NECK LYMPH NODE ASSESSMENT").first(),
       ).toBeVisible();
     });
   });
@@ -133,14 +133,14 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         resultSection.getByText("0 - Incomplete").first(),
       ).toBeVisible();
       await expect(
-        resultSection.getByText("Obtain prior imaging for comparison"),
+        resultSection.getByText("Obtain prior imaging for comparison").first(),
       ).toBeVisible();
-      await expect(resultSection.getByText("reassign category")).toBeVisible();
+      await expect(resultSection.getByText("reassign category").first()).toBeVisible();
     });
   });
 
@@ -162,7 +162,7 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         resultSection.getByText("1 - No Evidence of Recurrence").first(),
       ).toBeVisible();
@@ -171,7 +171,7 @@ test.describe("ACR NI-RADS Calculator", () => {
           .getByText("Routine surveillance (typically 6 months)")
           .first(),
       ).toBeVisible();
-      await expect(resultSection.getByText("~4%")).toBeVisible();
+      await expect(resultSection.getByText("~4%").first()).toBeVisible();
     });
 
     test("should calculate NI-RADS 1 for residual stable nodal tissue", async ({
@@ -192,8 +192,8 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("Neck NI-RADS")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("Neck NI-RADS").first()).toBeVisible();
       await expect(
         resultSection.getByText("1 - No Evidence of Recurrence").first(),
       ).toBeVisible();
@@ -218,9 +218,9 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultSection.getByText("2a - Low Suspicion (Superficial)"),
+        resultSection.getByText("2a - Low Suspicion (Superficial)").first(),
       ).toBeVisible();
       await expect(
         resultSection.getByText(
@@ -248,16 +248,16 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultSection.getByText("2b - Low Suspicion (Deep)"),
+        resultSection.getByText("2b - Low Suspicion (Deep)").first(),
       ).toBeVisible();
       await expect(
         resultSection
           .getByText("Short-term follow-up imaging (3 months)")
           .first(),
       ).toBeVisible();
-      await expect(resultSection.getByText("~17%")).toBeVisible();
+      await expect(resultSection.getByText("~17%").first()).toBeVisible();
     });
 
     test("should calculate NI-RADS 2 for new/enlarging neck node without necrosis", async ({
@@ -280,8 +280,8 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("Neck NI-RADS")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("Neck NI-RADS").first()).toBeVisible();
       // Both Neck NI-RADS and Overall Assessment show "2 - Low Suspicion (Deep)", use first()
       await expect(
         resultSection.getByText("2 - Low Suspicion (Deep)").first(),
@@ -312,12 +312,12 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         resultSection.getByText("3 - High Suspicion").first(),
       ).toBeVisible();
-      await expect(resultSection.getByText("Biopsy recommended")).toBeVisible();
-      await expect(resultSection.getByText("~59%")).toBeVisible();
+      await expect(resultSection.getByText("Biopsy recommended").first()).toBeVisible();
+      await expect(resultSection.getByText("~59%").first()).toBeVisible();
     });
 
     test("should calculate NI-RADS 3 for neck node with necrosis", async ({
@@ -340,12 +340,12 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("Neck NI-RADS")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("Neck NI-RADS").first()).toBeVisible();
       await expect(
         resultSection.getByText("3 - High Suspicion").first(),
       ).toBeVisible();
-      await expect(resultSection.getByText("Biopsy or FNA")).toBeVisible();
+      await expect(resultSection.getByText("Biopsy or FNA").first()).toBeVisible();
     });
 
     test("should upgrade to NI-RADS 3 when new bone erosion present", async ({
@@ -368,9 +368,9 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultSection.getByText("Primary Site NI-RADS"),
+        resultSection.getByText("Primary Site NI-RADS").first(),
       ).toBeVisible();
       await expect(
         resultSection.getByText("3 - High Suspicion").first(),
@@ -399,14 +399,14 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         resultSection.getByText("4 - Known Recurrence").first(),
       ).toBeVisible();
       await expect(
         resultSection.getByText("Treatment planning").first(),
       ).toBeVisible();
-      await expect(resultSection.getByText("100%")).toBeVisible();
+      await expect(resultSection.getByText("100%").first()).toBeVisible();
     });
 
     test("should calculate NI-RADS 4 for pathologically proven nodal recurrence", async ({
@@ -429,8 +429,8 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("Neck NI-RADS")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("Neck NI-RADS").first()).toBeVisible();
       await expect(
         resultSection.getByText("4 - Known Recurrence").first(),
       ).toBeVisible();
@@ -448,16 +448,16 @@ test.describe("ACR NI-RADS Calculator", () => {
       await selectRadioOption(page, "Yes - prior available");
 
       await expect(
-        page.locator("main").getByText("Primary Site FDG Uptake (PET)"),
+        page.locator("main").getByText("Primary Site FDG Uptake (PET)").first(),
       ).toBeVisible();
       await expect(
-        page.locator("main").getByText("No abnormal uptake"),
+        page.locator("main").getByText("No abnormal uptake").first(),
       ).toBeVisible();
       // Use more specific text to avoid ambiguity
       await expect(
         page
           .locator("main")
-          .getByText("Intense focal uptake to discrete nodule/mass"),
+          .getByText("Intense focal uptake to discrete nodule/mass").first(),
       ).toBeVisible();
     });
 
@@ -482,7 +482,7 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         resultSection.getByText("1 - No Evidence of Recurrence").first(),
       ).toBeVisible();
@@ -511,7 +511,7 @@ test.describe("ACR NI-RADS Calculator", () => {
       // Bone erosion question may appear - select no
       const boneQuestion = page
         .locator("main")
-        .getByText("No new bone erosion");
+        .getByText("No new bone erosion").first();
       if (await boneQuestion.isVisible()) {
         await boneQuestion.click();
       }
@@ -522,9 +522,9 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultSection.getByText("2b - Low Suspicion (Deep)"),
+        resultSection.getByText("2b - Low Suspicion (Deep)").first(),
       ).toBeVisible();
     });
 
@@ -555,8 +555,8 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("Neck NI-RADS")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("Neck NI-RADS").first()).toBeVisible();
       await expect(
         resultSection.getByText("3 - High Suspicion").first(),
       ).toBeVisible();
@@ -584,19 +584,19 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       // Should have different categories
       await expect(
-        resultSection.getByText("Primary Site NI-RADS"),
+        resultSection.getByText("Primary Site NI-RADS").first(),
       ).toBeVisible();
-      await expect(resultSection.getByText("Neck NI-RADS")).toBeVisible();
+      await expect(resultSection.getByText("Neck NI-RADS").first()).toBeVisible();
       await expect(
-        resultSection.getByText("Primary site and neck categories differ"),
+        resultSection.getByText("Primary site and neck categories differ").first(),
       ).toBeVisible();
 
       // Overall should be the higher category
-      await expect(resultSection.getByText("Overall Assessment")).toBeVisible();
-      await expect(resultSection.getByText("NI-RADS 3")).toBeVisible();
+      await expect(resultSection.getByText("Overall Assessment").first()).toBeVisible();
+      await expect(resultSection.getByText("NI-RADS 3").first()).toBeVisible();
     });
 
     test("should use higher category for overall assessment", async ({
@@ -619,10 +619,10 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("Overall Assessment")).toBeVisible();
-      await expect(resultSection.getByText("NI-RADS 4")).toBeVisible();
-      await expect(resultSection.getByText("100%")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("Overall Assessment").first()).toBeVisible();
+      await expect(resultSection.getByText("NI-RADS 4").first()).toBeVisible();
+      await expect(resultSection.getByText("100%").first()).toBeVisible();
     });
   });
 
@@ -644,7 +644,7 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
         resultSection.getByText(
           "Categories assigned without prior comparison (prior unavailable)",
@@ -665,9 +665,9 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultSection.getByText("Please select primary site findings"),
+        resultSection.getByText("Please select primary site findings").first(),
       ).toBeVisible();
     });
 
@@ -685,9 +685,9 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        resultSection.getByText("Please select neck lymph node findings"),
+        resultSection.getByText("Please select neck lymph node findings").first(),
       ).toBeVisible();
     });
   });
@@ -707,8 +707,8 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("~4%")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("~4%").first()).toBeVisible();
     });
 
     test("should display correct risk for NI-RADS 2 (~17%)", async ({
@@ -725,8 +725,8 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("~17%")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("~17%").first()).toBeVisible();
     });
 
     test("should display correct risk for NI-RADS 3 (~59%)", async ({
@@ -743,8 +743,8 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("~59%")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("~59%").first()).toBeVisible();
     });
 
     test("should display correct risk for NI-RADS 4 (100%)", async ({
@@ -763,8 +763,8 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(resultSection.getByText("100%")).toBeVisible();
+      const resultSection = page.getByRole('status', { name: 'Calculator results' }).first();
+      await expect(resultSection.getByText("100%").first()).toBeVisible();
     });
   });
 
