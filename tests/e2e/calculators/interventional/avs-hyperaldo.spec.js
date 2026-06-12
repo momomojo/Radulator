@@ -29,7 +29,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
 
     // Verify calculator loaded
     await expect(
-      page.locator('h2:has-text("Adrenal Vein Sampling – Aldosterone")'),
+      page.getByTestId('calculator-title').first(),
     ).toBeVisible();
     await expect(
       page.locator("text=Comprehensive primary aldosteronism AVS"),
@@ -166,7 +166,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify results
       await expect(page.locator("text=Post-ACTH Results")).toBeVisible({
@@ -246,7 +246,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("240");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify bilateral disease interpretation
       await expect(page.locator("text=Post-ACTH Results")).toBeVisible({
@@ -309,7 +309,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("80");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify cannulation failure warning
       await expect(page.locator("text=/Cannulation failure/i")).toBeVisible({
@@ -402,7 +402,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await postRightAldoInputs[1].fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify side-by-side comparison view
       await expect(page.locator("text=Pre-ACTH Results")).toBeVisible({
@@ -483,7 +483,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await rightInputs[7].fill("340"); // Sample 4 Cort
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify averaging occurred
       await expect(page.locator("text=Post-ACTH Results")).toBeVisible({
@@ -545,7 +545,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("8828.8"); // 320 µg/dL
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify results (should be same as Scenario 1 despite different units)
       await expect(page.locator("text=Post-ACTH Results")).toBeVisible({
@@ -607,7 +607,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify validation warnings
       await expect(page.locator("text=Value Validation Warnings")).toBeVisible({
@@ -670,7 +670,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("240");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Check if conflict detection appears (may or may not with these values)
       const conflictSection = page.locator(
@@ -690,7 +690,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await page.locator('input[type="radio"][value="post"]').check();
 
       // Calculate without data
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify error message
       await expect(page.locator("text=/Insufficient data/i")).toBeVisible({
@@ -739,7 +739,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await postRightInputs[1].fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify incomplete data warning
       await expect(
@@ -796,7 +796,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify CSV download button appears
       const downloadButton = page.locator(
@@ -818,7 +818,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
 
       // Verify all 4 references are present
       const referenceLinks = await page
-        .locator('section:has(h3:has-text("References")) a[href^="http"]')
+        .locator('section.references-section a[href^="http"]')
         .all();
       expect(referenceLinks.length).toBeGreaterThanOrEqual(4);
 
@@ -919,7 +919,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .nth(1)
         .fill("320");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify comprehensive output sections
       await expect(page.locator("text=Left SI:")).toBeVisible({
