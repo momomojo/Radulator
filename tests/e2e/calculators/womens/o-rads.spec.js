@@ -35,7 +35,7 @@ test.describe("ACR O-RADS Calculator", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("ACR O-RADS");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("ACR O-RADS");
       await expect(
         page.getByText("Ovarian-Adnexal Reporting and Data System").first(),
       ).toBeVisible();

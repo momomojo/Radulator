@@ -14,8 +14,8 @@ const calculatorsDir = path.join(
 const calculatorNameToId = new Map();
 const calculatorIdToName = new Map();
 const mojibakeReplacements = {
-  "â€“": "–",
-  "â€”": "—",
+  "â€": "–",
+  "â€”: "—",
   "â€‘": "‑",
   "â‰¤": "≤",
   "â‰¥": "≥",
@@ -120,7 +120,6 @@ export async function navigateToCalculator(page, calculatorName) {
   await page.goto(targetUrl);
 
   // Wait for app to load - use getByRole with first() for reliable matching
-  // This approach aligns with smoke tests and handles visibility correctly
   await page
     .getByRole("heading", { name: "Radulator", level: 1 })
     .first()
@@ -143,7 +142,10 @@ export async function navigateToCalculator(page, calculatorName) {
 
   if (calculatorId) {
     const expectedName = calculatorIdToName.get(calculatorId) || calculatorName;
-    await expect(page.locator("h2")).toContainText(expectedName);
+    // Use data-testid="calculator-title" instead of fragile h2 selector
+    await expect(
+      page.getByTestId("calculator-title").first(),
+    ).toContainText(expectedName);
   }
 }
 
@@ -191,14 +193,23 @@ export async function selectOption(page, label, value) {
 }
 
 /**
- * Select a radio button option
+ * Select a radio button option using getByRole for reliable matching
  * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {string} label - Label text of the radio group
- * @param {string} value - Value to select
+ * @param {string} label - Label context for the radio group
+ * @param {string} value - The visible label of the radio option to select
  */
 export async function selectRadio(page, label, value) {
-  const radioLabel = page.locator(`text="${value}"`).first();
-  await radioLabel.click();
+  // Prefer getByRole('radio') with matching accessible name
+  // Fall back to text locator for the radio label
+  const radio = page
+    .getByRole("radio", { name: new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") })
+    .first();
+  if (await radio.count().then((c) => c > 0)) {
+    await radio.click({ force: true });
+  } else {
+    // Fallback: click the label text
+    await page.getByText(value, { exact: false }).first().click();
+  }
 }
 
 /**
@@ -221,20 +232,23 @@ export async function toggleCheckbox(page, label, checked) {
 
 /**
  * Get the result value from the calculator
+ * Uses getByRole('status') for the results section when available
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @param {string} resultLabel - Label of the result to get (optional)
  * @returns {Promise<string>} - Result text
  */
 export async function getResult(page, resultLabel = null) {
+  const resultsSection = page.getByRole("status", { name: "Calculator results" });
+
   if (resultLabel) {
-    const resultRow = page
-      .locator(`.grid > div:has-text("${resultLabel}")`)
+    const resultRow = resultsSection
+      .locator(`span:has-text("${resultLabel}")`)
       .first();
-    const resultValue = resultRow.locator("div").nth(1);
-    return await resultValue.textContent();
+    const parentRow = resultRow.locator(
+      "xpath=ancestor::div[contains(@class, 'justify-between') or contains(@class, 'rounded-lg')][1]",
+    );
+    return await parentRow.textContent();
   } else {
-    // Get all results
-    const resultsSection = page.locator(".bg-muted\\/50").last();
     return await resultsSection.textContent();
   }
 }
@@ -307,12 +321,12 @@ export async function verifyThemeConsistency(page) {
   const mainContent = page.locator("main").first();
   await expect(mainContent).toBeVisible();
 
-  // Verify a heading (h2 for calculator title) is present
-  const calcTitle = page.locator("h2").first();
+  // Use data-testid="calculator-title" instead of fragile h2 selector
+  const calcTitle = page.getByTestId("calculator-title").first();
   await expect(calcTitle).toBeVisible();
 
   // Verify the Calculate button is styled
-  const calcButton = page.locator('button:has-text("Calculate")').first();
+  const calcButton = page.getByRole("button", { name: "Calculate" }).first();
   await expect(calcButton).toBeVisible();
 }
 
@@ -381,10 +395,6 @@ export async function fillCalculatorFromTestCase(page, testCase) {
       }
     }
   }
-
-  // Wait for calculation implicitly by waiting for results in subsequent steps
-  // or use basic structural check if needed immediately
-  // await page.waitForLoadState("networkidle"); // Optional if calc triggers network
 }
 
 /**
