@@ -2,9 +2,9 @@ name: E2E Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
   workflow_dispatch:
     inputs:
       full_suite:
@@ -118,7 +118,10 @@ jobs:
 
   full-tests:
     name: Full Test Suite
-    if: github.event.inputs.full_suite == 'true'
+    # Auto-runs for every PR targeting main (promotion batches from develop
+    # and hotfixes): production deploys only on a green full suite. Feature
+    # PRs target develop and need only smoke + targeted.
+    if: github.event.inputs.full_suite == 'true' || (github.event_name == 'pull_request' && github.base_ref == 'main')
     timeout-minutes: 180
     runs-on: ubuntu-latest
     steps:
