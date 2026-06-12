@@ -38,7 +38,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Core Functionality", () =
     page,
   }) => {
     // Verify calculator title
-    await expect(page.locator("h2")).toContainText(
+    await expect(page.getByTestId('calculator-title').first()).toContainText(
       "Adrenal MRI Chemical Shift",
     );
 
@@ -64,7 +64,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Core Functionality", () =
     ).toBeVisible();
 
     // Verify Calculate button is present
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
   });
 });
 
@@ -90,7 +90,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Clinical Test Cases", () 
     // CSI Ratio = (500/750) / (1000/800) = 0.6667 / 1.25 = 0.53
 
     // Verify Signal Intensity Index
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("Signal Intensity Index (%): 50.0");
 
     // Verify CSI Ratio (approximately 0.53)
@@ -116,7 +116,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Clinical Test Cases", () 
     // SII = ((800 - 750) / 800) × 100 = 6.25% → rounds to 6.3
     // CSI Ratio = (750/680) / (800/700) = 1.103 / 1.143 = 0.97
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
 
     // Verify Signal Intensity Index (below threshold)
     await expect(results).toContainText("Signal Intensity Index (%): 6.3");
@@ -139,7 +139,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Clinical Test Cases", () 
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
 
     // At threshold: 16.5%
     await expect(results).toContainText("Signal Intensity Index (%): 16.5");
@@ -160,7 +160,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Clinical Test Cases", () 
     await page.click('button:has-text("Calculate")');
 
     // Expected: SII = ((2000 - 600) / 2000) × 100 = 70.0%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("Signal Intensity Index (%): 70.0");
     await expect(results).toContainText("Suggests lipid‑rich adenoma");
   });
@@ -175,7 +175,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Clinical Test Cases", () 
     await page.click('button:has-text("Calculate")');
 
     // Expected: SII = ((500 - 600) / 500) × 100 = -20.0%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("Signal Intensity Index (%): -20.0");
 
     // Negative SII should indicate non-adenoma
@@ -197,7 +197,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Edge Cases & Validation",
     await page.click('button:has-text("Calculate")');
 
     // Division by zero in SII calculation - should show NaN or Infinity
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toBeVisible();
 
     // Should still display results (even if mathematically undefined)
@@ -212,7 +212,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Edge Cases & Validation",
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
 
     // Should calculate correctly: ((999999 - 499999) / 999999) × 100 = 50.0%
     await expect(results).toContainText("Signal Intensity Index (%): 50.0");
@@ -226,7 +226,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Edge Cases & Validation",
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
 
     // Expected: ((1234.567 - 678.901) / 1234.567) × 100 = 45.02%
     await expect(results).toContainText("Signal Intensity Index (%): 45.0");
@@ -242,7 +242,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Edge Cases & Validation",
     await page.click('button:has-text("Calculate")');
 
     // Verify results appear
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("Signal Intensity Index");
 
     // Switch to different calculator using navigateToCalculator (handles mobile)
@@ -288,7 +288,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Formula Verification", ()
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       const expectedSII = tc.expected_sii.toFixed(1);
       await expect(results).toContainText(
         `Signal Intensity Index (%): ${expectedSII}`,
@@ -306,7 +306,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Formula Verification", ()
 
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     // Expected: 0.53 (rounded to 2 decimals)
     await expect(results).toContainText("Adrenal‑to‑Spleen CSI Ratio: 0.53");
   });
@@ -333,7 +333,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Formula Verification", ()
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText(tc.expected);
     }
   });
@@ -375,7 +375,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - UI/UX Quality", () => {
     await expect(
       page.locator('label:has-text("Adrenal SI in‑phase")'),
     ).toBeVisible();
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
     // Should be able to fill and calculate
     await fillInput(page, "Adrenal SI in‑phase", "1000");
@@ -384,7 +384,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - UI/UX Quality", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "750");
     await page.click('button:has-text("Calculate")');
 
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toBeVisible();
 
     // Reset viewport
@@ -421,7 +421,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - UI/UX Quality", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "750");
     await page.click('button:has-text("Calculate")');
 
-    const resultsSection = page.locator('section[aria-live="polite"]');
+    const resultsSection = page.getByRole('status', { name: 'Calculator results' });
     await expect(resultsSection).toBeVisible();
   });
 });
@@ -496,7 +496,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Performance & Browser Com
     await page.click('button:has-text("Calculate")');
 
     // Wait for results to appear
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toBeVisible({ timeout: 1000 });
 
     const endTime = Date.now();
@@ -522,7 +522,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Performance & Browser Com
     await fillInput(page, "Spleen SI opposed‑phase", "750");
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator('section[aria-live="polite"]')).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Calculator results' })).toBeVisible();
 
     // Should have no console errors
     expect(consoleErrors).toHaveLength(0);
@@ -548,7 +548,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Performance & Browser Com
     await fillInput(page, "Spleen SI opposed‑phase", "750");
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator('section[aria-live="polite"]')).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Calculator results' })).toBeVisible();
 
     // Should be a fully static client-side calculator
     expect(networkRequests).toHaveLength(0);
@@ -575,7 +575,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Clinical Scenarios", () =
     await page.click('button:has-text("Calculate")');
 
     // SII = ((1200 - 400) / 1200) × 100 = 66.7%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("Signal Intensity Index (%): 66.7");
     await expect(results).toContainText("Suggests lipid‑rich adenoma");
 
@@ -598,7 +598,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Clinical Scenarios", () =
     await page.click('button:has-text("Calculate")');
 
     // SII = ((900 - 880) / 900) × 100 = 2.2%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("Signal Intensity Index (%): 2.2");
     await expect(results).toContainText("Non‑adenoma / lipid‑poor");
 
@@ -623,7 +623,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Clinical Scenarios", () =
     await page.click('button:has-text("Calculate")');
 
     // SII = ((1000 - 830) / 1000) × 100 = 17.0%
-    const results = page.locator('section[aria-live="polite"]');
+    const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toContainText("Signal Intensity Index (%): 17.0");
     await expect(results).toContainText("Suggests lipid‑rich adenoma");
 

@@ -15,7 +15,7 @@ import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js
 test.describe("Prostate Volume Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, "Prostate Volume & PSA Density");
-    await expect(page.locator("h2")).toContainText(
+    await expect(page.getByTestId('calculator-title').first()).toContainText(
       "Prostate Volume & PSA Density",
     );
   });
@@ -100,7 +100,7 @@ test.describe("Prostate Volume Calculator", () => {
     });
 
     test("should have accessible Calculate button", async ({ page }) => {
-      const calculateButton = page.locator('button:has-text("Calculate")');
+      const calculateButton = page.getByRole('button', { name: 'Calculate' });
       await expect(calculateButton).toBeVisible();
       await expect(calculateButton).toBeEnabled();
     });
@@ -109,7 +109,7 @@ test.describe("Prostate Volume Calculator", () => {
   test.describe("Citation Verification", () => {
     test("should display references section", async ({ page }) => {
       const referencesSection = page.locator(
-        'section:has(h3:has-text("References"))',
+        'section.references-section',
       );
       await expect(referencesSection).toBeVisible();
     });
@@ -168,7 +168,7 @@ test.describe("Prostate Volume Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Check results section
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toBeVisible();
 
       // Check font-mono styling for result labels
@@ -415,13 +415,13 @@ test.describe("Prostate Volume Calculator", () => {
       // Switch to another calculator
       await page.click('button:has-text("Adrenal CT Washout")');
       await expect(
-        page.locator('h2:has-text("Adrenal CT Washout")'),
+        page.getByTestId('calculator-title').first(),
       ).toBeVisible();
 
       // Return to Prostate Volume
       await page.click('button:has-text("Prostate Volume & PSA Density")');
       await expect(
-        page.locator('h2:has-text("Prostate Volume & PSA Density")'),
+        page.getByTestId('calculator-title').first(),
       ).toBeVisible();
 
       // Fields should be cleared
@@ -440,7 +440,7 @@ test.describe("Prostate Volume Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should calculate successfully
-      await expect(page.locator('section[aria-live="polite"]')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' })).toBeVisible();
     });
 
     test("should accept decimal values", async ({ page }) => {
@@ -452,7 +452,7 @@ test.describe("Prostate Volume Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Should calculate successfully
-      await expect(page.locator('section[aria-live="polite"]')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' })).toBeVisible();
     });
 
     test("should handle empty fields as zero", async ({ page }) => {
@@ -474,7 +474,7 @@ test.describe("Prostate Volume Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Results should be displayed with proper precision
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Prostate Volume (mL):");
       await expect(results).toContainText("PSA‑Density:");
     });
@@ -482,7 +482,7 @@ test.describe("Prostate Volume Calculator", () => {
 
   test.describe("Accessibility", () => {
     test("should have proper ARIA labels", async ({ page }) => {
-      const calculateButton = page.locator('button:has-text("Calculate")');
+      const calculateButton = page.getByRole('button', { name: 'Calculate' });
       await expect(calculateButton).not.toHaveAttribute(
         "aria-disabled",
         "true",
@@ -514,7 +514,7 @@ test.describe("Prostate Volume Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
       await expect(resultsSection).toBeVisible();
     });
 
@@ -537,7 +537,7 @@ test.describe("Prostate Volume Calculator", () => {
       await page.keyboard.press("Enter");
 
       // Results should be displayed
-      await expect(page.locator('section[aria-live="polite"]')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' })).toBeVisible();
     });
   });
 
