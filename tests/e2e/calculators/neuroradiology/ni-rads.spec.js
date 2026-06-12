@@ -53,14 +53,14 @@ test.describe("ACR NI-RADS Calculator", () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator("h2")).toContainText("ACR NI-RADS");
+    await expect(page.getByTestId('calculator-title').first()).toContainText("ACR NI-RADS");
   });
 
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("ACR NI-RADS");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("ACR NI-RADS");
       await expect(page.getByTestId("calculator-description")).toContainText(
         "Neck Imaging Reporting and Data System",
       );
@@ -810,8 +810,8 @@ test.describe("ACR NI-RADS Calculator", () => {
       await page.setViewportSize({ width: 375, height: 667 });
 
       // Verify calculator is still usable on mobile
-      await expect(page.locator("h2")).toContainText("NI-RADS");
-      await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toContainText("NI-RADS");
+      await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
       // Verify the main content is still accessible
       await expect(page.locator("main")).toBeVisible();

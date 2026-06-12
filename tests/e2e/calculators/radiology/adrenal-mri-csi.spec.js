@@ -38,7 +38,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Core Functionality", () =
     page,
   }) => {
     // Verify calculator title
-    await expect(page.locator("h2")).toContainText(
+    await expect(page.getByTestId('calculator-title').first()).toContainText(
       "Adrenal MRI Chemical Shift",
     );
 
@@ -64,7 +64,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Core Functionality", () =
     ).toBeVisible();
 
     // Verify Calculate button is present
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
   });
 });
 
@@ -375,7 +375,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - UI/UX Quality", () => {
     await expect(
       page.locator('label:has-text("Adrenal SI in‑phase")'),
     ).toBeVisible();
-    await expect(page.locator('button:has-text("Calculate")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
     // Should be able to fill and calculate
     await fillInput(page, "Adrenal SI in‑phase", "1000");
@@ -421,7 +421,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - UI/UX Quality", () => {
     await fillInput(page, "Spleen SI opposed‑phase", "750");
     await page.click('button:has-text("Calculate")');
 
-    const resultsSection = page.locator('section[aria-live="polite"]');
+    const resultsSection = page.getByRole('status', { name: 'Calculator results' });
     await expect(resultsSection).toBeVisible();
   });
 });
@@ -522,7 +522,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Performance & Browser Com
     await fillInput(page, "Spleen SI opposed‑phase", "750");
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator('section[aria-live="polite"]')).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Calculator results' })).toBeVisible();
 
     // Should have no console errors
     expect(consoleErrors).toHaveLength(0);
@@ -548,7 +548,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Performance & Browser Com
     await fillInput(page, "Spleen SI opposed‑phase", "750");
     await page.click('button:has-text("Calculate")');
 
-    await expect(page.locator('section[aria-live="polite"]')).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Calculator results' })).toBeVisible();
 
     // Should be a fully static client-side calculator
     expect(networkRequests).toHaveLength(0);
