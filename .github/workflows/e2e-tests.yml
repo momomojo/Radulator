@@ -68,12 +68,15 @@ jobs:
       - name: Spec coverage check
         run: node scripts/spec-map.js --check
 
-      - name: Detect changed calculators
+      - name: Detect changed targeted specs
         id: changed
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
           CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'src/components/calculators/*.jsx' | grep -vE 'index|registry|FeedbackForm' || true)
-          CHANGED_SPECS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'tests/e2e/calculators/**/*.spec.js' || true)
+          # Spec-only PRs do not change calculator source, so run their changed
+          # specs directly. If source and specs both changed, the run step
+          # unions these paths with spec-map output.
+          CHANGED_SPECS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'tests/e2e/*.spec.js' 'tests/e2e/**/*.spec.js' | sort -u || true)
           # Space-joined single line: a multiline output would embed raw
           # newlines into the github-expression substitution downstream, acting
           # as command separators inside command substitution and silently
@@ -110,19 +113,30 @@ jobs:
         if: steps.changed.outputs.any == 'true'
         run: npm run build
 
-      - name: Run specs for changed calculators
+      - name: Run targeted specs
         if: steps.changed.outputs.any == 'true'
         run: |
           FILES="${{ steps.changed.outputs.files }}"
-          SPECS="${{ steps.changed.outputs.spec_files }}"
+          CHANGED_SPECS="${{ steps.changed.outputs.spec_files }}"
+          : > targeted-specs.txt
+
           if [ -n "$FILES" ]; then
-            CALC_SPECS=$(node scripts/spec-map.js --specs-for $FILES)
-            echo "Running calculator specs: $CALC_SPECS"
-            npx playwright test $CALC_SPECS --project=chromium
-          elif [ -n "$SPECS" ]; then
-            echo "Running changed spec files: $SPECS"
-            npx playwright test $SPECS --project=chromium
+            printf '%s\n' "$FILES" | xargs node scripts/spec-map.js --specs-for >> targeted-specs.txt
           fi
+
+          if [ -n "$CHANGED_SPECS" ]; then
+            printf '%s\n' "$CHANGED_SPECS" | tr ' ' '\n' >> targeted-specs.txt
+          fi
+
+          sort -u targeted-specs.txt | awk 'NF' > targeted-specs.unique.txt
+          SPECS=$(tr '\n' ' ' < targeted-specs.unique.txt)
+          if [ -z "$SPECS" ]; then
+            echo "No targeted specs resolved; refusing to run an empty Playwright command."
+            exit 1
+          fi
+
+          echo "Running targeted specs: $SPECS"
+          npx playwright test $SPECS --project=chromium
         env:
           CI: true
 
