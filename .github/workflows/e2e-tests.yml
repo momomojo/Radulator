@@ -76,7 +76,7 @@ jobs:
           # Spec-only PRs do not change calculator source, so run their changed
           # specs directly. If source and specs both changed, the run step
           # unions these paths with spec-map output.
-          CHANGED_SPECS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'tests/e2e/*.spec.js' 'tests/e2e/**/*.spec.js' | sort -u || true)
+          CHANGED_SPECS=$(git diff --name-only --diff-filter=AMR origin/${{ github.base_ref }}...HEAD -- 'tests/e2e/*.spec.js' 'tests/e2e/**/*.spec.js' | sort -u || true)
           # Space-joined single line: a multiline output would embed raw
           # newlines into the github-expression substitution downstream, acting
           # as command separators inside command substitution and silently
