@@ -199,12 +199,26 @@ export async function selectOption(page, label, value) {
  * @param {string} value - The visible label of the radio option to select
  */
 export async function selectRadio(page, label, value) {
-  // Default to clicking the visible label text (what a real user does).
-  // This is actionability-safe — Playwright checks visibility, enabled
-  // state, and pointer-events. For shadcn/Radix custom-styled radios
-  // the native <input type="radio"> is visually hidden, so clicking
-  // the label (which wraps the visible control) is the correct path.
-  await page.getByText(value, { exact: false }).first().click();
+  // Click the exact option inside the requested field group. Substring
+  // matching is unsafe for ordered options such as "Very low" before
+  // "Low" and "Extremely difficult" before "Difficult".
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const labelRegex = new RegExp(escapedLabel, "i");
+  const fieldGroup = page
+    .locator(".space-y-2", {
+      has: page.getByText(labelRegex),
+    })
+    .filter({ has: page.getByRole("radio") })
+    .first();
+
+  if (await fieldGroup.count()) {
+    await fieldGroup.getByText(value, { exact: true }).click();
+    return;
+  }
+
+  // Fallback for custom/non-standard calculator layouts that still use the
+  // shared helper but do not render through the generic Field component.
+  await page.getByText(value, { exact: true }).first().click();
 }
 
 /**
