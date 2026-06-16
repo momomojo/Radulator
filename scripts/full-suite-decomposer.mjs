@@ -100,7 +100,16 @@ function finalStatusFromResults(results) {
 
 function isUnexpected(test) {
   if (test.status === "unexpected" || test.status === "flaky") return true;
-  if (test.status && test.expectedStatus && test.status !== test.expectedStatus) return true;
+
+  // Playwright JSON reporter uses aggregate test.status values such as
+  // "expected"/"unexpected"/"flaky", while expectedStatus is normally
+  // "passed"/"skipped". Treating "expected" !== "passed" as a failure
+  // incorrectly files passing tests as remediation work.
+  if (test.status === "expected" || test.status === test.expectedStatus) {
+    return false;
+  }
+
+  if (["failed", "timedOut", "interrupted"].includes(test.status)) return true;
   return test.results.some((result) =>
     ["failed", "timedOut", "interrupted"].includes(result?.status)
   );

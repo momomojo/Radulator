@@ -81,7 +81,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       ),
     ).toBeVisible();
     await expect(
-      page.locator("text=Did not attempt intercourse"),
+      page.getByText("Did not attempt intercourse", { exact: true }).first(),
     ).toBeVisible();
 
     // Question 4: Difficulty maintaining
@@ -99,7 +99,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
         "text=5. When you attempted sexual intercourse, how often was it satisfactory",
       ),
     ).toBeVisible();
-    await expect(page.locator("text=Almost always or always")).toBeVisible();
+    await expect(page.getByText("Almost always or always", { exact: true }).first()).toBeVisible();
   });
 
   test("should require all questions to be answered", async ({ page }) => {
@@ -139,7 +139,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     // Verify score format includes "/25"
     const resultsSection = page.getByRole("status", { name: "Calculator results" });
-    await expect(resultsSection).toContainText("Total IIEF-5 (SHIM Score)");
+    await expect(resultsSection).toContainText("Total SHIM Score");
     await expect(resultsSection).toContainText("/ 25");
   });
 
@@ -173,9 +173,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       const resultsSection = page.getByRole("status", { name: "Calculator results" });
       await expect(resultsSection).toBeVisible();
 
-      // Verify Total IIEF-5 (SHIM Score)
+      // Verify Total SHIM Score
       await expect(resultsSection).toContainText(
-        `Total IIEF-5 (SHIM Score): ${testCase.expected["Total IIEF-5 (SHIM Score)"]}`,
+        `Total SHIM Score: ${testCase.expected["Total SHIM Score"]}`,
       );
 
       // Verify ED Severity
@@ -278,7 +278,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     await selectRadio(
       page,
       "how difficult",
-      "Most times (much more than half the time)",
+      "Slightly difficult",
     );
     await selectRadio(
       page,
@@ -410,7 +410,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "able to maintain",
       "A few times (much less than half the time)",
     );
-    await selectRadio(page, "how difficult", "Almost never or never");
+    await selectRadio(page, "how difficult", "Extremely difficult");
     await selectRadio(
       page,
       "how often was it satisfactory",
