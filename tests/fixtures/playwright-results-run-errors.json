@@ -1,0 +1,7 @@
+{
+  "config": {},
+  "suites": [],
+  "errors": [
+    { "message": "Error: global setup failed" }
+  ]
+}
