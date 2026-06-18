@@ -187,8 +187,26 @@ function plural(count, word) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
+function normalizeRunErrors(errors = []) {
+  return errors.map((error, index) => ({
+    file: "<run-level>",
+    project: "global",
+    title: `Playwright run-level error ${index + 1}`,
+    expectedStatus: "passed",
+    status: "unexpected",
+    results: [
+      {
+        status: "failed",
+        error,
+      },
+    ],
+  }));
+}
+
 function buildSummary(results) {
   const tests = (results.suites || []).flatMap((suite) => collectTestsFromSuite(suite));
+  const runErrors = normalizeRunErrors(results.errors || []);
+  const allOutcomes = [...tests, ...runErrors];
   const statusCounts = new Map();
   const fileCounts = new Map();
   const byClass = new Map(CLASS_ORDER.map((name) => [name, {
@@ -197,10 +215,10 @@ function buildSummary(results) {
     signature: "",
   }]));
 
-  for (const test of tests) increment(statusCounts, test.status || "unknown");
+  for (const test of allOutcomes) increment(statusCounts, test.status || "unknown");
 
   const uniqueFailures = new Map();
-  for (const test of tests.filter(isUnexpected)) {
+  for (const test of allOutcomes.filter(isUnexpected)) {
     if (!uniqueFailures.has(testKey(test))) uniqueFailures.set(testKey(test), test);
   }
 
@@ -215,6 +233,7 @@ function buildSummary(results) {
 
   return {
     totalParsedTests: tests.length,
+    runLevelErrors: runErrors.length,
     uniqueFailingTests: uniqueFailures.size,
     statusCounts,
     fileCounts,
@@ -228,6 +247,7 @@ function renderMarkdown(summary, sourcePath) {
   lines.push("");
   lines.push(`Source: \`${normalizePath(sourcePath)}\``);
   lines.push(`Total parsed tests: **${summary.totalParsedTests}**`);
+  lines.push(`Run-level errors: **${summary.runLevelErrors}**`);
   lines.push(`Unique failing/unexpected tests: **${summary.uniqueFailingTests}**`);
   lines.push("");
   lines.push("## Status Counts");
@@ -275,6 +295,7 @@ function renderMarkdown(summary, sourcePath) {
 function toJson(summary) {
   return {
     totalParsedTests: summary.totalParsedTests,
+    runLevelErrors: summary.runLevelErrors,
     uniqueFailingTests: summary.uniqueFailingTests,
     statusCounts: Object.fromEntries(sortedEntries(summary.statusCounts)),
     failureClasses: Object.fromEntries(
