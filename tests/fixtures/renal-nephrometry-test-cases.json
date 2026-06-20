@@ -55,7 +55,7 @@
         "radius": "3.0",
         "exophytic": "endophytic",
         "nearness": ">=7",
-        "polar": "crosses",
+        "polar": "above/below",
         "anterior": "Neither/Indeterminate",
         "hilar": false
       },
@@ -67,7 +67,7 @@
           "E": 3,
           "N": 1,
           "A": "x",
-          "L": 2
+          "L": 1
         }
       },
       "interpretation": "Low complexity tumors are amenable to nephron-sparing approaches"
@@ -103,7 +103,7 @@
         "radius": "6.5",
         "exophytic": "<50",
         "nearness": "4-7",
-        "polar": "above/below",
+        "polar": "crosses",
         "anterior": "Posterior",
         "hilar": false
       },
@@ -173,7 +173,7 @@
       "description": "Minimum high complexity (10): Boundary case entering high complexity",
       "inputs": {
         "radius": "7.5",
-        "exophytic": ">=50",
+        "exophytic": "<50",
         "nearness": "4-7",
         "polar": "central",
         "anterior": "Posterior",
@@ -184,7 +184,7 @@
         "complexity": "High complexity",
         "scoreBreakdown": {
           "R": 3,
-          "E": 1,
+          "E": 2,
           "N": 2,
           "A": "p",
           "L": 3
@@ -198,7 +198,7 @@
       "inputs": {
         "radius": "8.0",
         "exophytic": "endophytic",
-        "nearness": "4-7",
+        "nearness": "<=4",
         "polar": "crosses",
         "anterior": "Neither/Indeterminate",
         "hilar": false
@@ -209,7 +209,7 @@
         "scoreBreakdown": {
           "R": 3,
           "E": 3,
-          "N": 2,
+          "N": 3,
           "A": "x",
           "L": 2
         }
@@ -245,7 +245,7 @@
       "description": "Low complexity with hilar involvement (6h): Small tumor abutting renal vessels",
       "inputs": {
         "radius": "3.5",
-        "exophytic": ">=50",
+        "exophytic": "<50",
         "nearness": ">=7",
         "polar": "crosses",
         "anterior": "Posterior",
@@ -256,7 +256,7 @@
         "complexity": "Low complexity",
         "scoreBreakdown": {
           "R": 1,
-          "E": 1,
+          "E": 2,
           "N": 1,
           "A": "p",
           "L": 2,
@@ -280,7 +280,7 @@
         "totalScore": "8xh",
         "complexity": "Moderate complexity",
         "scoreBreakdown": {
-          "R": 1,
+          "R": 2,
           "E": 3,
           "N": 1,
           "A": "x",
@@ -346,7 +346,7 @@
         "radius": "7.0",
         "exophytic": ">=50",
         "nearness": ">=7",
-        "polar": "above/below",
+        "polar": "crosses",
         "anterior": "Posterior",
         "hilar": false
       },
@@ -358,7 +358,7 @@
           "E": 1,
           "N": 1,
           "A": "p",
-          "L": 1
+          "L": 2
         }
       },
       "interpretation": "Moderate complexity tumors can usually be managed with partial nephrectomy"
@@ -367,7 +367,7 @@
       "id": "all-descriptors-test",
       "description": "Test all descriptor combinations: Indeterminate location without hilar",
       "inputs": {
-        "radius": "5.5",
+        "radius": "7.0",
         "exophytic": "<50",
         "nearness": "4-7",
         "polar": "central",
@@ -378,7 +378,7 @@
         "totalScore": "10x",
         "complexity": "High complexity",
         "scoreBreakdown": {
-          "R": 2,
+          "R": 3,
           "E": 2,
           "N": 2,
           "A": "x",
@@ -449,19 +449,19 @@
     "boundaryCases": 4,
     "scoringRules": {
       "R_Radius": {
-        "1": "≤ 4.0 cm",
+        "1": "\u2264 4.0 cm",
         "2": "> 4.0 and < 7.0 cm",
-        "3": "≥ 7.0 cm"
+        "3": "\u2265 7.0 cm"
       },
       "E_Exophytic": {
-        "1": "≥ 50% exophytic",
+        "1": "\u2265 50% exophytic",
         "2": "< 50% exophytic",
         "3": "Entirely endophytic"
       },
       "N_Nearness": {
-        "1": "≥ 7 mm from collecting system",
+        "1": "\u2265 7 mm from collecting system",
         "2": "4-7 mm from collecting system",
-        "3": "≤ 4 mm from collecting system"
+        "3": "\u2264 4 mm from collecting system"
       },
       "A_Anterior": {
         "descriptor": "a/p/x (anterior/posterior/neither)",
