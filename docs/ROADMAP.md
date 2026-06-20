@@ -1,6 +1,6 @@
 # Radulator Roadmap
 
-> Public, milestone-level roadmap. Last updated 2026-06-12. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
+> Public, milestone-level roadmap. Last updated 2026-06-20. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
 
 ## Where we are
 
@@ -13,6 +13,7 @@
 ## Phase 2 — Differentiate
 
 - **Guideline currency**: standing review of guideline revisions against what each calculator implements; items under clinical review: Bosniak v2019 alignment, LI-RADS CT/MRI treatment-response v2024 (new calculator candidate), MELD 3.0 (current OPTN adult liver-allocation standard since 2023; supersedes the MELD-Na the calculator implements today)
+- **Suite completeness**: finish each specialty's daily-work calculation set before scattering across specialties — a clinician who arrives for one calculation should find their whole working set here. First target: the cardiac-CT suite (CAD-RADS is live; coronary-artery-calcium / Agatston scoring with age/sex/ethnicity percentile is the missing daily-work companion)
 - **Guideline version system**: generalize the AAST-style version selector into a first-class architecture, so calculators can offer current and prior guideline versions side by side (initial targets: Fleischner, CAD-RADS, PI-RADS; then Bosniak, LI-RADS, Milan)
 - **Guided mode**: an optional "walk me through it" flow per calculator, with skill-level preferences for residents and students
 - **Reference depth**: PubMed-validated citations, related-articles surfacing, "next steps" sections, and structured report-text output (copy-paste-ready impressions)
