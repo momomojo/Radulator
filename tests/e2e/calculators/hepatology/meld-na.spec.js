@@ -92,7 +92,7 @@ test.describe("MELD-Na Calculator", () => {
 
       await expect(page.locator("text=MELD Score:")).toBeVisible();
       await expect(page.locator("text=MELD-Na Score:")).toBeVisible();
-      await expect(page.locator("text=Low risk")).toBeVisible();
+      await expect(page.locator("text=Low risk").first()).toBeVisible();
       await expect(page.locator("text=1.9%")).toBeVisible();
     });
 
@@ -105,14 +105,14 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const meldScore = await page
-        .locator("text=/MELD Score: \\d+/")
+        .locator("text=/MELD Score: \d+/")
         .textContent();
-      const score = parseInt(meldScore.match(/\\d+/)[0]);
+      const score = parseInt(meldScore.match(/\d+/)[0]);
 
       expect(score).toBeGreaterThanOrEqual(10);
       expect(score).toBeLessThanOrEqual(19);
 
-      await expect(page.locator("text=Moderate risk")).toBeVisible();
+      await expect(page.locator("text=Moderate risk").first()).toBeVisible();
       await expect(page.locator("text=6.0%")).toBeVisible();
     });
 
@@ -125,14 +125,14 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const meldScore = await page
-        .locator("text=/MELD Score: \\d+/")
+        .locator("text=/MELD Score: \d+/")
         .textContent();
-      const score = parseInt(meldScore.match(/\\d+/)[0]);
+      const score = parseInt(meldScore.match(/\d+/)[0]);
 
       expect(score).toBeGreaterThanOrEqual(20);
       expect(score).toBeLessThanOrEqual(29);
 
-      await expect(page.locator("text=High risk")).toBeVisible();
+      await expect(page.locator("text=High risk").first()).toBeVisible();
       await expect(page.locator("text=19.6%")).toBeVisible();
     });
 
@@ -145,14 +145,14 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const meldScore = await page
-        .locator("text=/MELD Score: \\d+/")
+        .locator("text=/MELD Score: \d+/")
         .textContent();
-      const score = parseInt(meldScore.match(/\\d+/)[0]);
+      const score = parseInt(meldScore.match(/\d+/)[0]);
 
       expect(score).toBeGreaterThanOrEqual(30);
       expect(score).toBeLessThanOrEqual(39);
 
-      await expect(page.locator("text=Very high risk")).toBeVisible();
+      await expect(page.locator("text=Very high risk").first()).toBeVisible();
       await expect(page.locator("text=52.6%")).toBeVisible();
     });
 
@@ -165,7 +165,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(page.locator("text=MELD Score: 40")).toBeVisible();
-      await expect(page.locator("text=Critical risk")).toBeVisible();
+      await expect(page.locator("text=Critical risk").first()).toBeVisible();
       await expect(page.locator("text=>70%")).toBeVisible();
     });
   });
@@ -180,14 +180,14 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const meldText = await page
-        .locator("text=/MELD Score: \\d+/")
+        .locator("text=/MELD Score: \d+/")
         .textContent();
       const meldNaText = await page
-        .locator("text=/MELD-Na Score: \\d+/")
+        .locator("text=/MELD-Na Score: \d+/")
         .textContent();
 
-      const meld = parseInt(meldText.match(/\\d+/)[0]);
-      const meldNa = parseInt(meldNaText.match(/\\d+/)[0]);
+      const meld = parseInt(meldText.match(/\d+/)[0]);
+      const meldNa = parseInt(meldNaText.match(/\d+/)[0]);
 
       // MELD-Na should be different from MELD when MELD > 11 and Na < 137
       expect(meldNa).toBeGreaterThan(meld);
@@ -206,14 +206,14 @@ test.describe("MELD-Na Calculator", () => {
       await expect(page.locator("text=MELD-Na equals MELD")).toBeVisible();
 
       const meldText = await page
-        .locator("text=/MELD Score: \\d+/")
+        .locator("text=/MELD Score: \d+/")
         .textContent();
       const meldNaText = await page
-        .locator("text=/MELD-Na Score: \\d+/")
+        .locator("text=/MELD-Na Score: \d+/")
         .textContent();
 
-      const meld = parseInt(meldText.match(/\\d+/)[0]);
-      const meldNa = parseInt(meldNaText.match(/\\d+/)[0]);
+      const meld = parseInt(meldText.match(/\d+/)[0]);
+      const meldNa = parseInt(meldNaText.match(/\d+/)[0]);
 
       expect(meldNa).toBe(meld);
     });
@@ -535,7 +535,7 @@ test.describe("MELD-Na Calculator", () => {
 
       await expect(page.locator("text=MELD Score: 6")).toBeVisible();
       await expect(page.locator("text=MELD-Na Score: 6")).toBeVisible();
-      await expect(page.locator("text=Low risk")).toBeVisible();
+      await expect(page.locator("text=Low risk").first()).toBeVisible();
     });
 
     test("should handle borderline MELD score (exactly 11)", async ({
@@ -562,14 +562,14 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const meldText = await page
-        .locator("text=/MELD Score: \\d+/")
+        .locator("text=/MELD Score: \d+/")
         .textContent();
       const meldNaText = await page
-        .locator("text=/MELD-Na Score: \\d+/")
+        .locator("text=/MELD-Na Score: \d+/")
         .textContent();
 
-      const meld = parseInt(meldText.match(/\\d+/)[0]);
-      const meldNa = parseInt(meldNaText.match(/\\d+/)[0]);
+      const meld = parseInt(meldText.match(/\d+/)[0]);
+      const meldNa = parseInt(meldNaText.match(/\d+/)[0]);
 
       // With Na=125, MELD-Na should be significantly higher than MELD
       expect(meldNa).toBeGreaterThan(meld);
@@ -607,6 +607,12 @@ test.describe("MELD-Na Calculator", () => {
 
   test.describe("Reference Links", () => {
     test("should display all 6 references", async ({ page }) => {
+      // Expand collapsed references (CollapsibleReferences shows only 3 by default)
+      const expandButton = page.getByRole('button', { name: /Show.*more/i });
+      if (await expandButton.isVisible().catch(() => false)) {
+        await expandButton.click();
+      }
+
       const references = await page
         .locator('section:has-text("References") li')
         .count();
@@ -671,7 +677,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const firstResult = await page
-        .locator("text=/MELD Score: \\d+/")
+        .locator("text=/MELD Score: \d+/")
         .textContent();
 
       // Second calculation with higher values
@@ -682,12 +688,12 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const secondResult = await page
-        .locator("text=/MELD Score: \\d+/")
+        .locator("text=/MELD Score: \d+/")
         .textContent();
 
       // Second MELD should be higher
-      const firstScore = parseInt(firstResult.match(/\\d+/)[0]);
-      const secondScore = parseInt(secondResult.match(/\\d+/)[0]);
+      const firstScore = parseInt(firstResult.match(/\d+/)[0]);
+      const secondScore = parseInt(secondResult.match(/\d+/)[0]);
       expect(secondScore).toBeGreaterThan(firstScore);
     });
   });

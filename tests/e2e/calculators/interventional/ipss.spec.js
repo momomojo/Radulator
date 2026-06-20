@@ -24,36 +24,24 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
   }) => {
     // Fill basal samples - use more specific selectors
     await page
-      .locator('label:has-text("Basal Left IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS ACTH")
       .fill("200");
     await page
-      .locator('label:has-text("Basal Right IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS ACTH")
       .fill("180");
     await page
-      .locator('label:has-text("Basal Peripheral ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral ACTH")
       .fill("50");
 
     // Basal PRL values
     await page
-      .locator('label:has-text("Basal Left IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS Prolactin")
       .fill("40");
     await page
-      .locator('label:has-text("Basal Right IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS Prolactin")
       .fill("38");
     await page
-      .locator('label:has-text("Basal Peripheral Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral Prolactin")
       .fill("18");
 
     // Add post-CRH sample at +6 minutes
@@ -112,36 +100,24 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
   test("Test 2: Ectopic ACTH Syndrome", async ({ page }) => {
     // Fill basal samples
     await page
-      .locator('label:has-text("Basal Left IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS ACTH")
       .fill("80");
     await page
-      .locator('label:has-text("Basal Right IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS ACTH")
       .fill("75");
     await page
-      .locator('label:has-text("Basal Peripheral ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral ACTH")
       .fill("60");
 
     // Basal PRL values
     await page
-      .locator('label:has-text("Basal Left IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS Prolactin")
       .fill("35");
     await page
-      .locator('label:has-text("Basal Right IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS Prolactin")
       .fill("33");
     await page
-      .locator('label:has-text("Basal Peripheral Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral Prolactin")
       .fill("16");
 
     // Add post-CRH sample at +6 minutes (still low ratios)
@@ -166,13 +142,12 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
       page.locator("text=Both sides successfully catheterized"),
     ).toBeVisible();
 
-    // Verify basal ratio is below threshold - use more specific selector
-    await expect(page.locator("text=Maximum Basal Ratio: 1.33")).toBeVisible();
+    // Verify basal ratio is below threshold (key and value render in
+    // separate spans, so match the value string the compute() emits).
+    await expect(page.locator("text=1.33 (≤2)")).toBeVisible();
 
-    // Verify peak ratio is below threshold - use more specific selector
-    await expect(
-      page.locator("text=Peak IPS/Peripheral Ratio: 1.38"),
-    ).toBeVisible();
+    // Verify peak ratio is below threshold
+    await expect(page.locator("text=1.38 (≤3)")).toBeVisible();
 
     // Verify diagnosis
     await expect(page.locator("text=🔴 ECTOPIC ACTH SYNDROME")).toBeVisible();
@@ -190,36 +165,24 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
   test("Test 3: Failed Catheterization", async ({ page }) => {
     // Fill basal samples with LOW PRL ratios (failed catheterization)
     await page
-      .locator('label:has-text("Basal Left IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS ACTH")
       .fill("200");
     await page
-      .locator('label:has-text("Basal Right IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS ACTH")
       .fill("180");
     await page
-      .locator('label:has-text("Basal Peripheral ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral ACTH")
       .fill("50");
 
     // Basal PRL values (FAILED - ratios < 1.5)
     await page
-      .locator('label:has-text("Basal Left IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS Prolactin")
       .fill("20");
     await page
-      .locator('label:has-text("Basal Right IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS Prolactin")
       .fill("22");
     await page
-      .locator('label:has-text("Basal Peripheral Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral Prolactin")
       .fill("18");
 
     // Click Calculate
@@ -246,36 +209,24 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
   test("Test 4: Non-lateralizing Cushing's Disease", async ({ page }) => {
     // Fill basal samples
     await page
-      .locator('label:has-text("Basal Left IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS ACTH")
       .fill("150");
     await page
-      .locator('label:has-text("Basal Right IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS ACTH")
       .fill("145");
     await page
-      .locator('label:has-text("Basal Peripheral ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral ACTH")
       .fill("45");
 
     // Basal PRL values
     await page
-      .locator('label:has-text("Basal Left IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS Prolactin")
       .fill("40");
     await page
-      .locator('label:has-text("Basal Right IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS Prolactin")
       .fill("38");
     await page
-      .locator('label:has-text("Basal Peripheral Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral Prolactin")
       .fill("18");
 
     // Add post-CRH sample at +6 minutes (high ratios but similar between sides)
@@ -355,34 +306,22 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
   }) => {
     // Fill basal samples
     await page
-      .locator('label:has-text("Basal Left IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS ACTH")
       .fill("150");
     await page
-      .locator('label:has-text("Basal Right IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS ACTH")
       .fill("145");
     await page
-      .locator('label:has-text("Basal Peripheral ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral ACTH")
       .fill("50");
     await page
-      .locator('label:has-text("Basal Left IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS Prolactin")
       .fill("40");
     await page
-      .locator('label:has-text("Basal Right IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS Prolactin")
       .fill("38");
     await page
-      .locator('label:has-text("Basal Peripheral Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral Prolactin")
       .fill("18");
 
     const postCrhTable = page.locator(
@@ -432,14 +371,10 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
   test("Test 7: Input Validation - Missing Basal Values", async ({ page }) => {
     // Fill only some basal values
     await page
-      .locator('label:has-text("Basal Left IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS ACTH")
       .fill("200");
     await page
-      .locator('label:has-text("Basal Right IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS ACTH")
       .fill("180");
     // Leave Peripheral ACTH and all PRL values empty
 
@@ -510,10 +445,14 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
     // Scroll to bottom to see references
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
-    // Verify references section exists
-    await expect(page.locator("text=References")).toBeVisible();
+    // Verify references section exists (use the heading to avoid matching the
+    // "Show N more references" expand button)
+    await expect(
+      page.getByRole("heading", { name: "References" }),
+    ).toBeVisible();
 
-    // Verify key references are present
+    // Verify key references are present (Oldfield is the first, always-visible
+    // reference even while the list is collapsed)
     await expect(page.locator("text=Oldfield EH")).toBeVisible();
     await expect(page.locator("text=N Engl J Med")).toBeVisible();
 
@@ -527,36 +466,24 @@ test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
   test("Test 10: Borderline Catheterization (1.5-1.8)", async ({ page }) => {
     // Fill basal samples with BORDERLINE PRL ratios
     await page
-      .locator('label:has-text("Basal Left IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS ACTH")
       .fill("150");
     await page
-      .locator('label:has-text("Basal Right IPS ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS ACTH")
       .fill("145");
     await page
-      .locator('label:has-text("Basal Peripheral ACTH")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral ACTH")
       .fill("50");
 
     // Borderline PRL values (1.67 and 1.78 ratios)
     await page
-      .locator('label:has-text("Basal Left IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Left IPS Prolactin")
       .fill("30");
     await page
-      .locator('label:has-text("Basal Right IPS Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Right IPS Prolactin")
       .fill("32");
     await page
-      .locator('label:has-text("Basal Peripheral Prolactin")')
-      .locator("..")
-      .locator("input")
+      .getByLabel("Basal Peripheral Prolactin")
       .fill("18");
 
     // Click Calculate

@@ -401,21 +401,29 @@ test.describe("PI-RADS v2.1 Calculator", () => {
     test("should have valid DOI links for primary sources", async ({
       page,
     }) => {
-      // PI-RADS v2.1 Update (Turkbey et al. 2019)
+      // PI-RADS v2.1 Update (Turkbey et al. 2019) - within first 3 references
       const pirads21 = page.locator(
         'a[href="https://doi.org/10.1016/j.eururo.2019.02.033"]',
       );
       await expect(pirads21).toBeVisible();
       await expect(pirads21).toContainText("Eur Urol. 2019");
 
-      // PI-RADS v2 (Weinreb et al. 2016)
+      // PI-RADS v2 (Weinreb et al. 2016) - within first 3 references
       const pirads2 = page.locator(
         'a[href="https://doi.org/10.1016/j.eururo.2015.08.052"]',
       );
       await expect(pirads2).toBeVisible();
       await expect(pirads2).toContainText("Eur Urol. 2016");
 
-      // PRECISION Trial (Kasivisvanathan et al. 2018)
+      // PRECISION Trial (Kasivisvanathan et al. 2018) is the 4th reference -
+      // expand collapsed references first
+      const expandBtn = page.locator(
+        '.references-section button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
+
       const precision = page.locator(
         'a[href="https://doi.org/10.1056/NEJMoa1801993"]',
       );

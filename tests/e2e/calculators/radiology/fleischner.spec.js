@@ -476,6 +476,11 @@ test.describe("Fleischner 2017 Guidelines Calculator", () => {
     });
 
     test("should have correct number of reference links", async ({ page }) => {
+      // References are collapsed by default (first 3) - expand to reveal all
+      const showMore = page.locator('button:has-text("more reference")');
+      if (await showMore.count()) {
+        await showMore.click();
+      }
       const refLinks = page.locator(
         'a[href^="https://doi.org"], a[href^="https://www.acr.org"]',
       );

@@ -87,7 +87,9 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
       // Check References section
-      await expect(page.locator("text=References")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "References" }),
+      ).toBeVisible();
     });
 
     test("should show subLabels with units and ranges", async ({ page }) => {
@@ -546,7 +548,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     }) => {
       await page.locator('input[value="segmentectomy"]').click();
       await page.locator('input[value="mird"]').click();
-      await page.fill('input[id="segment_volume"]', "150");
+      await page.fill('input[id="segment_volume"]', "1000");
       await page.fill('input[id="target_dose"]', "205");
       await page.fill('input[id="lung_shunt"]', "5");
       await page.fill('input[id="vial_residual"]', "1");
@@ -562,9 +564,9 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     test("should recommend 10 GBq vial for higher activity", async ({
       page,
     }) => {
-      await page.locator('input[value="segmentectomy"]').click();
+      await page.locator('input[value="lobectomy"]').click();
       await page.locator('input[value="mird"]').click();
-      await page.fill('input[id="segment_volume"]', "300");
+      await page.fill('input[id="segment_volume"]', "2000");
       await page.fill('input[id="target_dose"]', "205");
       await page.fill('input[id="lung_shunt"]', "5");
       await page.fill('input[id="vial_residual"]', "1");
@@ -582,9 +584,9 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     }) => {
       await page.locator('input[value="lobectomy"]').click();
       await page.locator('input[value="mird"]').click();
-      await page.fill('input[id="segment_volume"]', "600");
-      await page.fill('input[id="target_dose"]', "205");
-      await page.fill('input[id="lung_shunt"]', "5");
+      await page.fill('input[id="segment_volume"]', "1500");
+      await page.fill('input[id="target_dose"]', "500");
+      await page.fill('input[id="lung_shunt"]', "2");
       await page.fill('input[id="vial_residual"]', "1");
       await page.locator('input[value="glass"]').click();
 
@@ -681,7 +683,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       await expect(
         page.locator(
-          "text=Error: Please select treatment intent, dosimetry model, and microsphere type",
+          "text=Please select treatment intent, dosimetry model, and microsphere type",
         ),
       ).toBeVisible();
     });
@@ -700,7 +702,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       await expect(
         page.locator(
-          "text=Error: Target segment volume must be between 10-2000 mL",
+          "text=Target segment volume must be between 10-2000 mL",
         ),
       ).toBeVisible();
     });
@@ -716,7 +718,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Error: Target dose must be between 80-800 Gy"),
+        page.locator("text=Target dose must be between 80-800 Gy"),
       ).toBeVisible();
     });
 
@@ -732,7 +734,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       await expect(
         page.locator(
-          "text=Error: Lung shunt fraction is required and must be between 0-50%",
+          "text=Lung shunt fraction is required and must be between 0-50%",
         ),
       ).toBeVisible();
     });
@@ -749,7 +751,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       await expect(
         page.locator(
-          "text=Error: Lung shunt fraction is required and must be between 0-50%",
+          "text=Lung shunt fraction is required and must be between 0-50%",
         ),
       ).toBeVisible();
     });
@@ -766,7 +768,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Error: Vial residual must be between 0-20%"),
+        page.locator("text=Vial residual must be between 0-20%"),
       ).toBeVisible();
     });
 
@@ -784,7 +786,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Tumor volume.*partition model/"),
+        page.locator("text=/Tumor volume.*partition model/"),
       ).toBeVisible();
     });
 
@@ -801,7 +803,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Tumor-to-normal ratio.*partition model/"),
+        page.locator("text=/Tumor-to-normal ratio.*partition model/"),
       ).toBeVisible();
     });
 
@@ -819,7 +821,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
       await expect(
         page.locator(
-          "text=Error: Tumor-to-normal ratio must be between 1-50 for partition model",
+          "text=Tumor-to-normal ratio must be between 1-50 for partition model",
         ),
       ).toBeVisible();
     });
@@ -837,7 +839,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Tumor volume.*≤ segment volume/"),
+        page.locator("text=/Tumor volume.*≤ segment volume/"),
       ).toBeVisible();
     });
 
@@ -854,7 +856,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Patient weight.*0-500 kg/"),
+        page.locator("text=/Patient weight.*0-500 kg/"),
       ).toBeVisible();
     });
 
@@ -871,7 +873,7 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=/Error:.*Patient height.*0-300 cm/"),
+        page.locator("text=/Patient height.*0-300 cm/"),
       ).toBeVisible();
     });
   });
@@ -990,6 +992,12 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
   test.describe("References and Documentation", () => {
     test("should display all 15 references", async ({ page }) => {
+      // Expand collapsed references (CollapsibleReferences shows only 3 by default)
+      const expandButton = page.getByRole('button', { name: /Show.*more/i });
+      if (await expandButton.isVisible().catch(() => false)) {
+        await expandButton.click();
+      }
+
       const references = await page
         .locator('section:has-text("References") li')
         .count();
@@ -997,6 +1005,12 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     });
 
     test("should have working reference links", async ({ page }) => {
+      // Expand collapsed references (CollapsibleReferences shows only 3 by default)
+      const expandButton = page.getByRole("button", { name: /Show.*more/i });
+      if (await expandButton.isVisible().catch(() => false)) {
+        await expandButton.click();
+      }
+
       // Check that DOI links are present and properly formatted
       await expect(
         page.locator('a[href*="doi.org/10.1007/BF00949868"]'),
@@ -1018,6 +1032,12 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     test("should include manufacturer and professional society references", async ({
       page,
     }) => {
+      // Expand collapsed references (CollapsibleReferences shows only 3 by default)
+      const expandButton = page.getByRole("button", { name: /Show.*more/i });
+      if (await expandButton.isVisible().catch(() => false)) {
+        await expandButton.click();
+      }
+
       await expect(
         page.locator("text=TheraSphere Y-90 Glass Microspheres Package Insert"),
       ).toBeVisible();

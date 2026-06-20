@@ -71,7 +71,7 @@ test.describe('BCLC Staging Calculator', () => {
     // Liver function (Child-Pugh)
     await expect(page.locator('text=Total Bilirubin (mg/dL)')).toBeVisible();
     await expect(page.locator('text=Serum Albumin (g/dL)')).toBeVisible();
-    await expect(page.locator('text=INR')).toBeVisible();
+    await expect(page.locator('text=INR').first()).toBeVisible();
     await expect(page.locator('text=Ascites')).toBeVisible();
     await expect(page.locator('text=Hepatic Encephalopathy')).toBeVisible();
 
@@ -513,6 +513,12 @@ test.describe('BCLC Staging Calculator', () => {
 
     // Verify reference section exists
     await expect(page.locator('h3:has-text("References")')).toBeVisible();
+
+    // Expand collapsed references (CollapsibleReferences shows only 3 by default)
+    const expandButton = page.getByRole('button', { name: /Show.*more/i });
+    if (await expandButton.isVisible().catch(() => false)) {
+      await expandButton.click();
+    }
 
     // Count reference links (should be 12)
     const referenceLinks = await page.locator('section a[href^="http"]').count();

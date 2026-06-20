@@ -129,8 +129,8 @@ test.describe('Spleen Size Calculator', () => {
   });
 
   test('shows gender radio buttons', async ({ page }) => {
-    await expect(page.getByRole('radio', { name: 'female' })).toBeVisible();
-    await expect(page.getByRole('radio', { name: 'male' })).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'female', exact: true })).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'male', exact: true })).toBeVisible();
   });
 
   test('shows height input field', async ({ page }) => {
@@ -150,7 +150,7 @@ test.describe('Spleen Size Calculator', () => {
   testCases.forEach(testCase => {
     test(`calculates correctly: ${testCase.description}`, async ({ page }) => {
       // Select gender
-      await page.getByRole('radio', { name: testCase.gender }).click();
+      await page.getByRole('radio', { name: testCase.gender, exact: true }).click();
 
       // Enter height
       await page.getByRole('spinbutton', { name: 'Body Height (cm)' }).fill(testCase.height.toString());
@@ -210,7 +210,7 @@ test.describe('Spleen Size Calculator', () => {
     const femaleLength = await page.getByText('12.5').textContent();
 
     // Switch to male
-    await page.getByRole('radio', { name: 'male' }).click();
+    await page.getByRole('radio', { name: 'male', exact: true }).click();
     await page.getByRole('button', { name: 'Calculate' }).click();
 
     const maleLength = await page.getByText('13.2').textContent();

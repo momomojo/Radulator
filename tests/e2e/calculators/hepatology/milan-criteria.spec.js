@@ -33,8 +33,8 @@ test.describe('Milan Criteria Calculator', () => {
   test.describe('Visual Appeal & Theme Matching', () => {
 
     test('should display calculator with proper styling and professional appearance', async ({ page }) => {
-      // Check calculator card is visible
-      const card = page.locator('.card, [class*="card"]').first();
+      // Check calculator card is visible (main content Card uses max-w-4xl)
+      const card = page.locator('.max-w-4xl').first();
       await expect(card).toBeVisible();
 
       // Check title is visible and styled
@@ -66,9 +66,9 @@ test.describe('Milan Criteria Calculator', () => {
       const ucsfInfo = page.locator('text=expanded UCSF criteria');
       await expect(ucsfInfo).toBeVisible();
 
-      // Check for clinical guidance about unknown status
-      const unknownGuidance = page.locator('text=unknown');
-      await expect(unknownGuidance).toBeVisible();
+      // Check for clinical guidance about unknown status (scoped to info text)
+      const unknownGuidance = page.getByTestId('calculator-info-text');
+      await expect(unknownGuidance).toContainText('unknown');
     });
 
     test('should have consistent theme with other calculators', async ({ page }) => {
@@ -145,15 +145,21 @@ test.describe('Milan Criteria Calculator', () => {
       // Check for references header
       await expect(page.locator('h3:has-text("References")')).toBeVisible();
 
+      // Expand collapsed references (CollapsibleReferences shows only 3 by default)
+      const expandButton = page.getByRole('button', { name: /Show.*more/i });
+      if (await expandButton.isVisible().catch(() => false)) {
+        await expandButton.click();
+      }
+
       // Check for Mazzaferro 1996 (Original Milan Criteria)
       const mazzaferro1996 = page.locator('a:has-text("Mazzaferro V et al. N Engl J Med 1996")');
       await expect(mazzaferro1996).toBeVisible();
       await expect(mazzaferro1996).toHaveAttribute('href', 'https://pubmed.ncbi.nlm.nih.gov/8594428/');
 
       // Check for Yao 2001 (UCSF Expanded Criteria)
-      const yao2001 = page.locator('a:has-text("Yao FY et al. Transplantation 2001")');
+      const yao2001 = page.locator('a:has-text("Yao FY et al. Hepatology 2001")');
       await expect(yao2001).toBeVisible();
-      // Note: PMID in code is incorrect (11923664), correct PMID should be 11391528
+      await expect(yao2001).toHaveAttribute('href', 'https://pubmed.ncbi.nlm.nih.gov/11391528/');
 
       // Check for Mazzaferro 2009 (Validation)
       const mazzaferro2009 = page.locator('a:has-text("Mazzaferro V et al. Lancet Oncol 2009")');
@@ -163,10 +169,16 @@ test.describe('Milan Criteria Calculator', () => {
       // Check for Duffy 2007 (UCSF vs Milan Outcomes)
       const duffy2007 = page.locator('a:has-text("Duffy JP et al. Ann Surg 2007")');
       await expect(duffy2007).toBeVisible();
-      // Note: PMID in code is incorrect (17435545), correct PMID should be 17717454
+      await expect(duffy2007).toHaveAttribute('href', 'https://pubmed.ncbi.nlm.nih.gov/17717454/');
     });
 
     test('should have working PubMed links', async ({ page }) => {
+      // Expand collapsed references (CollapsibleReferences shows only 3 by default)
+      const expandButton = page.getByRole('button', { name: /Show.*more/i });
+      if (await expandButton.isVisible().catch(() => false)) {
+        await expandButton.click();
+      }
+
       // Check that all reference links open in new tab
       const links = page.locator('section.references-section a');
       const count = await links.count();
@@ -195,7 +207,7 @@ test.describe('Milan Criteria Calculator', () => {
       await page.click('button:has-text("Calculate")');
 
       // Verify results
-      await expect(page.locator('text=WITHIN CRITERIA')).toBeVisible();
+      await expect(page.locator('text=WITHIN CRITERIA').first()).toBeVisible();
       await expect(page.locator('text=ELIGIBLE - Meets Milan Criteria')).toBeVisible();
       await expect(page.locator('text=4-year survival >70%')).toBeVisible();
     });
@@ -213,7 +225,7 @@ test.describe('Milan Criteria Calculator', () => {
 
       // Verify results
       await expect(page.locator('text=BEYOND CRITERIA').first()).toBeVisible();
-      await expect(page.locator('text=WITHIN CRITERIA').nth(1)).toBeVisible();
+      await expect(page.locator('text=WITHIN CRITERIA').first()).toBeVisible();
       await expect(page.locator('text=ELIGIBLE - Meets UCSF Criteria')).toBeVisible();
     });
 
@@ -235,7 +247,7 @@ test.describe('Milan Criteria Calculator', () => {
       // Verify results
       await expect(page.locator('text=WITHIN CRITERIA').first()).toBeVisible();
       await expect(page.locator('text=ELIGIBLE - Meets Milan Criteria')).toBeVisible();
-      await expect(page.locator('text=2 tumors, largest 2.8 cm')).toBeVisible();
+      await expect(page.locator('text=2 tumors, largest 2.8 cm').first()).toBeVisible();
     });
 
     test('BEYOND Milan but WITHIN UCSF: 3 tumors (4.0, 3.5, 0.5 cm)', async ({ page }) => {
@@ -260,7 +272,7 @@ test.describe('Milan Criteria Calculator', () => {
       await expect(page.locator('text=3 tumors, largest 4.0 cm exceeds 3 cm limit')).toBeVisible();
 
       // Verify UCSF WITHIN
-      await expect(page.locator('text=WITHIN CRITERIA').nth(1)).toBeVisible();
+      await expect(page.locator('text=WITHIN CRITERIA').first()).toBeVisible();
       await expect(page.locator('text=total 8.0 cm')).toBeVisible();
     });
 
@@ -278,7 +290,7 @@ test.describe('Milan Criteria Calculator', () => {
       // Verify results
       await expect(page.locator('text=BEYOND CRITERIA').first()).toBeVisible();
       await expect(page.locator('text=NOT ELIGIBLE - Beyond both Milan and UCSF criteria')).toBeVisible();
-      await expect(page.locator('text=4 or more tumors present')).toBeVisible();
+      await expect(page.locator('text=4 or more tumors present').first()).toBeVisible();
     });
 
     test('BEYOND both criteria: Macrovascular invasion present', async ({ page }) => {
@@ -286,16 +298,15 @@ test.describe('Milan Criteria Calculator', () => {
       await page.locator('select').first().selectOption('1');
       await page.fill('input[type="number"]', '3.0');
 
-      await page.check('input[type="radio"][value="yes"]');
-      const radioButtons = page.locator('input[type="radio"][value="no"]');
-      await radioButtons.nth(1).check();
+      await page.locator('#macrovascularInvasion-yes').check();
+      await page.locator('#extrahepaticDisease-no').check();
 
       // Calculate
       await page.click('button:has-text("Calculate")');
 
       // Verify results
       await expect(page.locator('text=BEYOND CRITERIA').first()).toBeVisible();
-      await expect(page.locator('text=Macrovascular invasion present (absolute contraindication)')).toBeVisible();
+      await expect(page.locator('text=Macrovascular invasion present (absolute contraindication)').first()).toBeVisible();
       await expect(page.locator('text=NOT ELIGIBLE')).toBeVisible();
     });
 
@@ -304,17 +315,15 @@ test.describe('Milan Criteria Calculator', () => {
       await page.locator('select').first().selectOption('1');
       await page.fill('input[type="number"]', '3.0');
 
-      const radioButtons = page.locator('input[type="radio"][value="no"]');
-      await radioButtons.nth(0).check();
-
-      await page.check('input[type="radio"][value="yes"]');
+      await page.locator('#macrovascularInvasion-no').check();
+      await page.locator('#extrahepaticDisease-yes').check();
 
       // Calculate
       await page.click('button:has-text("Calculate")');
 
       // Verify results
       await expect(page.locator('text=BEYOND CRITERIA').first()).toBeVisible();
-      await expect(page.locator('text=Extrahepatic disease present (absolute contraindication)')).toBeVisible();
+      await expect(page.locator('text=Extrahepatic disease present (absolute contraindication)').first()).toBeVisible();
       await expect(page.locator('text=NOT ELIGIBLE')).toBeVisible();
     });
 
@@ -322,33 +331,30 @@ test.describe('Milan Criteria Calculator', () => {
       await page.locator('select').first().selectOption('1');
       await page.fill('input[type="number"]', '4.0');
 
-      await page.check('input[type="radio"][value="unknown"]');
-      const radioButtons = page.locator('input[type="radio"][value="no"]');
-      await radioButtons.nth(1).check();
+      await page.locator('#macrovascularInvasion-unknown').check();
+      await page.locator('#extrahepaticDisease-no').check();
 
       // Calculate
       await page.click('button:has-text("Calculate")');
 
       // Verify results
       await expect(page.locator('text=INDETERMINATE - Further diagnostic workup required')).toBeVisible();
-      await expect(page.locator('text=Macrovascular invasion status unknown - further workup required')).toBeVisible();
+      await expect(page.locator('text=Macrovascular invasion status unknown - further workup required').first()).toBeVisible();
     });
 
     test('INDETERMINATE: Unknown extrahepatic disease status', async ({ page }) => {
       await page.locator('select').first().selectOption('1');
       await page.fill('input[type="number"]', '4.0');
 
-      const radioButtons = page.locator('input[type="radio"][value="no"]');
-      await radioButtons.nth(0).check();
-
-      await page.check('input[type="radio"][value="unknown"]');
+      await page.locator('#macrovascularInvasion-no').check();
+      await page.locator('#extrahepaticDisease-unknown').check();
 
       // Calculate
       await page.click('button:has-text("Calculate")');
 
       // Verify results
       await expect(page.locator('text=INDETERMINATE - Further diagnostic workup required')).toBeVisible();
-      await expect(page.locator('text=Extrahepatic disease status unknown - further workup required')).toBeVisible();
+      await expect(page.locator('text=Extrahepatic disease status unknown - further workup required').first()).toBeVisible();
     });
 
     test('BEYOND Milan, edge of UCSF: Single tumor exactly 6.5 cm', async ({ page }) => {
@@ -589,7 +595,7 @@ test.describe('Milan Criteria Calculator', () => {
       await page.click('button:has-text("Calculate")');
 
       // Check formatted output
-      await expect(page.locator('text=4.6 cm')).toBeVisible();
+      await expect(page.locator('text=4.6 cm').first()).toBeVisible();
     });
 
     test('should capitalize status values properly', async ({ page }) => {
