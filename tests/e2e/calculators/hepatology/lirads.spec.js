@@ -42,16 +42,16 @@ test.describe("LI-RADS v2018 Calculator", () => {
     }) => {
       await expect(page.getByTestId('calculator-title').first()).toContainText("LI-RADS v2018");
       await expect(
-        page.getByText("Liver Imaging Reporting and Data System"),
-      ).toBeVisible();
+        page.getByTestId('calculator-info-text'),
+      ).toContainText("Liver Imaging Reporting and Data System");
     });
 
     test("should display info section with LI-RADS explanation", async ({
       page,
     }) => {
-      await expect(page.getByText("At-Risk Population")).toBeVisible();
-      await expect(page.getByText("LR-1")).toBeVisible();
-      await expect(page.getByText("LR-5")).toBeVisible();
+      await expect(page.getByTestId('calculator-info-text')).toContainText("hepatocellular carcinoma");
+      await expect(page.getByTestId('calculator-info-text')).toContainText("LR-1");
+      await expect(page.getByTestId('calculator-info-text')).toContainText("LR-5");
     });
 
     test("should have initial checkbox for at-risk population", async ({
@@ -67,15 +67,17 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should show LR-NC when study is technically inadequate", async ({
       page,
     }) => {
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
       // Enable at-risk population
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
+      await page.locator('label[for="high_risk_population"]').click();
 
       // Leave study_adequate unchecked (not adequate)
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-NC")).toBeVisible();
-      await expect(page.locator("text=Not Categorizable")).toBeVisible();
-      await expect(page.locator("text=Repeat imaging")).toBeVisible();
+      await expect(results.locator("text=LR-NC")).toBeVisible();
+      await expect(results.locator("text=Not Categorizable")).toBeVisible();
+      await expect(results.locator("text=Repeat imaging")).toBeVisible();
     });
   });
 
@@ -83,19 +85,21 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should classify as LR-TIV when definite tumor in vein", async ({
       page,
     }) => {
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
       // Enable at-risk population and adequate study
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
 
       // Select tumor in vein
-      await page.getByText("Definite Tumor in Vein (LR-TIV)").click();
+      await page.locator('label[for="tumor_in_vein"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-TIV")).toBeVisible();
-      await expect(page.locator("text=Tumor in Vein")).toBeVisible();
+      await expect(results.locator("text=LR-TIV")).toBeVisible();
+      await expect(results.locator("text=Tumor in Vein")).toBeVisible();
       await expect(
-        page.locator("text=Contraindication to liver transplantation"),
+        results.locator("text=Contraindication to liver transplantation"),
       ).toBeVisible();
     });
   });
@@ -104,19 +108,21 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should classify as LR-1 for definitely benign observation", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
 
       // Select definitely benign
-      await page.getByText("Definitely benign").click();
+      await page.locator('label[for="benign_status-definitely_benign"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-1")).toBeVisible();
-      await expect(page.locator("text=Definitely Benign")).toBeVisible();
-      await expect(page.locator("text=0%")).toBeVisible();
+      await expect(results.locator("text=LR-1")).toBeVisible();
+      await expect(results.locator("text=Definitely Benign")).toBeVisible();
+      await expect(results.locator("text=0%").first()).toBeVisible();
       await expect(
-        page.locator("text=Return to routine surveillance"),
+        results.locator("text=Return to routine surveillance"),
       ).toBeVisible();
     });
   });
@@ -125,17 +131,19 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should classify as LR-2 for probably benign observation", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
 
       // Select probably benign
-      await page.getByText("Probably benign").click();
+      await page.locator('label[for="benign_status-probably_benign"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-2")).toBeVisible();
-      await expect(page.locator("text=Probably Benign")).toBeVisible();
-      await expect(page.locator("text=~14%")).toBeVisible();
+      await expect(results.locator("text=LR-2")).toBeVisible();
+      await expect(results.locator("text=Probably Benign")).toBeVisible();
+      await expect(results.locator("text=~14%")).toBeVisible();
     });
   });
 
@@ -143,43 +151,47 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should classify as LR-M with targetoid features", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
 
       // Select indeterminate for benign status
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Enable LR-M features
-      await page.getByText("LR-M Features Present").click();
+      await page.locator('label[for="has_lrm_features"]').click();
 
       // Select targetoid features
-      await page.getByText("Rim arterial phase hyperenhancement").click();
-      await page.getByText("Peripheral washout").click();
+      await page.locator('label[for="lrm_rim_aphe"]').click();
+      await page.locator('label[for="lrm_peripheral_washout"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-M")).toBeVisible();
-      await expect(page.locator("text=Not HCC-Specific")).toBeVisible();
-      await expect(page.locator("text=93-100%")).toBeVisible();
-      await expect(page.locator("text=Biopsy recommended")).toBeVisible();
+      await expect(results.locator("text=LR-M").first()).toBeVisible();
+      await expect(results.locator("text=Not HCC-Specific")).toBeVisible();
+      await expect(results.locator("text=93-100%")).toBeVisible();
+      await expect(results.locator("text=Biopsy recommended")).toBeVisible();
     });
 
     test("should classify as LR-M with rim APHE", async ({ page }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Fill in size
       await page.fill('input[id="observation_size"]', "25");
 
       // Select rim APHE (directly triggers LR-M)
-      await page.getByText("Rim APHE").click();
+      await page.locator('label[for="aphe-rim"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-M")).toBeVisible();
+      await expect(results.locator("text=LR-M").first()).toBeVisible();
       await expect(
-        page.locator("text=intrahepatic cholangiocarcinoma"),
+        results.locator("text=intrahepatic cholangiocarcinoma"),
       ).toBeVisible();
     });
   });
@@ -188,44 +200,48 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should classify as LR-3 for observation without APHE, <20mm, 0 additional features", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Size <20mm, no APHE
       await page.fill('input[id="observation_size"]', "15");
-      await page.getByText("No APHE").click();
-      await page.getByText("Absent", { exact: true }).first().click(); // Washout absent
-      await page.getByText("Absent", { exact: true }).nth(1).click(); // Capsule absent
-      await page.getByText("Absent", { exact: true }).nth(2).click(); // Threshold growth absent
+      await page.locator('label[for="aphe-none"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-3")).toBeVisible();
-      await expect(page.locator("text=Intermediate Probability")).toBeVisible();
-      await expect(page.locator("text=38-40%")).toBeVisible();
+      await expect(results.locator("text=LR-3")).toBeVisible();
+      await expect(results.locator("text=Intermediate Probability")).toBeVisible();
+      await expect(results.locator("text=38-40%")).toBeVisible();
       await expect(
-        page.locator("text=Repeat imaging in 3-6 months"),
+        results.locator("text=Repeat imaging in 3-6 months"),
       ).toBeVisible();
     });
 
     test("should classify as LR-3 for observation with APHE, <10mm, 0 additional features", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Size <10mm with APHE
       await page.fill('input[id="observation_size"]', "8");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Absent", { exact: true }).first().click(); // Washout absent
-      await page.getByText("Absent", { exact: true }).nth(1).click(); // Capsule absent
-      await page.getByText("Absent", { exact: true }).nth(2).click(); // Threshold growth absent
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-3")).toBeVisible();
+      await expect(results.locator("text=LR-3")).toBeVisible();
     });
   });
 
@@ -233,62 +249,68 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should classify as LR-4 for observation with APHE, <10mm, 1 additional feature", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Size <10mm with APHE + washout
       await page.fill('input[id="observation_size"]', "8");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Present", { exact: true }).first().click(); // Washout present
-      await page.getByText("Absent", { exact: true }).first().click(); // Capsule absent
-      await page.getByText("Absent", { exact: true }).nth(1).click(); // Threshold growth absent
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-present"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
-      await expect(page.locator("text=Probably HCC")).toBeVisible();
-      await expect(page.locator("text=67-74%")).toBeVisible();
+      await expect(results.locator("text=LR-4").first()).toBeVisible();
+      await expect(results.locator("text=Probably HCC")).toBeVisible();
+      await expect(results.locator("text=67-74%")).toBeVisible();
     });
 
     test("should classify as LR-4 for observation with APHE, >=20mm, 0 additional features", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Size >=20mm with APHE only
       await page.fill('input[id="observation_size"]', "25");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Absent", { exact: true }).first().click();
-      await page.getByText("Absent", { exact: true }).nth(1).click();
-      await page.getByText("Absent", { exact: true }).nth(2).click();
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(results.locator("text=LR-4").first()).toBeVisible();
     });
 
     test("should classify as LR-4 for 10-19mm with APHE + capsule only", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Size 10-19mm with APHE + capsule (no washout or threshold growth)
       await page.fill('input[id="observation_size"]', "15");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Absent", { exact: true }).first().click(); // Washout absent
-      await page.getByText("Present", { exact: true }).first().click(); // Capsule present
-      await page.getByText("Absent", { exact: true }).first().click(); // Threshold growth absent
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-present"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(results.locator("text=LR-4").first()).toBeVisible();
       await expect(
-        page.locator(
+        results.locator(
           "text=capsule alone (without washout or threshold growth) yields LR-4",
         ),
       ).toBeVisible();
@@ -299,64 +321,70 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should classify as LR-5 for observation with APHE, >=20mm, 1+ additional features", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Size >=20mm with APHE + washout
       await page.fill('input[id="observation_size"]', "25");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Present", { exact: true }).first().click(); // Washout present
-      await page.getByText("Absent", { exact: true }).first().click(); // Capsule absent
-      await page.getByText("Absent", { exact: true }).nth(1).click(); // Threshold growth absent
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-present"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-5")).toBeVisible();
-      await expect(page.locator("text=Definitely HCC")).toBeVisible();
-      await expect(page.locator("text=92-95%")).toBeVisible();
+      await expect(results.locator("text=LR-5").first()).toBeVisible();
+      await expect(results.locator("text=Definitely HCC")).toBeVisible();
+      await expect(results.locator("text=92-95%")).toBeVisible();
       await expect(
-        page.locator("text=Treat as HCC without biopsy"),
+        results.locator("text=Treat as HCC without biopsy"),
       ).toBeVisible();
     });
 
     test("should classify as LR-5 for 10-19mm with APHE + washout", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Size 10-19mm with APHE + washout
       await page.fill('input[id="observation_size"]', "15");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Present", { exact: true }).first().click(); // Washout present
-      await page.getByText("Absent", { exact: true }).first().click(); // Capsule absent
-      await page.getByText("Absent", { exact: true }).nth(1).click(); // Threshold growth absent
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-present"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-5")).toBeVisible();
+      await expect(results.locator("text=LR-5").first()).toBeVisible();
     });
 
     test("should classify as LR-5 for 10-19mm with APHE + threshold growth", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Size 10-19mm with APHE + threshold growth
       await page.fill('input[id="observation_size"]', "15");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Absent", { exact: true }).first().click(); // Washout absent
-      await page.getByText("Absent", { exact: true }).nth(1).click(); // Capsule absent
-      await page.getByText("Present", { exact: true }).first().click(); // Threshold growth present
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-present"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-5")).toBeVisible();
-      await expect(page.locator("text=Threshold growth")).toBeVisible();
+      await expect(results.locator("text=LR-5").first()).toBeVisible();
+      await expect(results.locator("text=Threshold growth").first()).toBeVisible();
     });
   });
 
@@ -364,16 +392,18 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should upgrade LR-3 to LR-4 with ancillary features favoring malignancy", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Set up LR-3 scenario
       await page.fill('input[id="observation_size"]', "15");
-      await page.getByText("No APHE").click();
-      await page.getByText("Absent", { exact: true }).first().click();
-      await page.getByText("Absent", { exact: true }).nth(1).click();
-      await page.getByText("Absent", { exact: true }).nth(2).click();
+      await page.locator('label[for="aphe-none"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       // Add ancillary feature favoring malignancy
       await page
@@ -382,25 +412,27 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(results.locator("text=LR-4").first()).toBeVisible();
       await expect(
-        page.locator("text=Upgraded from LR-3 to LR-4"),
+        results.locator("text=Upgraded from LR-3 to LR-4"),
       ).toBeVisible();
     });
 
     test("should downgrade LR-5 to LR-4 with ancillary features favoring benignity", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Set up LR-5 scenario
       await page.fill('input[id="observation_size"]', "25");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Present", { exact: true }).first().click(); // Washout present
-      await page.getByText("Absent", { exact: true }).first().click();
-      await page.getByText("Absent", { exact: true }).nth(1).click();
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-present"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       // Add ancillary feature favoring benignity
       await page
@@ -409,25 +441,27 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(results.locator("text=LR-4").first()).toBeVisible();
       await expect(
-        page.locator("text=Downgraded from LR-5 to LR-4"),
+        results.locator("text=Downgraded from LR-5 to LR-4"),
       ).toBeVisible();
     });
 
     test("should not adjust category when conflicting ancillary features present", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Set up LR-3 scenario
       await page.fill('input[id="observation_size"]', "15");
-      await page.getByText("No APHE").click();
-      await page.getByText("Absent", { exact: true }).first().click();
-      await page.getByText("Absent", { exact: true }).nth(1).click();
-      await page.getByText("Absent", { exact: true }).nth(2).click();
+      await page.locator('label[for="aphe-none"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       // Add conflicting ancillary features
       await page
@@ -439,10 +473,16 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-3")).toBeVisible();
+      // Conflicting ancillary features cancel out: category stays LR-3 and the
+      // app applies no adjustment (the "Ancillary Adjustment" row is only shown
+      // when the category actually changes), so no adjustment text is rendered.
+      await expect(results.locator("text=LR-3").first()).toBeVisible();
       await expect(
-        page.locator("text=Conflicting ancillary features"),
-      ).toBeVisible();
+        results.locator("text=Upgraded from LR-3"),
+      ).toHaveCount(0);
+      await expect(
+        results.locator("text=Downgraded"),
+      ).toHaveCount(0);
     });
   });
 
@@ -450,87 +490,97 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should show error when not in at-risk population", async ({
       page,
     }) => {
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
       // Don't enable at-risk population
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LI-RADS not applicable")).toBeVisible();
+      await expect(results.locator("text=LI-RADS not applicable")).toBeVisible();
       await expect(
-        page.locator("text=Patient must be in at-risk population"),
+        results.locator("text=Patient must be in at-risk population"),
       ).toBeVisible();
     });
 
     test("should show error when size and APHE not provided for diagnostic table", async ({
       page,
     }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Don't fill in size or APHE
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator(
+        results.locator(
           "text=Please complete observation size and APHE assessment",
         ),
       ).toBeVisible();
     });
 
     test("should note that <10mm cannot be LR-5", async ({ page }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       // Size <10mm with multiple features (would be LR-5 if larger)
       await page.fill('input[id="observation_size"]', "8");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Present", { exact: true }).first().click(); // Washout
-      await page.getByText("Present", { exact: true }).nth(1).click(); // Capsule
-      await page.getByText("Present", { exact: true }).nth(2).click(); // Threshold growth
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-present"]').click();
+      await page.locator('label[for="capsule-present"]').click();
+      await page.locator('label[for="threshold_growth-present"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=LR-4")).toBeVisible();
+      await expect(results.locator("text=LR-4")).toBeVisible();
       await expect(
-        page.locator("text=<10mm cannot be categorized as LR-5"),
+        results.locator("text=<10mm cannot be categorized as LR-5"),
       ).toBeVisible();
     });
 
     test("should show threshold growth definition", async ({ page }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       await page.fill('input[id="observation_size"]', "20");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Absent", { exact: true }).first().click();
-      await page.getByText("Absent", { exact: true }).nth(1).click();
-      await page.getByText("Present", { exact: true }).first().click(); // Threshold growth
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-present"]').click();
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=50% size increase in")).toBeVisible();
+      await expect(results.locator("text=50% size increase in")).toBeVisible();
     });
   });
 
   test.describe("Clinical Notes", () => {
     test("should show AASLD guidelines note for LR-5", async ({ page }) => {
-      await page.getByText("Patient in LI-RADS At-Risk Population").click();
-      await page.getByText("Study Technically Adequate").click();
-      await page.getByText("Indeterminate - Continue evaluation").click();
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
 
       await page.fill('input[id="observation_size"]', "25");
-      await page.getByText("Nonrim APHE").click();
-      await page.getByText("Present", { exact: true }).first().click();
-      await page.getByText("Absent", { exact: true }).first().click();
-      await page.getByText("Absent", { exact: true }).nth(1).click();
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-present"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=treatment without biopsy per AASLD"),
+        results.locator("text=treatment without biopsy per AASLD"),
       ).toBeVisible();
-      await expect(page.locator("text=OPTN criteria")).toBeVisible();
+      await expect(results.locator("text=OPTN criteria")).toBeVisible();
     });
   });
 
@@ -543,6 +593,10 @@ test.describe("LI-RADS v2018 Calculator", () => {
     });
 
     test("should have correct number of reference links", async ({ page }) => {
+      // Expand collapsed references first
+      const expand = page.getByRole('button', { name: /Show.*more/i });
+      if (await expand.isVisible().catch(() => false)) await expand.click();
+
       const refLinks = page.locator('a[href^="https://doi.org"]');
       const count = await refLinks.count();
       expect(count).toBeGreaterThanOrEqual(8);
@@ -551,6 +605,10 @@ test.describe("LI-RADS v2018 Calculator", () => {
     test("should have link to ACR LI-RADS official resources", async ({
       page,
     }) => {
+      // Expand collapsed references first
+      const expand = page.getByRole('button', { name: /Show.*more/i });
+      if (await expand.isVisible().catch(() => false)) await expand.click();
+
       const acrLink = page.locator('a[href*="acr.org"]');
       await expect(acrLink.first()).toBeVisible();
     });

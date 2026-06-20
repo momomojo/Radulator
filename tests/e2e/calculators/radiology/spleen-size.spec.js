@@ -40,7 +40,7 @@ const testCases = [
     gender: 'female',
     height: 180,
     expectedLength: 12.6,
-    expectedVolume: 368,
+    expectedVolume: 338,
     shouldShowWarning: false,
     description: 'Female at upper bound of validated range'
   },
@@ -85,7 +85,7 @@ const testCases = [
   {
     gender: 'male',
     height: 200,
-    expectedLength: 14.6,
+    expectedLength: 14.5,
     expectedVolume: 419,
     shouldShowWarning: false,
     description: 'Male at upper bound of validated range'

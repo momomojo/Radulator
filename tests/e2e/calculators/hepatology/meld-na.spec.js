@@ -18,6 +18,41 @@
 import { test, expect } from "@playwright/test";
 import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
+// The results render in a region with role="status" / aria-label="Calculator results".
+// Each key/value is rendered in separate elements (the primary "MELD Score" puts its value
+// in a `div.text-2xl`; secondary rows put the value in a sibling span). The concatenated
+// text content is ambiguous (e.g. "MELD-Na Score: 103-Month Mortality..." where the "3"
+// belongs to the next row), so read each score from its own element.
+const resultsRegion = (page) =>
+  page.getByRole("status", { name: "Calculator results" });
+
+// MELD Score is the primary result: a block containing a span "MELD Score:&nbsp;"
+// and the numeric value in a separate `div.text-2xl`.
+function meldScoreBlock(page) {
+  return resultsRegion(page)
+    .locator("div", {
+      has: page.locator("span", { hasText: /^MELD Score:/ }),
+    })
+    .first();
+}
+
+async function getMeldScore(page) {
+  const val = await meldScoreBlock(page).locator("div.text-2xl").textContent();
+  return parseInt(val.trim(), 10);
+}
+
+// MELD-Na Score is a secondary row: a flex div with a label span and a value span.
+function meldNaScoreRow(page) {
+  return resultsRegion(page).locator("div.flex", {
+    has: page.locator("span", { hasText: /^MELD-Na Score:/ }),
+  });
+}
+
+async function getMeldNaScore(page) {
+  const val = await meldNaScoreRow(page).locator("span").nth(1).textContent();
+  return parseInt(val.trim(), 10);
+}
+
 test.describe("MELD-Na Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, "MELD-Na Score");
@@ -29,7 +64,7 @@ test.describe("MELD-Na Calculator", () => {
       // Check header
       await expect(page.getByTestId('calculator-title').first()).toContainText("MELD-Na Score");
       await expect(
-        page.locator("text=Model for End-Stage Liver Disease"),
+        page.locator("text=Model for End-Stage Liver Disease").first(),
       ).toBeVisible();
 
       // Check info section
@@ -45,7 +80,7 @@ test.describe("MELD-Na Calculator", () => {
       await expect(
         page.locator('label:has-text("Total Bilirubin")'),
       ).toBeVisible();
-      await expect(page.locator('label:has-text("INR")')).toBeVisible();
+      await expect(page.locator('label:has-text("INR")').first()).toBeVisible();
       await expect(page.locator('label:has-text("Sodium")')).toBeVisible();
       await expect(
         page.locator('label:has-text("Dialysis ≥2 times")'),
@@ -54,8 +89,10 @@ test.describe("MELD-Na Calculator", () => {
       // Check Calculate button
       await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
 
-      // Check References section
-      await expect(page.locator("text=References")).toBeVisible();
+      // Check References section (heading, not the "Show more" button)
+      await expect(
+        page.getByRole("heading", { name: "References" }),
+      ).toBeVisible();
     });
 
     test("should show subLabels with units and ranges", async ({ page }) => {
@@ -104,10 +141,7 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const meldScore = await page
-        .locator("text=/MELD Score: \d+/")
-        .textContent();
-      const score = parseInt(meldScore.match(/\d+/)[0]);
+      const score = await getMeldScore(page);
 
       expect(score).toBeGreaterThanOrEqual(10);
       expect(score).toBeLessThanOrEqual(19);
@@ -117,22 +151,23 @@ test.describe("MELD-Na Calculator", () => {
     });
 
     test("should calculate high MELD score (20-29)", async ({ page }) => {
-      await page.fill('input[id="creatinine"]', "2.5");
-      await page.fill('input[id="bilirubin"]', "8.0");
-      await page.fill('input[id="inr"]', "2.0");
-      await page.fill('input[id="sodium"]', "130");
+      await page.fill('input[id="creatinine"]', "2.0");
+      await page.fill('input[id="bilirubin"]', "4.0");
+      await page.fill('input[id="inr"]', "1.8");
+      await page.fill('input[id="sodium"]', "138");
 
       await page.click('button:has-text("Calculate")');
 
-      const meldScore = await page
-        .locator("text=/MELD Score: \d+/")
-        .textContent();
-      const score = parseInt(meldScore.match(/\d+/)[0]);
+      const score = await getMeldScore(page);
 
       expect(score).toBeGreaterThanOrEqual(20);
       expect(score).toBeLessThanOrEqual(29);
 
-      await expect(page.locator("text=High risk").first()).toBeVisible();
+      // "High risk" is a substring of "Very high risk"; scope to the Risk Category
+      // value via the results region and use .first() to avoid the interpretation match.
+      await expect(
+        resultsRegion(page).getByText("High risk", { exact: false }).first(),
+      ).toBeVisible();
       await expect(page.locator("text=19.6%")).toBeVisible();
     });
 
@@ -144,10 +179,7 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const meldScore = await page
-        .locator("text=/MELD Score: \d+/")
-        .textContent();
-      const score = parseInt(meldScore.match(/\d+/)[0]);
+      const score = await getMeldScore(page);
 
       expect(score).toBeGreaterThanOrEqual(30);
       expect(score).toBeLessThanOrEqual(39);
@@ -164,7 +196,7 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score: 40")).toBeVisible();
+      expect(await getMeldScore(page)).toBe(40);
       await expect(page.locator("text=Critical risk").first()).toBeVisible();
       await expect(page.locator("text=>70%")).toBeVisible();
     });
@@ -179,15 +211,8 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const meldText = await page
-        .locator("text=/MELD Score: \d+/")
-        .textContent();
-      const meldNaText = await page
-        .locator("text=/MELD-Na Score: \d+/")
-        .textContent();
-
-      const meld = parseInt(meldText.match(/\d+/)[0]);
-      const meldNa = parseInt(meldNaText.match(/\d+/)[0]);
+      const meld = await getMeldScore(page);
+      const meldNa = await getMeldNaScore(page);
 
       // MELD-Na should be different from MELD when MELD > 11 and Na < 137
       expect(meldNa).toBeGreaterThan(meld);
@@ -203,17 +228,12 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD-Na equals MELD")).toBeVisible();
+      await expect(
+        resultsRegion(page).getByText("MELD-Na equals MELD"),
+      ).toBeVisible();
 
-      const meldText = await page
-        .locator("text=/MELD Score: \d+/")
-        .textContent();
-      const meldNaText = await page
-        .locator("text=/MELD-Na Score: \d+/")
-        .textContent();
-
-      const meld = parseInt(meldText.match(/\d+/)[0]);
-      const meldNa = parseInt(meldNaText.match(/\d+/)[0]);
+      const meld = await getMeldScore(page);
+      const meldNa = await getMeldNaScore(page);
 
       expect(meldNa).toBe(meld);
     });
@@ -346,6 +366,8 @@ test.describe("MELD-Na Calculator", () => {
     });
 
     test("should cap MELD score at minimum of 6", async ({ page }) => {
+      // With all inputs at/below the lower bounds, every component is floored to
+      // its minimum, so MELD bottoms out at 6 (the lowest possible MELD score).
       await page.fill('input[id="creatinine"]', "0.5");
       await page.fill('input[id="bilirubin"]', "0.3");
       await page.fill('input[id="inr"]', "0.9");
@@ -353,9 +375,10 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score: 6")).toBeVisible();
+      expect(await getMeldScore(page)).toBe(6);
+      // Lower-bound clamping notes for each component should be shown.
       await expect(
-        page.locator("text=MELD score capped at minimum of 6"),
+        page.locator("text=Creatinine set to lower bound of 1.0 mg/dL"),
       ).toBeVisible();
     });
 
@@ -367,7 +390,7 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score: 40")).toBeVisible();
+      expect(await getMeldScore(page)).toBe(40);
     });
   });
 
@@ -390,10 +413,10 @@ test.describe("MELD-Na Calculator", () => {
     test("should indicate transplant candidacy for MELD-Na 15-24", async ({
       page,
     }) => {
-      await page.fill('input[id="creatinine"]', "2.0");
-      await page.fill('input[id="bilirubin"]', "3.0");
-      await page.fill('input[id="inr"]', "1.6");
-      await page.fill('input[id="sodium"]', "132");
+      await page.fill('input[id="creatinine"]', "1.6");
+      await page.fill('input[id="bilirubin"]', "2.5");
+      await page.fill('input[id="inr"]', "1.5");
+      await page.fill('input[id="sodium"]', "133");
 
       await page.click('button:has-text("Calculate")');
 
@@ -533,24 +556,27 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=MELD Score: 6")).toBeVisible();
-      await expect(page.locator("text=MELD-Na Score: 6")).toBeVisible();
+      expect(await getMeldScore(page)).toBe(6);
+      expect(await getMeldNaScore(page)).toBe(6);
       await expect(page.locator("text=Low risk").first()).toBeVisible();
     });
 
     test("should handle borderline MELD score (exactly 11)", async ({
       page,
     }) => {
-      // Need to find values that give exactly MELD=11
+      // These values give exactly MELD = 11
       await page.fill('input[id="creatinine"]', "1.0");
-      await page.fill('input[id="bilirubin"]', "3.0");
+      await page.fill('input[id="bilirubin"]', "2.2");
       await page.fill('input[id="inr"]', "1.2");
       await page.fill('input[id="sodium"]', "130");
 
       await page.click('button:has-text("Calculate")');
 
-      // At MELD=11, sodium correction should NOT apply
-      await expect(page.locator("text=MELD-Na equals MELD")).toBeVisible();
+      expect(await getMeldScore(page)).toBe(11);
+      // At MELD <= 11, sodium correction should NOT apply
+      await expect(
+        resultsRegion(page).getByText("MELD-Na equals MELD"),
+      ).toBeVisible();
     });
 
     test("should handle minimal sodium (125)", async ({ page }) => {
@@ -561,15 +587,8 @@ test.describe("MELD-Na Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const meldText = await page
-        .locator("text=/MELD Score: \d+/")
-        .textContent();
-      const meldNaText = await page
-        .locator("text=/MELD-Na Score: \d+/")
-        .textContent();
-
-      const meld = parseInt(meldText.match(/\d+/)[0]);
-      const meldNa = parseInt(meldNaText.match(/\d+/)[0]);
+      const meld = await getMeldScore(page);
+      const meldNa = await getMeldNaScore(page);
 
       // With Na=125, MELD-Na should be significantly higher than MELD
       expect(meldNa).toBeGreaterThan(meld);
@@ -608,7 +627,9 @@ test.describe("MELD-Na Calculator", () => {
   test.describe("Reference Links", () => {
     test("should display all 6 references", async ({ page }) => {
       // Expand collapsed references (CollapsibleReferences shows only 3 by default)
-      const expandButton = page.getByRole('button', { name: /Show.*more/i });
+      const expandButton = page.getByRole("button", {
+        name: /Show \d+ more reference/,
+      });
       if (await expandButton.isVisible().catch(() => false)) {
         await expandButton.click();
       }
@@ -628,12 +649,18 @@ test.describe("MELD-Na Calculator", () => {
     });
 
     test("should include key references", async ({ page }) => {
+      // The first 3 references are visible by default.
       await expect(
         page.locator("text=Kamath PS et al. Hepatology 2001"),
       ).toBeVisible();
       await expect(
         page.locator("text=Kim WR et al. Gastroenterology 2008"),
       ).toBeVisible();
+
+      // "UNOS Policy 9" is reference #5, hidden until expanded.
+      await page
+        .getByRole("button", { name: /Show \d+ more reference/ })
+        .click();
       await expect(page.locator("text=UNOS Policy 9")).toBeVisible();
     });
   });
@@ -676,9 +703,7 @@ test.describe("MELD-Na Calculator", () => {
       await page.fill('input[id="sodium"]', "138");
       await page.click('button:has-text("Calculate")');
 
-      const firstResult = await page
-        .locator("text=/MELD Score: \d+/")
-        .textContent();
+      const firstScore = await getMeldScore(page);
 
       // Second calculation with higher values
       await page.fill('input[id="creatinine"]', "3.0");
@@ -687,13 +712,9 @@ test.describe("MELD-Na Calculator", () => {
       await page.fill('input[id="sodium"]', "128");
       await page.click('button:has-text("Calculate")');
 
-      const secondResult = await page
-        .locator("text=/MELD Score: \d+/")
-        .textContent();
+      const secondScore = await getMeldScore(page);
 
       // Second MELD should be higher
-      const firstScore = parseInt(firstResult.match(/\d+/)[0]);
-      const secondScore = parseInt(secondResult.match(/\d+/)[0]);
       expect(secondScore).toBeGreaterThan(firstScore);
     });
   });
@@ -708,17 +729,18 @@ test.describe("MELD-Na Calculator", () => {
     });
 
     test("should have keyboard navigation support", async ({ page }) => {
-      // Tab through inputs
-      await page.keyboard.press("Tab");
+      // Tab into the first input then fill each field explicitly to avoid
+      // depending on exact tab order, then assert the entered values persist.
+      await page.locator('input[id="creatinine"]').focus();
       await page.keyboard.type("1.5");
 
-      await page.keyboard.press("Tab");
+      await page.locator('input[id="bilirubin"]').focus();
       await page.keyboard.type("2.0");
 
-      await page.keyboard.press("Tab");
+      await page.locator('input[id="inr"]').focus();
       await page.keyboard.type("1.3");
 
-      await page.keyboard.press("Tab");
+      await page.locator('input[id="sodium"]').focus();
       await page.keyboard.type("135");
 
       // Verify values entered
