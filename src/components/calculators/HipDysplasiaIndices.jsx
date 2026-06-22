@@ -83,8 +83,6 @@ export const HipDysplasiaIndices = {
     const {
       dob,
       gender,
-      ccd_right,
-      ccd_left,
       mi_right_a,
       mi_right_b,
       mi_left_a,

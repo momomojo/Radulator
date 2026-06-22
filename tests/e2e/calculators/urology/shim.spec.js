@@ -23,11 +23,10 @@ import { test, expect } from "@playwright/test";
 import {
   navigateToCalculator,
   selectRadio,
-  verifyReferenceLinks,
   verifyThemeConsistency,
   verifyMobileResponsive,
 } from "../../../helpers/calculator-test-helper.js";
-import testCases from "../../../fixtures/shim-test-cases.json" assert { type: "json" };
+import testCases from "../../../fixtures/shim-test-cases.json" with { type: "json" };
 
 const CALCULATOR_NAME = "IIEF-5 (SHIM Score)";
 

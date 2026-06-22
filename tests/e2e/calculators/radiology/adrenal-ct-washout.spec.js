@@ -2,13 +2,9 @@ import { test, expect } from "@playwright/test";
 import {
   navigateToCalculator,
   fillInput,
-  verifyResult,
-  verifyReferenceLinks,
   verifyThemeConsistency,
   verifyMobileResponsive,
   clearAllInputs,
-  verifyCalculationAccuracy,
-  testEdgeCases,
 } from "../../../helpers/calculator-test-helper.js";
 
 /**

@@ -244,7 +244,7 @@ test.describe('Spleen Size Calculator', () => {
     await expect(page.getByRole('radio', { name: 'female' })).toBeVisible();
   });
 
-  test('citation link opens in new context', async ({ page, context }) => {
+  test('citation link opens in new context', async ({ page }) => {
     const citationLink = page.getByRole('link', { name: /Chow KU/ });
 
     // Verify link has correct href

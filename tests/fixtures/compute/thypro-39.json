@@ -15,7 +15,7 @@
         "fields": [
           { "key": "Goiter Symptoms", "equals": "50.0 / 100" },
           { "key": "Hyperthyroid Symptoms", "equals": "50.0 / 100" },
-          { "key": "Composite Score", "includes": "50.0 / 100 (Moderate impact)" }
+          { "key": "Composite Score", "includes": "50.0 / 100 (Moderate (26–50))" }
         ]
       }
     },
@@ -35,7 +35,7 @@
         "noError": true,
         "fields": [
           { "key": "Goiter Symptoms", "equals": "100.0 / 100" },
-          { "key": "Composite Score", "includes": "0.0 / 100 (Minimal impact)" }
+          { "key": "Composite Score", "includes": "0.0 / 100 (Low (0–25))" }
         ]
       }
     },

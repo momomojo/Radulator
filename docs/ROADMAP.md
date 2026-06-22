@@ -1,14 +1,17 @@
 # Radulator Roadmap
 
-> Public, milestone-level roadmap. Last updated 2026-06-20. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
+> Public, milestone-level roadmap. Last updated 2026-06-22. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
 
 ## Where we are
 
-38 calculators across 11 specialties, ~1,100 Playwright E2E tests, live at [radulator.com](https://radulator.com). Phase 1 (Fix & Refine) is essentially complete: severity-based result colors, copy-results, guideline version badges, first-time onboarding, and a clinician-feedback sprint that added AAST 2025 kidney OIS (with a 2018/2025 version selector), a pancreas organ module, and per-grade imaging guidance. Recently landed: per-calculator static pages with full SEO metadata, and a WCAG 2.1 AA accessibility pass.
+38 calculators across 11 specialties, a clean ESLint baseline, and 1,400+ Playwright E2E checks, live at [radulator.com](https://radulator.com). Phase 1 (Fix & Refine) is complete: severity-based result colors, copy-results, guideline version badges, first-time onboarding, per-calculator info/education panels, a clinician-feedback sprint that added AAST 2025 kidney OIS (with a 2018/2025 version selector), a pancreas organ module, per-grade imaging guidance, per-calculator static pages with full SEO metadata, and a WCAG 2.1 AA accessibility pass.
 
-## Phase 1 — remaining
+## Phase 1 — complete
 
-- Calculator info/education content expansion
+- Calculator info/education panels present across the live calculator suite
+- ESLint baseline clean under `npm run lint`
+- Static calculator pages and sitemap generated for calculator-level SEO
+- Accessibility, copy-results, onboarding, and guideline-version badge foundations in place
 
 ## Phase 2 — Differentiate
 

@@ -13,6 +13,16 @@ export const AdrenalMRICSI = {
   tags: ["Radiology", "Adrenal", "Endocrinology"],
   metaDesc:
     "Free Adrenal MRI Chemical Shift Index Calculator. Calculate signal intensity index and adrenal-to-spleen CSI ratio to characterize adrenal lesions. Differentiate lipid-rich adenomas.",
+  info: {
+    text:
+      "Adrenal MRI chemical-shift imaging helps characterize adrenal lesions by detecting intracellular lipid signal loss on opposed-phase images.\n\n" +
+      "Key Points:\n" +
+      "• Signal-intensity index compares adrenal in-phase and opposed-phase signal\n" +
+      "• Adrenal-to-spleen CSI ratio normalizes adrenal signal change to splenic signal\n" +
+      "• Signal-intensity index ≥16.5% supports a lipid-rich adenoma pattern\n" +
+      "• Lipid-poor adenomas, metastases, hemorrhage, and technical factors can overlap\n\n" +
+      "Use with the full MRI appearance, lesion size, prior imaging, oncologic history, and local adrenal-incidentaloma guidance.",
+  },
   fields: [
     { id: "a_ip", label: "Adrenal SI in‑phase", type: "number" },
     { id: "a_op", label: "Adrenal SI opposed‑phase", type: "number" },
