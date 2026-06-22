@@ -572,6 +572,7 @@ test.describe("Prostate Volume Calculator", () => {
       const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results).toContainText("Prostate Volume (mL):");
       await expect(results).toContainText("85.8");
+      await expect(page.locator("text=Normal prostate volume")).toHaveCount(0);
     });
 
     test("should show clinical context for PSA-Density thresholds", async ({
