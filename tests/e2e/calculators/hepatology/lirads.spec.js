@@ -21,7 +21,6 @@
 import { test, expect } from "@playwright/test";
 import {
   navigateToCalculator,
-  verifyReferenceLinks,
   verifyThemeConsistency,
   verifyMobileResponsive,
 } from "../../../helpers/calculator-test-helper.js";

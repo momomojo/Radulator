@@ -32,6 +32,16 @@ export const AVSCortisol = {
   tags: ["Interventional", "Endocrinology", "Adrenal"],
   metaDesc:
     "Free AVS Cortisol Calculator for Cushing's syndrome. Adrenal vein sampling interpretation with epinephrine validation, lateralization ratios, and Young criteria. CSV export.",
+  info: {
+    text:
+      "Adrenal vein sampling for ACTH-independent cortisol excess evaluates whether cortisol secretion lateralizes to one adrenal gland. This workflow uses epinephrine gradients to confirm adrenal blood sampling before interpreting cortisol ratios.\n\n" +
+      "Key Points:\n" +
+      "• Epinephrine gradient helps validate successful adrenal-vein cannulation\n" +
+      "• AV/PV cortisol ratios are interpreted only when sampling is adequate\n" +
+      "• Cortisol lateralization ratio supports unilateral vs bilateral secretion patterns\n" +
+      "• Indeterminate patterns should prompt multidisciplinary review rather than automatic treatment selection\n\n" +
+      "Use alongside biochemical testing, adrenal imaging, procedural notes, and local endocrine surgery/interventional radiology protocols.",
+  },
   isCustomComponent: true,
   Component: function AVSCortisolCalculator() {
     // Patient metadata
