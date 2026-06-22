@@ -12,7 +12,7 @@ You are working on **radulator.com** — free medical calculators used by real c
 
 **3. EXECUTE.** Small, single-purpose commits with conventional messages (`fix:`, `feat:`, `docs:`, `test:`). Match the surrounding code's style exactly. Never edit generated artifacts (`dist/`). Never commit secrets, tokens, or `.env` content.
 
-**4. TEST.** Minimum for every change: `npm ci && npm run build && npm run lint`. Lint must match main's baseline — zero NEW errors (the baseline itself is dirty; do not try to fix unrelated lint debt in your PR). Behavioral changes need a test that would catch their regression. Calculator logic changes additionally require the full Playwright suite (`npm test`) — not just smoke.
+**4. TEST.** Minimum for every change: `npm ci && npm run build && npm run lint && npm run check:invariants`. Lint/invariants must match main's baseline — zero NEW errors. Behavioral changes need a test that would catch their regression. Calculator logic changes additionally require the full Playwright suite (`npm test`) — not just smoke. UI/product changes need feature proof per `docs/development/feature-verification.md`: start `scripts/dev-local.sh up` or `preview`, drive the app, and record screenshot/trace/proof paths.
 
 **5. CLEAN UP.** Re-read your full diff as a hostile reviewer: stray debug output, commented-out code, accidental file touches, scope creep — remove them. Your diff should contain nothing you cannot justify in one sentence.
 
@@ -41,8 +41,11 @@ npm ci            # always this, never bare npm install, for clean state
 npm run dev       # local dev server
 npm run build     # production build — also generates 38 static calculator pages + sitemap
 npm run lint      # must match main's baseline (no NEW errors)
+npm run check:invariants  # Radulator-specific metadata/guardrail checks
 npm test          # full Playwright suite (required for calculator-logic changes)
 npm run test:smoke
+scripts/dev-local.sh up    # local app-driving QA server in tmux
+npm run proof:feature -- --route '/#/tirads' --expect-text 'TI-RADS'
 ```
 
 Rollback (owner/maintainers): revert the merge commit (`git revert -m 1 <sha>`) on a branch → PR → gate; deploy follows the merge automatically.
