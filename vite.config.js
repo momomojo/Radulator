@@ -8,6 +8,14 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), "");
   const ga4Id = env.VITE_GA4_MEASUREMENT_ID || "";
+  // E2E/CI builds intentionally omit the real GA4 ID so automated visits do
+  // not pollute analytics. Keep the warning for local production builds and
+  // the real deploy workflow, where a missing ID would mean production tracking
+  // was not injected.
+  const shouldWarnMissingGa4 =
+    mode === "production" &&
+    (process.env.CI !== "true" ||
+      process.env.GITHUB_WORKFLOW === "Deploy to GitHub Pages");
 
   return {
     plugins: [
@@ -28,9 +36,11 @@ export default defineConfig(({ mode }) => {
 
           // Only inject GA4 if ID is provided and not a placeholder
           if (!ga4Id || ga4Id === "G-XXXXXXXXXX") {
-            console.warn(
-              "⚠️  GA4 Measurement ID not configured. Set VITE_GA4_MEASUREMENT_ID in .env file.",
-            );
+            if (shouldWarnMissingGa4) {
+              console.warn(
+                "⚠️  GA4 Measurement ID not configured. Set VITE_GA4_MEASUREMENT_ID in .env file.",
+              );
+            }
             return html;
           }
 
