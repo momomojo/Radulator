@@ -537,8 +537,9 @@ test.describe("Prostate Volume Calculator", () => {
       await page.keyboard.press("Tab");
       await page.keyboard.type("2.5");
 
-      // Trigger the calculation via the Calculate button
-      await page.getByRole("button", { name: "Calculate" }).click();
+      // Tab to the Calculate button and activate it via keyboard
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Enter");
 
       // Results should be displayed
       await expect(page.getByRole('status', { name: 'Calculator results' })).toBeVisible();
