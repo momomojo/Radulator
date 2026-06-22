@@ -41,6 +41,7 @@ nul
 # Test artifacts
 playwright-report/
 test-results/
+.radulator-loop-index/
 
 # .claude directory is version-controlled for agents
 # But exclude session/temp files
