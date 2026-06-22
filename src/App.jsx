@@ -3,6 +3,7 @@
 // All formulas mirror radcalc.online calculators with referenced studies.
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Check, ClipboardList } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,10 @@ import {
   trackResultsCopied,
   trackOnboarding,
 } from "@/lib/analytics";
+import {
+  buildReportSnippet,
+  canBuildReportSnippet,
+} from "@/lib/reportSnippets";
 import {
   WelcomeCard,
   GuideButton,
@@ -145,11 +150,13 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [snippetCopied, setSnippetCopied] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
 
-  // Reset copied state when switching calculators
+  // Reset clipboard feedback when switching calculators
   useEffect(() => {
     setCopied(false);
+    setSnippetCopied(false);
   }, [active]);
 
   // Current calculator definition
@@ -225,6 +232,8 @@ function AppContent() {
   const run = () => {
     const result = def.compute(vals);
     setResults(result);
+    setCopied(false);
+    setSnippetCopied(false);
 
     const category =
       Object.keys(categories).find((cat) => categories[cat].includes(active)) ||
@@ -235,6 +244,11 @@ function AppContent() {
       trackResultViewed(def.id, def.name);
     }
   };
+
+  const hasReportSnippet = useMemo(
+    () => canBuildReportSnippet(def?.id, out),
+    [def?.id, out],
+  );
 
   // Format results as plain text for clipboard
   const formatResultsForClipboard = (results, calculatorName) => {
@@ -278,6 +292,21 @@ function AppContent() {
       setCopied(true);
       trackResultsCopied(def.id, def.name);
       setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: silently fail
+    }
+  };
+
+  const handleCopyReportSnippet = async () => {
+    if (!out || !def || !hasReportSnippet) return;
+
+    const text = buildReportSnippet({ calculatorId: def.id, results: out });
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setSnippetCopied(true);
+      setTimeout(() => setSnippetCopied(false), 2000);
     } catch {
       // Fallback: silently fail
     }
@@ -1251,7 +1280,37 @@ function AppContent() {
                       </div>
                     )}
                   {/* Copy & Print Results Buttons */}
-                  <div className="mt-4 flex justify-end gap-2 no-print">
+                  <div className="mt-4 flex flex-wrap justify-end gap-2 no-print">
+                    {hasReportSnippet && (
+                      <button
+                        type="button"
+                        onClick={handleCopyReportSnippet}
+                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        aria-label={
+                          snippetCopied
+                            ? "Report snippet copied"
+                            : "Copy Report Snippet"
+                        }
+                        title="Copy values-only educational report snippet"
+                      >
+                        {snippetCopied ? (
+                          <Check
+                            aria-hidden="true"
+                            className="w-4 h-4 mr-1.5"
+                          />
+                        ) : (
+                          <ClipboardList
+                            aria-hidden="true"
+                            className="w-4 h-4 mr-1.5"
+                          />
+                        )}
+                        <span aria-live="polite">
+                          {snippetCopied
+                            ? "Snippet Copied!"
+                            : "Copy Report Snippet"}
+                        </span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={handleCopyResults}
