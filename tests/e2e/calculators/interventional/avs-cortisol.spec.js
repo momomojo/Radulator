@@ -3,7 +3,6 @@ import {
   navigateToCalculator,
   fillInput,
   selectOption,
-  verifyReferenceLinks,
   verifyThemeConsistency,
   verifyMobileResponsive,
   takeScreenshot,
@@ -649,22 +648,28 @@ test.describe("AVS Cortisol Calculator", () => {
     // Scroll to references section (at bottom of calculator)
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
-    // Live DOI resolution is network-dependent; document broken links without
-    // failing the test (mirrors the hyperaldo reference-validation approach).
-    const brokenLinks = await verifyReferenceLinks(page);
-    if (brokenLinks.length > 0) {
-      console.log("Broken or inaccessible reference links:");
-      brokenLinks.forEach((link) => {
-        console.log(`  - ${link.href}: ${link.status || link.error}`);
-      });
-    }
-
     // Verify specific DOI links are present (these match the component refs)
     const acharyaLink = page.locator('a[href*="10.1007/s00268-018-4788-2"]');
     await expect(acharyaLink).toBeVisible();
 
     const youngLink = page.locator('a[href*="10.1007/s00268-007-9332-8"]');
     await expect(youngLink).toBeVisible();
+
+    const referenceLinks = await page
+      .locator('.references-section a[href^="http"]')
+      .evaluateAll((links) =>
+        links.map((a) => ({
+          href: a.getAttribute("href"),
+          target: a.getAttribute("target"),
+          rel: a.getAttribute("rel"),
+        })),
+      );
+    expect(referenceLinks.length).toBe(2);
+    for (const link of referenceLinks) {
+      expect(link.href).toMatch(/^https?:\/\/.+/);
+      expect(link.target).toBe("_blank");
+      expect(link.rel).toContain("noopener");
+    }
   });
 
   test("should have consistent theme styling", async ({ page }) => {

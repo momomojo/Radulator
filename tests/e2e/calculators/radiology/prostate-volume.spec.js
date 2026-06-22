@@ -250,6 +250,42 @@ test.describe("Prostate Volume Calculator", () => {
     });
   });
 
+  test.describe("Clinical Advisory Banner", () => {
+    test("banner appears when volume ≤ 30 mL", async ({ page }) => {
+      // Test case: Small prostate (L=3.0, H=2.5, W=2.8)
+      // Expected volume = 3.0 × 2.5 × 2.8 × 0.52 = 10.92 ≈ 10.9 mL
+      await page.fill("#length", "3.0");
+      await page.fill("#height", "2.5");
+      await page.fill("#width", "2.8");
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results).toContainText("Prostate Volume (mL):");
+      await expect(results).toContainText("10.9");
+      await expect(
+        page.getByText("Normal prostate volume (≤30 cm³)."),
+      ).toBeVisible();
+    });
+
+    test("banner is hidden when volume > 30 mL", async ({ page }) => {
+      // Test case: Enlarged prostate (L=6.0, H=5.0, W=5.5)
+      // Expected volume = 6.0 × 5.0 × 5.5 × 0.52 = 85.8 mL
+      await page.fill("#length", "6.0");
+      await page.fill("#height", "5.0");
+      await page.fill("#width", "5.5");
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results).toContainText("Prostate Volume (mL):");
+      await expect(results).toContainText("85.8");
+      await expect(
+        page.getByText("Normal prostate volume (≤30 cm³)."),
+      ).toHaveCount(0);
+    });
+  });
+
   test.describe("PSA-Density Calculation", () => {
     test("should calculate PSA-Density correctly - normal range", async ({
       page,
