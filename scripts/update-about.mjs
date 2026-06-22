@@ -60,11 +60,11 @@ function extractCalcMetadata() {
 
     for (const line of lines) {
       // Match top-level properties: "  key:" (2-space indent, not deeper)
-      if (/^  id:\s*"/.test(line) && !id) {
+      if (/^ {2}id:\s*"/.test(line) && !id) {
         id = extractDoubleQuoted(line);
-      } else if (/^  name:\s*"/.test(line) && !name) {
+      } else if (/^ {2}name:\s*"/.test(line) && !name) {
         name = extractDoubleQuoted(line);
-      } else if (/^  category:\s*"/.test(line) && !category) {
+      } else if (/^ {2}category:\s*"/.test(line) && !category) {
         category = extractDoubleQuoted(line);
       }
     }

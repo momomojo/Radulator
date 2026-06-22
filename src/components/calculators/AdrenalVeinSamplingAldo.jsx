@@ -31,6 +31,16 @@ export const AVSHyperaldo = {
   tags: ["Interventional", "Endocrinology", "Adrenal"],
   metaDesc:
     "Free Adrenal Vein Sampling Calculator for primary hyperaldosteronism. Calculate selectivity index, lateralization index, CSI, RASI with PASO criteria. CSV export included.",
+  info: {
+    text:
+      "Adrenal vein sampling (AVS) for primary aldosteronism compares adrenal-vein aldosterone secretion after cortisol correction. This calculator supports pre- and post-cosyntropin workflows with multiple samples per side.\n\n" +
+      "Key Points:\n" +
+      "• Selectivity index checks whether each adrenal vein sample is adequately selective\n" +
+      "• Lateralization index compares the dominant and nondominant adrenal A/C ratios\n" +
+      "• Contralateral suppression, CSI, and RASI provide additional context for equivocal cases\n" +
+      "• Pre- vs post-ACTH thresholds differ and should match the local AVS protocol\n\n" +
+      "Interpret results with clinical phenotype, imaging, medications, sampling quality, and the treating endocrine/interventional team's protocol.",
+  },
   isCustomComponent: true,
   Component: function AVSHyperaldoCalculator() {
     // Patient metadata

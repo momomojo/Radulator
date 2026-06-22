@@ -143,9 +143,9 @@ function generateCalculatorPages() {
     <script>
       (function(){
         var path = window.location.pathname;
-        var m = path.match(/\\/calculators\\/([^\\/]+)\\/?/);
-        if (m && m[1] !== window.location.hash.replace("#\/","")) {
-          window.location.hash = "#\/" + m[1];
+        var m = path.match(new RegExp("/calculators/([^/]+)/?"));
+        if (m && m[1] !== window.location.hash.replace("#/", "")) {
+          window.location.hash = "#/" + m[1];
         }
       })();
     </script>`;

@@ -21,7 +21,6 @@ import { test, expect } from "@playwright/test";
 import {
   navigateToCalculator,
   verifyThemeConsistency,
-  verifyMobileResponsive,
 } from "../../../helpers/calculator-test-helper.js";
 
 const CALCULATOR_NAME = "ACR NI-RADS";
@@ -34,18 +33,6 @@ const CALCULATOR_NAME = "ACR NI-RADS";
 async function selectRadioOption(page, labelText) {
   // Target radio labels within the main content area (not sidebar)
   await page.locator("main").getByText(labelText, { exact: true }).click();
-}
-
-/**
- * Helper to verify result text is present in the output section
- * @param {import('@playwright/test').Page} page
- * @param {string} resultLabel - The label of the result (e.g., "Primary Site NI-RADS")
- * @param {string} expectedValue - The expected value text to contain
- */
-async function verifyResultContains(page, resultLabel, expectedValue) {
-  const resultSection = page.getByRole('status', { name: 'Calculator results' });
-  await expect(resultSection.getByText(resultLabel)).toBeVisible();
-  await expect(resultSection.getByText(expectedValue)).toBeVisible();
 }
 
 test.describe("ACR NI-RADS Calculator", () => {

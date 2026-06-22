@@ -45,6 +45,7 @@ ACR BI-RADS (Breast Imaging) · ACR O-RADS (Women's Imaging) · CAD-RADS 2.0 (Ca
 - **Clickable References** - Direct links to original research papers
 - **Comprehensive Citations** - Full academic references with DOIs
 - **Clinical Interpretations** - Built-in result interpretation and ranges
+- **Per-Calculator Education Panels** - Context, limitations, and use notes surfaced inside each calculator
 
 ## Prerequisites
 
@@ -78,6 +79,9 @@ ACR BI-RADS (Breast Imaging) · ACR O-RADS (Women's Imaging) · CAD-RADS 2.0 (Ca
 - **`npm run build`** - Build the application for production
 - **`npm run preview`** - Preview the production build locally
 - **`npm run lint`** - Run ESLint to check code quality
+- **`npm run test:smoke`** - Run the smoke E2E suite
+- **`npm run test:compute`** - Run calculator compute/test-vector checks
+- **`npm run test`** - Run the full Playwright E2E suite
 - **`npm run test:decompose-full-suite -- <test-results/results.json>`** - Summarize Playwright JSON reporter artifacts into deterministic failure classes for bounded remediation cards
 
 ## Project Structure
@@ -97,6 +101,7 @@ Radulator/
 │   └── index.css              # Global styles
 ├── docs/
 │   └── ROADMAP.md             # Public development roadmap
+├── tests/e2e/                 # Playwright calculator and smoke coverage
 ├── CLAUDE.md                  # Claude Code guidance file
 └── README.md                  # This file
 ```

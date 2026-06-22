@@ -2,13 +2,10 @@ import { test, expect } from "@playwright/test";
 import {
   navigateToCalculator,
   fillInput,
-  verifyResult,
-  verifyReferenceLinks,
   verifyThemeConsistency,
   verifyMobileResponsive,
   clearAllInputs,
   takeScreenshot,
-  openMobileMenuIfNeeded,
 } from "../../../helpers/calculator-test-helper.js";
 
 /**
@@ -461,10 +458,7 @@ test.describe("Adrenal MRI Chemical Shift Calculator - References & Documentatio
     await expect(schiedaLink).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  test("should verify reference links redirect correctly", async ({
-    page,
-    context,
-  }) => {
+  test("should verify reference links redirect correctly", async ({ page }) => {
     // Note: DOI links redirect (302) to publisher, which may require subscription (403)
     // We verify the DOI resolver responds, not the final destination
 

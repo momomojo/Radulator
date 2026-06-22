@@ -3,9 +3,7 @@ import {
   navigateToCalculator,
   fillInput,
   selectOption,
-  verifyResult,
   verifyThemeConsistency,
-  verifyMobileResponsive,
   clearAllInputs,
 } from "../../../helpers/calculator-test-helper.js";
 
