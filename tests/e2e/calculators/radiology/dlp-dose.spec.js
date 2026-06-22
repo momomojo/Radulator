@@ -480,7 +480,6 @@ await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
-    await expect(results).toContainText("Error");
     await expect(results).toContainText("valid DLP value");
   });
 
@@ -493,7 +492,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
-    await expect(results).toContainText("Error");
+    await expect(results).toContainText("valid DLP value");
   });
 
   test("Should show error for negative DLP value", async ({ page }) => {
@@ -505,7 +504,7 @@ await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
-    await expect(results).toContainText("Error");
+    await expect(results).toContainText("valid DLP value");
   });
 
   test("Should show error for missing anatomical region", async ({ page }) => {
@@ -516,7 +515,6 @@ await page.getByRole('button', { name: 'Calculate' }).click();
     await page.getByRole('status', { name: 'Calculator results' }).waitFor({ state: 'visible' });
 
     const results = page.getByRole('status', { name: 'Calculator results' });
-    await expect(results).toContainText("Error");
     await expect(results).toContainText("anatomical region");
   });
 
@@ -587,8 +585,14 @@ await page.getByRole('button', { name: 'Calculate' }).click();
     // Scroll to references section
     await page.locator('h3:has-text("References")').scrollIntoViewIfNeeded();
 
+    // References are collapsed by default (showing the first 3) - expand to see all
+    const showMore = page.locator('button:has-text("more reference")');
+    if (await showMore.count()) {
+      await showMore.click();
+    }
+
     // Verify references are present
-    const refs = page.locator('section a[target="_blank"]');
+    const refs = page.locator('section.references-section a[target="_blank"]');
     const refCount = await refs.count();
     expect(refCount).toBeGreaterThanOrEqual(4);
 
@@ -630,10 +634,11 @@ await page.getByRole('button', { name: 'Calculate' }).click();
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
 
-    // Verify sidebar is narrower on mobile (w-48 = 192px vs w-64 = 256px on desktop)
-    const sidebar = page.locator("aside").first();
-    const sidebarWidth = await sidebar.evaluate((el) => el.offsetWidth);
-    expect(sidebarWidth).toBeLessThanOrEqual(192);
+    // On mobile the sidebar collapses behind a hamburger menu button
+    const menuButton = page.getByRole("button", {
+      name: "Open navigation menu",
+    });
+    await expect(menuButton).toBeVisible();
 
     // Verify calculator is still usable on mobile
     const dlpInput = page.locator('input[type="number"]');

@@ -757,6 +757,15 @@ test.describe("CAD-RADS 2.0 Calculator", () => {
     });
 
     test("should have correct number of reference links", async ({ page }) => {
+      // Only the first 3 references render by default; expand to show all 5
+      // (4 DOI links + 1 ACR link)
+      const expandBtn = page.locator(
+        '.references-section button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
+
       const refLinks = page.locator('a[href^="https://doi.org"]');
       await expect(refLinks).toHaveCount(4);
     });

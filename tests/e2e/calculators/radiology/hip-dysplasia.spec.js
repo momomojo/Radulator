@@ -56,7 +56,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
   });
 
   test("should display reference diagram image", async ({ page }) => {
-    const image = page.locator('img[alt="Reference diagram"]');
+    const image = page.locator('img[alt="Hip Dysplasia reference diagram"]');
     await expect(image).toBeVisible();
     await expect(image).toHaveAttribute("src", "./migration_index_diagram.png");
   });
@@ -241,8 +241,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     // Migration Index = (10 / (10 + 90)) * 100 = 10%
     const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results.locator("text=Migration Index (Right)")).toBeVisible();
-    await expect(results.locator("text=10.0%")).toBeVisible();
-    await expect(results.locator("text=Normal")).toBeVisible();
+    await expect(results.locator("text=10.0% - Normal")).toBeVisible();
   });
 
   test("should calculate migration index - borderline/at risk (22-32%)", async ({
@@ -416,8 +415,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
     await page.click('button:has-text("Calculate")');
 
     const results = page.getByRole('status', { name: 'Calculator results' });
-    await expect(results.locator("text=0.0%")).toBeVisible();
-    await expect(results.locator("text=Normal")).toBeVisible();
+    await expect(results.locator("text=0.0% - Normal")).toBeVisible();
   });
 
   test("should display all three references", async ({ page }) => {
@@ -465,7 +463,7 @@ test.describe("Hip Dysplasia Indices Calculator", () => {
 
     // Should show message when DOB or gender is missing
     await expect(
-      page.locator("text=Enter date of birth and gender"),
+      page.locator("text=Enter date of birth and gender").first(),
     ).toBeVisible();
   });
 

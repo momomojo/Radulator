@@ -758,6 +758,14 @@ test.describe("ACR O-RADS Calculator", () => {
     });
 
     test("should have correct number of reference links", async ({ page }) => {
+      // Only the first 3 references render by default; expand to show all 5
+      const expandBtn = page.locator(
+        '.references-section button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
+
       const refLinks = page.locator(
         'a[href^="https://pubmed.ncbi.nlm.nih.gov"], a[href^="https://www.acr.org"]',
       );
@@ -767,14 +775,14 @@ test.describe("ACR O-RADS Calculator", () => {
     test("should have valid PubMed links for primary sources", async ({
       page,
     }) => {
-      // O-RADS US 2020 paper
+      // O-RADS US 2020 paper (within first 3 references, always visible)
       const usLink = page.locator(
         'a[href="https://pubmed.ncbi.nlm.nih.gov/31687921/"]',
       );
       await expect(usLink).toBeVisible();
       await expect(usLink).toContainText("Radiology. 2020");
 
-      // O-RADS MRI paper
+      // O-RADS MRI paper (within first 3 references, always visible)
       const mriLink = page.locator(
         'a[href="https://pubmed.ncbi.nlm.nih.gov/35040672/"]',
       );
@@ -785,6 +793,14 @@ test.describe("ACR O-RADS Calculator", () => {
     test("should have links to ACR O-RADS official resources", async ({
       page,
     }) => {
+      // ACR Ultrasound link is the 4th reference - expand collapsed references first
+      const expandBtn = page.locator(
+        '.references-section button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
+
       const acrLink = page.locator(
         'a[href="https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/O-RADS/Ultrasound"]',
       );

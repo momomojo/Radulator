@@ -1,6 +1,20 @@
 import { test, expect } from '@playwright/test';
 import { navigateToCalculator } from '../../../helpers/calculator-test-helper.js';
 
+const resultsRegion = (page) => page.getByRole('status', { name: 'Calculator results' });
+
+async function expectResultText(page, expected) {
+  const results = resultsRegion(page);
+  await expect(results).toBeVisible();
+  await expect(results).toContainText(expected);
+}
+
+async function expectAlbiGrade(page, grade) {
+  const results = resultsRegion(page);
+  await expect(results).toBeVisible();
+  await expect(results.getByText(`Grade ${grade}`, { exact: true })).toBeVisible();
+}
+
 /**
  * ALBI Score Calculator E2E Tests
  *
@@ -26,18 +40,17 @@ test.describe('ALBI Score Calculator', () => {
 
     test('should display calculator with proper styling', async ({ page }) => {
       // Check calculator card is visible
-      const card = page.locator('.card, [class*="card"]').first();
-      await expect(card).toBeVisible();
+      await expect(page.getByRole('main', { name: 'ALBI Score' })).toBeVisible();
 
       // Check title is visible and styled
       const title = page.getByTestId('calculator-title').first();
       await expect(title).toBeVisible();
 
       // Check description is present
-      await expect(page.locator('text=Albumin-Bilirubin grade')).toBeVisible();
+      await expect(page.getByTestId('calculator-description')).toContainText('Albumin-Bilirubin grade');
     });
 
-    test('should have responsive design on mobile', async ({ page, viewport }) => {
+    test('should have responsive design on mobile', async ({ page }) => {
       // Set mobile viewport
       await page.setViewportSize({ width: 375, height: 667 });
 
@@ -115,10 +128,7 @@ test.describe('ALBI Score Calculator', () => {
       }
 
       // Should show error for negative values
-      const errorText = page.locator('text=/error|invalid|positive/i');
-      if (await errorText.isVisible()) {
-        await expect(errorText).toBeVisible();
-      }
+      await expectResultText(page, /valid positive values|positive/i);
     });
 
     test('should validate physiological ranges', async ({ page }) => {
@@ -136,10 +146,7 @@ test.describe('ALBI Score Calculator', () => {
       }
 
       // Should show range error
-      const errorText = page.locator('text=/physiological range|outside.*range/i');
-      if (await errorText.isVisible()) {
-        await expect(errorText).toBeVisible();
-      }
+      await expectResultText(page, /physiological range|outside.*range/i);
     });
   });
 
@@ -172,13 +179,13 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 1 result
-      await expect(page.locator('text=/Grade 1|ALBI Grade.*1/i')).toBeVisible();
+      await expectAlbiGrade(page, 1);
 
       // Check for ALBI score in expected range
-      await expect(page.locator('text=/-2.7|-2.8/i')).toBeVisible();
+      await expectResultText(page, /ALBI Score:\s*-2\.748/);
 
       // Check for interpretation
-      await expect(page.locator('text=/Best liver function|well-compensated/i')).toBeVisible();
+      await expect(resultsRegion(page)).toContainText(/Best liver function|well-compensated/i);
     });
 
     test('Grade 2 - Intermediate function (ALBI > -2.60 to ≤ -1.39)', async ({ page }) => {
@@ -204,10 +211,10 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 2 result
-      await expect(page.locator('text=/Grade 2|ALBI Grade.*2/i')).toBeVisible();
+      await expectAlbiGrade(page, 2);
 
       // Check for interpretation
-      await expect(page.locator('text=/Intermediate|moderately compensated/i')).toBeVisible();
+      await expect(resultsRegion(page)).toContainText(/Intermediate|moderately compensated/i);
     });
 
     test('Grade 3 - Worst function (ALBI > -1.39)', async ({ page }) => {
@@ -233,14 +240,14 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 3 result
-      await expect(page.locator('text=/Grade 3|ALBI Grade.*3/i')).toBeVisible();
+      await expectAlbiGrade(page, 3);
 
       // Check for interpretation
-      await expect(page.locator('text=/Worst|poorly compensated/i')).toBeVisible();
+      await expect(resultsRegion(page)).toContainText(/Worst|poorly compensated/i);
     });
 
     test('Boundary case - Grade 1/2 boundary (ALBI = -2.60)', async ({ page }) => {
-      // Albumin 38.7 g/L, Bilirubin 11 μmol/L → ALBI ≈ -2.598
+      // Albumin 38.7 g/L, Bilirubin 11 μmol/L → ALBI ≈ -2.610
 
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       if (await siRadio.isVisible()) {
@@ -260,12 +267,12 @@ test.describe('ALBI Score Calculator', () => {
 
 
 
-      // Should be Grade 2 (just above -2.60)
-      await expect(page.locator('text=/Grade [12]/i')).toBeVisible();
+      // Should be Grade 1 (at or below the -2.60 cutoff)
+      await expectAlbiGrade(page, 1);
     });
 
     test('Boundary case - Grade 2/3 boundary (ALBI = -1.39)', async ({ page }) => {
-      // Albumin 27 g/L, Bilirubin 28 μmol/L → ALBI ≈ -1.352
+      // Albumin 27 g/L, Bilirubin 28 μmol/L → ALBI ≈ -1.345
 
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       if (await siRadio.isVisible()) {
@@ -285,8 +292,8 @@ test.describe('ALBI Score Calculator', () => {
 
 
 
-      // Should be Grade 3 (just above -1.39)
-      await expect(page.locator('text=/Grade [23]/i')).toBeVisible();
+      // Should be Grade 3 (above the -1.39 cutoff)
+      await expectAlbiGrade(page, 3);
     });
   });
 
@@ -315,11 +322,11 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 1
-      await expect(page.locator('text=/Grade 1/i')).toBeVisible();
+      await expectAlbiGrade(page, 1);
 
       // Should show converted SI values
-      await expect(page.locator('text=/40.*g\/L|Converted.*Albumin/i')).toBeVisible();
-      await expect(page.locator('text=/8\.5.*μmol\/L|Converted.*Bilirubin/i')).toBeVisible();
+      await expectResultText(page, /Converted Albumin \(SI\):\s*40\.0 g\/L/);
+      await expectResultText(page, /Converted Bilirubin \(SI\):\s*8\.6 μmol\/L/);
     });
 
     test('US units conversion - Grade 2', async ({ page }) => {
@@ -345,10 +352,10 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 2
-      await expect(page.locator('text=/Grade 2/i')).toBeVisible();
+      await expectAlbiGrade(page, 2);
 
       // Should show converted SI values
-      await expect(page.locator('text=/35.*g\/L|Converted.*Albumin/i')).toBeVisible();
+      await expectResultText(page, /Converted Albumin \(SI\):\s*35\.0 g\/L/);
     });
 
     test('US units conversion - Grade 3', async ({ page }) => {
@@ -374,7 +381,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for Grade 3
-      await expect(page.locator('text=/Grade 3/i')).toBeVisible();
+      await expectAlbiGrade(page, 3);
     });
   });
 
@@ -395,7 +402,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Should show error message
-      await expect(page.locator('text=/error|invalid|positive/i')).toBeVisible();
+      await expectResultText(page, /valid positive values|positive/i);
     });
 
     test('should handle very high bilirubin values', async ({ page }) => {
@@ -419,7 +426,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Should still calculate (within physiological range)
-      await expect(page.locator('text=/Grade 3/i')).toBeVisible();
+      await expectAlbiGrade(page, 3);
     });
 
     test('should handle very low albumin values', async ({ page }) => {
@@ -443,7 +450,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Should calculate Grade 3
-      await expect(page.locator('text=/Grade 3/i')).toBeVisible();
+      await expectAlbiGrade(page, 3);
     });
 
     test('should handle decimal precision', async ({ page }) => {
@@ -467,8 +474,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Should display result with appropriate precision
-      const result = page.locator('text=/-2\./i');
-      await expect(result).toBeVisible();
+      await expectResultText(page, /ALBI Score:\s*-2\./);
     });
   });
 
@@ -495,7 +501,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Should show prognosis information
-      await expect(page.locator('text=/median survival|prognosis|suitable for/i')).toBeVisible();
+      await expect(resultsRegion(page)).toContainText(/median survival|prognosis|suitable for/i);
     });
 
     test('should display appropriate treatment recommendations', async ({ page }) => {
@@ -519,7 +525,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Should mention treatment limitations for Grade 3
-      await expect(page.locator('text=/best supportive care|limited|careful assessment/i')).toBeVisible();
+      await expect(resultsRegion(page)).toContainText(/best supportive care|limited|careful assessment/i);
     });
   });
 
@@ -530,10 +536,10 @@ test.describe('ALBI Score Calculator', () => {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
       // Check for Johnson et al. 2015 (primary reference)
-      await expect(page.locator('text=/Johnson.*2015/i')).toBeVisible();
+      await expect(page.getByRole('link', { name: /Johnson PJ, Berhane S/i })).toBeVisible();
 
       // Check for multiple references
-      const references = page.locator('text=/doi.org|https:\/\//i');
+      const references = page.locator('a[href*="doi.org"]');
       const count = await references.count();
       expect(count).toBeGreaterThan(0);
     });
@@ -583,8 +589,7 @@ test.describe('ALBI Score Calculator', () => {
 
     test('should have sufficient color contrast', async ({ page }) => {
       // This is a basic check - actual contrast testing would need specialized tools
-      const card = page.locator('.card, [class*="card"]').first();
-      await expect(card).toBeVisible();
+      await expect(page.getByRole('main', { name: 'ALBI Score' })).toBeVisible();
 
       // Verify text is readable
       const title = page.getByTestId('calculator-title').first();
@@ -617,7 +622,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check for score in range -2.74 to -2.75
-      await expect(page.locator('text=/-2\.74|-2\.75/i')).toBeVisible();
+      await expectResultText(page, /ALBI Score:\s*-2\.748/);
     });
 
     test('should verify unit conversion accuracy', async ({ page }) => {
@@ -643,8 +648,8 @@ test.describe('ALBI Score Calculator', () => {
 
 
       // Check converted values are displayed
-      await expect(page.locator('text=/35.*g\/L/i')).toBeVisible();
-      await expect(page.locator('text=/17\.1.*μmol\/L/i')).toBeVisible();
+      await expectResultText(page, /Converted Albumin \(SI\):\s*35\.0 g\/L/);
+      await expectResultText(page, /Converted Bilirubin \(SI\):\s*17\.1 μmol\/L/);
     });
   });
 });

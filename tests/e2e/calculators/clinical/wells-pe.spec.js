@@ -215,7 +215,10 @@ test.describe("Wells Criteria for PE Calculator", () => {
 
   test.describe("References", () => {
     test("should display Wells PE references", async ({ page }) => {
-      await expect(page.getByText("References")).toBeVisible();
+      // Use the heading role to avoid matching the "Show N more references" button
+      await expect(
+        page.getByRole("heading", { name: "References" }),
+      ).toBeVisible();
       await expect(page.locator("a[href*='pubmed']").first()).toBeVisible();
     });
   });

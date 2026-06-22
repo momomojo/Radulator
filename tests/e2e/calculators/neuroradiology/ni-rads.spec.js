@@ -793,6 +793,14 @@ test.describe("ACR NI-RADS Calculator", () => {
     });
 
     test("should have link to ACR NI-RADS resources", async ({ page }) => {
+      // ACR resources link is the 4th reference - expand collapsed references first
+      const expandBtn = page.locator(
+        '.references-section button:has-text("more reference")',
+      );
+      if (await expandBtn.isVisible()) {
+        await expandBtn.click();
+      }
+
       const acrLink = page.locator(
         'a[href="https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/NI-RADS"]',
       );

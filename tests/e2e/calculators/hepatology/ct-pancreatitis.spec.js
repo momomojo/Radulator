@@ -1251,13 +1251,22 @@ test.describe("CT Pancreatitis Severity Calculator", () => {
       // Verify reference section exists
       await expect(page.locator('h3:has-text("References")')).toBeVisible();
 
-      // Verify key references are present
+      // Expand collapsed references (only first 3 shown by default)
+      const showMore = page.locator('button:has-text("more reference")');
+      if (await showMore.isVisible()) {
+        await showMore.click();
+      }
+
+      // Verify key references are present (scoped to references section)
+      const refSection = page.locator("section.references-section");
       await expect(
-        page.locator('a:has-text("Balthazar EJ, Ranson JH")'),
+        refSection.locator('a:has-text("Balthazar EJ, Ranson JH")'),
       ).toBeVisible();
-      await expect(page.locator('a:has-text("Mortele KJ")')).toBeVisible();
       await expect(
-        page.locator('a:has-text("Banks PA, Bollen TL")'),
+        refSection.locator('a:has-text("Mortele KJ")'),
+      ).toBeVisible();
+      await expect(
+        refSection.locator('a:has-text("Banks PA, Bollen TL")'),
       ).toBeVisible();
     });
 
