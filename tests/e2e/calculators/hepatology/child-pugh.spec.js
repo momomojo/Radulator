@@ -27,18 +27,18 @@ test.describe('Child-Pugh Score Calculator', () => {
 
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, 'Child-Pugh Score');
-    await expect(page.locator('h2:has-text("Child-Pugh Score")')).toBeVisible();
+    await expect(page.getByTestId('calculator-title').first()).toBeVisible();
   });
 
   test.describe('Visual Appeal & Theme Matching', () => {
 
     test('should display calculator with proper styling', async ({ page }) => {
       // Check calculator card is visible
-      const card = page.locator('.card, [class*="card"]').first();
+      const card = page.locator('.card, [class*="card"]').filter({ visible: true }).first();
       await expect(card).toBeVisible();
 
       // Check title is visible and styled
-      const title = page.locator('h2:has-text("Child-Pugh Score")');
+      const title = page.getByTestId('calculator-title').first();
       await expect(title).toBeVisible();
 
       // Check description is present
@@ -50,7 +50,7 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.setViewportSize({ width: 375, height: 667 });
 
       // Calculator should still be visible and usable
-      await expect(page.locator('h2:has-text("Child-Pugh Score")')).toBeVisible();
+      await expect(page.getByTestId('calculator-title').first()).toBeVisible();
 
       // Fields should be visible
       await expect(page.locator('label:has-text("Total Bilirubin")')).toBeVisible();
@@ -68,9 +68,9 @@ test.describe('Child-Pugh Score Calculator', () => {
     test('should have proper field labels with units', async ({ page }) => {
       // Check that fields have proper labels and sublabels
       await expect(page.locator('label:has-text("Total Bilirubin")')).toBeVisible();
-      await expect(page.locator('text=mg/dL')).toBeVisible();
+      await expect(page.locator('text=mg/dL').first()).toBeVisible();
       await expect(page.locator('label:has-text("Serum Albumin")')).toBeVisible();
-      await expect(page.locator('text=g/dL')).toBeVisible();
+      await expect(page.locator('text=/[^m]g\\/dL/').first()).toBeVisible();
       await expect(page.locator('label:has-text("INR")')).toBeVisible();
       await expect(page.locator('label:has-text("Ascites")')).toBeVisible();
       await expect(page.locator('label:has-text("Hepatic Encephalopathy")')).toBeVisible();
@@ -194,11 +194,13 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Verify results
-      await expect(page.locator('text=5 points')).toBeVisible();
-      await expect(page.locator('text=Child-Pugh Class')).toBeVisible();
-      await expect(page.locator('text=/Class.*A/i')).toBeVisible();
-      await expect(page.locator('text=Well-compensated disease')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('5 points', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Child-Pugh Class')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('A', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Well-compensated disease')).toBeVisible();
       await expect(page.locator('text=5-10%').first()).toBeVisible(); // 1-year mortality
       await expect(page.locator('text=10%').nth(1)).toBeVisible(); // Surgical risk
     });
@@ -221,10 +223,12 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Verify results
-      await expect(page.locator('text=6 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*A/i')).toBeVisible();
-      await expect(page.locator('text=Well-compensated disease')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('6 points', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('A', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Well-compensated disease')).toBeVisible();
     });
 
     test('should show proper breakdown for Class A', async ({ page }) => {
@@ -236,8 +240,10 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Check for points breakdown section
-      await expect(page.locator('text=Points Breakdown')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Points Breakdown')).toBeVisible();
       await expect(page.locator('text=/1\\.8.*1 point/')).toBeVisible(); // Bilirubin
       await expect(page.locator('text=/3\\.6.*1 point/')).toBeVisible(); // Albumin
       await expect(page.locator('text=/1\\.5.*1 point/')).toBeVisible(); // INR
@@ -263,11 +269,13 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Verify results
-      await expect(page.locator('text=7 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*B/i')).toBeVisible();
-      await expect(page.locator('text=Significant functional compromise')).toBeVisible();
-      await expect(page.locator('text=15-20%')).toBeVisible(); // 1-year mortality
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('7 points', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('B', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Significant functional compromise')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('15-20%')).toBeVisible(); // 1-year mortality
       await expect(page.locator('text=30%')).toBeVisible(); // Surgical risk
     });
 
@@ -288,9 +296,11 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Verify results
-      await expect(page.locator('text=8 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*B/i')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('8 points', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('B', { exact: true })).toBeVisible();
     });
 
     test('should correctly calculate Class B - maximum score (9 points)', async ({ page }) => {
@@ -310,10 +320,12 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Verify results
-      await expect(page.locator('text=9 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*B/i')).toBeVisible();
-      await expect(page.locator('text=Significant functional compromise')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('9 points', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('B', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Significant functional compromise')).toBeVisible();
     });
 
     test('should show proper breakdown for Class B with ascites', async ({ page }) => {
@@ -324,8 +336,10 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Check for points breakdown
-      await expect(page.locator('text=Points Breakdown')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Points Breakdown')).toBeVisible();
       await expect(page.locator('text=/Slight.*2 points/')).toBeVisible(); // Ascites
     });
   });
@@ -348,11 +362,13 @@ test.describe('Child-Pugh Score Calculator', () => {
       // Grade 1-2 for encephalopathy (2 points)
       await page.locator('label:has-text("Grade 1-2")').click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Verify results
-      await expect(page.locator('text=10 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
-      await expect(page.locator('text=Decompensated disease')).toBeVisible();
-      await expect(page.locator('text=45-55%')).toBeVisible(); // 1-year mortality
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('10 points', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('C', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Decompensated disease')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('45-55%')).toBeVisible(); // 1-year mortality
       await expect(page.locator('text=70-80%')).toBeVisible(); // Surgical risk
     });
 
@@ -372,9 +388,11 @@ test.describe('Child-Pugh Score Calculator', () => {
       // Grade 1-2 for encephalopathy (2 points)
       await page.locator('label:has-text("Grade 1-2")').click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Verify results
-      await expect(page.locator('text=12 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('12 points', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('C', { exact: true })).toBeVisible();
     });
 
     test('should correctly calculate Class C - maximum score (15 points)', async ({ page }) => {
@@ -393,10 +411,12 @@ test.describe('Child-Pugh Score Calculator', () => {
       // Grade 3-4 for encephalopathy (3 points)
       await page.locator('label:has-text("Grade 3-4")').click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Verify results
-      await expect(page.locator('text=15 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
-      await expect(page.locator('text=Decompensated disease')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('15 points', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('C', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Decompensated disease')).toBeVisible();
     });
 
     test('should show proper breakdown for Class C with severe parameters', async ({ page }) => {
@@ -406,8 +426,10 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.locator('label:has-text("Moderate to Severe")').click();
       await page.locator('label:has-text("Grade 3-4")').click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Check for points breakdown
-      await expect(page.locator('text=Points Breakdown')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Points Breakdown')).toBeVisible();
       await expect(page.locator('text=/4\\.5.*3 points/')).toBeVisible(); // Bilirubin
       await expect(page.locator('text=/2\\.2.*3 points/')).toBeVisible(); // Albumin
       await expect(page.locator('text=/2\\.8.*3 points/')).toBeVisible(); // INR
@@ -432,6 +454,8 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Should show 2 points for bilirubin
       await expect(page.locator('text=/2\\.0.*2 points/')).toBeVisible();
     });
@@ -449,6 +473,8 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.locator('label:has-text("None")').first().click();
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
+
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Should show 2 points for bilirubin
       await expect(page.locator('text=/3\\.0.*2 points/')).toBeVisible();
@@ -468,6 +494,8 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Should show 2 points for albumin
       await expect(page.locator('text=/3\\.5.*2 points/')).toBeVisible();
     });
@@ -485,6 +513,8 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.locator('label:has-text("None")').first().click();
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
+
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Should show 2 points for albumin
       await expect(page.locator('text=/2\\.8.*2 points/')).toBeVisible();
@@ -504,6 +534,8 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Should show 2 points for INR
       await expect(page.locator('text=/1\\.7.*2 points/')).toBeVisible();
     });
@@ -521,6 +553,8 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.locator('label:has-text("None")').first().click();
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
+
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Should show 2 points for INR
       await expect(page.locator('text=/2\\.2.*2 points/')).toBeVisible();
@@ -540,6 +574,8 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Should calculate with 0 bilirubin (1 point as <2)
       await expect(page.locator('text=/0\\.0.*1 point/')).toBeVisible();
     });
@@ -557,9 +593,11 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.locator('label:has-text("Moderate to Severe")').click();
       await page.locator('label:has-text("Grade 3-4")').click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Should still calculate correctly (maximum 15 points)
-      await expect(page.locator('text=15 points')).toBeVisible();
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('15 points', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('C', { exact: true })).toBeVisible();
     });
 
     test('should handle decimal precision', async ({ page }) => {
@@ -576,8 +614,10 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // All should score 1 point each
-      await expect(page.locator('text=5 points')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('5 points', { exact: true })).toBeVisible();
     });
   });
 
@@ -592,8 +632,10 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
-      await expect(page.locator('text=/Class.*A/i')).toBeVisible();
-      await expect(page.locator('text=Well-compensated disease')).toBeVisible();
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('A', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Well-compensated disease')).toBeVisible();
     });
 
     test('should calculate early decompensation (typical Class B)', async ({ page }) => {
@@ -605,8 +647,10 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
-      await expect(page.locator('text=/Class.*B/i')).toBeVisible();
-      await expect(page.locator('text=Significant functional compromise')).toBeVisible();
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('B', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Significant functional compromise')).toBeVisible();
     });
 
     test('should calculate advanced decompensation (typical Class C)', async ({ page }) => {
@@ -617,9 +661,11 @@ test.describe('Child-Pugh Score Calculator', () => {
       await page.locator('label:has-text("Moderate to Severe")').click();
       await page.locator('label:has-text("Grade 1-2")').click();
 
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
-      await expect(page.locator('text=Decompensated disease')).toBeVisible();
-      await expect(page.locator('text=45-55%')).toBeVisible();
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('C', { exact: true })).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Decompensated disease')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('45-55%')).toBeVisible();
     });
   });
 
@@ -659,16 +705,20 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Verify Class A
-      await expect(page.locator('text=/Class.*A/i')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('A', { exact: true })).toBeVisible();
 
       // Change to Class C values
       await page.locator('input[type="number"]').first().fill('5.0');
       await page.locator('input[type="number"]').nth(1).fill('2.0');
       await page.locator('input[type="number"]').nth(2).fill('3.0');
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Should update to Class C
-      await expect(page.locator('text=/Class.*C/i')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('C', { exact: true })).toBeVisible();
     });
 
     test('should maintain entered values when switching between fields', async ({ page }) => {
@@ -698,13 +748,15 @@ test.describe('Child-Pugh Score Calculator', () => {
       const noneEnceph = page.locator('label').filter({ hasText: /^None$/ }).nth(1);
       await noneEnceph.click();
 
+      await page.getByRole('button', { name: 'Calculate' }).click();
+
       // Check for all key output fields
-      await expect(page.locator('text=Total Score')).toBeVisible();
-      await expect(page.locator('text=Child-Pugh Class')).toBeVisible();
-      await expect(page.locator('text=Classification')).toBeVisible();
-      await expect(page.locator('text=1-Year Mortality')).toBeVisible();
-      await expect(page.locator('text=Perioperative Mortality')).toBeVisible();
-      await expect(page.locator('text=Points Breakdown')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Total Score')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Child-Pugh Class')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Classification:')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('1-Year Mortality')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Perioperative Mortality')).toBeVisible();
+      await expect(page.getByRole('status', { name: 'Calculator results' }).getByText('Points Breakdown')).toBeVisible();
     });
   });
 });

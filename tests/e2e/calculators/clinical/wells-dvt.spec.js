@@ -21,7 +21,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
 
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with correct title", async ({ page }) => {
-      await expect(page.locator("h2")).toContainText("Wells Criteria for DVT");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("Wells Criteria for DVT");
     });
 
     test("should have all 10 criteria as checkboxes", async ({ page }) => {
@@ -515,7 +515,10 @@ test.describe("Wells Criteria for DVT Calculator", () => {
 
   test.describe("References", () => {
     test("should display Wells DVT references", async ({ page }) => {
-      await expect(page.getByText("References")).toBeVisible();
+      // Use the heading role to avoid matching the "Show N more references" button
+      await expect(
+        page.getByRole("heading", { name: "References" }),
+      ).toBeVisible();
       await expect(page.locator("a[href*='doi.org']").first()).toBeVisible();
     });
   });

@@ -29,7 +29,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
 
     // Verify calculator loaded
     await expect(
-      page.locator('h2:has-text("Adrenal Vein Sampling – Aldosterone")'),
+      page.getByTestId('calculator-title').first(),
     ).toBeVisible();
     await expect(
       page.locator("text=Comprehensive primary aldosteronism AVS"),
@@ -166,7 +166,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify results
       await expect(page.locator("text=Post-ACTH Results")).toBeVisible({
@@ -246,7 +246,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("240");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify bilateral disease interpretation
       await expect(page.locator("text=Post-ACTH Results")).toBeVisible({
@@ -309,10 +309,13 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("80");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
-      // Verify cannulation failure warning
-      await expect(page.locator("text=/Cannulation failure/i")).toBeVisible({
+      // Verify cannulation failure warning (text appears in both the status
+      // line and the interpretation paragraph, so scope to the first match)
+      await expect(
+        page.locator("text=/Cannulation failure/i").first(),
+      ).toBeVisible({
         timeout: 2000,
       });
 
@@ -402,7 +405,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await postRightAldoInputs[1].fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify side-by-side comparison view
       await expect(page.locator("text=Pre-ACTH Results")).toBeVisible({
@@ -483,7 +486,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await rightInputs[7].fill("340"); // Sample 4 Cort
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify averaging occurred
       await expect(page.locator("text=Post-ACTH Results")).toBeVisible({
@@ -545,7 +548,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("8828.8"); // 320 µg/dL
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify results (should be same as Scenario 1 despite different units)
       await expect(page.locator("text=Post-ACTH Results")).toBeVisible({
@@ -607,7 +610,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify validation warnings
       await expect(page.locator("text=Value Validation Warnings")).toBeVisible({
@@ -670,7 +673,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("240");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Check if conflict detection appears (may or may not with these values)
       const conflictSection = page.locator(
@@ -690,7 +693,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await page.locator('input[type="radio"][value="post"]').check();
 
       // Calculate without data
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify error message
       await expect(page.locator("text=/Insufficient data/i")).toBeVisible({
@@ -739,7 +742,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await postRightInputs[1].fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify incomplete data warning
       await expect(
@@ -796,7 +799,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .fill("320");
 
       // Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify CSV download button appears
       const downloadButton = page.locator(
@@ -816,9 +819,17 @@ test.describe("AVS Hyperaldo Calculator", () => {
       // Scroll to references section
       await page.locator('h3:has-text("References")').scrollIntoViewIfNeeded();
 
+      // References collapse when there are more than 3; expand to reveal all 4.
+      const showMore = page.getByRole("button", {
+        name: /Show \d+ more reference/i,
+      });
+      if (await showMore.count()) {
+        await showMore.click();
+      }
+
       // Verify all 4 references are present
       const referenceLinks = await page
-        .locator('section:has(h3:has-text("References")) a[href^="http"]')
+        .locator('section.references-section a[href^="http"]')
         .all();
       expect(referenceLinks.length).toBeGreaterThanOrEqual(4);
 
@@ -865,13 +876,66 @@ test.describe("AVS Hyperaldo Calculator", () => {
     });
 
     test("should use medical terminology correctly", async ({ page }) => {
-      // Verify proper medical terms are used
-      await expect(page.locator("text=/Selectivity Index/i")).toBeVisible();
-      await expect(page.locator("text=/Lateralization Index/i")).toBeVisible();
+      // ACTH protocol terminology is shown in the protocol radio labels.
+      await expect(page.locator("text=Pre-ACTH only")).toBeVisible();
+      await expect(page.locator("text=Post-ACTH only")).toBeVisible();
+
+      // The full "Selectivity Index" term is provided as tooltip help text on
+      // the cortisol inputs (the visible UI uses the SI/LI/CSI/RASI
+      // abbreviations). Confirm the tooltip terminology is present in the DOM.
       await expect(
-        page.locator("text=/Contralateral Suppression/i"),
-      ).toBeVisible();
-      await expect(page.locator("text=/ACTH/i")).toBeVisible();
+        page
+          .locator('[title*="Selectivity Index"]')
+          .first(),
+      ).toBeAttached();
+
+      // Run a calculation so the abbreviated indices render, then confirm the
+      // standard AVS terminology (SI, LI, CSI, RASI) is used in the output.
+      await page.locator('input[type="radio"][value="post"]').check();
+      await page
+        .locator('label:has-text("Infrarenal IVC Aldosterone")')
+        .locator("~ input")
+        .fill("85");
+      await page
+        .locator('label:has-text("Infrarenal IVC Cortisol")')
+        .locator("~ input")
+        .fill("18");
+      await page
+        .locator('h4:has-text("Left Adrenal Vein")')
+        .locator("~ div")
+        .first()
+        .locator('input[type="number"]')
+        .first()
+        .fill("2900");
+      await page
+        .locator('h4:has-text("Left Adrenal Vein")')
+        .locator("~ div")
+        .first()
+        .locator('input[type="number"]')
+        .nth(1)
+        .fill("280");
+      await page
+        .locator('h4:has-text("Right Adrenal Vein")')
+        .locator("~ div")
+        .first()
+        .locator('input[type="number"]')
+        .first()
+        .fill("450");
+      await page
+        .locator('h4:has-text("Right Adrenal Vein")')
+        .locator("~ div")
+        .first()
+        .locator('input[type="number"]')
+        .nth(1)
+        .fill("320");
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      await expect(page.locator("text=Left SI:")).toBeVisible({
+        timeout: 2000,
+      });
+      await expect(page.locator("text=/\\bLI:/").first()).toBeVisible();
+      await expect(page.locator("text=/\\bCSI:/").first()).toBeVisible();
+      await expect(page.locator("text=/\\bRASI:/").first()).toBeVisible();
     });
 
     test("should provide comprehensive calculation outputs", async ({
@@ -919,7 +983,7 @@ test.describe("AVS Hyperaldo Calculator", () => {
         .nth(1)
         .fill("320");
 
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole('button', { name: 'Calculate' }).click();
 
       // Verify comprehensive output sections
       await expect(page.locator("text=Left SI:")).toBeVisible({

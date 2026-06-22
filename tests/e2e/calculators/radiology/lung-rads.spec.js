@@ -30,7 +30,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     test("should display calculator with correct title and description", async ({
       page,
     }) => {
-      await expect(page.locator("h2")).toContainText("Lung-RADS");
+      await expect(page.getByTestId('calculator-title').first()).toContainText("Lung-RADS");
       await expect(
         page.getByText("Lung cancer screening CT classification"),
       ).toBeVisible();
@@ -673,7 +673,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("section[aria-live='polite'] > div:has-text('Error:')"),
+        page.getByRole("status", { name: "Calculator results" }),
       ).toContainText("select the dominant finding type");
     });
 
@@ -686,7 +686,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("section[aria-live='polite'] > div:has-text('Error:')"),
+        page.getByRole("status", { name: "Calculator results" }),
       ).toContainText("enter the solid nodule size");
     });
 
@@ -701,7 +701,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("section[aria-live='polite'] > div:has-text('Error:')"),
+        page.getByRole("status", { name: "Calculator results" }),
       ).toContainText("total part-solid nodule size");
     });
 
@@ -712,7 +712,7 @@ test.describe("Lung-RADS v2022 Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("section[aria-live='polite'] > div:has-text('Error:')"),
+        page.getByRole("status", { name: "Calculator results" }),
       ).toContainText("ground-glass nodule size");
     });
   });
@@ -979,6 +979,12 @@ test.describe("Lung-RADS v2022 Calculator", () => {
     });
 
     test("should have valid DOI links for key studies", async ({ page }) => {
+      // References are collapsed by default (first 3) - expand to reveal all
+      const showMore = page.locator('button:has-text("more reference")');
+      if (await showMore.count()) {
+        await showMore.click();
+      }
+
       // NLST study
       const nlstLink = page.locator(
         'a[href="https://doi.org/10.1056/NEJMoa1102873"]',

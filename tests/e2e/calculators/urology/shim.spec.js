@@ -36,7 +36,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
 
     // Verify calculator loaded
-    await expect(page.locator("h2")).toContainText("IIEF-5 (SHIM Score)");
+    await expect(
+      page.getByTestId("calculator-title").first(),
+    ).toContainText("IIEF-5 (SHIM Score)");
     await expect(
       page.locator("text=Sexual Health Inventory for Men").first(),
     ).toBeVisible();
@@ -79,7 +81,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       ),
     ).toBeVisible();
     await expect(
-      page.locator("text=Did not attempt intercourse"),
+      page.getByText("Did not attempt intercourse", { exact: true }).first(),
     ).toBeVisible();
 
     // Question 4: Difficulty maintaining
@@ -97,12 +99,12 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
         "text=5. When you attempted sexual intercourse, how often was it satisfactory",
       ),
     ).toBeVisible();
-    await expect(page.locator("text=Almost always or always")).toBeVisible();
+    await expect(page.getByText("Almost always or always", { exact: true }).first()).toBeVisible();
   });
 
   test("should require all questions to be answered", async ({ page }) => {
     // Click Calculate without answering any questions
-    const calculateButton = page.locator('button:has-text("Calculate")');
+    const calculateButton = page.getByRole("button", { name: "Calculate" });
     await calculateButton.click();
 
     // Wait for results
@@ -133,12 +135,12 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     );
 
     // Calculate
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
     // Verify score format includes "/25"
-    const scoreResult = page.locator("text=Total IIEF-5 (SHIM Score)");
-    await expect(scoreResult).toBeVisible();
-    await expect(scoreResult.locator("..")).toContainText("/ 25");
+    const resultsSection = page.getByRole("status", { name: "Calculator results" });
+    await expect(resultsSection).toContainText("Total SHIM Score");
+    await expect(resultsSection).toContainText("/ 25");
   });
 
   // Test all fixture cases
@@ -165,15 +167,15 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       );
 
       // Click Calculate
-      await page.locator('button:has-text("Calculate")').click();
+      await page.getByRole("button", { name: "Calculate" }).click();
 
       // Verify results
-      const resultsSection = page.locator('section[aria-live="polite"]');
+      const resultsSection = page.getByRole("status", { name: "Calculator results" });
       await expect(resultsSection).toBeVisible();
 
-      // Verify Total IIEF-5 (SHIM Score)
+      // Verify Total SHIM Score
       await expect(resultsSection).toContainText(
-        `Total IIEF-5 (SHIM Score): ${testCase.expected["Total IIEF-5 (SHIM Score)"]}`,
+        `Total SHIM Score: ${testCase.expected["Total SHIM Score"]}`,
       );
 
       // Verify ED Severity
@@ -214,9 +216,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Almost never or never",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    const resultsSection = page.locator('section[aria-live="polite"]');
+    const resultsSection = page.getByRole("status", { name: "Calculator results" });
 
     // Verify severe ED classification
     await expect(resultsSection).toContainText("Severe ED");
@@ -244,9 +246,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Almost always or always",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    const resultsSection = page.locator('section[aria-live="polite"]');
+    const resultsSection = page.getByRole("status", { name: "Calculator results" });
 
     // Verify No ED classification
     await expect(resultsSection).toContainText("No ED");
@@ -276,7 +278,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     await selectRadio(
       page,
       "how difficult",
-      "Most times (much more than half the time)",
+      "Slightly difficult",
     );
     await selectRadio(
       page,
@@ -284,9 +286,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Most times (much more than half the time)",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("21 / 25");
     await expect(resultsSection).toContainText("Mild ED");
     await expect(resultsSection).toContainText("lifestyle modifications");
@@ -294,9 +296,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     // Change q3 from 4 to 5 to get score 22 - should be No ED
     await selectRadio(page, "able to maintain", "Almost always or always");
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("22 / 25");
     await expect(resultsSection).toContainText("No ED");
     await expect(resultsSection).toContainText(
@@ -326,9 +328,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Sometimes (about half the time)",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("16 / 25");
     await expect(resultsSection).toContainText("Mild-to-Moderate ED");
     await expect(resultsSection).toContainText(
@@ -342,9 +344,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Most times (much more than half the time)",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("17 / 25");
     await expect(resultsSection).toContainText("Mild ED");
     await expect(resultsSection).not.toContainText("Mild-to-Moderate");
@@ -372,9 +374,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "A few times (much less than half the time)",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("11 / 25");
     await expect(resultsSection).toContainText("Moderate ED");
     await expect(resultsSection).not.toContainText("Mild-to-Moderate");
@@ -386,9 +388,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Sometimes (about half the time)",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("12 / 25");
     await expect(resultsSection).toContainText("Mild-to-Moderate ED");
   });
@@ -408,16 +410,16 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "able to maintain",
       "A few times (much less than half the time)",
     );
-    await selectRadio(page, "how difficult", "Almost never or never");
+    await selectRadio(page, "how difficult", "Extremely difficult");
     await selectRadio(
       page,
       "how often was it satisfactory",
       "Almost never or never",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("7 / 25");
     await expect(resultsSection).toContainText("Severe ED");
 
@@ -428,9 +430,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Sometimes (about half the time)",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("8 / 25");
     await expect(resultsSection).toContainText("Moderate ED");
     await expect(resultsSection).not.toContainText("Severe");
@@ -454,9 +456,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Did not attempt intercourse",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    const resultsSection = page.locator('section[aria-live="polite"]');
+    const resultsSection = page.getByRole("status", { name: "Calculator results" });
 
     // Score should be 1
     await expect(resultsSection).toContainText("1 / 25");
@@ -475,11 +477,19 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     page,
   }) => {
     // Scroll to references section
-    const referencesSection = page.locator(
-      'section:has(h3:has-text("References"))',
-    );
+    const referencesSection = page
+      .locator("section.references-section")
+      .first();
     await referencesSection.scrollIntoViewIfNeeded();
     await expect(referencesSection).toBeVisible();
+
+    // Expand references (starts collapsed — only 3 visible)
+    const showMoreButton = referencesSection.getByRole("button", {
+      name: /Show \d+ more reference/,
+    });
+    if (await showMoreButton.isVisible().catch(() => false)) {
+      await showMoreButton.click();
+    }
 
     // Verify all 4 references are present
     const referenceLinks = await referencesSection
@@ -488,30 +498,27 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     expect(referenceLinks.length).toBe(4);
 
     // Verify specific references
-    await expect(referencesSection).toContainText(
-      "Rosen RC, et al. The International Index of Erectile Function",
-    );
-    await expect(referencesSection).toContainText("Urology. 1997");
-    await expect(referencesSection).toContainText("abridged, 5-item version");
-    await expect(referencesSection).toContainText("Int J Impot Res. 1999");
-    await expect(referencesSection).toContainText("Cappelleri JC");
-    await expect(referencesSection).toContainText("2005");
-    await expect(referencesSection).toContainText(
-      "AUA Guideline: Erectile Dysfunction",
-    );
+    await expect(referencesSection).toContainText("The International Index of Erectile Function");
+    await expect(referencesSection).toContainText("Development and evaluation of an abridged");
+    await expect(referencesSection).toContainText("Diagnostic evaluation of the erectile function");
+    await expect(referencesSection).toContainText("AUA Guideline: Erectile Dysfunction");
 
     // Verify links are clickable and point to correct URLs
-    const link1 = page.locator('a[href*="s0090-4295(97)00238-0"]');
-    await expect(link1).toBeVisible();
+    await expect(
+      referencesSection.locator('a[href*="s0090-4295(97)00238-0"]'),
+    ).toBeVisible();
 
-    const link2 = page.locator('a[href*="3900472"]');
-    await expect(link2).toBeVisible();
+    await expect(
+      referencesSection.locator('a[href*="3900472"]'),
+    ).toBeVisible();
 
-    const link3 = page.locator('a[href*="3901309"]');
-    await expect(link3).toBeVisible();
+    await expect(
+      referencesSection.locator('a[href*="3901309"]'),
+    ).toBeVisible();
 
-    const link4 = page.locator('a[href*="auanet.org"]');
-    await expect(link4).toBeVisible();
+    await expect(
+      referencesSection.locator('a[href*="auanet.org"]'),
+    ).toBeVisible();
   });
 
   test("should maintain theme consistency", async ({ page }) => {
@@ -527,7 +534,7 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
     await expect(firstRadio).toBeVisible();
 
     // Verify Calculate button styling
-    const calculateButton = page.locator('button:has-text("Calculate")');
+    const calculateButton = page.getByRole("button", { name: "Calculate" });
     await expect(calculateButton).toBeVisible();
     const buttonColor = await calculateButton.evaluate(
       (el) => window.getComputedStyle(el).backgroundColor,
@@ -541,20 +548,22 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
 
     // Verify calculator is still usable
     await expect(
-      page.locator('h2:has-text("IIEF-5 (SHIM Score)")'),
+      page.getByTestId("calculator-title").first(),
     ).toBeVisible();
 
     // Verify all questions are visible and accessible
     await expect(
-      page.locator("text=1. How do you rate your confidence"),
+      page.getByText("1. How do you rate your confidence").first(),
     ).toBeVisible();
-    await expect(page.locator("text=2. When you had erections")).toBeVisible();
+    await expect(
+      page.getByText("2. When you had erections").first(),
+    ).toBeVisible();
 
     // Verify radio buttons work on mobile
     await selectRadio(page, "confidence", "Moderate");
 
     // Verify Calculate button is visible
-    const calculateButton = page.locator('button:has-text("Calculate")');
+    const calculateButton = page.getByRole("button", { name: "Calculate" });
     await expect(calculateButton).toBeVisible();
 
     // Verify mobile-specific layout
@@ -579,9 +588,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Almost never or never",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("5 / 25");
     await expect(resultsSection).toContainText("Severe ED");
 
@@ -600,9 +609,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Almost always or always",
     );
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("25 / 25");
     await expect(resultsSection).toContainText("No ED");
   });
@@ -627,16 +636,16 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Sometimes (about half the time)",
     ); // 3 points
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q1 to Very high (5 points)
     await selectRadio(page, "confidence", "Very high");
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("17 / 25");
   });
 
@@ -660,9 +669,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Sometimes (about half the time)",
     ); // 3 points
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q2 to Almost always or always (5 points)
@@ -671,9 +680,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "hard enough for penetration",
       "Almost always or always",
     );
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("17 / 25");
   });
 
@@ -693,16 +702,16 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Sometimes (about half the time)",
     ); // 3 points
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q3 to Almost always or always (5 points)
     await selectRadio(page, "able to maintain", "Almost always or always");
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("17 / 25");
   });
 
@@ -726,16 +735,16 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Sometimes (about half the time)",
     ); // 3 points
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q4 to Not difficult (5 points)
     await selectRadio(page, "how difficult", "Not difficult");
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("17 / 25");
   });
 
@@ -759,9 +768,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "Almost never or never",
     ); // 1 point
 
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    let resultsSection = page.locator('section[aria-live="polite"]');
+    let resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("13 / 25");
 
     // Change Q5 to Almost always or always (5 points)
@@ -770,9 +779,9 @@ test.describe("IIEF-5 (SHIM Score) Calculator", () => {
       "how often was it satisfactory",
       "Almost always or always",
     );
-    await page.locator('button:has-text("Calculate")').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    resultsSection = page.locator('section[aria-live="polite"]');
+    resultsSection = page.getByRole("status", { name: "Calculator results" });
     await expect(resultsSection).toContainText("17 / 25");
   });
 });

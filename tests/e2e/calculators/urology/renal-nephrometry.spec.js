@@ -1,12 +1,32 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import {
   navigateToCalculator,
   fillInput,
   selectRadio,
   selectOption,
-  toggleCheckbox,
 } from "../../../helpers/calculator-test-helper.js";
-import testData from "../../../fixtures/renal-nephrometry-test-cases.json" assert { type: "json" };
+
+const testData = JSON.parse(
+  readFileSync(new URL("../../../fixtures/renal-nephrometry-test-cases.json", import.meta.url), "utf8"),
+);
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const resultRow = (resultsSection, label) =>
+  resultsSection
+    .locator("> div")
+    .filter({ hasText: new RegExp(`^${escapeRegExp(label)}:\\s*`) })
+    .first();
+
+async function setHilarInvolvement(page, checked) {
+  const hilarSwitch = page.getByRole("switch", { name: /Hilar location/i });
+  const isChecked = (await hilarSwitch.getAttribute("aria-checked")) === "true";
+
+  if (isChecked !== checked) {
+    await hilarSwitch.click();
+  }
+}
 
 /**
  * E2E Tests for R.E.N.A.L. Nephrometry Score Calculator
@@ -130,7 +150,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
         // Toggle hilar checkbox if needed
         if (testCase.inputs.hilar) {
-          await toggleCheckbox(page, "Hilar location", true);
+          await setHilarInvolvement(page, true);
         }
 
         // Click Calculate
@@ -143,21 +163,24 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
         await expect(resultsSection).toBeVisible();
 
         // Verify total score
-        const totalScoreText = await resultsSection
-          .locator('> div:has-text("Total Score")')
-          .textContent();
+        const totalScoreText = await resultRow(
+          resultsSection,
+          "Total Score",
+        ).textContent();
         expect(totalScoreText).toContain(testCase.expected.totalScore);
 
         // Verify complexity
-        const complexityText = await resultsSection
-          .locator('> div:has-text("Complexity")')
-          .textContent();
+        const complexityText = await resultRow(
+          resultsSection,
+          "Complexity",
+        ).textContent();
         expect(complexityText).toContain(testCase.expected.complexity);
 
         // Verify interpretation contains expected text
-        const interpretationText = await resultsSection
-          .locator('> div:has-text("Interpretation")')
-          .textContent();
+        const interpretationText = await resultRow(
+          resultsSection,
+          "Interpretation",
+        ).textContent();
         expect(interpretationText).toContain(testCase.interpretation);
       });
     }
@@ -178,12 +201,12 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 4a (1+1+1+1 = 4)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4a");
       await expect(
-        results.locator('> div:has-text("Complexity")'),
+        resultRow(results, "Complexity"),
       ).toContainText("Low complexity");
     });
 
@@ -202,9 +225,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4a");
     });
 
@@ -224,9 +247,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 5a (2+1+1+1 = 5)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("5a");
     });
 
@@ -246,9 +269,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (3+1+1+1 = 6)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("6a");
     });
 
@@ -266,9 +289,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (3+1+1+1 = 6)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("6a");
     });
   });
@@ -287,9 +310,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4a");
     });
 
@@ -307,9 +330,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 5a (1+2+1+1 = 5)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("5a");
     });
 
@@ -331,9 +354,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (1+3+1+1 = 6)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("6a");
     });
   });
@@ -354,9 +377,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4a");
     });
 
@@ -376,9 +399,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 5a (1+1+2+1 = 5)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("5a");
     });
 
@@ -398,9 +421,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (1+1+3+1 = 6)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("6a");
     });
   });
@@ -421,9 +444,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4a");
     });
 
@@ -441,9 +464,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 5a (1+1+1+2 = 5)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("5a");
     });
 
@@ -463,9 +486,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       // Score should be 6a (1+1+1+3 = 6)
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("6a");
     });
   });
@@ -484,9 +507,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4a");
     });
 
@@ -505,9 +528,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4p");
     });
 
@@ -530,9 +553,9 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4x");
     });
   });
@@ -550,13 +573,13 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
         "Entirely above or below polar line",
       );
       await selectOption(page, "Anterior/posterior location", "Anterior");
-      await toggleCheckbox(page, "Hilar location", true);
+      await setHilarInvolvement(page, true);
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4ah");
     });
 
@@ -576,10 +599,8 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
-      const scoreText = await results
-        .locator('> div:has-text("Total Score")')
-        .textContent();
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
+      const scoreText = await resultRow(results, "Total Score").textContent();
       expect(scoreText).toContain("4a");
       expect(scoreText).not.toContain("4ah");
     });
@@ -596,13 +617,13 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
         "Entirely above or below polar line",
       );
       await selectOption(page, "Anterior/posterior location", "Posterior");
-      await toggleCheckbox(page, "Hilar location", true);
+      await setHilarInvolvement(page, true);
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4ph");
     });
 
@@ -622,13 +643,13 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
         "Anterior/posterior location",
         "Neither/Indeterminate",
       );
-      await toggleCheckbox(page, "Hilar location", true);
+      await setHilarInvolvement(page, true);
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("4xh");
     });
   });
@@ -646,18 +667,18 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await selectRadio(
         page,
         "Location relative to polar line",
-        "Crosses polar line",
+        "Entirely above or below polar line",
       );
       await selectOption(page, "Anterior/posterior location", "Anterior");
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("6a");
       await expect(
-        results.locator('> div:has-text("Complexity")'),
+        resultRow(results, "Complexity"),
       ).toContainText("Low complexity");
     });
 
@@ -677,19 +698,19 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("7a");
       await expect(
-        results.locator('> div:has-text("Complexity")'),
+        resultRow(results, "Complexity"),
       ).toContainText("Moderate complexity");
     });
 
     test("should classify score 10-12 as High complexity", async ({ page }) => {
       // Test with score = 10 (boundary)
       await fillInput(page, "Tumor diameter", "7.0");
-      await selectRadio(page, "Exophytic/endophytic nature", "≥ 50% exophytic");
+      await selectRadio(page, "Exophytic/endophytic nature", "< 50% exophytic");
       await selectRadio(page, "Nearness to collecting system", "4-7 mm");
       await selectRadio(
         page,
@@ -700,12 +721,12 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("10a");
       await expect(
-        results.locator('> div:has-text("Complexity")'),
+        resultRow(results, "Complexity"),
       ).toContainText("High complexity");
     });
   });
@@ -724,18 +745,18 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       await selectRadio(
         page,
         "Location relative to polar line",
-        "Crosses polar line",
+        "Entirely above or below polar line",
       );
       await selectOption(page, "Anterior/posterior location", "Anterior");
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("6a");
       await expect(
-        results.locator('> div:has-text("Complexity")'),
+        resultRow(results, "Complexity"),
       ).toContainText("Low complexity");
     });
 
@@ -754,12 +775,12 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("7a");
       await expect(
-        results.locator('> div:has-text("Complexity")'),
+        resultRow(results, "Complexity"),
       ).toContainText("Moderate complexity");
     });
 
@@ -778,12 +799,12 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("9a");
       await expect(
-        results.locator('> div:has-text("Complexity")'),
+        resultRow(results, "Complexity"),
       ).toContainText("Moderate complexity");
     });
 
@@ -791,7 +812,7 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
       page,
     }) => {
       await fillInput(page, "Tumor diameter", "7.5");
-      await selectRadio(page, "Exophytic/endophytic nature", "≥ 50% exophytic");
+      await selectRadio(page, "Exophytic/endophytic nature", "< 50% exophytic");
       await selectRadio(page, "Nearness to collecting system", "4-7 mm");
       await selectRadio(
         page,
@@ -802,12 +823,12 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
       await expect(
-        results.locator('> div:has-text("Total Score")'),
+        resultRow(results, "Total Score"),
       ).toContainText("10a");
       await expect(
-        results.locator('> div:has-text("Complexity")'),
+        resultRow(results, "Complexity"),
       ).toContainText("High complexity");
     });
   });
@@ -828,10 +849,8 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
-      const interpretation = await results
-        .locator('> div:has-text("Interpretation")')
-        .textContent();
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
+      const interpretation = await resultRow(results, "Interpretation").textContent();
       expect(interpretation).toContain("nephron-sparing");
       expect(interpretation).toContain("94%");
       expect(interpretation).toContain("partial nephrectomy");
@@ -852,10 +871,8 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
-      const interpretation = await results
-        .locator('> div:has-text("Interpretation")')
-        .textContent();
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
+      const interpretation = await resultRow(results, "Interpretation").textContent();
       expect(interpretation).toContain("77%");
       expect(interpretation).toContain("partial nephrectomy");
       expect(interpretation).toContain("operative difficulty");
@@ -880,10 +897,8 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      const results = page.locator('section[aria-live="polite"]');
-      const interpretation = await results
-        .locator('> div:has-text("Interpretation")')
-        .textContent();
+      const results = page.getByRole('status', { name: 'Calculator results' }).first();
+      const interpretation = await resultRow(results, "Interpretation").textContent();
       expect(interpretation).toContain("longer operative times");
       expect(interpretation).toContain("complication rates");
       expect(interpretation).toContain("66%");
@@ -957,10 +972,6 @@ test.describe("R.E.N.A.L. Nephrometry Score Calculator", () => {
         'button:has-text("View RENAL Score Diagram")',
       );
       await expect(diagramLink).toBeVisible();
-
-      // Verify it has the correct URL
-      const href = await diagramLink.evaluate((el) => el.onclick?.toString());
-      // The button should open Radiopaedia link
     });
   });
 });

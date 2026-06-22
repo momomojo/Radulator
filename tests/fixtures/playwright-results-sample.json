@@ -1,0 +1,134 @@
+{
+  "config": {
+    "rootDir": "/Users/agent/work/Radulator"
+  },
+  "suites": [
+    {
+      "title": "calculators",
+      "file": "/Users/agent/work/Radulator/tests/e2e/calculators/radiology/lung-rads.spec.js",
+      "specs": [
+        {
+          "title": "shows strict locator collision",
+          "tests": [
+            {
+              "projectName": "chromium",
+              "expectedStatus": "passed",
+              "status": "unexpected",
+              "results": [
+                {
+                  "status": "failed",
+                  "errors": [
+                    {
+                      "message": "Error: strict mode violation: getByRole('button', { name: 'Calculate' }) resolved to 2 elements\n    at /Users/agent/work/Radulator/tests/e2e/calculators/radiology/lung-rads.spec.js:12:3"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "times out waiting for result",
+          "tests": [
+            {
+              "projectName": "chromium",
+              "expectedStatus": "passed",
+              "status": "unexpected",
+              "results": [
+                {
+                  "status": "timedOut",
+                  "errors": [
+                    {
+                      "message": "TimeoutError: locator.waitFor: Timeout 5000ms exceeded."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "has count mismatch",
+          "tests": [
+            {
+              "projectName": "chromium",
+              "expectedStatus": "passed",
+              "status": "unexpected",
+              "results": [
+                {
+                  "status": "failed",
+                  "errors": [
+                    {
+                      "message": "Error: expect(locator).toHaveCount(expected)\nExpected: 1\nReceived: 3"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "has text mismatch",
+          "tests": [
+            {
+              "projectName": "chromium",
+              "expectedStatus": "passed",
+              "status": "unexpected",
+              "results": [
+                {
+                  "status": "failed",
+                  "errors": [
+                    {
+                      "message": "Error: expect(locator).toHaveText(expected)\nExpected string: \"Category 3\"\nReceived string: \"Category 2\""
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "passes",
+          "tests": [
+            {
+              "projectName": "chromium",
+              "expectedStatus": "passed",
+              "status": "passed",
+              "results": [
+                {
+                  "status": "passed"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "reference links",
+      "file": "/home/runner/work/Radulator/Radulator/tests/e2e/calculators/hepatology/lirads.spec.js",
+      "specs": [
+        {
+          "title": "has DOI reference",
+          "tests": [
+            {
+              "projectName": "chromium",
+              "expectedStatus": "passed",
+              "status": "unexpected",
+              "results": [
+                {
+                  "status": "failed",
+                  "errors": [
+                    {
+                      "message": "Error: expected reference href to contain doi.org"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

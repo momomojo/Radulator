@@ -44,11 +44,11 @@ jobs:
 
       - name: Upload test report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
           name: smoke-test-report
           path: playwright-report/
-          retention-days: 7
+          retention-days: 3
 
 
   targeted-tests:
@@ -68,11 +68,15 @@ jobs:
       - name: Spec coverage check
         run: node scripts/spec-map.js --check
 
-      - name: Detect changed calculators
+      - name: Detect changed targeted specs
         id: changed
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
           CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'src/components/calculators/*.jsx' | grep -vE 'index|registry|FeedbackForm' || true)
+          # Spec-only PRs do not change calculator source, so run their changed
+          # specs directly. If source and specs both changed, the run step
+          # unions these paths with spec-map output.
+          CHANGED_SPECS=$(git diff --name-only --diff-filter=AMR origin/${{ github.base_ref }}...HEAD -- 'tests/e2e/*.spec.js' 'tests/e2e/**/*.spec.js' | sort -u || true)
           # Space-joined single line: a multiline output would embed raw
           # newlines into the github-expression substitution downstream, acting
           # as command separators inside command substitution and silently
@@ -81,8 +85,10 @@ jobs:
           # comments — Actions template-expands run blocks before the shell
           # sees them, and an empty expression fails the whole workflow file.
           CHANGED_SPACE=$(printf '%s' "$CHANGED" | tr '\n' ' ')
+          SPECS_SPACE=$(printf '%s' "$CHANGED_SPECS" | tr '\n' ' ')
           echo "files=$CHANGED_SPACE" >> "$GITHUB_OUTPUT"
-          if [ -n "$CHANGED" ]; then echo "any=true" >> "$GITHUB_OUTPUT"; else echo "any=false" >> "$GITHUB_OUTPUT"; fi
+          echo "spec_files=$SPECS_SPACE" >> "$GITHUB_OUTPUT"
+          if [ -n "$CHANGED" ] || [ -n "$CHANGED_SPECS" ]; then echo "any=true" >> "$GITHUB_OUTPUT"; else echo "any=false" >> "$GITHUB_OUTPUT"; fi
 
       - name: Setup Node
         if: steps.changed.outputs.any == 'true'
@@ -107,11 +113,29 @@ jobs:
         if: steps.changed.outputs.any == 'true'
         run: npm run build
 
-      - name: Run specs for changed calculators
+      - name: Run targeted specs
         if: steps.changed.outputs.any == 'true'
         run: |
-          SPECS=$(node scripts/spec-map.js --specs-for ${{ steps.changed.outputs.files }})
-          echo "Running: $SPECS"
+          FILES="${{ steps.changed.outputs.files }}"
+          CHANGED_SPECS="${{ steps.changed.outputs.spec_files }}"
+          : > targeted-specs.txt
+
+          if [ -n "$FILES" ]; then
+            printf '%s\n' "$FILES" | xargs node scripts/spec-map.js --specs-for >> targeted-specs.txt
+          fi
+
+          if [ -n "$CHANGED_SPECS" ]; then
+            printf '%s\n' "$CHANGED_SPECS" | tr ' ' '\n' >> targeted-specs.txt
+          fi
+
+          sort -u targeted-specs.txt | awk 'NF' > targeted-specs.unique.txt
+          SPECS=$(tr '\n' ' ' < targeted-specs.unique.txt)
+          if [ -z "$SPECS" ]; then
+            echo "No targeted specs resolved; refusing to run an empty Playwright command."
+            exit 1
+          fi
+
+          echo "Running targeted specs: $SPECS"
           npx playwright test $SPECS --project=chromium
         env:
           CI: true
@@ -122,7 +146,7 @@ jobs:
         with:
           name: targeted-test-report
           path: playwright-report/
-          retention-days: 7
+          retention-days: 3
 
   full-tests:
     name: Full Test Suite
@@ -158,11 +182,11 @@ jobs:
 
       - name: Upload test report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
           name: full-test-report
           path: playwright-report/
-          retention-days: 30
+          retention-days: 3
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -170,4 +194,4 @@ jobs:
         with:
           name: test-results
           path: test-results/
-          retention-days: 7
+          retention-days: 3

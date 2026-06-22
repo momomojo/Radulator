@@ -78,6 +78,7 @@ ACR BI-RADS (Breast Imaging) · ACR O-RADS (Women's Imaging) · CAD-RADS 2.0 (Ca
 - **`npm run build`** - Build the application for production
 - **`npm run preview`** - Preview the production build locally
 - **`npm run lint`** - Run ESLint to check code quality
+- **`npm run test:decompose-full-suite -- <test-results/results.json>`** - Summarize Playwright JSON reporter artifacts into deterministic failure classes for bounded remediation cards
 
 ## Project Structure
 

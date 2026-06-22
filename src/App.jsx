@@ -277,6 +277,14 @@ function AppContent() {
     return roisFromFields.length + roisFromCsv.length + roisFromRows.length > 0;
   }, [def?.id, vals, mreRows]);
 
+  const prostateVolumeMl = useMemo(() => {
+    if (def?.id !== "prostate-volume" || !out) return NaN;
+    const parsed = parseFloat(
+      String(out["Prostate Volume (mL)"] ?? "").replace(/[^\d.]/g, ""),
+    );
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }, [def?.id, out]);
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
       <a href="#main-content" className="skip-link">
@@ -1161,9 +1169,7 @@ function AppContent() {
                       </div>
                     )}
                   {def.id === "prostate-volume" &&
-                    parseFloat(
-                      out["Volume (cm³)"]?.replace(/[^\d.]/g, "") || "0",
-                    ) <= 30 && (
+                    prostateVolumeMl <= 30 && (
                       <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">
                         <div className="flex items-center text-green-800 dark:text-green-300">
                           <svg

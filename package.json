@@ -21,7 +21,8 @@
     "test:firefox": "playwright test --project=firefox",
     "test:webkit": "playwright test --project=webkit",
     "test:mobile": "playwright test --project='Mobile Chrome' --project='Mobile Safari'",
-    "test:compute": "node --loader ./scripts/jsx-loader.mjs scripts/run-compute-tests.mjs"
+    "test:compute": "node --loader ./scripts/jsx-loader.mjs scripts/run-compute-tests.mjs",
+    "test:decompose-full-suite": "node scripts/full-suite-decomposer.mjs"
   },
   "dependencies": {
     "@formspree/react": "^3.0.0",
