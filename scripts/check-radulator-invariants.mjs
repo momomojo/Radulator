@@ -14,8 +14,21 @@ function read(filePath) {
   return readFileSync(filePath, "utf8");
 }
 
+function extractCalculatorScope(source, rel) {
+  // Anchor at the exported calculator definition, matching static-page/spec
+  // tooling. Some calculator files contain other object literals first (for
+  // example KhouryCatheterSelector.jsx's catheter database), so whole-file
+  // first-match regexes can validate the wrong object.
+  const anchor = source.search(/export\s+(default|const\s+\w+\s*=)\s*{/);
+  if (anchor < 0) {
+    errors.push(`${rel}: exported calculator definition not found`);
+    return source;
+  }
+  return source.slice(anchor);
+}
+
 function extractString(source, key) {
-  return source.match(new RegExp(`\\b${key}\\s*:\\s*(["'])(.*?)\\1`))?.[2] || "";
+  return source.match(new RegExp(`\\b${key}\\s*:\\s*"([^"]*)"`))?.[1] || "";
 }
 
 function hasKey(source, key) {
@@ -39,12 +52,13 @@ function checkCalculatorMetadata() {
     const filePath = path.join(calculatorDir, file);
     const source = read(filePath);
     const rel = path.relative(root, filePath);
-    const id = extractString(source, "id");
-    const name = extractString(source, "name");
-    const category = extractString(source, "category");
+    const calculatorScope = extractCalculatorScope(source, rel);
+    const id = extractString(calculatorScope, "id");
+    const name = extractString(calculatorScope, "name");
+    const category = extractString(calculatorScope, "category");
 
     for (const key of ["id", "name", "category", "desc", "metaDesc", "info", "refs"]) {
-      if (!hasKey(source, key)) errors.push(`${rel}: missing required calculator metadata key '${key}'`);
+      if (!hasKey(calculatorScope, key)) errors.push(`${rel}: missing required calculator metadata key '${key}'`);
     }
 
     if (id && !/^[a-z0-9][a-z0-9_-]*$/.test(id)) {
@@ -57,10 +71,12 @@ function checkCalculatorMetadata() {
     if (category && !categories.has(category)) {
       warnings.push(`${rel}: category '${category}' is not listed in registry categoryOrder; it will sort after ordered categories`);
     }
-    if (!name.trim()) errors.push(`${rel}: name is empty or not a static string`);
+    for (const [key, value] of Object.entries({ id, name, category })) {
+      if (!value.trim()) errors.push(`${rel}: ${key} is empty or not a double-quoted static string`);
+    }
 
-    const custom = /\bisCustomComponent\s*:\s*true/.test(source);
-    if (!custom && !hasKey(source, "compute")) {
+    const custom = /\bisCustomComponent\s*:\s*true/.test(calculatorScope);
+    if (!custom && !hasKey(calculatorScope, "compute")) {
       errors.push(`${rel}: non-custom calculator missing compute`);
     }
   }
