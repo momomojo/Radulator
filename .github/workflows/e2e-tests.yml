@@ -35,8 +35,10 @@ jobs:
         run: |
           node --check scripts/capture-feature-proof.mjs
           node --check scripts/check-radulator-invariants.mjs
+          node --check scripts/check-radulator-invariants.test.mjs
           node --check scripts/collect-loop-metrics.mjs
           bash -n scripts/dev-local.sh
+          npm run test:invariants
           npm run check:invariants
 
       - name: Build application
