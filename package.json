@@ -23,6 +23,7 @@
     "test:mobile": "playwright test --project='Mobile Chrome' --project='Mobile Safari'",
     "test:compute": "node --import ./scripts/register-jsx-loader.mjs scripts/run-compute-tests.mjs",
     "test:invariants": "node scripts/check-radulator-invariants.test.mjs",
+    "test:dev-local": "bash tests/scripts/dev-local-restart.sh",
     "test:decompose-full-suite": "node scripts/full-suite-decomposer.mjs",
     "check:invariants": "node scripts/check-radulator-invariants.mjs",
     "metrics:loops": "node scripts/collect-loop-metrics.mjs",
