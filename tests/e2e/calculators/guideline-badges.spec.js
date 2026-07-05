@@ -31,7 +31,7 @@ test.describe("Guideline Version Badges", () => {
       { name: "Mehran CIN Risk Score", expected: "Mehran Score (2004)" },
       {
         name: "Bosniak Classification (Renal Cysts)",
-        expected: "Bosniak (2005) — v2019 update planned",
+        expected: "Bosniak v2019",
       },
     ];
 
@@ -99,10 +99,11 @@ test.describe("Guideline Version Badges", () => {
       await expect(panel).toBeVisible();
       await expect(panel).toContainText("Bosniak v2019 (2019)");
       await expect(panel).toContainText(
-        "has been approved (physician sign-off 2026-07-05)",
+        "active calculator version after physician sign-off on 2026-07-05",
       );
-      await expect(panel).toContainText("is being implemented");
-      await expect(panel).toContainText("currently runs 2005 logic");
+      await expect(panel).toContainText(
+        "retired 2005 logic is retained only as historical context",
+      );
       await expect(panel).toContainText("wall and septal thickness");
       await expect(panel).toContainText("intrarenal location");
 
