@@ -29,15 +29,44 @@ import {
   GuideOverlay,
 } from "@/components/onboarding";
 
-function getInjectedTestCalculators() {
-  if (import.meta.env.PROD || typeof window === "undefined") return [];
-  return Array.isArray(window.__RADULATOR_TEST_CALCS__)
-    ? window.__RADULATOR_TEST_CALCS__.filter((calc) => calc?.id)
-    : [];
+function BoundaryRecoversOnRetry() {
+  if (window.__RADULATOR_TEST_SHOULD_THROW_ON_RETRY_CALC__) {
+    throw new Error("Boundary test render error");
+  }
+  return "Recovered test calculator panel";
 }
 
-const calcDefs = [...getInjectedTestCalculators(), ...registryCalcDefs].sort(
-  (a, b) => a.name.localeCompare(b.name),
+function BoundaryAlwaysThrows() {
+  throw new Error("Persistent boundary test render error");
+}
+
+function getTestCalculatorDefs() {
+  if (typeof window === "undefined") return [];
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has("__radulator_boundary_test")) return [];
+  window.__RADULATOR_TEST_SHOULD_THROW_ON_RETRY_CALC__ = true;
+  return [
+    {
+      id: "boundary-recovers-on-retry",
+      category: "Test",
+      name: "Boundary Recovers On Retry",
+      desc: "Test-only calculator that recovers after the retry path resets the boundary.",
+      isCustomComponent: true,
+      Component: BoundaryRecoversOnRetry,
+    },
+    {
+      id: "boundary-always-throws",
+      category: "Test",
+      name: "Boundary Always Throws",
+      desc: "Test-only calculator that always throws during render.",
+      isCustomComponent: true,
+      Component: BoundaryAlwaysThrows,
+    },
+  ];
+}
+
+const calcDefs = [...getTestCalculatorDefs(), ...registryCalcDefs].sort((a, b) =>
+  a.name.localeCompare(b.name),
 );
 
 const categories = calcDefs.reduce((acc, calc) => {
@@ -49,9 +78,7 @@ const categories = calcDefs.reduce((acc, calc) => {
   return acc;
 }, {});
 
-const allTags = [
-  ...new Set(calcDefs.flatMap((calc) => calc.tags || [])),
-].sort();
+const allTags = [...new Set(calcDefs.flatMap((calc) => calc.tags || []))].sort();
 
 /*******************************************************************
   App Wrapper - Provides Context
