@@ -626,22 +626,51 @@ test.describe("AVS Cortisol Calculator", () => {
   test("should allow removal of samples (except when only one remains)", async ({
     page,
   }) => {
-    // Add a second left sample
     await page.locator('button:has-text("+ Add Left Sample")').click();
+    await expect(
+      page.getByLabel(/Left adrenal vein sample 2 cortisol/i),
+    ).toBeVisible();
 
-    // Remove button should be enabled
-    const removeButtons = page.locator('button:has-text("Remove")');
-    const firstRemoveButton = removeButtons.first();
-    await expect(firstRemoveButton).toBeEnabled();
+    const leftSample2Remove = page.getByRole("button", {
+      name: /Remove left adrenal vein sample 2/i,
+    });
+    await expect(leftSample2Remove).toBeEnabled();
+    await leftSample2Remove.click();
 
-    // Click to remove second sample
-    await removeButtons.nth(1).click();
+    await expect(
+      page.getByLabel(/Left adrenal vein sample 2 cortisol/i),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", {
+        name: /Remove left adrenal vein sample 1/i,
+      }),
+    ).toBeDisabled();
 
-    // When only 1 sample remains, remove should be disabled
-    const remainingRemoveButton = page
-      .locator('button:has-text("Remove")')
-      .first();
-    await expect(remainingRemoveButton).toBeDisabled();
+    await page.locator('button:has-text("+ Add Right Sample")').click();
+    await page.locator('button:has-text("+ Add Right Sample")').click();
+    await expect(
+      page.getByLabel(/Right adrenal vein sample 3 cortisol/i),
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", {
+        name: /Remove right adrenal vein sample 2/i,
+      })
+      .click();
+    await expect(
+      page.getByLabel(/Right adrenal vein sample 3 cortisol/i),
+    ).toHaveCount(0);
+
+    await page
+      .getByRole("button", {
+        name: /Remove right adrenal vein sample 2/i,
+      })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: /Remove right adrenal vein sample 1/i,
+      }),
+    ).toBeDisabled();
   });
 
   test("should verify all reference links are accessible", async ({ page }) => {

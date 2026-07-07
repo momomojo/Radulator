@@ -29,6 +29,10 @@ test.describe("Guideline Version Badges", () => {
       { name: "MELD-Na Score", expected: "MELD-Na (OPTN 2016)" },
       { name: "BCLC Staging", expected: "BCLC 2022" },
       { name: "Mehran CIN Risk Score", expected: "Mehran Score (2004)" },
+      {
+        name: "Bosniak Classification (Renal Cysts)",
+        expected: "Bosniak (2005) — v2019 update planned",
+      },
     ];
 
     for (const { name, expected } of badgeTests) {
@@ -70,6 +74,49 @@ test.describe("Guideline Version Badges", () => {
       const descBox = await desc.boundingBox();
       const badgeBox = await badge.boundingBox();
       expect(badgeBox.y).toBeGreaterThan(descBox.y);
+    });
+  });
+
+  test.describe("Version history disclosure", () => {
+    test("should keep Bosniak version history collapsed until requested", async ({
+      page,
+    }) => {
+      await navigateToCalculator(page, "Bosniak Classification (Renal Cysts)");
+
+      const toggle = page.getByRole("button", {
+        name: /Why v2019\? .*version history/i,
+      });
+      const panel = page.getByTestId("version-history-panel");
+
+      await expect(toggle).toBeVisible();
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      await expect(toggle).toHaveAttribute("aria-controls", /version-history-/);
+      await expect(panel).toBeHidden();
+
+      await toggle.press("Enter");
+
+      await expect(toggle).toHaveAttribute("aria-expanded", "true");
+      await expect(panel).toBeVisible();
+      await expect(panel).toContainText("Bosniak v2019 (2019)");
+      await expect(panel).toContainText(
+        "has been approved (physician sign-off 2026-07-05)",
+      );
+      await expect(panel).toContainText("is being implemented");
+      await expect(panel).toContainText("currently runs 2005 logic");
+      await expect(panel).toContainText("wall and septal thickness");
+      await expect(panel).toContainText("intrarenal location");
+
+      const silvermanCitation = panel.getByRole("link", {
+        name: /Silverman SG et al\. Radiology 2019/,
+      });
+      await expect(silvermanCitation).toHaveAttribute(
+        "href",
+        "https://doi.org/10.1148/radiol.2019182646",
+      );
+
+      await toggle.press("Space");
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      await expect(panel).toBeHidden();
     });
   });
 });
