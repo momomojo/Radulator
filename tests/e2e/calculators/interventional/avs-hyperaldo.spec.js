@@ -497,6 +497,74 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await takeScreenshot(page, "avs-hyperaldo", "multi-sample-averaging");
     });
 
+    test("should allow removal of samples except when one remains", async ({
+      page,
+    }) => {
+      await page.locator('input[type="radio"][value="post"]').check();
+
+      await page
+        .getByRole("button", {
+          name: /Add Post Left Adrenal Vein sample/i,
+        })
+        .click();
+      await expect(
+        page.getByLabel(/Post Left Adrenal Vein sample 2 aldosterone/i),
+      ).toBeVisible();
+
+      const leftSample2Remove = page.getByRole("button", {
+        name: /Remove Post Left Adrenal Vein sample 2/i,
+      });
+      await expect(leftSample2Remove).toBeEnabled();
+      await leftSample2Remove.click();
+
+      await expect(
+        page.getByLabel(/Post Left Adrenal Vein sample 2 aldosterone/i),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", {
+          name: /Remove Post Left Adrenal Vein sample 1/i,
+        }),
+      ).toBeDisabled();
+
+      const addRightSample = page.getByRole("button", {
+        name: /Add Post Right Adrenal Vein sample/i,
+      });
+      await addRightSample.click();
+      await addRightSample.click();
+      await addRightSample.click();
+      await expect(
+        page.getByLabel(/Post Right Adrenal Vein sample 4 aldosterone/i),
+      ).toBeVisible();
+
+      await page
+        .getByRole("button", {
+          name: /Remove Post Right Adrenal Vein sample 3/i,
+        })
+        .click();
+      await expect(
+        page.getByLabel(/Post Right Adrenal Vein sample 4 aldosterone/i),
+      ).toHaveCount(0);
+      await expect(
+        page.getByLabel(/Post Right Adrenal Vein sample 3 aldosterone/i),
+      ).toBeVisible();
+
+      await page
+        .getByRole("button", {
+          name: /Remove Post Right Adrenal Vein sample 3/i,
+        })
+        .click();
+      await page
+        .getByRole("button", {
+          name: /Remove Post Right Adrenal Vein sample 2/i,
+        })
+        .click();
+      await expect(
+        page.getByRole("button", {
+          name: /Remove Post Right Adrenal Vein sample 1/i,
+        }),
+      ).toBeDisabled();
+    });
+
     test("Scenario 6: Unit conversion (pg/mL and nmol/L)", async ({ page }) => {
       // Change units to alternative system
       await selectOption(page, "Aldosterone Units", "pg/mL");
