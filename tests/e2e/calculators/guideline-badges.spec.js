@@ -99,8 +99,10 @@ test.describe("Guideline Version Badges", () => {
       await expect(panel).toBeVisible();
       await expect(panel).toContainText("Bosniak v2019 (2019)");
       await expect(panel).toContainText(
-        "Current calculator logic remains Bosniak 2005",
+        "has been approved (physician sign-off 2026-07-05)",
       );
+      await expect(panel).toContainText("is being implemented");
+      await expect(panel).toContainText("currently runs 2005 logic");
       await expect(panel).toContainText("wall and septal thickness");
       await expect(panel).toContainText("intrarenal location");
 
