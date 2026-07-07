@@ -37,7 +37,10 @@ jobs:
           node --check scripts/check-radulator-invariants.mjs
           node --check scripts/check-radulator-invariants.test.mjs
           node --check scripts/collect-loop-metrics.mjs
+          node --check scripts/search-verification-meta.mjs
+          node --check scripts/ping-search-indexes.mjs
           bash -n scripts/dev-local.sh
+          npm run test:search-verification
           npm run test:invariants
           npm run check:invariants
 

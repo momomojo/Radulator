@@ -22,11 +22,14 @@
     "test:webkit": "playwright test --project=webkit",
     "test:mobile": "playwright test --project='Mobile Chrome' --project='Mobile Safari'",
     "test:compute": "node --import ./scripts/register-jsx-loader.mjs scripts/run-compute-tests.mjs",
+    "test:search-verification": "node tests/search-verification-meta.test.mjs && node tests/ping-search-indexes.test.mjs",
     "test:invariants": "node scripts/check-radulator-invariants.test.mjs",
     "test:decompose-full-suite": "node scripts/full-suite-decomposer.mjs",
     "check:invariants": "node scripts/check-radulator-invariants.mjs",
     "metrics:loops": "node scripts/collect-loop-metrics.mjs",
-    "proof:feature": "node scripts/capture-feature-proof.mjs"
+    "proof:feature": "node scripts/capture-feature-proof.mjs",
+    "index:ping": "node scripts/ping-search-indexes.mjs",
+    "index:ping:dry-run": "node scripts/ping-search-indexes.mjs --dry-run"
   },
   "dependencies": {
     "@formspree/react": "^3.0.0",

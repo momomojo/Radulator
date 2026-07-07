@@ -56,3 +56,14 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Checkout indexing scripts
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Ping search indexes
+        run: node scripts/ping-search-indexes.mjs --site-url https://radulator.com --sitemap-url https://radulator.com/sitemap.xml
