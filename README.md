@@ -6,7 +6,7 @@ A comprehensive radiology calculator application built with React and Vite, prov
 
 ## Overview
 
-Radulator is a modern web application providing evidence-based medical calculators for radiology and adjacent specialties. It features **38 specialized calculators across 11 specialty categories**, each with evidence-based formulas, proper academic references, and built-in result interpretation. Calculators are auto-discovered from their own metadata (`src/components/calculators/registry.js`), so this list always reflects the code:
+Radulator is a modern web application providing evidence-based medical calculators for radiology and adjacent specialties. It features **39 specialized calculators across 11 specialty categories**, each with evidence-based formulas, proper academic references, and built-in result interpretation. Calculators are auto-discovered from their own metadata (`src/components/calculators/registry.js`), so this list always reflects the code:
 
 ## Features
 
@@ -15,8 +15,8 @@ Radulator is a modern web application providing evidence-based medical calculato
 #### Radiology (12)
 ACR TI-RADS · Adrenal CT Washout · Adrenal MRI Chemical Shift · Bosniak Classification (Renal Cysts) · DLP to Effective Dose · Fleischner 2017 Pulmonary Nodules · Hip Dysplasia · IV Contrast Dosing · Lung-RADS v2022 · Prostate Volume & PSA Density · Radiation Dose Converter · Spleen Size
 
-#### Hepatology/Liver (9)
-ALBI Score · BCLC Staging (HCC) · Child-Pugh Score · CT Severity Index (CTSI) · LI-RADS v2018 · MELD-Na Score · Milan Criteria (HCC) · MR Elastography (Liver) · Y-90 Radioembolization Dosimetry
+#### Hepatology/Liver (10)
+ALBI Score · BCLC Staging (HCC) · Child-Pugh Score · CT Severity Index (CTSI) · LI-RADS v2018 · MELD 3.0 Score · MELD-Na Score (Legacy) · Milan Criteria (HCC) · MR Elastography (Liver) · Y-90 Radioembolization Dosimetry
 
 #### Interventional (5)
 Adrenal Vein Sampling – Aldosterone · Adrenal Vein Sampling – Cortisol · Goiter Symptoms · Inferior Petrosal Sinus Sampling (IPSS) · Khoury Catheter Selector
