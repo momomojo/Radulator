@@ -43,7 +43,10 @@ function BoundaryAlwaysThrows() {
 function getTestCalculatorDefs() {
   if (typeof window === "undefined") return [];
   const params = new URLSearchParams(window.location.search);
-  if (!params.has("__radulator_boundary_test")) return [];
+  const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(
+    window.location.hostname,
+  );
+  if (!isLocalhost || !params.has("__radulator_boundary_test")) return [];
   window.__RADULATOR_TEST_SHOULD_THROW_ON_RETRY_CALC__ = true;
   return [
     {
