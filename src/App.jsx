@@ -7,7 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FieldsWithSections } from "@/components/forms";
-import { ResultDisplay, CollapsibleReferences } from "@/components/display";
+import {
+  ResultDisplay,
+  CollapsibleReferences,
+  VersionHistoryDisclosure,
+} from "@/components/display";
 import { CalculatorProvider, useCalculator } from "@/context";
 import { usePreferences, useUrlSync, usePageMeta } from "@/hooks";
 // Auto-discovered calculator registry
@@ -861,12 +865,13 @@ function AppContent() {
                   {def.desc}
                 </p>
                 {def.guidelineVersion && (
-                  <span
-                    className="inline-block mt-1.5 px-2.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full border border-blue-200 dark:border-blue-800"
-                    data-testid="guideline-badge"
-                  >
-                    {def.guidelineVersion}
-                  </span>
+                  <VersionHistoryDisclosure
+                    calculatorId={def.id}
+                    calculatorName={def.name}
+                    guidelineVersion={def.guidelineVersion}
+                    history={def.versionHistory}
+                    onCitationClick={trackOutboundLink}
+                  />
                 )}
               </header>
 

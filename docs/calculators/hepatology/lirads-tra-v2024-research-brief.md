@@ -5,6 +5,7 @@
 **Category candidate:** Hepatology/Liver  
 **Target audience:** Radiologists, hepatologists, interventional radiologists, IR/DR residents  
 **Stage 2 trigger:** Mohib Hafeez, MD sign-off on this brief
+**Revision 1 note (2026-07-05):** Owner requested a clinician-first recommendation — optimize for daily radiologist/IR workflow and patient utility, not SEO, registry count, or monetization.
 
 ---
 
@@ -93,7 +94,7 @@ Allowed ancillary features favoring viability (MRI only):
 | Certain masslike enhancement (unequivocal) | **LR-TR Viable** — AFs not needed |
 | No masslike enhancement | **LR-TR Nonviable** — AFs not applicable (cannot downgrade) |
 
-> **Evidence:** Adding DWI and T2 criteria improved sensitivity for residual HCC from 57% to 71% with minimal loss of specificity (Insights Imaging 2026; doi:10.1186/s13244-026-02290-9).
+> **Evidence:** The ACR v2024 update makes diffusion restriction and mild-to-moderate T2 hyperintensity optional ancillary MRI features for upgrading equivocal/nonprogressing assessments to LR-TR Viable. Supporting radiology-pathology studies and reviews report improved viable-tumor sensitivity when MRI ancillary features are used: Park et al. reported 84% vs 76% sensitivity without a specificity penalty, and Kim SW et al. reported 86.9% vs 64.5% sensitivity with similar specificity (97% vs 98%). Use conservatively and only when the required MRI sequences are available.
 
 #### Step 3: Tiebreaking
 
@@ -302,37 +303,46 @@ If Step 1a resulted in **LR-TR Nonprogressing** and there is a clinical question
 
 ---
 
-## 4. Open Questions for Physician
+## 4. Open Questions for Physician — Revision 1 Clinician-First Recommendation
 
-Before proceeding to implementation (stage 2), the following design questions need Mohib's clinical judgment:
+Owner instruction integrated: choose what helps daily clinicians most, not what is easiest to monetize, inflate SEO surface area, or preserve internal registry neatness. The recommendations below are therefore judged by bedside/reporting workflow: faster correct entry point, fewer duplicate choices, fewer irrelevant inputs, and no omission of high-utility validated use cases.
+
+### Recommendation Summary
+
+| Field | Recommendation | Why this is best for daily clinicians |
+|-------|----------------|----------------------------------------|
+| **ENTRIES** | **A — one LI-RADS TRA calculator with an immediate treatment-type selector** | Clinicians think in one task: “post-treatment LI-RADS response.” A single entry reduces search/registry fragmentation and avoids making the user choose between two similarly named calculators before they have anchored the clinical scenario. The top selector can still keep the two ACR v2024 cores strictly separate. |
+| **MARGIN** | **INCLUDE — surgical resection margin use case in v1** | The nonradiation TRA core explicitly includes surgical-margin assessment after HCC resection. The AJR validation study reports earlier/smaller local-recurrence detection than diagnostic LI-RADS v2018, and the additional UI burden is small because the same masslike-enhancement logic applies at the margin. |
+| **ANCILLARY** | **2 — hide ancillary MRI features behind an “Include MRI ancillary features?” toggle** | This preserves the v2024 sensitivity benefit for MRI users while keeping CT-only and quick non-MRI workflows clean. Always showing DWI/T2 fields risks distracting users when those sequences are absent; deferring AFs would omit one of v2024’s major clinical improvements. |
 
 ### Q1: Single Calculator with Treatment Core Selector vs Two Separate Calculator Entries
 
 The TRA v2024 algorithm has two distinct cores with different logic, categories, and decision trees. Two design options:
 
-- **Option A (single entry):** One calculator (`lirads-tra`) with a radio selector at the top: "Nonradiation LRT" vs "Radiation LRT." The compute function branches accordingly. More compact, less registry overhead, but the UI is more complex.
-- **Option B (two entries):** `lirads-tra-nonradiation` and `lirads-tra-radiation` as separate calculator entries, each with its own URL, meta description, and distilled logic tree. Simpler per-calculator UI; better SEO targeting ("LI-RADS TRA nonradiation calculator" vs "LI-RADS TRA radiation calculator"); but inflates registry count and could confuse users searching for "LI-RADS TRA."
+- **Option A (recommended):** One calculator (`lirads-tra`) with a radio selector at the top: "Nonradiation LRT" vs "Radiation LRT." The compute function branches accordingly. This matches how clinicians encounter the task — a treated HCC observation needing LI-RADS TRA categorization — while still forcing the treatment-mechanism choice before any result can be produced.
+- **Option B:** `lirads-tra-nonradiation` and `lirads-tra-radiation` as separate calculator entries, each with its own URL, meta description, and distilled logic tree. This is cleaner for page-level SEO and isolates the logic trees, but it creates two similarly named entry points and asks a busy user to choose the product page before the clinical selector.
 
-**Clinical preference?** Option A is more typical for LI-RADS family tools — the existing diagnostic LI-RADS handles multiple lesion features within one calculator. But the radiation/nonradiation cores are fundamentally different enough that Option B may be clinically cleaner.
+**Clinician-first rationale:** Choose **Option A**. The ACR frames v2024 as one CT/MRI TRA system with bifurcated nonradiation and radiation cores, and LI-RADS exists to standardize terminology, reduce variability/errors, and improve communication. A single calculator with a required first-step selector is the most useful default: one bookmark, one mental model, no duplicate “which LI-RADS TRA calculator?” moment, and no loss of algorithm separation.
 
 ### Q2: Include Surgical Resection Margin Application or Not?
 
-The nonradiation TRA core explicitly states that the algorithm may be applied to evaluate the **surgical margin after HCC resection** (AJR 2025; doi:10.2214/AJR.25.33787). Including this adds clinical utility but:
-- The user would need to select "post-resection margin" vs "post-LRT" as a sub-option
-- The imaging features are identical (masslike enhancement = LR-TR Viable at margin)
-- The management implications differ (recurrence at resection margin may warrant different intervention than residual tumor after TACE)
+The nonradiation TRA core explicitly states that the algorithm may be applied to evaluate the **surgical margin after HCC resection**. Including this adds clinical utility but:
 
-**Include the resection margin use case** as a note/option, or omit for clarity and add in a future update?
+- The user would need to select "post-resection margin" vs "post-LRT treatment zone" as a sub-option under the nonradiation path
+- The imaging features are identical: masslike enhancement at the treated lesion/margin or surgical margin drives LR-TR Viable assessment
+- The management context differs, so the calculator should label this as a margin-recurrence assessment rather than a generic post-TACE/ablation residual-tumor result
 
-### Q3: Should Ancillary Features Be Mandatory or Optional in the Calculator?
+**Clinician-first rationale:** Choose **INCLUDE**. The AJR surgical-margin validation study reports that LI-RADS CT/MRI Nonradiation TRA v2024 detected local recurrence after HCC resection earlier (median 5.1 months) and at smaller size than diagnostic LI-RADS v2018. If Radulator omits this in v1, it would leave out a validated daily-use scenario that may help earlier multidisciplinary review, while adding only a small selector/note to the UI.
 
-The ACR specifies AFs as **optional** — they may be used to upgrade from Equivocal/Nonprogressing to Viable. Implementation options:
+### Q3: Should Ancillary Features Be Always Visible, Toggle-Gated, or Deferred?
 
-- **Option 1:** Always show DWI/T2 inputs. When the user selects "equivocal masslike enhancement" or "stable/decreasing after radiation," enable AF fields that can push the result to Viable.
-- **Option 2:** Keep AF fields hidden by default with an "Include ancillary MRI features?" toggle. Recommended for MRI-only users.
-- **Option 3:** Omit AFs entirely in v1 and add them in a follow-up. Keeps the calculator simpler but misses the v2024's key diagnostic improvement.
+The ACR specifies AFs as **optional** — diffusion restriction and mild-to-moderate T2 hyperintensity may be used to upgrade from LR-TR Equivocal (nonradiation) or LR-TR Nonprogressing (radiation) to LR-TR Viable when MRI is available. Implementation options:
 
-**Preference?** Given that AFs are the most impactful change in v2024 (improving sensitivity from 57% to 71%), Option 1 or 2 seems appropriate for v1.
+- **Option 1:** Always show DWI/T2 inputs. Complete, but noisy for CT-only users and for cases where Step 1 already gives a clear category.
+- **Option 2 (recommended):** Keep AF fields hidden by default with an "Include MRI ancillary features?" toggle. When enabled, surface DWI/T2 inputs only in the relevant equivocal/nonprogressing branch.
+- **Option 3:** Omit AFs entirely in v1 and add them in a follow-up. Simplest, but misses a major v2024 diagnostic improvement.
+
+**Clinician-first rationale:** Choose **Option 2**. MRI ancillary features have evidence-backed diagnostic value, with studies reporting higher sensitivity when AFs are used to upgrade equivocal/questionable cases (e.g., Park et al. 84% vs 76%; Kim SW et al. 86.9% vs 64.5%, with similar specificity). But a daily calculator should not show irrelevant MRI inputs to CT-only users or to straightforward nonviable/viable cases. Toggle-gating gives MRI users the useful extra capability without slowing everyone else.
 
 ---
 
@@ -365,23 +375,35 @@ The ACR specifies AFs as **optional** — they may be used to upgrade from Equiv
    DOI: [10.26044/ecr2025/C-22116](https://dx.doi.org/10.26044/ecr2025/C-22116)  
    **Educational poster with worked examples (Figs. 4–16).**
 
-6. **The 2024 LI-RADS treatment response update: practical reporting after non-radiation and radiation locoregional therapies for hepatocellular carcinoma.** *Insights Imaging*. 2026 (in press).  
-   DOI: [10.1186/s13244-026-02290-9](https://doi.org/10.1186/s13244-026-02290-9)  
+6. **Lučev J, et al.** The 2024 LI-RADS treatment response update: practical reporting after non-radiation and radiation locoregional therapies for hepatocellular carcinoma. *Insights into Imaging*. 2026.
+   DOI: [10.1186/s13244-026-02290-9](https://doi.org/10.1186/s13244-026-02290-9)
    **Practical reporting guide with evidence synthesis and management recommendations.**
 
 ### Validation and Comparative Studies
 
-7. **Nonradiation TRA v2024 vs v2017 for post-TACE assessment.** *AJR*. 2024.  
-   DOI: [10.2214/AJR.24.32035](https://doi.org/10.2214/AJR.24.32035)  
-   **Early validation: improved sensitivity of masslike enhancement criterion.**
+7. **Zhou S, Zhou G, Shen Y, et al.** LI-RADS Nonradiation Treatment Response Algorithm Version 2024: Diagnostic Performance and Impact of Ancillary Features. *AJR Am J Roentgenol*. 2025.
+   DOI: [10.2214/AJR.24.32035](https://doi.org/10.2214/AJR.24.32035)
+   **Early validation of nonradiation TRA v2024 performance and ancillary-feature impact.**
 
-8. **LI-RADS CT/MRI Nonradiation TRA v2024 for detecting local recurrence after surgical resection of HCC.** *AJR*. 2025.  
-   DOI: [10.2214/AJR.25.33787](https://doi.org/10.2214/AJR.25.33787)  
-   **Validates resection margin use case; median 5.1 months to detection vs 12 months with older criteria.**
+8. **Chiu S-H, Yoon L, Altmayer S, Delitto DJ, et al.** LI-RADS CT/MRI Nonradiation Treatment Response Assessment Version 2024 for Detecting Local Recurrence of Surgically Resected Hepatocellular Carcinoma. *AJR Am J Roentgenol*. 2026.
+   DOI: [10.2214/AJR.25.33787](https://doi.org/10.2214/AJR.25.33787)
+   **Validates resection-margin use case; search-indexed abstract reports earlier local-recurrence detection (median 5.1 months) and smaller size than diagnostic LI-RADS v2018.**
+
+9. **Patel R, Aslam A, Parikh ND, et al.** Updates on LI-RADS Treatment Response Criteria for Hepatocellular Carcinoma: Focusing on MRI. *J Magn Reson Imaging*. 2023;57(6):1641–1654.
+   DOI: [10.1002/jmri.28659](https://doi.org/10.1002/jmri.28659)
+   **Evidence synthesis supporting radiation-specific caution and MRI ancillary features for viable-tumor detection.**
+
+10. **Park S, Joo I, Lee DH, et al.** Diagnostic Performance of LI-RADS Treatment Response Algorithm for Hepatocellular Carcinoma: Adding Ancillary Features to MRI Compared with Enhancement Patterns at CT and MRI. *Radiology*. 2020;296(3):554–561.
+    DOI: [10.1148/radiol.2020192797](https://doi.org/10.1148/radiol.2020192797)
+    **MRI ancillary features improved sensitivity for viable tumor detection (84% vs 76%) without a specificity penalty.**
+
+11. **Kim SW, Joo I, Kim HC, et al.** LI-RADS treatment response categorization on gadoxetic acid-enhanced MRI: diagnostic performance compared to mRECIST and added value of ancillary features. *Eur Radiol*. 2020;30(5):2861–2870.
+    DOI: [10.1007/s00330-019-06623-9](https://doi.org/10.1007/s00330-019-06623-9)
+    **MRI ancillary features improved sensitivity (86.9% vs 64.5%) with similar specificity (97% vs 98%).**
 
 ### Existing LI-RADS Diagnostic Calculator Reference (for context only)
 
-9. **Chernyak V, Fowler KJ, Kamaya A, et al.** LI-RADS v2018: Liver Imaging Reporting and Data System. *Radiology*. 2018;289(3):816–830.  
+12. **Chernyak V, Fowler KJ, Kamaya A, et al.** LI-RADS v2018: Liver Imaging Reporting and Data System. *Radiology*. 2018;289(3):816–830.
    DOI: [10.1148/radiol.2018180174](https://doi.org/10.1148/radiol.2018180174)  
    **Radulator's existing `LIRADS.jsx` implements this diagnostic algorithm. NOT replaced by TRA v2024.**
 
@@ -391,6 +413,7 @@ The ACR specifies AFs as **optional** — they may be used to upgrade from Equiv
 
 - **Author:** Radulator agent (research brief, stage 1)
 - **Date:** 2026-06-11
+- **Revision 1:** 2026-07-05 — integrated owner instruction to recommend the daily-clinician-first design and refreshed supporting citations for ancillary features and surgical-margin scope.
 - **Branch:** `radulator/t_lirads-tra-v2024-brief`
 - **Target repository:** [momomojo/Radulator](https://github.com/momomojo/Radulator)
 - **Calculator factory pipeline status:** Stage 1 complete → awaiting physician sign-off for stage 2 (implementation seed)
