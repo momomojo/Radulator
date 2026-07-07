@@ -166,8 +166,6 @@ export const FeedbackForm = {
                 </li>
               ))}
             </ul>
-            <p className="text-red-600 text-xs mt-2">
-            </p>
           </div>
         )}
 
