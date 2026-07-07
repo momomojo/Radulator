@@ -15,7 +15,8 @@ import {
 import { CalculatorProvider, useCalculator } from "@/context";
 import { usePreferences, useUrlSync, usePageMeta } from "@/hooks";
 // Auto-discovered calculator registry
-import { calcDefs, categories, allTags } from "@/components/calculators";
+import { calcDefs as registryCalcDefs } from "@/components/calculators";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import {
   trackCalculatorSelected,
   trackCalculation,
@@ -31,6 +32,60 @@ import {
   GuideButton,
   GuideOverlay,
 } from "@/components/onboarding";
+
+function BoundaryRecoversOnRetry() {
+  if (window.__RADULATOR_TEST_SHOULD_THROW_ON_RETRY_CALC__) {
+    throw new Error("Boundary test render error");
+  }
+  return "Recovered test calculator panel";
+}
+
+function BoundaryAlwaysThrows() {
+  throw new Error("Persistent boundary test render error");
+}
+
+function getTestCalculatorDefs() {
+  if (typeof window === "undefined") return [];
+  const params = new URLSearchParams(window.location.search);
+  const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(
+    window.location.hostname,
+  );
+  if (!isLocalhost || !params.has("__radulator_boundary_test")) return [];
+  window.__RADULATOR_TEST_SHOULD_THROW_ON_RETRY_CALC__ = true;
+  return [
+    {
+      id: "boundary-recovers-on-retry",
+      category: "Test",
+      name: "Boundary Recovers On Retry",
+      desc: "Test-only calculator that recovers after the retry path resets the boundary.",
+      isCustomComponent: true,
+      Component: BoundaryRecoversOnRetry,
+    },
+    {
+      id: "boundary-always-throws",
+      category: "Test",
+      name: "Boundary Always Throws",
+      desc: "Test-only calculator that always throws during render.",
+      isCustomComponent: true,
+      Component: BoundaryAlwaysThrows,
+    },
+  ];
+}
+
+const calcDefs = [...getTestCalculatorDefs(), ...registryCalcDefs].sort((a, b) =>
+  a.name.localeCompare(b.name),
+);
+
+const categories = calcDefs.reduce((acc, calc) => {
+  const category = calc.category || "Other";
+  if (!acc[category]) {
+    acc[category] = [];
+  }
+  acc[category].push(calc.id);
+  return acc;
+}, {});
+
+const allTags = [...new Set(calcDefs.flatMap((calc) => calc.tags || []))].sort();
 
 /*******************************************************************
   App Wrapper - Provides Context
@@ -850,6 +905,7 @@ function AppContent() {
         >
           <Card className="w-full max-w-4xl">
             <CardContent className="space-y-6 p-8">
+              <ErrorBoundary key={def.id}>
               <header>
                 <h2
                   id="calculator-heading"
@@ -1267,6 +1323,7 @@ function AppContent() {
                   onLinkClick={trackOutboundLink}
                 />
               )}
+              </ErrorBoundary>
             </CardContent>
           </Card>
         </main>
