@@ -537,6 +537,31 @@ test.describe("AVS Hyperaldo Calculator", () => {
       ).toBeVisible();
 
       await page
+        .getByLabel(/Post Right Adrenal Vein sample 1 aldosterone/i)
+        .fill("410");
+      await page
+        .getByLabel(/Post Right Adrenal Vein sample 1 cortisol/i)
+        .fill("310");
+      await page
+        .getByLabel(/Post Right Adrenal Vein sample 2 aldosterone/i)
+        .fill("420");
+      await page
+        .getByLabel(/Post Right Adrenal Vein sample 2 cortisol/i)
+        .fill("320");
+      await page
+        .getByLabel(/Post Right Adrenal Vein sample 3 aldosterone/i)
+        .fill("430");
+      await page
+        .getByLabel(/Post Right Adrenal Vein sample 3 cortisol/i)
+        .fill("330");
+      await page
+        .getByLabel(/Post Right Adrenal Vein sample 4 aldosterone/i)
+        .fill("440");
+      await page
+        .getByLabel(/Post Right Adrenal Vein sample 4 cortisol/i)
+        .fill("340");
+
+      await page
         .getByRole("button", {
           name: /Remove Post Right Adrenal Vein sample 3/i,
         })
@@ -547,6 +572,12 @@ test.describe("AVS Hyperaldo Calculator", () => {
       await expect(
         page.getByLabel(/Post Right Adrenal Vein sample 3 aldosterone/i),
       ).toBeVisible();
+      await expect(
+        page.getByLabel(/Post Right Adrenal Vein sample 3 aldosterone/i),
+      ).toHaveValue("440");
+      await expect(
+        page.getByLabel(/Post Right Adrenal Vein sample 3 cortisol/i),
+      ).toHaveValue("340");
 
       await page
         .getByRole("button", {
