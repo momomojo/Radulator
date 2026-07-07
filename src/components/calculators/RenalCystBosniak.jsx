@@ -11,7 +11,7 @@ export const RenalCystBosniak = {
       year: 2019,
       replaces: "Bosniak 2005",
       status:
-        "Current calculator logic remains Bosniak 2005 while the v2019 upgrade awaits clinical sign-off.",
+        "The Bosniak v2019 full upgrade has been approved (physician sign-off 2026-07-05) and is being implemented; this calculator currently runs 2005 logic and its badge reflects that until the v2019 compute lands.",
       summary:
         "v2019 quantifies wall and septal thickness (≤2 mm, 3 mm, ≥4 mm), counts septa, formalizes enhancement and nodule definitions, treats any calcification morphology as Class II when features remain assessable, reclassifies many homogeneous high-attenuation nonenhancing masses as Class II, and removes size ≥3 cm and intrarenal location as standalone IIF criteria.",
       whySuperseded:
