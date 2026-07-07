@@ -72,6 +72,7 @@ function buildMetaTags(calc) {
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
     <meta property="og:image" content="https://radulator.com/og-image.jpg" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:site_name" content="Radulator" />
 
     <!-- Twitter -->

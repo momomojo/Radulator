@@ -35,12 +35,6 @@ export const FeedbackForm = {
       }
     }, [state.succeeded]);
 
-    // Debug logging
-    console.log("Formspree state:", state);
-    console.log("Errors:", state.errors);
-    console.log("Submitting:", state.submitting);
-    console.log("Succeeded:", state.succeeded);
-
     if (state.succeeded) {
       return (
         <div className="space-y-4">
@@ -173,7 +167,6 @@ export const FeedbackForm = {
               ))}
             </ul>
             <p className="text-red-600 text-xs mt-2">
-              Raw error object: {JSON.stringify(state.errors)}
             </p>
           </div>
         )}
