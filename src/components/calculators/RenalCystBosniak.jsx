@@ -4,6 +4,30 @@ export const RenalCystBosniak = {
   name: "Bosniak Classification (Renal Cysts)",
   desc: "Classify cystic renal lesions per Bosniak criteria (CT 2005).",
   guidelineVersion: "Bosniak (2005) \u2014 v2019 update planned",
+  versionHistory: [
+    {
+      version: "Bosniak v2019",
+      shortVersion: "v2019",
+      year: 2019,
+      replaces: "Bosniak 2005",
+      status:
+        "The Bosniak v2019 full upgrade has been approved (physician sign-off 2026-07-05) and is being implemented; this calculator currently runs 2005 logic and its badge reflects that until the v2019 compute lands.",
+      summary:
+        "v2019 quantifies wall and septal thickness (≤2 mm, 3 mm, ≥4 mm), counts septa, formalizes enhancement and nodule definitions, treats any calcification morphology as Class II when features remain assessable, reclassifies many homogeneous high-attenuation nonenhancing masses as Class II, and removes size ≥3 cm and intrarenal location as standalone IIF criteria.",
+      whySuperseded:
+        "The newer criteria replace qualitative 2005 descriptors with explicit measurements and enhancement rules, separate irregular thickening from nodules, and remove older upgrade paths that the brief identifies as unsupported standalone predictors.",
+      citations: [
+        {
+          t: "Silverman SG et al. Radiology 2019",
+          u: "https://doi.org/10.1148/radiol.2019182646",
+        },
+        {
+          t: "Bosniak MA Radiology 2005",
+          u: "https://doi.org/10.1148/radiol.2362040218",
+        },
+      ],
+    },
+  ],
   keywords: ["kidney cyst", "renal cyst", "cystic renal mass", "Bosniak"],
   tags: ["Radiology", "Urology", "Nephrology"],
   metaDesc:
