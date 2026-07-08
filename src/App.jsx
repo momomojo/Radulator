@@ -50,6 +50,19 @@ function BoundaryAlwaysThrows() {
   throw new Error("Persistent boundary test render error");
 }
 
+function computeTestCalculator() {
+  if (
+    typeof window !== "undefined" &&
+    window.__RADULATOR_TEST_SHOULD_THROW_ON_COMPUTE__ !== false
+  ) {
+    throw new Error("Synthetic compute error");
+  }
+
+  return {
+    "Recovery status": "Compute completed",
+  };
+}
+
 function getTestCalculatorDefs() {
   if (typeof window === "undefined") return [];
   const params = new URLSearchParams(window.location.search);
@@ -58,6 +71,7 @@ function getTestCalculatorDefs() {
   );
   if (!isLocalhost || !params.has("__radulator_boundary_test")) return [];
   window.__RADULATOR_TEST_SHOULD_THROW_ON_RETRY_CALC__ = true;
+  window.__RADULATOR_TEST_SHOULD_THROW_ON_COMPUTE__ = true;
   return [
     {
       id: "boundary-recovers-on-retry",
@@ -74,6 +88,20 @@ function getTestCalculatorDefs() {
       desc: "Test-only calculator that always throws during render.",
       isCustomComponent: true,
       Component: BoundaryAlwaysThrows,
+    },
+    {
+      id: "compute-throws-on-calculate",
+      category: "Test",
+      name: "Compute Throws On Calculate",
+      desc: "Test-only calculator that throws from compute during the Calculate click handler.",
+      fields: [
+        {
+          id: "test_value",
+          label: "Test value:",
+          type: "number",
+        },
+      ],
+      compute: computeTestCalculator,
     },
   ];
 }
@@ -172,12 +200,21 @@ function AppContent() {
   const [copied, setCopied] = useState(false);
   const [snippetCopied, setSnippetCopied] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [computeError, setComputeError] = useState(null);
+  const computeErrorRef = useRef(null);
 
-  // Reset clipboard feedback when switching calculators
+  // Reset local calculator feedback when switching calculators
   useEffect(() => {
     setCopied(false);
     setSnippetCopied(false);
+    setComputeError(null);
   }, [active]);
+
+  useEffect(() => {
+    if (computeError) {
+      computeErrorRef.current?.focus();
+    }
+  }, [computeError]);
 
   // Current calculator definition
   const def = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
@@ -242,6 +279,7 @@ function AppContent() {
 
   // Handle calculator selection
   const handleSelectCalculator = (calc, categoryName) => {
+    setComputeError(null);
     selectCalculator(calc.id);
     setSidebarOpen(false);
     addToRecent(calc.id);
@@ -250,7 +288,25 @@ function AppContent() {
 
   // Run calculation
   const run = () => {
-    const result = def.compute(vals);
+    setComputeError(null);
+
+    let result;
+    try {
+      result = def.compute(vals);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Calculator compute failed:", error);
+      }
+      setResults(null);
+      setCopied(false);
+      setSnippetCopied(false);
+      setComputeError({
+        message:
+          "The calculation could not finish. Check the inputs and try again, or choose another calculator from the menu.",
+      });
+      return;
+    }
+
     setResults(result);
     setCopied(false);
     setSnippetCopied(false);
@@ -1235,6 +1291,32 @@ function AppContent() {
                   Enter at least one valid ROI (kPa and area &gt; 0) in fields,
                   CSV, or dynamic rows to enable Calculate.
                 </p>
+              )}
+              {computeError && !def.isCustomComponent && (
+                <div
+                  ref={computeErrorRef}
+                  role="alert"
+                  tabIndex={-1}
+                  aria-labelledby="compute-error-title"
+                  aria-describedby="compute-error-description"
+                  className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-900 outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100"
+                >
+                  <h3
+                    id="compute-error-title"
+                    className="text-sm font-semibold"
+                  >
+                    This calculator could not finish the calculation
+                  </h3>
+                  <p
+                    id="compute-error-description"
+                    className="mt-1 text-sm text-red-800 dark:text-red-200"
+                  >
+                    {computeError.message}
+                  </p>
+                  <Button className="mt-3" variant="secondary" onClick={run}>
+                    Try calculation again
+                  </Button>
+                </div>
               )}
               {!def.isCustomComponent && (
                 <Button
