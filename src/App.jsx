@@ -3,6 +3,7 @@
 // All formulas mirror radcalc.online calculators with referenced studies.
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Check, ClipboardList } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/components/display";
 import { CalculatorProvider, useCalculator } from "@/context";
 import { usePreferences, useUrlSync, usePageMeta } from "@/hooks";
+import StaticCalculatorShell from "@/components/StaticCalculatorShell";
 // Auto-discovered calculator registry
 import { calcDefs as registryCalcDefs } from "@/components/calculators";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -27,6 +29,10 @@ import {
   trackResultsCopied,
   trackOnboarding,
 } from "@/lib/analytics";
+import {
+  buildReportSnippet,
+  canBuildReportSnippet,
+} from "@/lib/reportSnippets";
 import {
   WelcomeCard,
   GuideButton,
@@ -44,6 +50,19 @@ function BoundaryAlwaysThrows() {
   throw new Error("Persistent boundary test render error");
 }
 
+function computeTestCalculator() {
+  if (
+    typeof window !== "undefined" &&
+    window.__RADULATOR_TEST_SHOULD_THROW_ON_COMPUTE__ !== false
+  ) {
+    throw new Error("Synthetic compute error");
+  }
+
+  return {
+    "Recovery status": "Compute completed",
+  };
+}
+
 function getTestCalculatorDefs() {
   if (typeof window === "undefined") return [];
   const params = new URLSearchParams(window.location.search);
@@ -52,6 +71,7 @@ function getTestCalculatorDefs() {
   );
   if (!isLocalhost || !params.has("__radulator_boundary_test")) return [];
   window.__RADULATOR_TEST_SHOULD_THROW_ON_RETRY_CALC__ = true;
+  window.__RADULATOR_TEST_SHOULD_THROW_ON_COMPUTE__ = true;
   return [
     {
       id: "boundary-recovers-on-retry",
@@ -68,6 +88,20 @@ function getTestCalculatorDefs() {
       desc: "Test-only calculator that always throws during render.",
       isCustomComponent: true,
       Component: BoundaryAlwaysThrows,
+    },
+    {
+      id: "compute-throws-on-calculate",
+      category: "Test",
+      name: "Compute Throws On Calculate",
+      desc: "Test-only calculator that throws from compute during the Calculate click handler.",
+      fields: [
+        {
+          id: "test_value",
+          label: "Test value:",
+          type: "number",
+        },
+      ],
+      compute: computeTestCalculator,
     },
   ];
 }
@@ -92,6 +126,25 @@ const allTags = [...new Set(calcDefs.flatMap((calc) => calc.tags || []))].sort()
   Calculator definitions and categories are auto-discovered from registry
 *******************************************************************/
 export default function App() {
+  const [showStaticShell, setShowStaticShell] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(window.__RADULATOR_STATIC_PAGE__);
+  });
+
+  useEffect(() => {
+    if (!showStaticShell) return undefined;
+    const frame = window.requestAnimationFrame(() => setShowStaticShell(false));
+    return () => window.cancelAnimationFrame(frame);
+  }, [showStaticShell]);
+
+  if (showStaticShell) {
+    return <StaticCalculatorShell />;
+  }
+
+  return <InteractiveApp />;
+}
+
+function InteractiveApp() {
   // Get initial calculator from URL
   const { initialId } = useUrlSync(calcDefs, null);
 
@@ -145,12 +198,23 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [snippetCopied, setSnippetCopied] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [computeError, setComputeError] = useState(null);
+  const computeErrorRef = useRef(null);
 
-  // Reset copied state when switching calculators
+  // Reset local calculator feedback when switching calculators
   useEffect(() => {
     setCopied(false);
+    setSnippetCopied(false);
+    setComputeError(null);
   }, [active]);
+
+  useEffect(() => {
+    if (computeError) {
+      computeErrorRef.current?.focus();
+    }
+  }, [computeError]);
 
   // Current calculator definition
   const def = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
@@ -215,6 +279,7 @@ function AppContent() {
 
   // Handle calculator selection
   const handleSelectCalculator = (calc, categoryName) => {
+    setComputeError(null);
     selectCalculator(calc.id);
     setSidebarOpen(false);
     addToRecent(calc.id);
@@ -223,8 +288,28 @@ function AppContent() {
 
   // Run calculation
   const run = () => {
-    const result = def.compute(vals);
+    setComputeError(null);
+
+    let result;
+    try {
+      result = def.compute(vals);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Calculator compute failed:", error);
+      }
+      setResults(null);
+      setCopied(false);
+      setSnippetCopied(false);
+      setComputeError({
+        message:
+          "The calculation could not finish. Check the inputs and try again, or choose another calculator from the menu.",
+      });
+      return;
+    }
+
     setResults(result);
+    setCopied(false);
+    setSnippetCopied(false);
 
     const category =
       Object.keys(categories).find((cat) => categories[cat].includes(active)) ||
@@ -235,6 +320,11 @@ function AppContent() {
       trackResultViewed(def.id, def.name);
     }
   };
+
+  const hasReportSnippet = useMemo(
+    () => canBuildReportSnippet(def?.id, out),
+    [def?.id, out],
+  );
 
   // Format results as plain text for clipboard
   const formatResultsForClipboard = (results, calculatorName) => {
@@ -278,6 +368,21 @@ function AppContent() {
       setCopied(true);
       trackResultsCopied(def.id, def.name);
       setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: silently fail
+    }
+  };
+
+  const handleCopyReportSnippet = async () => {
+    if (!out || !def || !hasReportSnippet) return;
+
+    const text = buildReportSnippet({ calculatorId: def.id, results: out });
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setSnippetCopied(true);
+      setTimeout(() => setSnippetCopied(false), 2000);
     } catch {
       // Fallback: silently fail
     }
@@ -1187,6 +1292,32 @@ function AppContent() {
                   CSV, or dynamic rows to enable Calculate.
                 </p>
               )}
+              {computeError && !def.isCustomComponent && (
+                <div
+                  ref={computeErrorRef}
+                  role="alert"
+                  tabIndex={-1}
+                  aria-labelledby="compute-error-title"
+                  aria-describedby="compute-error-description"
+                  className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-900 outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100"
+                >
+                  <h3
+                    id="compute-error-title"
+                    className="text-sm font-semibold"
+                  >
+                    This calculator could not finish the calculation
+                  </h3>
+                  <p
+                    id="compute-error-description"
+                    className="mt-1 text-sm text-red-800 dark:text-red-200"
+                  >
+                    {computeError.message}
+                  </p>
+                  <Button className="mt-3" variant="secondary" onClick={run}>
+                    Try calculation again
+                  </Button>
+                </div>
+              )}
               {!def.isCustomComponent && (
                 <Button
                   className="w-full"
@@ -1251,7 +1382,37 @@ function AppContent() {
                       </div>
                     )}
                   {/* Copy & Print Results Buttons */}
-                  <div className="mt-4 flex justify-end gap-2 no-print">
+                  <div className="mt-4 flex flex-wrap justify-end gap-2 no-print">
+                    {hasReportSnippet && (
+                      <button
+                        type="button"
+                        onClick={handleCopyReportSnippet}
+                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        aria-label={
+                          snippetCopied
+                            ? "Report snippet copied"
+                            : "Copy Report Snippet"
+                        }
+                        title="Copy values-only educational report snippet"
+                      >
+                        {snippetCopied ? (
+                          <Check
+                            aria-hidden="true"
+                            className="w-4 h-4 mr-1.5"
+                          />
+                        ) : (
+                          <ClipboardList
+                            aria-hidden="true"
+                            className="w-4 h-4 mr-1.5"
+                          />
+                        )}
+                        <span aria-live="polite">
+                          {snippetCopied
+                            ? "Snippet Copied!"
+                            : "Copy Report Snippet"}
+                        </span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={handleCopyResults}

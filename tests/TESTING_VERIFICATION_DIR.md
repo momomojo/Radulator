@@ -175,7 +175,10 @@ Before any feature/fix PR is marked ready for gate, verify the relevant subset:
 
 - [ ] `npm run lint`
 - [ ] `npm run build`
-- [ ] `node scripts/spec-map.js --check`
+- [ ] `npm run check:invariants` for the repository-level metadata,
+      routing, generated-page, and guardrail checks
+- [ ] `node scripts/spec-map.js --check` for the narrower calculator-to-spec
+      coverage map
 - [ ] `npm test` for calculator logic changes or release/promotion gates
 - [ ] New calculators have Playwright specs that navigate to the calculator by
       current name or id

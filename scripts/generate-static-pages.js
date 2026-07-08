@@ -12,6 +12,7 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { injectSearchVerificationMeta } from "./search-verification-meta.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CALC_DIR = join(__dirname, "..", "src", "components", "calculators");
@@ -46,10 +47,24 @@ function extractCalcMeta() {
       tags: (content.match(/tags:\s*\[([^\]]+)\]/)?.[1] || "")
         .split(",").map((t) => t.trim().replace(/"/g, "")).filter(Boolean),
       guidelineVersion: content.match(/guidelineVersion:\s*"([^"]+)"/)?.[1] || null,
+      refs: extractRefs(content),
     };
   }
 
   return CALC_META_CACHE;
+}
+
+function extractRefs(content) {
+  const refsBlock = content.match(/refs:\s*\[([\s\S]*?)\n\s*\]/)?.[1] || "";
+  const refs = [];
+  const refRe = /\{\s*t:\s*"([^"]+)"\s*,\s*u:\s*"([^"]+)"/g;
+  let match;
+
+  while ((match = refRe.exec(refsBlock)) !== null) {
+    refs.push({ t: match[1], u: match[2] });
+  }
+
+  return refs;
 }
 
 function buildMetaTags(calc) {
@@ -58,6 +73,29 @@ function buildMetaTags(calc) {
   const url = `https://radulator.com/calculators/${calc.id}/`;
   const keywords = (calc.tags || []).concat([calc.category, "radiology calculator", "medical calculator"]).join(", ");
   const specialty = calc.category === "Other" ? "Radiology" : calc.category;
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://radulator.com/",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: calc.category || "Calculators",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: `${calc.name} Calculator`,
+        item: url,
+      },
+    ],
+  };
 
   return `
     <title>${escapeHtml(title)}</title>
@@ -105,11 +143,90 @@ function buildMetaTags(calc) {
       "specialty": ["${escapeHtml(specialty)}"],
       "audience": { "@type": "MedicalAudience", "audienceType": "Clinician" }
     }
-    </script>`;
+    </script>
+    ${jsonLdScript(breadcrumbLd)}`;
 }
 
 function escapeHtml(str) {
   return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function escapeScriptJson(str) {
+  return String(str)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
+function jsonLdScript(data) {
+  return `<script type="application/ld+json">
+    ${escapeScriptJson(JSON.stringify(data, null, 2))}
+    </script>`;
+}
+
+function getCalculatorDescription(calc) {
+  return calc.metaDesc || calc.desc || `Calculate ${calc.name} with Radulator.`;
+}
+
+function buildRelatedCalculators(calc, meta) {
+  const tags = new Set(calc.tags || []);
+  const candidates = Object.values(meta)
+    .filter((other) => other.id !== calc.id)
+    .map((other) => {
+      const sharedTags = (other.tags || []).filter((tag) => tags.has(tag));
+      const sameCategory = other.category === calc.category;
+      return {
+        calc: other,
+        score: (sameCategory ? 100 : 0) + sharedTags.length * 10,
+      };
+    })
+    .sort((a, b) => b.score - a.score || a.calc.name.localeCompare(b.calc.name));
+
+  const selected = candidates.filter((candidate) => candidate.score > 0).slice(0, 5);
+
+  for (const candidate of candidates) {
+    if (selected.length >= 3) break;
+    if (!selected.some((item) => item.calc.id === candidate.calc.id)) {
+      selected.push(candidate);
+    }
+  }
+
+  return selected.slice(0, 5).map(({ calc: related }) => ({
+    id: related.id,
+    name: related.name,
+    category: related.category,
+  }));
+}
+
+function buildStaticPageData(calc, related) {
+  return {
+    id: calc.id,
+    name: calc.name,
+    title: `${calc.name} Calculator`,
+    description: getCalculatorDescription(calc),
+    category: calc.category || "Calculators",
+    refs: calc.refs || [],
+    related,
+  };
+}
+
+function buildStaticCalculatorShell(data) {
+  const refs = data.refs || [];
+  const related = data.related || [];
+  const refsHtml = refs.length > 0
+    ? `<section aria-labelledby="static-references-heading" class="rounded-lg border border-border bg-muted/30 p-5"><h2 id="static-references-heading" class="text-lg font-semibold text-foreground">References</h2><ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">${refs.map((ref) => `<li><a href="${escapeHtml(ref.u)}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${escapeHtml(ref.t)}</a></li>`).join("")}</ol></section>`
+    : "";
+  const relatedHtml = related.length > 0
+    ? `<section aria-labelledby="static-related-heading" class="rounded-lg border border-border bg-card p-5"><h2 id="static-related-heading" class="text-lg font-semibold text-foreground">Related calculators</h2><ul class="mt-3 grid gap-2 sm:grid-cols-2">${related.map((calc) => `<li><a href="/calculators/${escapeHtml(calc.id)}/" class="block rounded-md border border-border px-3 py-2 text-sm font-medium text-primary hover:bg-muted hover:underline">${escapeHtml(calc.name)}</a></li>`).join("")}</ul></section>`
+    : "";
+
+  return `<main id="main-content" data-testid="static-calculator-shell" aria-labelledby="static-calculator-heading" class="min-h-screen bg-background px-4 py-8 text-foreground md:px-8"><article class="mx-auto max-w-4xl space-y-8"><nav aria-label="Breadcrumb" class="text-sm text-muted-foreground"><ol class="flex flex-wrap items-center gap-2"><li><a href="/" class="hover:text-foreground hover:underline">Radulator</a></li><li aria-hidden="true">/</li><li>${escapeHtml(data.category)}</li><li aria-hidden="true">/</li><li aria-current="page" class="text-foreground">${escapeHtml(data.title)}</li></ol></nav><header class="space-y-3"><p class="text-sm font-medium uppercase tracking-wide text-primary">${escapeHtml(data.category)}</p><h1 id="static-calculator-heading" class="text-3xl font-bold tracking-normal text-foreground md:text-4xl">${escapeHtml(data.title)}</h1><p class="max-w-3xl text-base leading-7 text-muted-foreground">${escapeHtml(data.description)}</p></header>${refsHtml}${relatedHtml}</article></main>`;
+}
+
+function buildStaticRoot(data) {
+  return `<div id="root" data-static-calculator="${escapeHtml(data.id)}">${buildStaticCalculatorShell(data)}</div><script>window.__RADULATOR_STATIC_PAGE__=${escapeScriptJson(JSON.stringify(data))};</script>`;
 }
 
 // The replaceable SEO block in index.html: spans the generic meta tags, OG/Twitter
@@ -153,15 +270,27 @@ function generateCalculatorPages() {
 
     // Inject per-calculator meta tags and bootstrap. The template <title> sits
     // above the SEO block and is replaced by the block's per-calculator title.
-    let html = mainHtml
-      .replace(/<title>[^<]*<\/title>/, "")
-      .replace(SEO_BLOCK_RE, buildMetaTags(calc))
+    const staticData = buildStaticPageData(
+      calc,
+      buildRelatedCalculators(calc, meta)
+    );
+
+    let html = injectSearchVerificationMeta(
+      mainHtml
+        .replace(/<title>[^<]*<\/title>/, "")
+        .replace(SEO_BLOCK_RE, buildMetaTags(calc))
+        .replace('<div id="root"></div>', buildStaticRoot(staticData))
+    )
       .replace("</head>", bootstrapScript + "\n  </head>");
 
     const canonical = `<link rel="canonical" href="https://radulator.com/calculators/${id}/" />`;
-    if (!html.includes(canonical) || !html.includes(`<title>`)) {
+    if (
+      !html.includes(canonical) ||
+      !html.includes(`<title>`) ||
+      !html.includes(`data-static-calculator="${id}"`)
+    ) {
       throw new Error(
-        `generate-static-pages: injection verification failed for "${id}" — per-calculator canonical/title missing from output.`
+        `generate-static-pages: injection verification failed for "${id}" — per-calculator canonical/title/static body missing from output.`
       );
     }
 

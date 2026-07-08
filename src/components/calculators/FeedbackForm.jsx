@@ -4,6 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { trackFeedbackSubmission } from "@/lib/analytics";
+import { feedbackCalculatorOptions } from "./feedbackCalculatorOptions";
+
+function hasSubmissionErrors(errors) {
+  if (!errors) return false;
+  if (
+    typeof errors.getFormErrors === "function" &&
+    errors.getFormErrors().length
+  ) {
+    return true;
+  }
+  if (
+    typeof errors.getAllFieldErrors === "function" &&
+    errors.getAllFieldErrors().length
+  ) {
+    return true;
+  }
+  return Object.keys(errors).length > 0;
+}
 
 export const FeedbackForm = {
   id: "feedback-form",
@@ -24,9 +42,15 @@ export const FeedbackForm = {
   // Special component flag to indicate this uses a custom render
   isCustomComponent: true,
   // Custom component for the feedback form
-  Component: function FeedbackFormComponent() {
+  Component: function FeedbackFormComponent({
+    calculatorOptions = feedbackCalculatorOptions,
+  } = {}) {
     // Formspree form ID for feedback submissions
     const [state, handleSubmit] = useForm("xgvpkawo");
+    const relatedCalculatorOptions = calculatorOptions
+      .filter((calc) => calc?.id && calc?.name && calc.id !== "feedback-form")
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const showSubmissionError = hasSubmissionErrors(state.errors);
 
     // Track successful feedback submissions
     useEffect(() => {
@@ -121,14 +145,11 @@ export const FeedbackForm = {
             className="w-full border rounded p-2 focus:outline-none focus:ring focus:ring-blue-300"
           >
             <option value="">Select calculator...</option>
-            <option value="adrenal-ct">Adrenal Washout CT</option>
-            <option value="adrenal-mri">Adrenal MRI CSI</option>
-            <option value="prostate-volume">Prostate Volume</option>
-            <option value="renal-cyst">Renal Cyst Bosniak</option>
-            <option value="renal-nephrometry">RENAL Nephrometry Score</option>
-            <option value="spleen-size">Spleen Size ULN</option>
-            <option value="hip-dysplasia">Hip Dysplasia Indices</option>
-            <option value="mr-elastography">MR Elastography</option>
+            {relatedCalculatorOptions.map((calc) => (
+              <option key={calc.id} value={calc.id}>
+                {calc.name}
+              </option>
+            ))}
             <option value="other">Other / General</option>
           </select>
         </div>
@@ -150,22 +171,19 @@ export const FeedbackForm = {
           />
         </div>
 
-        {state.errors && Object.keys(state.errors).length > 0 && (
+        {showSubmissionError && (
           <div
             className="bg-red-50 border border-red-200 rounded-md p-3"
             role="alert"
+            aria-live="assertive"
           >
             <p className="text-red-700 text-sm font-medium mb-2">
-              There was an error submitting your feedback:
+              We couldn't send your feedback.
             </p>
-            <ul className="text-red-600 text-xs space-y-1">
-              {Object.entries(state.errors).map(([field, errors]) => (
-                <li key={field}>
-                  <strong>{field}:</strong>{" "}
-                  {Array.isArray(errors) ? errors.join(", ") : errors}
-                </li>
-              ))}
-            </ul>
+            <p className="text-red-600 text-xs">
+              Please check the required fields and try again. If the problem
+              continues, reload the page before resubmitting.
+            </p>
           </div>
         )}
 
