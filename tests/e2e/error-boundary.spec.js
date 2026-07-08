@@ -58,4 +58,53 @@ test.describe("Calculator error boundary", () => {
     );
     await expect(errorPanel).toHaveCount(0);
   });
+
+  test("surfaces compute-time errors without unmounting navigation", async ({
+    page,
+  }) => {
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    await openCalculator(page, "Compute Throws On Calculate");
+    await page.getByRole("button", { name: "Calculate", exact: true }).click();
+
+    const errorPanel = page.getByRole("alert").filter({
+      hasText: "This calculator could not finish the calculation",
+    });
+    await expect(errorPanel).toBeVisible();
+    await expect(errorPanel).toBeFocused();
+    await expect(page.locator("#calculator-navigation")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Adrenal CT Washout", exact: true }),
+    ).toBeVisible();
+    expect(pageErrors).toEqual([]);
+
+    await openCalculator(page, "Adrenal CT Washout");
+
+    await expect(page.getByTestId("calculator-title")).toContainText(
+      "Adrenal CT Washout",
+    );
+    await expect(errorPanel).toHaveCount(0);
+  });
+
+  test("retries a compute-time error after the throw path recovers", async ({
+    page,
+  }) => {
+    await openCalculator(page, "Compute Throws On Calculate");
+    await page.getByRole("button", { name: "Calculate", exact: true }).click();
+
+    const errorPanel = page.getByRole("alert").filter({
+      hasText: "This calculator could not finish the calculation",
+    });
+    await expect(errorPanel).toBeVisible();
+
+    await page.evaluate(() => {
+      window.__RADULATOR_TEST_SHOULD_THROW_ON_COMPUTE__ = false;
+    });
+    await page.getByRole("button", { name: "Try calculation again" }).click();
+
+    await expect(errorPanel).toHaveCount(0);
+    await expect(page.getByText("Recovery status")).toBeVisible();
+    await expect(page.getByText("Compute completed")).toBeVisible();
+  });
 });
