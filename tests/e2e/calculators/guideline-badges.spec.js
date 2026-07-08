@@ -26,7 +26,7 @@ test.describe("Guideline Version Badges", () => {
       { name: "Wells Criteria for PE", expected: "Wells Criteria (2000)" },
       { name: "Wells Criteria for DVT", expected: "Wells Criteria (2003)" },
       { name: "Child-Pugh Score", expected: "Child-Pugh (Pugh 1973)" },
-      { name: "MELD-Na Score", expected: "MELD-Na (OPTN 2016)" },
+      { name: "MELD-Na Score", expected: "MELD 3.0 (OPTN 2023)" },
       { name: "BCLC Staging", expected: "BCLC 2022" },
       { name: "Mehran CIN Risk Score", expected: "Mehran Score (2004)" },
       {
