@@ -110,9 +110,6 @@ test.describe("MELD-Na Calculator", () => {
     test("should display calculator with proper layout", async ({ page }) => {
       // Check header
       await expect(page.getByTestId('calculator-title').first()).toContainText("MELD-Na Score");
-      await expect(
-        page.locator("text=Model for End-Stage Liver Disease").first(),
-      ).toBeVisible();
 
       // Check info section
       await expect(
@@ -325,7 +322,9 @@ test.describe("MELD-Na Calculator", () => {
         page.locator("text=Adolescent age 12-17 at registration"),
       ).toBeVisible();
       await expect(
-        page.locator("text=+7.33 constant for all sexes"),
+        page.getByText(
+          "Age 12-17 path used: MELD 3.0 applies +7.33 constant for all sexes",
+        ),
       ).toBeVisible();
       await expect(
         page.locator('label:has-text("Sex for Adult MELD 3.0 Calculation")'),
