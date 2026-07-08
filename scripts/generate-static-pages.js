@@ -12,6 +12,7 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { injectSearchVerificationMeta } from "./search-verification-meta.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CALC_DIR = join(__dirname, "..", "src", "components", "calculators");
@@ -274,10 +275,12 @@ function generateCalculatorPages() {
       buildRelatedCalculators(calc, meta)
     );
 
-    let html = mainHtml
-      .replace(/<title>[^<]*<\/title>/, "")
-      .replace(SEO_BLOCK_RE, buildMetaTags(calc))
-      .replace('<div id="root"></div>', buildStaticRoot(staticData))
+    let html = injectSearchVerificationMeta(
+      mainHtml
+        .replace(/<title>[^<]*<\/title>/, "")
+        .replace(SEO_BLOCK_RE, buildMetaTags(calc))
+        .replace('<div id="root"></div>', buildStaticRoot(staticData))
+    )
       .replace("</head>", bootstrapScript + "\n  </head>");
 
     const canonical = `<link rel="canonical" href="https://radulator.com/calculators/${id}/" />`;

@@ -2,11 +2,12 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 import staticCalculatorPages from "./scripts/generate-static-pages.js";
+import { injectSearchVerificationMeta } from "./scripts/search-verification-meta.mjs";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  const env = loadEnv(mode, process.cwd(), "");
+  const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
   const ga4Id = env.VITE_GA4_MEASUREMENT_ID || "";
   // E2E/CI builds intentionally omit the real GA4 ID so automated visits do
   // not pollute analytics. Keep the warning for local production builds and
@@ -33,6 +34,7 @@ export default defineConfig(({ mode }) => {
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>`;
 
           html = html.replace("</head>", `${resourceHints}\n  </head>`);
+          html = injectSearchVerificationMeta(html, env);
 
           // Only inject GA4 if ID is provided and not a placeholder
           if (!ga4Id || ga4Id === "G-XXXXXXXXXX") {
