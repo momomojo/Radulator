@@ -17,6 +17,8 @@ If a dashboard provides complete meta tags instead of token values, use the sing
 VITE_SEARCH_VERIFICATION_META='<meta name="google-site-verification" content="..." /><meta name="msvalidate.01" content="..." />'
 ```
 
+For production, paste these values into GitHub repo secrets with the same names; local `.env` values do not reach the GitHub Pages deploy build.
+
 `VITE_SEARCH_VERIFICATION_META` is intentionally allowlisted to those two meta names only. DNS TXT verification is still valid, but it is a DNS-provider change rather than a repo/env change.
 
 ## Build behavior
