@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
@@ -6,6 +7,13 @@ import { defineConfig, devices } from "@playwright/test";
  */
 
 const isCI = !!process.env.CI;
+const hasGeneratedSmokePage = existsSync("dist/calculators/meld-na/index.html");
+const isLocalSmokeScript = process.env.npm_lifecycle_event === "test:smoke";
+// Local smoke after a build must hit preview so generated calculator routes match CI.
+const usePreviewServer = isCI || (isLocalSmokeScript && hasGeneratedSmokePage);
+const baseURL = usePreviewServer
+  ? "http://localhost:4173"
+  : "http://localhost:5173";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -32,7 +40,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: isCI ? "http://localhost:4173" : "http://localhost:5173",
+    baseURL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",
@@ -64,8 +72,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: isCI ? "npm run preview" : "npm run dev",
-    url: isCI ? "http://localhost:4173" : "http://localhost:5173",
+    command: usePreviewServer ? "npm run preview" : "npm run dev",
+    url: baseURL,
     reuseExistingServer: !isCI,
     timeout: 120000,
   },
