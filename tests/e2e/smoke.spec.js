@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { existsSync } from "fs";
+import { existsSync, readdirSync, statSync } from "fs";
+import { join } from "path";
 
 /**
  * Smoke Tests for Radulator
@@ -28,6 +29,29 @@ async function openMobileMenuIfNeeded(page) {
 async function clickCalculator(page, calculatorName) {
   await openMobileMenuIfNeeded(page);
   await page.click(`button:has-text("${calculatorName}")`);
+}
+
+const STATIC_MELD_PAGE = "dist/calculators/meld-na/index.html";
+const STATIC_BUILD_INPUTS = [
+  "index.html",
+  "package.json",
+  "scripts/generate-static-pages.js",
+  "src",
+  "vite.config.js",
+];
+
+function latestMtimeMs(path) {
+  const stat = statSync(path);
+  if (!stat.isDirectory()) return stat.mtimeMs;
+
+  return readdirSync(path).reduce(
+    (latest, entry) => Math.max(latest, latestMtimeMs(join(path, entry))),
+    stat.mtimeMs,
+  );
+}
+
+function latestStaticBuildInputMtimeMs() {
+  return Math.max(...STATIC_BUILD_INPUTS.map(latestMtimeMs));
 }
 
 test.describe("Smoke Tests - Core Functionality", () => {
@@ -133,11 +157,21 @@ test.describe("Smoke Tests - Core Functionality", () => {
   test("generated calculator page exposes crawlable body HTML", async ({
     page,
     request,
+    baseURL,
   }) => {
     test.skip(
-      !existsSync("dist/calculators/meld-na/index.html"),
+      !existsSync(STATIC_MELD_PAGE),
       "requires npm run build so generated static pages are available",
     );
+    test.skip(
+      !baseURL?.includes("4173"),
+      "requires Vite preview so generated static pages are served",
+    );
+
+    expect(
+      statSync(STATIC_MELD_PAGE).mtimeMs,
+      `${STATIC_MELD_PAGE} is older than source/build inputs; run npm run build before smoke preview`,
+    ).toBeGreaterThanOrEqual(latestStaticBuildInputMtimeMs() - 1000);
 
     const response = await request.get("/calculators/meld-na/");
     expect(response.ok()).toBe(true);

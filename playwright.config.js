@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
@@ -7,10 +6,9 @@ import { defineConfig, devices } from "@playwright/test";
  */
 
 const isCI = !!process.env.CI;
-const hasGeneratedSmokePage = existsSync("dist/calculators/meld-na/index.html");
 const isLocalSmokeScript = process.env.npm_lifecycle_event === "test:smoke";
-// Local smoke after a build must hit preview so generated calculator routes match CI.
-const usePreviewServer = isCI || (isLocalSmokeScript && hasGeneratedSmokePage);
+// CI and npm-run local smoke both build first, then serve dist through preview.
+const usePreviewServer = isCI || isLocalSmokeScript;
 const baseURL = usePreviewServer
   ? "http://localhost:4173"
   : "http://localhost:5173";
