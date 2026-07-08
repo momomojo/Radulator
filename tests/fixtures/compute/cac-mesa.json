@@ -1,0 +1,246 @@
+{
+  "calculatorId": "cac-mesa",
+  "calculatorName": "CAC/MESA Calculator",
+  "version": "compute-spotcheck-v1",
+  "cases": [
+    {
+      "id": "audited-white-male-zero-cac",
+      "description": "Official MESA audited example: 55-year-old White/Caucasian male, CAC 0.",
+      "inputs": {
+        "score": "0",
+        "age": "55",
+        "sex": "male",
+        "race": "white",
+        "vessel_count": "0"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Category", "equals": "Stage 0 - No calcified coronary plaque" },
+          { "key": "CAC Score Range", "equals": "0" },
+          { "key": "CAC-DRS", "equals": "A0" },
+          { "key": "MESA Percentile", "equals": "0th percentile" },
+          { "key": "MESA Probability Nonzero CAC", "equals": "56%" },
+          { "key": "MESA Reference Scores", "equals": "25th 0, 50th 6, 75th 68, 90th 234" }
+        ]
+      }
+    },
+    {
+      "id": "audited-chinese-female-low-cac",
+      "description": "Official MESA audited example: 46-year-old Chinese American female, CAC 35.",
+      "inputs": {
+        "score": "35",
+        "age": "46",
+        "sex": "female",
+        "race": "chinese",
+        "vessel_count": "1"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Category", "equals": "Stage 1 - Mild calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": "1-99" },
+          { "key": "CAC-DRS", "equals": "A1/N1" },
+          { "key": "MESA Percentile", "equals": "97th percentile" },
+          { "key": "MESA Probability Nonzero CAC", "equals": "7%" },
+          { "key": "MESA Reference Scores", "equals": "25th 0, 50th 0, 75th 0, 90th 0" }
+        ]
+      }
+    },
+    {
+      "id": "audited-black-female-moderate-cac",
+      "description": "Official MESA audited example: 62-year-old Black/African American female, CAC 120.",
+      "inputs": {
+        "score": "120",
+        "age": "62",
+        "sex": "female",
+        "race": "black",
+        "vessel_count": "2"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Category", "equals": "Stage 2 - Moderate calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": "100-299" },
+          { "key": "CAC-DRS", "equals": "A2/N2" },
+          { "key": "MESA Percentile", "equals": "91st percentile" },
+          { "key": "MESA Probability Nonzero CAC", "equals": "32%" },
+          { "key": "MESA Reference Scores", "equals": "25th 0, 50th 0, 75th 11, 90th 102" }
+        ]
+      }
+    },
+    {
+      "id": "audited-hispanic-male-severe-cac",
+      "description": "Official MESA audited example: 70-year-old Hispanic male, CAC 450.",
+      "inputs": {
+        "score": "450",
+        "age": "70",
+        "sex": "male",
+        "race": "hispanic",
+        "vessel_count": "3"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Category", "equals": "Stage 3 - Severe calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": "300-999" },
+          { "key": "CAC-DRS", "equals": "A3/N3" },
+          { "key": "MESA Percentile", "equals": "84th percentile" },
+          { "key": "MESA Probability Nonzero CAC", "equals": "75%" },
+          { "key": "MESA Reference Scores", "equals": "25th 1, 50th 56, 75th 247, 90th 666" }
+        ]
+      }
+    },
+    {
+      "id": "audited-white-male-extreme-cac",
+      "description": "Official MESA audited example: 72-year-old White/Caucasian male, CAC 1200.",
+      "inputs": {
+        "score": "1200",
+        "age": "72",
+        "sex": "male",
+        "race": "white",
+        "vessel_count": "4"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Category", "equals": "Stage 4 - Extensive/extreme calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": ">=1000" },
+          { "key": "CAC-DRS", "equals": "A3/N4" },
+          { "key": "MESA Percentile", "equals": "85th percentile" },
+          { "key": "MESA Probability Nonzero CAC", "equals": "86%" },
+          { "key": "MESA Reference Scores", "equals": "25th 32, 50th 180, 75th 641, 90th 1584" }
+        ]
+      }
+    },
+    {
+      "id": "score-300-maps-to-a3",
+      "description": "Signed-off boundary: exact CAC score 300 maps to Stage 3 and CAC-DRS A3.",
+      "inputs": {
+        "score": "300",
+        "age": "55",
+        "sex": "male",
+        "race": "white"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Category", "equals": "Stage 3 - Severe calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": "300-999" },
+          { "key": "CAC-DRS", "equals": "A3 / N not reported" }
+        ]
+      }
+    },
+    {
+      "id": "mesa-unavailable-under-age-range",
+      "description": "Absolute CAC output remains available when MESA age is below 45.",
+      "inputs": {
+        "score": "120",
+        "age": "44",
+        "sex": "female",
+        "race": "black",
+        "vessel_count": "2"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Category", "equals": "Stage 2 - Moderate calcified plaque burden" },
+          { "key": "MESA Percentile", "includes": "age is outside 45-84 years" },
+          { "key": "MESA Probability Nonzero CAC", "equals": "Unavailable" },
+          { "key": "MESA Limitation", "includes": "Do not extrapolate" }
+        ]
+      }
+    },
+    {
+      "id": "mesa-unavailable-over-age-range",
+      "description": "Absolute CAC output remains available when MESA age is above 84.",
+      "inputs": {
+        "score": "120",
+        "age": "85",
+        "sex": "female",
+        "race": "black",
+        "vessel_count": "2"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Category", "equals": "Stage 2 - Moderate calcified plaque burden" },
+          { "key": "MESA Percentile", "includes": "age is outside 45-84 years" },
+          { "key": "MESA Probability Nonzero CAC", "equals": "Unavailable" },
+          { "key": "MESA Limitation", "includes": "Do not extrapolate" }
+        ]
+      }
+    },
+    {
+      "id": "mesa-unavailable-non-mesa-race",
+      "description": "MESA ethnicity handling is MESA-only with no fallback or extrapolation.",
+      "inputs": {
+        "score": "120",
+        "age": "62",
+        "sex": "female",
+        "race": "non_mesa",
+        "vessel_count": "2"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Category", "equals": "Stage 2 - Moderate calcified plaque burden" },
+          { "key": "MESA Percentile", "includes": "use only White/Caucasian, Black/African American, Chinese American, or Hispanic categories" },
+          { "key": "MESA Probability Nonzero CAC", "equals": "Unavailable" },
+          { "key": "MESA Limitation", "includes": "Do not extrapolate" }
+        ]
+      }
+    },
+    {
+      "id": "reject-zero-cac-positive-vessel-count",
+      "description": "CAC 0 is inconsistent with any positive CAC-DRS vessel count.",
+      "inputs": {
+        "score": "0",
+        "age": "55",
+        "sex": "male",
+        "race": "white",
+        "vessel_count": "1"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          { "key": "Error", "equals": "CAC score 0 is inconsistent with a positive CAC-DRS vessel count." }
+        ]
+      }
+    },
+    {
+      "id": "reject-positive-cac-zero-vessel-count",
+      "description": "Positive CAC is inconsistent with CAC-DRS vessel count 0.",
+      "inputs": {
+        "score": "35",
+        "age": "46",
+        "sex": "female",
+        "race": "chinese",
+        "vessel_count": "0"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          { "key": "Error", "equals": "CAC score greater than 0 is inconsistent with 0 vessels containing CAC." }
+        ]
+      }
+    },
+    {
+      "id": "reject-non-integer-age",
+      "description": "MESA age must be whole-number years when supplied.",
+      "inputs": {
+        "score": "35",
+        "age": "46.5",
+        "sex": "female",
+        "race": "chinese",
+        "vessel_count": "1"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          { "key": "Error", "equals": "Age must be a whole number when entered." }
+        ]
+      }
+    }
+  ]
+}
