@@ -2,7 +2,6 @@ import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { navigateToCalculator } from "../helpers/calculator-test-helper.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
@@ -40,11 +39,60 @@ async function fillFeedbackForm(page, calculatorValue = "tirads") {
     .fill("This is a focused feedback form regression test.");
 }
 
+async function navigateToFeedbackForm(page) {
+  await page.goto("/#/feedback-form");
+  await page
+    .getByRole("heading", { name: "Radulator", level: 1 })
+    .first()
+    .waitFor({ state: "visible", timeout: 10000 });
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByTestId("calculator-title").first()).toContainText(
+    "Send Feedback",
+  );
+}
+
 test.describe("Feedback form", () => {
+  test("renders the form with required fields and submission controls", async ({
+    page,
+  }) => {
+    await navigateToFeedbackForm(page);
+
+    const form = page.locator("form");
+    const nameInput = form.getByLabel("Name", { exact: true });
+    const emailInput = form.getByLabel("Email", { exact: true });
+    const feedbackTypeSelect = form.getByLabel("Feedback Type");
+    const messageInput = form.getByRole("textbox", { name: "Message" });
+
+    await expect(nameInput).toBeVisible();
+    await expect(nameInput).toHaveAttribute("required", "");
+    await expect(emailInput).toBeVisible();
+    await expect(emailInput).toHaveAttribute("required", "");
+    await expect(feedbackTypeSelect).toBeVisible();
+    await expect(feedbackTypeSelect).toHaveAttribute("required", "");
+    await expect(
+      form.getByLabel("Related Calculator (if applicable)"),
+    ).toBeVisible();
+    await expect(messageInput).toBeVisible();
+    await expect(messageInput).toHaveAttribute("required", "");
+    await expect(
+      form.getByRole("button", { name: "Send Feedback" }),
+    ).toBeEnabled();
+    await expect(
+      page.locator('[role="alert"]', {
+        hasText: "We couldn't send your feedback.",
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('[role="status"]', {
+        hasText: "Thank you for your feedback!",
+      }),
+    ).toHaveCount(0);
+  });
+
   test("lists the current calculator registry without stale hand-picked options", async ({
     page,
   }) => {
-    await navigateToCalculator(page, "Send Feedback");
+    await navigateToFeedbackForm(page);
 
     const expectedCalculatorIds = getCalculatorIdsFromSource();
     const optionValues = await page
@@ -80,7 +128,7 @@ test.describe("Feedback form", () => {
       });
     });
 
-    await navigateToCalculator(page, "Send Feedback");
+    await navigateToFeedbackForm(page);
     await fillFeedbackForm(page, "tirads");
     await page
       .locator("form")
@@ -129,7 +177,7 @@ test.describe("Feedback form", () => {
       });
     });
 
-    await navigateToCalculator(page, "Send Feedback");
+    await navigateToFeedbackForm(page);
     await fillFeedbackForm(page, "cad-rads");
     await page
       .locator("form")
@@ -143,7 +191,11 @@ test.describe("Feedback form", () => {
     await expect(alert).toContainText(
       "Please check the required fields and try again.",
     );
+    await expect(alert).toHaveAttribute("aria-live", "assertive");
     await expect(page.getByText("Raw error object")).not.toBeVisible();
-    await expect(page.getByText("internal stack trace token abc123")).not.toBeVisible();
+    await expect(page.getByText("[object Object]")).not.toBeVisible();
+    await expect(
+      page.getByText("internal stack trace token abc123"),
+    ).not.toBeVisible();
   });
 });
