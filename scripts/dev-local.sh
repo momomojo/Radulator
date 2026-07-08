@@ -12,7 +12,7 @@
 #
 set -euo pipefail
 
-SESSION="radulator-dev"
+SESSION="${RADULATOR_TMUX_SESSION:-radulator-dev}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEV_PORT="${RADULATOR_DEV_PORT:-5173}"
 PREVIEW_PORT="${RADULATOR_PREVIEW_PORT:-4173}"
@@ -45,12 +45,21 @@ ensure_session() {
 
 start_window() {
   local name="$1" cmd="$2"
-  if tmux list-windows -t "$SESSION" -F '#{window_name}' 2>/dev/null | grep -qx "$name"; then
+  if window_exists "$name"; then
     warn "window '$name' already exists — leaving it alone"
     return
   fi
   tmux new-window -t "$SESSION" -n "$name" -c "$ROOT"
   tmux send-keys -t "$SESSION:$name" "$cmd" C-m
+}
+
+window_exists() {
+  local name="$1"
+  tmux list-windows -t "$SESSION" -F '#{window_name}' 2>/dev/null | grep -qx "$name"
+}
+
+window_count() {
+  tmux list-windows -t "$SESSION" -F '#{window_id}' 2>/dev/null | wc -l | tr -d '[:space:]'
 }
 
 kill_bootstrap() {
@@ -110,12 +119,22 @@ cmd_restart() {
   [ -n "$name" ] || die "usage: scripts/dev-local.sh restart <dev|preview>"
   require_tmux
   tmux has-session -t "$SESSION" 2>/dev/null || die "session '$SESSION' not running"
-  tmux kill-window -t "$SESSION:$name" >/dev/null 2>&1 || true
+  local cmd=""
   case "$name" in
-    dev) start_window "dev" "npm run dev -- --host 127.0.0.1 --port $DEV_PORT" ;;
-    preview) start_window "preview" "npm run build && npm run preview -- --host 127.0.0.1 --port $PREVIEW_PORT" ;;
+    dev) cmd="npm run dev -- --host 127.0.0.1 --port $DEV_PORT" ;;
+    preview) cmd="npm run build && npm run preview -- --host 127.0.0.1 --port $PREVIEW_PORT" ;;
     *) die "unknown window '$name'" ;;
   esac
+
+  local keeper=""
+  if window_exists "$name" && [ "$(window_count)" -eq 1 ]; then
+    keeper="_restart_${name}_$$"
+    tmux new-window -d -t "$SESSION" -n "$keeper" -c "$ROOT"
+  fi
+
+  tmux kill-window -t "$SESSION:$name" >/dev/null 2>&1 || true
+  start_window "$name" "$cmd"
+  [ -z "$keeper" ] || tmux kill-window -t "$SESSION:$keeper" >/dev/null 2>&1 || true
   ok "restarted $name"
 }
 
