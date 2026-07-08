@@ -4,6 +4,22 @@ import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js
 const resultsRegion = (page) =>
   page.getByRole("status", { name: "Calculator results" });
 
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function resultRow(results, label) {
+  return results.locator(":scope > div").filter({
+    hasText: new RegExp(`^\\s*${escapeRegExp(label)}:\\s*`),
+  });
+}
+
+async function expectResultValue(results, label, value, options) {
+  const row = resultRow(results, label);
+  await expect(row).toHaveCount(1);
+  await expect(row.getByText(value, options)).toBeVisible();
+}
+
 async function fillCacMesa(
   page,
   { score, age = 62, sex = "female", race = "black", vessels = "2" },
@@ -100,11 +116,18 @@ test.describe("CAC/MESA Calculator", () => {
     for (const example of examples) {
       await fillCacMesa(page, example);
       const results = resultsRegion(page);
-      await expect(results.getByText(example.category)).toBeVisible();
-      await expect(results.getByText(example.cacDrs, { exact: true })).toBeVisible();
-      await expect(results.getByText(example.percentile)).toBeVisible();
-      await expect(results.getByText(example.probability, { exact: true })).toBeVisible();
-      await expect(results.getByText(example.refs)).toBeVisible();
+      await expectResultValue(results, "Absolute CAC Category", example.category);
+      await expectResultValue(results, "CAC-DRS", example.cacDrs, {
+        exact: true,
+      });
+      await expectResultValue(results, "MESA Percentile", example.percentile);
+      await expectResultValue(
+        results,
+        "MESA Probability Nonzero CAC",
+        example.probability,
+        { exact: true },
+      );
+      await expectResultValue(results, "MESA Reference Scores", example.refs);
     }
   });
 
@@ -132,9 +155,9 @@ test.describe("CAC/MESA Calculator", () => {
         vessels: score === 0 ? "0" : "not_reported",
       });
       const results = resultsRegion(page);
-      await expect(results.getByText(category)).toBeVisible();
-      await expect(results.getByText(cacDrs, { exact: true })).toBeVisible();
-      await expect(results.getByText(range, { exact: true })).toBeVisible();
+      await expectResultValue(results, "Absolute CAC Category", category);
+      await expectResultValue(results, "CAC-DRS", cacDrs, { exact: true });
+      await expectResultValue(results, "CAC Score Range", range, { exact: true });
     }
   });
 
@@ -148,12 +171,16 @@ test.describe("CAC/MESA Calculator", () => {
       race: "black",
       vessels: "2",
     });
-    await expect(
-      resultsRegion(page).getByText("Stage 2 - Moderate calcified plaque burden"),
-    ).toBeVisible();
-    await expect(
-      resultsRegion(page).getByText("age is outside 45-84 years"),
-    ).toBeVisible();
+    await expectResultValue(
+      resultsRegion(page),
+      "Absolute CAC Category",
+      "Stage 2 - Moderate calcified plaque burden",
+    );
+    await expectResultValue(
+      resultsRegion(page),
+      "MESA Percentile",
+      "age is outside 45-84 years",
+    );
 
     await fillCacMesa(page, {
       score: 120,
@@ -162,9 +189,11 @@ test.describe("CAC/MESA Calculator", () => {
       race: "black",
       vessels: "2",
     });
-    await expect(
-      resultsRegion(page).getByText("age is outside 45-84 years"),
-    ).toBeVisible();
+    await expectResultValue(
+      resultsRegion(page),
+      "MESA Percentile",
+      "age is outside 45-84 years",
+    );
 
     await fillCacMesa(page, {
       score: 120,
@@ -173,9 +202,11 @@ test.describe("CAC/MESA Calculator", () => {
       race: "non_mesa",
       vessels: "2",
     });
-    await expect(
-      resultsRegion(page).getByText("MESA percentile unavailable: use only"),
-    ).toBeVisible();
+    await expectResultValue(
+      resultsRegion(page),
+      "MESA Percentile",
+      "MESA percentile unavailable: use only",
+    );
   });
 
   test("validates inconsistent CAC score and vessel count", async ({ page }) => {
@@ -199,8 +230,11 @@ test.describe("CAC/MESA Calculator", () => {
       race: "chinese",
       vessels: "not_reported",
     });
-    await expect(
-      resultsRegion(page).getByText("A1 / N not reported", { exact: true }),
-    ).toBeVisible();
+    await expectResultValue(
+      resultsRegion(page),
+      "CAC-DRS",
+      "A1 / N not reported",
+      { exact: true },
+    );
   });
 });
