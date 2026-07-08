@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { existsSync } from "fs";
 
 /**
  * Smoke Tests for Radulator
@@ -127,6 +128,41 @@ test.describe("Smoke Tests - Core Functionality", () => {
   test("should display references section", async ({ page }) => {
     await clickCalculator(page, "Adrenal CT Washout");
     await expect(page.locator("text=/References/i")).toBeVisible();
+  });
+
+  test("generated calculator page exposes crawlable body HTML", async ({
+    page,
+    request,
+  }) => {
+    test.skip(
+      !existsSync("dist/calculators/meld-na/index.html"),
+      "requires npm run build so generated static pages are available",
+    );
+
+    const response = await request.get("/calculators/meld-na/");
+    expect(response.ok()).toBe(true);
+    const html = await response.text();
+
+    expect(html).toContain("MELD-Na Score Calculator");
+    expect(html).toContain("Free MELD-Na Score Calculator.");
+    expect(html).toContain("Kamath PS et al. Hepatology 2001");
+    expect(html).toMatch(/<section[^>]+aria-labelledby="static-related-heading"/);
+    expect(html.match(/href="\/calculators\/[^"]+\/"/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+
+    const hydrationMessages = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error" && /hydration|Hydration failed|did not match/i.test(msg.text())) {
+        hydrationMessages.push(msg.text());
+      }
+    });
+
+    await page.goto("/calculators/meld-na/");
+    await expect(page.getByTestId("calculator-title")).toContainText("MELD-Na Score");
+    await page.screenshot({
+      path: "test-results/static-meld-na-page.png",
+      fullPage: true,
+    });
+    expect(hydrationMessages).toEqual([]);
   });
 
   test("should toggle favorites", async ({ page }) => {

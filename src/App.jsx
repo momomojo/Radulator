@@ -15,6 +15,7 @@ import {
 } from "@/components/display";
 import { CalculatorProvider, useCalculator } from "@/context";
 import { usePreferences, useUrlSync, usePageMeta } from "@/hooks";
+import StaticCalculatorShell from "@/components/StaticCalculatorShell";
 // Auto-discovered calculator registry
 import { calcDefs as registryCalcDefs } from "@/components/calculators";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -97,6 +98,25 @@ const allTags = [...new Set(calcDefs.flatMap((calc) => calc.tags || []))].sort()
   Calculator definitions and categories are auto-discovered from registry
 *******************************************************************/
 export default function App() {
+  const [showStaticShell, setShowStaticShell] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(window.__RADULATOR_STATIC_PAGE__);
+  });
+
+  useEffect(() => {
+    if (!showStaticShell) return undefined;
+    const frame = window.requestAnimationFrame(() => setShowStaticShell(false));
+    return () => window.cancelAnimationFrame(frame);
+  }, [showStaticShell]);
+
+  if (showStaticShell) {
+    return <StaticCalculatorShell />;
+  }
+
+  return <InteractiveApp />;
+}
+
+function InteractiveApp() {
   // Get initial calculator from URL
   const { initialId } = useUrlSync(calcDefs, null);
 
