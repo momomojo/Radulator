@@ -15,7 +15,7 @@
     "test:debug": "playwright test --debug",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
-    "test:smoke": "playwright test tests/e2e/smoke",
+    "test:smoke": "npm run build && playwright test tests/e2e/smoke",
     "test:calculator": "playwright test tests/e2e/calculators",
     "test:chromium": "playwright test --project=chromium",
     "test:firefox": "playwright test --project=firefox",
