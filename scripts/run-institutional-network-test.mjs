@@ -8,6 +8,7 @@ const env = {
     process.env.RADULATOR_RELEASE_VERSION || "0.0.0-local-institutional-test",
   RADULATOR_INSTITUTIONAL_ORIGIN:
     process.env.RADULATOR_INSTITUTIONAL_ORIGIN || "http://127.0.0.1:4173",
+  RADULATOR_MANAGED_PREVIEW: "true",
 };
 
 function run(command, args, options = {}) {

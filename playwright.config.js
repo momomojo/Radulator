@@ -8,11 +8,11 @@ import { defineConfig, devices } from "@playwright/test";
 const isCI = !!process.env.CI;
 const isLocalSmokeScript = process.env.npm_lifecycle_event === "test:smoke";
 const institutionalOrigin = process.env.RADULATOR_INSTITUTIONAL_ORIGIN || "";
+const managedPreviewServer = process.env.RADULATOR_MANAGED_PREVIEW === "true";
 // CI and npm-run local smoke both build first, then serve dist through preview.
 const usePreviewServer = isCI || isLocalSmokeScript || Boolean(institutionalOrigin);
-const baseURL = institutionalOrigin || (usePreviewServer
-  ? "http://localhost:4173"
-  : "http://localhost:5173");
+const baseURL = institutionalOrigin
+  || (usePreviewServer ? "http://localhost:4173" : "http://localhost:5173");
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -69,11 +69,15 @@ export default defineConfig({
     // Other browsers moved to playwright.nightly.config.js
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: usePreviewServer ? "npm run preview" : "npm run dev",
-    url: baseURL,
-    reuseExistingServer: !isCI,
-    timeout: 120000,
-  },
+  ...(managedPreviewServer
+    ? {}
+    : {
+        /* Run your local dev server before starting the tests */
+        webServer: {
+          command: usePreviewServer ? "npm run preview" : "npm run dev",
+          url: baseURL,
+          reuseExistingServer: !isCI,
+          timeout: 120000,
+        },
+      }),
 });
