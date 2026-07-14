@@ -13,6 +13,12 @@ on:
         default: 'false'
         type: boolean
 
+concurrency:
+  # Supersede only older runs for the same PR. The run-id suffix keeps push
+  # and manual runs out of a shared pending queue, so none are discarded.
+  group: e2e-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('ref-{0}-run-{1}', github.ref, github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   smoke-tests:
     name: Smoke Tests
