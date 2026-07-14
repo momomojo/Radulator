@@ -12,6 +12,14 @@ function parseHashCalculatorId(hash) {
   return hash.replace("#/", "").replace("#", "");
 }
 
+function clearHash() {
+  window.history.replaceState(
+    null,
+    "",
+    `${window.location.pathname}${window.location.search}`,
+  );
+}
+
 /**
  * Hook for URL hash synchronization
  * @param {Array} calcDefs - Array of calculator definitions
@@ -29,7 +37,7 @@ export function useUrlSync(calcDefs, onCalculatorChange) {
   const syncUrlToCalculator = useCallback((calculatorId) => {
     if (!calculatorId) {
       if (window.location.hash) {
-        window.history.replaceState(null, "", window.location.pathname);
+        clearHash();
       }
       return;
     }
@@ -46,6 +54,8 @@ export function useUrlSync(calcDefs, onCalculatorChange) {
       const calc = calcDefs.find((c) => c.id === hash);
       if (calc && onCalculatorChange) {
         onCalculatorChange(calc.id);
+      } else if (!calc && window.location.hash) {
+        clearHash();
       }
     };
 
