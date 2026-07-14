@@ -54,6 +54,26 @@ function latestStaticBuildInputMtimeMs() {
   return Math.max(...STATIC_BUILD_INPUTS.map(latestMtimeMs));
 }
 
+test("public build does not request institutional release control", async ({
+  page,
+}) => {
+  const releaseControlRequests = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/release-control.json") {
+      releaseControlRequests.push(request.url());
+    }
+  });
+
+  await page.goto("/");
+  await page
+    .getByRole("heading", { name: "Radulator", level: 1 })
+    .first()
+    .waitFor({ state: "visible" });
+  await page.waitForTimeout(250);
+
+  expect(releaseControlRequests).toEqual([]);
+});
+
 test.describe("Smoke Tests - Core Functionality", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");

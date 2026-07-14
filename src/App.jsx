@@ -33,6 +33,7 @@ import {
   buildReportSnippet,
   canBuildReportSnippet,
 } from "@/lib/reportSnippets";
+import { fetchInstitutionalReleaseControl } from "@/lib/releaseControl";
 import {
   WelcomeCard,
   GuideButton,
@@ -107,22 +108,141 @@ function getTestCalculatorDefs() {
   ];
 }
 
-const calcDefs = [...getTestCalculatorDefs(), ...registryCalcDefs].sort((a, b) =>
+const baseCalcDefs = [...getTestCalculatorDefs(), ...registryCalcDefs].sort((a, b) =>
   a.name.localeCompare(b.name),
 );
 
-const hasCalculators = calcDefs.length > 0;
+function buildCalculatorCollections(calcDefs) {
+  const categories = calcDefs.reduce((acc, calc) => {
+    const category = calc.category || "Other";
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(calc.id);
+    return acc;
+  }, {});
 
-const categories = calcDefs.reduce((acc, calc) => {
-  const category = calc.category || "Other";
-  if (!acc[category]) {
-    acc[category] = [];
-  }
-  acc[category].push(calc.id);
-  return acc;
-}, {});
+  const allTags = [
+    ...new Set(calcDefs.flatMap((calc) => calc.tags || [])),
+  ].sort();
 
-const allTags = [...new Set(calcDefs.flatMap((calc) => calc.tags || []))].sort();
+  return {
+    allTags,
+    categories,
+    hasCalculators: calcDefs.length > 0,
+  };
+}
+
+function useInstitutionalReleaseControl() {
+  const [controlState, setControlState] = useState(() =>
+    edition.releaseControls
+      ? {
+          status: "loading",
+          disabledCalculatorIds: [],
+          message: "",
+          error: "",
+        }
+      : {
+          status: "ready",
+          disabledCalculatorIds: [],
+          message: "",
+          error: "",
+        },
+  );
+
+  useEffect(() => {
+    if (!edition.releaseControls) return undefined;
+    let cancelled = false;
+
+    fetchInstitutionalReleaseControl(edition)
+      .then((control) => {
+        if (cancelled) return;
+        setControlState({
+          status: control.disabled ? "disabled" : "ready",
+          disabledCalculatorIds: control.disabledCalculatorIds,
+          message: control.message,
+          error: "",
+        });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setControlState({
+          status: "blocked",
+          disabledCalculatorIds: [],
+          message: "",
+          error:
+            error instanceof Error
+              ? error.message
+              : "release control could not be validated",
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return controlState;
+}
+
+function ReleaseControlGate({ state }) {
+  const releaseVersion = edition.releaseVersion || "unversioned";
+  const isLoading = state.status === "loading";
+  const heading = isLoading
+    ? "Checking institutional release"
+    : state.status === "disabled"
+      ? "Institutional release disabled"
+      : "Institutional release unavailable";
+  const message = isLoading
+    ? "Release control is being loaded from the first-party origin before calculators are enabled."
+    : state.status === "disabled"
+      ? state.message || "This controlled release has been disabled."
+      : "This controlled release could not be validated. Calculators are unavailable until release control is restored.";
+
+  return (
+    <main className="min-h-screen bg-background text-foreground p-6 flex items-center justify-center">
+      <Card className="w-full max-w-2xl">
+        <CardContent
+          className="space-y-4 p-8"
+          role={isLoading ? "status" : "alert"}
+          aria-live={isLoading ? "polite" : "assertive"}
+          data-testid={
+            isLoading
+              ? "institutional-release-loading"
+              : state.status === "disabled"
+                ? "institutional-release-disabled"
+                : "institutional-release-blocked"
+          }
+        >
+          <p className="text-sm font-medium uppercase tracking-wide text-primary">
+            Controlled release
+          </p>
+          <h1 className="text-2xl font-semibold">{heading}</h1>
+          <p className="text-sm leading-6 text-muted-foreground">{message}</p>
+          <dl className="grid gap-3 rounded-md border border-border bg-muted/30 p-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="font-medium text-foreground">Release</dt>
+              <dd className="mt-1 font-mono text-muted-foreground">
+                {releaseVersion}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium text-foreground">Control file</dt>
+              <dd className="mt-1 font-mono text-muted-foreground">
+                /{edition.releaseControlFile || "release-control.json"}
+              </dd>
+            </div>
+          </dl>
+          {state.error && (
+            <p className="text-xs text-muted-foreground">
+              Validation detail: {state.error}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
 
 /*******************************************************************
   App Wrapper - Provides Context
@@ -148,12 +268,30 @@ export default function App() {
 }
 
 function InteractiveApp() {
+  const releaseControl = useInstitutionalReleaseControl();
+  const calcDefs = useMemo(() => {
+    if (releaseControl.status !== "ready") return [];
+    const disabled = new Set(releaseControl.disabledCalculatorIds);
+    return baseCalcDefs.filter((calc) => !disabled.has(calc.id));
+  }, [releaseControl.disabledCalculatorIds, releaseControl.status]);
+
+  if (releaseControl.status !== "ready") {
+    return <ReleaseControlGate state={releaseControl} />;
+  }
+
+  return <ReleasedInteractiveApp calcDefs={calcDefs} />;
+}
+
+function ReleasedInteractiveApp({ calcDefs }) {
   // Get initial calculator from URL
   const { initialId } = useUrlSync(calcDefs, null);
 
   return (
-    <CalculatorProvider defaultCalculatorId={initialId}>
-      <AppContent />
+    <CalculatorProvider
+      key={calcDefs.map((calc) => calc.id).join("|") || "empty"}
+      defaultCalculatorId={initialId}
+    >
+      <AppContent calcDefs={calcDefs} />
     </CalculatorProvider>
   );
 }
@@ -161,7 +299,7 @@ function InteractiveApp() {
 /*******************************************************************
   Main App Content - Uses Context
 *******************************************************************/
-function AppContent() {
+function AppContent({ calcDefs }) {
   // Calculator state from context
   const {
     active,
@@ -205,6 +343,10 @@ function AppContent() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [computeError, setComputeError] = useState(null);
   const computeErrorRef = useRef(null);
+  const { allTags, categories, hasCalculators } = useMemo(
+    () => buildCalculatorCollections(calcDefs),
+    [calcDefs],
+  );
 
   // Reset local calculator feedback when switching calculators
   useEffect(() => {
@@ -220,7 +362,10 @@ function AppContent() {
   }, [computeError]);
 
   // Current calculator definition
-  const def = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
+  const def = useMemo(
+    () => calcDefs.find((c) => c.id === active),
+    [active, calcDefs],
+  );
   const hasActiveCalculator = Boolean(def);
 
   // URL sync

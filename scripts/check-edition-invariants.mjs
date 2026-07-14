@@ -93,6 +93,7 @@ function checkInstitutionalSource(edition) {
     '"feedbackEnabled": false',
     '"externalLinks": "text-only"',
     '"releaseControls": true',
+    '"releaseControlFile": "release-control.json"',
     '"calculatorAllowlist": []',
   ]) {
     if (!generatedEdition.includes(snippet)) {
@@ -139,6 +140,9 @@ function checkInstitutionalDist(edition) {
     const control = JSON.parse(readFileSync(controlPath, "utf8"));
     if (control.releaseVersion !== edition.releaseVersion) {
       errors.push("release-control.json releaseVersion mismatch");
+    }
+    if (typeof control.disabled !== "boolean") {
+      errors.push("release-control.json disabled must be boolean");
     }
     if (!Array.isArray(control.disabledCalculators) || control.disabledCalculators.length !== 0) {
       errors.push("release-control.json disabledCalculators must be []");

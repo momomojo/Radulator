@@ -114,6 +114,7 @@ function generateEdition(edition) {
     feedbackEnabled: Boolean(edition.includeFeedback),
     externalLinks: edition.externalLinks,
     releaseControls: Boolean(edition.releaseControls),
+    releaseControlFile: edition.releaseControlFile || "",
     releaseVersion: edition.releaseVersion || "",
     gitCommit: edition.gitCommit || "",
     calculatorAllowlist:
