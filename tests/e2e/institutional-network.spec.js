@@ -46,6 +46,15 @@ function releaseControlRequests(requests) {
   );
 }
 
+function footerLinksFromDom(anchors) {
+  return anchors.map((anchor, index) => ({
+    index,
+    href: anchor.getAttribute("href") || "",
+    label: anchor.textContent.trim(),
+    absoluteHref: anchor.href,
+  }));
+}
+
 async function expectNoCalculatorUi(page) {
   await expect(page.getByLabel("Search calculators")).toHaveCount(0);
   await expect(page.getByTestId("institutional-empty-catalog")).toHaveCount(0);
@@ -121,6 +130,74 @@ test.describe("Institutional zero-network build", () => {
     expect(requests.some((item) => /formspree/i.test(item.url))).toBe(false);
     expect(requests.some((item) => /cdnjs/i.test(item.url))).toBe(false);
     expectReleaseControlRequestProof(requests, offOrigin);
+  });
+
+  test("resolves every institutional first-party footer link", async ({
+    page,
+  }) => {
+    const { offOrigin } = collectPageRequests(page);
+
+    await page.goto(`${origin}/`);
+    await expect(
+      page.getByRole("heading", {
+        name: "No calculators approved for this release",
+      }),
+    ).toBeVisible();
+
+    const footerLinks = await page
+      .locator("footer a[href]")
+      .evaluateAll(footerLinksFromDom);
+    expect(footerLinks.map((link) => link.href)).not.toContain("/about.html");
+    expect(footerLinks.length).toBeGreaterThan(0);
+
+    for (const link of footerLinks) {
+      const target = new URL(link.absoluteHref);
+      expect(target.host, `${link.label} should stay on-origin`).toBe(
+        firstPartyHost,
+      );
+      expect(
+        target.pathname,
+        `${link.label} must not target excluded content`,
+      ).not.toMatch(/^\/(?:about\.html|calculators(?:\/|$))/);
+
+      await page.goto(`${origin}/`);
+      await expect(
+        page.getByRole("heading", {
+          name: "No calculators approved for this release",
+        }),
+      ).toBeVisible();
+
+      const documentResponsePromise = page.waitForResponse((response) => {
+        const responseUrl = new URL(response.url());
+        return (
+          response.request().resourceType() === "document" &&
+          responseUrl.origin === target.origin &&
+          responseUrl.pathname === target.pathname
+        );
+      });
+
+      await page.locator("footer a[href]").nth(link.index).click();
+      const documentResponse = await documentResponsePromise;
+      await page.waitForLoadState("domcontentloaded");
+
+      const resolvedUrl = new URL(page.url());
+      expect(
+        documentResponse.status(),
+        `${link.label} returned an error`,
+      ).toBeLessThan(400);
+      expect(documentResponse.request().redirectedFrom()).toBeNull();
+      expect(resolvedUrl.host).toBe(firstPartyHost);
+      expect(resolvedUrl.pathname).toBe(target.pathname);
+      expect(resolvedUrl.hash).not.toMatch(/tirads|feedback-form/i);
+      await expect(page.getByRole("button", { name: "Calculate" })).toHaveCount(
+        0,
+      );
+    }
+
+    expect(
+      offOrigin,
+      `off-origin requests:\n${offOrigin.map((item) => item.url).join("\n")}`,
+    ).toEqual([]);
   });
 
   test("disabled release control renders an unavailable state with no calculator UI", async ({

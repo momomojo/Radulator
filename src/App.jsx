@@ -1780,12 +1780,14 @@ function AppContent({ calcDefs }) {
                 Guide
               </button>
             )}
-            <a
-              href="/about.html"
-              className="hover:text-foreground hover:underline transition-colors"
-            >
-              About
-            </a>
+            {edition.id === "public" && (
+              <a
+                href="/about.html"
+                className="hover:text-foreground hover:underline transition-colors"
+              >
+                About
+              </a>
+            )}
             {edition.id === "public" && (
               <a
                 href="/institutional.html"

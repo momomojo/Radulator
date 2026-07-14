@@ -19,6 +19,17 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function publicMarketingAssetHashes() {
+  const hashes = new Set();
+  for (const relPath of ["public/og-image.jpg"]) {
+    const fullPath = path.join(root, relPath);
+    if (existsSync(fullPath)) {
+      hashes.add(sha256(readFileSync(fullPath)));
+    }
+  }
+  return hashes;
+}
+
 function walk(dir, files = []) {
   if (!existsSync(dir)) return files;
   for (const entry of readdirSync(dir)) {
@@ -32,6 +43,26 @@ function walk(dir, files = []) {
 
 function rel(fullPath) {
   return path.relative(root, fullPath);
+}
+
+function checkNoInstitutionalOgAssets(baseRelPath, publicHashes) {
+  const basePath = path.join(root, baseRelPath);
+  if (!existsSync(basePath)) return;
+
+  for (const file of walk(basePath)) {
+    const relPath = rel(file);
+    const basename = path.basename(file).toLowerCase();
+    const fileHash = sha256(readFileSync(file));
+    if (/^og-image\./.test(basename)) {
+      errors.push(
+        `${relPath}: institutional OG asset must be absent unless an approved hash-addressed asset is configured`,
+      );
+      continue;
+    }
+    if (publicHashes.has(fileHash)) {
+      errors.push(`${relPath}: copies the public marketing OG asset`);
+    }
+  }
 }
 
 function checkPublicEdition(edition) {
@@ -53,6 +84,8 @@ function checkPublicEdition(edition) {
 }
 
 function checkInstitutionalSource(edition) {
+  checkNoInstitutionalOgAssets(edition.publicDir, publicMarketingAssetHashes());
+
   const allowlistSource = read("src/editions/institutional-allowlist.json");
   const manifestSource = read("src/editions/institutional-validation-manifest.json");
   const schemaSource = read("src/editions/institutional-validation-manifest.schema.json");
@@ -113,6 +146,7 @@ function checkInstitutionalDist(edition) {
     warnings.push(`${edition.outDir} does not exist; skipping built-output checks`);
     return;
   }
+  checkNoInstitutionalOgAssets(edition.outDir, publicMarketingAssetHashes());
 
   const releasePath = path.join(dist, "release.json");
   const controlPath = path.join(dist, "release-control.json");
