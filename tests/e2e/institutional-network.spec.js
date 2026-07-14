@@ -148,6 +148,9 @@ test.describe("Institutional zero-network build", () => {
       .locator("footer a[href]")
       .evaluateAll(footerLinksFromDom);
     expect(footerLinks.map((link) => link.href)).not.toContain("/about.html");
+    expect(footerLinks.map((link) => link.href)).toContain(
+      "/institutional.html",
+    );
     expect(footerLinks.length).toBeGreaterThan(0);
 
     for (const link of footerLinks) {
@@ -198,6 +201,40 @@ test.describe("Institutional zero-network build", () => {
       offOrigin,
       `off-origin requests:\n${offOrigin.map((item) => item.url).join("\n")}`,
     ).toEqual([]);
+  });
+
+  test("serves the institutional product page without external resources", async ({
+    page,
+  }) => {
+    const { requests, offOrigin } = collectPageRequests(page);
+    const response = await page.goto(`${origin}/institutional.html`);
+
+    expect(response?.ok()).toBe(true);
+    await expect(
+      page.getByRole("heading", { name: "Radulator Institutional" }),
+    ).toBeVisible();
+    await expect(page.locator("header")).toContainText(
+      "education, reference, and quality-improvement calculator workflows",
+    );
+    await expect(page.locator("body")).toContainText(
+      "Independent professional review",
+    );
+    await expect(page.locator("body")).toContainText("Support channels");
+    await expect(page.locator("script")).toHaveCount(0);
+    await expect(page.locator('link[rel="stylesheet"]')).toHaveCount(0);
+
+    const pageText = await page.locator("body").innerText();
+    expect(pageText).not.toMatch(
+      /\bUCI\b|pricing|endorsement|FDA[- ]exempt|not a (?:medical )?device|all calculators (?:are )?(?:clinically )?validated|all calculators (?:are )?licensed/i,
+    );
+    expect(
+      requests.some((item) =>
+        /googletagmanager|google-analytics|fonts\.googleapis|fonts\.gstatic|formspree/i.test(
+          item.url,
+        ),
+      ),
+    ).toBe(false);
+    expect(offOrigin).toEqual([]);
   });
 
   test("disabled release control renders an unavailable state with no calculator UI", async ({

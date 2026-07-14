@@ -1788,14 +1788,12 @@ function AppContent({ calcDefs }) {
                 About
               </a>
             )}
-            {edition.id === "public" && (
-              <a
-                href="/institutional.html"
-                className="hover:text-foreground hover:underline transition-colors"
-              >
-                Institutional
-              </a>
-            )}
+            <a
+              href="/institutional.html"
+              className="hover:text-foreground hover:underline transition-colors"
+            >
+              Institutional
+            </a>
             <a
               href="/privacy.html"
               className="hover:text-foreground hover:underline transition-colors"
