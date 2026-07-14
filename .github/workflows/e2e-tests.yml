@@ -157,7 +157,7 @@ jobs:
           RUN_INSTITUTIONAL=false
           if grep -Fxq "$INSTITUTIONAL_SPEC" targeted-specs.unique.txt; then
             RUN_INSTITUTIONAL=true
-            grep -Fxv "$INSTITUTIONAL_SPEC" targeted-specs.unique.txt > targeted-specs.generic.txt
+            grep -Fxv "$INSTITUTIONAL_SPEC" targeted-specs.unique.txt > targeted-specs.generic.txt || true
           else
             cp targeted-specs.unique.txt targeted-specs.generic.txt
           fi
