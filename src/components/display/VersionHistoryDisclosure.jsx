@@ -10,6 +10,7 @@ function VersionHistoryDisclosure({
   guidelineVersion,
   history = [],
   onCitationClick,
+  externalLinks = "clickable",
 }) {
   const [expanded, setExpanded] = useState(false);
   const reactId = useId();
@@ -90,7 +91,7 @@ function VersionHistoryDisclosure({
                   <ul className="space-y-1">
                     {entry.citations.map((citation, index) => (
                       <li key={citation.u || `${citation.t}-${index}`}>
-                        {citation.u ? (
+                        {citation.u && externalLinks !== "text-only" ? (
                           <a
                             href={citation.u}
                             target="_blank"
@@ -111,7 +112,12 @@ function VersionHistoryDisclosure({
                             />
                           </a>
                         ) : (
-                          citation.t
+                          <span>
+                            {citation.t}
+                            {citation.u && externalLinks === "text-only"
+                              ? ` (${citation.u})`
+                              : ""}
+                          </span>
                         )}
                       </li>
                     ))}

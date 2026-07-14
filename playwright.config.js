@@ -7,11 +7,12 @@ import { defineConfig, devices } from "@playwright/test";
 
 const isCI = !!process.env.CI;
 const isLocalSmokeScript = process.env.npm_lifecycle_event === "test:smoke";
+const institutionalOrigin = process.env.RADULATOR_INSTITUTIONAL_ORIGIN || "";
 // CI and npm-run local smoke both build first, then serve dist through preview.
-const usePreviewServer = isCI || isLocalSmokeScript;
-const baseURL = usePreviewServer
+const usePreviewServer = isCI || isLocalSmokeScript || Boolean(institutionalOrigin);
+const baseURL = institutionalOrigin || (usePreviewServer
   ? "http://localhost:4173"
-  : "http://localhost:5173";
+  : "http://localhost:5173");
 
 export default defineConfig({
   testDir: "./tests/e2e",

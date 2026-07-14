@@ -16,8 +16,8 @@ import {
 import { CalculatorProvider, useCalculator } from "@/context";
 import { usePreferences, useUrlSync, usePageMeta } from "@/hooks";
 import StaticCalculatorShell from "@/components/StaticCalculatorShell";
-// Auto-discovered calculator registry
-import { calcDefs as registryCalcDefs } from "@/components/calculators";
+import { calcDefs as registryCalcDefs } from "@/generated/calculator-registry.generated.js";
+import { edition } from "@/generated/edition.generated.js";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import {
   trackCalculatorSelected,
@@ -28,7 +28,7 @@ import {
   trackResultViewed,
   trackResultsCopied,
   trackOnboarding,
-} from "@/lib/analytics";
+} from "@/generated/analytics.generated.js";
 import {
   buildReportSnippet,
   canBuildReportSnippet,
@@ -65,6 +65,7 @@ function computeTestCalculator() {
 
 function getTestCalculatorDefs() {
   if (typeof window === "undefined") return [];
+  if (edition.id === "institutional") return [];
   const params = new URLSearchParams(window.location.search);
   const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(
     window.location.hostname,
@@ -109,6 +110,8 @@ function getTestCalculatorDefs() {
 const calcDefs = [...getTestCalculatorDefs(), ...registryCalcDefs].sort((a, b) =>
   a.name.localeCompare(b.name),
 );
+
+const hasCalculators = calcDefs.length > 0;
 
 const categories = calcDefs.reduce((acc, calc) => {
   const category = calc.category || "Other";
@@ -218,6 +221,7 @@ function AppContent() {
 
   // Current calculator definition
   const def = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
+  const hasActiveCalculator = Boolean(def);
 
   // URL sync
   const { syncUrlToCalculator } = useUrlSync(calcDefs, (id) => {
@@ -236,6 +240,7 @@ function AppContent() {
 
   // Track initial page view (GA4 config has send_page_view: false for SPA)
   useEffect(() => {
+    if (!edition.telemetryEnabled) return;
     const sendPageView = (eventName, params) => {
       if (import.meta.env.DEV) {
         console.log("[GA4 Dev]", eventName, params);
@@ -288,6 +293,7 @@ function AppContent() {
 
   // Run calculation
   const run = () => {
+    if (!def) return;
     setComputeError(null);
 
     let result;
@@ -483,7 +489,7 @@ function AppContent() {
       )}
 
       {/* One-time Welcome Card */}
-      {showWelcome && (
+      {showWelcome && hasCalculators && (
         <WelcomeCard
           onDismiss={dismissWelcome}
           onOpenGuide={() => {
@@ -519,14 +525,16 @@ function AppContent() {
               />
             </svg>
           </button>
-          <h1 className="text-lg font-bold text-foreground">Radulator</h1>
+          <h1 className="text-lg font-bold text-foreground">{edition.title}</h1>
           <div className="flex items-center gap-0.5">
-            <GuideButton
-              onClick={() => {
-                trackOnboarding("guide_opened", "mobile_header");
-                setGuideOpen(true);
-              }}
-            />
+            {hasCalculators && (
+              <GuideButton
+                onClick={() => {
+                  trackOnboarding("guide_opened", "mobile_header");
+                  setGuideOpen(true);
+                }}
+              />
+            )}
             {/* Dark Mode Toggle - Mobile */}
             <button
               type="button"
@@ -592,15 +600,19 @@ function AppContent() {
         >
           {/* Sidebar Header */}
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-foreground">Radulator</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {edition.title}
+            </h1>
             <div className="flex items-center gap-1">
-              <GuideButton
-                onClick={() => {
-                  trackOnboarding("guide_opened", "sidebar_header");
-                  setGuideOpen(true);
-                }}
-                className="hidden md:flex"
-              />
+              {hasCalculators && (
+                <GuideButton
+                  onClick={() => {
+                    trackOnboarding("guide_opened", "sidebar_header");
+                    setGuideOpen(true);
+                  }}
+                  className="hidden md:flex"
+                />
+              )}
               {/* Dark Mode Toggle - Desktop (hidden on mobile, shown in mobile header) */}
               <button
                 type="button"
@@ -665,6 +677,7 @@ function AppContent() {
           </div>
 
           {/* Calculator Search */}
+          {hasCalculators && (
           <div className="relative mb-4">
             <label htmlFor="calculator-search" className="sr-only">
               Search calculators
@@ -714,9 +727,10 @@ function AppContent() {
               </button>
             )}
           </div>
+          )}
 
           {/* Tag Filter Bar */}
-          {!searchQuery && (
+          {hasCalculators && !searchQuery && (
             <div className="mb-4">
               <div className="flex flex-wrap gap-1.5">
                 {allTags.map((tag) => (
@@ -750,7 +764,9 @@ function AppContent() {
           )}
 
           {/* Personal Section: Favorites + Recent */}
-          {(favorites.length > 0 || recentCalcs.length > 0) && !searchQuery && (
+          {hasCalculators &&
+            (favorites.length > 0 || recentCalcs.length > 0) &&
+            !searchQuery && (
             <div className="mb-3 p-2 bg-muted/30 dark:bg-muted/20 border border-border/50 rounded-lg space-y-2">
               {/* Favorites */}
               {favorites.length > 0 && (
@@ -875,6 +891,13 @@ function AppContent() {
 
           {/* Calculator List by Category */}
           {(() => {
+            if (!hasCalculators) {
+              return (
+                <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                  No calculators are approved for this institutional release.
+                </div>
+              );
+            }
             const query = searchQuery.toLowerCase().trim();
             const filteredCategories = Object.entries(categories)
               .map(([categoryName, calcIds]) => {
@@ -1005,11 +1028,61 @@ function AppContent() {
         <main
           id="main-content"
           tabIndex={-1}
-          aria-labelledby="calculator-heading"
+          aria-labelledby={
+            hasActiveCalculator ? "calculator-heading" : "empty-catalog-heading"
+          }
           className="flex-1 p-4 pt-16 md:pt-4 md:p-8 flex justify-center overflow-y-auto"
         >
           <Card className="w-full max-w-4xl">
             <CardContent className="space-y-6 p-8">
+              {!hasActiveCalculator ? (
+                <section
+                  aria-labelledby="empty-catalog-heading"
+                  className="space-y-4"
+                  data-testid="institutional-empty-catalog"
+                >
+                  <header className="space-y-2">
+                    <p className="text-sm font-medium uppercase tracking-wide text-primary">
+                      {edition.id === "institutional"
+                        ? "Controlled release"
+                        : "Catalog"}
+                    </p>
+                    <h2
+                      id="empty-catalog-heading"
+                      className="text-xl font-semibold text-foreground"
+                      data-testid="calculator-title"
+                    >
+                      No calculators approved for this release
+                    </h2>
+                    <p
+                      className="text-sm leading-6 text-muted-foreground"
+                      data-testid="calculator-description"
+                    >
+                      This institutional build intentionally exposes an empty
+                      calculator catalog. Future calculators require release-specific
+                      rights, validation, and owner approval before they can appear here.
+                    </p>
+                  </header>
+                  {edition.releaseControls && (
+                    <dl className="grid gap-3 rounded-md border border-border bg-muted/30 p-4 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="font-medium text-foreground">Release</dt>
+                        <dd className="mt-1 text-muted-foreground">
+                          {edition.releaseVersion}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-foreground">
+                          Allowlist SHA-256
+                        </dt>
+                        <dd className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                          {edition.calculatorAllowlistHash}
+                        </dd>
+                      </div>
+                    </dl>
+                  )}
+                </section>
+              ) : (
               <ErrorBoundary key={def.id}>
               <header>
                 <h2
@@ -1032,6 +1105,7 @@ function AppContent() {
                     guidelineVersion={def.guidelineVersion}
                     history={def.versionHistory}
                     onCitationClick={trackOutboundLink}
+                    externalLinks={edition.externalLinks}
                   />
                 )}
               </header>
@@ -1055,7 +1129,7 @@ function AppContent() {
                       >
                         {def.info.text}
                       </p>
-                      {def.info.link && (
+                      {def.info.link && edition.externalLinks === "clickable" && (
                         <Button
                           className="mt-2"
                           aria-label={`Open ${def.info.link.label} for ${def.name}`}
@@ -1070,6 +1144,11 @@ function AppContent() {
                         >
                           {def.info.link.label}
                         </Button>
+                      )}
+                      {def.info.link && edition.externalLinks === "text-only" && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {def.info.link.label}: {def.info.link.url}
+                        </p>
                       )}
                     </div>
                     {def.info.image && (
@@ -1482,9 +1561,11 @@ function AppContent() {
                   refs={def.refs}
                   calculatorId={def.id}
                   onLinkClick={trackOutboundLink}
+                  externalLinks={edition.externalLinks}
                 />
               )}
               </ErrorBoundary>
+              )}
             </CardContent>
           </Card>
         </main>
@@ -1541,23 +1622,33 @@ function AppContent() {
                 </svg>
               )}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                trackOnboarding("guide_opened", "footer");
-                setGuideOpen(true);
-              }}
-              className="hover:text-foreground hover:underline transition-colors"
-              data-testid="footer-guide-link"
-            >
-              Guide
-            </button>
+            {hasCalculators && (
+              <button
+                type="button"
+                onClick={() => {
+                  trackOnboarding("guide_opened", "footer");
+                  setGuideOpen(true);
+                }}
+                className="hover:text-foreground hover:underline transition-colors"
+                data-testid="footer-guide-link"
+              >
+                Guide
+              </button>
+            )}
             <a
               href="/about.html"
               className="hover:text-foreground hover:underline transition-colors"
             >
               About
             </a>
+            {edition.id === "public" && (
+              <a
+                href="/institutional.html"
+                className="hover:text-foreground hover:underline transition-colors"
+              >
+                Institutional
+              </a>
+            )}
             <a
               href="/privacy.html"
               className="hover:text-foreground hover:underline transition-colors"
@@ -1571,12 +1662,17 @@ function AppContent() {
               Terms
             </a>
             <span>&copy; {new Date().getFullYear()} Radulator</span>
+            {edition.releaseVersion && (
+              <span className="font-mono">{edition.releaseVersion}</span>
+            )}
           </div>
         </div>
       </footer>
 
       {/* User Guide Overlay */}
-      <GuideOverlay isOpen={guideOpen} onClose={() => setGuideOpen(false)} />
+      {hasCalculators && (
+        <GuideOverlay isOpen={guideOpen} onClose={() => setGuideOpen(false)} />
+      )}
     </div>
   );
 }

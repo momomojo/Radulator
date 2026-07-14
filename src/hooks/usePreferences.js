@@ -3,6 +3,7 @@
  * Handles favorites, recent calculators, dark mode, and disclaimer state
  */
 import { useState, useEffect, useCallback } from "react";
+import { edition } from "@/generated/edition.generated.js";
 
 const STORAGE_KEYS = {
   FAVORITES: "radulator-favorites",
@@ -41,14 +42,16 @@ function setStoredValue(key, value) {
  * Hook for managing user preferences
  */
 export function usePreferences() {
+  const persistCalculatorChoices = edition.persistCalculatorChoices;
+
   // Favorites
   const [favorites, setFavoritesState] = useState(() =>
-    getStoredValue(STORAGE_KEYS.FAVORITES, []),
+    persistCalculatorChoices ? getStoredValue(STORAGE_KEYS.FAVORITES, []) : [],
   );
 
   // Recent calculators
   const [recentCalcs, setRecentCalcsState] = useState(() =>
-    getStoredValue(STORAGE_KEYS.RECENT, []),
+    persistCalculatorChoices ? getStoredValue(STORAGE_KEYS.RECENT, []) : [],
   );
 
   // Dark mode - check system preference as fallback
@@ -82,6 +85,7 @@ export function usePreferences() {
 
   // Toggle favorite
   const toggleFavorite = useCallback((calcId) => {
+    if (!persistCalculatorChoices) return;
     setFavoritesState((prev) => {
       const newFavorites = prev.includes(calcId)
         ? prev.filter((id) => id !== calcId)
@@ -89,23 +93,24 @@ export function usePreferences() {
       setStoredValue(STORAGE_KEYS.FAVORITES, newFavorites);
       return newFavorites;
     });
-  }, []);
+  }, [persistCalculatorChoices]);
 
   // Check if calculator is favorited
   const isFavorite = useCallback(
-    (calcId) => favorites.includes(calcId),
-    [favorites],
+    (calcId) => persistCalculatorChoices && favorites.includes(calcId),
+    [favorites, persistCalculatorChoices],
   );
 
   // Add to recent calculators
   const addToRecent = useCallback((calcId) => {
+    if (!persistCalculatorChoices) return;
     setRecentCalcsState((prev) => {
       const filtered = prev.filter((id) => id !== calcId);
       const newRecent = [calcId, ...filtered].slice(0, MAX_RECENT);
       setStoredValue(STORAGE_KEYS.RECENT, newRecent);
       return newRecent;
     });
-  }, []);
+  }, [persistCalculatorChoices]);
 
   // Toggle dark mode
   const toggleDarkMode = useCallback(() => {

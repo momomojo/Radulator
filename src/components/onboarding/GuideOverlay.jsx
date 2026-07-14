@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useCallback } from "react";
 import { guideContent } from "./guideContent";
-import { trackOnboarding } from "@/lib/analytics";
+import { trackOnboarding } from "@/generated/analytics.generated.js";
 
 export function GuideOverlay({ isOpen, onClose }) {
   const panelRef = useRef(null);

@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/update-about.mjs",
+    "prebuild": "node scripts/update-about.mjs && node scripts/generate-edition-artifacts.mjs",
     "build": "vite build",
+    "build:public": "RADULATOR_EDITION=public npm run build",
+    "build:institutional": "RADULATOR_EDITION=institutional npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy": "vite build && gh-pages -d dist",
@@ -24,9 +26,12 @@
     "test:compute": "node --import ./scripts/register-jsx-loader.mjs scripts/run-compute-tests.mjs",
     "test:search-verification": "node tests/search-verification-meta.test.mjs && node tests/ping-search-indexes.test.mjs",
     "test:invariants": "node scripts/check-radulator-invariants.test.mjs",
+    "test:edition": "node tests/edition-resolution.test.mjs",
     "test:dev-local": "bash tests/scripts/dev-local-restart.sh",
     "test:decompose-full-suite": "node scripts/full-suite-decomposer.mjs",
     "check:invariants": "node scripts/check-radulator-invariants.mjs",
+    "check:edition": "node scripts/check-edition-invariants.mjs",
+    "test:institutional-network": "node scripts/run-institutional-network-test.mjs",
     "metrics:loops": "node scripts/collect-loop-metrics.mjs",
     "proof:feature": "node scripts/capture-feature-proof.mjs",
     "index:ping": "node scripts/ping-search-indexes.mjs",
@@ -43,8 +48,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "sharp": "^0.34.5",
-    "tailwind-merge": "^3.3.1",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
@@ -60,6 +64,7 @@
     "globals": "^16.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.4",
+    "tailwindcss-animate": "^1.0.7",
     "vite": "^7.0.4"
   }
 }

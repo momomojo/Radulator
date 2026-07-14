@@ -27,6 +27,12 @@ export function useUrlSync(calcDefs, onCalculatorChange) {
 
   // Sync URL hash with active calculator
   const syncUrlToCalculator = useCallback((calculatorId) => {
+    if (!calculatorId) {
+      if (window.location.hash) {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+      return;
+    }
     const newHash = `#/${calculatorId}`;
     if (window.location.hash !== newHash) {
       window.history.replaceState(null, "", newHash);
