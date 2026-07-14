@@ -4,6 +4,10 @@ You are working on **radulator.com** — free medical calculators used by real c
 
 **Branch model (release train).** Feature/fix PRs target **`develop`** (integration branch; smoke + targeted CI required). Batches are promoted develop→main by an automated promotion PR that runs the **full Playwright suite** and gets a fresh production-gate review of the whole batch — only then does anything deploy. The ONLY PRs that may target `main` directly are hotfixes for live production breakage, and they also require the full suite. If you are unsure which base to use: `develop`.
 
+## Local-first CI policy
+
+Before the first push, run the canonical local gate: `npm ci`, `npm run build`, `npm run lint`, and `npm run check:invariants`, plus the card's required behavioral test (for example, `npm run test:smoke`). Batch deterministic fixes locally instead of using Actions as a debugger. When feasible, consequential institutional, security, build, and workflow PRs get a GPT-5.6 Sol xhigh local review before publication. Ordinary feature iterations do not manually dispatch the full suite; required PR checks and the promotion full suite are never skipped or waived.
+
 ## The lifecycle — every task, in order
 
 **1. RESEARCH (before any edit).** Read your task card/issue completely. Read only the files your change touches plus their tests — not the tree. Check how the registry contract applies (below). If the task is ambiguous or conflicts with what you find in code, STOP and report the conflict instead of guessing.
