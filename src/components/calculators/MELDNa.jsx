@@ -28,9 +28,9 @@
 export const MELDNa = {
   id: "meld-na",
   category: "Hepatology/Liver",
-  name: "MELD-Na Score",
-  desc: "Model for End-Stage Liver Disease with Sodium for transplant prioritization",
-  guidelineVersion: "MELD-Na (OPTN 2016)",
+  name: "MELD-Na Score (Legacy)",
+  desc: "Temporary legacy Model for End-Stage Liver Disease with Sodium score, superseded by MELD 3.0 for current adult OPTN allocation",
+  guidelineVersion: "Legacy MELD-Na (OPTN 2016)",
   keywords: [
     "liver transplant",
     "cirrhosis",
@@ -40,19 +40,44 @@ export const MELDNa = {
   ],
   tags: ["Hepatology", "Transplant"],
   metaDesc:
-    "Free MELD-Na Score Calculator. Calculate Model for End-Stage Liver Disease with Sodium for liver transplant prioritization. Includes 90-day mortality estimate and UNOS allocation.",
+    "Free legacy MELD-Na Score Calculator. Calculate Model for End-Stage Liver Disease with Sodium for historical comparison. Superseded by MELD 3.0 for current adult OPTN allocation.",
 
   info: {
     text:
-      "The MELD-Na score predicts 3-month mortality in patients with end-stage liver disease and is used for liver transplant allocation.\n\n" +
+      "Temporary legacy tab: MELD-Na is superseded by MELD 3.0 for current adult OPTN liver allocation. Keep this calculator for historical comparison, documentation, and transition review.\n\n" +
       "Key Points:\n" +
       "• MELD uses creatinine, bilirubin, and INR\n" +
       "• MELD-Na adds sodium correction (only if MELD > 11)\n" +
       "• Dialysis ≥2x/week or 24hr CVVHD sets creatinine to 4.0\n" +
       "• Values are bounded: Cr, Bili, INR ≥ 1.0; Na 125-137 mEq/L\n" +
       "• Final scores capped at 6-40 range\n\n" +
-      "Interpretation guides allocation priority for liver transplantation (UNOS).",
+      "For current adult allocation scoring, use MELD 3.0.",
   },
+
+  versionHistory: [
+    {
+      version: "MELD-Na",
+      shortVersion: "MELD-Na",
+      year: 2016,
+      replaces: "MELD",
+      status:
+        "Legacy adult allocation score retained temporarily for historical comparison and documentation.",
+      summary:
+        "MELD-Na was implemented for OPTN allocation in 2016 and was replaced by MELD 3.0 for adult liver allocation in 2023.",
+      whySuperseded:
+        "MELD 3.0 adds albumin, sex, updated coefficients, and interaction terms for current adult allocation scoring.",
+      citations: [
+        {
+          t: "Kim WR et al. Gastroenterology 2008",
+          u: "https://doi.org/10.1053/j.gastro.2008.01.042",
+        },
+        {
+          t: "OPTN implementation FAQ",
+          u: "https://www.hrsa.gov/sites/default/files/hrsa/optn/improving-liver-allocation-general-implementation-faq.pdf",
+        },
+      ],
+    },
+  ],
 
   fields: [
     {

@@ -55,7 +55,7 @@ async function getMeldNaScore(page) {
 
 test.describe("MELD-Na Calculator", () => {
   test.beforeEach(async ({ page }) => {
-    await navigateToCalculator(page, "MELD-Na Score");
+    await navigateToCalculator(page, "MELD-Na Score (Legacy)");
     await expect(page.getByTestId('calculator-title').first()).toContainText("MELD-Na Score");
   });
 
@@ -69,10 +69,10 @@ test.describe("MELD-Na Calculator", () => {
 
       // Check info section
       await expect(
-        page.locator("text=The MELD-Na score predicts"),
+        page.locator("text=Temporary legacy tab"),
       ).toBeVisible();
       await expect(
-        page.locator("text=Interpretation guides allocation priority"),
+        page.locator("text=For current adult allocation scoring, use MELD 3.0"),
       ).toBeVisible();
 
       // Check all input fields are present
@@ -649,19 +649,27 @@ test.describe("MELD-Na Calculator", () => {
     });
 
     test("should include key references", async ({ page }) => {
+      const referencesSection = page.locator(".references-section");
+
       // The first 3 references are visible by default.
       await expect(
-        page.locator("text=Kamath PS et al. Hepatology 2001"),
+        referencesSection.getByRole("link", {
+          name: /Kamath PS et al\. Hepatology 2001/,
+        }),
       ).toBeVisible();
       await expect(
-        page.locator("text=Kim WR et al. Gastroenterology 2008"),
+        referencesSection.getByRole("link", {
+          name: /Kim WR et al\. Gastroenterology 2008/,
+        }),
       ).toBeVisible();
 
       // "UNOS Policy 9" is reference #5, hidden until expanded.
       await page
         .getByRole("button", { name: /Show \d+ more reference/ })
         .click();
-      await expect(page.locator("text=UNOS Policy 9")).toBeVisible();
+      await expect(
+        referencesSection.getByRole("link", { name: /UNOS Policy 9/ }),
+      ).toBeVisible();
     });
   });
 
