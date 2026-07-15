@@ -54,6 +54,43 @@ function latestStaticBuildInputMtimeMs() {
   return Math.max(...STATIC_BUILD_INPUTS.map(latestMtimeMs));
 }
 
+async function expectNoHorizontalOverflowAt390(page) {
+  const metrics = await page.evaluate(() => {
+    const footer = document.querySelector("footer");
+    const footerOverflowing = footer
+      ? Array.from(footer.querySelectorAll("*"))
+          .map((element) => {
+            const rect = element.getBoundingClientRect();
+            return {
+              tag: element.tagName.toLowerCase(),
+              text: (element.textContent || "").trim().slice(0, 80),
+              left: Number(rect.left.toFixed(2)),
+              right: Number(rect.right.toFixed(2)),
+              width: Number(rect.width.toFixed(2)),
+            };
+          })
+          .filter(
+            (item) =>
+              item.width > 0 &&
+              (item.left < -0.5 || item.right > window.innerWidth + 0.5),
+          )
+      : [];
+
+    return {
+      innerWidth: window.innerWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      bodyScrollWidth: document.body.scrollWidth,
+      footerOverflowing,
+    };
+  });
+
+  const debugMetrics = JSON.stringify(metrics, null, 2);
+  expect(metrics.innerWidth, debugMetrics).toBe(390);
+  expect(metrics.documentScrollWidth, debugMetrics).toBeLessThanOrEqual(390);
+  expect(metrics.bodyScrollWidth, debugMetrics).toBeLessThanOrEqual(390);
+  expect(metrics.footerOverflowing, debugMetrics).toEqual([]);
+}
+
 test("public build does not request institutional release control", async ({
   page,
 }) => {
@@ -72,6 +109,17 @@ test("public build does not request institutional release control", async ({
   await page.waitForTimeout(250);
 
   expect(releaseControlRequests).toEqual([]);
+});
+
+test("public footer does not overflow at 390px", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page
+    .getByRole("heading", { name: "Radulator", level: 1 })
+    .first()
+    .waitFor({ state: "visible" });
+
+  await expectNoHorizontalOverflowAt390(page);
 });
 
 test.describe("Smoke Tests - Core Functionality", () => {

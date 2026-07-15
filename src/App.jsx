@@ -1728,7 +1728,7 @@ function AppContent({ calcDefs }) {
               Full disclaimer
             </a>
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex w-full max-w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 md:w-auto md:justify-end">
             <button
               type="button"
               onClick={toggleDarkMode}
