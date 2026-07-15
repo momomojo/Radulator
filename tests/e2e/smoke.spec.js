@@ -178,7 +178,7 @@ test.describe("Smoke Tests - Core Functionality", () => {
     const html = await response.text();
 
     expect(html).toContain("MELD-Na Score Calculator");
-    expect(html).toContain("Free MELD-Na Score Calculator.");
+    expect(html).toContain("Free MELD 3.0 Calculator with legacy MELD-Na option.");
     expect(html).toContain("Kamath PS et al. Hepatology 2001");
     expect(html).toMatch(/<section[^>]+aria-labelledby="static-related-heading"/);
     expect(html.match(/href="\/calculators\/[^"]+\/"/g)?.length ?? 0).toBeGreaterThanOrEqual(3);

@@ -1,0 +1,187 @@
+{
+  "calculatorId": "meld-na",
+  "cases": [
+    {
+      "id": "meld3-default-low-score-male",
+      "inputs": {
+        "ageAtRegistration": "45",
+        "sex": "male",
+        "creatinine": "0.8",
+        "bilirubin": "0.8",
+        "inr": "1.0",
+        "sodium": "140",
+        "albumin": "4.0",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "6" },
+          { "key": "Calculation Path", "includes": "Adult age" }
+        ]
+      }
+    },
+    {
+      "id": "meld3-adult-female-sex-term",
+      "inputs": {
+        "scoringModel": "meld3",
+        "ageAtRegistration": "45",
+        "sex": "female",
+        "creatinine": "1.0",
+        "bilirubin": "1.5",
+        "inr": "1.2",
+        "sodium": "135",
+        "albumin": "3.0",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "13" },
+          { "key": "Clinical Notes", "includes": "Adult female MELD 3.0 sex term applied" }
+        ]
+      }
+    },
+    {
+      "id": "meld3-adult-male-sex-comparator",
+      "inputs": {
+        "scoringModel": "meld3",
+        "ageAtRegistration": "45",
+        "sex": "male",
+        "creatinine": "1.0",
+        "bilirubin": "1.5",
+        "inr": "1.2",
+        "sodium": "135",
+        "albumin": "3.0",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "12" }
+        ]
+      }
+    },
+    {
+      "id": "meld3-hypoalbuminemia",
+      "inputs": {
+        "scoringModel": "meld3",
+        "ageAtRegistration": "45",
+        "sex": "male",
+        "creatinine": "1.0",
+        "bilirubin": "2.0",
+        "inr": "1.5",
+        "sodium": "137",
+        "albumin": "1.8",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "16" }
+        ]
+      }
+    },
+    {
+      "id": "meld3-high-score-female",
+      "inputs": {
+        "scoringModel": "meld3",
+        "ageAtRegistration": "45",
+        "sex": "female",
+        "creatinine": "2.5",
+        "bilirubin": "10.0",
+        "inr": "2.2",
+        "sodium": "128",
+        "albumin": "2.8",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "38" }
+        ]
+      }
+    },
+    {
+      "id": "meld3-high-score-male-comparator",
+      "inputs": {
+        "scoringModel": "meld3",
+        "ageAtRegistration": "45",
+        "sex": "male",
+        "creatinine": "2.5",
+        "bilirubin": "10.0",
+        "inr": "2.2",
+        "sodium": "128",
+        "albumin": "2.8",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "36" }
+        ]
+      }
+    },
+    {
+      "id": "meld3-dialysis-creatinine-cap",
+      "inputs": {
+        "scoringModel": "meld3",
+        "ageAtRegistration": "45",
+        "sex": "male",
+        "creatinine": "5.0",
+        "bilirubin": "2.0",
+        "inr": "1.5",
+        "sodium": "137",
+        "albumin": "3.5",
+        "dialysis": true
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "25" },
+          { "key": "Clinical Notes", "includes": "Creatinine set to 3.0 mg/dL for MELD 3.0" }
+        ]
+      }
+    },
+    {
+      "id": "meld3-adolescent-path",
+      "inputs": {
+        "scoringModel": "meld3",
+        "ageAtRegistration": "16",
+        "creatinine": "1.0",
+        "bilirubin": "1.5",
+        "inr": "1.2",
+        "sodium": "135",
+        "albumin": "3.0",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "13" },
+          { "key": "Calculation Path", "includes": "Adolescent age 12-17" },
+          { "key": "Clinical Notes", "includes": "+7.33 constant for all sexes" }
+        ]
+      }
+    },
+    {
+      "id": "legacy-meld-na-regression",
+      "inputs": {
+        "scoringModel": "legacy-meld-na",
+        "creatinine": "0.8",
+        "bilirubin": "0.9",
+        "inr": "1.0",
+        "sodium": "140",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD Score", "equals": "6" },
+          { "key": "MELD-Na Score", "equals": "6" },
+          { "key": "Risk Category", "equals": "Low risk" }
+        ]
+      }
+    }
+  ]
+}
