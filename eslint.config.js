@@ -10,10 +10,10 @@ const nodeFiles = [
   'playwright*.config.js',
   'scripts/**/*.{js,mjs}',
 ]
-const testFiles = ['tests/**/*.js']
+const testFiles = ['tests/**/*.{js,mjs}']
 
 export default defineConfig([
-  globalIgnores(['dist', 'playwright-report', 'test-results', '.claude']),
+  globalIgnores(['dist', 'dist-institutional', 'playwright-report', 'test-results', '.claude']),
   {
     files: ['**/*.{js,jsx,mjs}'],
     extends: [

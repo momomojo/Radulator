@@ -4,7 +4,12 @@ import React, { useState } from "react";
  * Collapsible References Component
  * Displays academic references with expand/collapse functionality
  */
-function CollapsibleReferences({ refs, calculatorId, onLinkClick }) {
+function CollapsibleReferences({
+  refs,
+  calculatorId,
+  onLinkClick,
+  externalLinks = "clickable",
+}) {
   const [expanded, setExpanded] = useState(false);
   const VISIBLE_COUNT = 3;
   const hasMore = refs.length > VISIBLE_COUNT;
@@ -17,15 +22,22 @@ function CollapsibleReferences({ refs, calculatorId, onLinkClick }) {
       <ul className="list-disc pl-5 space-y-1 text-sm">
         {visibleRefs.map((r) => (
           <li key={r.u} className="text-muted-foreground">
-            <a
-              href={r.u}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80 hover:underline transition-colors reference-link"
-              onClick={() => onLinkClick?.(r.u, "reference", calculatorId)}
-            >
-              {r.t}
-            </a>
+            {externalLinks === "text-only" ? (
+              <span className="reference-link">
+                {r.t}
+                {r.u ? ` (${r.u})` : ""}
+              </span>
+            ) : (
+              <a
+                href={r.u}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:text-primary/80 hover:underline transition-colors reference-link"
+                onClick={() => onLinkClick?.(r.u, "reference", calculatorId)}
+              >
+                {r.t}
+              </a>
+            )}
           </li>
         ))}
       </ul>

@@ -148,14 +148,30 @@ jobs:
           fi
 
           sort -u targeted-specs.txt | awk 'NF' > targeted-specs.unique.txt
-          SPECS=$(tr '\n' ' ' < targeted-specs.unique.txt)
-          if [ -z "$SPECS" ]; then
+          if [ ! -s targeted-specs.unique.txt ]; then
             echo "No targeted specs resolved; refusing to run an empty Playwright command."
             exit 1
           fi
 
-          echo "Running targeted specs: $SPECS"
-          npx playwright test $SPECS --project=chromium
+          INSTITUTIONAL_SPEC="tests/e2e/institutional-network.spec.js"
+          RUN_INSTITUTIONAL=false
+          if grep -Fxq "$INSTITUTIONAL_SPEC" targeted-specs.unique.txt; then
+            RUN_INSTITUTIONAL=true
+            grep -Fxv "$INSTITUTIONAL_SPEC" targeted-specs.unique.txt > targeted-specs.generic.txt || true
+          else
+            cp targeted-specs.unique.txt targeted-specs.generic.txt
+          fi
+
+          SPECS=$(tr '\n' ' ' < targeted-specs.generic.txt)
+          if [ -n "$SPECS" ]; then
+            echo "Running targeted specs: $SPECS"
+            npx playwright test $SPECS --project=chromium
+          fi
+
+          if [ "$RUN_INSTITUTIONAL" = "true" ]; then
+            echo "Running institutional network spec through dedicated preview harness"
+            npm run test:institutional-network
+          fi
         env:
           CI: true
 

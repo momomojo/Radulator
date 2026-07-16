@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none';"
+    />
+    <meta
+      name="description"
+      content="Radulator Institutional is a controlled, browser-local static build architecture for reviewed calculator releases."
+    />
+    <title>Radulator Institutional</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        color: #111827;
+        background: #f8fafc;
+      }
+      body {
+        margin: 0;
+      }
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 48px 20px 64px;
+      }
+      header {
+        border-bottom: 1px solid #d1d5db;
+        padding-bottom: 24px;
+        margin-bottom: 32px;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(2rem, 6vw, 3.25rem);
+        line-height: 1.05;
+      }
+      h2 {
+        margin: 32px 0 10px;
+        font-size: 1.25rem;
+      }
+      p,
+      li {
+        color: #374151;
+        line-height: 1.7;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      a {
+        color: #0f766e;
+      }
+      .panel {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p><a href="/">Radulator</a></p>
+        <h1>Radulator Institutional</h1>
+        <p>
+          A controlled static-build architecture for education, reference, and
+          quality-improvement calculator workflows.
+        </p>
+      </header>
+
+      <section class="panel" aria-labelledby="status-heading">
+        <h2 id="status-heading">Current Status</h2>
+        <p>
+          The first institutional implementation uses an empty calculator
+          allowlist. No calculator is included until release-specific rights,
+          source and math validation, independent professional review, and
+          deployment approval are complete.
+        </p>
+      </section>
+
+      <section aria-labelledby="controls-heading">
+        <h2 id="controls-heading">Implemented Controls</h2>
+        <ul>
+          <li>Browser-local app execution with no calculator input or result transmission.</li>
+          <li>No fields for names, email addresses, medical-record or accession numbers, dates of birth, or other patient or institutional identifiers.</li>
+          <li>No telemetry, feedback form, advertising, tracking cookie, remote font, third-party script, CDN script, or off-origin automatic request in the institutional build.</li>
+          <li>Controlled release versions, calculator allowlist hashes, validation-manifest hashes, rollback documentation, and first-party emergency release control provide engineering traceability.</li>
+          <li>No EHR, PACS, Epic, API, PHI, or institutional-network integration.</li>
+          <li>Independent professional review remains required; the app does not replace professional judgment.</li>
+          <li>Accessibility checks and security, incident-response, vulnerability-disclosure, release, rollback, and reproducible SBOM procedures are documented for release review.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="support-heading">
+        <h2 id="support-heading">Support Boundary</h2>
+        <p>
+          Support channels, response commitments, and organization-specific
+          deployment instructions are not configured in this implementation.
+          They require owner approval for each deployment.
+        </p>
+      </section>
+
+      <section aria-labelledby="evidence-heading">
+        <h2 id="evidence-heading">Evidence Boundary</h2>
+        <p>
+          Validation, licensing status, and institutional eligibility vary by
+          calculator and by release. Engineering proof covers the implemented
+          build controls; medical, rights, deployment, and regulatory decisions
+          remain explicit owner or counsel review items.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
