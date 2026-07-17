@@ -40,6 +40,12 @@ export const categories = calcDefs.reduce((acc, calc) => {
   return acc;
 }, {});
 
+export const medicalCalculatorDefs = calcDefs.filter(
+  (calc) => calc.category !== "Feedback",
+);
+
+export const medicalCalculatorCount = medicalCalculatorDefs.length;
+
 /**
  * Category display order (defines sidebar ordering)
  * Categories not in this list will appear at the end alphabetically

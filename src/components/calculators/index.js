@@ -29,6 +29,7 @@ export { AASTTraumaGrading } from "./AASTTraumaGrading";
 export { WellsPE } from "./WellsPE";
 export { WellsDVT } from "./WellsDVT";
 export { MehranCIN } from "./MehranCIN";
+export { CockcroftGault } from "./CockcroftGault";
 export { DLPDose } from "./DLPDose";
 export { CTPancreatitis } from "./CTPancreatitis";
 export { LUNGRADS } from "./LUNGRADS";
@@ -43,6 +44,8 @@ export {
   calcDefs,
   categories,
   categoryOrder,
+  medicalCalculatorDefs,
+  medicalCalculatorCount,
   getSortedCategories,
   getCalculatorById,
   getCalculatorsByCategory,

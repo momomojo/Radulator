@@ -1,0 +1,419 @@
+{
+  "calculatorId": "cockcroft-gault",
+  "calculatorName": "Cockcroft-Gault eCrCl",
+  "version": "cockcroft-gault-v1-approved-spec",
+  "cases": [
+    {
+      "id": "male-midrange-mg-dl",
+      "description": "65-year-old male coefficient, 70 kg, SCr 1.2 mg/dL displays 60.8 mL/min.",
+      "inputs": {
+        "age_years": "65",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "70",
+        "weight_basis": "actual",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.2"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated creatinine clearance (Cockcroft-Gault)",
+            "equals": "60.8 mL/min"
+          },
+          {
+            "key": "Formula Weight Basis",
+            "includes": "Actual body weight"
+          },
+          {
+            "key": "Weight Basis Caution",
+            "includes": "V1 does not choose a winner"
+          },
+          {
+            "key": "Serum Creatinine Limitation",
+            "includes": "No correction factor or SCr rounding is applied"
+          },
+          {
+            "key": "CrCl vs GFR Limitation",
+            "includes": "No fixed patient correction is applied"
+          }
+        ]
+      }
+    },
+    {
+      "id": "female-coefficient-mg-dl",
+      "description": "Historical female x0.85 coefficient displays 51.6 mL/min for the approved vector.",
+      "inputs": {
+        "age_years": "65",
+        "coefficient": "female",
+        "weight_unit": "kg",
+        "formula_weight": "70",
+        "weight_basis": "ideal",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.2"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated creatinine clearance (Cockcroft-Gault)",
+            "equals": "51.6 mL/min"
+          },
+          {
+            "key": "Formula Coefficient",
+            "includes": "x0.85"
+          },
+          {
+            "key": "Coefficient Limitation",
+            "includes": "historical binary coefficients"
+          },
+          {
+            "key": "Coefficient Limitation",
+            "includes": "not robustly derived or independently validated in women"
+          },
+          {
+            "key": "Coefficient Limitation",
+            "includes": "unknown, transgender, or intersex"
+          }
+        ]
+      }
+    },
+    {
+      "id": "si-exact-conversion-headline",
+      "description": "80-year-old, 60 kg, SCr 120 µmol/L converts internally with /88.4 and displays 36.8, not rounded-coefficient 36.9.",
+      "inputs": {
+        "age_years": "80",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "60",
+        "weight_basis": "adjusted",
+        "scr_unit": "umol_l",
+        "serum_creatinine": "120"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated creatinine clearance (Cockcroft-Gault)",
+            "equals": "36.8 mL/min"
+          },
+          {
+            "key": "Serum Creatinine Used",
+            "includes": "converted internally with /88.4"
+          },
+          {
+            "key": "Serum Creatinine Used",
+            "includes": "1.3575 mg/dL"
+          }
+        ]
+      }
+    },
+    {
+      "id": "elderly-low-weight-female",
+      "description": "90-year-old female coefficient, 45 kg, SCr 0.7 mg/dL displays 37.9 mL/min.",
+      "inputs": {
+        "age_years": "90",
+        "coefficient": "female",
+        "weight_unit": "kg",
+        "formula_weight": "45",
+        "weight_basis": "other",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "0.7"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated creatinine clearance (Cockcroft-Gault)",
+            "equals": "37.9 mL/min"
+          },
+          {
+            "key": "Formula Weight Basis",
+            "includes": "Other clinician-selected"
+          }
+        ]
+      }
+    },
+    {
+      "id": "actual-weight-warning-example",
+      "description": "50-year-old, 120 kg actual weight, SCr 1.0 mg/dL displays 150.0 mL/min with visible basis caution.",
+      "inputs": {
+        "age_years": "50",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "120",
+        "weight_basis": "actual",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.0"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated creatinine clearance (Cockcroft-Gault)",
+            "equals": "150.0 mL/min"
+          },
+          {
+            "key": "Weight Basis Caution",
+            "includes": "Actual body weight was selected"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pound-weight-conversion",
+      "description": "Weight entered in pounds is converted to kg before calculation.",
+      "inputs": {
+        "age_years": "65",
+        "coefficient": "male",
+        "weight_unit": "lb",
+        "formula_weight": "154.3",
+        "weight_basis": "actual",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.2"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated creatinine clearance (Cockcroft-Gault)",
+            "equals": "60.8 mL/min"
+          },
+          {
+            "key": "Formula Weight",
+            "includes": "70.0 kg"
+          },
+          {
+            "key": "Formula Weight",
+            "includes": "154.3 lb input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "age-18-allowed",
+      "description": "Age 18 is allowed by the adult-only hard stop.",
+      "inputs": {
+        "age_years": "18",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "70",
+        "weight_basis": "actual",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.0"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated creatinine clearance (Cockcroft-Gault)",
+            "equals": "118.6 mL/min"
+          }
+        ]
+      }
+    },
+    {
+      "id": "age-17-hard-stop",
+      "description": "Age below 18 returns a hard error and no estimate.",
+      "inputs": {
+        "age_years": "17",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "70",
+        "weight_basis": "actual",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.0"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          {
+            "key": "Error",
+            "includes": "adult-only"
+          }
+        ]
+      }
+    },
+    {
+      "id": "age-over-92-warning",
+      "description": "Age above 92 calculates but displays the derivation-range caution.",
+      "inputs": {
+        "age_years": "93",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "60",
+        "weight_basis": "ideal",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.0"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated creatinine clearance (Cockcroft-Gault)",
+            "equals": "39.2 mL/min"
+          },
+          {
+            "key": "Age Caution",
+            "includes": "above 92 years"
+          }
+        ]
+      }
+    },
+    {
+      "id": "half-up-rounding-boundary",
+      "description": "Raw 36.850 rounds half-up to 36.9 at one decimal.",
+      "inputs": {
+        "age_years": "65",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "35.376",
+        "weight_basis": "ideal",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated creatinine clearance (Cockcroft-Gault)",
+            "equals": "36.9 mL/min"
+          }
+        ]
+      }
+    },
+    {
+      "id": "nonpositive-scr-zero",
+      "description": "SCr 0 is rejected.",
+      "inputs": {
+        "age_years": "65",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "70",
+        "weight_basis": "actual",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "0"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          {
+            "key": "Error",
+            "includes": "positive serum creatinine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "nonpositive-scr-negative",
+      "description": "Negative SCr is rejected.",
+      "inputs": {
+        "age_years": "65",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "70",
+        "weight_basis": "actual",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "-1"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          {
+            "key": "Error",
+            "includes": "positive serum creatinine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "invalid-unit-rejected",
+      "description": "Unsupported serum creatinine unit is rejected.",
+      "inputs": {
+        "age_years": "65",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "70",
+        "weight_basis": "actual",
+        "scr_unit": "mmol_l",
+        "serum_creatinine": "120"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          {
+            "key": "Error",
+            "includes": "supported serum creatinine unit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "nonfinite-age-rejected",
+      "description": "Nonfinite age is rejected.",
+      "inputs": {
+        "age_years": "Infinity",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "70",
+        "weight_basis": "actual",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.0"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          {
+            "key": "Error",
+            "includes": "finite age"
+          }
+        ]
+      }
+    },
+    {
+      "id": "nonfinite-weight-rejected",
+      "description": "Nonfinite formula weight is rejected.",
+      "inputs": {
+        "age_years": "65",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "NaN",
+        "weight_basis": "actual",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.0"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          {
+            "key": "Error",
+            "includes": "valid positive formula weight"
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-visible-weight-basis",
+      "description": "Formula weight basis must be selected visibly.",
+      "inputs": {
+        "age_years": "65",
+        "coefficient": "male",
+        "weight_unit": "kg",
+        "formula_weight": "70",
+        "weight_basis": "",
+        "scr_unit": "mg_dl",
+        "serum_creatinine": "1.0"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          {
+            "key": "Error",
+            "includes": "visible formula weight basis"
+          }
+        ]
+      }
+    }
+  ]
+}

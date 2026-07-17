@@ -2,12 +2,14 @@
  * Static content for the Radulator User Guide.
  * Each section has an id (anchor target), title, and body paragraphs.
  */
+import { medicalCalculatorCount } from "@/components/calculators";
+
 export const guideContent = [
   {
     id: "getting-started",
     title: "Getting Started",
     body: [
-      "Radulator is a suite of 38 evidence-based medical calculators spanning 11 clinical specialties, including radiology, neuroradiology, trauma surgery, cardiac imaging, breast imaging, women's imaging, hepatology, urology, interventional radiology, nephrology, and clinical decision support.",
+      `Radulator is a suite of ${medicalCalculatorCount} evidence-based medical calculators spanning 11 clinical specialties, including radiology, neuroradiology, trauma surgery, cardiac imaging, breast imaging, women's imaging, hepatology, urology, interventional radiology, nephrology, and clinical decision support.`,
       "To begin, select any calculator from the sidebar. On mobile devices, tap the menu icon in the top-left corner to open the navigation panel. Each calculator is grouped under its respective specialty for rapid access.",
     ],
   },
