@@ -41,6 +41,20 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
     await navigateToCalculator(page, CALCULATOR_NAME);
   });
 
+  test("shows the registry-derived public calculator count", async ({
+    page,
+  }) => {
+    await expect(page.getByTestId("welcome-card")).toContainText(
+      "39 evidence-based medical calculators",
+    );
+
+    await page.getByTestId("welcome-open-guide").click();
+    await expect(page.getByTestId("guide-panel")).toBeVisible();
+    await expect(page.getByTestId("guide-overlay")).toContainText(
+      "suite of 39 evidence-based medical calculators",
+    );
+  });
+
   test("displays approved V1 scope, fields, and references", async ({
     page,
   }) => {
@@ -50,6 +64,12 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
     await expect(page.getByTestId("calculator-description")).toContainText(
       "Adult legacy-label estimated creatinine clearance",
     );
+    await expect(page.getByTestId("guideline-badge")).toContainText(
+      "Cockcroft-Gault equation (1976) · Radulator V1",
+    );
+    await expect(page.getByTestId("guideline-badge")).not.toContainText(
+      "approved",
+    );
 
     const info = page.getByTestId("calculator-info");
     await expect(info).toContainText("not eGFR");
@@ -57,6 +77,9 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
     await expect(info).toContainText("converts internally with:");
     await expect(info).toContainText("SCr mg/dL = SCr µmol/L / 88.4");
     await expect(info).toContainText("V1 does not auto-select");
+    await expect(info).toContainText("limited validation in women");
+    await expect(info).toContainText("predates standardized creatinine assays");
+    await expect(info).toContainText("no fixed patient correction");
 
     await expect(page.getByRole("spinbutton", { name: /Age/ })).toBeVisible();
     await expect(
@@ -93,6 +116,18 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
     await expect(resultsRegion(page)).toContainText(
       "Actual body weight; clinician-selected",
     );
+    await expect(resultsRegion(page)).toContainText(
+      "predates standardized creatinine assays",
+    );
+    await expect(resultsRegion(page)).toContainText(
+      "No correction factor or SCr rounding is applied",
+    );
+    await expect(resultsRegion(page)).toContainText(
+      "Creatinine clearance can exceed measured GFR",
+    );
+    await expect(resultsRegion(page)).toContainText(
+      "No fixed patient correction is applied",
+    );
 
     await page.reload();
     await fillCockcroftGault(page, {
@@ -104,6 +139,12 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
     await expect(resultsRegion(page)).toContainText("x0.85");
     await expect(resultsRegion(page)).toContainText(
       "historical binary coefficients",
+    );
+    await expect(resultsRegion(page)).toContainText(
+      "not robustly derived or independently validated in women",
+    );
+    await expect(resultsRegion(page)).toContainText(
+      "unknown, transgender, or intersex",
     );
 
     await page.reload();

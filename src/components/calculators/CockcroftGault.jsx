@@ -127,7 +127,11 @@ export function computeCockcroftGault(vals) {
         : `${serumCreatinineMgDl.toFixed(2)} mg/dL`,
     "Formula Coefficient": coefficientDef.label,
     "Coefficient Limitation":
-      "The 1976 equation uses historical binary coefficients; do not silently map unknown, transgender, or intersex patients to x1.00.",
+      "The 1976 equation uses historical binary coefficients; the x0.85 factor was estimated and not robustly derived or independently validated in women. Do not silently map unknown, transgender, or intersex patients to x1.00.",
+    "Serum Creatinine Limitation":
+      "The 1976 equation predates standardized creatinine assays; modern standardization can shift Cockcroft-Gault estimates. No correction factor or SCr rounding is applied.",
+    "CrCl vs GFR Limitation":
+      "Creatinine clearance can exceed measured GFR because creatinine is also secreted by tubules, but the effect varies by patient. No fixed patient correction is applied.",
     "Method Note":
       "Educational decision-support only: adult legacy-label eCrCl in mL/min; not eGFR, not indexed to 1.73 m2, not a dose recommendation, and not a contrast decision.",
     _severity: "neutral",
@@ -154,7 +158,7 @@ export const CockcroftGault = {
   category: "Nephrology",
   name: "Cockcroft-Gault eCrCl",
   desc: "Adult legacy-label estimated creatinine clearance using Cockcroft-Gault.",
-  guidelineVersion: "Cockcroft-Gault V1 (approved 2026)",
+  guidelineVersion: "Cockcroft-Gault equation (1976) · Radulator V1",
   keywords: [
     "Cockcroft-Gault",
     "creatinine clearance",
@@ -176,6 +180,8 @@ For serum creatinine entered in µmol/L, this calculator converts internally wit
 SCr mg/dL = SCr µmol/L / 88.4
 
 The rounded SI orientation coefficients 1.23 and 1.04 are not used for internal arithmetic. Formula weight must be clinician-selected with a visible basis; V1 does not auto-select actual, ideal, or adjusted weight.
+
+The historical x0.85 coefficient has limited validation in women and must not be silently applied to unknown, transgender, or intersex patients. The equation predates standardized creatinine assays; no correction factor or SCr rounding is applied. Creatinine clearance can exceed measured GFR because creatinine is also secreted by tubules, but the effect is variable and no fixed patient correction is applied.
 
 Use only when serum creatinine is stable. Results may be misleading in acute kidney injury, rapidly changing renal function, suspected augmented renal clearance, critical illness, pregnancy, amputation, spinal cord injury, cachexia/frailty, severe obesity or underweight, or unusual muscle mass/diet/supplement states. When accuracy is consequential or estimates conflict, follow the applicable label/local protocol and consider creatinine-cystatin C eGFR, measured GFR/CrCl, pharmacy, nephrology, or the treating clinician.`,
     link: {

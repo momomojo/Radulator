@@ -44,6 +44,8 @@ export {
   calcDefs,
   categories,
   categoryOrder,
+  medicalCalculatorDefs,
+  medicalCalculatorCount,
   getSortedCategories,
   getCalculatorById,
   getCalculatorsByCategory,

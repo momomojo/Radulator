@@ -29,6 +29,14 @@
           {
             "key": "Weight Basis Caution",
             "includes": "V1 does not choose a winner"
+          },
+          {
+            "key": "Serum Creatinine Limitation",
+            "includes": "No correction factor or SCr rounding is applied"
+          },
+          {
+            "key": "CrCl vs GFR Limitation",
+            "includes": "No fixed patient correction is applied"
           }
         ]
       }
@@ -59,6 +67,14 @@
           {
             "key": "Coefficient Limitation",
             "includes": "historical binary coefficients"
+          },
+          {
+            "key": "Coefficient Limitation",
+            "includes": "not robustly derived or independently validated in women"
+          },
+          {
+            "key": "Coefficient Limitation",
+            "includes": "unknown, transgender, or intersex"
           }
         ]
       }
