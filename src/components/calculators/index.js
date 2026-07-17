@@ -33,6 +33,7 @@ export { DLPDose } from "./DLPDose";
 export { CTPancreatitis } from "./CTPancreatitis";
 export { LUNGRADS } from "./LUNGRADS";
 export { CADRADS } from "./CADRADS";
+export { CACMesa } from "./CACMesa";
 export { NIRADS } from "./NIRADS";
 export { BIRADS } from "./BIRADS";
 export { ORADS } from "./ORADS";
