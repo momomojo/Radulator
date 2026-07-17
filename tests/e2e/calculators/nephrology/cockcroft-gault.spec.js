@@ -74,7 +74,9 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
       page.getByRole("spinbutton", { name: /Serum Creatinine/ }),
     ).toBeVisible();
 
-    await expect(page.getByText("References")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "References" }),
+    ).toBeVisible();
     await expect(
       page.getByRole("link", {
         name: /Prediction of creatinine clearance from serum creatinine/,
