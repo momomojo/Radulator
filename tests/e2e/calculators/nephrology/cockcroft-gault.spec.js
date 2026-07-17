@@ -59,8 +59,12 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
     await expect(info).toContainText("V1 does not auto-select");
 
     await expect(page.getByRole("spinbutton", { name: /Age/ })).toBeVisible();
-    await expect(page.getByText("Historical male coefficient")).toBeVisible();
-    await expect(page.getByText("Historical female coefficient")).toBeVisible();
+    await expect(
+      page.getByText("Historical male coefficient (x1.00)", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Historical female coefficient (x0.85)", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("spinbutton", { name: /Formula Weight/ }),
     ).toBeVisible();
