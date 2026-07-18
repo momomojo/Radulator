@@ -1,0 +1,230 @@
+{
+  "calculatorId": "birads",
+  "calculatorName": "ACR BI-RADS",
+  "version": "v2025-mammography-aa-v1",
+  "cases": [
+    {
+      "id": "category-0-additional-imaging",
+      "description": "Category 0 additional imaging path preserves ACR v2025 mammography wording.",
+      "inputs": { "assessment": "0_additional" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "BI-RADS Category",
+            "equals": "0 additional imaging - Incomplete: Need Additional Imaging Evaluation"
+          },
+          { "key": "Likelihood", "equals": "N/A" },
+          { "key": "Management", "equals": "Recall for additional imaging" },
+          {
+            "key": "Recommendation Grade",
+            "equals": "N/A (ACR source-provided, ungraded)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-0-prior-comparison",
+      "description": "Category 0 prior-comparison path remains split from additional imaging.",
+      "inputs": { "assessment": "0_priors" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "BI-RADS Category",
+            "equals": "0 prior comparison - Incomplete: Need Prior Mammograms for Comparison"
+          },
+          { "key": "Likelihood", "equals": "N/A" },
+          {
+            "key": "Management",
+            "equals": "Need comparison to prior examination(s)"
+          },
+          {
+            "key": "Recommendation Grade",
+            "equals": "N/A (ACR source-provided, ungraded)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-1",
+      "description": "Category 1 negative mammography assessment.",
+      "inputs": { "assessment": "1" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "1 - Negative" },
+          {
+            "key": "Likelihood",
+            "equals": "Essentially 0% likelihood of malignancy"
+          },
+          {
+            "key": "Management",
+            "equals": "Routine mammography screening"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-2",
+      "description": "Category 2 benign mammography assessment.",
+      "inputs": { "assessment": "2" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "2 - Benign" },
+          {
+            "key": "Likelihood",
+            "equals": "Essentially 0% likelihood of malignancy"
+          },
+          {
+            "key": "Management",
+            "equals": "Routine mammography screening"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-3",
+      "description": "Category 3 exact upper-bound likelihood display.",
+      "inputs": { "assessment": "3" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "3 - Probably Benign" },
+          {
+            "key": "Likelihood",
+            "equals": ">0% but ≤2% likelihood of malignancy"
+          },
+          {
+            "key": "Management",
+            "equals": "Short-interval (6-month) follow-up or continued surveillance mammography"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-4",
+      "description": "Aggregate Category 4 uses normalized UI display and preserves source literal provenance.",
+      "inputs": { "assessment": "4" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "4 - Suspicious" },
+          {
+            "key": "Likelihood",
+            "equals": ">2% but <95% likelihood of malignancy"
+          },
+          { "key": "Management", "equals": "Tissue diagnosis" },
+          {
+            "key": "Category 4 Source Literal",
+            "equals": "2% but <95% likelihood of malignancy"
+          },
+          {
+            "key": "Category 4 UI Normalization",
+            "equals": ">2% but <95% likelihood of malignancy"
+          },
+          {
+            "key": "Category 4 Normalization Basis",
+            "includes": "basis = mammography 4A plus public aggregate US/MRI/CEM rows; owner choice Q2=A"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-4a",
+      "description": "Category 4A exact lower and upper boundary display.",
+      "inputs": { "assessment": "4A" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "BI-RADS Category",
+            "equals": "4A - Low suspicion for malignancy"
+          },
+          {
+            "key": "Likelihood",
+            "equals": ">2% to ≤10% likelihood of malignancy"
+          },
+          { "key": "Management", "equals": "Tissue diagnosis" }
+        ]
+      }
+    },
+    {
+      "id": "category-4b",
+      "description": "Category 4B exact lower and upper boundary display.",
+      "inputs": { "assessment": "4B" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "BI-RADS Category",
+            "equals": "4B - Moderate suspicion for malignancy"
+          },
+          {
+            "key": "Likelihood",
+            "equals": ">10% to ≤50% likelihood of malignancy"
+          },
+          { "key": "Management", "equals": "Tissue diagnosis" }
+        ]
+      }
+    },
+    {
+      "id": "category-4c",
+      "description": "Category 4C exact lower and upper boundary display.",
+      "inputs": { "assessment": "4C" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "BI-RADS Category",
+            "equals": "4C - High suspicion for malignancy"
+          },
+          {
+            "key": "Likelihood",
+            "equals": "50% to <95% likelihood of malignancy"
+          },
+          { "key": "Management", "equals": "Tissue diagnosis" }
+        ]
+      }
+    },
+    {
+      "id": "category-5",
+      "description": "Category 5 exact boundary display.",
+      "inputs": { "assessment": "5" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "BI-RADS Category",
+            "equals": "5 - Highly Suggestive of Malignancy"
+          },
+          {
+            "key": "Likelihood",
+            "equals": "≥95% likelihood of malignancy"
+          },
+          { "key": "Management", "equals": "Tissue diagnosis" }
+        ]
+      }
+    },
+    {
+      "id": "category-6",
+      "description": "Category 6 exact management wording.",
+      "inputs": { "assessment": "6" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "BI-RADS Category",
+            "equals": "6 - Known Biopsy-Proven Malignancy"
+          },
+          { "key": "Likelihood", "equals": "N/A" },
+          {
+            "key": "Management",
+            "equals": "Clinical follow-up with surgeon and/or oncologist, and definitive local therapy (usually surgery) when clinically appropriate"
+          }
+        ]
+      }
+    }
+  ]
+}
