@@ -1,865 +1,297 @@
 import { test, expect } from "@playwright/test";
 import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
-/**
- * E2E Tests for ACR BI-RADS Calculator
- * Breast Imaging Reporting and Data System
- *
- * ACR BI-RADS standardized classification for mammography, ultrasound, and MRI.
- *
- * Categories:
- * - Category 0: Incomplete - need additional imaging
- * - Category 1: Negative - essentially 0% malignancy risk
- * - Category 2: Benign - essentially 0% malignancy risk
- * - Category 3: Probably benign - <2% malignancy risk
- * - Category 4A: Low suspicion - 2-10% malignancy risk
- * - Category 4B: Moderate suspicion - 10-50% malignancy risk
- * - Category 4C: High suspicion - 50-95% malignancy risk
- * - Category 5: Highly suggestive - >95% malignancy risk
- * - Category 6: Known biopsy-proven malignancy
- *
- * Source: ACR BI-RADS Atlas, 5th Edition (2013)
- */
+const approvedRows = [
+  {
+    input: "0 additional imaging",
+    category:
+      "0 additional imaging - Incomplete: Need Additional Imaging Evaluation",
+    likelihood: "N/A",
+    management: "Recall for additional imaging",
+  },
+  {
+    input: "0 prior comparison",
+    category:
+      "0 prior comparison - Incomplete: Need Prior Mammograms for Comparison",
+    likelihood: "N/A",
+    management: "Need comparison to prior examination(s)",
+  },
+  {
+    input: "1",
+    category: "1 - Negative",
+    likelihood: "Essentially 0% likelihood of malignancy",
+    management: "Routine mammography screening",
+  },
+  {
+    input: "2",
+    category: "2 - Benign",
+    likelihood: "Essentially 0% likelihood of malignancy",
+    management: "Routine mammography screening",
+  },
+  {
+    input: "3",
+    category: "3 - Probably Benign",
+    likelihood: ">0% but ≤2% likelihood of malignancy",
+    management:
+      "Short-interval (6-month) follow-up or continued surveillance mammography",
+  },
+  {
+    input: "4",
+    category: "4 - Suspicious",
+    likelihood: ">2% but <95% likelihood of malignancy",
+    management: "Tissue diagnosis",
+    sourceLiteral: "2% but <95% likelihood of malignancy",
+  },
+  {
+    input: "4A",
+    category: "4A - Low suspicion for malignancy",
+    likelihood: ">2% to ≤10% likelihood of malignancy",
+    management: "Tissue diagnosis",
+  },
+  {
+    input: "4B",
+    category: "4B - Moderate suspicion for malignancy",
+    likelihood: ">10% to ≤50% likelihood of malignancy",
+    management: "Tissue diagnosis",
+  },
+  {
+    input: "4C",
+    category: "4C - High suspicion for malignancy",
+    likelihood: "50% to <95% likelihood of malignancy",
+    management: "Tissue diagnosis",
+  },
+  {
+    input: "5",
+    category: "5 - Highly Suggestive of Malignancy",
+    likelihood: "≥95% likelihood of malignancy",
+    management: "Tissue diagnosis",
+  },
+  {
+    input: "6",
+    category: "6 - Known Biopsy-Proven Malignancy",
+    likelihood: "N/A",
+    management:
+      "Clinical follow-up with surgeon and/or oncologist, and definitive local therapy (usually surgery) when clinically appropriate",
+  },
+];
 
-test.describe("ACR BI-RADS Calculator", () => {
+const officialLinks = {
+  current:
+    "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
+  mammography:
+    "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+  whatsNew:
+    "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-v2025-Whats-New.pdf",
+};
+
+async function selectAssessmentAndCalculate(page, input) {
+  await page.getByRole("radio", { name: input, exact: true }).check();
+  await page.getByRole("button", { name: "Calculate" }).click();
+  return page.getByRole("status", { name: "Calculator results" });
+}
+
+test.describe("ACR BI-RADS v2025 mammography assessment guide", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, "ACR BI-RADS");
   });
 
-  test.describe("Visual and UI Tests", () => {
-    test("should display calculator with correct title and description", async ({
-      page,
-    }) => {
-      await expect(page.getByTestId('calculator-title').first()).toContainText("ACR BI-RADS");
+  test("displays the approved mammography-only v2025 scope and badge", async ({
+    page,
+  }) => {
+    await expect(page.getByTestId("calculator-title").first()).toContainText(
+      "ACR BI-RADS",
+    );
+    await expect(page.getByTestId("calculator-description")).toContainText(
+      "ACR BI-RADS v2025 mammography assessment-category guidance",
+    );
+    await expect(page.getByTestId("guideline-badge")).toHaveText(
+      "ACR BI-RADS v2025",
+    );
+    await expect(page.getByTestId("calculator-info")).toContainText(
+      "mammography assessment-category guidance only",
+    );
+    await expect(page.getByTestId("calculator-info")).toContainText(
+      "does not infer a BI-RADS category from imaging features",
+    );
+    await expect(page.getByRole("radio")).toHaveCount(11);
+    for (const row of approvedRows) {
       await expect(
-        page.getByText("Breast Imaging Reporting and Data System").first(),
+        page.getByRole("radio", { name: row.input, exact: true }),
       ).toBeVisible();
-    });
-
-    test("should display imaging modality options", async ({ page }) => {
-      await expect(page.getByText("Imaging Modality")).toBeVisible();
-      await expect(page.getByLabel("Mammography")).toBeVisible();
-      await expect(page.getByLabel("Ultrasound")).toBeVisible();
-      await expect(page.getByLabel("MRI", { exact: true })).toBeVisible();
-    });
-
-    test("should display study context options", async ({ page }) => {
-      await expect(page.getByText("Study Context")).toBeVisible();
-      await expect(page.getByLabel("Screening examination")).toBeVisible();
-      await expect(page.getByLabel("Diagnostic examination")).toBeVisible();
-      await expect(
-        page.getByLabel("Known biopsy-proven malignancy"),
-      ).toBeVisible();
-    });
-
-    test("should display info section with BI-RADS explanation", async ({
-      page,
-    }) => {
-      await expect(
-        page.getByText("standardized system for breast imaging").first(),
-      ).toBeVisible();
-    });
+    }
   });
 
-  test.describe("Category 0 - Incomplete", () => {
-    test("should calculate Category 0 when additional mammographic imaging needed", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Screening examination").click();
-      await page.getByLabel("Yes - need additional imaging evaluation").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=0 - Incomplete")).toBeVisible();
-      await expect(
-        page.locator("text=Recall for additional imaging evaluation"),
-      ).toBeVisible();
-      await expect(
-        page.locator(
-          "text=Additional mammographic views, ultrasound, or prior images",
-        ),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 0 for ultrasound needing mammography", async ({
-      page,
-    }) => {
-      await page.getByLabel("Ultrasound").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("Yes - need additional imaging evaluation").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=0 - Incomplete")).toBeVisible();
-      await expect(
-        page.locator("text=Mammography if not performed"),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 0 for MRI needing prior comparison", async ({
-      page,
-    }) => {
-      await page.getByLabel("MRI", { exact: true }).click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("Yes - need additional imaging evaluation").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=0 - Incomplete")).toBeVisible();
-      await expect(
-        page.locator(
-          "text=Prior studies for comparison or additional sequences",
-        ),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Category 1 - Negative", () => {
-    test("should calculate Category 1 for negative screening mammogram", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Screening examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Negative - no findings").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=1 - Negative")).toBeVisible();
-      await expect(page.locator("text=Essentially 0%")).toBeVisible();
-      await expect(
-        page.locator("text=Routine screening mammography"),
-      ).toBeVisible();
-      await expect(
-        page.locator("text=Annual (or per guidelines)"),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 1 for negative diagnostic ultrasound", async ({
-      page,
-    }) => {
-      await page.getByLabel("Ultrasound").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Negative - no findings").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=1 - Negative")).toBeVisible();
-      await expect(
-        page.locator("text=Return to annual screening"),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Category 2 - Benign", () => {
-    test("should calculate Category 2 for definitively benign finding", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Screening examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page
-        .getByLabel(
-          "Benign finding (cyst, calcified fibroadenoma, fat-containing lesion, implant)",
-        )
-        .click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=2 - Benign")).toBeVisible();
-      await expect(page.locator("text=Essentially 0%")).toBeVisible();
-      await expect(
-        page.locator("text=Routine screening mammography"),
-      ).toBeVisible();
-      await expect(
-        page.locator("text=Definitively benign finding"),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 2 on ultrasound", async ({ page }) => {
-      await page.getByLabel("Ultrasound").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page
-        .getByLabel(
-          "Benign finding (cyst, calcified fibroadenoma, fat-containing lesion, implant)",
-        )
-        .click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=2 - Benign")).toBeVisible();
-    });
-  });
-
-  test.describe("Category 3 - Probably Benign", () => {
-    test("should calculate Category 3 for oval circumscribed mass with low suspicion", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Oval").click();
-      await page.getByLabel("Circumscribed").click();
-      await page.getByLabel("Equal density").click();
-      await page
-        .getByLabel("Probably benign (<2% likelihood of malignancy)")
-        .click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=3 - Probably Benign"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Short-interval follow-up (6 months)"),
-      ).toBeVisible();
-    });
-
-    test("should show Category 3 follow-up protocol in clinical notes", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Oval").click();
-      await page.getByLabel("Circumscribed").click();
-      await page.getByLabel("Low density").click();
-      await page
-        .getByLabel("Probably benign (<2% likelihood of malignancy)")
-        .click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=6-month unilateral")).toBeVisible();
-      await expect(
-        page.locator("text=Biopsy may be considered if patient preference"),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 3 for typically benign calcifications", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Screening examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Calcifications (without mass)").click();
-      await page
-        .getByLabel(
-          "Typically benign (skin, vascular, coarse, large rod-like, round, rim, dystrophic, milk of calcium, suture)",
-        )
-        .click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Typically benign calcifications don't show suspicion level, should show error
-      await expect(
-        page.locator("text=Please select the overall suspicion level"),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Category 4A - Low Suspicion", () => {
-    test("should calculate Category 4A for mass with low suspicion", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Oval").click();
-      await page.getByLabel("Obscured").click();
-      await page.getByLabel("Equal density").click();
-      await page.getByLabel("Low suspicion for malignancy (2-10%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=4A - Low Suspicion for Malignancy"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Tissue diagnosis recommended (biopsy)"),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 4A for amorphous calcifications", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Screening examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Calcifications (without mass)").click();
-      await page.getByLabel("Amorphous").click();
-      await page.getByLabel("Grouped (clustered)").click();
-      await page.getByLabel("Low suspicion for malignancy (2-10%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=4A - Low Suspicion for Malignancy"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Calcifications: amorphous"),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Category 4B - Moderate Suspicion", () => {
-    test("should calculate Category 4B for mass with moderate suspicion", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Irregular").click();
-      await page.getByLabel("Indistinct").click();
-      await page.getByLabel("Equal density").click();
-      await page.getByLabel("Moderate suspicion (10-50%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=4B - Moderate Suspicion for Malignancy"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Tissue diagnosis required (biopsy)"),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 4B for coarse heterogeneous calcifications", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Calcifications (without mass)").click();
-      await page.getByLabel("Coarse heterogeneous").click();
-      await page.getByLabel("Regional").click();
-      await page.getByLabel("Moderate suspicion (10-50%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=4B - Moderate Suspicion for Malignancy"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Calcifications: coarse_heterogeneous"),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Category 4C - High Suspicion", () => {
-    test("should calculate Category 4C for mass with high suspicion", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Irregular").click();
-      await page.getByLabel("Spiculated").click();
-      await page.getByLabel("High density").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=4C - High Suspicion for Malignancy"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
-      ).toBeVisible();
-      await expect(resultsSection.locator("text=high PPV")).toBeVisible();
-    });
-
-    test("should show clinical note for spiculated margins", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Irregular").click();
-      await page.getByLabel("Spiculated").click();
-      await page.getByLabel("High density").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator(
-          "text=Spiculated margins and irregular shape are highly suspicious",
-        ),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 4C for fine pleomorphic calcifications", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Calcifications (without mass)").click();
-      await page.getByLabel("Fine pleomorphic").click();
-      await page.getByLabel("Segmental").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=4C - High Suspicion for Malignancy"),
-      ).toBeVisible();
-      await expect(
-        page.locator("text=Segmental or linear distribution suggests ductal"),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Category 5 - Highly Suggestive of Malignancy", () => {
-    test("should calculate Category 5 for highly suspicious mass", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Irregular").click();
-      await page.getByLabel("Spiculated").click();
-      await page.getByLabel("High density").click();
-      await page.getByLabel("Highly suggestive of malignancy (>95%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=5 - Highly Suggestive of Malignancy"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Malignancy Likelihood:"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=appropriate action should be taken"),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 5 for fine linear calcifications", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Calcifications (without mass)").click();
-      await page.getByLabel("Fine linear or fine-linear branching").click();
-      await page.getByLabel("Linear", { exact: true }).click();
-      await page.getByLabel("Highly suggestive of malignancy (>95%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=5 - Highly Suggestive of Malignancy"),
-      ).toBeVisible();
-      await expect(
-        page.locator(
-          "text=Fine linear/branching calcifications are the most suspicious",
-        ),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 5 for architectural distortion", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Architectural distortion").click();
-      await page.getByLabel("Highly suggestive of malignancy (>95%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=5 - Highly Suggestive of Malignancy"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Finding Description:"),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Category 6 - Known Biopsy-Proven Malignancy", () => {
-    test("should calculate Category 6 for known malignancy", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Known biopsy-proven malignancy").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=6 - Known Biopsy-Proven Malignancy"),
-      ).toBeVisible();
-      await expect(
-        page.locator("text=Surgical excision when clinically appropriate"),
-      ).toBeVisible();
-      await expect(
-        page.locator("text=treatment planning and response assessment"),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 6 on ultrasound for known malignancy", async ({
-      page,
-    }) => {
-      await page.getByLabel("Ultrasound").click();
-      await page.getByLabel("Known biopsy-proven malignancy").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=6 - Known Biopsy-Proven Malignancy"),
-      ).toBeVisible();
-    });
-
-    test("should calculate Category 6 on MRI for known malignancy", async ({
-      page,
-    }) => {
-      await page.getByLabel("MRI", { exact: true }).click();
-      await page.getByLabel("Known biopsy-proven malignancy").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=6 - Known Biopsy-Proven Malignancy"),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Asymmetry Finding Types", () => {
-    test("should calculate for focal asymmetry with low suspicion", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Asymmetry", { exact: true }).click();
-      await page.getByLabel("Focal asymmetry").click();
-      await page.getByLabel("Low suspicion for malignancy (2-10%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=4A - Low Suspicion"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Asymmetry: focal"),
-      ).toBeVisible();
-    });
-
-    test("should show developing asymmetry clinical note", async ({ page }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Asymmetry", { exact: true }).click();
-      await page.getByLabel("Developing asymmetry (new or increased)").click();
-      await page.getByLabel("Moderate suspicion (10-50%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=Developing asymmetry warrants tissue diagnosis"),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Associated Features Only", () => {
-    test("should calculate for associated features with suspicion", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page
-        .getByLabel(
-          "Associated features only (skin changes, nipple retraction)",
-        )
-        .click();
-      await page.getByLabel("Moderate suspicion (10-50%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=4B - Moderate Suspicion"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator(
-          "text=Associated features (skin/nipple changes)",
-        ),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Conditional Field Visibility", () => {
-    test("should hide additional imaging field for known cancer context", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Known biopsy-proven malignancy").click();
-
-      // Additional imaging field should not be visible for known cancer
-      await expect(
-        page.getByText("Additional Imaging/Assessment Needed"),
-      ).not.toBeVisible();
-    });
-
-    test("should hide finding type when additional imaging needed", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Screening examination").click();
-      await page.getByLabel("Yes - need additional imaging evaluation").click();
-
-      // Finding type should not be visible when additional imaging needed
-      await expect(page.getByText("Finding Type")).not.toBeVisible();
-    });
-
-    test("should show mass density only for mammography", async ({ page }) => {
-      // For mammography - density should show
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Oval").click();
-      await page.getByLabel("Circumscribed").click();
-
-      await expect(page.getByText("Mass Density")).toBeVisible();
-    });
-
-    test("should hide mass density for ultrasound", async ({ page }) => {
-      // For ultrasound - density should NOT show
-      await page.getByLabel("Ultrasound").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Oval").click();
-      await page.getByLabel("Circumscribed").click();
-
-      await expect(page.getByText("Mass Density")).not.toBeVisible();
-    });
-
-    test("should show calcification distribution only for suspicious morphology", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Calcifications (without mass)").click();
-
-      // Typically benign should NOT show distribution
-      await page
-        .getByLabel(
-          "Typically benign (skin, vascular, coarse, large rod-like, round, rim, dystrophic, milk of calcium, suture)",
-        )
-        .click();
-      await expect(
-        page.getByText("Calcification Distribution"),
-      ).not.toBeVisible();
-
-      // Amorphous should show distribution
-      await page.getByLabel("Amorphous").click();
-      await expect(page.getByText("Calcification Distribution")).toBeVisible();
-    });
-  });
-
-  test.describe("Input Validation", () => {
-    test("should show error when finding type not selected", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Screening examination").click();
-      await page.getByLabel("No - assessment complete").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=Please select the finding type"),
-      ).toBeVisible();
-    });
-
-    test("should show error when suspicion level not selected for mass", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Oval").click();
-      await page.getByLabel("Circumscribed").click();
-      await page.getByLabel("Equal density").click();
-      // Don't select suspicion level
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=Please select the overall suspicion level"),
-      ).toBeVisible();
-    });
-  });
-
-  test.describe("Finding Descriptions", () => {
-    test("should display mass finding description accurately", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Irregular").click();
-      await page.getByLabel("Spiculated").click();
-      await page.getByLabel("High density").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Check results in the results section (aria-live="polite")
-      const resultsSection = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        resultsSection.locator("text=Mass: irregular"),
-      ).toBeVisible();
-      await expect(
-        resultsSection.locator("text=Finding Description:"),
-      ).toBeVisible();
-    });
-
-    test("should display calcification finding description", async ({
-      page,
-    }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Calcifications (without mass)").click();
-      await page.getByLabel("Fine pleomorphic").click();
-      await page.getByLabel("Segmental").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=Calcifications: fine_pleomorphic"),
-      ).toBeVisible();
-      await expect(page.locator("text=segmental distribution")).toBeVisible();
-    });
-  });
-
-  test.describe("References", () => {
-    test("should display ACR BI-RADS references", async ({ page }) => {
-      await expect(
-        page.getByRole("heading", { name: "References" }),
-      ).toBeVisible();
-      await expect(page.getByText("D'Orsi CJ").first()).toBeVisible();
-    });
-
-    test("should have valid reference links", async ({ page }) => {
-      // ACR BI-RADS Atlas link
-      const acrLink = page.locator(
-        'a[href="https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Bi-Rads"]',
+  for (const row of approvedRows) {
+    test(`renders approved output row for ${row.input}`, async ({ page }) => {
+      const results = await selectAssessmentAndCalculate(page, row.input);
+
+      await expect(results).toContainText(row.category);
+      await expect(results).toContainText(row.likelihood);
+      await expect(results).toContainText(row.management);
+      await expect(results).toContainText(
+        "N/A (ACR source-provided, ungraded)",
       );
-      await expect(acrLink).toBeVisible();
 
-      // DOI link for primary paper
-      const doiLink = page.locator(
-        'a[href="https://doi.org/10.1016/j.jacr.2013.05.016"]',
-      );
-      await expect(doiLink).toBeVisible();
+      if (row.sourceLiteral) {
+        await expect(results).toContainText(row.sourceLiteral);
+        await expect(results).toContainText(
+          "Normalized UI >2% but <95%; source literal 2% but <95%",
+        );
+        await expect(results).toContainText(
+          "basis = mammography 4A plus public aggregate US/MRI/CEM rows; owner choice Q2=A",
+        );
+      }
     });
+  }
 
-    test("should have reference for follow-up guidelines", async ({ page }) => {
-      // Sickles 1991 reference
-      await expect(page.getByText("Sickles EA").first()).toBeVisible();
-      await expect(page.getByText("Radiology. 1991")).toBeVisible();
-    });
+  test("keeps the two Category 0 outcomes split", async ({ page }) => {
+    let results = await selectAssessmentAndCalculate(
+      page,
+      "0 additional imaging",
+    );
+    await expect(results).toContainText(
+      "Incomplete: Need Additional Imaging Evaluation",
+    );
+    await expect(results).toContainText("Recall for additional imaging");
+
+    results = await selectAssessmentAndCalculate(page, "0 prior comparison");
+    await expect(results).toContainText(
+      "Incomplete: Need Prior Mammograms for Comparison",
+    );
+    await expect(results).toContainText(
+      "Need comparison to prior examination(s)",
+    );
   });
 
-  test.describe("Modality-Specific Workflows", () => {
-    test("should complete full mammography workflow", async ({ page }) => {
-      await page.getByLabel("Mammography").click();
-      await page.getByLabel("Screening examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Round").click();
-      await page.getByLabel("Circumscribed").click();
-      await page.getByLabel("Equal density").click();
-      await page
-        .getByLabel("Probably benign (<2% likelihood of malignancy)")
-        .click();
+  test("does not expose the retired feature-inference or modality selector workflow", async ({
+    page,
+  }) => {
+    await expect(page.getByText("Imaging Modality")).toHaveCount(0);
+    await expect(page.getByText("Study Context")).toHaveCount(0);
+    await expect(page.getByText("Finding Type")).toHaveCount(0);
+    await expect(page.getByText("Mass Shape")).toHaveCount(0);
+    await expect(page.getByText("Calcification Morphology")).toHaveCount(0);
+    await expect(
+      page.getByText("Overall Assessment of Suspicion"),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("radio", { name: "Ultrasound", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("radio", { name: "MRI", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("radio", { name: "CEM", exact: true }),
+    ).toHaveCount(0);
+  });
 
-      await page.click('button:has-text("Calculate")');
+  test("supports keyboard selection and calculation from accessible radio labels", async ({
+    page,
+  }) => {
+    const category3 = page.getByRole("radio", { name: "3", exact: true });
+    await category3.focus();
+    await expect(category3).toBeFocused();
 
-      await expect(page.locator("text=3 - Probably Benign")).toBeVisible();
+    await page.keyboard.press("Space");
+    await expect(category3).toBeChecked();
+
+    await page.getByRole("button", { name: "Calculate" }).focus();
+    await page.keyboard.press("Enter");
+
+    const results = page.getByRole("status", { name: "Calculator results" });
+    await expect(results).toContainText("3 - Probably Benign");
+    await expect(results).toContainText(
+      ">0% but ≤2% likelihood of malignancy",
+    );
+  });
+
+  test("copies Category 4 result with normalized display and source-literal provenance", async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await selectAssessmentAndCalculate(page, "4");
+
+    await page.getByRole("button", { name: "Copy results" }).click();
+    await expect(
+      page.getByRole("button", { name: "Results copied" }),
+    ).toBeVisible();
+
+    const clipboardText = await page.evaluate(() =>
+      navigator.clipboard.readText(),
+    );
+    expect(clipboardText).toContain(
+      "Likelihood: >2% but <95% likelihood of malignancy",
+    );
+    expect(clipboardText).toContain(
+      "Category 4 Source Literal: 2% but <95% likelihood of malignancy",
+    );
+    expect(clipboardText).toContain(
+      "Category 4 UI Normalization: >2% but <95% likelihood of malignancy",
+    );
+  });
+
+  test("links current official ACR citations and concise v2025 version history", async ({
+    page,
+  }) => {
+    const toggle = page.getByRole("button", {
+      name: /Why v2025\? .*version history/i,
     });
+    await expect(toggle).toBeVisible();
+    await toggle.click();
 
-    test("should complete full ultrasound workflow", async ({ page }) => {
-      await page.getByLabel("Ultrasound").click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Oval").click();
-      await page.getByLabel("Circumscribed").click();
-      // Note: No density for ultrasound
-      await page
-        .getByLabel("Probably benign (<2% likelihood of malignancy)")
-        .click();
+    const panel = page.getByTestId("version-history-panel");
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText("ACR BI-RADS v2025 (2025)");
+    await expect(panel).toContainText("does not reproduce the paid manual");
+    await expect(
+      panel
+        .getByRole("link", { name: /ACR BI-RADS current release page/ })
+        .first(),
+    ).toHaveAttribute("href", officialLinks.current);
+    await expect(
+      panel.getByRole("link", { name: /ACR BI-RADS v2025 What's New/ }),
+    ).toHaveAttribute("href", officialLinks.whatsNew);
+    await expect(
+      panel.getByRole("link", { name: /ACR BI-RADS mammography summary form/ }),
+    ).toHaveAttribute("href", officialLinks.mammography);
 
-      await page.click('button:has-text("Calculate")');
+    await expect(
+      page.getByRole("link", {
+        name: /ACR Breast Imaging Reporting & Data System/,
+      }),
+    ).toHaveAttribute("href", officialLinks.current);
+    await expect(
+      page.getByRole("link", { name: /Mammography Lexicon Summary Form/ }),
+    ).toHaveAttribute("href", officialLinks.mammography);
+    await expect(
+      page.getByRole("link", { name: /What's New\?/ }),
+    ).toHaveAttribute("href", officialLinks.whatsNew);
+  });
+});
 
-      await expect(page.locator("text=3 - Probably Benign")).toBeVisible();
-    });
+test.describe("ACR BI-RADS v2025 mobile proof", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
 
-    test("should complete full MRI workflow", async ({ page }) => {
-      await page.getByLabel("MRI", { exact: true }).click();
-      await page.getByLabel("Diagnostic examination").click();
-      await page.getByLabel("No - assessment complete").click();
-      await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Irregular").click();
-      await page.getByLabel("Spiculated").click();
-      // Note: No density for MRI
-      await page.getByLabel("High suspicion (50-95%)").click();
+  test("renders mobile output in dark mode without changing scope", async ({
+    page,
+  }) => {
+    await navigateToCalculator(page, "ACR BI-RADS");
 
-      await page.click('button:has-text("Calculate")');
+    await expect(
+      page.getByRole("button", { name: "Open navigation menu" }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Switch to dark mode" })
+      .first()
+      .click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
 
-      await expect(
-        page.locator("text=4C - High Suspicion for Malignancy"),
-      ).toBeVisible();
-    });
+    const results = await selectAssessmentAndCalculate(page, "4A");
+    await expect(results).toContainText("4A - Low suspicion for malignancy");
+    await expect(results).toContainText(
+      ">2% to ≤10% likelihood of malignancy",
+    );
+    await expect(page.getByRole("radio")).toHaveCount(11);
   });
 });
