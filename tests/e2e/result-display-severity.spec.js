@@ -31,6 +31,29 @@ test.describe("ResultDisplay severity regression coverage", () => {
     await expect(primaryResult).toHaveClass(/--result-warning-border/);
   });
 
+  test("uses fallback pattern scanning for a non-error result without _severity", async ({
+    page,
+  }) => {
+    await navigateToCalculator(page, "IV Contrast Dosing");
+
+    await page.getByText("Kilograms (kg)").click();
+    await page.fill('input[id="weight"]', "70");
+    await page.getByText("Centimeters (cm)").click();
+    await page.fill('input[id="height"]', "175");
+    await page.getByRole("radio", { name: /^Male$/ }).check();
+    await page.fill('input[id="egfr"]', "60");
+    await page.locator('select[id="contrast_agent"]').selectOption("300");
+    await page.locator('select[id="study_type"]').selectOption("routine");
+    await page.locator('select[id="iv_access"]').selectOption("20g");
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const primaryResult = primaryResultCard(page);
+    await expect(primaryResult).toContainText("Recommended Contrast Volume");
+    await expect(resultRegion(page)).toContainText("Very Low Risk");
+    await expect(primaryResult).toHaveClass(/--result-success-bg/);
+    await expect(primaryResult).toHaveClass(/--result-success-border/);
+  });
+
   test("falls back to neutral styling when results have no severity metadata or matching pattern", async ({
     page,
   }) => {
