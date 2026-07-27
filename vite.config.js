@@ -1,8 +1,70 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import { readdirSync, readFileSync } from "fs";
 import staticCalculatorPages from "./scripts/generate-static-pages.js";
 import { injectSearchVerificationMeta } from "./scripts/search-verification-meta.mjs";
+
+const calculatorDirectory = resolve(__dirname, "src/components/calculators");
+
+function extractCalculatorMetadata(source, filename) {
+  const anchor = source.search(/export\s+(?:default|const\s+\w+\s*=)\s*{/);
+  const scope = anchor >= 0 ? source.slice(anchor) : source;
+  const stringProperty = (key) => {
+    const raw = scope.match(new RegExp(`^\\s{2}${key}:\\s*("(?:\\\\.|[^"\\\\])*")`, "m"))?.[1];
+    if (!raw) throw new Error(`calculator-registry: ${filename} is missing static ${key} metadata`);
+    return JSON.parse(raw);
+  };
+  const tagsBlock = scope.match(/^\s{2}tags:\s*\[([\s\S]*?)\],/m)?.[1] || "";
+  const tags = [...tagsBlock.matchAll(/"((?:\\.|[^"\\])*)"/g)].map((match) => JSON.parse(`"${match[1]}"`));
+
+  return {
+    id: stringProperty("id"),
+    name: stringProperty("name"),
+    desc: stringProperty("desc"),
+    metaDesc: stringProperty("metaDesc"),
+    category: stringProperty("category"),
+    tags,
+  };
+}
+
+function calculatorRegistry() {
+  const virtualId = "virtual:calculator-registry";
+  const resolvedVirtualId = `\0${virtualId}`;
+
+  return {
+    name: "calculator-registry",
+    resolveId(id) {
+      return id === virtualId ? resolvedVirtualId : null;
+    },
+    load(id) {
+      if (id !== resolvedVirtualId) return null;
+      const calculators = readdirSync(calculatorDirectory)
+        .filter((filename) => filename.endsWith(".jsx"))
+        .sort()
+        .map((filename) => ({
+          ...extractCalculatorMetadata(
+            readFileSync(resolve(calculatorDirectory, filename), "utf8"),
+            filename,
+          ),
+          path: `/src/components/calculators/${filename}`,
+        }));
+      const ids = new Set(calculators.map((calculator) => calculator.id));
+      if (ids.size !== calculators.length) {
+        throw new Error("calculator-registry: duplicate calculator ids are not supported");
+      }
+
+      return `
+        const modules = import.meta.glob("/src/components/calculators/*.jsx");
+        const metadata = ${JSON.stringify(calculators)};
+        export const calcDefs = metadata.map((calculator) => ({
+          ...calculator,
+          load: () => modules[calculator.path](),
+        }));
+      `;
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -20,6 +82,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
+      calculatorRegistry(),
       react(),
       staticCalculatorPages(),
       // Plugin to inject GA4 Measurement ID and resource hints into HTML

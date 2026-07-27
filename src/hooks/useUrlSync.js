@@ -40,6 +40,8 @@ export function useUrlSync(calcDefs, onCalculatorChange) {
       const calc = calcDefs.find((c) => c.id === hash);
       if (calc && onCalculatorChange) {
         onCalculatorChange(calc.id);
+      } else if (onCalculatorChange && calcDefs[0]) {
+        onCalculatorChange(calcDefs[0].id);
       }
     };
 
