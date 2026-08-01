@@ -236,12 +236,18 @@ function AppContent() {
   // Navigation metadata is eager; calculator implementations load only when selected.
   const selectedDef = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
   const [loadedDef, setLoadedDef] = useState(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadErrorId, setLoadErrorId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
+    if (typeof selectedDef?.load !== "function") {
+      setLoadedDef(selectedDef || null);
+      setLoadErrorId(null);
+      return undefined;
+    }
+
     setLoadedDef(null);
-    setLoadError(false);
+    setLoadErrorId(null);
 
     selectedDef.load()
       .then((module) => {
@@ -250,7 +256,7 @@ function AppContent() {
         if (!cancelled) setLoadedDef(loaded);
       })
       .catch(() => {
-        if (!cancelled) setLoadError(true);
+        if (!cancelled) setLoadErrorId(selectedDef.id);
       });
 
     return () => {
@@ -1054,7 +1060,7 @@ function AppContent() {
           <Card className="w-full max-w-4xl">
             <CardContent className="space-y-6 p-8">
               {!def ? (
-                <CalculatorLoadState calculator={selectedDef} error={loadError} />
+                <CalculatorLoadState calculator={selectedDef} error={loadErrorId === selectedDef?.id} />
               ) : (
               <ErrorBoundary key={def.id}>
               <header>

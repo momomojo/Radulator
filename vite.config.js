@@ -1,11 +1,14 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
-import { resolve } from "path";
+import { dirname, resolve } from "path";
 import { readdirSync, readFileSync } from "fs";
+import { fileURLToPath } from "url";
 import staticCalculatorPages from "./scripts/generate-static-pages.js";
 import { injectSearchVerificationMeta } from "./scripts/search-verification-meta.mjs";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const calculatorDirectory = resolve(__dirname, "src/components/calculators");
+const normalizedCalculatorDirectory = calculatorDirectory.replaceAll("\\", "/");
 
 function extractCalculatorMetadata(source, filename) {
   const anchor = source.search(/export\s+(?:default|const\s+\w+\s*=)\s*{/);
@@ -15,8 +18,14 @@ function extractCalculatorMetadata(source, filename) {
     if (!raw) throw new Error(`calculator-registry: ${filename} is missing static ${key} metadata`);
     return JSON.parse(raw);
   };
-  const tagsBlock = scope.match(/^\s{2}tags:\s*\[([\s\S]*?)\],/m)?.[1] || "";
-  const tags = [...tagsBlock.matchAll(/"((?:\\.|[^"\\])*)"/g)].map((match) => JSON.parse(`"${match[1]}"`));
+  const stringArrayProperty = (key) => {
+    const block = scope.match(
+      new RegExp(`^\\s{2}${key}:\\s*\\[([\\s\\S]*?)\\],`, "m"),
+    )?.[1] || "";
+    return [...block.matchAll(/"((?:\\.|[^"\\])*)"/g)].map((match) =>
+      JSON.parse(`"${match[1]}"`),
+    );
+  };
 
   return {
     id: stringProperty("id"),
@@ -24,11 +33,12 @@ function extractCalculatorMetadata(source, filename) {
     desc: stringProperty("desc"),
     metaDesc: stringProperty("metaDesc"),
     category: stringProperty("category"),
-    tags,
+    keywords: stringArrayProperty("keywords"),
+    tags: stringArrayProperty("tags"),
   };
 }
 
-function calculatorRegistry() {
+export function calculatorRegistry() {
   const virtualId = "virtual:calculator-registry";
   const resolvedVirtualId = `\0${virtualId}`;
 
@@ -42,13 +52,14 @@ function calculatorRegistry() {
       const calculators = readdirSync(calculatorDirectory)
         .filter((filename) => filename.endsWith(".jsx"))
         .sort()
-        .map((filename) => ({
-          ...extractCalculatorMetadata(
-            readFileSync(resolve(calculatorDirectory, filename), "utf8"),
-            filename,
-          ),
-          path: `/src/components/calculators/${filename}`,
-        }));
+        .map((filename) => {
+          const file = resolve(calculatorDirectory, filename);
+          this.addWatchFile(file);
+          return {
+            ...extractCalculatorMetadata(readFileSync(file, "utf8"), filename),
+            path: `/src/components/calculators/${filename}`,
+          };
+        });
       const ids = new Set(calculators.map((calculator) => calculator.id));
       if (ids.size !== calculators.length) {
         throw new Error("calculator-registry: duplicate calculator ids are not supported");
@@ -62,6 +73,20 @@ function calculatorRegistry() {
           load: () => modules[calculator.path](),
         }));
       `;
+    },
+    handleHotUpdate({ file, modules, server }) {
+      const normalizedFile = file.replaceAll("\\", "/");
+      const normalizedParent = normalizedFile.slice(0, normalizedFile.lastIndexOf("/"));
+      if (
+        normalizedParent !== normalizedCalculatorDirectory ||
+        !normalizedFile.endsWith(".jsx")
+      ) {
+        return undefined;
+      }
+      const virtualModule = server.moduleGraph.getModuleById(resolvedVirtualId);
+      if (!virtualModule) return modules;
+      server.moduleGraph.invalidateModule(virtualModule);
+      return [...modules, virtualModule];
     },
   };
 }

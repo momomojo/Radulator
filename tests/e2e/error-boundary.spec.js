@@ -8,7 +8,18 @@ async function openBoundaryTestApp(page) {
     .waitFor({ state: "visible" });
 }
 
+async function openMobileMenuIfNeeded(page) {
+  const menuButton = page.getByRole("button", {
+    name: "Open navigation menu",
+  });
+  if (await menuButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await menuButton.click();
+    await page.locator("aside").waitFor({ state: "visible" });
+  }
+}
+
 async function openCalculator(page, calculatorName) {
+  await openMobileMenuIfNeeded(page);
   await page.getByRole("button", { name: calculatorName, exact: true }).click();
 }
 
