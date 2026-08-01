@@ -17,7 +17,7 @@ import { CalculatorProvider, useCalculator } from "@/context";
 import { usePreferences, useUrlSync, usePageMeta } from "@/hooks";
 import StaticCalculatorShell from "@/components/StaticCalculatorShell";
 // Auto-discovered calculator registry
-import { calcDefs as registryCalcDefs } from "@/components/calculators";
+import { calcDefs as registryCalcDefs } from "@/components/calculators/registry";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import {
   trackCalculatorSelected,
@@ -48,6 +48,23 @@ function BoundaryRecoversOnRetry() {
 
 function BoundaryAlwaysThrows() {
   throw new Error("Persistent boundary test render error");
+}
+
+function CalculatorLoadState({ calculator, error }) {
+  if (error) {
+    return (
+      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
+        <h2 className="text-sm font-semibold">Calculator unavailable</h2>
+        <p className="mt-1 text-sm">{calculator.name} could not be loaded. Choose another calculator from the menu and try again.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div role="status" aria-live="polite" aria-busy="true" data-testid="calculator-loading" className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">
+      Loading {calculator.name}…
+    </div>
+  );
 }
 
 function computeTestCalculator() {
@@ -216,8 +233,39 @@ function AppContent() {
     }
   }, [computeError]);
 
-  // Current calculator definition
-  const def = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
+  // Navigation metadata is eager; calculator implementations load only when selected.
+  const selectedDef = useMemo(() => calcDefs.find((c) => c.id === active), [active]);
+  const [loadedDef, setLoadedDef] = useState(null);
+  const [loadErrorId, setLoadErrorId] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (typeof selectedDef?.load !== "function") {
+      setLoadedDef(selectedDef || null);
+      setLoadErrorId(null);
+      return undefined;
+    }
+
+    setLoadedDef(null);
+    setLoadErrorId(null);
+
+    selectedDef.load()
+      .then((module) => {
+        const loaded = module.default || Object.values(module).find((value) => value?.id === selectedDef.id);
+        if (!loaded?.id) throw new Error(`Calculator ${selectedDef.id} has no exported definition`);
+        if (!cancelled) setLoadedDef(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadErrorId(selectedDef.id);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDef]);
+
+  // Do not show a previously loaded calculator while a new route resolves.
+  const def = loadedDef?.id === selectedDef.id ? loadedDef : null;
 
   // URL sync
   const { syncUrlToCalculator } = useUrlSync(calcDefs, (id) => {
@@ -232,7 +280,7 @@ function AppContent() {
   }, [active, syncUrlToCalculator]);
 
   // Page meta tags
-  usePageMeta(def);
+  usePageMeta(selectedDef);
 
   // Track initial page view (GA4 config has send_page_view: false for SPA)
   useEffect(() => {
@@ -288,6 +336,7 @@ function AppContent() {
 
   // Run calculation
   const run = () => {
+    if (!def?.compute) return;
     setComputeError(null);
 
     let result;
@@ -1010,6 +1059,9 @@ function AppContent() {
         >
           <Card className="w-full max-w-4xl">
             <CardContent className="space-y-6 p-8">
+              {!def ? (
+                <CalculatorLoadState calculator={selectedDef} error={loadErrorId === selectedDef?.id} />
+              ) : (
               <ErrorBoundary key={def.id}>
               <header>
                 <h2
@@ -1485,6 +1537,7 @@ function AppContent() {
                 />
               )}
               </ErrorBoundary>
+              )}
             </CardContent>
           </Card>
         </main>

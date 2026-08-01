@@ -69,6 +69,25 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await expect(page.locator("aside")).toBeVisible();
   });
 
+  test("should resolve direct calculator links across categories and recover from an unknown id", async ({ page }) => {
+    for (const calculator of [
+      { id: "adrenal-ct", title: "Adrenal CT Washout" },
+      { id: "child-pugh", title: "Child-Pugh" },
+      { id: "mehran-cin", title: "Mehran CIN" },
+    ]) {
+      await page.goto(`/#/${calculator.id}`);
+      await expect(page.getByTestId("calculator-title").first()).toContainText(
+        calculator.title,
+      );
+    }
+
+    await page.goto("/#/not-a-calculator");
+    await expect(page.getByTestId("calculator-title").first()).toContainText(
+      "AAST Trauma Grading",
+    );
+    await expect(page).toHaveURL(/#\/aast-trauma-grading$/);
+  });
+
   test("should navigate to Adrenal CT Washout calculator", async ({ page }) => {
     await clickCalculator(page, "Adrenal CT Washout");
     await expect(
