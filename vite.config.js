@@ -5,6 +5,7 @@ import { readdirSync, readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import staticCalculatorPages from "./scripts/generate-static-pages.js";
 import { injectSearchVerificationMeta } from "./scripts/search-verification-meta.mjs";
+import { enforceLocalSocketGuard } from "./scripts/local-socket-guard.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const calculatorDirectory = resolve(__dirname, "src/components/calculators");
@@ -92,7 +93,9 @@ export function calculatorRegistry() {
 }
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
+  if (command === "serve") enforceLocalSocketGuard();
+
   // Load env file based on `mode` in the current working directory.
   const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
   const ga4Id = env.VITE_GA4_MEASUREMENT_ID || "";

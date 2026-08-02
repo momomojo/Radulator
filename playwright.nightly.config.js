@@ -1,9 +1,16 @@
 import { defineConfig, devices } from "@playwright/test";
+import {
+  enforceLocalPlaywrightWorkerLimit,
+  enforceLocalSocketGuard,
+} from "./scripts/local-socket-guard.mjs";
 
 /**
  * Playwright Configuration for Radulator Medical Calculator Testing
  * @see https://playwright.dev/docs/test-configuration
  */
+
+enforceLocalSocketGuard();
+enforceLocalPlaywrightWorkerLimit();
 
 const isCI = !!process.env.CI;
 
@@ -19,8 +26,8 @@ export default defineConfig({
   /* Retry on CI only */
   retries: isCI ? 1 : 0,
 
-  /* Use multiple workers in CI for speed */
-  workers: isCI ? 4 : undefined,
+  /* Keep local socket pressure bounded; preserve reviewed CI concurrency. */
+  workers: isCI ? 4 : 2,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
