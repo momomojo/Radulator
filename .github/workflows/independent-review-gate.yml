@@ -1,0 +1,54 @@
+name: Independent Review Exact-Head Gate
+
+on:
+  # pull_request_target deliberately executes the trusted workflow from the
+  # base branch. Never check out or execute PR-controlled code in this job.
+  pull_request_target:
+    types: [opened, reopened, closed, synchronize, edited, labeled, unlabeled, ready_for_review, converted_to_draft]
+  issue_comment:
+    types: [created, edited, deleted]
+  workflow_run:
+    workflows: [E2E Tests]
+    types: [completed]
+  # A base branch advance invalidates every open PR's prior review snapshot.
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  checks: write
+  statuses: read
+
+# Serialize every publisher run. The script separately re-fetches and
+# fingerprints state immediately before a check update; this prevents two
+# trusted event deliveries from racing the idempotent upsert itself.
+concurrency:
+  group: radulator-independent-review-exact-head
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    # Ignore ordinary issue comments. All other event sources are trusted base
+    # workflow executions; PR code is never checked out.
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      RADULATOR_INDEPENDENT_REVIEW_BOT_LOGIN: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_BOT_LOGIN }}
+      RADULATOR_INDEPENDENT_REVIEW_SYSTEM: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_SYSTEM }}
+      RADULATOR_CLOUD_MERGE_BOT_LOGIN: ${{ vars.RADULATOR_CLOUD_MERGE_BOT_LOGIN }}
+      RADULATOR_CLOUD_MERGE_SYSTEM: ${{ vars.RADULATOR_CLOUD_MERGE_SYSTEM }}
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || 0 }}
+      BASE_REF: ${{ github.event_name == 'push' && github.ref_name || '' }}
+      CHECK_SUITE_HEAD_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
+    steps:
+      - name: Checkout trusted base workflow
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+
+      - name: Evaluate exact-head independent review
+        run: node scripts/independent-review-gate.mjs
