@@ -55,7 +55,10 @@ function CalculatorLoadState({ calculator, error }) {
     return (
       <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
         <h2 className="text-sm font-semibold">Calculator unavailable</h2>
-        <p className="mt-1 text-sm">{calculator.name} could not be loaded. Choose another calculator from the menu and try again.</p>
+        <p className="mt-1 text-sm">{calculator.name} could not be loaded. Reload the page to get the latest calculator files, or choose another calculator from the menu and try again.</p>
+        <Button type="button" className="mt-3" onClick={() => window.location.reload()}>
+          Reload page
+        </Button>
       </div>
     );
   }
