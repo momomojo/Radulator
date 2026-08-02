@@ -81,3 +81,27 @@ test("does not announce a successful route as unavailable after a failed chunk",
     "Calculator unavailableAdrenal CT Washout could not be loaded. Choose another calculator from the menu and try again.",
   );
 });
+
+test("recovers the requested calculator after an explicit stale-chunk reload", async ({
+  page,
+}) => {
+  let failFirstCalculatorChunk = true;
+  await page.route(/\/CADRADS(?:-[^/]+)?\.jsx?(?:\?.*)?$/, (route) => {
+    if (failFirstCalculatorChunk) {
+      failFirstCalculatorChunk = false;
+      return route.abort();
+    }
+    return route.continue();
+  });
+  await page.goto("/");
+  await openNavigation(page);
+  await openMobileMenuIfNeeded(page);
+
+  await page.getByRole("button", { name: "CAD-RADS 2.0", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "CAD-RADS 2.0 could not be loaded" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Reload page" }).click();
+  await expect(page.getByTestId("calculator-title")).toContainText("CAD-RADS 2.0");
+});
