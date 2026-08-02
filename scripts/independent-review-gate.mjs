@@ -24,7 +24,7 @@ const RELEVANT_LABELS = new Set(["ready-for-gate", ...HOLD_LABELS]);
 const RELEVANT_TIMELINE_EVENTS = new Set([
   "closed",
   "reopened",
-  "converted_to_draft",
+  "convert_to_draft",
   "ready_for_review",
   "base_ref_changed",
   "head_ref_force_pushed",
@@ -75,21 +75,7 @@ function failure(headSha, baseSha, summary, reasonCode, record = null) {
     baseSha,
     summary,
     record,
-    fingerprint: digest({ headSha, baseSha, reasonCode, summary }),
-  };
-}
-
-function activationBlocked(pr, record, stateFingerprint) {
-  return {
-    context: REQUIRED_CONTEXT,
-    conclusion: "failure",
-    eligible: true,
-    reasonCode: "ACTIVATION_BLOCKED",
-    headSha: pr.headSha,
-    baseSha: pr.baseSha,
-    summary: "Exact-state independent PASS candidate verified, but success publication is code-disabled until an approved atomic enforcement boundary exists.",
-    record,
-    fingerprint: digest({ record: record.canonical, stateFingerprint, reasonCode: "ACTIVATION_BLOCKED" }),
+    fingerprint: digest({ headSha, baseSha, reasonCode, summary, record: record?.canonical || null }),
   };
 }
 
@@ -282,7 +268,6 @@ function parseRecord(comment, state, reviewer, trigger) {
   const exactTrigger = trigger?.eventName === "issue_comment" &&
     trigger.action === "created" &&
     trigger.commentId === comment.id &&
-    trigger.installationId === reviewer.installationId &&
     trigger.appId === reviewer.appId &&
     trigger.senderId === reviewer.botUserId &&
     sameLogin(trigger.senderLogin, reviewer.botLogin);
@@ -338,7 +323,17 @@ function parseRecord(comment, state, reviewer, trigger) {
     performed_via_github_app: comment.performedViaGithubApp,
     ...parsed,
   });
-  return { ...parsed, canonical, commentId: comment.id, commentCreatedAt: comment.createdAt };
+  return {
+    ...parsed,
+    canonical,
+    commentId: comment.id,
+    commentCreatedAt: comment.createdAt,
+    // The issue-comment API exposes the performing App, Bot, and owner, but
+    // not the installation that minted the actor token. Keep the claimed
+    // installation bound in the App-authored record while refusing eligibility
+    // until an actually verifiable attestation exists.
+    installationAttested: false,
+  };
 }
 
 export function gateStateFingerprint({ pr, ci, reviews }) {
@@ -398,7 +393,13 @@ export function evaluateGate({ pr, reviewerIdentity, cloudMergerIdentity, requir
   if (record.malformed) return failure(pr.headSha, pr.baseSha, "Newest independent review record is edited, malformed, stale, or not event-attested; refusing PASS.", "MALFORMED_REVIEW");
   if (record.verdict !== "PASS") return failure(pr.headSha, pr.baseSha, "Newest independent review verdict NEEDS_FIX; refusing PASS.", "NEEDS_FIX", record);
 
-  return activationBlocked(pr, record, gateStateFingerprint({ pr, ci, reviews }));
+  return failure(
+    pr.headSha,
+    pr.baseSha,
+    "Reviewer App/Bot identity is verified, but GitHub issue-comment metadata cannot attest the performing App installation; refusing PASS.",
+    "REVIEWER_INSTALLATION_UNATTESTED",
+    record
+  );
 }
 
 async function githubRequest(token, path, options = {}) {
@@ -424,6 +425,13 @@ async function paged(token, path, key = null) {
     result.push(...chunk);
     if (chunk.length < 100) return result;
   }
+}
+
+export function checkRunsPath(owner, repo, headSha) {
+  if (!owner || !repo || !sha(headSha)) throw new Error("Check-run query identity is malformed.");
+  // This endpoint defaults to filter=latest, which can hide duplicate
+  // same-name checks before the pinned-suite ambiguity check sees them.
+  return `/repos/${owner}/${repo}/commits/${headSha}/check-runs?filter=all`;
 }
 
 function normalizePr(data, stateEpoch = null) {
@@ -475,7 +483,7 @@ async function loadState(token, owner, repo, prNumber, config) {
     paged(token, `/repos/${owner}/${repo}/issues/${prNumber}/comments`),
     paged(token, `/repos/${owner}/${repo}/issues/${prNumber}/timeline`),
     paged(token, `/repos/${owner}/${repo}/actions/workflows/${E2E_WORKFLOW_FILE}/runs?event=pull_request&head_sha=${basePr.headSha}`, "workflow_runs"),
-    paged(token, `/repos/${owner}/${repo}/commits/${basePr.headSha}/check-runs`, "check_runs"),
+    paged(token, checkRunsPath(owner, repo, basePr.headSha), "check_runs"),
   ]);
   const stateEpoch = deriveStateEpoch(timeline, basePr.createdAt);
   const pr = { ...basePr, stateEpoch };
@@ -508,7 +516,6 @@ function environmentTrigger() {
     eventName: process.env.GATE_EVENT_NAME || "",
     action: process.env.GATE_EVENT_ACTION || "",
     commentId: Number(process.env.GATE_EVENT_COMMENT_ID || 0),
-    installationId: Number(process.env.GATE_EVENT_INSTALLATION_ID || 0),
     appId: Number(process.env.GATE_EVENT_APP_ID || 0),
     senderId: Number(process.env.GATE_EVENT_SENDER_ID || 0),
     senderLogin: process.env.GATE_EVENT_SENDER_LOGIN || "",

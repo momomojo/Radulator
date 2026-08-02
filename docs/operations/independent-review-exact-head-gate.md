@@ -2,7 +2,7 @@
 
 ## Current mode: evaluation-only and fail-closed
 
-`Radulator Independent Review (exact head)` is an observability/evaluation check for pull requests whose base is `develop` or `main`. This repository version **cannot publish a successful required check**. Even a fully valid independent PASS candidate is completed as `failure` with reason `ACTIVATION_BLOCKED`.
+`Radulator Independent Review (exact head)` is an observability/evaluation check for pull requests whose base is `develop` or `main`. This repository version **cannot publish a successful required check**. Even a fully valid independent PASS candidate is completed as `failure` with reason `REVIEWER_INSTALLATION_UNATTESTED`.
 
 That behavior is intentional. GitHub's Checks API has no compare-and-swap operation that binds a success write to mutable same-head PR metadata such as labels or review comments. A state change after the final read can race a success write, and asynchronous event delivery cannot close that interval. Creating another check, re-fetching, or reading the check back narrows the interval but does not make it atomic.
 
@@ -95,7 +95,7 @@ Raw PR `updated_at` is not a state token: comments can change it and make a reco
 - a digest of relevant current labels;
 - exact current CI run/check evidence.
 
-Relevant timeline events include close/reopen, ready/draft, base/head transitions, and both add and remove events for `ready-for-gate` and every hold/cancellation label. A hold add/remove cycle advances the epoch even when the final labels equal an earlier state.
+Relevant timeline events include close/reopen, ready/draft (`convert_to_draft`), base/head transitions, and both add and remove events for `ready-for-gate` and every hold/cancellation label. A hold add/remove cycle advances the epoch even when the final labels equal an earlier state.
 
 ## Verifiable reviewer identity
 
@@ -106,9 +106,9 @@ Display login and a free-form `reviewer_system` are insufficient. A PASS candida
 - configured reviewer App, installation, Bot, owner, and system IDs;
 - record payload App, installation, Bot, owner, and system IDs;
 - the current `issue_comment` action is `created`, with the exact comment ID;
-- webhook `installation.id`, comment App ID, and sender ID/login match the configured reviewer.
+- comment App ID and sender ID/login match the configured reviewer.
 
-The event-bound installation check means a free-form installation ID in old comment text is never enough. CI-completion or unrelated events cannot turn an old record into a candidate; the dedicated reviewer must append its record after exact CI is green.
+The webhook `installation` object identifies the installation for which the event is delivered, not the installation that performed the comment, so Actions metadata cannot attest the commenter's App installation. The final gate therefore refuses every candidate until an actually verifiable installation attestation (for example, evidence produced and verified inside the dedicated reviewer App's authenticated webhook boundary) is introduced. The App/Bot/owner identity and the App-authored record's claimed installation remain verified; only the actor installation is unattested, and that alone is fail-closed.
 
 The reviewer Bot/App/installation/owner/system must be distinct from:
 

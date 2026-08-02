@@ -59,7 +59,6 @@ jobs:
       GATE_EVENT_NAME: ${{ github.event_name }}
       GATE_EVENT_ACTION: ${{ github.event.action || '' }}
       GATE_EVENT_COMMENT_ID: ${{ github.event.comment.id || 0 }}
-      GATE_EVENT_INSTALLATION_ID: ${{ github.event.installation.id || 0 }}
       GATE_EVENT_APP_ID: ${{ github.event.comment.performed_via_github_app.id || 0 }}
       GATE_EVENT_SENDER_ID: ${{ github.event.sender.id || 0 }}
       GATE_EVENT_SENDER_LOGIN: ${{ github.event.sender.login || '' }}

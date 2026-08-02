@@ -12,6 +12,7 @@ import {
   REQUIRED_CONTEXT,
   requiredCiForBase,
   resolveRequiredCi,
+  checkRunsPath,
 } from "./independent-review-gate.mjs";
 
 const HEAD = "a".repeat(40);
@@ -200,7 +201,6 @@ function gateFixture(options = {}) {
       eventName: "issue_comment",
       action: "created",
       commentId: comment.id,
-      installationId: REVIEWER.installationId,
       appId: REVIEWER.appId,
       senderId: REVIEWER.botUserId,
       senderLogin: REVIEWER.botLogin,
@@ -218,15 +218,17 @@ function expectBlocked(reasonCode, options = {}) {
   return result;
 }
 
-// A fully valid exact-state record is only a candidate. Repo-only code cannot
-// atomically CAS mutable same-head PR metadata, so success is code-disabled.
+// A fully valid exact-state record reaches the final eligibility gate, but
+// repo-only code cannot atomically CAS mutable same-head PR metadata and
+// issue-comment metadata cannot attest the performing App installation, so
+// success is code-disabled.
 {
   const result = evaluateGate(gateFixture());
   assert.equal(result.context, REQUIRED_CONTEXT);
   assert.equal(result.conclusion, "failure");
-  assert.equal(result.eligible, true);
-  assert.equal(result.reasonCode, "ACTIVATION_BLOCKED");
-  assert.match(result.summary, /success publication is code-disabled/);
+  assert.equal(result.eligible, false);
+  assert.equal(result.reasonCode, "REVIEWER_INSTALLATION_UNATTESTED");
+  assert.match(result.summary, /cannot attest the performing App installation/);
 }
 
 expectBlocked("UNSUPPORTED_BASE", { pr: { baseRef: "feature" } });
@@ -262,7 +264,6 @@ expectBlocked("MALFORMED_REVIEW", { comment: { updatedAt: "2026-07-27T23:25:00Z"
 }
 
 expectBlocked("NEEDS_FIX", { comment: { record: { verdict: "NEEDS_FIX" } } });
-expectBlocked("MALFORMED_REVIEW", { trigger: { installationId: 9999 } });
 expectBlocked("MALFORMED_REVIEW", { trigger: { appId: 9999 } });
 expectBlocked("MALFORMED_REVIEW", { trigger: { action: "edited" } });
 expectBlocked("MALFORMED_REVIEW", { comment: { comment: { authorType: "User" } } });
@@ -282,8 +283,9 @@ expectBlocked("REVIEWER_NOT_INDEPENDENT", { reviewerIdentity: { appId: CI_APP_ID
   const epoch = deriveStateEpoch([
     { id: 100, event: "labeled", created_at: "2026-07-27T23:21:01Z", label: { name: "hold" } },
     { id: 101, event: "unlabeled", created_at: "2026-07-27T23:21:02Z", label: { name: "hold" } },
+    { id: 102, event: "convert_to_draft", created_at: "2026-07-27T23:21:03Z" },
   ], "2026-07-27T23:20:00Z");
-  assert.deepEqual(epoch, { eventId: 101, eventCreatedAt: "2026-07-27T23:21:02Z" });
+  assert.deepEqual(epoch, { eventId: 102, eventCreatedAt: "2026-07-27T23:21:03Z" });
   assert.throws(
     () => deriveStateEpoch([{ id: null, event: "labeled", created_at: null, label: { name: "hold" } }], "2026-07-27T23:20:00Z"),
     /malformed/
@@ -292,6 +294,16 @@ expectBlocked("REVIEWER_NOT_INDEPENDENT", { reviewerIdentity: { appId: CI_APP_ID
   const after = structuredClone(before);
   after.pr.stateEpoch = epoch;
   assert.notEqual(gateStateFingerprint(before), gateStateFingerprint(after));
+}
+
+// Production loader queries every check run for the head (filter=all) so the
+// pinned-suite ambiguity check can see duplicate same-name checks.
+{
+  assert.equal(
+    checkRunsPath("momomojo", "Radulator", HEAD),
+    `/repos/momomojo/Radulator/commits/${HEAD}/check-runs?filter=all`
+  );
+  assert.throws(() => checkRunsPath("momomojo", "Radulator", "not-a-sha"), /malformed/);
 }
 
 // CI is resolved as one pinned workflow-run unit, not by API overwrite order.
