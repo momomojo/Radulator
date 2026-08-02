@@ -77,9 +77,11 @@ test("does not announce a successful route as unavailable after a failed chunk",
     window.__RADULATOR_ALERT_OBSERVER__.disconnect();
     return window.__RADULATOR_ALERT_TEXTS__;
   });
-  expect(observedAlerts).not.toContain(
-    "Calculator unavailableAdrenal CT Washout could not be loaded. Choose another calculator from the menu and try again.",
-  );
+  expect(
+    observedAlerts.some((alertText) =>
+      alertText?.includes("Adrenal CT Washout could not be loaded"),
+    ),
+  ).toBe(false);
 });
 
 test("recovers the requested calculator after an explicit stale-chunk reload", async ({
