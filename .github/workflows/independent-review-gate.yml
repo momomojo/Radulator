@@ -1,0 +1,79 @@
+name: Independent Review Exact-Head Gate
+
+on:
+  # pull_request_target deliberately executes the trusted workflow from the
+  # base branch. Never check out or execute PR-controlled code in this job.
+  pull_request_target:
+    branches: [develop, main]
+    types: [opened, reopened, closed, synchronize, edited, labeled, unlabeled, ready_for_review, converted_to_draft]
+  issue_comment:
+    types: [created, edited, deleted]
+  workflow_run:
+    workflows: [E2E Tests]
+    types: [completed]
+  # A base branch advance invalidates every open PR's prior review snapshot.
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  checks: write
+  actions: read
+
+# Serialize each PR's publisher events without cancellation. The script opens
+# a fresh in-progress check before evaluation and can only complete it failure;
+# successful required-check publication is deliberately code-disabled.
+concurrency:
+  group: radulator-independent-review-exact-head-${{ github.event.pull_request.number || github.event.issue.number || github.event.workflow_run.head_sha || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    # Promotion to main is inert by default. The approved enable variable can
+    # activate failure-only evaluation; no variable can enable success.
+    if: vars.RADULATOR_INDEPENDENT_REVIEW_EVALUATION_ENABLED == 'true' && (github.event_name != 'issue_comment' || github.event.issue.pull_request)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      RADULATOR_E2E_WORKFLOW_ID: ${{ vars.RADULATOR_E2E_WORKFLOW_ID }}
+      RADULATOR_CI_APP_ID: ${{ vars.RADULATOR_CI_APP_ID }}
+      RADULATOR_INDEPENDENT_REVIEW_BOT_LOGIN: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_BOT_LOGIN }}
+      RADULATOR_INDEPENDENT_REVIEW_BOT_USER_ID: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_BOT_USER_ID }}
+      RADULATOR_INDEPENDENT_REVIEW_APP_ID: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_APP_ID }}
+      RADULATOR_INDEPENDENT_REVIEW_APP_SLUG: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_APP_SLUG }}
+      RADULATOR_INDEPENDENT_REVIEW_INSTALLATION_ID: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_INSTALLATION_ID }}
+      RADULATOR_INDEPENDENT_REVIEW_APP_OWNER_ID: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_APP_OWNER_ID }}
+      RADULATOR_INDEPENDENT_REVIEW_APP_OWNER_LOGIN: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_APP_OWNER_LOGIN }}
+      RADULATOR_INDEPENDENT_REVIEW_SYSTEM: ${{ vars.RADULATOR_INDEPENDENT_REVIEW_SYSTEM }}
+      RADULATOR_CLOUD_MERGE_BOT_LOGIN: ${{ vars.RADULATOR_CLOUD_MERGE_BOT_LOGIN }}
+      RADULATOR_CLOUD_MERGE_BOT_USER_ID: ${{ vars.RADULATOR_CLOUD_MERGE_BOT_USER_ID }}
+      RADULATOR_CLOUD_MERGE_APP_ID: ${{ vars.RADULATOR_CLOUD_MERGE_APP_ID }}
+      RADULATOR_CLOUD_MERGE_APP_SLUG: ${{ vars.RADULATOR_CLOUD_MERGE_APP_SLUG }}
+      RADULATOR_CLOUD_MERGE_INSTALLATION_ID: ${{ vars.RADULATOR_CLOUD_MERGE_INSTALLATION_ID }}
+      RADULATOR_CLOUD_MERGE_APP_OWNER_ID: ${{ vars.RADULATOR_CLOUD_MERGE_APP_OWNER_ID }}
+      RADULATOR_CLOUD_MERGE_APP_OWNER_LOGIN: ${{ vars.RADULATOR_CLOUD_MERGE_APP_OWNER_LOGIN }}
+      RADULATOR_CLOUD_MERGE_SYSTEM: ${{ vars.RADULATOR_CLOUD_MERGE_SYSTEM }}
+      GATE_EVENT_NAME: ${{ github.event_name }}
+      GATE_EVENT_ACTION: ${{ github.event.action || '' }}
+      GATE_EVENT_COMMENT_ID: ${{ github.event.comment.id || 0 }}
+      GATE_EVENT_APP_ID: ${{ github.event.comment.performed_via_github_app.id || 0 }}
+      GATE_EVENT_SENDER_ID: ${{ github.event.sender.id || 0 }}
+      GATE_EVENT_SENDER_LOGIN: ${{ github.event.sender.login || '' }}
+      # workflow_run resolves every open PR associated with the exact head;
+      # do not silently choose the first item from an API array.
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || 0 }}
+      BASE_REF: ${{ github.event_name == 'push' && github.ref_name || '' }}
+      CHECK_SUITE_HEAD_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
+    steps:
+      - name: Checkout trusted base workflow
+        uses: actions/checkout@v4
+        with:
+          # pull_request_target pins the exact trusted base SHA. Default-branch
+          # events deliberately execute main's trusted copy, never PR code.
+          ref: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
+
+      - name: Evaluate exact-head independent review
+        run: node scripts/independent-review-gate.mjs

@@ -13,6 +13,10 @@ on:
         default: 'false'
         type: boolean
 
+# PR-controlled application/test code runs with a read-only repository token.
+permissions:
+  contents: read
+
 concurrency:
   # Supersede only older runs for the same PR. The run-id suffix keeps push
   # and manual runs out of a shared pending queue, so none are discarded.
@@ -27,6 +31,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # PR checks are associated with the source head by GitHub, so execute
+          # that exact SHA instead of the synthetic merge ref.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -43,11 +51,13 @@ jobs:
           node --check scripts/check-radulator-invariants.mjs
           node --check scripts/check-radulator-invariants.test.mjs
           node --check scripts/collect-loop-metrics.mjs
+          node --check scripts/independent-review-gate.mjs
           node --check scripts/search-verification-meta.mjs
           node --check scripts/ping-search-indexes.mjs
           bash -n scripts/dev-local.sh
           npm run test:search-verification
           npm run test:invariants
+          npm run test:independent-review-gate
           npm run check:invariants
 
       - name: Build application
@@ -80,6 +90,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Keep executed code coherent with the source-head check identity.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       # Coverage gate: every calculator must have a dedicated spec whose
       # navigation target resolves against CURRENT registry metadata. Fails on
@@ -178,6 +190,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Promotion/hotfix CI executes the exact source head under review.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
