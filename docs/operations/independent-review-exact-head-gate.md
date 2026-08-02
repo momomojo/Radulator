@@ -1,95 +1,181 @@
-# Exact-head independent-review gate
+# Exact-head independent-review evaluator
 
-## Purpose
+## Current mode: evaluation-only and fail-closed
 
-`Radulator Independent Review (exact head)` is a fail-closed required GitHub check for pull requests to `develop` and `main`. It replaces label/comment ordering as a merge predicate: a check can pass only for the current PR head SHA after a durable independent PASS record has been revalidated against current PR and CI state.
+`Radulator Independent Review (exact head)` is an observability/evaluation check for pull requests whose base is `develop` or `main`. This repository version **cannot publish a successful required check**. Even a fully valid independent PASS candidate is completed as `failure` with reason `ACTIVATION_BLOCKED`.
 
-The implementation is deliberately separate from the existing cloud merge routine. It does **not** merge PRs, apply labels, alter repository settings, or accept a post-merge comment as evidence.
+That behavior is intentional. GitHub's Checks API has no compare-and-swap operation that binds a success write to mutable same-head PR metadata such as labels or review comments. A state change after the final read can race a success write, and asynchronous event delivery cannot close that interval. Creating another check, re-fetching, or reading the check back narrows the interval but does not make it atomic.
 
-## Durable review-record contract
+Therefore:
 
-The independent reviewer must be a separately controlled GitHub App bot. Repository variables bind the two separately controlled identities: `RADULATOR_INDEPENDENT_REVIEW_BOT_LOGIN`, `RADULATOR_INDEPENDENT_REVIEW_SYSTEM`, `RADULATOR_CLOUD_MERGE_BOT_LOGIN`, and `RADULATOR_CLOUD_MERGE_SYSTEM`. Missing, equal, PR-author, or `momomojo` identities fail closed. The reviewer writes a normal PR issue comment whose entire body is this JSON object:
+- this workflow does not merge, label, deploy, change settings, or execute PR code;
+- its job is inert unless `RADULATOR_INDEPENDENT_REVIEW_EVALUATION_ENABLED=true` is separately approved/configured;
+- no repository variable can enable success publication;
+- `neutral` and `skipped` are never used because GitHub can treat them as satisfying a required check;
+- the context must **not** be made required while this evaluation-only implementation is deployed; doing so would intentionally block every merge;
+- activation requires a separate approved design that moves the authoritative cancellation/hold predicate into a GitHub-native control or a serialized sole merge authority with exact-head preflight.
+
+## Exact-head CI semantics
+
+GitHub associates `pull_request` workflow runs and job checks with the PR source head SHA, while the default `actions/checkout` behavior checks out the synthetic merge ref. The E2E workflow now explicitly checks out:
+
+```yaml
+ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+```
+
+in Smoke, Targeted, and Full Suite jobs. The executed commit and the check identity are therefore the same source head. Push and manual runs continue to execute `github.sha`.
+
+Because E2E executes PR-controlled application and test code, its workflow token is explicitly limited to `contents: read`.
+
+The evaluator does not fold generic commit statuses/checks in API response order. It:
+
+1. loads `pull_request` runs for `e2e-tests.yml` and the exact current source head;
+2. pins the configured workflow ID and GitHub Actions App ID;
+3. requires the run's PR association to match PR number, head SHA, base ref, and base SHA;
+4. deterministically selects the latest exact run by creation time, attempt, and run ID;
+5. requires that run to be completed/successful;
+6. requires exactly one expected-App check from that run's check suite for each job;
+7. treats missing, duplicate, queued, cancelled, skipped, neutral, wrong-App, or non-success jobs as blocking.
+
+`develop` requires Smoke and Targeted. `main` additionally requires Full Suite. The durable record binds workflow run ID, attempt, check-suite/check-run IDs, App ID, exact head, conclusion, and completion time.
+
+## Immutable review-record contract (v2)
+
+The carrier is a newly created PR issue comment from a dedicated GitHub App installation. New verdicts require new comments. Edited records are invalid (`created_at` must equal `updated_at`), and only `PASS` or `NEEDS_FIX` is valid.
+
+The newest candidate is selected by immutable App/Bot identity **before** parsing. A malformed newest candidate blocks instead of falling back to an older PASS. If more than one newest candidate has the same GitHub timestamp, the state is ambiguous and blocks; numeric comment IDs are used only for deterministic diagnostics.
+
+The entire comment body is JSON:
 
 ```json
 {
-  "schema": "radulator-independent-review/v1",
+  "schema": "radulator-independent-review/v2",
+  "repository_id": 1027532341,
   "pr": 123,
   "verdict": "PASS",
-  "head_sha": "<40-character current head SHA>",
-  "base_sha": "<40-character current base SHA>",
-  "base_ref": "<current PR base branch, for example develop>",
-  "pr_updated_at": "<exact pull-request updated_at observed by reviewer>",
-  "reviewed_at": "<RFC 3339 timestamp>",
-  "reviewer_system": "independent-security-review"
+  "head_sha": "<40 lowercase hex>",
+  "base_sha": "<40 lowercase hex>",
+  "base_ref": "develop",
+  "state_epoch": {
+    "event_id": 123456,
+    "event_created_at": "2026-08-02T00:00:00Z"
+  },
+  "labels_sha256": "<64 lowercase hex>",
+  "ci": [
+    {
+      "name": "Smoke Tests",
+      "app_id": 15368,
+      "check_run_id": 1,
+      "check_suite_id": 2,
+      "workflow_id": 227376261,
+      "workflow_run_id": 3,
+      "run_attempt": 1,
+      "head_sha": "<40 lowercase hex>",
+      "conclusion": "success",
+      "completed_at": "2026-08-02T00:00:00Z"
+    }
+  ],
+  "reviewer": {
+    "github_app_id": 1,
+    "installation_id": 2,
+    "bot_user_id": 3,
+    "app_owner_id": 4,
+    "run_id": "opaque-non-secret-run-id",
+    "system": "independent-reviewer/version"
+  },
+  "reviewed_at": "2026-08-02T00:00:00Z",
+  "evidence_sha256": "<sha256 of canonical JSON above with this field omitted>"
 }
 ```
 
-`CHANGES` and `HOLD` are durable negative verdicts. A PASS must be a newly created comment at or after the recorded PR snapshot; editing an old PASS after a head/base/label transition cannot refresh it. The bot identity, comment ID, creation/update time, and JSON payload are canonicalized and SHA-256 fingerprinted into the check output. The reviewer app must not share an owner, installation token, OAuth token, or automation routine with `momomojo`, the PR author, or the implementation worker.
+Raw PR `updated_at` is not a state token: comments can change it and make a record self-invalidating, while a label add/remove cycle can restore the old label set. Instead, the evaluator binds:
 
-## Gate behavior
+- exact current head SHA, base SHA/ref, open/draft state;
+- a monotonic relevant timeline-event epoch;
+- a digest of relevant current labels;
+- exact current CI run/check evidence.
 
-The workflow is stored on the base branch and runs through `pull_request_target`, `issue_comment`, `workflow_run` for `E2E Tests`, and pushes to `develop`/`main`. It never checks out PR code. It publishes the same check context on the exact current head for a new review comment, PR/head/base/label change, CI completion, or base-branch advance.
+Relevant timeline events include close/reopen, ready/draft, base/head transitions, and both add and remove events for `ready-for-gate` and every hold/cancellation label. A hold add/remove cycle advances the epoch even when the final labels equal an earlier state.
 
-GitHub only activates `issue_comment` and `workflow_run` workflows from the repository default branch. Therefore rollout is fail-closed: merge this workflow through `develop`, promote it to the default branch (`main`), verify the configured App can emit a record and the workflow can publish a blocking context, and **only then** make the context required on either protected branch. Before that promotion, a review comment may not trigger the workflow automatically; it must never be treated as a PASS.
+## Verifiable reviewer identity
 
-A PASS requires all of the following, checked again immediately before publication:
+Display login and a free-form `reviewer_system` are insufficient. A PASS candidate requires all of these to agree:
 
-1. The PR is open with valid current head and base SHAs.
-2. No hold/cancellation label exists (`hold`, `do-not-merge`, `gate-hold`, `needs-fix`, `changes-requested`, `security-hold`, `cancelled`, or `canceled`).
-3. `Smoke Tests` and `Targeted Calculator Tests` are both successful on that head.
-4. The newest record from the configured independent App bot is a well-formed `PASS`, not an older PASS silently selected after a malformed record, and is not the PR author, `momomojo`, or the configured cloud merger.
-5. Record PR number, head SHA, base SHA, base ref, and `pr_updated_at` exactly match the re-fetched PR state.
-6. State fingerprints before and after the final refetch match. Any concurrent PR/review/CI state transition produces a failure check instead.
+- REST carrier `user.type == Bot`, exact Bot user ID/login;
+- REST `performed_via_github_app` exact App ID/slug/owner ID/login;
+- configured reviewer App, installation, Bot, owner, and system IDs;
+- record payload App, installation, Bot, owner, and system IDs;
+- the current `issue_comment` action is `created`, with the exact comment ID;
+- webhook `installation.id`, comment App ID, and sender ID/login match the configured reviewer.
 
-A stale check is not reusable: changing the head, base, open/closed/reopened state, labels (including removal of a hold/cancellation label), CI conclusion, or review record causes a blocking result until an independent reviewer creates a fresh exact-state PASS.
+The event-bound installation check means a free-form installation ID in old comment text is never enough. CI-completion or unrelated events cannot turn an old record into a candidate; the dedicated reviewer must append its record after exact CI is green.
 
-## Least-privilege identities and token boundary
+The reviewer Bot/App/installation/owner/system must be distinct from:
 
-Two identities are required:
+- `momomojo` (login and immutable user ID);
+- the PR author;
+- GitHub Actions publisher App 15368;
+- the configured cloud merger Bot/App/installation/owner/system.
 
-| Role | Identity | Minimum permissions | Boundary |
-| --- | --- | --- | --- |
-| Independent reviewer | Dedicated GitHub App bot | Pull request/issue read; issue-comment write | App private key/token must be unavailable to `momomojo`, implementation workers, and the cloud merger. It emits the durable record only. |
-| Required-check publisher | `github-actions[bot]` running this trusted base workflow | Repository `GITHUB_TOKEN`: `checks: write`, `pull-requests: read`, `issues: read`, `statuses: read`, `contents: read` | It can only translate independently authored records plus current GitHub state into the required context. It has no merge, contents-write, labels-write, deployments-write, or admin permission. |
+Missing or malformed numeric identity configuration blocks.
 
-The GitHub required-status UI should bind the required context to the GitHub Actions app if the platform offers an expected-app selector. Do not use `momomojo` approvals as independence evidence; GitHub cannot count a PR author's self-approval as independent review.
+## Publisher protocol
 
-## Local checks and publisher dry run
+For each event, the trusted workflow:
 
-The exact required context is `Radulator Independent Review (exact head)` and its publisher identity is `github-actions[bot]` (the trusted base workflow's repository `GITHUB_TOKEN`). Run deterministic local contract tests without any GitHub credential or network mutation:
+1. creates a fresh `in_progress` check on the observed current head before evaluation;
+2. loads and fingerprints complete state twice;
+3. treats any mismatch as failure;
+4. completes the fresh check as `failure` (including a valid PASS candidate);
+5. reads back check name, head, publisher App ID, external ID, status, and conclusion;
+6. loads state once more; any change remains/creates failure on the current head.
+
+The publisher never edits an old success and never writes success in the first place. A crash leaves a missing or in-progress check, both fail-closed if the context is eventually required. Check output includes policy mode, reason code, exact head/base, record ID, and an evaluation fingerprint.
+
+## Trusted workflow scope and activation
+
+`pull_request_target` is filtered to bases `develop` and `main`. Runtime checks reject every other base. The workflow also observes review comments, E2E completion, and pushes to `develop`/`main`.
+
+The publisher checks out the exact trusted PR base SHA for `pull_request_target`; `issue_comment`, `workflow_run`, and push events execute the repository default branch copy. It never checks out or runs PR-controlled code.
+
+GitHub activates `issue_comment` and `workflow_run` workflows only from the default branch. Safe rollout order is therefore:
+
+1. merge this evaluation-only implementation to `develop` through normal review;
+2. promote it to `main` through the normal full-suite gate;
+3. separately approve/configure immutable CI/reviewer/cloud identities;
+4. enable failure-only evaluation with `RADULATOR_INDEPENDENT_REVIEW_EVALUATION_ENABLED=true`;
+5. confirm default-branch triggers and canary every blocking/invalidation class on a disposable PR;
+6. resolve the atomic enforcement boundary in a separate reviewed change;
+7. only after that change can a future implementation add success publication and propose required-context/settings changes.
+
+Until step 6 is resolved, do not require this context and do not restore any merger that treats labels or this evaluator as atomic authorization.
+
+## Proposed variables (documented only; not changed here)
+
+- `RADULATOR_E2E_WORKFLOW_ID` (currently observed: `227376261`)
+- `RADULATOR_CI_APP_ID` (GitHub Actions: `15368`)
+- `RADULATOR_INDEPENDENT_REVIEW_EVALUATION_ENABLED` (`true` enables only failure/in-progress evaluation; it cannot enable success)
+- reviewer: `RADULATOR_INDEPENDENT_REVIEW_{BOT_LOGIN,BOT_USER_ID,APP_ID,APP_SLUG,INSTALLATION_ID,APP_OWNER_ID,APP_OWNER_LOGIN,SYSTEM}`
+- merger: `RADULATOR_CLOUD_MERGE_{BOT_LOGIN,BOT_USER_ID,APP_ID,APP_SLUG,INSTALLATION_ID,APP_OWNER_ID,APP_OWNER_LOGIN,SYSTEM}`
+
+This PR does not create Apps, credentials, installations, variables, branch-protection rules, labels, or merger changes.
+
+## Local verification and dry run
 
 ```bash
 node --check scripts/independent-review-gate.mjs
 npm run test:independent-review-gate
 ```
 
-To evaluate a real PR state without creating/updating a check, provide the same environment variables as the workflow, including a read-capable `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, and `PR_NUMBER`, then run:
+With a read-capable token and all proposed variables supplied, this performs a no-write real-state evaluation:
 
 ```bash
-node scripts/independent-review-gate.mjs --dry-run
+GITHUB_REPOSITORY=momomojo/Radulator PR_NUMBER=123 \
+  node scripts/independent-review-gate.mjs --dry-run
 ```
 
-`--dry-run` emits the prospective exact-head verdict and fingerprint only; it never calls the check-run write endpoint.
+`--dry-run` never calls a check-run write endpoint. Its conclusion remains `failure`; `eligible=true` only means the exact-state candidate contract validated.
 
-## Settings delta (propose only; do not apply in this change)
+## Rollback
 
-After a separate security/admin review and explicit Mohib approval:
-
-1. Require `Radulator Independent Review (exact head)` on both `develop` and `main`.
-2. Enable administrator enforcement on `develop` (already enabled on `main` according to the incident audit).
-3. Keep `strict=false` initially only because the gate independently binds and invalidates base SHA changes. Set `strict=true` as defense in depth if merge-queue/rebase behavior and CI cost are acceptable; it is not required for this gate's base-SHA safety property.
-4. Ensure the existing cloud merge routine cannot merge without required-check enforcement and cannot mutate this trusted workflow or the reviewer-App configuration.
-
-## Threat model and rollback
-
-| Threat | Mitigation | Residual risk |
-| --- | --- | --- |
-| #95 ordering: merge before a late negative review | Closed PRs always fail; post-merge records cannot produce PASS | Settings must make this check required before merger authority is restored. |
-| #97 label TOCTOU | Any label transition changes `updated_at`; final refetch/state fingerprint blocks PASS | Existing unsafe routine remains unsafe until containment/settings approval. |
-| Stale head/base PASS | Record and check are bound to exact head/base; any mismatch fails | GitHub settings must require this named context. |
-| PR author forges comment | Only configured, separately controlled GitHub App author is trusted | App compromise remains a high-value security incident. |
-| CI turns green without review | Green CI alone produces a failure check | CI context names must remain aligned with required protection. |
-| Concurrent state mutation during evaluation | Two complete GitHub state reads must match before publication | A mutation after final read is handled by the event-triggered invalidation workflow; brief delivery latency remains. |
-| PR edits workflow | `pull_request_target` and `workflow_run` use trusted base/default workflow, never PR checkout | A privileged merger that can alter protected base/settings defeats any repo-only control. |
-
-Rollback: do not delete the required status context while a PR is in flight. First pause/disable merger authority, remove this context from branch protection through the approved admin change, then revert this PR via a normal review-gated PR. Removing the workflow before the required-check setting would fail closed and block all merges, which is acceptable only as an emergency containment action.
+Because successful publication and required-context settings are absent, rollback is a normal revert PR. If a future change ever makes this context required, remove merger authority first and coordinate branch-protection rollback before removing the workflow; otherwise the missing context will intentionally block all merges.
