@@ -1,6 +1,20 @@
 name: Approval-Bound Automatic Merge
 
 on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: false
+        default: 0
+        type: number
+      base_ref:
+        required: false
+        default: ''
+        type: string
+      check_suite_head_sha:
+        required: false
+        default: ''
+        type: string
   # Trusted workflow only. PR-controlled code is never checked out or run.
   pull_request_target:
     branches: [develop, main]
@@ -38,9 +52,9 @@ jobs:
       RADULATOR_E2E_WORKFLOW_ID: ${{ vars.RADULATOR_E2E_WORKFLOW_ID }}
       RADULATOR_CI_APP_ID: ${{ vars.RADULATOR_CI_APP_ID }}
       RADULATOR_JUDGE_PUBLIC_KEYS_JSON: ${{ vars.RADULATOR_JUDGE_PUBLIC_KEYS_JSON }}
-      PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
+      PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number || 0 }}
       BASE_REF: ${{ inputs.base_ref || '' }}
-      CHECK_SUITE_HEAD_SHA: ${{ github.event_name == 'check_run' && github.event.check_run.head_sha || '' }}
+      CHECK_SUITE_HEAD_SHA: ${{ inputs.check_suite_head_sha || (github.event_name == 'check_run' && github.event.check_run.head_sha) || '' }}
     steps:
       - name: Checkout trusted merge controller
         uses: actions/checkout@v4
