@@ -26,6 +26,7 @@
     "test:invariants": "node scripts/check-radulator-invariants.test.mjs",
     "test:independent-review-gate": "node scripts/independent-review-gate.test.mjs",
     "test:release-policy": "node scripts/release-policy.test.mjs",
+    "test:auto-merge": "node scripts/auto-merge.test.mjs",
     "test:dev-local": "bash tests/scripts/dev-local-restart.sh",
     "test:decompose-full-suite": "node scripts/full-suite-decomposer.mjs",
     "check:invariants": "node scripts/check-radulator-invariants.mjs",

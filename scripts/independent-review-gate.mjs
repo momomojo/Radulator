@@ -317,7 +317,7 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
   return success(pr, risk, quorum);
 }
 
-async function githubRequest(token, path, options = {}) {
+export async function githubRequest(token, path, options = {}) {
   const response = await fetch(`https://api.github.com${path}`, {
     ...options,
     headers: {
@@ -331,7 +331,7 @@ async function githubRequest(token, path, options = {}) {
   return response.status === 204 ? null : response.json();
 }
 
-async function paged(token, path, key = null) {
+export async function paged(token, path, key = null) {
   const result = [];
   for (let page = 1; ; page += 1) {
     const data = await githubRequest(token, `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`);
@@ -384,7 +384,7 @@ function normalizeFile(file) {
   return { filename: file.filename, status: file.status, patch: typeof file.patch === "string" ? file.patch : null };
 }
 
-async function loadState(token, owner, repo, prNumber, config) {
+export async function loadGateState(token, owner, repo, prNumber, config) {
   const prData = await githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}`);
   const basePr = normalizePr(prData);
   const requiredCi = requiredCiForBase(basePr.baseRef);
@@ -415,8 +415,8 @@ async function loadState(token, owner, repo, prNumber, config) {
   };
 }
 
-function configuredPublicKeys() {
-  const raw = process.env.RADULATOR_JUDGE_PUBLIC_KEYS_JSON || "";
+export function configuredPublicKeys(env = process.env) {
+  const raw = env.RADULATOR_JUDGE_PUBLIC_KEYS_JSON || "";
   if (!raw) return {};
   const parsed = JSON.parse(raw);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("RADULATOR_JUDGE_PUBLIC_KEYS_JSON must be an object.");
@@ -483,15 +483,15 @@ async function verifyCheck(token, owner, repo, checkId, result) {
   return check;
 }
 
-async function findPullNumbers(token, owner, repo) {
-  const direct = Number(process.env.PR_NUMBER || 0);
+export async function findPullNumbers(token, owner, repo, env = process.env) {
+  const direct = Number(env.PR_NUMBER || 0);
   if (positiveInteger(direct)) return [direct];
-  const baseRef = process.env.BASE_REF;
+  const baseRef = env.BASE_REF;
   if (ALLOWED_BASE_REFS.has(baseRef)) {
     const pulls = await paged(token, `/repos/${owner}/${repo}/pulls?state=open&base=${encodeURIComponent(baseRef)}`);
     return [...new Set(pulls.map((pr) => pr.number))];
   }
-  const checkSuiteHead = process.env.CHECK_SUITE_HEAD_SHA;
+  const checkSuiteHead = env.CHECK_SUITE_HEAD_SHA;
   if (!sha(checkSuiteHead || "")) return [];
   const pulls = await githubRequest(token, `/repos/${owner}/${repo}/commits/${checkSuiteHead}/pulls`);
   return [...new Set(pulls.filter((pr) => pr.state === "open" && ALLOWED_BASE_REFS.has(pr.base.ref)).map((pr) => pr.number))];
@@ -504,19 +504,19 @@ async function run() {
   const config = {
     expectedWorkflowId: Number(process.env.RADULATOR_E2E_WORKFLOW_ID || 0),
     expectedCiAppId: Number(process.env.RADULATOR_CI_APP_ID || 0),
-    publicKeys: configuredPublicKeys(),
+    publicKeys: configuredPublicKeys(process.env),
   };
   const dryRun = process.argv.includes("--dry-run") || process.env.DRY_RUN === "1";
   const [owner, repo] = repository.split("/");
-  const prNumbers = await findPullNumbers(token, owner, repo);
+  const prNumbers = await findPullNumbers(token, owner, repo, process.env);
 
   for (const prNumber of prNumbers) {
     const initial = normalizePr(await githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}`));
     let check = dryRun ? null : await createPendingCheck(token, owner, repo, initial.headSha, prNumber);
     try {
-      const before = await loadState(token, owner, repo, prNumber, config);
+      const before = await loadGateState(token, owner, repo, prNumber, config);
       const beforeFingerprint = gateStateFingerprint(before);
-      const after = await loadState(token, owner, repo, prNumber, config);
+      const after = await loadGateState(token, owner, repo, prNumber, config);
       const afterFingerprint = gateStateFingerprint(after);
       let result = beforeFingerprint === afterFingerprint
         ? evaluateGate(after)
@@ -531,7 +531,7 @@ async function run() {
       if (!dryRun) {
         await completeCheck(token, owner, repo, check.id, result);
         await verifyCheck(token, owner, repo, check.id, result);
-        const post = await loadState(token, owner, repo, prNumber, config);
+        const post = await loadGateState(token, owner, repo, prNumber, config);
         if (gateStateFingerprint(post) !== afterFingerprint) {
           result = failure(post.pr.headSha, post.pr.baseSha, "State changed during/after check publication; success is revoked.", "POST_PUBLISH_STATE_CHANGE");
           if (check.head_sha !== post.pr.headSha) check = await createPendingCheck(token, owner, repo, post.pr.headSha, prNumber);
