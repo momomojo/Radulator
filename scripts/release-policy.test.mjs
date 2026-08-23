@@ -246,6 +246,18 @@ assert.equal(
   "JUDGE_PROFILE_NOT_INDEPENDENT",
 );
 
+const collapsedVerificationKey = { ...VERIFICATION, privateKey: PRIMARY.privateKey };
+const collapsedVerification = signedRecord(collapsedVerificationKey, highState, {
+  reviewed_at: "2026-08-23T20:03:30Z",
+});
+const collapsedPublicKeys = structuredClone(PUBLIC_KEYS);
+collapsedPublicKeys[VERIFICATION.keyId].publicKey = PRIMARY.publicKey;
+assert.equal(
+  evaluateAttestationQuorum([highPrimary, collapsedVerification], collapsedPublicKeys, highState).reasonCode,
+  "JUDGE_KEY_NOT_INDEPENDENT",
+  "distinct role names and profiles cannot collapse onto one signing credential",
+);
+
 const needsFix = signedRecord(PRIMARY, standardState, {
   verdict: "NEEDS_FIX",
   clinical_analysis: "The cited evidence does not support the changed interpretation.",

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createHash, verify } from "node:crypto";
+import { createHash, createPublicKey, verify } from "node:crypto";
 
 export const ATTESTATION_SCHEMA = "radulator-clinical-attestation/v1";
 export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v2";
@@ -44,6 +44,15 @@ export function canonicalJson(value) {
 export function digest(value) {
   const text = typeof value === "string" ? value : canonicalJson(value);
   return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+export function publicKeyFingerprint(publicKey) {
+  try {
+    const der = createPublicKey(publicKey).export({ type: "spki", format: "der" });
+    return createHash("sha256").update(der).digest("hex");
+  } catch {
+    return null;
+  }
 }
 
 function normalizeFile(file) {
@@ -277,6 +286,13 @@ export function evaluateAttestationQuorum(records, publicKeys, exactState) {
     const profiles = new Set(requiredRoles.map((role) => byRole.get(role).judge.profile));
     if (profiles.size !== requiredRoles.length) {
       return attestationFailure("JUDGE_PROFILE_NOT_INDEPENDENT", "High-risk approvals must come from distinct judge profiles.");
+    }
+    const fingerprints = requiredRoles.map((role) => {
+      const keyId = byRole.get(role).judge.key_id;
+      return publicKeyFingerprint(publicKeys?.[keyId]?.publicKey);
+    });
+    if (fingerprints.some((fingerprint) => !fingerprint) || new Set(fingerprints).size !== requiredRoles.length) {
+      return attestationFailure("JUDGE_KEY_NOT_INDEPENDENT", "High-risk approvals must use distinct signing credentials.");
     }
   }
 

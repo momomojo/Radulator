@@ -20,14 +20,33 @@ async function withServer(routes, test) {
 }
 
 await withServer({
+  [`/releases/${"a".repeat(40)}.json`]: {
+    status: 200,
+    type: "application/json",
+    body: JSON.stringify({ schema: "radulator-release/v1", sha: "a".repeat(40) }),
+  },
   "/": { status: 200, body: "<title>Radulator | Medical Calculators</title>" },
   "/calculators/meld-na/": { status: 200, body: "<title>MELD-Na Score Calculator | Radulator</title>" },
   "/sitemap.xml": { status: 200, type: "application/xml", body: "<loc>https://radulator.com/calculators/meld-na/</loc>" },
 }, async (site) => {
-  const result = await smokeSite(site, { attempts: 1, delayMs: 0 });
+  const result = await smokeSite(site, { attempts: 1, delayMs: 0, expectedSha: "a".repeat(40) });
   assert.equal(result.ok, true);
-  assert.deepEqual(result.checks.map((check) => check.name), ["home", "known-calculator", "sitemap"]);
+  assert.deepEqual(result.checks.map((check) => check.name), ["release-sha", "home", "known-calculator", "sitemap"]);
   assert.equal(result.checks.every((check) => check.status === 200 && check.sha256.length === 64), true);
+});
+
+await withServer({
+  [`/releases/${"a".repeat(40)}.json`]: {
+    status: 200,
+    type: "application/json",
+    body: JSON.stringify({ schema: "radulator-release/v1", sha: "b".repeat(40) }),
+  },
+  "/": { status: 200, body: "Radulator" },
+}, async (site) => {
+  const result = await smokeSite(site, { attempts: 1, delayMs: 0, expectedSha: "a".repeat(40) });
+  assert.equal(result.ok, false);
+  assert.equal(result.reasonCode, "RELEASE_SHA_MISMATCH");
+  assert.equal(result.failedCheck, "release-sha");
 });
 
 await withServer({

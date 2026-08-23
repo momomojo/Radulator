@@ -17,6 +17,7 @@ import {
   canonicalJson,
   classifyRisk,
   digest,
+  publicKeyFingerprint,
   verifyAttestation,
 } from "../../../scripts/release-policy.mjs";
 import { CANDIDATE_SCHEMA } from "./judge-candidates.mjs";
@@ -218,11 +219,14 @@ async function runGenerate() {
 }
 
 async function runVerifyKeyPair() {
+  const publicKeyPath = requiredArgument("--public-key");
   await verifyKeyPairFiles({
     privateKeyPath: requiredArgument("--private-key"),
-    publicKeyPath: requiredArgument("--public-key"),
+    publicKeyPath,
   });
-  console.log(JSON.stringify({ ok: true }));
+  const fingerprint = publicKeyFingerprint(await readFile(publicKeyPath, "utf8"));
+  if (!fingerprint) throw new Error("Judge public key fingerprint could not be derived.");
+  console.log(JSON.stringify({ ok: true, publicKeyFingerprint: fingerprint }));
 }
 
 async function runSign() {

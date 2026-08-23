@@ -160,6 +160,28 @@ class InstallerTests(unittest.TestCase):
                 activation_test_runner=self.passing_activation_runner,
             )
 
+    def test_enable_refuses_same_signing_key_for_both_roles(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+        primary_private = Path(plan["keys"]["primary_private"])
+        primary_public = Path(plan["keys"]["primary_public"])
+        verification_private = Path(plan["keys"]["verification_private"])
+        verification_public = Path(plan["keys"]["verification_public"])
+        verification_private.write_bytes(primary_private.read_bytes())
+        verification_private.chmod(0o600)
+        verification_public.write_bytes(primary_public.read_bytes())
+        public_keys["radulator-verification-v1"]["publicKey"] = primary_public.read_text()
+        serialized = json.dumps(public_keys, sort_keys=True, separators=(",", ":")) + "\n"
+        for config_name in ("primary_public_keys_config", "verification_public_keys_config"):
+            Path(plan["keys"][config_name]).write_text(serialized)
+
+        with self.assertRaisesRegex(InstallError, "distinct signing keys"):
+            apply_install(
+                **self.kwargs(), enable=True, expected_public_keys=public_keys,
+                activation_test_runner=self.passing_activation_runner,
+            )
+
     def test_enable_requires_exact_github_public_key_mapping(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())

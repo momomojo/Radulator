@@ -58,6 +58,7 @@ jobs:
           node --check scripts/deployment-run-identity.mjs
           node --check scripts/reconcile-deployment.mjs
           node --check scripts/post-deploy-smoke.mjs
+          node --check scripts/write-release-marker.mjs
           node --check scripts/select-rollback-deployment.mjs
           node --check ops/hermes/radulator/judge-candidates.mjs
           node --check ops/hermes/radulator/judge-attest.mjs
@@ -76,6 +77,7 @@ jobs:
           npm run test:authorize-deployment
           npm run test:reconcile-deployment
           npm run test:post-deploy-smoke
+          npm run test:release-marker
           npm run test:rollback-deployment
           npm run test:hermes-judge-candidates
           npm run test:hermes-judge-attest

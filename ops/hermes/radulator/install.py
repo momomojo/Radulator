@@ -30,6 +30,7 @@ ACTIVATION_SELF_TESTS = (
     ("npm", "run", "test:authorize-deployment"),
     ("npm", "run", "test:reconcile-deployment"),
     ("npm", "run", "test:post-deploy-smoke"),
+    ("npm", "run", "test:release-marker"),
     ("npm", "run", "test:rollback-deployment"),
     ("npm", "run", "test:hermes-judge-candidates"),
     ("npm", "run", "test:hermes-judge-attest"),
@@ -294,6 +295,7 @@ def _verify_activation_trust(plan: dict[str, Any], expected_public_keys: dict[st
         "radulator-primary-v1": ("primary", "radulator", Path(keys["primary_public"]), Path(keys["primary_private"])),
         "radulator-verification-v1": ("verification", "default", Path(keys["verification_public"]), Path(keys["verification_private"])),
     }
+    public_fingerprints: set[str] = set()
     for key_id, (role, profile, public_path, private_path) in expected.items():
         configured = configs[0].get(key_id)
         if not isinstance(configured, dict) or configured.get("role") != role or configured.get("profile") != profile:
@@ -314,6 +316,15 @@ def _verify_activation_trust(plan: dict[str, Any], expected_public_keys: dict[st
         )
         if verification.returncode != 0:
             raise InstallError(f"Judge private and public keys do not match for {key_id}.")
+        try:
+            fingerprint = json.loads(verification.stdout).get("publicKeyFingerprint")
+        except (json.JSONDecodeError, AttributeError) as error:
+            raise InstallError(f"Judge public-key fingerprint readback is malformed for {key_id}.") from error
+        if not isinstance(fingerprint, str) or not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
+            raise InstallError(f"Judge public-key fingerprint readback is malformed for {key_id}.")
+        public_fingerprints.add(fingerprint)
+    if len(public_fingerprints) != len(expected):
+        raise InstallError("Primary and verification roles must use distinct signing keys.")
     if not isinstance(expected_public_keys, dict) or configs[0] != expected_public_keys:
         raise InstallError("GitHub public-key configuration must exactly match both local judge trust configurations.")
 

@@ -40,7 +40,7 @@ Schema `radulator-clinical-attestation/v1` contains:
 - judge key id, judge role, Hermes profile, model/provider declaration, and review time;
 - an Ed25519 signature over canonical JSON excluding the signature field.
 
-The carrier is a GitHub PR comment containing the canonical signed record. Carrier identity is informational; cryptographic signature, exact-state binding, and configured public-key role are authoritative. Any valid signed NEEDS_FIX is terminal for its unchanged exact state; unsigned, malformed, or unverifiable carriers are ignored and reported without gaining veto authority.
+The carrier is a GitHub PR comment containing the canonical signed record. Carrier identity is informational; cryptographic signature, exact-state binding, and configured public-key role are authoritative. High-risk quorum additionally requires distinct profile identities and distinct normalized public-key fingerprints, so one credential cannot impersonate both roles. Any valid signed NEEDS_FIX is terminal for its unchanged exact state; unsigned, malformed, or unverifiable carriers are ignored and reported without gaining veto authority.
 
 ## Review handoff
 
@@ -57,7 +57,7 @@ The trusted gate publishes the required check `Radulator Clinical Release Gate (
 - Production PRs require smoke, targeted, full-suite CI, and a fresh risk-tiered judge gate over the whole batch.
 - A human-token merge to `main` deploys from the normal `push` event. A trusted-controller merge made with `GITHUB_TOKEN` performs an explicit `radulator-auto-merge-deploy` repository dispatch after authoritative merge readback, because its push event cannot start another workflow.
 - Deployment authorization independently proves a real main push, the exact current-main merged PR, or the rollback selector's exact last-known-good SHA before checking out the artifact source. A scheduled reconciler retries an absent automatic-merge deployment obligation.
-- Post-deploy smoke verifies the production URL, a known calculator route, and sitemap content.
+- A trusted controller writes `releases/<authorized-sha>.json` into the completed artifact. Post-deploy smoke must first retrieve that exact immutable marker, then verify the production URL, a known calculator route, and sitemap content.
 - If live smoke fails, a rollback workflow redeploys the last successful production SHA and records the failed release for remediation. It does not bypass branch protection or rewrite history.
 
 ## Lifecycle retention and learning
