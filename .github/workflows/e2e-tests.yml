@@ -52,12 +52,38 @@ jobs:
           node --check scripts/check-radulator-invariants.test.mjs
           node --check scripts/collect-loop-metrics.mjs
           node --check scripts/independent-review-gate.mjs
+          node --check scripts/release-policy.mjs
+          node --check scripts/auto-merge.mjs
+          node --check scripts/authorize-deployment.mjs
+          node --check scripts/deployment-run-identity.mjs
+          node --check scripts/reconcile-deployment.mjs
+          node --check scripts/post-deploy-smoke.mjs
+          node --check scripts/write-release-marker.mjs
+          node --check scripts/select-rollback-deployment.mjs
+          node --check ops/hermes/radulator/judge-candidates.mjs
+          node --check ops/hermes/radulator/judge-attest.mjs
           node --check scripts/search-verification-meta.mjs
           node --check scripts/ping-search-indexes.mjs
+          python3 -m py_compile \
+            ops/hermes/radulator/lifecycle_controller.py \
+            ops/hermes/radulator/learning_context.py \
+            ops/hermes/radulator/install.py
           bash -n scripts/dev-local.sh
           npm run test:search-verification
           npm run test:invariants
+          npm run test:release-policy
           npm run test:independent-review-gate
+          npm run test:auto-merge
+          npm run test:authorize-deployment
+          npm run test:reconcile-deployment
+          npm run test:post-deploy-smoke
+          npm run test:release-marker
+          npm run test:rollback-deployment
+          npm run test:hermes-judge-candidates
+          npm run test:hermes-judge-attest
+          npm run test:hermes-lifecycle
+          npm run test:hermes-learning
+          npm run test:hermes-install
           npm run check:invariants
 
       - name: Build application
