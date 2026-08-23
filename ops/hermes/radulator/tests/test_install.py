@@ -26,9 +26,17 @@ class InstallerTests(unittest.TestCase):
                 "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_runs: 1\n"
             )
             (home / "cron").mkdir()
-        self.original_radulator_jobs = b'{"jobs":[{"id":"existing","name":"keep-me","enabled":true}]}\n'
+        self.original_radulator_jobs = (
+            b'{"jobs":['
+            b'{"id":"existing","name":"keep-me","enabled":true},'
+            b'{"id":"legacy-poller","name":"pr-gate-poller","enabled":true,"state":"scheduled"}'
+            b']}\n'
+        )
+        self.original_default_jobs = (
+            b'[{"id":"legacy-judge","name":"judge-queue","enabled":true,"state":"scheduled"}]\n'
+        )
         (self.radulator_home / "cron" / "jobs.json").write_bytes(self.original_radulator_jobs)
-        (self.default_home / "cron" / "jobs.json").write_text("[]\n")
+        (self.default_home / "cron" / "jobs.json").write_bytes(self.original_default_jobs)
 
     def tearDown(self):
         self.temp.cleanup()
@@ -67,6 +75,9 @@ class InstallerTests(unittest.TestCase):
         managed = [job for job in [*radulator_jobs, *default_jobs] if job["name"].startswith("radulator-clinical-") or job["name"].startswith("radulator-release-")]
         self.assertEqual(len(managed), 4)
         self.assertTrue(all(job["enabled"] is False for job in managed))
+        legacy = [job for job in [*radulator_jobs, *default_jobs] if job["name"] in {"pr-gate-poller", "judge-queue"}]
+        self.assertEqual(len(legacy), 2)
+        self.assertTrue(all(job["enabled"] is True for job in legacy))
         self.assertEqual(len({job["id"] for job in managed}), 4)
         self.assertTrue((self.radulator_home / "skills" / "radulator-clinical-judge" / "SKILL.md").exists())
         self.assertTrue((self.default_home / "skills" / "radulator-clinical-judge" / "SKILL.md").exists())
@@ -90,6 +101,17 @@ class InstallerTests(unittest.TestCase):
             jobs = payload["jobs"] if isinstance(payload, dict) else payload
             managed = [job for job in jobs if job["id"] in result["job_ids"].values()]
             self.assertTrue(all(job["enabled"] is True for job in managed))
+            legacy = [job for job in jobs if job["name"] in {"pr-gate-poller", "judge-queue"}]
+            self.assertTrue(all(job["enabled"] is False for job in legacy))
+            self.assertTrue(all(job["state"] == "paused" for job in legacy))
+            self.assertTrue(all(job["paused_reason"] == "replaced-by-radulator-signed-clinical-gate" for job in legacy))
+
+        enabled_bytes = {
+            path: path.read_bytes()
+            for path in (self.radulator_home / "cron" / "jobs.json", self.default_home / "cron" / "jobs.json")
+        }
+        apply_install(**self.kwargs(), enable=True)
+        self.assertTrue(all(path.read_bytes() == content for path, content in enabled_bytes.items()))
 
         apply_install(**self.kwargs(), disable=True)
         for path in (self.radulator_home / "cron" / "jobs.json", self.default_home / "cron" / "jobs.json"):
@@ -100,7 +122,7 @@ class InstallerTests(unittest.TestCase):
 
         restore_install(self.radulator_home)
         self.assertEqual((self.radulator_home / "cron" / "jobs.json").read_bytes(), self.original_radulator_jobs)
-        self.assertEqual((self.default_home / "cron" / "jobs.json").read_text(), "[]\n")
+        self.assertEqual((self.default_home / "cron" / "jobs.json").read_bytes(), self.original_default_jobs)
         self.assertFalse((self.radulator_home / "skills" / "radulator-release-learning" / "SKILL.md").exists())
 
     def test_refuses_non_xhigh_or_non_absolute_inputs(self):

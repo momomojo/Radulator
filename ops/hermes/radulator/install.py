@@ -21,6 +21,7 @@ BACKUP_SCHEMA = "radulator-hermes-backup/v1"
 MODEL = "gpt-5.6-sol"
 PROVIDER = "openai-codex"
 XHIGH = re.compile(r"(?m)^\s*reasoning_effort\s*:\s*[\"']?xhigh[\"']?\s*(?:#.*)?$")
+LEGACY_GATE_JOB_NAMES = frozenset({"pr-gate-poller", "judge-queue"})
 
 
 class InstallError(RuntimeError):
@@ -193,6 +194,29 @@ def _job_for_write(template: dict[str, Any], existing: dict[str, Any] | None, en
     return value
 
 
+def _retire_legacy_gate(job: dict[str, Any]) -> dict[str, Any]:
+    if job.get("name") not in LEGACY_GATE_JOB_NAMES:
+        return job
+    if (
+        job.get("enabled") is False
+        and job.get("state") == "paused"
+        and job.get("paused_reason") == "replaced-by-radulator-signed-clinical-gate"
+        and job.get("next_run_at") is None
+    ):
+        return job
+    now = _now()
+    value = dict(job)
+    value.update({
+        "enabled": False,
+        "state": "paused",
+        "paused_at": job.get("paused_at") if job.get("enabled") is False and job.get("paused_at") else now,
+        "paused_reason": "replaced-by-radulator-signed-clinical-gate",
+        "updated_at": now,
+        "next_run_at": None,
+    })
+    return value
+
+
 def _serialize(value: Any) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -269,6 +293,8 @@ def apply_install(
         }
         rewritten = [replacements.pop(job.get("name"), job) for job in jobs]
         rewritten.extend(replacements.values())
+        if enable:
+            rewritten = [_retire_legacy_gate(job) for job in rewritten]
         if isinstance(payload, list):
             payload = rewritten
         else:
