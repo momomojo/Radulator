@@ -352,6 +352,9 @@ function normalizePr(data, stateEpoch = null) {
   return {
     repositoryId: data.base.repo.id,
     number: data.number,
+    title: data.title,
+    body: data.body || "",
+    url: data.html_url,
     state: data.state,
     draft: data.draft,
     createdAt: data.created_at,
