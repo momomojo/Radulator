@@ -14,11 +14,11 @@ The gate independently derives the exact state:
 
 A signed `radulator-clinical-attestation/v1` PR comment must match every field. Signatures use Ed25519. Private keys remain on the Mac mini judge profiles; GitHub stores only the public-key map in the `RADULATOR_JUDGE_PUBLIC_KEYS_JSON` repository variable.
 
-Standard risk requires the configured `primary` judge. High risk requires both `primary` and `verification` keys from separate Hermes profiles. A newest NEEDS_FIX, invalid signature, stale review time, missing role, state change, failed CI check, hold label, or missing `ready-for-gate` label completes the gate as failure.
+Standard risk requires the configured `primary` judge. High risk requires both `primary` and `verification` keys from separate Hermes profiles. Any valid signed `NEEDS_FIX` is terminal for that unchanged exact state. Malformed or unverifiable outsider carriers are ignored and never gain veto authority; without a valid current signed role the gate still fails as missing quorum. Stale review time, state change, failed CI, a hold label, or a missing `ready-for-gate` label also fails the gate.
 
 ## Risk classification
 
-The trusted classifier, not the judge, sets the minimum tier. Calculator runtime changes are high risk. Clinical documentation patches are high risk when they change numeric values, formulas, thresholds, units, scoring, contraindications, interpretations, management, follow-up, staging, or guideline versions. Missing clinical patch data is also high risk. Feedback-only and other changes are standard risk and still require the primary judge.
+The trusted classifier, not the judge, sets the minimum tier. Calculator runtime changes are high risk. Clinical documentation patches are high risk when they change numeric values, formulas, thresholds, units, scoring, contraindications, interpretations, management, follow-up, staging, or guideline versions. Missing or truncated clinical patch data, clinical paths present only as `previous_filename`, and an explicit `Risk-Tier: high` PR declaration are also high risk. PR evidence and full GitHub file metadata are bound into the exact risk record. Feedback-only and other changes are standard risk and still require the primary judge.
 
 ## CI binding
 
@@ -26,7 +26,7 @@ PRs targeting `develop` require `Smoke Tests` and `Targeted Calculator Tests`. P
 
 ## State-change handling
 
-The workflow is serialized per PR/event key. It loads the state twice before evaluation. Any mismatch blocks. After publishing a check it loads state again; a change revokes success and replaces it with failure. Base-branch pushes re-evaluate all open PRs because their reviewed base changed.
+The gate loads the state twice before evaluation. Any mismatch blocks. After publishing a check it loads state again; a change revokes success and replaces it with failure. Base-branch pushes re-evaluate all open PRs because their reviewed base changed. Automatic merges use one repository-wide lane and require an active server-side repository rule with `strict_required_status_checks_policy: true`, including this exact-head gate and its GitHub App id. The controller reads the effective branch rules through GitHub's metadata-read endpoint before each evaluation, so the standard Actions token does not need repository-administration permission and GitHub still rejects a stale base after the controller's final readback.
 
 ## Configuration
 

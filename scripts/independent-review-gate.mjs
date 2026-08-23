@@ -10,6 +10,7 @@ import {
 } from "./release-policy.mjs";
 
 export const REQUIRED_CONTEXT = "Radulator Clinical Release Gate (exact head)";
+export const MAX_PR_FILES = 3000;
 export const RECORD_SCHEMA = "radulator-clinical-gate-result/v1";
 export const ATTESTATION_MARKER = "<!-- radulator-clinical-attestation/v1 -->";
 
@@ -256,6 +257,9 @@ export function gateStateFingerprint({ pr, ci, files, reviews }) {
     pr: {
       repositoryId: pr.repositoryId,
       number: pr.number,
+      changedFiles: pr.changedFiles,
+      title: pr.title || "",
+      body: pr.body || "",
       state: pr.state,
       draft: pr.draft,
       headSha: pr.headSha,
@@ -266,7 +270,15 @@ export function gateStateFingerprint({ pr, ci, files, reviews }) {
       labelsDigest: pr.labelsDigest,
     },
     ci,
-    files: (files || []).map((file) => ({ filename: file.filename, status: file.status, patch: file.patch ?? null }))
+    files: (files || []).map((file) => ({
+      filename: file.filename,
+      previousFilename: file.previousFilename ?? file.previous_filename ?? null,
+      status: file.status,
+      additions: file.additions ?? null,
+      deletions: file.deletions ?? null,
+      changes: file.changes ?? null,
+      patch: file.patch ?? null,
+    }))
       .sort((left, right) => left.filename.localeCompare(right.filename)),
     reviews: (reviews || []).map((review) => ({ id: review.id, body: review.body, updatedAt: review.updatedAt }))
       .sort((left, right) => left.id - right.id),
@@ -279,6 +291,14 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
   }
   if (!ALLOWED_BASE_REFS.has(pr.baseRef)) return failure(pr.headSha, pr.baseSha, "PR base is outside develop/main; refusing PASS.", "UNSUPPORTED_BASE");
   if (pr.state !== "open" || pr.draft) return failure(pr.headSha, pr.baseSha, "PR is not open and ready; refusing PASS.", "PR_NOT_OPEN_READY");
+  if (!completeFileList(pr, files)) {
+    return failure(
+      pr.headSha,
+      pr.baseSha,
+      `Changed-file evidence is incomplete or exceeds the ${MAX_PR_FILES}-file review limit; refusing PASS.`,
+      "INCOMPLETE_FILE_LIST",
+    );
+  }
   if (!pr.stateEpoch || !timestamp(pr.stateEpoch.eventCreatedAt) || !Number.isSafeInteger(pr.stateEpoch.eventId) || pr.stateEpoch.eventId < 0) {
     return failure(pr.headSha, pr.baseSha, "Relevant PR-state epoch is malformed; refusing PASS.", "MALFORMED_STATE_EPOCH");
   }
@@ -294,7 +314,7 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
 
   let risk;
   try {
-    risk = classifyRisk(files);
+    risk = classifyRisk(files, pr);
   } catch (error) {
     return failure(pr.headSha, pr.baseSha, `Risk classification failed: ${error.message}`, "RISK_CLASSIFICATION_ERROR");
   }
@@ -316,6 +336,14 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
     }
   }
   return success(pr, risk, quorum);
+}
+
+export function completeFileList(pr, files) {
+  return Number.isSafeInteger(pr?.changedFiles) &&
+    pr.changedFiles > 0 &&
+    pr.changedFiles <= MAX_PR_FILES &&
+    Array.isArray(files) &&
+    files.length === pr.changedFiles;
 }
 
 export async function githubRequest(token, path, options = {}) {
@@ -353,6 +381,7 @@ function normalizePr(data, stateEpoch = null) {
   return {
     repositoryId: data.base.repo.id,
     number: data.number,
+    changedFiles: data.changed_files,
     title: data.title,
     body: data.body || "",
     url: data.html_url,
@@ -385,7 +414,15 @@ function normalizeComment(comment) {
 }
 
 function normalizeFile(file) {
-  return { filename: file.filename, status: file.status, patch: typeof file.patch === "string" ? file.patch : null };
+  return {
+    filename: file.filename,
+    previousFilename: typeof file.previous_filename === "string" ? file.previous_filename : null,
+    status: file.status,
+    additions: Number.isSafeInteger(file.additions) ? file.additions : null,
+    deletions: Number.isSafeInteger(file.deletions) ? file.deletions : null,
+    changes: Number.isSafeInteger(file.changes) ? file.changes : null,
+    patch: typeof file.patch === "string" ? file.patch : null,
+  };
 }
 
 export async function loadGateState(token, owner, repo, prNumber, config) {

@@ -15,6 +15,7 @@ from ops.hermes.radulator.lifecycle_controller import (
 
 
 HEAD = "a" * 40
+NEXT_HEAD = "b" * 40
 
 
 class LifecycleLedgerTests(unittest.TestCase):
@@ -87,7 +88,7 @@ class LifecycleLedgerTests(unittest.TestCase):
         with self.assertRaisesRegex(LedgerError, "transition"):
             ledger.append(idempotency_key="c", source_id="f", task_id="t", state="complete")
 
-    def test_needs_fix_requeues_exact_sha_without_attachments(self):
+    def test_needs_fix_requires_a_new_exact_head_before_requeue(self):
         self.append("feedback", 0)
         self.append("implementing", 1)
         self.append("testing", 2)
@@ -106,16 +107,27 @@ class LifecycleLedgerTests(unittest.TestCase):
         self.assertNotIn("attachment", json.dumps(child).lower())
         self.assertEqual(actions, actions_for_event(needs_fix))
 
+        with self.assertRaisesRegex(LedgerError, "new exact head"):
+            self.ledger.append(
+                idempotency_key="resume-comment-991-same-head",
+                source_id="feedback-17",
+                task_id="t_parent",
+                state="implementing",
+                pr=42,
+                head_sha=HEAD,
+                evidence={"prerequisite_change_id": "child-created:t_rework"},
+            )
         resumed = self.ledger.append(
-            idempotency_key="resume-comment-991",
+            idempotency_key="resume-comment-991-new-head",
             source_id="feedback-17",
             task_id="t_parent",
             state="implementing",
             pr=42,
-            head_sha=HEAD,
-            evidence={"prerequisite_change_id": "child-created:t_rework"},
+            head_sha=NEXT_HEAD,
+            evidence={"prerequisite_change_id": "commit:" + NEXT_HEAD},
         )
         self.assertEqual(resumed.state, "implementing")
+        self.assertEqual(resumed.head_sha, NEXT_HEAD)
 
     def test_kanban_adapter_is_idempotent_and_verifies_readback(self):
         self.append("feedback", 0)

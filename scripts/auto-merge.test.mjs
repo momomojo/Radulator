@@ -54,6 +54,13 @@ function decisionFixture(overrides = {}) {
     pr: prFixture(overrides.pr),
     gateResult: gateFixture(overrides.gateResult),
     checkRuns: overrides.checkRuns || [checkFixture()],
+    branchRules: overrides.branchRules || [{
+      type: "required_status_checks",
+      parameters: {
+        strict_required_status_checks_policy: true,
+        required_status_checks: [{ context: REQUIRED_CONTEXT, integration_id: ACTIONS_APP_ID }],
+      },
+    }],
     expectedGateAppId: ACTIONS_APP_ID,
   };
 }
@@ -79,6 +86,36 @@ assert.equal(evaluateAutoMerge(decisionFixture({ pr: { baseRef: "feature" } })).
 assert.equal(evaluateAutoMerge(decisionFixture({ gateResult: { conclusion: "failure", eligible: false } })).reasonCode, "LIVE_GATE_NOT_PASSING");
 assert.equal(evaluateAutoMerge(decisionFixture({ gateResult: { headSha: "d".repeat(40) } })).reasonCode, "GATE_STATE_MISMATCH");
 assert.equal(evaluateAutoMerge(decisionFixture({ gateResult: { baseSha: "d".repeat(40) } })).reasonCode, "GATE_STATE_MISMATCH");
+assert.equal(evaluateAutoMerge(decisionFixture({
+  branchRules: [{
+    type: "required_status_checks",
+    parameters: { strict_required_status_checks_policy: false, required_status_checks: [{ context: REQUIRED_CONTEXT }] },
+  }],
+})).reasonCode, "BASE_UPDATE_NOT_SERVER_ENFORCED");
+assert.equal(evaluateAutoMerge(decisionFixture({
+  branchRules: [{
+    type: "required_status_checks",
+    parameters: {
+      strict_required_status_checks_policy: true,
+      required_status_checks: [{ context: REQUIRED_CONTEXT }],
+    },
+  }],
+})).reasonCode, "BASE_UPDATE_NOT_SERVER_ENFORCED");
+assert.equal(evaluateAutoMerge(decisionFixture({
+  branchRules: [{
+    type: "required_status_checks",
+    parameters: {
+      strict_required_status_checks_policy: true,
+      required_status_checks: [{ context: REQUIRED_CONTEXT, integration_id: 9999 }],
+    },
+  }],
+})).reasonCode, "BASE_UPDATE_NOT_SERVER_ENFORCED");
+assert.equal(evaluateAutoMerge(decisionFixture({
+  branchRules: [{
+    type: "required_status_checks",
+    parameters: { strict_required_status_checks_policy: true, required_status_checks: [{ context: "Other" }] },
+  }],
+})).reasonCode, "BASE_UPDATE_NOT_SERVER_ENFORCED");
 assert.equal(evaluateAutoMerge(decisionFixture({ checkRuns: [] })).reasonCode, "MISSING_GATE_CHECK");
 assert.equal(evaluateAutoMerge(decisionFixture({
   checkRuns: [checkFixture({ app: { id: 9999, slug: "other" } })],
@@ -113,6 +150,7 @@ console.log("approval-bound automatic merge tests passed");
   const api = {
     async findPullNumbers() { return [123]; },
     async loadGateState() { return structuredClone(state); },
+    async getBranchRules() { return decisionFixture().branchRules; },
     async listCheckRuns() { return [checkFixture()]; },
     async merge(number, payload) {
       calls.push({ number, payload });
@@ -158,6 +196,7 @@ console.log("approval-bound automatic merge tests passed");
     api: {
       async findPullNumbers() { return [123]; },
       async loadGateState() { return structuredClone(state); },
+      async getBranchRules() { return decisionFixture().branchRules; },
       async listCheckRuns() { return [checkFixture()]; },
       async merge() { return { merged: true, sha: mergeSha }; },
       async getPr() { return { merged: true, state: "closed", merge_commit_sha: mergeSha }; },
@@ -182,6 +221,7 @@ console.log("approval-bound automatic merge tests passed");
     api: {
       async findPullNumbers() { return [123]; },
       async loadGateState() { loads += 1; return structuredClone(state); },
+      async getBranchRules() { return decisionFixture().branchRules; },
       async listCheckRuns() { return [checkFixture()]; },
       async merge() { merged = true; return { merged: true, sha: "e".repeat(40) }; },
       async getPr() { return { merged: true, state: "closed", merge_commit_sha: "e".repeat(40) }; },

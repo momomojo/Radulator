@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { readFile, rm, stat } from "node:fs/promises";
+import { Buffer } from "node:buffer";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -10,7 +11,9 @@ import {
   generateKeyPairFiles,
   postAttestation,
   signCandidate,
+  verifyKeyPairFiles,
 } from "./judge-attest.mjs";
+import { loadPublicKeysFile } from "./public-keys.mjs";
 import { classifyRisk, digest, verifyAttestation } from "../../../scripts/release-policy.mjs";
 
 const HEAD = "a".repeat(40);
@@ -79,6 +82,21 @@ try {
     role: "primary",
     profile: "radulator",
   });
+  assert.equal(await verifyKeyPairFiles({
+    privateKeyPath: restored.privateKeyPath,
+    publicKeyPath: restored.publicKeyPath,
+  }), true);
+  const otherDirectory = path.join(temp, "other");
+  const other = await generateKeyPairFiles({
+    directory: otherDirectory,
+    keyId: "other-primary",
+    role: "primary",
+    profile: "radulator",
+  });
+  await assert.rejects(() => verifyKeyPairFiles({
+    privateKeyPath: other.privateKeyPath,
+    publicKeyPath: restored.publicKeyPath,
+  }), /do not match/);
 
   const candidate = candidateFixture();
   const decision = {
@@ -102,8 +120,41 @@ try {
     reviewedAt: "2026-08-23T20:02:00Z",
   });
   const keys = { "primary-2026-08": restored.publicConfig };
+  const publicKeysFile = path.join(temp, "public-keys.json");
+  await writeFile(publicKeysFile, `${JSON.stringify(keys)}\n`, { mode: 0o600 });
+  assert.deepEqual(await loadPublicKeysFile(publicKeysFile), keys);
+  await writeFile(publicKeysFile, "[]\n", { mode: 0o600 });
+  await assert.rejects(() => loadPublicKeysFile(publicKeysFile), /object/);
+  await writeFile(publicKeysFile, `${JSON.stringify(keys)}\n`, { mode: 0o600 });
   assert.equal(verifyAttestation(record, keys, candidate.exactState).ok, true);
   assert.match(formatAttestationCarrier(record), /radulator-clinical-attestation\/v1/);
+
+  const hugeFiles = [{
+    filename: "docs/calculators/hepatology/meld-na.md",
+    status: "modified",
+    changes: 2,
+    additions: 1,
+    deletions: 1,
+    patch: `@@ -1 +1 @@\n-${"x".repeat(300_000)}\n+${"y".repeat(300_000)}`,
+  }];
+  const hugeRisk = classifyRisk(hugeFiles);
+  const hugeCandidate = candidateFixture({
+    files: hugeFiles,
+    risk: hugeRisk,
+    exactState: { ...candidate.exactState, risk: hugeRisk },
+  });
+  const hugeRecord = signCandidate({
+    candidate: hugeCandidate,
+    decision: { ...decision, candidate_id: hugeCandidate.candidateId },
+    identity: {
+      keyId: "primary-2026-08", role: "primary", profile: "radulator",
+      model: "gpt-5.6-sol", provider: "openai-codex",
+    },
+    privateKey,
+    reviewedAt: "2026-08-23T20:02:00Z",
+  });
+  assert.ok(Buffer.byteLength(formatAttestationCarrier(hugeRecord), "utf8") < 20_000,
+    "attestation carrier remains bounded even when the review candidate contains a huge patch");
 
   assert.throws(() => signCandidate({
     candidate,
@@ -119,6 +170,22 @@ try {
     privateKey,
     reviewedAt: "2026-08-23T20:02:00Z",
   }), /Decision is malformed/);
+  assert.throws(() => signCandidate({
+    candidate,
+    decision: { ...decision, clinical_analysis: "x".repeat(8001) },
+    identity: { keyId: "primary-2026-08", role: "primary", profile: "radulator", model: "gpt-5.6-sol", provider: "openai-codex" },
+    privateKey,
+    reviewedAt: "2026-08-23T20:02:00Z",
+  }), /Decision is malformed/, "runaway analysis is rejected before publication");
+  assert.throws(() => signCandidate({
+    candidate,
+    decision: { ...decision, citations: ["not-a-url"] },
+    identity: { keyId: "primary-2026-08", role: "primary", profile: "radulator", model: "gpt-5.6-sol", provider: "openai-codex" },
+    privateKey,
+    reviewedAt: "2026-08-23T20:02:00Z",
+  }), /Decision is malformed/, "citations must be bounded HTTP(S) URLs");
+  assert.throws(() => formatAttestationCarrier({ ...record, clinical_analysis: "x".repeat(50_000) }),
+    /publication limit/, "the final carrier has an independent byte bound");
 
   let created = 0;
   const posted = await postAttestation({
@@ -130,6 +197,7 @@ try {
           pr: {
             repositoryId: candidate.exactState.repositoryId,
             number: candidate.pr,
+            changedFiles: candidate.files.length,
             headSha: candidate.headSha,
             baseSha: candidate.baseSha,
             baseRef: candidate.baseRef,
@@ -155,6 +223,7 @@ try {
         return {
           pr: {
             repositoryId: candidate.exactState.repositoryId, number: candidate.pr, headSha: candidate.headSha,
+            changedFiles: candidate.files.length,
             baseSha: candidate.baseSha, baseRef: candidate.baseRef,
             stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" },
             labelsDigest: candidate.exactState.labelsSha256,
@@ -177,7 +246,7 @@ try {
     api: {
       async loadGateState() {
         return {
-          pr: { repositoryId: candidate.exactState.repositoryId, number: 123, headSha: "0".repeat(40), baseSha: BASE, baseRef: "develop", stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" }, labelsDigest: candidate.exactState.labelsSha256 },
+          pr: { repositoryId: candidate.exactState.repositoryId, number: 123, changedFiles: candidate.files.length, headSha: "0".repeat(40), baseSha: BASE, baseRef: "develop", stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" }, labelsDigest: candidate.exactState.labelsSha256 },
           ci: candidate.ci,
           files: candidate.files,
         };

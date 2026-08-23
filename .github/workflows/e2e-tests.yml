@@ -54,6 +54,9 @@ jobs:
           node --check scripts/independent-review-gate.mjs
           node --check scripts/release-policy.mjs
           node --check scripts/auto-merge.mjs
+          node --check scripts/authorize-deployment.mjs
+          node --check scripts/deployment-run-identity.mjs
+          node --check scripts/reconcile-deployment.mjs
           node --check scripts/post-deploy-smoke.mjs
           node --check scripts/select-rollback-deployment.mjs
           node --check ops/hermes/radulator/judge-candidates.mjs
@@ -70,6 +73,8 @@ jobs:
           npm run test:release-policy
           npm run test:independent-review-gate
           npm run test:auto-merge
+          npm run test:authorize-deployment
+          npm run test:reconcile-deployment
           npm run test:post-deploy-smoke
           npm run test:rollback-deployment
           npm run test:hermes-judge-candidates

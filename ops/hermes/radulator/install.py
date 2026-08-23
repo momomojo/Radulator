@@ -20,8 +20,25 @@ SCHEMA = "radulator-hermes-install/v1"
 BACKUP_SCHEMA = "radulator-hermes-backup/v1"
 MODEL = "gpt-5.6-sol"
 PROVIDER = "openai-codex"
+CANONICAL_GITHUB_REPOSITORY = "momomojo/Radulator"
 XHIGH = re.compile(r"(?m)^\s*reasoning_effort\s*:\s*[\"']?xhigh[\"']?\s*(?:#.*)?$")
 LEGACY_GATE_JOB_NAMES = frozenset({"pr-gate-poller", "judge-queue"})
+ACTIVATION_SELF_TESTS = (
+    ("npm", "run", "test:release-policy"),
+    ("npm", "run", "test:independent-review-gate"),
+    ("npm", "run", "test:auto-merge"),
+    ("npm", "run", "test:authorize-deployment"),
+    ("npm", "run", "test:reconcile-deployment"),
+    ("npm", "run", "test:post-deploy-smoke"),
+    ("npm", "run", "test:rollback-deployment"),
+    ("npm", "run", "test:hermes-judge-candidates"),
+    ("npm", "run", "test:hermes-judge-attest"),
+    ("npm", "run", "test:hermes-lifecycle"),
+    ("npm", "run", "test:hermes-learning"),
+    ("npm", "run", "check:invariants"),
+    ("npm", "run", "lint", "--", "--quiet"),
+    ("npm", "run", "build"),
+)
 
 
 class InstallError(RuntimeError):
@@ -87,6 +104,7 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
     required = [
         repo / "ops/hermes/radulator/judge-candidates.mjs",
         repo / "ops/hermes/radulator/judge-attest.mjs",
+        repo / "ops/hermes/radulator/public-keys.mjs",
         repo / "ops/hermes/radulator/lifecycle_controller.py",
         repo / "ops/hermes/radulator/learning_context.py",
     ]
@@ -100,24 +118,28 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
     verification_private = default_home / "keys/radulator-clinical/radulator-verification-v1.private.pem"
     primary_public = primary_private.with_name("radulator-primary-v1.public.pem")
     verification_public = verification_private.with_name("radulator-verification-v1.public.pem")
+    primary_public_keys_config = primary_private.with_name("public-keys.json")
+    verification_public_keys_config = verification_private.with_name("public-keys.json")
     jobs = [
         _job(
             "radulator-clinical-judge-primary", radulator_home, repo,
             "Collect exact ready-for-gate candidates with "
-            f"node {overlay / 'judge-candidates.mjs'} --repo momomojo/Radulator --role primary. "
+            f"node {overlay / 'judge-candidates.mjs'} --repo {CANONICAL_GITHUB_REPOSITORY} --role primary "
+            f"--public-keys-file {primary_public_keys_config}. "
             "For each candidate use radulator-clinical-judge, write one decision JSON, sign with the configured primary key, "
             f"key id radulator-primary-v1, role primary, profile radulator, model {MODEL}, provider {PROVIDER}, and private key "
-            f"{primary_private}; post it and require authoritative GitHub comment "
+            f"{primary_private}; post with --public-keys-file {primary_public_keys_config} and require authoritative GitHub comment "
             "readback. Never edit source or self-improve during judgment.",
             ["radulator-clinical-judge"], "*/10 * * * *",
         ),
         _job(
             "radulator-clinical-judge-verification", default_home, repo,
             "Collect exact high-risk verification candidates with "
-            f"node {overlay / 'judge-candidates.mjs'} --repo momomojo/Radulator --role verification. "
+            f"node {overlay / 'judge-candidates.mjs'} --repo {CANONICAL_GITHUB_REPOSITORY} --role verification "
+            f"--public-keys-file {verification_public_keys_config}. "
             "Act only after an exact primary PASS. Use radulator-clinical-judge independently, sign only with the verification key, "
             f"key id radulator-verification-v1, role verification, profile default, model {MODEL}, provider {PROVIDER}, and private "
-            f"key {verification_private}; post it and require authoritative GitHub "
+            f"key {verification_private}; post with --public-keys-file {verification_public_keys_config} and require authoritative GitHub "
             "comment readback. Never edit source or self-improve during judgment.",
             ["radulator-clinical-judge"], "3-59/10 * * * *",
         ),
@@ -138,14 +160,17 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
     return {
         "schema": SCHEMA,
         "repo": str(repo),
+        "github_repository": CANONICAL_GITHUB_REPOSITORY,
         "radulator_home": str(radulator_home),
         "default_home": str(default_home),
         "jobs": jobs,
         "keys": {
             "primary_private": str(primary_private),
             "primary_public": str(primary_public),
+            "primary_public_keys_config": str(primary_public_keys_config),
             "verification_private": str(verification_private),
             "verification_public": str(verification_public),
+            "verification_public_keys_config": str(verification_public_keys_config),
         },
     }
 
@@ -255,6 +280,55 @@ def _control_manifest_path(plan: dict[str, Any]) -> Path:
     return Path(plan["radulator_home"]) / "state/radulator-release-control.json"
 
 
+def _verify_activation_trust(plan: dict[str, Any], expected_public_keys: dict[str, Any] | None) -> None:
+    keys = plan["keys"]
+    signer = Path(plan["repo"]) / "ops/hermes/radulator/judge-attest.mjs"
+    config_paths = [Path(keys["primary_public_keys_config"]), Path(keys["verification_public_keys_config"])]
+    try:
+        configs = [json.loads(path.read_text(encoding="utf-8")) for path in config_paths]
+    except (OSError, json.JSONDecodeError) as error:
+        raise InstallError(f"Local judge public-key trust configuration is missing or invalid: {error}") from error
+    if configs[0] != configs[1] or set(configs[0]) != {"radulator-primary-v1", "radulator-verification-v1"}:
+        raise InstallError("Judge profiles must share the same complete two-role public-key trust configuration.")
+    expected = {
+        "radulator-primary-v1": ("primary", "radulator", Path(keys["primary_public"]), Path(keys["primary_private"])),
+        "radulator-verification-v1": ("verification", "default", Path(keys["verification_public"]), Path(keys["verification_private"])),
+    }
+    for key_id, (role, profile, public_path, private_path) in expected.items():
+        configured = configs[0].get(key_id)
+        if not isinstance(configured, dict) or configured.get("role") != role or configured.get("profile") != profile:
+            raise InstallError(f"Local judge trust configuration has the wrong identity for {key_id}.")
+        if not public_path.is_file() or not private_path.is_file():
+            raise InstallError(f"Judge key pair is incomplete for {key_id}.")
+        if configured.get("publicKey") != public_path.read_text(encoding="utf-8"):
+            raise InstallError(f"Judge public-key trust configuration does not match {public_path}.")
+        if private_path.stat().st_mode & 0o777 != 0o600:
+            raise InstallError(f"Judge private key must use mode 0600: {private_path}")
+        verification = subprocess.run(
+            [
+                "node", str(signer), "verify-key-pair",
+                "--private-key", str(private_path),
+                "--public-key", str(public_path),
+            ],
+            cwd=plan["repo"], check=False, capture_output=True, text=True,
+        )
+        if verification.returncode != 0:
+            raise InstallError(f"Judge private and public keys do not match for {key_id}.")
+    if not isinstance(expected_public_keys, dict) or configs[0] != expected_public_keys:
+        raise InstallError("GitHub public-key configuration must exactly match both local judge trust configurations.")
+
+
+def _run_activation_self_tests(plan: dict[str, Any], runner=None) -> None:
+    runner = runner or subprocess.run
+    for command in ACTIVATION_SELF_TESTS:
+        result = runner(
+            list(command), cwd=plan["repo"], check=False, capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "no test output").strip()[-1000:]
+            raise InstallError(f"Repository activation self-test failed ({' '.join(command)}): {detail}")
+
+
 def _capture_backup(plan: dict[str, Any], targets: list[Path]) -> None:
     destination = _backup_path(plan)
     if destination.exists():
@@ -273,10 +347,15 @@ def _capture_backup(plan: dict[str, Any], targets: list[Path]) -> None:
 
 def apply_install(
     *, repo: Path, radulator_home: Path, default_home: Path, enable: bool = False, disable: bool = False,
+    expected_public_keys: dict[str, Any] | None = None,
+    activation_test_runner=None,
 ) -> dict[str, Any]:
     if enable and disable:
         raise InstallError("enable and disable are mutually exclusive.")
     plan = build_plan(repo=repo, radulator_home=radulator_home, default_home=default_home)
+    if enable:
+        _verify_activation_trust(plan, expected_public_keys)
+        _run_activation_self_tests(plan, activation_test_runner)
     homes = {str(Path(plan["radulator_home"])): [], str(Path(plan["default_home"])): []}
     for template in plan["jobs"]:
         homes[template["_home"]].append(template)
@@ -366,7 +445,34 @@ def generate_keys(plan: dict[str, Any]) -> dict[str, dict[str, Any]]:
         if generated.get("keyId") != key_id or not isinstance(generated.get("publicConfig"), dict):
             raise InstallError(f"Judge key generation returned malformed public configuration for {role}.")
         public[key_id] = generated["publicConfig"]
+    serialized = _serialize(public)
+    for name in ("primary_public_keys_config", "verification_public_keys_config"):
+        _atomic_write(Path(plan["keys"][name]), serialized, 0o600)
     return public
+
+
+def read_github_public_keys(repository: str, runner=None) -> dict[str, Any]:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository or ""):
+        raise InstallError("GitHub repository must use owner/name format.")
+    if repository != CANONICAL_GITHUB_REPOSITORY:
+        raise InstallError(
+            f"Installer is bound to {CANONICAL_GITHUB_REPOSITORY}; refusing trust readback from {repository}."
+        )
+    runner = runner or subprocess.run
+    command = [
+        "gh", "variable", "get", "RADULATOR_JUDGE_PUBLIC_KEYS_JSON",
+        "--repo", repository,
+    ]
+    result = runner(command, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise InstallError(f"GitHub public-key variable readback failed: {(result.stderr or result.stdout).strip()}")
+    try:
+        public_keys = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise InstallError("GitHub public-key variable readback is not valid JSON.") from error
+    if not isinstance(public_keys, dict):
+        raise InstallError("GitHub public-key variable readback must be a JSON object.")
+    return public_keys
 
 
 def main() -> None:
@@ -382,6 +488,7 @@ def main() -> None:
     state.add_argument("--enable", action="store_true", help="Enable already-installed managed jobs after self-tests.")
     state.add_argument("--disable", action="store_true", help="Disable all managed jobs without removing their configuration.")
     parser.add_argument("--generate-keys", action="store_true", help="Create persistent signing credentials; requires operator approval.")
+    parser.add_argument("--github-repository", default=CANONICAL_GITHUB_REPOSITORY)
     args = parser.parse_args()
     if args.restore:
         print(json.dumps(restore_install(args.radulator_home), indent=2, sort_keys=True))
@@ -393,9 +500,10 @@ def main() -> None:
         sanitized = {**plan, "jobs": [{key: value for key, value in job.items() if not key.startswith("_")} for job in plan["jobs"]]}
         print(json.dumps(sanitized, indent=2, sort_keys=True))
         return
+    expected_public_keys = read_github_public_keys(args.github_repository) if args.enable else None
     result = apply_install(
         repo=args.repo, radulator_home=args.radulator_home, default_home=args.default_home,
-        enable=args.enable, disable=args.disable,
+        enable=args.enable, disable=args.disable, expected_public_keys=expected_public_keys,
     )
     if args.generate_keys:
         result["public_keys"] = generate_keys(plan)

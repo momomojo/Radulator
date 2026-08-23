@@ -11,16 +11,17 @@ Radulator feedback work moves without an owner handoff from an implementation co
 - A standard-risk change requires one PASS from the primary clinical judge.
 - A high-risk change requires PASS from both the primary clinical judge and the independent verification judge.
 - The two judge identities use separate Ed25519 signing keys and separate Hermes profiles. The private keys stay on the Mac mini; GitHub receives only the public keys.
-- Any new commit, base-branch advance, relevant label transition, failed check, NEEDS_FIX verdict, malformed attestation, or absent required signature invalidates authorization.
+- Any new commit, base-branch advance, relevant label transition, failed check, valid signed NEEDS_FIX verdict, or absent required signature invalidates authorization. Malformed or unverifiable outsider carriers never contribute authority or veto a valid signed quorum.
 - Attestations authorize review and merge of one exact state only. They do not grant general repository access.
 
 ## Risk classification
 
-The trusted gate computes risk from the GitHub PR file list and patch; the judge cannot lower it.
+The trusted gate computes risk from the complete GitHub PR file list and patch; the judge cannot lower it. Because GitHub caps the PR-files endpoint at 3,000 files, the gate refuses incomplete evidence or any PR above that bound.
 
 High risk includes:
 
 - any production calculator implementation change under `src/components/calculators/`, except feedback-only components;
+- shared calculator execution, input/UI primitives, result-display, URL-state, context, or report-snippet code that can affect clinical inputs or outputs;
 - missing/truncated patch data for a clinical runtime or clinical documentation file;
 - calculator documentation changes that add or remove formulas, numeric thresholds, score boundaries, units, dosage, contraindications, interpretations, management recommendations, follow-up intervals, staging, or guideline versions;
 - any explicit high-risk declaration in the PR evidence.
@@ -39,7 +40,7 @@ Schema `radulator-clinical-attestation/v1` contains:
 - judge key id, judge role, Hermes profile, model/provider declaration, and review time;
 - an Ed25519 signature over canonical JSON excluding the signature field.
 
-The carrier is a GitHub PR comment containing the canonical signed record. Carrier identity is informational; cryptographic signature, exact-state binding, and configured public-key role are authoritative. An authorized key id with a malformed or invalid newest record blocks the gate.
+The carrier is a GitHub PR comment containing the canonical signed record. Carrier identity is informational; cryptographic signature, exact-state binding, and configured public-key role are authoritative. Any valid signed NEEDS_FIX is terminal for its unchanged exact state; unsigned, malformed, or unverifiable carriers are ignored and reported without gaining veto authority.
 
 ## Review handoff
 
@@ -55,6 +56,7 @@ The trusted gate publishes the required check `Radulator Clinical Release Gate (
 - The existing promoter opens `develop -> main` PRs.
 - Production PRs require smoke, targeted, full-suite CI, and a fresh risk-tiered judge gate over the whole batch.
 - A human-token merge to `main` deploys from the normal `push` event. A trusted-controller merge made with `GITHUB_TOKEN` performs an explicit `radulator-auto-merge-deploy` repository dispatch after authoritative merge readback, because its push event cannot start another workflow.
+- Deployment authorization independently proves a real main push, the exact current-main merged PR, or the rollback selector's exact last-known-good SHA before checking out the artifact source. A scheduled reconciler retries an absent automatic-merge deployment obligation.
 - Post-deploy smoke verifies the production URL, a known calculator route, and sitemap content.
 - If live smoke fails, a rollback workflow redeploys the last successful production SHA and records the failed release for remediation. It does not bypass branch protection or rewrite history.
 

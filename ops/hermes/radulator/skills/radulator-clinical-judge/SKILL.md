@@ -26,7 +26,7 @@ Create one decision JSON per candidate:
 }
 ```
 
-Use `judge-attest.mjs sign` with only this profile's configured key/role, then `judge-attest.mjs post`. Treat the posted-comment readback as the completion proof. Never copy, request, or print a private key.
+Use `judge-attest.mjs sign` with only this profile's configured key/role, then `judge-attest.mjs post --public-keys-file <this-profile>/keys/radulator-clinical/public-keys.json`. Treat the posted-comment readback as the completion proof. Never copy, request, or print a private key.
 
 ## Boundaries
 

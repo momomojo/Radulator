@@ -1,38 +1,49 @@
 name: Deploy to GitHub Pages
+run-name: Deploy ${{ github.event_name == 'push' && format('main-push:{0}', github.sha) || format('{0}:{1}', github.event.action, github.event.client_payload.ref) }}
 
 on:
   push:
     branches: [ main ]
   repository_dispatch:
-    types: [radulator-auto-merge-deploy]
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: Immutable source SHA to deploy (blank uses current main)
-        required: false
-        type: string
-      rollback_of_run:
-        description: Failed deployment run being rolled back
-        required: false
-        type: string
+    types: [radulator-auto-merge-deploy, radulator-verified-rollback-deploy]
 
 permissions:
   contents: read
+  pull-requests: read
+  actions: read
   pages: write
   id-token: write
 
 concurrency:
   group: pages
+  queue: max
   cancel-in-progress: false
 
 jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.authorize.outputs.ref }}
+    steps:
+      - name: Checkout trusted deployment authorizer
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Authorize immutable deployment source
+        id: authorize
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/authorize-deployment.mjs
+
   build:
+    needs: authorize
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.client_payload.ref || inputs.ref || github.sha }}
+          ref: ${{ needs.authorize.outputs.ref }}
         
       - name: Setup Node
         uses: actions/setup-node@v4

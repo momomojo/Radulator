@@ -30,7 +30,7 @@
 - Modify: `package.json`
 
 **Interfaces:**
-- Produces: `classifyRisk(files) -> {tier, version, filesSha256, reasons}`
+- Produces: `classifyRisk(files) -> {tier, version, filesSha256, evidenceSha256, reasonCodes, reasonCount}` with bounded signed metadata; detailed reasons remain only in the local review candidate
 - Produces: `canonicalJson(value)`, `digest(value)`, `verifyAttestation(record, publicKeys, exactState)`
 - Produces: `requiredJudgeRoles(tier) -> ["primary"] | ["primary", "verification"]`
 
@@ -95,8 +95,8 @@
 - [ ] Write failing tests using a local HTTP server for home/calculator/sitemap success and each failure; add rollback-selection tests rejecting the failed/current/non-main SHA.
 - [ ] Run focused tests and confirm missing implementations fail.
 - [ ] Implement smoke and rollback selection.
-- [ ] Allow `deploy.yml` workflow dispatch to deploy a supplied immutable ref, run production smoke after Pages deploy, and upload its evidence.
-- [ ] On a failed main deployment, dispatch `deploy.yml` for the last successful main SHA and record the rollback summary without modifying protected branches.
+- [ ] Accept only verified `repository_dispatch` events: exact merged-current-main evidence for promotion or independently recomputed failed-run/last-known-good evidence for rollback; never accept a caller-supplied manual deployment ref. Run production smoke after Pages deploy and upload its evidence.
+- [ ] On a failed main deployment, emit a rollback repository dispatch for the independently selected last successful main SHA, re-authorize it inside `deploy.yml`, and record the rollback summary without modifying protected branches.
 - [ ] Run focused tests and commit `feat: verify and roll back failed deployments`.
 
 ### Task 5: Mac mini judge collection and signing overlay

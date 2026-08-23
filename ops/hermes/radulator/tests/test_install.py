@@ -1,5 +1,6 @@
 import json
 import stat
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,7 @@ from ops.hermes.radulator.install import (
     apply_install,
     build_plan,
     generate_keys,
+    read_github_public_keys,
     restore_install,
 )
 
@@ -37,6 +39,11 @@ class InstallerTests(unittest.TestCase):
         )
         (self.radulator_home / "cron" / "jobs.json").write_bytes(self.original_radulator_jobs)
         (self.default_home / "cron" / "jobs.json").write_bytes(self.original_default_jobs)
+        self.activation_commands = []
+
+    def passing_activation_runner(self, command, **_kwargs):
+        self.activation_commands.append(command)
+        return subprocess.CompletedProcess(command, 0, "passed", "")
 
     def tearDown(self):
         self.temp.cleanup()
@@ -51,6 +58,7 @@ class InstallerTests(unittest.TestCase):
     def test_dry_plan_is_read_only_and_uses_profile_level_xhigh(self):
         plan = build_plan(**self.kwargs())
         self.assertEqual(plan["schema"], "radulator-hermes-install/v1")
+        self.assertEqual(plan["github_repository"], "momomojo/Radulator")
         self.assertEqual(len(plan["jobs"]), 4)
         self.assertFalse((self.radulator_home / "state" / "radulator-release-control.json").exists())
         for job in plan["jobs"]:
@@ -60,6 +68,8 @@ class InstallerTests(unittest.TestCase):
             self.assertNotIn("effort", job)
             self.assertNotIn("reasoning_effort", job)
             self.assertFalse(job["enabled"])
+        judge_jobs = [job for job in plan["jobs"] if job["name"].startswith("radulator-clinical-judge-")]
+        self.assertTrue(all("--public-keys-file" in job["prompt"] for job in judge_jobs))
 
     def test_apply_is_disabled_first_idempotent_and_separates_keys(self):
         first = apply_install(**self.kwargs())
@@ -95,7 +105,11 @@ class InstallerTests(unittest.TestCase):
 
     def test_enable_then_restore_recovers_original_files(self):
         result = apply_install(**self.kwargs())
-        apply_install(**self.kwargs(), enable=True)
+        public_keys = generate_keys(build_plan(**self.kwargs()))
+        apply_install(
+            **self.kwargs(), enable=True, expected_public_keys=public_keys,
+            activation_test_runner=self.passing_activation_runner,
+        )
         for path in (self.radulator_home / "cron" / "jobs.json", self.default_home / "cron" / "jobs.json"):
             payload = json.loads(path.read_text())
             jobs = payload["jobs"] if isinstance(payload, dict) else payload
@@ -110,7 +124,10 @@ class InstallerTests(unittest.TestCase):
             path: path.read_bytes()
             for path in (self.radulator_home / "cron" / "jobs.json", self.default_home / "cron" / "jobs.json")
         }
-        apply_install(**self.kwargs(), enable=True)
+        apply_install(
+            **self.kwargs(), enable=True, expected_public_keys=public_keys,
+            activation_test_runner=self.passing_activation_runner,
+        )
         self.assertTrue(all(path.read_bytes() == content for path, content in enabled_bytes.items()))
 
         apply_install(**self.kwargs(), disable=True)
@@ -124,6 +141,56 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual((self.radulator_home / "cron" / "jobs.json").read_bytes(), self.original_radulator_jobs)
         self.assertEqual((self.default_home / "cron" / "jobs.json").read_bytes(), self.original_default_jobs)
         self.assertFalse((self.radulator_home / "skills" / "radulator-release-learning" / "SKILL.md").exists())
+
+    def test_enable_refuses_missing_local_judge_trust_configuration(self):
+        apply_install(**self.kwargs())
+        with self.assertRaisesRegex(InstallError, "public-key|trust|key pair"):
+            apply_install(**self.kwargs(), enable=True)
+
+    def test_enable_refuses_mismatched_private_and_public_key_pair(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+        verification_private = Path(plan["keys"]["verification_private"])
+        verification_private.write_bytes(Path(plan["keys"]["primary_private"]).read_bytes())
+        verification_private.chmod(0o600)
+        with self.assertRaisesRegex(InstallError, "do not match"):
+            apply_install(
+                **self.kwargs(), enable=True, expected_public_keys=public_keys,
+                activation_test_runner=self.passing_activation_runner,
+            )
+
+    def test_enable_requires_exact_github_public_key_mapping(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+        with self.assertRaisesRegex(InstallError, "GitHub public-key"):
+            apply_install(**self.kwargs(), enable=True)
+        mismatched = json.loads(json.dumps(public_keys))
+        mismatched["radulator-primary-v1"]["profile"] = "wrong"
+        with self.assertRaisesRegex(InstallError, "GitHub public-key"):
+            apply_install(
+                **self.kwargs(), enable=True, expected_public_keys=mismatched,
+                activation_test_runner=self.passing_activation_runner,
+            )
+
+    def test_enable_refuses_any_failed_repository_self_test(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+
+        def failing_runner(command, **_kwargs):
+            return subprocess.CompletedProcess(command, 1, "", "synthetic failure")
+
+        before_radulator = (self.radulator_home / "cron" / "jobs.json").read_bytes()
+        before_default = (self.default_home / "cron" / "jobs.json").read_bytes()
+        with self.assertRaisesRegex(InstallError, "activation self-test failed"):
+            apply_install(
+                **self.kwargs(), enable=True, expected_public_keys=public_keys,
+                activation_test_runner=failing_runner,
+            )
+        self.assertEqual(before_radulator, (self.radulator_home / "cron" / "jobs.json").read_bytes())
+        self.assertEqual(before_default, (self.default_home / "cron" / "jobs.json").read_bytes())
 
     def test_refuses_non_xhigh_or_non_absolute_inputs(self):
         (self.default_home / "config.yaml").write_text("agent:\n  reasoning_effort: high\n")
@@ -144,9 +211,28 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(Path(plan["keys"]["verification_public"]).name, "radulator-verification-v1.public.pem")
         self.assertTrue(Path(plan["keys"]["primary_public"]).is_file())
         self.assertTrue(Path(plan["keys"]["verification_public"]).is_file())
+        primary_config = Path(plan["keys"]["primary_public_keys_config"])
+        verification_config = Path(plan["keys"]["verification_public_keys_config"])
+        self.assertEqual(json.loads(primary_config.read_text()), public)
+        self.assertEqual(primary_config.read_bytes(), verification_config.read_bytes())
         for key in ("primary_private", "verification_private"):
             mode = Path(plan["keys"][key]).stat().st_mode
             self.assertEqual(stat.S_IMODE(mode), 0o600)
+
+    def test_reads_authoritative_github_public_key_variable(self):
+        expected = {"radulator-primary-v1": {"role": "primary", "profile": "radulator", "publicKey": "pem"}}
+
+        def runner(command, **_kwargs):
+            self.assertEqual(command, [
+                "gh", "variable", "get", "RADULATOR_JUDGE_PUBLIC_KEYS_JSON",
+                "--repo", "momomojo/Radulator",
+            ])
+            return subprocess.CompletedProcess(command, 0, json.dumps(expected), "")
+
+        self.assertEqual(read_github_public_keys("momomojo/Radulator", runner=runner), expected)
+
+        with self.assertRaisesRegex(InstallError, "bound to momomojo/Radulator"):
+            read_github_public_keys("someone-else/Radulator", runner=runner)
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ function checkSort(left, right) {
   return time || (right.id || 0) - (left.id || 0);
 }
 
-export function evaluateAutoMerge({ pr, gateResult, checkRuns, expectedGateAppId }) {
+export function evaluateAutoMerge({ pr, gateResult, checkRuns, branchRules, expectedGateAppId }) {
   if (pr?.merged) return blocked("ALREADY_MERGED", "Pull request is already merged.");
   if (!pr || pr.state !== "open" || pr.draft) return blocked("PR_NOT_OPEN_READY", "Pull request is not open and ready.");
   if (!ALLOWED_BASE_REFS.has(pr.baseRef)) return blocked("UNSUPPORTED_BASE", "Pull request base is outside develop/main.");
@@ -33,6 +33,18 @@ export function evaluateAutoMerge({ pr, gateResult, checkRuns, expectedGateAppId
   }
   if (gateResult.headSha !== pr.headSha || gateResult.baseSha !== pr.baseSha) {
     return blocked("GATE_STATE_MISMATCH", "Gate result does not bind the current pull request head/base.");
+  }
+  const strictGateRule = (branchRules || []).find((rule) =>
+    rule?.type === "required_status_checks" &&
+    rule.parameters?.strict_required_status_checks_policy === true &&
+    (rule.parameters?.required_status_checks || []).some((check) =>
+      check?.context === REQUIRED_CONTEXT &&
+      check.integration_id === expectedGateAppId));
+  if (!strictGateRule) {
+    return blocked(
+      "BASE_UPDATE_NOT_SERVER_ENFORCED",
+      "Base branch protection must strictly require the exact-head clinical gate before automatic merge.",
+    );
   }
 
   const exactChecks = (checkRuns || [])
@@ -75,6 +87,7 @@ function defaultApi(env) {
     findPullNumbers: () => findPullNumbers(token, owner, repo, env),
     loadGateState: (prNumber) => loadGateState(token, owner, repo, prNumber, config),
     listCheckRuns: (headSha) => paged(token, checkRunsPath(owner, repo, headSha), "check_runs"),
+    getBranchRules: (baseRef) => paged(token, `/repos/${owner}/${repo}/rules/branches/${encodeURIComponent(baseRef)}`),
     merge: (prNumber, payload) => githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
       method: "PUT",
       body: JSON.stringify(payload),
@@ -111,11 +124,15 @@ export async function runAutoMerge({
     }
 
     const gateResult = evaluateGateImpl(current);
-    const checks = await client.listCheckRuns(current.pr.headSha);
+    const [checks, branchRules] = await Promise.all([
+      client.listCheckRuns(current.pr.headSha),
+      client.getBranchRules(current.pr.baseRef),
+    ]);
     let decision = evaluateAutoMerge({
       pr: current.pr,
       gateResult,
       checkRuns: checks,
+      branchRules,
       expectedGateAppId: Number(env.RADULATOR_CI_APP_ID || 15368),
     });
     if (!decision.ok) {
@@ -133,11 +150,15 @@ export async function runAutoMerge({
       continue;
     }
     const finalGate = evaluateGateImpl(finalState);
-    const finalChecks = await client.listCheckRuns(finalState.pr.headSha);
+    const [finalChecks, finalBranchRules] = await Promise.all([
+      client.listCheckRuns(finalState.pr.headSha),
+      client.getBranchRules(finalState.pr.baseRef),
+    ]);
     decision = evaluateAutoMerge({
       pr: finalState.pr,
       gateResult: finalGate,
       checkRuns: finalChecks,
+      branchRules: finalBranchRules,
       expectedGateAppId: Number(env.RADULATOR_CI_APP_ID || 15368),
     });
     if (!decision.ok) {

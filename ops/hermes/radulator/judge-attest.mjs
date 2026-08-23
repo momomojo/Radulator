@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { generateKeyPairSync, sign } from "node:crypto";
+import { createPrivateKey, createPublicKey, generateKeyPairSync, sign } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   ATTESTATION_MARKER,
-  configuredPublicKeys,
+  completeFileList,
   githubRequest,
   loadGateState,
 } from "../../../scripts/independent-review-gate.mjs";
@@ -20,6 +20,12 @@ import {
   verifyAttestation,
 } from "../../../scripts/release-policy.mjs";
 import { CANDIDATE_SCHEMA } from "./judge-candidates.mjs";
+import { loadPublicKeysFile } from "./public-keys.mjs";
+
+const MAX_ANALYSIS_BYTES = 8000;
+const MAX_CITATIONS = 16;
+const MAX_CITATION_BYTES = 1024;
+const MAX_CARRIER_BYTES = 50_000;
 
 async function atomicWrite(destination, content, mode) {
   const temporary = `${destination}.tmp-${process.pid}`;
@@ -67,15 +73,40 @@ export async function generateKeyPairFiles({ directory, keyId, role, profile }) 
   };
 }
 
+export async function verifyKeyPairFiles({ privateKeyPath, publicKeyPath }) {
+  const [privatePem, publicPem] = await Promise.all([
+    readFile(privateKeyPath, "utf8"),
+    readFile(publicKeyPath, "utf8"),
+  ]);
+  const derived = createPublicKey(createPrivateKey(privatePem)).export({ type: "spki", format: "pem" });
+  const configured = createPublicKey(publicPem).export({ type: "spki", format: "pem" });
+  if (derived !== configured) throw new Error("Judge private and public keys do not match.");
+  return true;
+}
+
+function validCitation(citation) {
+  if (typeof citation !== "string" || !citation.trim() || Buffer.byteLength(citation.trim(), "utf8") > MAX_CITATION_BYTES) {
+    return false;
+  }
+  try {
+    const parsed = new URL(citation.trim());
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 function validDecision(decision, candidate) {
   return decision &&
     decision.candidate_id === candidate.candidateId &&
     ["PASS", "NEEDS_FIX"].includes(decision.verdict) &&
     typeof decision.clinical_analysis === "string" &&
     decision.clinical_analysis.trim() &&
+    Buffer.byteLength(decision.clinical_analysis.trim(), "utf8") <= MAX_ANALYSIS_BYTES &&
     Array.isArray(decision.citations) &&
     decision.citations.length > 0 &&
-    decision.citations.every((citation) => typeof citation === "string" && citation.trim());
+    decision.citations.length <= MAX_CITATIONS &&
+    decision.citations.every(validCitation);
 }
 
 export function signCandidate({ candidate, decision, identity, privateKey, reviewedAt = new Date().toISOString() }) {
@@ -117,11 +148,18 @@ export function signCandidate({ candidate, decision, identity, privateKey, revie
 }
 
 export function formatAttestationCarrier(record) {
-  return `${ATTESTATION_MARKER}\n\`\`\`json\n${JSON.stringify(record, null, 2)}\n\`\`\``;
+  const body = `${ATTESTATION_MARKER}\n\`\`\`json\n${JSON.stringify(record, null, 2)}\n\`\`\``;
+  if (Buffer.byteLength(body, "utf8") > MAX_CARRIER_BYTES) {
+    throw new Error(`Attestation carrier exceeds the ${MAX_CARRIER_BYTES}-byte publication limit.`);
+  }
+  return body;
 }
 
 function exactStateFromLive(state) {
-  const risk = classifyRisk(state.files);
+  if (!completeFileList(state.pr, state.files)) {
+    throw new Error("Live changed-file evidence is incomplete or exceeds the review limit.");
+  }
+  const risk = classifyRisk(state.files, state.pr);
   return {
     repositoryId: state.pr.repositoryId,
     pr: state.pr.number,
@@ -179,6 +217,14 @@ async function runGenerate() {
   }, null, 2));
 }
 
+async function runVerifyKeyPair() {
+  await verifyKeyPairFiles({
+    privateKeyPath: requiredArgument("--private-key"),
+    publicKeyPath: requiredArgument("--public-key"),
+  });
+  console.log(JSON.stringify({ ok: true }));
+}
+
 async function runSign() {
   const [candidate, decision, privateKey] = await Promise.all([
     readFile(requiredArgument("--candidate"), "utf8").then(JSON.parse),
@@ -208,10 +254,11 @@ async function runPost() {
   const record = JSON.parse(await readFile(requiredArgument("--attestation"), "utf8"));
   if (!token || !repository.includes("/")) throw new Error("GitHub token and owner/repo are required.");
   const [owner, repo] = repository.split("/");
+  const publicKeys = await loadPublicKeysFile(requiredArgument("--public-keys-file"));
   const config = {
     expectedWorkflowId: Number(process.env.RADULATOR_E2E_WORKFLOW_ID || 0),
     expectedCiAppId: Number(process.env.RADULATOR_CI_APP_ID || 15368),
-    publicKeys: configuredPublicKeys(process.env),
+    publicKeys,
   };
   const api = {
     loadGateState: (pr) => loadGateState(token, owner, repo, pr, config),
@@ -221,15 +268,16 @@ async function runPost() {
     }),
     getComment: (commentId) => githubRequest(token, `/repos/${owner}/${repo}/issues/comments/${commentId}`),
   };
-  console.log(JSON.stringify(await postAttestation({ record, publicKeys: config.publicKeys, api })));
+  console.log(JSON.stringify(await postAttestation({ record, publicKeys, api })));
 }
 
 async function run() {
   const command = process.argv[2];
   if (command === "generate-key") return runGenerate();
+  if (command === "verify-key-pair") return runVerifyKeyPair();
   if (command === "sign") return runSign();
   if (command === "post") return runPost();
-  throw new Error("Command must be generate-key, sign, or post.");
+  throw new Error("Command must be generate-key, verify-key-pair, sign, or post.");
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

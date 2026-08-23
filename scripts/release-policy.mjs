@@ -2,7 +2,7 @@
 import { createHash, verify } from "node:crypto";
 
 export const ATTESTATION_SCHEMA = "radulator-clinical-attestation/v1";
-export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v1";
+export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v2";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
@@ -12,11 +12,22 @@ const FEEDBACK_ONLY_FILES = new Set([
 ]);
 const CLINICAL_RUNTIME_PREFIXES = [
   "src/components/calculators/",
+  "src/components/forms/",
+  "src/components/display/",
+  "src/components/ui/",
+  "src/context/",
 ];
+const CLINICAL_RUNTIME_FILES = new Set([
+  "src/App.jsx",
+  "src/components/StaticCalculatorShell.jsx",
+  "src/hooks/useUrlSync.js",
+  "src/lib/reportSnippets.js",
+]);
 const CLINICAL_DOCUMENT_PREFIXES = [
   "docs/calculators/",
 ];
 const CLINICAL_SEMANTIC_PATTERN = /(?:\b\d+(?:\.\d+)?\b|[%≤≥<>]|\b(?:formula|equation|calculate|score|boundary|cutoff|cut-off|threshold|unit|dose|dosage|contraindicat\w*|interpret\w*|management|recommend\w*|follow[- ]?up|interval|stage|staging|grade|guideline|version|diagnos\w*|treatment)\b)/i;
+const EXPLICIT_HIGH_RISK_PATTERN = /(?:<!--\s*radulator-risk\s*:\s*high\s*-->|^\s*(?:radulator[-_ ]*)?(?:clinical[-_ ]*)?risk(?:[-_ ]*tier)?\s*:\s*high\s*$)/im;
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -41,7 +52,15 @@ function normalizeFile(file) {
   }
   return {
     filename: file.filename,
+    previousFilename: typeof file.previous_filename === "string" && file.previous_filename
+      ? file.previous_filename
+      : typeof file.previousFilename === "string" && file.previousFilename
+        ? file.previousFilename
+        : null,
     status: typeof file.status === "string" && file.status ? file.status : "modified",
+    additions: Number.isSafeInteger(file.additions) && file.additions >= 0 ? file.additions : null,
+    deletions: Number.isSafeInteger(file.deletions) && file.deletions >= 0 ? file.deletions : null,
+    changes: Number.isSafeInteger(file.changes) && file.changes >= 0 ? file.changes : null,
     patch: typeof file.patch === "string" ? file.patch.replace(/\r\n/g, "\n") : null,
   };
 }
@@ -53,38 +72,82 @@ function changedPatchLines(patch) {
     .join("\n");
 }
 
-export function classifyRisk(files) {
+function normalizedEvidence(evidence) {
+  return {
+    title: typeof evidence?.title === "string" ? evidence.title : "",
+    body: typeof evidence?.body === "string" ? evidence.body : "",
+  };
+}
+
+export function analyzeRisk(files, evidence = {}) {
   if (!Array.isArray(files) || files.length === 0) throw new Error("At least one changed file is required.");
   const normalized = files.map(normalizeFile).sort((left, right) => left.filename.localeCompare(right.filename));
-  const reasons = [];
+  const normalizedPrEvidence = normalizedEvidence(evidence);
+  const details = [];
+  const reasonCodes = new Set();
+
+  if (EXPLICIT_HIGH_RISK_PATTERN.test(`${normalizedPrEvidence.title}\n${normalizedPrEvidence.body}`)) {
+    details.push("PR evidence explicitly declares high risk");
+    reasonCodes.add("EXPLICIT_HIGH_RISK");
+  }
 
   for (const file of normalized) {
-    const runtime = CLINICAL_RUNTIME_PREFIXES.some((prefix) => file.filename.startsWith(prefix));
-    const clinicalDocument = CLINICAL_DOCUMENT_PREFIXES.some((prefix) => file.filename.startsWith(prefix));
+    const paths = [...new Set([file.filename, file.previousFilename].filter(Boolean))];
+    const runtimePaths = paths.filter((candidate) =>
+      CLINICAL_RUNTIME_FILES.has(candidate) ||
+      CLINICAL_RUNTIME_PREFIXES.some((prefix) => candidate.startsWith(prefix)));
+    const clinicalDocumentPaths = paths.filter((candidate) => CLINICAL_DOCUMENT_PREFIXES.some((prefix) => candidate.startsWith(prefix)));
+    const runtime = runtimePaths.some((candidate) => !FEEDBACK_ONLY_FILES.has(candidate));
+    const clinicalDocument = clinicalDocumentPaths.length > 0;
+    const changedLines = file.patch === null ? null : changedPatchLines(file.patch).split("\n").filter(Boolean).length;
+    const patchTruncated = file.changes !== null && changedLines !== null && changedLines < file.changes;
 
-    if (runtime && !FEEDBACK_ONLY_FILES.has(file.filename)) {
-      reasons.push(`${file.filename}: calculator runtime changes are high risk`);
-      if (file.patch === null) reasons.push(`${file.filename}: clinical runtime patch is missing`);
+    if (runtime) {
+      details.push(`${runtimePaths.join(" -> ")}: calculator runtime changes are high risk`);
+      reasonCodes.add("CLINICAL_RUNTIME_CHANGE");
+      if (file.patch === null) {
+        details.push(`${file.filename}: clinical runtime patch is missing`);
+        reasonCodes.add("CLINICAL_RUNTIME_PATCH_MISSING");
+      } else if (patchTruncated) {
+        details.push(`${file.filename}: clinical runtime patch is truncated`);
+        reasonCodes.add("CLINICAL_RUNTIME_PATCH_TRUNCATED");
+      }
       continue;
     }
 
     if (clinicalDocument) {
       if (file.patch === null) {
-        reasons.push(`${file.filename}: clinical documentation patch is missing`);
+        details.push(`${file.filename}: clinical documentation patch is missing`);
+        reasonCodes.add("CLINICAL_DOCUMENT_PATCH_MISSING");
+      } else if (patchTruncated) {
+        details.push(`${file.filename}: clinical documentation patch is truncated`);
+        reasonCodes.add("CLINICAL_DOCUMENT_PATCH_TRUNCATED");
       } else if (CLINICAL_SEMANTIC_PATTERN.test(changedPatchLines(file.patch))) {
-        reasons.push(`${file.filename}: clinical semantics, numeric content, or guidance changed`);
+        details.push(`${file.filename}: clinical semantics, numeric content, or guidance changed`);
+        reasonCodes.add("CLINICAL_DOCUMENT_SEMANTICS_CHANGE");
       }
     }
   }
 
-  const uniqueReasons = [...new Set(reasons)].sort();
+  const uniqueDetails = [...new Set(details)].sort();
+  const compactCodes = [...reasonCodes].sort();
   return {
-    tier: uniqueReasons.length ? "high" : "standard",
-    version: RISK_CLASSIFIER_VERSION,
-    filesSha256: digest(normalized),
-    reasons: uniqueReasons.length ? uniqueReasons : ["No high-risk clinical runtime or semantic documentation change detected"],
-    files: normalized,
+    risk: {
+      tier: uniqueDetails.length ? "high" : "standard",
+      version: RISK_CLASSIFIER_VERSION,
+      filesSha256: digest(normalized),
+      evidenceSha256: digest(normalizedPrEvidence),
+      reasonCodes: compactCodes.length ? compactCodes : ["NO_HIGH_RISK_CHANGE"],
+      reasonCount: uniqueDetails.length,
+    },
+    details: uniqueDetails.length
+      ? uniqueDetails
+      : ["No high-risk clinical runtime or semantic documentation change detected"],
   };
+}
+
+export function classifyRisk(files, evidence = {}) {
+  return analyzeRisk(files, evidence).risk;
 }
 
 export function requiredJudgeRoles(tier) {

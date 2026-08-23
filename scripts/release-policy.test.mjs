@@ -106,14 +106,36 @@ const feedbackRisk = classifyRisk([{
 assert.equal(feedbackRisk.tier, "standard");
 assert.deepEqual(requiredJudgeRoles(feedbackRisk.tier), ["primary"]);
 
-const calculatorRisk = classifyRisk([{
+const calculatorFiles = [{
   filename: "src/components/calculators/MELDNa.jsx",
   status: "modified",
   patch: "@@ -10 +10 @@\n-const score = 1\n+const score = 2",
-}]);
+}];
+const calculatorRisk = classifyRisk(calculatorFiles);
 assert.equal(calculatorRisk.tier, "high");
-assert.match(calculatorRisk.reasons.join(" "), /calculator runtime/i);
+assert.ok(calculatorRisk.reasonCodes.includes("CLINICAL_RUNTIME_CHANGE"));
 assert.deepEqual(requiredJudgeRoles(calculatorRisk.tier), ["primary", "verification"]);
+assert.equal("files" in calculatorRisk, false, "signed risk metadata never embeds changed patches");
+
+for (const filename of [
+  "src/App.jsx",
+  "src/components/StaticCalculatorShell.jsx",
+  "src/components/forms/Field.jsx",
+  "src/components/display/ResultDisplay.jsx",
+  "src/components/ui/input.jsx",
+  "src/components/ui/select.jsx",
+  "src/components/ui/switch.jsx",
+  "src/context/CalculatorContext.jsx",
+  "src/hooks/useUrlSync.js",
+  "src/lib/reportSnippets.js",
+]) {
+  const sharedRuntimeRisk = classifyRisk([{
+    filename,
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-return oldValue\n+return newValue",
+  }]);
+  assert.equal(sharedRuntimeRisk.tier, "high", `${filename} can change shared clinical inputs or outputs`);
+}
 
 const thresholdRisk = classifyRisk([{
   filename: "docs/calculators/hepatology/meld-na.md",
@@ -128,10 +150,53 @@ const missingPatchRisk = classifyRisk([{
   patch: null,
 }]);
 assert.equal(missingPatchRisk.tier, "high");
-assert.match(missingPatchRisk.reasons.join(" "), /missing/i);
+assert.ok(missingPatchRisk.reasonCodes.includes("CLINICAL_DOCUMENT_PATCH_MISSING"));
 
-const reorderedRisk = classifyRisk([...calculatorRisk.files].reverse());
+const explicitHighRisk = classifyRisk([{
+  filename: "README.md",
+  status: "modified",
+  patch: "@@ -1 +1 @@\n-old\n+new",
+}], { title: "Improve copy", body: "Risk-Tier: high" });
+assert.equal(explicitHighRisk.tier, "high");
+assert.ok(explicitHighRisk.reasonCodes.includes("EXPLICIT_HIGH_RISK"));
+
+const renamedClinicalRisk = classifyRisk([{
+  filename: "archive/meld-na.md",
+  previous_filename: "docs/calculators/hepatology/meld-na.md",
+  status: "renamed",
+  changes: 0,
+  patch: null,
+}]);
+assert.equal(renamedClinicalRisk.tier, "high");
+assert.ok(renamedClinicalRisk.reasonCodes.includes("CLINICAL_DOCUMENT_PATCH_MISSING"));
+
+const truncatedClinicalPatchRisk = classifyRisk([{
+  filename: "docs/calculators/hepatology/meld-na.md",
+  status: "modified",
+  changes: 10,
+  additions: 5,
+  deletions: 5,
+  patch: "@@ -1 +1 @@\n-old\n+new",
+}]);
+assert.equal(truncatedClinicalPatchRisk.tier, "high");
+assert.ok(truncatedClinicalPatchRisk.reasonCodes.includes("CLINICAL_DOCUMENT_PATCH_TRUNCATED"));
+
+assert.notEqual(
+  classifyRisk([{ filename: "README.md", status: "modified", patch: "+new" }], { body: "Risk: high" }).evidenceSha256,
+  classifyRisk([{ filename: "README.md", status: "modified", patch: "+new" }], { body: "Risk: standard" }).evidenceSha256,
+  "PR evidence is part of the exact risk record",
+);
+
+const reorderedRisk = classifyRisk([...calculatorFiles].reverse());
 assert.equal(calculatorRisk.filesSha256, reorderedRisk.filesSha256);
+
+const manyClinicalRisk = classifyRisk(Array.from({ length: 3000 }, (_, index) => ({
+  filename: `src/components/calculators/generated-${index}.jsx`,
+  status: "modified",
+  patch: "@@ -1 +1 @@\n-return oldValue\n+return newValue",
+})));
+assert.equal(manyClinicalRisk.reasonCount, 3000);
+assert.ok(JSON.stringify(manyClinicalRisk).length < 2000, "signed risk metadata is bounded independently of file count");
 
 const standardState = stateFixture(feedbackRisk);
 const primaryPass = signedRecord(PRIMARY, standardState);

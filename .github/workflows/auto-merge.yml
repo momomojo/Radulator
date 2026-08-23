@@ -38,7 +38,10 @@ permissions:
   actions: read
 
 concurrency:
-  group: radulator-auto-merge-${{ github.event.pull_request.number || github.event.check_run.head_sha || inputs.base_ref || github.run_id }}
+  # One repository-wide merge lane prevents two independently authorized PRs
+  # from racing the same protected base between final readback and merge.
+  group: radulator-auto-merge
+  queue: max
   cancel-in-progress: false
 
 jobs:

@@ -46,6 +46,7 @@ function stateFixture(files = STANDARD_FILES, reviews = []) {
     pr: {
       repositoryId: 1027532341,
       number: 123,
+      changedFiles: files.length,
       title: "Improve exact behavior",
       body: "Evidence: https://example.org/source",
       state: "open",
@@ -83,7 +84,7 @@ function stateFixture(files = STANDARD_FILES, reviews = []) {
 }
 
 function signedCarrier(keyId, role, profile, privateKey, state, verdict = "PASS") {
-  const risk = classifyRisk(state.files);
+  const risk = classifyRisk(state.files, state.pr);
   const exact = {
     repositoryId: state.pr.repositoryId,
     pr: state.pr.number,
@@ -141,6 +142,13 @@ assert.equal(standard[0].role, "primary");
 assert.equal(standard[0].risk.tier, "standard");
 assert.equal(standard[0].headSha, HEAD);
 assert.equal(standard[0].candidateId.length, 64);
+assert.ok(standard[0].riskDetails.length > 0);
+
+{
+  const incomplete = stateFixture();
+  incomplete.pr.changedFiles = 2;
+  assert.deepEqual(await collect("primary", incomplete), [], "incomplete GitHub file evidence is never judged");
+}
 
 const highNoPrimary = await collect("verification", stateFixture(HIGH_FILES));
 assert.deepEqual(highNoPrimary, [], "verification waits for the primary PASS on high risk");

@@ -28,6 +28,8 @@
     "test:release-policy": "node scripts/release-policy.test.mjs",
     "test:auto-merge": "node scripts/auto-merge.test.mjs",
     "test:post-deploy-smoke": "node scripts/post-deploy-smoke.test.mjs",
+    "test:authorize-deployment": "node scripts/authorize-deployment.test.mjs",
+    "test:reconcile-deployment": "node scripts/reconcile-deployment.test.mjs",
     "test:rollback-deployment": "node scripts/select-rollback-deployment.test.mjs",
     "test:hermes-judge-candidates": "node ops/hermes/radulator/judge-candidates.test.mjs",
     "test:hermes-judge-attest": "node ops/hermes/radulator/judge-attest.test.mjs",

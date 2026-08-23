@@ -6,17 +6,18 @@ import { fileURLToPath } from "node:url";
 
 import {
   ATTESTATION_MARKER,
-  configuredPublicKeys,
+  completeFileList,
   githubRequest,
   loadGateState,
   paged,
 } from "../../../scripts/independent-review-gate.mjs";
 import {
-  classifyRisk,
+  analyzeRisk,
   digest,
   requiredJudgeRoles,
   verifyAttestation,
 } from "../../../scripts/release-policy.mjs";
+import { loadPublicKeysFile } from "./public-keys.mjs";
 
 export const CANDIDATE_SCHEMA = "radulator-judge-candidate/v1";
 
@@ -76,7 +77,7 @@ function shouldReview(role, risk, existing) {
   throw new Error(`Unsupported judge role: ${role}`);
 }
 
-function candidate(repository, role, state, risk, exact, now) {
+function candidate(repository, role, state, risk, riskDetails, exact, now) {
   const requiredRoles = requiredJudgeRoles(risk.tier);
   const candidateId = digest({ repository, role, exact });
   return {
@@ -94,6 +95,7 @@ function candidate(repository, role, state, risk, exact, now) {
     baseSha: state.pr.baseSha,
     baseRef: state.pr.baseRef,
     risk,
+    riskDetails,
     exactState: exact,
     files: state.files,
     ci: state.ci,
@@ -108,11 +110,13 @@ export async function collectCandidates({ repository, role, publicKeys, api, now
     const labels = new Set((pr.labels || []).map((label) => `${label.name || label}`.toLowerCase()));
     if (!labels.has("ready-for-gate")) continue;
     const state = await api.loadGateState(pr.number);
-    if (!state.ci?.ok || !Array.isArray(state.files) || !state.files.length) continue;
-    const risk = classifyRisk(state.files);
+    if (!state.ci?.ok || !completeFileList(state.pr, state.files)) continue;
+    const { risk, details: riskDetails } = analyzeRisk(state.files, state.pr);
     const exact = exactState(state, risk);
     const existing = newestByRole(state, publicKeys, exact);
-    if (shouldReview(role, risk, existing)) candidates.push(candidate(repository, role, state, risk, exact, now));
+    if (shouldReview(role, risk, existing)) {
+      candidates.push(candidate(repository, role, state, risk, riskDetails, exact, now));
+    }
   }
   return candidates.sort((left, right) => left.pr - right.pr || left.candidateId.localeCompare(right.candidateId));
 }
@@ -144,6 +148,12 @@ function argument(name, fallback = null) {
   return index >= 0 && index + 1 < process.argv.length ? process.argv[index + 1] : fallback;
 }
 
+function requiredArgument(name) {
+  const value = argument(name);
+  if (!value) throw new Error(`${name} is required.`);
+  return value;
+}
+
 async function run() {
   const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
   const repository = argument("--repo", process.env.PIPELINE_REPO || "momomojo/Radulator");
@@ -151,10 +161,11 @@ async function run() {
   const cacheDir = argument("--cache-dir", path.join(process.env.HERMES_HOME || process.cwd(), "state", "radulator-judge-candidates"));
   if (!token || !repository.includes("/") || !role) throw new Error("GitHub token, --repo, and --role are required.");
   const [owner, repo] = repository.split("/");
+  const publicKeys = await loadPublicKeysFile(requiredArgument("--public-keys-file"));
   const config = {
     expectedWorkflowId: Number(process.env.RADULATOR_E2E_WORKFLOW_ID || 0),
     expectedCiAppId: Number(process.env.RADULATOR_CI_APP_ID || 15368),
-    publicKeys: configuredPublicKeys(process.env),
+    publicKeys,
   };
   const api = {
     async listOpenPrs() {
@@ -168,7 +179,7 @@ async function run() {
   };
   // Prove the token reaches the intended repository without printing it.
   await githubRequest(token, `/repos/${owner}/${repo}`);
-  const candidates = await collectCandidates({ repository, role, publicKeys: config.publicKeys, api });
+  const candidates = await collectCandidates({ repository, role, publicKeys, api });
   const cachedPaths = await writeCandidateCache(cacheDir, candidates);
   console.log(JSON.stringify({ schema: CANDIDATE_SCHEMA, role, count: candidates.length, cachedPaths, candidates }, null, 2));
 }

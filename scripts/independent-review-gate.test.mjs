@@ -62,6 +62,7 @@ function prFixture(overrides = {}) {
   return {
     repositoryId: 1027532341,
     number: 99,
+    changedFiles: 1,
     state: "open",
     draft: false,
     headSha: HEAD,
@@ -134,7 +135,7 @@ function ciFixture(pr, { workflowRuns, checkRuns } = {}) {
 }
 
 function exactState(pr, ci, files) {
-  const risk = classifyRisk(files);
+  const risk = classifyRisk(files, pr);
   return {
     repositoryId: pr.repositoryId,
     pr: pr.number,
@@ -249,6 +250,8 @@ expectBlocked("PR_NOT_OPEN_READY", { pr: { draft: true } });
 expectBlocked("READY_LABEL_MISSING", { pr: { labels: [] } });
 expectBlocked("HOLD_PRESENT", { pr: { labels: ["ready-for-gate", "hold"] } });
 expectBlocked("CI_NOT_EXACT_SUCCESS", { ci: { ok: false, summary: "latest run failed", evidence: [] } });
+expectBlocked("INCOMPLETE_FILE_LIST", { pr: { changedFiles: 2 } });
+expectBlocked("INCOMPLETE_FILE_LIST", { pr: { changedFiles: 3001 } });
 expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
 
 {

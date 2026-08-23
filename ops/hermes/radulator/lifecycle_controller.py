@@ -97,6 +97,9 @@ def _validate_transition(previous: LifecycleEvent | None, event: LifecycleEvent)
     if event.state == "implementing" and previous_state in {"needs_fix", "blocked"}:
         if not event.evidence.get("prerequisite_change_id"):
             raise LedgerError("Requeue transition requires prerequisite_change_id evidence.")
+    if previous_state == "needs_fix" and event.state == "implementing":
+        if not previous.head_sha or not event.head_sha or event.head_sha == previous.head_sha:
+            raise LedgerError("NEEDS_FIX requeue requires a new exact head SHA with the correction.")
 
 
 def _semantic_payload(event: LifecycleEvent) -> dict[str, Any]:
