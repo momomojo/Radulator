@@ -206,6 +206,28 @@ assert.deepEqual(evaluateAttestationQuorum([primaryPass], PUBLIC_KEYS, standardS
   reasonCode: "ATTESTATION_QUORUM_PASS",
   roles: ["primary"],
 });
+assert.deepEqual(evaluateAttestationQuorum([primaryPass, structuredClone(primaryPass)], PUBLIC_KEYS, standardState), {
+  ok: true,
+  reasonCode: "ATTESTATION_QUORUM_PASS",
+  roles: ["primary"],
+}, "a copied byte-identical signed carrier is idempotent");
+const distinctSameTime = signedRecord(PRIMARY, standardState, {
+  clinical_analysis: "A different signed analysis at the same instant is ambiguous.",
+  reviewed_at: primaryPass.reviewed_at,
+});
+assert.equal(
+  evaluateAttestationQuorum([primaryPass, distinctSameTime], PUBLIC_KEYS, standardState).reasonCode,
+  "AMBIGUOUS_ATTESTATION",
+  "distinct signed records with the same role and timestamp remain ambiguous",
+);
+const newerAfterOldCollision = signedRecord(PRIMARY, standardState, {
+  reviewed_at: "2026-08-23T20:02:00Z",
+});
+assert.equal(
+  evaluateAttestationQuorum([primaryPass, distinctSameTime, newerAfterOldCollision], PUBLIC_KEYS, standardState).ok,
+  true,
+  "an older same-time collision cannot veto a strictly newer valid PASS",
+);
 
 const missingCitation = signedRecord(PRIMARY, standardState, { citations: [] });
 assert.equal(verifyAttestation(missingCitation, PUBLIC_KEYS, standardState).reasonCode, "MALFORMED_ATTESTATION");

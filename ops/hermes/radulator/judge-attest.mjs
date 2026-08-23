@@ -67,6 +67,7 @@ export async function generateKeyPairFiles({ directory, keyId, role, profile }) 
     publicKey = publicResult.value;
   }
   await chmod(privateKeyPath, 0o600);
+  await verifyKeyPairFiles({ privateKeyPath, publicKeyPath });
   return {
     privateKeyPath,
     publicKeyPath,

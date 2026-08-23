@@ -97,6 +97,20 @@ try {
     privateKeyPath: other.privateKeyPath,
     publicKeyPath: restored.publicKeyPath,
   }), /do not match/);
+  const mismatchedDirectory = path.join(temp, "mismatched-existing");
+  const mismatched = await generateKeyPairFiles({
+    directory: mismatchedDirectory,
+    keyId: "mismatched-primary",
+    role: "primary",
+    profile: "radulator",
+  });
+  await writeFile(mismatched.publicKeyPath, await readFile(other.publicKeyPath, "utf8"));
+  await assert.rejects(() => generateKeyPairFiles({
+    directory: mismatchedDirectory,
+    keyId: "mismatched-primary",
+    role: "primary",
+    profile: "radulator",
+  }), /do not match/, "existing key files are verified before generation reports success");
 
   const candidate = candidateFixture();
   const decision = {

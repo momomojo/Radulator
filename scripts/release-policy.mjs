@@ -258,7 +258,7 @@ function recordTargetsExactHead(record, exactState) {
 
 export function evaluateAttestationQuorum(records, publicKeys, exactState) {
   const requiredRoles = requiredJudgeRoles(exactState?.risk?.tier);
-  const byRole = new Map();
+  const verifiedPasses = new Map();
 
   for (const record of records || []) {
     if (!recordTargetsPr(record, exactState) || !recordTargetsExactHead(record, exactState)) continue;
@@ -268,18 +268,25 @@ export function evaluateAttestationQuorum(records, publicKeys, exactState) {
     if (requiredRoles.includes(role) && verified.record.verdict === "NEEDS_FIX") {
       return attestationFailure("NEEDS_FIX", `${role} judge returned NEEDS_FIX for this exact state.`);
     }
-    const existing = byRole.get(role);
-    if (!existing || Date.parse(verified.record.reviewed_at) > Date.parse(existing.reviewed_at)) {
-      byRole.set(role, verified.record);
-    } else if (Date.parse(verified.record.reviewed_at) === Date.parse(existing.reviewed_at)) {
-      return attestationFailure("AMBIGUOUS_ATTESTATION", `Newest ${role} attestations have the same review time.`);
-    }
+    if (!requiredRoles.includes(role) || verified.record.verdict !== "PASS") continue;
+    if (!verifiedPasses.has(role)) verifiedPasses.set(role, []);
+    verifiedPasses.get(role).push(verified.record);
   }
 
+  const byRole = new Map();
   for (const role of requiredRoles) {
-    const record = byRole.get(role);
-    if (!record) return attestationFailure("MISSING_JUDGE_ROLE", `A current ${role} judge attestation is required.`);
-    if (record.verdict === "NEEDS_FIX") return attestationFailure("NEEDS_FIX", `${role} judge returned NEEDS_FIX.`);
+    const passes = verifiedPasses.get(role) || [];
+    if (!passes.length) return attestationFailure("MISSING_JUDGE_ROLE", `A current ${role} judge attestation is required.`);
+    const newestTime = Math.max(...passes.map((record) => Date.parse(record.reviewed_at)));
+    const newestDistinct = new Map(
+      passes
+        .filter((record) => Date.parse(record.reviewed_at) === newestTime)
+        .map((record) => [canonicalJson(record), record]),
+    );
+    if (newestDistinct.size > 1) {
+      return attestationFailure("AMBIGUOUS_ATTESTATION", `Newest ${role} attestations have the same review time.`);
+    }
+    byRole.set(role, newestDistinct.values().next().value);
   }
 
   if (requiredRoles.length > 1) {
