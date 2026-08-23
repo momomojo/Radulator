@@ -142,6 +142,11 @@ assert.deepEqual(evaluateAttestationQuorum([primaryPass], PUBLIC_KEYS, standardS
   roles: ["primary"],
 });
 
+const missingCitation = signedRecord(PRIMARY, standardState, { citations: [] });
+assert.equal(verifyAttestation(missingCitation, PUBLIC_KEYS, standardState).reasonCode, "MALFORMED_ATTESTATION");
+const missingProvider = signedRecord(PRIMARY, standardState, { judge: { ...primaryPass.judge, provider: "" } });
+assert.equal(verifyAttestation(missingProvider, PUBLIC_KEYS, standardState).reasonCode, "MALFORMED_ATTESTATION");
+
 const mutated = structuredClone(primaryPass);
 mutated.clinical_analysis = "Changed after signing";
 assert.equal(verifyAttestation(mutated, PUBLIC_KEYS, standardState).reasonCode, "INVALID_SIGNATURE");
@@ -159,6 +164,17 @@ assert.deepEqual(evaluateAttestationQuorum([highPrimary, highVerification], PUBL
   reasonCode: "ATTESTATION_QUORUM_PASS",
   roles: ["primary", "verification"],
 });
+
+const sameProfileVerification = signedRecord(VERIFICATION, highState, {
+  judge: { ...highVerification.judge, profile: PRIMARY.profile },
+  reviewed_at: "2026-08-23T20:03:00Z",
+});
+const sameProfileKeys = structuredClone(PUBLIC_KEYS);
+sameProfileKeys[VERIFICATION.keyId].profile = PRIMARY.profile;
+assert.equal(
+  evaluateAttestationQuorum([highPrimary, sameProfileVerification], sameProfileKeys, highState).reasonCode,
+  "JUDGE_PROFILE_NOT_INDEPENDENT",
+);
 
 const needsFix = signedRecord(PRIMARY, standardState, {
   verdict: "NEEDS_FIX",

@@ -27,6 +27,7 @@ export function selectLastGoodDeployment(failedRun, runs, failedJobs = null) {
   const candidates = (runs || []).filter((run) =>
     run.id !== failedRun.id &&
     run.name === "Deploy to GitHub Pages" &&
+    run.event === "push" &&
     run.head_branch === "main" &&
     run.status === "completed" &&
     run.conclusion === "success" &&

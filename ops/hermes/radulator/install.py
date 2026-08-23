@@ -103,7 +103,8 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             "Collect exact ready-for-gate candidates with "
             f"node {overlay / 'judge-candidates.mjs'} --repo momomojo/Radulator --role primary. "
             "For each candidate use radulator-clinical-judge, write one decision JSON, sign with the configured primary key, "
-            f"key id radulator-primary-v1 and private key {primary_private}; post it and require authoritative GitHub comment "
+            f"key id radulator-primary-v1, role primary, profile radulator, model {MODEL}, provider {PROVIDER}, and private key "
+            f"{primary_private}; post it and require authoritative GitHub comment "
             "readback. Never edit source or self-improve during judgment.",
             ["radulator-clinical-judge"], "*/10 * * * *",
         ),
@@ -112,7 +113,8 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             "Collect exact high-risk verification candidates with "
             f"node {overlay / 'judge-candidates.mjs'} --repo momomojo/Radulator --role verification. "
             "Act only after an exact primary PASS. Use radulator-clinical-judge independently, sign only with the verification key, "
-            f"key id radulator-verification-v1 and private key {verification_private}; post it and require authoritative GitHub "
+            f"key id radulator-verification-v1, role verification, profile default, model {MODEL}, provider {PROVIDER}, and private "
+            f"key {verification_private}; post it and require authoritative GitHub "
             "comment readback. Never edit source or self-improve during judgment.",
             ["radulator-clinical-judge"], "3-59/10 * * * *",
         ),
@@ -321,7 +323,7 @@ def generate_keys(plan: dict[str, Any]) -> list[dict[str, Any]]:
     signer = Path(plan["repo"]) / "ops/hermes/radulator/judge-attest.mjs"
     definitions = [
         ("primary", Path(plan["radulator_home"]), "radulator-primary-v1", "primary", "radulator"),
-        ("verification", Path(plan["default_home"]), "radulator-verification-v1", "verification", "verification"),
+        ("verification", Path(plan["default_home"]), "radulator-verification-v1", "verification", "default"),
     ]
     public = []
     for _, home, key_id, role, profile in definitions:

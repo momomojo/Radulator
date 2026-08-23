@@ -112,6 +112,13 @@ try {
     privateKey,
     reviewedAt: "2026-08-23T20:02:00Z",
   }), /does not match candidate role/);
+  assert.throws(() => signCandidate({
+    candidate,
+    decision: { ...decision, citations: [] },
+    identity: { keyId: "primary-2026-08", role: "primary", profile: "radulator", model: "gpt-5.6-sol", provider: "openai-codex" },
+    privateKey,
+    reviewedAt: "2026-08-23T20:02:00Z",
+  }), /Decision is malformed/);
 
   let created = 0;
   const posted = await postAttestation({
@@ -139,6 +146,30 @@ try {
   });
   assert.equal(posted.commentId, 77);
   assert.equal(created, 1);
+
+  const idempotent = await postAttestation({
+    record,
+    publicKeys: keys,
+    api: {
+      async loadGateState() {
+        return {
+          pr: {
+            repositoryId: candidate.exactState.repositoryId, number: candidate.pr, headSha: candidate.headSha,
+            baseSha: candidate.baseSha, baseRef: candidate.baseRef,
+            stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" },
+            labelsDigest: candidate.exactState.labelsSha256,
+          },
+          ci: candidate.ci,
+          files: candidate.files,
+          reviews: [{ id: 77, body: formatAttestationCarrier(record) }],
+        };
+      },
+      async createComment() { throw new Error("must not duplicate an existing exact carrier"); },
+      async getComment() { return { id: 77, body: formatAttestationCarrier(record) }; },
+    },
+  });
+  assert.equal(idempotent.commentId, 77);
+  assert.equal(idempotent.idempotent, true);
 
   await assert.rejects(() => postAttestation({
     record,

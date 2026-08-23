@@ -57,6 +57,16 @@ assert.equal(selectLastGoodDeployment(failedRun(), [
   successRun(850, NEWER_SHA, "2026-08-23T22:00:00Z"),
 ]), null, "a run after the failure is not last-known-good evidence");
 
+assert.deepEqual(selectLastGoodDeployment(failedRun(), [
+  successRun(800, OLD_SHA, "2026-08-23T19:00:00Z"),
+  successRun(850, NEWER_SHA, "2026-08-23T20:00:00Z", { event: "workflow_dispatch" }),
+]), {
+  ref: OLD_SHA,
+  sourceRunId: 800,
+  failedRunId: 900,
+  failedSha: FAILED_SHA,
+}, "a successful rollback dispatch is not proof that its workflow head SHA was deployed");
+
 assert.equal(selectLastGoodDeployment(failedRun(), [
   successRun(850, NEWER_SHA, "2026-08-23T20:00:00Z", { head_branch: "feature" }),
   successRun(851, "not-a-sha", "2026-08-23T20:30:00Z"),

@@ -74,6 +74,7 @@ function validDecision(decision, candidate) {
     typeof decision.clinical_analysis === "string" &&
     decision.clinical_analysis.trim() &&
     Array.isArray(decision.citations) &&
+    decision.citations.length > 0 &&
     decision.citations.every((citation) => typeof citation === "string" && citation.trim());
 }
 
@@ -140,6 +141,12 @@ export async function postAttestation({ record, publicKeys, api }) {
   const verified = verifyAttestation(record, publicKeys, exactStateFromLive(live));
   if (!verified.ok) throw new Error(`Refusing stale or invalid attestation: ${verified.reasonCode}`);
   const body = formatAttestationCarrier(record);
+  const existing = (live.reviews || []).find((review) => Number.isSafeInteger(review?.id) && review.body === body);
+  if (existing) {
+    const readback = await api.getComment(existing.id);
+    if (readback?.id !== existing.id || readback.body !== body) throw new Error("Existing attestation failed authoritative readback.");
+    return { commentId: existing.id, pr: record.pr, headSha: record.head_sha, idempotent: true };
+  }
   const created = await api.createComment(body, record.pr);
   if (!Number.isSafeInteger(created?.id) || created.body !== body) throw new Error("Created attestation comment failed response verification.");
   const readback = await api.getComment(created.id);

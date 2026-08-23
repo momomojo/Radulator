@@ -136,13 +136,17 @@ export function verifyAttestation(record, publicKeys, exactState) {
     !["develop", "main"].includes(record.base_ref) ||
     !["PASS", "NEEDS_FIX"].includes(record.verdict) ||
     typeof record.clinical_analysis !== "string" || !record.clinical_analysis.trim() ||
-    !Array.isArray(record.citations) || record.citations.some((citation) => typeof citation !== "string" || !citation.trim()) ||
+    !Array.isArray(record.citations) || record.citations.length === 0 ||
+    record.citations.some((citation) => typeof citation !== "string" || !citation.trim()) ||
     !timestamp(record.reviewed_at) ||
     !DIGEST_PATTERN.test(record.labels_sha256 || "") ||
     !DIGEST_PATTERN.test(record.ci_sha256 || "") ||
     digest(record.ci) !== record.ci_sha256 ||
-    !record.judge || typeof record.judge.key_id !== "string" ||
+    !record.judge || typeof record.judge.key_id !== "string" || !record.judge.key_id ||
     !["primary", "verification"].includes(record.judge.role) ||
+    typeof record.judge.profile !== "string" || !record.judge.profile ||
+    typeof record.judge.model !== "string" || !record.judge.model ||
+    typeof record.judge.provider !== "string" || !record.judge.provider ||
     typeof record.signature !== "string" || !record.signature
   ) return attestationFailure("MALFORMED_ATTESTATION", "Attestation fields are incomplete or malformed.");
 
@@ -201,6 +205,13 @@ export function evaluateAttestationQuorum(records, publicKeys, exactState) {
     const record = byRole.get(role);
     if (!record) return attestationFailure("MISSING_JUDGE_ROLE", `A current ${role} judge attestation is required.`);
     if (record.verdict === "NEEDS_FIX") return attestationFailure("NEEDS_FIX", `${role} judge returned NEEDS_FIX.`);
+  }
+
+  if (requiredRoles.length > 1) {
+    const profiles = new Set(requiredRoles.map((role) => byRole.get(role).judge.profile));
+    if (profiles.size !== requiredRoles.length) {
+      return attestationFailure("JUDGE_PROFILE_NOT_INDEPENDENT", "High-risk approvals must come from distinct judge profiles.");
+    }
   }
 
   return { ok: true, reasonCode: "ATTESTATION_QUORUM_PASS", roles: requiredRoles };
