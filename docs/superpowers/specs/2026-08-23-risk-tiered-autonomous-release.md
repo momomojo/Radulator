@@ -54,7 +54,7 @@ The trusted gate publishes the required check `Radulator Clinical Release Gate (
 - Feature PRs merge into `develop` after exact smoke/targeted CI and the risk-tiered judge gate.
 - The existing promoter opens `develop -> main` PRs.
 - Production PRs require smoke, targeted, full-suite CI, and a fresh risk-tiered judge gate over the whole batch.
-- Merge to `main` triggers GitHub Pages deployment.
+- A human-token merge to `main` deploys from the normal `push` event. A trusted-controller merge made with `GITHUB_TOKEN` performs an explicit `radulator-auto-merge-deploy` repository dispatch after authoritative merge readback, because its push event cannot start another workflow.
 - Post-deploy smoke verifies the production URL, a known calculator route, and sitemap content.
 - If live smoke fails, a rollback workflow redeploys the last successful production SHA and records the failed release for remediation. It does not bypass branch protection or rewrite history.
 

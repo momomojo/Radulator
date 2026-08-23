@@ -6,6 +6,7 @@ import {
   digest,
   evaluateAttestationQuorum,
   requiredJudgeRoles,
+  verifyAttestation,
 } from "./release-policy.mjs";
 
 export const REQUIRED_CONTEXT = "Radulator Clinical Release Gate (exact head)";
@@ -208,10 +209,10 @@ function attestationRecords(reviews) {
   for (const review of reviews || []) {
     const parsed = parseCarrierBody(review.body);
     if (!parsed.carrier) continue;
-    if (parsed.malformed) return { records: [], malformed: true };
+    if (parsed.malformed) continue;
     records.push(parsed.record);
   }
-  return { records, malformed: false };
+  return records;
 }
 
 function exactState(pr, ci, risk) {
@@ -229,7 +230,7 @@ function exactState(pr, ci, risk) {
   };
 }
 
-function newestRequiredRecords(records, roles, state) {
+function newestRequiredRecords(records, roles, state, publicKeys) {
   const selected = new Map();
   for (const record of records) {
     if (
@@ -240,8 +241,12 @@ function newestRequiredRecords(records, roles, state) {
       record.base_ref !== state.baseRef ||
       !roles.includes(record.judge?.role)
     ) continue;
-    const existing = selected.get(record.judge.role);
-    if (!existing || Date.parse(record.reviewed_at) > Date.parse(existing.reviewed_at)) selected.set(record.judge.role, record);
+    const verified = verifyAttestation(record, publicKeys, state);
+    if (!verified.ok) continue;
+    const existing = selected.get(verified.record.judge.role);
+    if (!existing || Date.parse(verified.record.reviewed_at) > Date.parse(existing.reviewed_at)) {
+      selected.set(verified.record.judge.role, verified.record);
+    }
   }
   return selected;
 }
@@ -295,15 +300,11 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
   }
   const state = exactState(pr, ci, risk);
   const carriers = attestationRecords(reviews);
-  if (carriers.malformed) {
-    return failure(pr.headSha, pr.baseSha, "A marked clinical attestation carrier is malformed.", "MALFORMED_ATTESTATION_CARRIER", { risk });
-  }
-
-  const quorum = evaluateAttestationQuorum(carriers.records, publicKeys, state);
+  const quorum = evaluateAttestationQuorum(carriers, publicKeys, state);
   if (!quorum.ok) return failure(pr.headSha, pr.baseSha, quorum.summary, quorum.reasonCode, { risk });
 
   const roles = requiredJudgeRoles(risk.tier);
-  const selected = newestRequiredRecords(carriers.records, roles, state);
+  const selected = newestRequiredRecords(carriers, roles, state, publicKeys);
   const newestEvidenceAt = Math.max(
     Date.parse(pr.stateEpoch.eventCreatedAt),
     ...ci.evidence.map((item) => Date.parse(item.completed_at)),

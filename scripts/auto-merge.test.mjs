@@ -143,6 +143,37 @@ console.log("approval-bound automatic merge tests passed");
 }
 
 {
+  const mergeSha = "e".repeat(40);
+  const state = {
+    pr: prFixture({ baseRef: "main" }),
+    requiredCi: ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"],
+    ci: { ok: true, evidence: [] },
+    files: [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }],
+    reviews: [],
+    publicKeys: {},
+  };
+  const deploymentDispatches = [];
+  const result = await runAutoMerge({
+    env: { RADULATOR_AUTO_MERGE_ENABLED: "true" },
+    api: {
+      async findPullNumbers() { return [123]; },
+      async loadGateState() { return structuredClone(state); },
+      async listCheckRuns() { return [checkFixture()]; },
+      async merge() { return { merged: true, sha: mergeSha }; },
+      async getPr() { return { merged: true, state: "closed", merge_commit_sha: mergeSha }; },
+      async dispatchDeployment(payload) {
+        deploymentDispatches.push(payload);
+        return { accepted: true, eventType: "radulator-auto-merge-deploy" };
+      },
+    },
+    evaluateGateImpl: () => gateFixture(),
+    fingerprintImpl: () => "stable",
+  });
+  assert.deepEqual(deploymentDispatches, [{ ref: mergeSha, prNumber: 123, sourceHeadSha: HEAD }]);
+  assert.equal(result[0].deploymentDispatched, true);
+}
+
+{
   const state = { pr: prFixture() };
   let loads = 0;
   let merged = false;

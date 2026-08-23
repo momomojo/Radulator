@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
+  repository_dispatch:
+    types: [radulator-auto-merge-deploy]
   workflow_dispatch:
     inputs:
       ref:
@@ -30,7 +32,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ github.event.client_payload.ref || inputs.ref || github.sha }}
         
       - name: Setup Node
         uses: actions/setup-node@v4

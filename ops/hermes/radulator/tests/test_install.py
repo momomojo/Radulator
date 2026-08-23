@@ -140,6 +140,10 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(public["radulator-verification-v1"]["role"], "verification")
         self.assertNotEqual(public["radulator-primary-v1"]["profile"], public["radulator-verification-v1"]["profile"])
         self.assertTrue(all("PRIVATE" not in json.dumps(value) for value in public.values()))
+        self.assertEqual(Path(plan["keys"]["primary_public"]).name, "radulator-primary-v1.public.pem")
+        self.assertEqual(Path(plan["keys"]["verification_public"]).name, "radulator-verification-v1.public.pem")
+        self.assertTrue(Path(plan["keys"]["primary_public"]).is_file())
+        self.assertTrue(Path(plan["keys"]["verification_public"]).is_file())
         for key in ("primary_private", "verification_private"):
             mode = Path(plan["keys"][key]).stat().st_mode
             self.assertEqual(stat.S_IMODE(mode), 0o600)

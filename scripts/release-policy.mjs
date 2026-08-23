@@ -191,8 +191,11 @@ export function evaluateAttestationQuorum(records, publicKeys, exactState) {
   for (const record of records || []) {
     if (!recordTargetsPr(record, exactState) || !recordTargetsExactHead(record, exactState)) continue;
     const verified = verifyAttestation(record, publicKeys, exactState);
-    if (!verified.ok) return verified;
+    if (!verified.ok) continue;
     const role = verified.record.judge.role;
+    if (requiredRoles.includes(role) && verified.record.verdict === "NEEDS_FIX") {
+      return attestationFailure("NEEDS_FIX", `${role} judge returned NEEDS_FIX for this exact state.`);
+    }
     const existing = byRole.get(role);
     if (!existing || Date.parse(verified.record.reviewed_at) > Date.parse(existing.reviewed_at)) {
       byRole.set(role, verified.record);

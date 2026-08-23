@@ -2,6 +2,8 @@
 
 This overlay installs four disabled-first Hermes jobs: an exact-head primary clinical judge, an independent high-risk verification judge, a lifecycle reconciler, and a post-smoke learning worker. Standard-risk PRs require the primary signature; calculator/formula/threshold/management changes require both signatures.
 
+The trusted merge controller explicitly dispatches the Pages workflow after an automatic merge to `main`; GitHub suppresses ordinary push-triggered workflows when the merge uses the repository `GITHUB_TOKEN`. The dispatch remains eligible for the same post-deploy smoke and narrowly scoped rollback path.
+
 ## Prerequisites
 
 - Use the canonical Radulator clone and pull the reviewed control-plane release before installation.

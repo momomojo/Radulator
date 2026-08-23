@@ -14,7 +14,7 @@ export function selectLastGoodDeployment(failedRun, runs, failedJobs = null) {
   if (
     !failedRun ||
     failedRun.name !== "Deploy to GitHub Pages" ||
-    failedRun.event !== "push" ||
+    !["push", "repository_dispatch"].includes(failedRun.event) ||
     failedRun.head_branch !== "main" ||
     failedRun.status !== "completed" ||
     failedRun.conclusion !== "failure" ||

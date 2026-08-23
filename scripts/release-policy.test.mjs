@@ -150,6 +150,11 @@ assert.equal(verifyAttestation(missingProvider, PUBLIC_KEYS, standardState).reas
 const mutated = structuredClone(primaryPass);
 mutated.clinical_analysis = "Changed after signing";
 assert.equal(verifyAttestation(mutated, PUBLIC_KEYS, standardState).reasonCode, "INVALID_SIGNATURE");
+assert.equal(
+  evaluateAttestationQuorum([mutated, primaryPass], PUBLIC_KEYS, standardState).ok,
+  true,
+  "an unsigned forged carrier cannot veto a valid signed quorum",
+);
 
 const staleState = { ...standardState, headSha: "c".repeat(40) };
 assert.equal(verifyAttestation(primaryPass, PUBLIC_KEYS, staleState).reasonCode, "ATTESTATION_STATE_MISMATCH");
@@ -182,6 +187,15 @@ const needsFix = signedRecord(PRIMARY, standardState, {
   reviewed_at: "2026-08-23T20:03:00Z",
 });
 assert.equal(evaluateAttestationQuorum([primaryPass, needsFix], PUBLIC_KEYS, standardState).reasonCode, "NEEDS_FIX");
+
+const laterPassOnRejectedHead = signedRecord(PRIMARY, standardState, {
+  reviewed_at: "2026-08-23T20:04:00Z",
+});
+assert.equal(
+  evaluateAttestationQuorum([needsFix, laterPassOnRejectedHead], PUBLIC_KEYS, standardState).reasonCode,
+  "NEEDS_FIX",
+  "a later PASS cannot supersede NEEDS_FIX for the unchanged exact state",
+);
 
 const wrongRole = signedRecord(PRIMARY, highState, {
   judge: { ...highPrimary.judge, role: "verification" },

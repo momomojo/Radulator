@@ -53,6 +53,16 @@ assert.equal(selectLastGoodDeployment(failedRun({ event: "workflow_dispatch" }),
   successRun(850, NEWER_SHA, "2026-08-23T20:00:00Z"),
 ]), null, "a rollback/manual deployment failure cannot recurse");
 
+assert.equal(selectLastGoodDeployment(failedRun({ event: "repository_dispatch" }), [
+  successRun(850, NEWER_SHA, "2026-08-23T20:00:00Z"),
+], [{
+  name: "deploy",
+  steps: [
+    { name: "Deploy to GitHub Pages", status: "completed", conclusion: "success" },
+    { name: "Verify deployed site", status: "completed", conclusion: "failure" },
+  ],
+}]).ref, NEWER_SHA, "an automatic-merge deployment smoke failure is rollback eligible");
+
 assert.equal(selectLastGoodDeployment(failedRun(), [
   successRun(850, NEWER_SHA, "2026-08-23T22:00:00Z"),
 ]), null, "a run after the failure is not last-known-good evidence");

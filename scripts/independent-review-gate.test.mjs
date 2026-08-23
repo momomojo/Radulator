@@ -256,7 +256,7 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
   const state = exactState(base.pr, base.ci, base.files);
   const changed = signedRecord(PRIMARY, state);
   changed.clinical_analysis = "mutated after signature";
-  assert.equal(evaluateGate({ ...base, reviews: [carrier(changed)] }).reasonCode, "INVALID_SIGNATURE");
+  assert.equal(evaluateGate({ ...base, reviews: [carrier(changed)] }).reasonCode, "MISSING_JUDGE_ROLE");
 }
 
 {
@@ -283,7 +283,24 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
   const unrelated = { ...carrier(signedRecord(PRIMARY, exactState(base.pr, base.ci, base.files))), body: "ordinary PR discussion" };
   assert.equal(evaluateGate({ ...base, reviews: [unrelated] }).reasonCode, "MISSING_JUDGE_ROLE");
   const malformed = { ...unrelated, body: `${ATTESTATION_MARKER}\nnot json` };
-  assert.equal(evaluateGate({ ...base, reviews: [malformed] }).reasonCode, "MALFORMED_ATTESTATION_CARRIER");
+  assert.equal(
+    evaluateGate({ ...base, reviews: [...base.reviews, malformed] }).reasonCode,
+    "PASS",
+    "an unsigned malformed carrier cannot veto a valid signed quorum",
+  );
+}
+
+{
+  const base = gateFixture();
+  const state = exactState(base.pr, base.ci, base.files);
+  const stale = signedRecord(PRIMARY, state, { reviewed_at: "2026-08-23T19:59:00Z" });
+  const forgedFresh = signedRecord(PRIMARY, state, { reviewed_at: "2026-08-23T20:02:00Z" });
+  forgedFresh.clinical_analysis = "unsigned mutation after signing";
+  assert.equal(
+    evaluateGate({ ...base, reviews: [carrier(stale), carrier(forgedFresh, 813)] }).reasonCode,
+    "STALE_ATTESTATION",
+    "an unsigned newer timestamp cannot refresh an older signed approval",
+  );
 }
 
 {

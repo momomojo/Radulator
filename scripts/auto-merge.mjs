@@ -80,6 +80,13 @@ function defaultApi(env) {
       body: JSON.stringify(payload),
     }),
     getPr: (prNumber) => githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}`),
+    dispatchDeployment: async (payload) => {
+      await githubRequest(token, `/repos/${owner}/${repo}/dispatches`, {
+        method: "POST",
+        body: JSON.stringify({ event_type: "radulator-auto-merge-deploy", client_payload: payload }),
+      });
+      return { accepted: true, eventType: "radulator-auto-merge-deploy" };
+    },
   };
 }
 
@@ -146,7 +153,27 @@ export async function runAutoMerge({
     if (!readback?.merged || readback.state !== "closed" || readback.merge_commit_sha !== merged.sha) {
       throw new Error(`Merged PR #${prNumber} failed authoritative readback verification.`);
     }
-    results.push({ ok: true, reasonCode: "MERGED", merged: true, pr: prNumber, mergeSha: merged.sha, headSha: finalState.pr.headSha });
+    let deploymentDispatched = false;
+    if (finalState.pr.baseRef === "main") {
+      const dispatch = await client.dispatchDeployment({
+        ref: merged.sha,
+        prNumber,
+        sourceHeadSha: finalState.pr.headSha,
+      });
+      if (!dispatch?.accepted || dispatch.eventType !== "radulator-auto-merge-deploy") {
+        throw new Error(`Production deployment dispatch for merged PR #${prNumber} was not accepted.`);
+      }
+      deploymentDispatched = true;
+    }
+    results.push({
+      ok: true,
+      reasonCode: "MERGED",
+      merged: true,
+      pr: prNumber,
+      mergeSha: merged.sha,
+      headSha: finalState.pr.headSha,
+      deploymentDispatched,
+    });
   }
   return results;
 }

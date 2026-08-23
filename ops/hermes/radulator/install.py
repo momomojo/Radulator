@@ -98,6 +98,8 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
     ledger = radulator_home / "state/radulator-release-lifecycle.jsonl"
     primary_private = radulator_home / "keys/radulator-clinical/radulator-primary-v1.private.pem"
     verification_private = default_home / "keys/radulator-clinical/radulator-verification-v1.private.pem"
+    primary_public = primary_private.with_name("radulator-primary-v1.public.pem")
+    verification_public = verification_private.with_name("radulator-verification-v1.public.pem")
     jobs = [
         _job(
             "radulator-clinical-judge-primary", radulator_home, repo,
@@ -141,9 +143,9 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
         "jobs": jobs,
         "keys": {
             "primary_private": str(primary_private),
-            "primary_public": str(primary_private.with_name("primary.public.pem")),
+            "primary_public": str(primary_public),
             "verification_private": str(verification_private),
-            "verification_public": str(verification_private.with_name("verification.public.pem")),
+            "verification_public": str(verification_public),
         },
     }
 
