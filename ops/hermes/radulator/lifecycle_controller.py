@@ -261,6 +261,24 @@ def actions_for_event(event: LifecycleEvent) -> list[dict[str, Any]]:
     return []
 
 
+def release_tracker_action(parent_task_id: str, pr: int, head_sha: str) -> dict[str, Any]:
+    if not parent_task_id or not isinstance(pr, int) or pr <= 0 or not SHA_PATTERN.fullmatch(head_sha or ""):
+        raise LedgerError("Release tracker requires parent task id, PR number, and exact head SHA.")
+    return {
+        "kind": "create_child",
+        "idempotency_key": f"radulator-release:{parent_task_id}:pr-{pr}",
+        "parent_task_id": parent_task_id,
+        "title": f"Track clinical release of Radulator PR #{pr}",
+        "body": (
+            f"Own the autonomous clinical release lifecycle for PR #{pr}, beginning at exact head {head_sha}. "
+            "Keep this task open through judge approval, merge, deployment smoke, and retained learning."
+        ),
+        "pr": pr,
+        "head_sha": head_sha,
+        "workflow": "release_tracking",
+    }
+
+
 def _find_task_id(value: Any) -> str | None:
     if isinstance(value, dict):
         for key in ("task_id", "id"):
@@ -399,8 +417,19 @@ def main() -> None:
     apply_actions.add_argument("--ledger", required=True)
     apply_actions.add_argument("--task-id", required=True)
     apply_actions.add_argument("--hermes", default="hermes")
+    bootstrap = subparsers.add_parser("bootstrap")
+    bootstrap.add_argument("--parent-task-id", required=True)
+    bootstrap.add_argument("--pr", type=int, required=True)
+    bootstrap.add_argument("--head-sha", required=True)
+    bootstrap.add_argument("--apply", action="store_true")
+    bootstrap.add_argument("--hermes", default="hermes")
     args = parser.parse_args()
 
+    if args.command == "bootstrap":
+        action = release_tracker_action(args.parent_task_id, args.pr, args.head_sha)
+        rendered = execute_actions([action], HermesKanbanCLI(args.hermes)) if args.apply else [action]
+        print(_canonical(rendered))
+        return
     ledger = LifecycleLedger(args.ledger)
     if args.command == "append":
         event = ledger.append(

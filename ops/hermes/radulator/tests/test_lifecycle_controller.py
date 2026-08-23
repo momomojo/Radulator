@@ -10,6 +10,7 @@ from ops.hermes.radulator.lifecycle_controller import (
     LifecycleLedger,
     actions_for_event,
     execute_actions,
+    release_tracker_action,
 )
 
 
@@ -150,6 +151,14 @@ class LifecycleLedgerTests(unittest.TestCase):
         execute_actions(actions_for_event(event), HermesKanbanCLI(runner=runner))
         comment_commands = [command for command in commands if command[2] == "comment"]
         self.assertEqual(len(comment_commands), 2, "authoritative readback prevents duplicate comments")
+
+    def test_review_bootstrap_creates_separate_release_tracker(self):
+        action = release_tracker_action("t_implementation", 42, HEAD)
+        self.assertEqual(action["idempotency_key"], "radulator-release:t_implementation:pr-42")
+        self.assertEqual(action["parent_task_id"], "t_implementation")
+        self.assertEqual(action["head_sha"], HEAD)
+        self.assertIn("deployment smoke", action["body"])
+        self.assertNotIn("attachment", json.dumps(action).lower())
 
 
 if __name__ == "__main__":
