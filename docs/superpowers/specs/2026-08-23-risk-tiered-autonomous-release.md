@@ -73,12 +73,12 @@ After `smoke_passed`, a fresh Hermes learning job distills only stable informati
 Versioned overlay files live under `ops/hermes/radulator/` in this repository. The installer:
 
 - requires an explicit canonical repository path;
-- backs up modified job/config files;
-- installs scripts and the clinical-judge skill into profile-local paths;
-- creates two separate judge signing keys only when absent and prints public keys only;
-- creates/updates primary and secondary agent cron jobs plus a deterministic lifecycle-controller job;
-- sets explicit absolute `workdir`, pinned model/provider/effort, bounded timeouts, and delivery;
-- performs a dry-run self-test before enabling jobs;
+- backs up modified job and skill files and verifies both profile configs;
+- installs the clinical-judge/controller/learning skills and references versioned repository scripts;
+- creates two separate judge signing keys only under an explicit security-sensitive flag and prints public keys only;
+- creates/updates primary, verification, lifecycle-controller, and post-smoke learning jobs;
+- sets an explicit absolute `workdir` and pinned model/provider, and requires profile-level `xhigh` effort because Hermes has no per-job effort field;
+- installs jobs disabled and requires dry-run plus repository self-tests before enabling;
 - is idempotent and supports uninstall/restore from its backup manifest.
 
 ## Verification
@@ -93,4 +93,3 @@ Staged live verification is:
 4. high-risk synthetic canary proving two-judge quorum without merging clinical content;
 5. production promotion, deploy, live smoke, and lifecycle/memory readback;
 6. rollback drill against a deliberately failing smoke target without changing `main`.
-

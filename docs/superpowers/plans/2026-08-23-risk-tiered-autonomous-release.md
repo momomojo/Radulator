@@ -18,7 +18,7 @@
 - Private signing keys remain only on the Mac mini; repository/GitHub configuration contains public keys only.
 - Missing or ambiguous evidence fails closed.
 - Hindsight receives a distilled lesson only after production smoke passes.
-- Every cron job has an explicit absolute workdir and pinned model/provider/effort.
+- Every cron job has an explicit absolute workdir and pinned model/provider; each judge profile is verified at profile-level `xhigh` effort because Hermes does not store per-job effort.
 
 ---
 
@@ -148,7 +148,7 @@
 **Interfaces:**
 - Produces: `install.py --repo ABS --radulator-home ABS --default-home ABS --dry-run|--apply|--restore`
 
-- [ ] Write failing tests over temporary profile homes for backup/restore, stable ids, explicit workdirs, pinned model/provider/effort, separate key paths, disabled-first install, and idempotent reapply.
+- [ ] Write failing tests over temporary profile homes for backup/restore, stable ids, explicit workdirs, pinned model/provider plus profile-level `xhigh` effort, separate key paths, disabled-first install, and idempotent reapply.
 - [ ] Run installer tests and confirm missing behavior fails.
 - [ ] Implement file copying, atomic jobs.json/config updates, key generation hooks, backup manifest, dry-run diff, verification, enable, and restore.
 - [ ] Document exact installation, self-test, rotation, disable, and recovery commands.
@@ -187,4 +187,3 @@
 - [ ] Run the failed-smoke rollback drill and verify the last good SHA is served.
 - [ ] Reconcile `t_76a0310e` into a new exact-effect review child, removing the obsolete 19 MB attachment dependency and returning the new canary finding to implementation when judged NEEDS_FIX.
 - [ ] Capture final job ids, PR/deploy URLs, head SHAs, test counts, ledger hashes, and memory readback as completion evidence.
-
