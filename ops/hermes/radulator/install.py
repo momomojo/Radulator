@@ -319,13 +319,13 @@ def restore_install(radulator_home: Path) -> dict[str, Any]:
     return {"restored": restored, "backup_manifest": str(backup_path)}
 
 
-def generate_keys(plan: dict[str, Any]) -> list[dict[str, Any]]:
+def generate_keys(plan: dict[str, Any]) -> dict[str, dict[str, Any]]:
     signer = Path(plan["repo"]) / "ops/hermes/radulator/judge-attest.mjs"
     definitions = [
         ("primary", Path(plan["radulator_home"]), "radulator-primary-v1", "primary", "radulator"),
         ("verification", Path(plan["default_home"]), "radulator-verification-v1", "verification", "default"),
     ]
-    public = []
+    public = {}
     for _, home, key_id, role, profile in definitions:
         command = [
             "node", str(signer), "generate-key", "--directory", str(home / "keys/radulator-clinical"),
@@ -334,7 +334,10 @@ def generate_keys(plan: dict[str, Any]) -> list[dict[str, Any]]:
         result = subprocess.run(command, cwd=plan["repo"], check=False, capture_output=True, text=True)
         if result.returncode != 0:
             raise InstallError(f"Judge key generation failed for {role}: {result.stderr.strip()}")
-        public.append(json.loads(result.stdout))
+        generated = json.loads(result.stdout)
+        if generated.get("keyId") != key_id or not isinstance(generated.get("publicConfig"), dict):
+            raise InstallError(f"Judge key generation returned malformed public configuration for {role}.")
+        public[key_id] = generated["publicConfig"]
     return public
 
 

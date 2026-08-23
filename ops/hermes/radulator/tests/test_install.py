@@ -1,4 +1,5 @@
 import json
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,7 @@ from ops.hermes.radulator.install import (
     InstallError,
     apply_install,
     build_plan,
+    generate_keys,
     restore_install,
 )
 
@@ -107,6 +109,18 @@ class InstallerTests(unittest.TestCase):
             build_plan(**self.kwargs())
         with self.assertRaisesRegex(InstallError, "absolute"):
             build_plan(repo=Path("relative"), radulator_home=self.radulator_home, default_home=self.default_home)
+
+    def test_key_hook_returns_repository_ready_public_mapping_only(self):
+        plan = build_plan(**self.kwargs())
+        public = generate_keys(plan)
+        self.assertEqual(set(public), {"radulator-primary-v1", "radulator-verification-v1"})
+        self.assertEqual(public["radulator-primary-v1"]["role"], "primary")
+        self.assertEqual(public["radulator-verification-v1"]["role"], "verification")
+        self.assertNotEqual(public["radulator-primary-v1"]["profile"], public["radulator-verification-v1"]["profile"])
+        self.assertTrue(all("PRIVATE" not in json.dumps(value) for value in public.values()))
+        for key in ("primary_private", "verification_private"):
+            mode = Path(plan["keys"][key]).stat().st_mode
+            self.assertEqual(stat.S_IMODE(mode), 0o600)
 
 
 if __name__ == "__main__":

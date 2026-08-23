@@ -46,7 +46,7 @@ npm run test:hermes-learning
 npm run test:hermes-install
 ```
 
-Key creation is intentionally a separate, security-sensitive action. With operator approval, add `--generate-keys` to `--apply`. The command creates one `0600` Ed25519 private key in each profile and prints only public configuration. Store the combined public-key JSON in the repository variable `RADULATOR_JUDGE_PUBLIC_KEYS_JSON`; never copy private material to GitHub or between profiles. Re-running refuses an incomplete pair and otherwise preserves the existing key.
+Key creation is intentionally a separate, security-sensitive action. With operator approval, add `--generate-keys` to `--apply`. The command creates one `0600` Ed25519 private key in each profile and prints `public_keys`, an object ready for the repository variable `RADULATOR_JUDGE_PUBLIC_KEYS_JSON`. Never copy private material to GitHub or between profiles. Re-running refuses an incomplete pair and otherwise preserves the existing key.
 
 After public-key and branch-rule readback, enable all managed jobs:
 
