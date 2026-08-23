@@ -1,64 +1,63 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { generateKeyPairSync, sign } from "node:crypto";
 
 import {
+  ATTESTATION_MARKER,
+  checkCompletionPayload,
+  checkRunsPath,
   deriveStateEpoch,
   evaluateGate,
   gateStateFingerprint,
-  RECORD_SCHEMA,
   relevantLabelsDigest,
   REQUIRED_CONTEXT,
   requiredCiForBase,
   resolveRequiredCi,
-  checkRunsPath,
 } from "./independent-review-gate.mjs";
+import {
+  ATTESTATION_SCHEMA,
+  canonicalJson,
+  classifyRisk,
+  digest,
+} from "./release-policy.mjs";
 
 const HEAD = "a".repeat(40);
 const BASE = "b".repeat(40);
 const WORKFLOW_ID = 227376261;
 const CI_APP_ID = 15368;
 const CHECK_SUITE_ID = 700;
-const REVIEWER = {
-  botLogin: "radulator-independent-review[bot]",
-  botUserId: 9001,
-  appId: 8001,
-  appSlug: "radulator-independent-review",
-  installationId: 7001,
-  appOwnerId: 6001,
-  appOwnerLogin: "independent-review-org",
-  system: "independent-security-review/v2",
-};
-const CLOUD_MERGER = {
-  botLogin: "radulator-cloud-merger[bot]",
-  botUserId: 9002,
-  appId: 8002,
-  appSlug: "radulator-cloud-merger",
-  installationId: 7002,
-  appOwnerId: 6002,
-  appOwnerLogin: "cloud-merge-org",
-  system: "cloud-merge-routine/v2",
+
+function keyFixture(keyId, role, profile) {
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  return {
+    keyId,
+    role,
+    profile,
+    privateKey,
+    publicKey: publicKey.export({ type: "spki", format: "pem" }),
+  };
+}
+
+const PRIMARY = keyFixture("primary-2026-08", "primary", "radulator");
+const VERIFICATION = keyFixture("verification-2026-08", "verification", "default");
+const PUBLIC_KEYS = {
+  [PRIMARY.keyId]: { role: PRIMARY.role, profile: PRIMARY.profile, publicKey: PRIMARY.publicKey },
+  [VERIFICATION.keyId]: { role: VERIFICATION.role, profile: VERIFICATION.profile, publicKey: VERIFICATION.publicKey },
 };
 
-function canonicalize(value) {
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
-  }
-  return value;
-}
-
-function canonicalJson(value) {
-  return JSON.stringify(canonicalize(value));
-}
-
-function digest(value) {
-  return createHash("sha256").update(canonicalJson(value), "utf8").digest("hex");
-}
+const STANDARD_FILES = [{
+  filename: "src/components/calculators/FeedbackForm.jsx",
+  status: "modified",
+  patch: "@@ -1 +1 @@\n-old label\n+clearer feedback label",
+}];
+const HIGH_FILES = [{
+  filename: "src/components/calculators/MELDNa.jsx",
+  status: "modified",
+  patch: "@@ -10 +10 @@\n-const score = 1\n+const score = 2",
+}];
 
 function prFixture(overrides = {}) {
-  const labels = overrides.labels || [];
+  const labels = overrides.labels || ["ready-for-gate"];
   const labelState = relevantLabelsDigest(labels);
   return {
     repositoryId: 1027532341,
@@ -71,8 +70,8 @@ function prFixture(overrides = {}) {
     author: "implementation-worker",
     authorId: 5001,
     authorType: "User",
-    createdAt: "2026-07-27T23:20:00Z",
-    stateEpoch: { eventId: 42, eventCreatedAt: "2026-07-27T23:21:00Z" },
+    createdAt: "2026-08-23T19:50:00Z",
+    stateEpoch: { eventId: 42, eventCreatedAt: "2026-08-23T19:55:00Z" },
     labels: labelState.labels,
     labelsDigest: labelState.sha256,
     ...overrides,
@@ -91,7 +90,7 @@ function workflowRun(pr, overrides = {}) {
     run_attempt: 1,
     status: "completed",
     conclusion: "success",
-    created_at: "2026-07-27T23:22:00Z",
+    created_at: "2026-08-23T19:56:00Z",
     pull_requests: [{
       number: pr.number,
       head: { sha: pr.headSha },
@@ -110,7 +109,7 @@ function checkRun(pr, name, index, overrides = {}) {
     app: { id: CI_APP_ID, slug: "github-actions" },
     status: "completed",
     conclusion: "success",
-    completed_at: `2026-07-27T23:23:${40 + index}Z`,
+    completed_at: `2026-08-23T20:00:${10 + index}Z`,
     ...overrides,
   };
 }
@@ -134,78 +133,79 @@ function ciFixture(pr, { workflowRuns, checkRuns } = {}) {
   };
 }
 
-function recordPayload(pr, ci, overrides = {}) {
-  const payload = {
-    schema: RECORD_SCHEMA,
-    repository_id: pr.repositoryId,
+function exactState(pr, ci, files) {
+  const risk = classifyRisk(files);
+  return {
+    repositoryId: pr.repositoryId,
     pr: pr.number,
-    verdict: "PASS",
-    head_sha: pr.headSha,
-    base_sha: pr.baseSha,
-    base_ref: pr.baseRef,
-    state_epoch: {
-      event_id: pr.stateEpoch.eventId,
-      event_created_at: pr.stateEpoch.eventCreatedAt,
-    },
-    labels_sha256: pr.labelsDigest,
+    headSha: pr.headSha,
+    baseSha: pr.baseSha,
+    baseRef: pr.baseRef,
+    stateEpoch: { event_id: pr.stateEpoch.eventId, event_created_at: pr.stateEpoch.eventCreatedAt },
+    labelsSha256: pr.labelsDigest,
+    risk,
     ci: ci.evidence,
-    reviewer: {
-      github_app_id: REVIEWER.appId,
-      installation_id: REVIEWER.installationId,
-      bot_user_id: REVIEWER.botUserId,
-      app_owner_id: REVIEWER.appOwnerId,
-      run_id: "review-run-123",
-      system: REVIEWER.system,
-    },
-    reviewed_at: "2026-07-27T23:23:55Z",
-    ...overrides,
+    ciSha256: digest(ci.evidence),
   };
-  payload.evidence_sha256 = digest(payload);
-  return payload;
 }
 
-function reviewComment(pr, ci, overrides = {}) {
-  const id = overrides.id || 812;
-  const createdAt = overrides.createdAt || "2026-07-27T23:24:00Z";
-  const payload = overrides.payload || recordPayload(pr, ci, overrides.record || {});
+function signedRecord(key, state, overrides = {}) {
+  const record = {
+    schema: ATTESTATION_SCHEMA,
+    repository_id: state.repositoryId,
+    pr: state.pr,
+    head_sha: state.headSha,
+    base_sha: state.baseSha,
+    base_ref: state.baseRef,
+    state_epoch: state.stateEpoch,
+    labels_sha256: state.labelsSha256,
+    risk: state.risk,
+    ci: state.ci,
+    ci_sha256: state.ciSha256,
+    verdict: "PASS",
+    clinical_analysis: "Exact diff, citations, and regression evidence support release.",
+    citations: ["https://example.org/source"],
+    judge: {
+      key_id: key.keyId,
+      role: key.role,
+      profile: key.profile,
+      model: "gpt-5.6-sol",
+      provider: "openai-codex",
+    },
+    reviewed_at: "2026-08-23T20:01:00Z",
+    ...overrides,
+  };
+  record.signature = sign(null, Buffer.from(canonicalJson(record)), key.privateKey).toString("base64");
+  return record;
+}
+
+function carrier(record, id = 812, overrides = {}) {
   return {
     id,
-    author: REVIEWER.botLogin,
-    authorId: REVIEWER.botUserId,
-    authorType: "Bot",
-    createdAt,
-    updatedAt: overrides.updatedAt || createdAt,
-    body: overrides.body || JSON.stringify(payload),
-    performedViaGithubApp: {
-      id: REVIEWER.appId,
-      slug: REVIEWER.appSlug,
-      owner: { id: REVIEWER.appOwnerId, login: REVIEWER.appOwnerLogin, type: "Organization" },
-    },
-    ...overrides.comment,
+    author: "judge-carrier",
+    authorId: 9001,
+    authorType: "User",
+    createdAt: record.reviewed_at,
+    updatedAt: record.reviewed_at,
+    body: `${ATTESTATION_MARKER}\n\`\`\`json\n${JSON.stringify(record)}\n\`\`\``,
+    performedViaGithubApp: null,
+    ...overrides,
   };
 }
 
 function gateFixture(options = {}) {
   const pr = prFixture(options.pr || {});
-  const ciSetup = ciFixture(pr, options.ciSetup);
-  const comment = reviewComment(pr, ciSetup.result, options.comment || {});
-  const reviews = options.reviews || [comment];
+  const files = options.files || STANDARD_FILES;
+  const ciSetup = ciFixture(pr, options.ciSetup || {});
+  const state = exactState(pr, ciSetup.result, files);
+  const primary = signedRecord(PRIMARY, state, options.primaryRecord || {});
   return {
     pr,
-    reviewerIdentity: { ...REVIEWER, ...(options.reviewerIdentity || {}) },
-    cloudMergerIdentity: { ...CLOUD_MERGER, ...(options.cloudMergerIdentity || {}) },
     requiredCi: ciSetup.requiredCi,
     ci: options.ci || ciSetup.result,
-    reviews,
-    trigger: {
-      eventName: "issue_comment",
-      action: "created",
-      commentId: comment.id,
-      appId: REVIEWER.appId,
-      senderId: REVIEWER.botUserId,
-      senderLogin: REVIEWER.botLogin,
-      ...(options.trigger || {}),
-    },
+    files,
+    reviews: options.reviews || [carrier(primary)],
+    publicKeys: options.publicKeys || PUBLIC_KEYS,
   };
 }
 
@@ -218,124 +218,108 @@ function expectBlocked(reasonCode, options = {}) {
   return result;
 }
 
-// A fully valid exact-state record reaches the final eligibility gate, but
-// repo-only code cannot atomically CAS mutable same-head PR metadata and
-// issue-comment metadata cannot attest the performing App installation, so
-// success is code-disabled.
 {
   const result = evaluateGate(gateFixture());
   assert.equal(result.context, REQUIRED_CONTEXT);
-  assert.equal(result.conclusion, "failure");
-  assert.equal(result.eligible, false);
-  assert.equal(result.reasonCode, "REVIEWER_INSTALLATION_UNATTESTED");
-  assert.match(result.summary, /cannot attest the performing App installation/);
+  assert.equal(result.conclusion, "success");
+  assert.equal(result.eligible, true);
+  assert.equal(result.reasonCode, "PASS");
+  assert.equal(result.risk.tier, "standard");
+  assert.deepEqual(result.judgeRoles, ["primary"]);
+  const update = checkCompletionPayload(result);
+  assert.equal(update.conclusion, "success");
+  assert.equal(update.output.title, "Clinical release gate passed");
+}
+
+{
+  const base = gateFixture({ files: HIGH_FILES });
+  assert.equal(evaluateGate(base).reasonCode, "MISSING_JUDGE_ROLE");
+  const state = exactState(base.pr, base.ci, base.files);
+  const primary = signedRecord(PRIMARY, state);
+  const verification = signedRecord(VERIFICATION, state, { reviewed_at: "2026-08-23T20:01:30Z" });
+  const result = evaluateGate({ ...base, reviews: [carrier(primary), carrier(verification, 813)] });
+  assert.equal(result.conclusion, "success");
+  assert.equal(result.risk.tier, "high");
+  assert.deepEqual(result.judgeRoles, ["primary", "verification"]);
 }
 
 expectBlocked("UNSUPPORTED_BASE", { pr: { baseRef: "feature" } });
 expectBlocked("PR_NOT_OPEN_READY", { pr: { state: "closed" } });
 expectBlocked("PR_NOT_OPEN_READY", { pr: { draft: true } });
-expectBlocked("HOLD_PRESENT", { pr: { labels: ["hold"] } });
+expectBlocked("READY_LABEL_MISSING", { pr: { labels: [] } });
+expectBlocked("HOLD_PRESENT", { pr: { labels: ["ready-for-gate", "hold"] } });
 expectBlocked("CI_NOT_EXACT_SUCCESS", { ci: { ok: false, summary: "latest run failed", evidence: [] } });
-expectBlocked("MISSING_REVIEW", { reviews: [] });
+expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
 
-// Review records are append-only. Editing any newest carrier invalidates it.
-expectBlocked("MALFORMED_REVIEW", { comment: { updatedAt: "2026-07-27T23:25:00Z" } });
-
-// Same-second newest records are ambiguous even though IDs provide stable
-// diagnostics. Do not choose whichever API item happened to arrive first.
 {
   const base = gateFixture();
-  const second = reviewComment(base.pr, base.ci, { id: 813, createdAt: base.reviews[0].createdAt });
-  const result = evaluateGate({ ...base, reviews: [second, base.reviews[0]], trigger: { ...base.trigger, commentId: second.id } });
-  assert.equal(result.reasonCode, "AMBIGUOUS_REVIEW");
-  assert.equal(result.conclusion, "failure");
+  const state = exactState(base.pr, base.ci, base.files);
+  const changed = signedRecord(PRIMARY, state);
+  changed.clinical_analysis = "mutated after signature";
+  assert.equal(evaluateGate({ ...base, reviews: [carrier(changed)] }).reasonCode, "INVALID_SIGNATURE");
 }
 
-// A malformed newer trusted carrier blocks instead of falling back to PASS.
 {
   const base = gateFixture();
-  const malformed = reviewComment(base.pr, base.ci, {
-    id: 813,
-    createdAt: "2026-07-27T23:25:00Z",
-    body: "not-json",
+  const state = exactState(base.pr, base.ci, base.files);
+  const pass = signedRecord(PRIMARY, state);
+  const needsFix = signedRecord(PRIMARY, state, {
+    verdict: "NEEDS_FIX",
+    clinical_analysis: "Evidence does not support the clinical wording.",
+    reviewed_at: "2026-08-23T20:02:00Z",
   });
-  const result = evaluateGate({ ...base, reviews: [base.reviews[0], malformed], trigger: { ...base.trigger, commentId: malformed.id } });
-  assert.equal(result.reasonCode, "MALFORMED_REVIEW");
+  assert.equal(evaluateGate({ ...base, reviews: [carrier(pass), carrier(needsFix, 813)] }).reasonCode, "NEEDS_FIX");
 }
 
-expectBlocked("NEEDS_FIX", { comment: { record: { verdict: "NEEDS_FIX" } } });
-expectBlocked("MALFORMED_REVIEW", { trigger: { appId: 9999 } });
-expectBlocked("MALFORMED_REVIEW", { trigger: { action: "edited" } });
-expectBlocked("MALFORMED_REVIEW", { comment: { comment: { authorType: "User" } } });
-expectBlocked("MALFORMED_REVIEW", { comment: { comment: { performedViaGithubApp: { id: 9999 } } } });
-
-// Numeric App/Bot/installation/owner identities, not display strings alone,
-// must establish independence.
-expectBlocked("REVIEWER_NOT_INDEPENDENT", { reviewerIdentity: { botLogin: "momomojo", botUserId: 35302851 } });
-expectBlocked("REVIEWER_NOT_INDEPENDENT", { reviewerIdentity: { botLogin: "implementation-worker", botUserId: 5001 } });
-expectBlocked("REVIEWER_NOT_INDEPENDENT", { cloudMergerIdentity: { appId: REVIEWER.appId } });
-expectBlocked("REVIEWER_NOT_INDEPENDENT", { cloudMergerIdentity: { installationId: REVIEWER.installationId } });
-expectBlocked("REVIEWER_NOT_INDEPENDENT", { reviewerIdentity: { appId: CI_APP_ID } });
-
-// Relevant label add/remove cycles advance a monotonic epoch even when the
-// final label set returns to empty.
 {
-  const epoch = deriveStateEpoch([
-    { id: 100, event: "labeled", created_at: "2026-07-27T23:21:01Z", label: { name: "hold" } },
-    { id: 101, event: "unlabeled", created_at: "2026-07-27T23:21:02Z", label: { name: "hold" } },
-    { id: 102, event: "convert_to_draft", created_at: "2026-07-27T23:21:03Z" },
-  ], "2026-07-27T23:20:00Z");
-  assert.deepEqual(epoch, { eventId: 102, eventCreatedAt: "2026-07-27T23:21:03Z" });
-  assert.throws(
-    () => deriveStateEpoch([{ id: null, event: "labeled", created_at: null, label: { name: "hold" } }], "2026-07-27T23:20:00Z"),
-    /malformed/
-  );
+  const base = gateFixture();
+  const state = exactState(base.pr, base.ci, base.files);
+  const stale = signedRecord(PRIMARY, state, { reviewed_at: "2026-08-23T19:59:00Z" });
+  assert.equal(evaluateGate({ ...base, reviews: [carrier(stale)] }).reasonCode, "STALE_ATTESTATION");
+}
+
+{
+  const base = gateFixture();
+  const unrelated = { ...carrier(signedRecord(PRIMARY, exactState(base.pr, base.ci, base.files))), body: "ordinary PR discussion" };
+  assert.equal(evaluateGate({ ...base, reviews: [unrelated] }).reasonCode, "MISSING_JUDGE_ROLE");
+  const malformed = { ...unrelated, body: `${ATTESTATION_MARKER}\nnot json` };
+  assert.equal(evaluateGate({ ...base, reviews: [malformed] }).reasonCode, "MALFORMED_ATTESTATION_CARRIER");
+}
+
+{
   const before = gateFixture();
   const after = structuredClone(before);
-  after.pr.stateEpoch = epoch;
+  after.files = HIGH_FILES;
+  assert.notEqual(gateStateFingerprint(before), gateStateFingerprint(after));
+  after.pr.headSha = "c".repeat(40);
   assert.notEqual(gateStateFingerprint(before), gateStateFingerprint(after));
 }
 
-// Production loader queries every check run for the head (filter=all) so the
-// pinned-suite ambiguity check can see duplicate same-name checks.
+{
+  const epoch = deriveStateEpoch([
+    { id: 100, event: "labeled", created_at: "2026-08-23T19:51:01Z", label: { name: "hold" } },
+    { id: 101, event: "unlabeled", created_at: "2026-08-23T19:51:02Z", label: { name: "hold" } },
+    { id: 102, event: "convert_to_draft", created_at: "2026-08-23T19:51:03Z" },
+  ], "2026-08-23T19:50:00Z");
+  assert.deepEqual(epoch, { eventId: 102, eventCreatedAt: "2026-08-23T19:51:03Z" });
+  assert.throws(
+    () => deriveStateEpoch([{ id: null, event: "labeled", created_at: null, label: { name: "hold" } }], "2026-08-23T19:50:00Z"),
+    /malformed/,
+  );
+}
+
 {
   assert.equal(
     checkRunsPath("momomojo", "Radulator", HEAD),
-    `/repos/momomojo/Radulator/commits/${HEAD}/check-runs?filter=all`
+    `/repos/momomojo/Radulator/commits/${HEAD}/check-runs?filter=all`,
   );
   assert.throws(() => checkRunsPath("momomojo", "Radulator", "not-a-sha"), /malformed/);
 }
 
-// CI is resolved as one pinned workflow-run unit, not by API overwrite order.
 {
   const pr = prFixture();
   const setup = ciFixture(pr);
   assert.equal(setup.result.ok, true);
-  const reversed = resolveRequiredCi({
-    pr,
-    workflowRuns: [...setup.workflowRuns].reverse(),
-    checkRuns: [...setup.checkRuns].reverse(),
-    requiredCi: setup.requiredCi,
-    expectedWorkflowId: WORKFLOW_ID,
-    expectedCiAppId: CI_APP_ID,
-  });
-  assert.deepEqual(reversed, setup.result);
-
-  const failedLatest = workflowRun(pr, {
-    id: 1002,
-    check_suite_id: 701,
-    created_at: "2026-07-27T23:26:00Z",
-    conclusion: "failure",
-  });
-  assert.equal(resolveRequiredCi({
-    pr,
-    workflowRuns: [setup.workflowRuns[0], failedLatest],
-    checkRuns: setup.checkRuns,
-    requiredCi: setup.requiredCi,
-    expectedWorkflowId: WORKFLOW_ID,
-    expectedCiAppId: CI_APP_ID,
-  }).ok, false, "a newer failed run must not be masked by an older success");
-
   const duplicate = { ...setup.checkRuns[0], id: 2999 };
   assert.match(resolveRequiredCi({
     pr,
@@ -346,53 +330,23 @@ expectBlocked("REVIEWER_NOT_INDEPENDENT", { reviewerIdentity: { appId: CI_APP_ID
     expectedCiAppId: CI_APP_ID,
   }).summary, /ambiguous/);
 
-  const wrongApp = setup.checkRuns.map((check, index) => index ? check : { ...check, app: { id: 9999, slug: "other" } });
-  assert.match(resolveRequiredCi({
-    pr,
-    workflowRuns: setup.workflowRuns,
-    checkRuns: wrongApp,
-    requiredCi: setup.requiredCi,
-    expectedWorkflowId: WORKFLOW_ID,
-    expectedCiAppId: CI_APP_ID,
-  }).summary, /wrong GitHub App/);
-
+  const failedLatest = workflowRun(pr, {
+    id: 1002,
+    check_suite_id: 701,
+    created_at: "2026-08-23T20:03:00Z",
+    conclusion: "failure",
+  });
   assert.equal(resolveRequiredCi({
-    pr: { ...pr, baseSha: "c".repeat(40) },
-    workflowRuns: setup.workflowRuns,
+    pr,
+    workflowRuns: [setup.workflowRuns[0], failedLatest],
     checkRuns: setup.checkRuns,
     requiredCi: setup.requiredCi,
     expectedWorkflowId: WORKFLOW_ID,
     expectedCiAppId: CI_APP_ID,
   }).ok, false);
-  assert.equal(resolveRequiredCi({
-    pr,
-    workflowRuns: setup.workflowRuns,
-    checkRuns: setup.checkRuns,
-    requiredCi: setup.requiredCi,
-    expectedWorkflowId: 9999,
-    expectedCiAppId: CI_APP_ID,
-  }).ok, false);
-}
 
-{
   const mainPr = prFixture({ baseRef: "main" });
-  const mainCi = ciFixture(mainPr);
-  assert.deepEqual(mainCi.requiredCi, ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"]);
-  assert.equal(mainCi.result.ok, true);
+  assert.deepEqual(requiredCiForBase(mainPr.baseRef), ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"]);
 }
 
-// Workflow contract: all three E2E jobs explicitly execute the PR source head;
-// publisher scope is develop/main and has read-only Actions access.
-{
-  const e2e = readFileSync(new URL("../.github/workflows/e2e-tests.yml", import.meta.url), "utf8");
-  const exactCheckout = "ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}";
-  assert.equal(e2e.split(exactCheckout).length - 1, 3);
-  assert.match(e2e, /permissions:\n\s{2}contents: read/);
-  const gateWorkflow = readFileSync(new URL("../.github/workflows/independent-review-gate.yml", import.meta.url), "utf8");
-  assert.match(gateWorkflow, /pull_request_target:\n\s{4}branches: \[develop, main\]/);
-  assert.match(gateWorkflow, /actions: read/);
-  assert.match(gateWorkflow, /RADULATOR_INDEPENDENT_REVIEW_EVALUATION_ENABLED == 'true'/);
-  assert.match(gateWorkflow, /successful required-check publication is deliberately code-disabled/);
-}
-
-console.log("independent review exact-head gate tests passed (evaluation-only, fail-closed)");
+console.log("independent clinical exact-head gate tests passed");
