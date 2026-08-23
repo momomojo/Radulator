@@ -13,6 +13,7 @@ import {
 } from "../../../scripts/independent-review-gate.mjs";
 import {
   analyzeRisk,
+  canonicalJson,
   digest,
   requiredJudgeRoles,
   verifyAttestation,
@@ -48,7 +49,7 @@ function parseCarrier(body) {
 }
 
 function newestByRole(state, publicKeys, exact) {
-  const newest = new Map();
+  const verifiedByRole = new Map();
   for (const review of state.reviews || []) {
     const record = parseCarrier(review.body);
     if (!record || record.malformed) continue;
@@ -61,8 +62,26 @@ function newestByRole(state, publicKeys, exact) {
     ) continue;
     const verified = verifyAttestation(record, publicKeys, exact);
     if (!verified.ok) continue;
-    const existing = newest.get(record.judge.role);
-    if (!existing || Date.parse(record.reviewed_at) > Date.parse(existing.reviewed_at)) newest.set(record.judge.role, record);
+    const role = verified.record.judge.role;
+    if (!verifiedByRole.has(role)) verifiedByRole.set(role, []);
+    verifiedByRole.get(role).push(verified.record);
+  }
+  const newest = new Map();
+  for (const [role, records] of verifiedByRole) {
+    const terminal = records.find((record) => record.verdict === "NEEDS_FIX");
+    if (terminal) {
+      newest.set(role, terminal);
+      continue;
+    }
+    const passes = records.filter((record) => record.verdict === "PASS");
+    if (!passes.length) continue;
+    const newestTime = Math.max(...passes.map((record) => Date.parse(record.reviewed_at)));
+    const newestDistinct = new Map(
+      passes
+        .filter((record) => Date.parse(record.reviewed_at) === newestTime)
+        .map((record) => [canonicalJson(record), record]),
+    );
+    if (newestDistinct.size === 1) newest.set(role, newestDistinct.values().next().value);
   }
   return newest;
 }

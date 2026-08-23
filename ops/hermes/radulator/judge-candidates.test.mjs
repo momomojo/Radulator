@@ -83,7 +83,7 @@ function stateFixture(files = STANDARD_FILES, reviews = []) {
   };
 }
 
-function signedCarrier(keyId, role, profile, privateKey, state, verdict = "PASS") {
+function signedCarrier(keyId, role, profile, privateKey, state, verdict = "PASS", overrides = {}) {
   const risk = classifyRisk(state.files, state.pr);
   const exact = {
     repositoryId: state.pr.repositoryId,
@@ -110,10 +110,10 @@ function signedCarrier(keyId, role, profile, privateKey, state, verdict = "PASS"
     ci: exact.ci,
     ci_sha256: exact.ciSha256,
     verdict,
-    clinical_analysis: verdict === "PASS" ? "Evidence supports release." : "Evidence is insufficient.",
+    clinical_analysis: overrides.clinicalAnalysis || (verdict === "PASS" ? "Evidence supports release." : "Evidence is insufficient."),
     citations: ["https://example.org/source"],
     judge: { key_id: keyId, role, profile, model: "gpt-5.6-sol", provider: "openai-codex" },
-    reviewed_at: "2026-08-23T20:01:00Z",
+    reviewed_at: overrides.reviewedAt || "2026-08-23T20:01:00Z",
   };
   record.signature = sign(null, Buffer.from(canonicalJson(record)), privateKey).toString("base64");
   return {
@@ -148,6 +148,29 @@ assert.ok(standard[0].riskDetails.length > 0);
   const incomplete = stateFixture();
   incomplete.pr.changedFiles = 2;
   assert.deepEqual(await collect("primary", incomplete), [], "incomplete GitHub file evidence is never judged");
+}
+
+{
+  const ambiguousState = stateFixture();
+  ambiguousState.reviews = [
+    signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, ambiguousState),
+    signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, ambiguousState, "PASS", {
+      clinicalAnalysis: "A distinct valid analysis at the same newest timestamp.",
+    }),
+  ];
+  assert.equal((await collect("primary", ambiguousState)).length, 1,
+    "an ambiguous newest role is automatically requeued for a later resolving attestation");
+
+  const duplicateState = stateFixture();
+  const exactCarrier = signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, duplicateState);
+  duplicateState.reviews = [exactCarrier, structuredClone(exactCarrier)];
+  assert.deepEqual(await collect("primary", duplicateState), [], "copied exact carriers remain idempotent");
+
+  ambiguousState.reviews.push(signedCarrier(
+    PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, ambiguousState, "PASS",
+    { reviewedAt: "2026-08-23T20:02:00Z" },
+  ));
+  assert.deepEqual(await collect("primary", ambiguousState), [], "a newer unique PASS supersedes an older collision");
 }
 
 const highNoPrimary = await collect("verification", stateFixture(HIGH_FILES));
