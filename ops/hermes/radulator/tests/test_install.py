@@ -146,6 +146,19 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("--attestation <attestation-json-path>", skill)
         self.assertIn("--public-keys-file", skill)
 
+    def test_e2e_workflow_publishes_authoritative_hermes_release_control_check(self):
+        workflow = (self.repo / ".github/workflows/e2e-tests.yml").read_text()
+        self.assertIn("hermes-release-control-tests:", workflow)
+        self.assertIn("name: Hermes Release Control Tests", workflow)
+        for command in (
+            "npm run test:hermes-judge-candidates",
+            "npm run test:hermes-judge-attest",
+            "npm run test:hermes-lifecycle",
+            "npm run test:hermes-learning",
+            "npm run test:hermes-install",
+        ):
+            self.assertIn(command, workflow[workflow.index("hermes-release-control-tests:"):])
+
     def test_apply_is_disabled_first_idempotent_and_separates_keys(self):
         first = apply_install(**self.kwargs())
         manifest_path = Path(first["manifest_path"])
