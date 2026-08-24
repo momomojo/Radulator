@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { collectCandidates, writeCandidateCache } from "./judge-candidates.mjs";
+import { resolveCiIdentity } from "./github-ci-identity.mjs";
 import { resolveGithubToken } from "./github-token.mjs";
 import {
   ATTESTATION_MARKER,
@@ -37,6 +38,57 @@ const PUBLIC_KEYS = {
     publicKey: verificationKeys.publicKey.export({ type: "spki", format: "pem" }),
   },
 };
+
+{
+  const calls = [];
+  const identity = await resolveCiIdentity({
+    token: "opaque-token",
+    owner: "momomojo",
+    repo: "Radulator",
+    env: {},
+    async request(token, endpoint) {
+      calls.push({ token, endpoint });
+      return {
+        id: 227376261,
+        path: ".github/workflows/e2e-tests.yml",
+        state: "active",
+      };
+    },
+  });
+  assert.deepEqual(identity, { expectedWorkflowId: 227376261, expectedCiAppId: 15368 });
+  assert.deepEqual(calls, [{
+    token: "opaque-token",
+    endpoint: "/repos/momomojo/Radulator/actions/workflows/e2e-tests.yml",
+  }]);
+
+  await assert.rejects(
+    resolveCiIdentity({
+      token: "opaque-token",
+      owner: "momomojo",
+      repo: "Radulator",
+      env: { RADULATOR_E2E_WORKFLOW_ID: "999" },
+      async request() {
+        return { id: 227376261, path: ".github/workflows/e2e-tests.yml", state: "active" };
+      },
+    }),
+    /does not match/i,
+    "a configured workflow identity may not silently disagree with GitHub",
+  );
+
+  await assert.rejects(
+    resolveCiIdentity({
+      token: "opaque-token",
+      owner: "momomojo",
+      repo: "Radulator",
+      env: {},
+      async request() {
+        return { id: 227376261, path: ".github/workflows/renamed.yml", state: "active" };
+      },
+    }),
+    /path/i,
+    "the resolved workflow must retain the trusted repository path",
+  );
+}
 
 {
   let fallbackCalls = 0;
