@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 import tempfile
 import types
 import unittest
@@ -14,6 +15,7 @@ from ops.hermes.radulator.lifecycle_controller import (
     actions_for_event,
     execute_actions,
     release_tracker_action,
+    select_next_candidate,
 )
 
 
@@ -119,6 +121,10 @@ class LifecycleLedgerTests(unittest.TestCase):
         self.assertEqual(child["parent_task_id"], "t_parent")
         self.assertEqual(child["head_sha"], HEAD)
         self.assertEqual(child["idempotency_key"], "radulator-rework:t_parent:comment-991")
+        self.assertEqual(child["assignee"], "codex-coding")
+        self.assertEqual(child["priority"], 90)
+        self.assertEqual(child["max_runtime"], "45m")
+        self.assertEqual(child["created_by"], "radulator-lifecycle")
         self.assertNotIn("attachment", json.dumps(child).lower())
         self.assertEqual(actions, actions_for_event(needs_fix))
 
@@ -160,7 +166,15 @@ class LifecycleLedgerTests(unittest.TestCase):
             args = command[2:]
             if args[0] == "create":
                 child = tasks.setdefault("t_child", {
-                    "id": "t_child", "status": "open", "parent_id": args[args.index("--parent") + 1], "comments": [],
+                    "id": "t_child",
+                    "status": "open",
+                    "parent_id": args[args.index("--parent") + 1],
+                    "body": args[args.index("--body") + 1],
+                    "assignee": args[args.index("--assignee") + 1],
+                    "priority": int(args[args.index("--priority") + 1]),
+                    "max_runtime": args[args.index("--max-runtime") + 1],
+                    "created_by": args[args.index("--created-by") + 1],
+                    "comments": [],
                 })
                 return subprocess.CompletedProcess(command, 0, json.dumps(child), "")
             if args[0] == "show":
@@ -172,12 +186,138 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         receipts = execute_actions(actions_for_event(event), HermesKanbanCLI(runner=runner))
         self.assertEqual([receipt["kind"] for receipt in receipts], ["create_child", "comment"])
+        create_command = next(command for command in commands if command[2] == "create")
+        self.assertEqual(create_command[create_command.index("--body") + 1], actions_for_event(event)[0]["body"])
+        self.assertEqual(create_command[create_command.index("--assignee") + 1], "codex-coding")
+        self.assertEqual(create_command[create_command.index("--priority") + 1], "90")
+        self.assertEqual(create_command[create_command.index("--max-runtime") + 1], "45m")
+        self.assertEqual(create_command[create_command.index("--created-by") + 1], "radulator-lifecycle")
         comment_commands = [command for command in commands if command[2] == "comment"]
-        self.assertEqual(len(comment_commands), 2)
+        self.assertEqual(len(comment_commands), 1)
 
         execute_actions(actions_for_event(event), HermesKanbanCLI(runner=runner))
         comment_commands = [command for command in commands if command[2] == "comment"]
-        self.assertEqual(len(comment_commands), 2, "authoritative readback prevents duplicate comments")
+        self.assertEqual(len(comment_commands), 1, "authoritative readback prevents duplicate comments")
+
+    def test_next_candidate_is_bounded_round_robin_and_excludes_complete(self):
+        cursor = Path(self.temp.name) / "lifecycle-cursor.json"
+        self.ledger.append(
+            idempotency_key="one-feedback", source_id="source-one", task_id="t_one",
+            state="feedback", pr=1, head_sha=HEAD, timestamp="2026-08-23T20:00:00Z",
+        )
+        self.ledger.append(
+            idempotency_key="two-feedback", source_id="source-two", task_id="t_two",
+            state="feedback", pr=2, head_sha=NEXT_HEAD, timestamp="2026-08-23T20:01:00Z",
+        )
+        complete_states = [
+            "feedback", "implementing", "testing", "review", "approved", "merged_develop",
+            "promotion", "merged_main", "deploying", "deployed", "smoke_passed", "learned", "complete",
+        ]
+        for index, state in enumerate(complete_states):
+            self.ledger.append(
+                idempotency_key=f"complete-{state}", source_id="source-complete", task_id="t_complete",
+                state=state, pr=3, head_sha=HEAD, timestamp=f"2026-08-23T21:{index:02d}:00Z",
+            )
+
+        first = select_next_candidate(self.ledger, cursor)
+        second = select_next_candidate(self.ledger, cursor)
+        third = select_next_candidate(self.ledger, cursor)
+
+        self.assertEqual(first["count"], 1)
+        self.assertEqual(first["candidate"]["task_id"], "t_one")
+        self.assertEqual(second["candidate"]["task_id"], "t_two")
+        self.assertEqual(third["candidate"]["task_id"], "t_one")
+        self.assertNotIn("evidence", first["candidate"])
+        self.assertEqual(cursor.stat().st_mode & 0o777, 0o600)
+        self.assertEqual((Path(str(cursor) + ".lock")).stat().st_mode & 0o777, 0o600)
+
+    def test_existing_idempotent_rework_child_is_repaired_to_codex_assignee(self):
+        self.append("feedback", 0)
+        self.append("implementing", 1)
+        self.append("testing", 2)
+        self.append("review", 3)
+        event = self.append("needs_fix", 4, {"verdict_id": "comment-991", "reason": "Fix citation."})
+        action = actions_for_event(event)[0]
+        tasks = {
+            "t_child": {
+                "id": "t_child", "status": "ready", "parent_id": "t_parent",
+                "body": action["body"], "assignee": None, "comments": [],
+            },
+        }
+        commands = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "create":
+                return subprocess.CompletedProcess(command, 0, json.dumps(tasks["t_child"]), "")
+            if args[0] == "show":
+                return subprocess.CompletedProcess(command, 0, json.dumps(tasks[args[1]]), "")
+            if args[0] == "assign":
+                tasks[args[1]]["assignee"] = args[2]
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            return subprocess.CompletedProcess(command, 1, "", "unexpected")
+
+        receipt = HermesKanbanCLI(runner=runner).perform(action)
+
+        self.assertEqual(receipt["task_id"], "t_child")
+        self.assertEqual(tasks["t_child"]["assignee"], "codex-coding")
+        self.assertEqual(len([command for command in commands if command[2] == "assign"]), 1)
+
+    def test_next_candidate_state_filter_has_independent_cursor(self):
+        cursor = Path(self.temp.name) / "lifecycle-cursor.json"
+        self.ledger.append(
+            idempotency_key="feedback-only", source_id="source-feedback", task_id="t_feedback",
+            state="feedback", pr=1, head_sha=HEAD, timestamp="2026-08-23T20:00:00Z",
+        )
+        smoke_states = [
+            "feedback", "implementing", "testing", "review", "approved", "merged_develop",
+            "promotion", "merged_main", "deploying", "deployed", "smoke_passed",
+        ]
+        for index, state in enumerate(smoke_states):
+            self.ledger.append(
+                idempotency_key=f"smoke-{state}", source_id="source-smoke", task_id="t_smoke",
+                state=state, pr=2, head_sha=NEXT_HEAD, timestamp=f"2026-08-23T21:{index:02d}:00Z",
+            )
+
+        filtered = select_next_candidate(self.ledger, cursor, required_state="smoke_passed")
+        unfiltered = select_next_candidate(self.ledger, cursor)
+        empty = select_next_candidate(self.ledger, cursor, required_state="learned")
+
+        self.assertEqual(filtered["candidate"]["task_id"], "t_smoke")
+        self.assertEqual(filtered["filter_state"], "smoke_passed")
+        self.assertEqual(unfiltered["candidate"]["task_id"], "t_feedback")
+        self.assertEqual(empty["count"], 0)
+        self.assertIsNone(empty["candidate"])
+
+    def test_concurrent_next_processes_claim_distinct_round_robin_slots(self):
+        cursor = Path(self.temp.name) / "concurrent-cursor.json"
+        for index in range(2):
+            self.ledger.append(
+                idempotency_key=f"concurrent-{index}", source_id=f"source-{index}", task_id=f"t_{index}",
+                state="feedback", pr=index + 1, head_sha=HEAD,
+                timestamp=f"2026-08-23T20:0{index}:00Z",
+            )
+        command = [
+            sys.executable,
+            str(Path(lifecycle_module.__file__)),
+            "next",
+            "--ledger",
+            str(self.ledger_path),
+            "--cursor-state",
+            str(cursor),
+        ]
+        processes = [
+            subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            for _ in range(2)
+        ]
+        results = []
+        for process in processes:
+            stdout, stderr = process.communicate(timeout=10)
+            self.assertEqual(process.returncode, 0, stderr)
+            results.append(json.loads(stdout))
+
+        self.assertEqual({result["candidate"]["task_id"] for result in results}, {"t_0", "t_1"})
 
     def test_review_bootstrap_creates_separate_release_tracker(self):
         action = release_tracker_action("t_implementation", 42, HEAD)

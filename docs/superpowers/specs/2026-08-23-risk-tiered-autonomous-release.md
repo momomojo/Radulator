@@ -50,7 +50,7 @@ The Mac mini judge collector discovers open `ready-for-gate` PRs, obtains the ex
 
 ## Merge and deployment
 
-The trusted gate publishes the required check `Radulator Clinical Release Gate (exact head)`. A separate trusted workflow re-evaluates the exact state and calls GitHub's merge endpoint with the expected head SHA. Branch protection and required checks remain in force.
+The trusted gate publishes the fingerprint-bearing check `Radulator Clinical Release Gate (exact head)` and the suite-independent, App-bound required status `Radulator Clinical Release Authorization`. A separate trusted workflow verifies both, re-evaluates the exact state, and calls GitHub's merge endpoint with the expected head SHA. Branch protection and required checks remain in force.
 
 - Feature PRs merge into `develop` after exact smoke/targeted CI and the risk-tiered judge gate.
 - The existing promoter opens `develop -> main` PRs.

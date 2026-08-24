@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   checkRunsPath,
   configuredPublicKeys,
+  ENFORCEMENT_CONTEXT,
   evaluateGate,
   findPullNumbers,
   gateStateFingerprint,
@@ -14,6 +15,7 @@ import {
 } from "./independent-review-gate.mjs";
 
 const ALLOWED_BASE_REFS = new Set(["develop", "main"]);
+const ACTIONS_BOT_ID = 41898282;
 
 function blocked(reasonCode, summary) {
   return { ok: false, reasonCode, summary };
@@ -24,7 +26,12 @@ function checkSort(left, right) {
   return time || (right.id || 0) - (left.id || 0);
 }
 
-export function evaluateAutoMerge({ pr, gateResult, checkRuns, branchRules, expectedGateAppId }) {
+function statusSort(left, right) {
+  const time = Date.parse(right.created_at || 0) - Date.parse(left.created_at || 0);
+  return time || (right.id || 0) - (left.id || 0);
+}
+
+export function evaluateAutoMerge({ pr, gateResult, checkRuns, commitStatuses, branchRules, expectedGateAppId }) {
   if (pr?.merged) return blocked("ALREADY_MERGED", "Pull request is already merged.");
   if (!pr || pr.state !== "open" || pr.draft) return blocked("PR_NOT_OPEN_READY", "Pull request is not open and ready.");
   if (!ALLOWED_BASE_REFS.has(pr.baseRef)) return blocked("UNSUPPORTED_BASE", "Pull request base is outside develop/main.");
@@ -38,7 +45,7 @@ export function evaluateAutoMerge({ pr, gateResult, checkRuns, branchRules, expe
     rule?.type === "required_status_checks" &&
     rule.parameters?.strict_required_status_checks_policy === true &&
     (rule.parameters?.required_status_checks || []).some((check) =>
-      check?.context === REQUIRED_CONTEXT &&
+      check?.context === ENFORCEMENT_CONTEXT &&
       check.integration_id === expectedGateAppId));
   if (!strictGateRule) {
     return blocked(
@@ -60,6 +67,24 @@ export function evaluateAutoMerge({ pr, gateResult, checkRuns, branchRules, expe
   }
   if (current.external_id !== `radulator-clinical-gate/v1/${gateResult.fingerprint}`) {
     return blocked("GATE_CHECK_FINGERPRINT_MISMATCH", "Published check does not match the fresh gate evaluation fingerprint.");
+  }
+  const authorization = (commitStatuses || [])
+    .filter((status) => status.context === ENFORCEMENT_CONTEXT)
+    .sort(statusSort)[0];
+  if (!authorization) {
+    return blocked("MISSING_GATE_AUTHORIZATION_STATUS", "No server-enforced clinical authorization status exists on the exact head.");
+  }
+  if (authorization.creator?.id !== ACTIONS_BOT_ID || authorization.creator?.login !== "github-actions[bot]") {
+    return blocked("GATE_AUTHORIZATION_STATUS_IDENTITY_MISMATCH", "Clinical authorization status has the wrong publisher identity.");
+  }
+  if (authorization.state !== "success") {
+    return blocked("GATE_AUTHORIZATION_STATUS_NOT_SUCCESS", "Current clinical authorization status is not successful.");
+  }
+  if (authorization.description !== `PASS ${gateResult.fingerprint}`) {
+    return blocked("GATE_AUTHORIZATION_STATUS_FINGERPRINT_MISMATCH", "Clinical authorization status does not bind the fresh gate fingerprint.");
+  }
+  if (authorization.target_url !== current.html_url) {
+    return blocked("GATE_AUTHORIZATION_STATUS_CHECK_LINK_MISMATCH", "Clinical authorization status does not link to the verified exact-head gate check.");
   }
 
   return {
@@ -87,6 +112,7 @@ function defaultApi(env) {
     findPullNumbers: () => findPullNumbers(token, owner, repo, env),
     loadGateState: (prNumber) => loadGateState(token, owner, repo, prNumber, config),
     listCheckRuns: (headSha) => paged(token, checkRunsPath(owner, repo, headSha), "check_runs"),
+    listCommitStatuses: (headSha) => paged(token, `/repos/${owner}/${repo}/commits/${headSha}/statuses`),
     getBranchRules: (baseRef) => paged(token, `/repos/${owner}/${repo}/rules/branches/${encodeURIComponent(baseRef)}`),
     merge: (prNumber, payload) => githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
       method: "PUT",
@@ -124,14 +150,16 @@ export async function runAutoMerge({
     }
 
     const gateResult = evaluateGateImpl(current);
-    const [checks, branchRules] = await Promise.all([
+    const [checks, statuses, branchRules] = await Promise.all([
       client.listCheckRuns(current.pr.headSha),
+      client.listCommitStatuses(current.pr.headSha),
       client.getBranchRules(current.pr.baseRef),
     ]);
     let decision = evaluateAutoMerge({
       pr: current.pr,
       gateResult,
       checkRuns: checks,
+      commitStatuses: statuses,
       branchRules,
       expectedGateAppId: Number(env.RADULATOR_CI_APP_ID || 15368),
     });
@@ -150,14 +178,16 @@ export async function runAutoMerge({
       continue;
     }
     const finalGate = evaluateGateImpl(finalState);
-    const [finalChecks, finalBranchRules] = await Promise.all([
+    const [finalChecks, finalStatuses, finalBranchRules] = await Promise.all([
       client.listCheckRuns(finalState.pr.headSha),
+      client.listCommitStatuses(finalState.pr.headSha),
       client.getBranchRules(finalState.pr.baseRef),
     ]);
     decision = evaluateAutoMerge({
       pr: finalState.pr,
       gateResult: finalGate,
       checkRuns: finalChecks,
+      commitStatuses: finalStatuses,
       branchRules: finalBranchRules,
       expectedGateAppId: Number(env.RADULATOR_CI_APP_ID || 15368),
     });
