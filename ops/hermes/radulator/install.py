@@ -21,7 +21,6 @@ BACKUP_SCHEMA = "radulator-hermes-backup/v1"
 MODEL = "gpt-5.6-sol"
 PROVIDER = "openai-codex"
 CANONICAL_GITHUB_REPOSITORY = "momomojo/Radulator"
-XHIGH = re.compile(r"(?m)^\s*reasoning_effort\s*:\s*[\"']?xhigh[\"']?\s*(?:#.*)?$")
 LEGACY_GATE_JOB_NAMES = frozenset({"pr-gate-poller", "judge-queue"})
 ACTIVATION_SELF_TESTS = (
     ("npm", "run", "test:release-policy"),
@@ -63,13 +62,56 @@ def _require_absolute(path: Path, label: str) -> Path:
     return resolved
 
 
+def _top_level_mapping_scalar(text: str, section: str, key: str, label: str) -> str | None:
+    section_count = 0
+    key_count = 0
+    value = None
+    in_section = False
+    direct_indent = None
+    mapping_line = re.compile(r"^([A-Za-z0-9_-]+)\s*:\s*(.*?)\s*$")
+    for line_number, raw in enumerate(text.splitlines(), start=1):
+        if not raw.strip() or raw.lstrip().startswith("#") or raw.strip() == "---":
+            continue
+        leading = raw[: len(raw) - len(raw.lstrip())]
+        if "\t" in leading:
+            raise InstallError(f"{label} has ambiguous tab indentation at config line {line_number}.")
+        content = raw.split("#", 1)[0].rstrip()
+        if not content.strip():
+            continue
+        indent = len(content) - len(content.lstrip(" "))
+        match = mapping_line.fullmatch(content.lstrip(" "))
+        if indent == 0:
+            in_section = bool(match and match.group(1) == section)
+            direct_indent = None
+            if in_section:
+                section_count += 1
+                if match.group(2):
+                    raise InstallError(f"{label} must express {section} as a block mapping.")
+            continue
+        if not in_section:
+            continue
+        if direct_indent is None:
+            direct_indent = indent
+        if indent == direct_indent and match and match.group(1) == key:
+            key_count += 1
+            value = match.group(2)
+
+    if section_count > 1 or key_count > 1:
+        raise InstallError(f"{label} has ambiguous duplicate YAML keys for {section}.{key}.")
+    if section_count != 1 or key_count != 1:
+        return None
+    return value
+
+
 def _verify_profile(home: Path, label: str) -> None:
     config = home / "config.yaml"
     if not config.is_file():
         raise InstallError(f"{label} config.yaml is missing.")
     text = config.read_text(encoding="utf-8")
-    if not XHIGH.search(text):
+    if _top_level_mapping_scalar(text, "agent", "reasoning_effort", label) != "xhigh":
         raise InstallError(f"{label} must set profile-level agent.reasoning_effort to xhigh.")
+    if _top_level_mapping_scalar(text, "cron", "max_parallel_jobs", label) != "1":
+        raise InstallError(f"{label} must set cron.max_parallel_jobs to 1 for single-flight judgment.")
 
 
 def _job(name: str, home: Path, repo: Path, prompt: str, skills: list[str], expression: str) -> dict[str, Any]:
@@ -126,9 +168,11 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
         _job(
             "radulator-clinical-judge-primary", radulator_home, repo,
             "Collect exact ready-for-gate candidates with "
-            f"node {overlay / 'judge-candidates.mjs'} --repo {CANONICAL_GITHUB_REPOSITORY} --role primary "
+            f"node {overlay / 'judge-candidates.mjs'} --repo {CANONICAL_GITHUB_REPOSITORY} --role primary --limit 1 "
             f"--public-keys-file {primary_public_keys_config}. "
-            "For each candidate use radulator-clinical-judge, write one decision JSON, sign with the configured primary key, "
+            "Invoke that collector exactly once in this run. If it returns zero candidates, stop immediately. Review only its single "
+            "returned candidate and never invoke the collector again in the same run. Use radulator-clinical-judge, write one decision "
+            "JSON, sign with the configured primary key, "
             f"key id radulator-primary-v1, role primary, profile radulator, model {MODEL}, provider {PROVIDER}, and private key "
             f"{primary_private}; post with --public-keys-file {primary_public_keys_config} and require authoritative GitHub comment "
             "readback. Never edit source or self-improve during judgment.",
@@ -137,9 +181,11 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
         _job(
             "radulator-clinical-judge-verification", default_home, repo,
             "Collect exact high-risk verification candidates with "
-            f"node {overlay / 'judge-candidates.mjs'} --repo {CANONICAL_GITHUB_REPOSITORY} --role verification "
+            f"node {overlay / 'judge-candidates.mjs'} --repo {CANONICAL_GITHUB_REPOSITORY} --role verification --limit 1 "
             f"--public-keys-file {verification_public_keys_config}. "
-            "Act only after an exact primary PASS. Use radulator-clinical-judge independently, sign only with the verification key, "
+            "Invoke that collector exactly once in this run. If it returns zero candidates, stop immediately. Review only its single "
+            "returned candidate and never invoke the collector again in the same run. Act only after an exact primary PASS. Use "
+            "radulator-clinical-judge independently, sign only with the verification key, "
             f"key id radulator-verification-v1, role verification, profile default, model {MODEL}, provider {PROVIDER}, and private "
             f"key {verification_private}; post with --public-keys-file {verification_public_keys_config} and require authoritative GitHub "
             "comment readback. Never edit source or self-improve during judgment.",
