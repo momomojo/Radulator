@@ -1,0 +1,69 @@
+name: Approval-Bound Automatic Merge
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: false
+        default: 0
+        type: number
+      base_ref:
+        required: false
+        default: ''
+        type: string
+      check_suite_head_sha:
+        required: false
+        default: ''
+        type: string
+  # Trusted workflow only. PR-controlled code is never checked out or run.
+  pull_request_target:
+    branches: [develop, main]
+    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review, converted_to_draft]
+  check_run:
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: Open PR base to reconcile
+        required: true
+        default: develop
+        type: choice
+        options: [develop, main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+  checks: read
+  statuses: read
+  actions: read
+
+concurrency:
+  # One repository-wide merge lane prevents two independently authorized PRs
+  # from racing the same protected base between final readback and merge.
+  group: radulator-auto-merge
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: github.event_name != 'check_run' || github.event.check_run.name == 'Radulator Clinical Release Gate (exact head)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      RADULATOR_AUTO_MERGE_ENABLED: ${{ vars.RADULATOR_AUTO_MERGE_ENABLED }}
+      RADULATOR_E2E_WORKFLOW_ID: ${{ vars.RADULATOR_E2E_WORKFLOW_ID }}
+      RADULATOR_CI_APP_ID: ${{ vars.RADULATOR_CI_APP_ID }}
+      RADULATOR_JUDGE_PUBLIC_KEYS_JSON: ${{ vars.RADULATOR_JUDGE_PUBLIC_KEYS_JSON }}
+      PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number || 0 }}
+      BASE_REF: ${{ inputs.base_ref || '' }}
+      CHECK_SUITE_HEAD_SHA: ${{ inputs.check_suite_head_sha || (github.event_name == 'check_run' && github.event.check_run.head_sha) || '' }}
+    steps:
+      - name: Checkout trusted merge controller
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
+
+      - name: Re-evaluate and merge exact authorized head
+        run: node scripts/auto-merge.mjs

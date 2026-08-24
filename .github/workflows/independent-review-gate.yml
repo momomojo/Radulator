@@ -1,0 +1,64 @@
+name: Clinical Release Exact-Head Gate
+
+on:
+  # This workflow executes only trusted base-branch code. It never checks out
+  # or executes the pull request's scripts.
+  pull_request_target:
+    branches: [develop, main]
+    types: [opened, reopened, closed, synchronize, edited, labeled, unlabeled, ready_for_review, converted_to_draft]
+  issue_comment:
+    types: [created, edited, deleted]
+  workflow_run:
+    workflows: [E2E Tests]
+    types: [completed]
+  push:
+    branches: [develop, main]
+
+concurrency:
+  group: radulator-clinical-gate-${{ github.event.pull_request.number || github.event.issue.number || github.event.workflow_run.head_sha || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    if: vars.RADULATOR_CLINICAL_GATE_ENABLED == 'true' && (github.event_name != 'issue_comment' || github.event.issue.pull_request)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      checks: write
+      statuses: write
+      actions: read
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      RADULATOR_E2E_WORKFLOW_ID: ${{ vars.RADULATOR_E2E_WORKFLOW_ID }}
+      RADULATOR_CI_APP_ID: ${{ vars.RADULATOR_CI_APP_ID }}
+      RADULATOR_JUDGE_PUBLIC_KEYS_JSON: ${{ vars.RADULATOR_JUDGE_PUBLIC_KEYS_JSON }}
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || 0 }}
+      BASE_REF: ${{ github.event_name == 'push' && github.ref_name || '' }}
+      CHECK_SUITE_HEAD_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
+    steps:
+      - name: Checkout trusted gate implementation
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
+
+      - name: Evaluate exact-head risk and judge quorum
+        run: node scripts/independent-review-gate.mjs
+
+  reconcile-merge:
+    needs: evaluate
+    if: needs.evaluate.result == 'success'
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      checks: read
+      statuses: read
+      actions: read
+    uses: ./.github/workflows/auto-merge.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number || github.event.issue.number || 0 }}
+      base_ref: ${{ github.event_name == 'push' && github.ref_name || '' }}
+      check_suite_head_sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}

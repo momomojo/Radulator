@@ -13,6 +13,10 @@ on:
         default: 'false'
         type: boolean
 
+# PR-controlled application/test code runs with a read-only repository token.
+permissions:
+  contents: read
+
 concurrency:
   # Supersede only older runs for the same PR. The run-id suffix keeps push
   # and manual runs out of a shared pending queue, so none are discarded.
@@ -27,6 +31,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # PR checks are associated with the source head by GitHub, so execute
+          # that exact SHA instead of the synthetic merge ref.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -43,11 +51,41 @@ jobs:
           node --check scripts/check-radulator-invariants.mjs
           node --check scripts/check-radulator-invariants.test.mjs
           node --check scripts/collect-loop-metrics.mjs
+          node --check scripts/independent-review-gate.mjs
+          node --check scripts/release-workflow-permissions.test.mjs
+          node --check scripts/release-policy.mjs
+          node --check scripts/auto-merge.mjs
+          node --check scripts/authorize-deployment.mjs
+          node --check scripts/deployment-run-identity.mjs
+          node --check scripts/reconcile-deployment.mjs
+          node --check scripts/post-deploy-smoke.mjs
+          node --check scripts/write-release-marker.mjs
+          node --check scripts/select-rollback-deployment.mjs
+          node --check ops/hermes/radulator/judge-candidates.mjs
+          node --check ops/hermes/radulator/judge-attest.mjs
           node --check scripts/search-verification-meta.mjs
           node --check scripts/ping-search-indexes.mjs
+          python3 -m py_compile \
+            ops/hermes/radulator/lifecycle_controller.py \
+            ops/hermes/radulator/learning_context.py \
+            ops/hermes/radulator/install.py
           bash -n scripts/dev-local.sh
           npm run test:search-verification
           npm run test:invariants
+          npm run test:release-policy
+          npm run test:independent-review-gate
+          npm run test:auto-merge
+          npm run test:release-workflow-permissions
+          npm run test:authorize-deployment
+          npm run test:reconcile-deployment
+          npm run test:post-deploy-smoke
+          npm run test:release-marker
+          npm run test:rollback-deployment
+          npm run test:hermes-judge-candidates
+          npm run test:hermes-judge-attest
+          npm run test:hermes-lifecycle
+          npm run test:hermes-learning
+          npm run test:hermes-install
           npm run check:invariants
 
       - name: Build application
@@ -69,6 +107,38 @@ jobs:
           path: playwright-report/
           retention-days: 3
 
+  hermes-release-control-tests:
+    name: Hermes Release Control Tests
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Hermes release-control tests
+        run: |
+          python3 -m py_compile \
+            ops/hermes/radulator/lifecycle_controller.py \
+            ops/hermes/radulator/learning_context.py \
+            ops/hermes/radulator/install.py
+          npm run test:hermes-judge-candidates
+          npm run test:hermes-judge-attest
+          npm run test:hermes-lifecycle
+          npm run test:hermes-learning
+          npm run test:hermes-install
+
 
   targeted-tests:
     name: Targeted Calculator Tests
@@ -80,6 +150,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Keep executed code coherent with the source-head check identity.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       # Coverage gate: every calculator must have a dedicated spec whose
       # navigation target resolves against CURRENT registry metadata. Fails on
@@ -178,6 +250,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Promotion/hotfix CI executes the exact source head under review.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4

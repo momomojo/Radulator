@@ -3,28 +3,12 @@
  * Automatically discovers all calculator files and builds categories from metadata
  */
 
-// Eager load all calculator JSX files (excluding index and registry)
-const modules = import.meta.glob("./*.jsx", { eager: true });
+import { calcDefs as generatedCalcDefs } from "virtual:calculator-registry";
 
-/**
- * Extract calculator definitions from modules
- * Each module should export a calculator object with id, name, category, etc.
- */
-export const calcDefs = Object.entries(modules)
-  .filter(([path]) => {
-    // Exclude index.js and registry.js
-    const filename = path.split("/").pop();
-    return !filename.includes("index") && !filename.includes("registry");
-  })
-  .map(([path, module]) => {
-    // Get the default export or first named export
-    const calc = module.default || Object.values(module)[0];
-    if (!calc?.id) {
-      console.warn(`Calculator at ${path} missing required 'id' field`);
-    }
-    return calc;
-  })
-  .filter((calc) => calc?.id) // Must have id property
+// The Vite plugin derives lightweight navigation metadata from calculator source
+// while each implementation stays behind its own dynamic loader.
+export const calcDefs = generatedCalcDefs
+  .map((calc) => ({ ...calc, load: () => calc.load() }))
   .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
 
 /**
