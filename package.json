@@ -27,6 +27,7 @@
     "test:independent-review-gate": "node scripts/independent-review-gate.test.mjs",
     "test:release-policy": "node scripts/release-policy.test.mjs",
     "test:auto-merge": "node scripts/auto-merge.test.mjs",
+    "test:release-workflow-permissions": "node scripts/release-workflow-permissions.test.mjs",
     "test:post-deploy-smoke": "node scripts/post-deploy-smoke.test.mjs",
     "test:release-marker": "node scripts/write-release-marker.test.mjs",
     "test:authorize-deployment": "node scripts/authorize-deployment.test.mjs",
@@ -73,6 +74,7 @@
     "globals": "^16.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.4",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "yaml": "^2.8.0"
   }
 }

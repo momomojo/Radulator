@@ -50,12 +50,12 @@
 
 **Interfaces:**
 - Consumes: `classifyRisk`, `verifyAttestation`, `requiredJudgeRoles`
-- Produces: a success/failure check named `Radulator Clinical Release Gate (exact head)`
+- Produces: a fingerprint-bearing check named `Radulator Clinical Release Gate (exact head)` plus the suite-independent, App-bound required status `Radulator Clinical Release Authorization`
 
 - [ ] Replace the PASS-candidate test with failing tests for one standard PASS, missing second high-risk PASS, two high-risk PASSes, newest NEEDS_FIX, invalid signature, changed head/base/epoch/labels/files/CI, and post-publication state change.
 - [ ] Run `npm run test:independent-review-gate` and confirm the new success-path tests fail with the evaluation-only result.
 - [ ] Load paginated PR files, compute exact risk/evidence, parse signed carriers, and return success only for the required quorum.
-- [ ] Complete/read back GitHub checks using the evaluated conclusion and require the configured Actions App identity.
+- [ ] Complete/read back the fingerprint check and its paired commit status using the evaluated conclusion; require the status from the configured Actions App in branch rules.
 - [ ] Update the trusted workflow to provide judge public keys, keep PR code unexecuted, and remove the evaluation-only switch.
 - [ ] Run gate and policy tests; commit `feat: activate exact-head clinical release gate`.
 

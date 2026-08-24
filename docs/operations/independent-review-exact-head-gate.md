@@ -1,6 +1,6 @@
 # Clinical release exact-head gate
 
-`Radulator Clinical Release Gate (exact head)` is the active clinical approval check for PRs targeting `develop` or `main`. It runs trusted base-branch code through `pull_request_target`, reads PR files and CI through GitHub APIs, and never checks out or executes PR-controlled scripts.
+`Radulator Clinical Release Gate (exact head)` is the fingerprint-bearing clinical approval check for PRs targeting `develop` or `main`. The same evaluation publishes the suite-independent commit status `Radulator Clinical Release Authorization`, which is the App-bound context required by branch protection. It runs trusted base-branch code through `pull_request_target`, reads PR files and CI through GitHub APIs, and never checks out or executes PR-controlled scripts.
 
 ## Authorization contract
 
@@ -26,7 +26,7 @@ PRs targeting `develop` require `Smoke Tests` and `Targeted Calculator Tests`. P
 
 ## State-change handling
 
-The gate loads the state twice before evaluation. Any mismatch blocks. After publishing a check it loads state again; a change revokes success and replaces it with failure. Base-branch pushes re-evaluate all open PRs because their reviewed base changed. Automatic merges use one repository-wide lane and require an active server-side repository rule with `strict_required_status_checks_policy: true`, including this exact-head gate and its GitHub App id. The controller reads the effective branch rules through GitHub's metadata-read endpoint before each evaluation, so the standard Actions token does not need repository-administration permission and GitHub still rejects a stale base after the controller's final readback.
+The gate first publishes a `pending` authorization status, then loads the state twice before evaluation. Any mismatch blocks. It publishes and reads back the fingerprint-bearing check, then replaces the status with the exact PASS/failure fingerprint and a link to that check. A post-publication state change revokes success and replaces both signals with failure. The separate status prevents a canceled or unrelated Actions check suite from deciding whether GitHub recognizes the authorization. Base-branch pushes re-evaluate all open PRs because their reviewed base changed. Automatic merges use one repository-wide lane and require an active server-side repository rule with `strict_required_status_checks_policy: true`, including `Radulator Clinical Release Authorization` and the GitHub Actions App id. The controller independently verifies that status, its fixed Actions-bot identity, its exact fingerprint/link, and the signed check before every merge.
 
 ## Configuration
 
@@ -45,8 +45,9 @@ Each public-key entry has `role`, `profile`, and PEM `publicKey`. No private key
 2. Promote it to `main` and leave `RADULATOR_CLINICAL_GATE_ENABLED` false.
 3. Install the Mac mini judge overlay and create separate keys.
 4. Configure the public-key map and verify both candidate collectors in dry-run mode.
-5. Enable the clinical gate while automatic merge remains disabled.
-6. Prove standard and high-risk canaries.
-7. Enable the separate automatic merge controller.
+5. Keep automatic merge disabled, enable the clinical gate, and verify a canary publishes both the fingerprint-bearing check and a GitHub-Actions-authored `Radulator Clinical Release Authorization` status for the same exact head.
+6. Add the App-bound authorization status to the `develop` and `main` rulesets with strict required-status enforcement while retaining the old required exact-head check; read the effective rules back from GitHub.
+7. Prove standard and high-risk canaries pass both requirements and that the merge controller verifies both signals.
+8. Remove only the old exact-head check from the server-side required-context lists, read the rules back again, and enable the separate automatic merge controller.
 
-Rollback starts by disabling automatic merge, then setting `RADULATOR_CLINICAL_GATE_ENABLED=false`. Existing protected-branch rules remain in force. Revert repository code through a normal PR; never remove a required context before coordinating branch rules.
+Rollback reverses that migration without opening an unprotected interval: disable automatic merge, restore the old exact-head check as a server-side requirement, prove a canary, then remove the authorization-status requirement before disabling its producer. Existing protected-branch rules remain in force throughout. Revert repository code through a normal PR; never remove or rename either context before coordinating and reading back the branch rules.
