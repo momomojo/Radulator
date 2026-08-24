@@ -6,6 +6,8 @@ Each judge run invokes the collector once and atomically claims at most one exac
 
 The trusted merge controller explicitly dispatches the Pages workflow after an automatic merge to `main`; GitHub suppresses ordinary push-triggered workflows when the merge uses the repository `GITHUB_TOKEN`. A trusted authorizer accepts only the exact current-main merged PR, and a scheduled reconciler retries a missing dispatch. The deployment remains eligible for the same post-deploy smoke and narrowly scoped rollback path.
 
+If `develop` and `main` acquire equivalent trees through independent merge histories, reconcile their ancestry through a reviewed PR into `develop` before opening the production promotion. Never force-push or bypass the signed gate to resolve a history-only promotion conflict.
+
 ## Prerequisites
 
 - Use the canonical Radulator clone and pull the reviewed control-plane release before installation.
