@@ -1,10 +1,12 @@
 # Radulator Roadmap
 
-> Public, milestone-level roadmap. Last updated 2026-08-08. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
+> Public, milestone-level roadmap. Last updated 2026-08-24. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
 
 ## Where we are
 
-38 calculators across 11 specialties, a clean ESLint baseline, and 1,400+ Playwright E2E checks, live at [radulator.com](https://radulator.com). Phase 1 (Fix & Refine) is complete: severity-based result colors, copy-results, guideline version badges, first-time onboarding, per-calculator info/education panels, a clinician-feedback sprint that added AAST 2025 kidney OIS (with a 2018/2025 version selector), a pancreas organ module, per-grade imaging guidance, per-calculator static pages with full SEO metadata, and a WCAG 2.1 AA accessibility pass.
+A growing suite of calculators across 11 specialties, a clean ESLint baseline, and 1,400+ Playwright E2E checks, live at [radulator.com](https://radulator.com). Phase 1 (Fix & Refine) is complete: severity-based result colors, copy-results, guideline version badges, first-time onboarding, per-calculator info/education panels, a clinician-feedback sprint that added AAST 2025 kidney OIS (with a 2018/2025 version selector), a pancreas organ module, per-grade imaging guidance, per-calculator static pages with full SEO metadata, and a WCAG 2.1 AA accessibility pass.
+
+An automated, risk-tiered clinical release pipeline now gates and promotes work to production. The Cockcroft-Gault creatinine-clearance calculator is the first to ship through it, extending the renal suite.
 
 ## Phase 1 — complete
 
