@@ -95,7 +95,15 @@ function decisionFixture(overrides = {}) {
   });
 }
 
-assert.equal(evaluateAutoMerge(decisionFixture({ pr: { baseRef: "main" } })).ok, true);
+{
+  const production = evaluateAutoMerge(decisionFixture({ pr: { baseRef: "main" } }));
+  assert.equal(production.ok, true);
+  assert.equal(
+    production.payload.merge_method,
+    "merge",
+    "production promotions must preserve the exact develop head as a main parent",
+  );
+}
 assert.equal(evaluateAutoMerge(decisionFixture({ pr: { merged: true, state: "closed" } })).reasonCode, "ALREADY_MERGED");
 assert.equal(evaluateAutoMerge(decisionFixture({ pr: { state: "closed" } })).reasonCode, "PR_NOT_OPEN_READY");
 assert.equal(evaluateAutoMerge(decisionFixture({ pr: { draft: true } })).reasonCode, "PR_NOT_OPEN_READY");
