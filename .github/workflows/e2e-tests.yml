@@ -52,6 +52,7 @@ jobs:
           node --check scripts/check-radulator-invariants.test.mjs
           node --check scripts/collect-loop-metrics.mjs
           node --check scripts/independent-review-gate.mjs
+          node --check scripts/release-workflow-permissions.test.mjs
           node --check scripts/release-policy.mjs
           node --check scripts/auto-merge.mjs
           node --check scripts/authorize-deployment.mjs
@@ -74,6 +75,7 @@ jobs:
           npm run test:release-policy
           npm run test:independent-review-gate
           npm run test:auto-merge
+          npm run test:release-workflow-permissions
           npm run test:authorize-deployment
           npm run test:reconcile-deployment
           npm run test:post-deploy-smoke
@@ -104,6 +106,38 @@ jobs:
           name: smoke-test-report
           path: playwright-report/
           retention-days: 3
+
+  hermes-release-control-tests:
+    name: Hermes Release Control Tests
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Hermes release-control tests
+        run: |
+          python3 -m py_compile \
+            ops/hermes/radulator/lifecycle_controller.py \
+            ops/hermes/radulator/learning_context.py \
+            ops/hermes/radulator/install.py
+          npm run test:hermes-judge-candidates
+          npm run test:hermes-judge-attest
+          npm run test:hermes-lifecycle
+          npm run test:hermes-learning
+          npm run test:hermes-install
 
 
   targeted-tests:

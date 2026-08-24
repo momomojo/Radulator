@@ -55,6 +55,7 @@ jobs:
       pull-requests: write
       issues: read
       checks: read
+      statuses: read
       actions: read
     uses: ./.github/workflows/auto-merge.yml
     with:
