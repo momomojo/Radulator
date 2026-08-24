@@ -32,7 +32,7 @@ TRANSITIONS = {
     "needs_fix": {"implementing", "blocked"},
     "approved": {"merged_develop", "merged_main", "blocked"},
     "merged_develop": {"promotion", "blocked"},
-    "promotion": {"merged_main", "needs_fix", "blocked"},
+    "promotion": {"review", "merged_main", "needs_fix", "blocked"},
     "merged_main": {"deploying", "blocked"},
     "deploying": {"deployed", "blocked"},
     "deployed": {"smoke_passed", "needs_fix", "blocked"},
@@ -104,18 +104,22 @@ def _validate_transition(
     blocked_resume_state: str | None = None,
 ) -> None:
     previous_state = previous.state if previous else None
+    transition_origin = previous_state
     if previous_state == "blocked" and event.state != blocked_resume_state:
-        raise LedgerError(
-            f"Blocked lifecycle must resume at retained {blocked_resume_state!r} phase, not {event.state!r}."
-        )
-    if event.state not in TRANSITIONS.get(previous_state, set()):
-        raise LedgerError(f"Invalid lifecycle transition {previous_state!r} -> {event.state!r}.")
+        is_legacy_block = previous is not None and "resume_state" not in previous.evidence
+        if not is_legacy_block:
+            raise LedgerError(
+                f"Blocked lifecycle must resume at retained {blocked_resume_state!r} phase, not {event.state!r}."
+            )
+        transition_origin = blocked_resume_state
+    if event.state not in TRANSITIONS.get(transition_origin, set()):
+        raise LedgerError(f"Invalid lifecycle transition {transition_origin!r} -> {event.state!r}.")
     if previous and previous.source_id != event.source_id:
         raise LedgerError("A task source_id cannot change during replay.")
-    if event.state == "implementing" and previous_state in {"needs_fix", "blocked"}:
+    if event.state == "implementing" and transition_origin in {"needs_fix", "blocked"}:
         if not event.evidence.get("prerequisite_change_id"):
             raise LedgerError("Requeue transition requires prerequisite_change_id evidence.")
-    if previous_state == "needs_fix" and event.state == "implementing":
+    if transition_origin == "needs_fix" and event.state == "implementing":
         if not previous.head_sha or not event.head_sha or event.head_sha == previous.head_sha:
             raise LedgerError("NEEDS_FIX requeue requires a new exact head SHA with the correction.")
 
