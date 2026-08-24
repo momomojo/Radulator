@@ -105,6 +105,7 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
     required = [
         repo / "ops/hermes/radulator/judge-candidates.mjs",
         repo / "ops/hermes/radulator/judge-attest.mjs",
+        repo / "ops/hermes/radulator/github-ci-identity.mjs",
         repo / "ops/hermes/radulator/public-keys.mjs",
         repo / "ops/hermes/radulator/lifecycle_controller.py",
         repo / "ops/hermes/radulator/learning_context.py",

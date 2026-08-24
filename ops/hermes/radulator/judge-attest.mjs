@@ -21,6 +21,7 @@ import {
   verifyAttestation,
 } from "../../../scripts/release-policy.mjs";
 import { CANDIDATE_SCHEMA } from "./judge-candidates.mjs";
+import { resolveCiIdentity } from "./github-ci-identity.mjs";
 import { resolveGithubToken } from "./github-token.mjs";
 import { loadPublicKeysFile } from "./public-keys.mjs";
 
@@ -261,9 +262,9 @@ async function runPost() {
   if (!token || !repository.includes("/")) throw new Error("GitHub token and owner/repo are required.");
   const [owner, repo] = repository.split("/");
   const publicKeys = await loadPublicKeysFile(requiredArgument("--public-keys-file"));
+  const ciIdentity = await resolveCiIdentity({ token, owner, repo });
   const config = {
-    expectedWorkflowId: Number(process.env.RADULATOR_E2E_WORKFLOW_ID || 0),
-    expectedCiAppId: Number(process.env.RADULATOR_CI_APP_ID || 15368),
+    ...ciIdentity,
     publicKeys,
   };
   const api = {
