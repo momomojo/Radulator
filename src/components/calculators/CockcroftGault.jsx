@@ -266,7 +266,7 @@ Use only when serum creatinine is stable. Results may be misleading in acute kid
       u: "https://www.niddk.nih.gov/research-funding/research-programs/kidney-clinical-research-epidemiology/laboratory/ckd-drug-dosing-providers",
     },
     {
-      t: "Bzowyckyj A, et al. Moving forward from Cockcroft-Gault creatinine clearance to race-free estimated glomerular filtration rate to improve medication-related decision-making in adults across healthcare settings. Am J Health Syst Pharm. 2025;82(12):644-659.",
+      t: "St Peter WL, et al. Moving forward from Cockcroft-Gault creatinine clearance to race-free estimated glomerular filtration rate to improve medication-related decision-making in adults across healthcare settings. Am J Health Syst Pharm. 2025;82(12):644-659.",
       u: "https://pubmed.ncbi.nlm.nih.gov/39552516/",
     },
     {

@@ -105,6 +105,11 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
         name: /Prediction of creatinine clearance from serum creatinine/,
       }),
     ).toHaveAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/1244564/");
+    await expect(
+      page.getByRole("link", {
+        name: /St Peter WL, et al\. Moving forward from Cockcroft-Gault/,
+      }),
+    ).toHaveAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/39552516/");
   });
 
   test("calculates the approved deterministic source vectors", async ({
