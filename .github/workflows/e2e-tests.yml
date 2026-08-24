@@ -105,6 +105,38 @@ jobs:
           path: playwright-report/
           retention-days: 3
 
+  hermes-release-control-tests:
+    name: Hermes Release Control Tests
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Hermes release-control tests
+        run: |
+          python3 -m py_compile \
+            ops/hermes/radulator/lifecycle_controller.py \
+            ops/hermes/radulator/learning_context.py \
+            ops/hermes/radulator/install.py
+          npm run test:hermes-judge-candidates
+          npm run test:hermes-judge-attest
+          npm run test:hermes-lifecycle
+          npm run test:hermes-learning
+          npm run test:hermes-install
+
 
   targeted-tests:
     name: Targeted Calculator Tests
