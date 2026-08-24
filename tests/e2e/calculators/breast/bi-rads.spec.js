@@ -34,7 +34,11 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
 
     await calculate(page, "0P — Prior mammograms are needed for comparison");
     await expect(page.getByText("Incomplete — prior mammograms are needed for comparison")).toBeVisible();
-    await expect(page.getByText("within 30 calendar days")).toBeVisible();
+    await expect(
+      page.getByText(
+        /Under U\.S\. MQSA.*within 30 calendar days.*Alternative Standard #25 permits "Incomplete: Need additional imaging evaluation"/,
+      ),
+    ).toBeVisible();
   });
 
   test("reports the probably-benign boundary and evidence-supported initial follow-up", async ({ page }) => {
@@ -61,7 +65,10 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
   test("keeps known malignancy distinct from a new probability assessment", async ({ page }) => {
     await calculate(page, "6 — Known tissue-proven malignancy");
     await expect(page.getByText("malignancy has already been established by tissue diagnosis")).toBeVisible();
-    await expect(page.getByText("treatment planning or response assessment")).toBeVisible();
+    await expect(page.getByText("surgeon and/or oncologist")).toBeVisible();
+    await expect(page.getByText("Definitive local therapy")).toBeVisible();
+    await expect(page.getByText("treatment planning")).toBeVisible();
+    await expect(page.getByText("response assessment")).toBeVisible();
   });
 
   test("includes the FDA marker-placement assessment without assigning a BI-RADS number", async ({ page }) => {
@@ -90,6 +97,9 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
     await page.getByRole("button", { name: /Show 6 more references/i }).click();
     await expect(
       page.locator('a[href="https://pubmed.ncbi.nlm.nih.gov/42233890/"]'),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Strigel RM.*AJR Am J Roentgenol\. 2017;208\(6\):1392-1399/),
     ).toBeVisible();
   });
 });

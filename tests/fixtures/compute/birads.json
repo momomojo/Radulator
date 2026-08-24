@@ -54,6 +54,14 @@
           {
             "key": "U.S. reporting requirement",
             "includes": "within 30 calendar days"
+          },
+          {
+            "key": "U.S. reporting requirement",
+            "includes": "Alternative Standard #25"
+          },
+          {
+            "key": "U.S. reporting requirement",
+            "includes": "Incomplete: Need additional imaging evaluation"
           }
         ]
       }
@@ -190,7 +198,10 @@
             "key": "Likelihood context",
             "equals": "Not applicable — malignancy has already been established by tissue diagnosis"
           },
-          { "key": "Next step", "includes": "treatment planning or response assessment" }
+          { "key": "Next step", "includes": "surgeon and/or oncologist" },
+          { "key": "Next step", "includes": "Definitive local therapy" },
+          { "key": "Next step", "includes": "treatment planning" },
+          { "key": "Next step", "includes": "response assessment" }
         ]
       }
     },

@@ -25,7 +25,7 @@ const ASSESSMENTS = {
     nextStep:
       "Obtain prior mammograms when possible, then issue the follow-up assessment required by the reporting jurisdiction.",
     reportingRequirement:
-      "Under U.S. MQSA, a follow-up report with a final assessment must be issued within 30 calendar days, even when comparison images cannot be obtained.",
+      'Under U.S. MQSA, a follow-up report must be issued within 30 calendar days even when comparison images cannot be obtained. Ordinarily it must include a final assessment; FDA Alternative Standard #25 permits "Incomplete: Need additional imaging evaluation" when further imaging is needed.',
     severity: "info",
   },
   1: {
@@ -109,7 +109,7 @@ const ASSESSMENTS = {
     likelihood:
       "Not applicable — malignancy has already been established by tissue diagnosis",
     nextStep:
-      "Use imaging for treatment planning or response assessment as directed by the care team; this category is not a new diagnostic probability.",
+      "Coordinate clinical follow-up with a breast surgeon and/or oncologist. Definitive local therapy (usually surgery) is generally appropriate when clinically indicated; imaging may support staging, treatment planning, or response assessment under multidisciplinary care. This category is not a new diagnostic probability.",
     severity: "danger",
   },
   post_marker: {
@@ -295,7 +295,7 @@ Category-specific next steps below are independently worded educational summarie
       u: "https://pubmed.ncbi.nlm.nih.gov/32427557/",
     },
     {
-      t: "Strigel RM, et al. Published category 4A, 4B and 4C malignancy-probability boundaries. AJR Am J Roentgenol. 2017;209:222-229. PMID 28792802.",
+      t: "Strigel RM, et al. Published category 4A, 4B and 4C malignancy-probability boundaries. AJR Am J Roentgenol. 2017;208(6):1392-1399. PMID 28792802.",
       u: "https://pubmed.ncbi.nlm.nih.gov/28792802/",
     },
   ],
