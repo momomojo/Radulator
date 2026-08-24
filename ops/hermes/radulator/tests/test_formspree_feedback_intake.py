@@ -157,6 +157,30 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             "Feature request: Dark mode for reading rooms/overnight call",
         )
 
+    def test_message_lines_beginning_with_reserved_field_words_are_never_reparsed(self):
+        body = """
+        Type: bug
+        Calculator: BI-RADS
+        Message:
+        Calculator gives the wrong output after selecting 4A.
+        Email should be optional for feedback.
+        Type is shown as the wrong label.
+        Name of the calculator is confusing.
+        Message: this colon is part of the submitted feedback.
+        """
+
+        feedback = extract_formspree_feedback(body)
+
+        self.assertEqual(feedback.calculator, "BI-RADS")
+        self.assertEqual(
+            feedback.message,
+            "Calculator gives the wrong output after selecting 4A.\n"
+            "Email should be optional for feedback.\n"
+            "Type is shown as the wrong label.\n"
+            "Name of the calculator is confusing.\n"
+            "Message: this colon is part of the submitted feedback.",
+        )
+
     def test_creates_one_triage_task_and_persists_only_a_digest_receipt(self):
         gmail = FakeGmail([self.message])
         kanban = FakeKanban()

@@ -136,7 +136,7 @@ def extract_formspree_feedback(body: str) -> FormspreeFeedback:
     """Extract only type/calculator/message; identity fields are discarded."""
     lines = _normalize_lines(body)
     field_pattern = re.compile(
-        r"^(name|email|type|calculator|message)\b\s*:?[ \t]*(.*)$",
+        r"^(name|email|type|calculator|message)(?:[ \t]*:[ \t]*(.*))?$",
         re.IGNORECASE,
     )
     footer_pattern = re.compile(
@@ -149,11 +149,17 @@ def extract_formspree_feedback(body: str) -> FormspreeFeedback:
     for line in lines:
         if footer_pattern.match(line):
             break
+        # Formspree renders Message last. Once its label is reached, every
+        # subsequent non-footer line is user text, even when it begins with a
+        # reserved field word such as "Calculator" or "Email".
+        if current == "message":
+            fields["message"].append(line)
+            continue
         matched = field_pattern.match(line)
         if matched:
             label = matched.group(1).lower()
             current = label if label in fields else None
-            remainder = matched.group(2).strip()
+            remainder = (matched.group(2) or "").strip()
             if current and remainder:
                 fields[current].append(remainder)
             continue
