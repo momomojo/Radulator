@@ -549,7 +549,6 @@ export async function publishAuthorizationStatus(token, owner, repo, headSha, pa
   const readback = statuses.find((status) => status.id === created.id);
   if (
     !readback ||
-    readback.sha !== headSha ||
     readback.state !== payload.state ||
     readback.context !== payload.context ||
     readback.description !== payload.description ||

@@ -251,7 +251,6 @@ function expectBlocked(reasonCode, options = {}) {
   };
   const created = {
     id: 7001,
-    sha: HEAD,
     ...payload,
     creator: { id: 41898282, login: "github-actions[bot]" },
   };
@@ -290,7 +289,6 @@ function expectBlocked(reasonCode, options = {}) {
   };
   const created = {
     id: 7002,
-    sha: HEAD,
     ...payload,
     creator: { id: 1, login: "untrusted-bot" },
   };

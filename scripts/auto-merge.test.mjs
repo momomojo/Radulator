@@ -56,7 +56,6 @@ function statusFixture(overrides = {}) {
   return {
     id: 6001,
     context: ENFORCEMENT_CONTEXT,
-    sha: HEAD,
     state: "success",
     created_at: "2026-08-23T20:10:01Z",
     creator: { id: ACTIONS_BOT_ID, login: "github-actions[bot]" },
@@ -161,10 +160,6 @@ assert.equal(
   })).reasonCode,
   "GATE_AUTHORIZATION_STATUS_CHECK_LINK_MISMATCH",
 );
-assert.equal(
-  evaluateAutoMerge(decisionFixture({ commitStatuses: [statusFixture({ sha: "d".repeat(40) })] })).reasonCode,
-  "MISSING_GATE_AUTHORIZATION_STATUS",
-);
 assert.equal(evaluateAutoMerge(decisionFixture({
   checkRuns: [checkFixture({ app: { id: 9999, slug: "other" } })],
 })).reasonCode, "GATE_CHECK_IDENTITY_MISMATCH");
@@ -206,12 +201,16 @@ console.log("approval-bound automatic merge tests passed");
     publicKeys: {},
   };
   const calls = [];
+  const statusHeadShas = [];
   const api = {
     async findPullNumbers() { return [123]; },
     async loadGateState() { return structuredClone(state); },
     async getBranchRules() { return decisionFixture().branchRules; },
     async listCheckRuns() { return [checkFixture()]; },
-    async listCommitStatuses() { return [statusFixture()]; },
+    async listCommitStatuses(headSha) {
+      statusHeadShas.push(headSha);
+      return [statusFixture()];
+    },
     async merge(number, payload) {
       calls.push({ number, payload });
       return { merged: true, sha: "e".repeat(40), message: "merged" };
@@ -238,6 +237,8 @@ console.log("approval-bound automatic merge tests passed");
   assert.equal(live[0].merged, true);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].payload.sha, HEAD);
+  assert.ok(statusHeadShas.length >= 3);
+  assert.ok(statusHeadShas.every((headSha) => headSha === HEAD), "every status query must be scoped to the exact current head");
 }
 
 {

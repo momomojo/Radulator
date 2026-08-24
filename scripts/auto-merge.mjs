@@ -69,7 +69,7 @@ export function evaluateAutoMerge({ pr, gateResult, checkRuns, commitStatuses, b
     return blocked("GATE_CHECK_FINGERPRINT_MISMATCH", "Published check does not match the fresh gate evaluation fingerprint.");
   }
   const authorization = (commitStatuses || [])
-    .filter((status) => status.context === ENFORCEMENT_CONTEXT && status.sha === pr.headSha)
+    .filter((status) => status.context === ENFORCEMENT_CONTEXT)
     .sort(statusSort)[0];
   if (!authorization) {
     return blocked("MISSING_GATE_AUTHORIZATION_STATUS", "No server-enforced clinical authorization status exists on the exact head.");
