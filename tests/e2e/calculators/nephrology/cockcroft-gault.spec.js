@@ -77,7 +77,9 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
     await expect(info).toContainText("converts internally with:");
     await expect(info).toContainText("SCr mg/dL = SCr µmol/L / 88.4");
     await expect(info).toContainText("V1 does not auto-select");
-    await expect(info).toContainText("limited validation in women");
+    await expect(info).toContainText(
+      "Later validation in 279 women aged 40-95 found a 0.84 factor",
+    );
     await expect(info).toContainText("predates standardized creatinine assays");
     await expect(info).toContainText("no fixed patient correction");
 
@@ -113,6 +115,11 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
         name: /St Peter WL, et al\. Moving forward from Cockcroft-Gault/,
       }),
     ).toHaveAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/39552516/");
+    await expect(
+      page.getByRole("link", {
+        name: /Sokoll LJ, Russell RM, Sadowski JA, Morrow FD\. Establishment of creatinine clearance reference values for older women/,
+      }),
+    ).toHaveAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/7988015/");
   });
 
   test("calculates the approved deterministic source vectors", async ({
@@ -149,7 +156,7 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
       "historical binary coefficients",
     );
     await expect(resultsRegion(page)).toContainText(
-      "not robustly derived or independently validated in women",
+      "later study in 279 women aged 40-95 validated the approach and estimated a 0.84 factor",
     );
     await expect(resultsRegion(page)).toContainText(
       "unknown, transgender, or intersex",
