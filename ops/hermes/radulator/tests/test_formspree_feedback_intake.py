@@ -266,6 +266,37 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertEqual(second["created"], 1)
         self.assertEqual(gmail.get_calls, ["valid-later"])
 
+    def test_old_parser_quarantines_are_stamped_once_without_starving_new_mail(self):
+        malformed = [
+            dict(self.message, id=f"old-bad-{index}", date=f"Fri, {10 + index:02d} Jul 2026 10:15:00 -0700", body="Name: Private")
+            for index in range(3)
+        ]
+        gmail = FakeGmail(malformed)
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path, max_messages=3)
+        state = json.loads(self.state_path.read_text())
+        for receipt in state["processed"].values():
+            receipt["parser_version"] = 0
+        self.state_path.write_text(json.dumps(state))
+
+        valid = dict(self.message, id="new-valid", date="Mon, 20 Jul 2026 10:15:00 -0700")
+        gmail.messages.append(valid)
+        gmail.get_calls.clear()
+        first_upgrade_poll = process_feedback(gmail, kanban, self.state_path, max_messages=1)
+
+        self.assertEqual(first_upgrade_poll["created"], 1)
+        self.assertEqual(gmail.get_calls, ["old-bad-0", "new-valid"])
+        self.assertEqual(len(kanban.created), 4, "quarantine task must not be duplicated")
+        upgraded = json.loads(self.state_path.read_text())["processed"]
+        self.assertEqual(sum(receipt["parser_version"] == 1 for receipt in upgraded.values()), 2)
+
+        gmail.get_calls.clear()
+        process_feedback(gmail, kanban, self.state_path, max_messages=1)
+        self.assertEqual(gmail.get_calls, ["old-bad-1"])
+        process_feedback(gmail, kanban, self.state_path, max_messages=1)
+        fully_upgraded = json.loads(self.state_path.read_text())["processed"]
+        self.assertTrue(all(receipt["parser_version"] == 1 for receipt in fully_upgraded.values()))
+
     def test_processes_oldest_first_and_bounds_each_run(self):
         messages = [
             dict(self.message, id=f"message-{index}", date=f"Fri, {10 + index:02d} Jul 2026 10:15:00 -0700")

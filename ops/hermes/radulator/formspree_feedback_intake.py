@@ -343,7 +343,8 @@ def _process_feedback_locked(
 
     trusted = [item for item in summaries if _trusted_notification(item)]
     trusted.sort(key=_sort_key)
-    attempted = 0
+    new_attempted = 0
+    replay_attempted = 0
     for summary in trusted:
         message_id = summary["id"]
         digest = _receipt_digest(message_id)
@@ -358,9 +359,18 @@ def _process_feedback_locked(
         ):
             outcome["already_processed"] += 1
             continue
-        if attempted >= max_messages:
-            break
-        attempted += 1
+        stale_quarantine = (
+            isinstance(existing_receipt, dict)
+            and existing_receipt.get("classification") == "quarantined"
+        )
+        if stale_quarantine:
+            if replay_attempted >= max_messages:
+                continue
+            replay_attempted += 1
+        else:
+            if new_attempted >= max_messages:
+                break
+            new_attempted += 1
 
         received = _received_date(summary.get("date"))
         try:
@@ -379,7 +389,9 @@ def _process_feedback_locked(
             feedback = extract_formspree_feedback(full["body"])
             title, body = _feedback_task(feedback, received, digest)
         except FeedbackIntakeError:
-            if isinstance(existing_receipt, dict) and existing_receipt.get("classification") == "quarantined":
+            if stale_quarantine:
+                existing_receipt["parser_version"] = PARSER_VERSION
+                _write_state(state_path, state)
                 outcome["already_processed"] += 1
                 continue
             classification = "quarantined"
