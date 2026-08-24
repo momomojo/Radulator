@@ -28,6 +28,7 @@ jobs:
       pull-requests: read
       issues: read
       checks: write
+      statuses: write
       actions: read
     env:
       GITHUB_TOKEN: ${{ github.token }}
