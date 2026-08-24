@@ -81,12 +81,18 @@ jobs:
           npm run test:post-deploy-smoke
           npm run test:release-marker
           npm run test:rollback-deployment
+          npm run check:invariants
+
+      # This named step makes the exact-head Smoke check's lifecycle coverage
+      # explicit to the clinical judge, while the separate check below remains
+      # independently selectable as signed CI evidence after this release.
+      - name: Verify Hermes release-control suites in Smoke evidence
+        run: |
           npm run test:hermes-judge-candidates
           npm run test:hermes-judge-attest
           npm run test:hermes-lifecycle
           npm run test:hermes-learning
           npm run test:hermes-install
-          npm run check:invariants
 
       - name: Build application
         run: npm run build

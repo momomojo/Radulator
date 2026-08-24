@@ -164,6 +164,7 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
         repo / "ops/hermes/radulator/public-keys.mjs",
         repo / "ops/hermes/radulator/lifecycle_controller.py",
         repo / "ops/hermes/radulator/learning_context.py",
+        repo / "ops/hermes/radulator/retain_learning.py",
     ]
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
@@ -173,6 +174,7 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
     ledger = radulator_home / "state/radulator-release-lifecycle.jsonl"
     lifecycle_cursor = radulator_home / "state/radulator-release-lifecycle-cursor.json"
     learning_cursor = radulator_home / "state/radulator-release-learning-cursor.json"
+    hindsight_config = radulator_home / "hindsight/config.json"
     signer = overlay / "judge-attest.mjs"
     primary_private = radulator_home / "keys/radulator-clinical/radulator-primary-v1.private.pem"
     verification_private = default_home / "keys/radulator-clinical/radulator-verification-v1.private.pem"
@@ -226,8 +228,10 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             f"Run python3 {overlay / 'lifecycle_controller.py'} next --ledger {ledger} --cursor-state {learning_cursor} "
             "--state smoke_passed. Invoke that collector exactly once in this run. If it returns count 0, stop immediately. Process only "
             "its single returned tracker and never enumerate the full ledger, board, or session history in this run. Use "
-            "radulator-release-learning once for that tracker. Retain only the sanitized candidate, read back Hindsight, append learned, "
-            "verify Kanban completion, then append complete.",
+            "radulator-release-learning once for that tracker. Replace only <candidate.task_id>, then run exactly: "
+            f"python3 {overlay / 'retain_learning.py'} --ledger {ledger} --task-id <candidate.task_id> "
+            f"--config {hindsight_config}. Do not call hindsight_retain. "
+            "Use only its exact readback receipt to append learned, verify Kanban terminal readback, then append complete.",
             ["radulator-release-learning"], "2-59/10 * * * *",
         ),
     ]
