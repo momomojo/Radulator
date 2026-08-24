@@ -2,9 +2,12 @@ import json
 import stat
 import subprocess
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
+import ops.hermes.radulator.install as install_module
 from ops.hermes.radulator.install import (
     InstallError,
     apply_install,
@@ -54,6 +57,18 @@ class InstallerTests(unittest.TestCase):
             "radulator_home": self.radulator_home,
             "default_home": self.default_home,
         }
+
+    def test_timestamp_generation_uses_python39_compatible_timezone_api(self):
+        sentinel = object()
+        rendered = types.SimpleNamespace(
+            isoformat=lambda **_kwargs: "2026-08-23T22:00:00+00:00",
+        )
+        fake_datetime = types.SimpleNamespace(
+            datetime=types.SimpleNamespace(now=lambda timezone: rendered if timezone is sentinel else None),
+            timezone=types.SimpleNamespace(utc=sentinel),
+        )
+        with mock.patch.object(install_module, "dt", fake_datetime):
+            self.assertEqual(install_module._now(), "2026-08-23T22:00:00Z")
 
     def test_dry_plan_is_read_only_and_uses_profile_level_xhigh(self):
         plan = build_plan(**self.kwargs())
