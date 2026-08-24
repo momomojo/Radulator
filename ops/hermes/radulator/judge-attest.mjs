@@ -21,6 +21,7 @@ import {
   verifyAttestation,
 } from "../../../scripts/release-policy.mjs";
 import { CANDIDATE_SCHEMA } from "./judge-candidates.mjs";
+import { resolveGithubToken } from "./github-token.mjs";
 import { loadPublicKeysFile } from "./public-keys.mjs";
 
 const MAX_ANALYSIS_BYTES = 8000;
@@ -254,7 +255,7 @@ async function runSign() {
 }
 
 async function runPost() {
-  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  const token = resolveGithubToken();
   const repository = requiredArgument("--repo");
   const record = JSON.parse(await readFile(requiredArgument("--attestation"), "utf8"));
   if (!token || !repository.includes("/")) throw new Error("GitHub token and owner/repo are required.");
