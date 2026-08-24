@@ -237,6 +237,9 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertEqual(len(kanban.created), 1)
 
         malformed["body"] = FORM_BODY
+        state = json.loads(self.state_path.read_text())
+        next(iter(state["processed"].values()))["parser_version"] = 0
+        self.state_path.write_text(json.dumps(state))
         repaired = process_feedback(gmail, kanban, self.state_path)
         self.assertEqual(repaired, {"created": 1, "already_processed": 0, "quarantined": 0})
         self.assertEqual(len(kanban.created), 2)
@@ -244,6 +247,24 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertTrue(kanban.created[1][2].startswith("radulator-formspree:"))
         state = json.loads(self.state_path.read_text())
         self.assertEqual(next(iter(state["processed"].values()))["classification"], "feedback")
+
+    def test_unchanged_quarantines_do_not_consume_the_new_message_budget(self):
+        malformed = [
+            dict(self.message, id=f"bad-{index}", date=f"Fri, {10 + index:02d} Jul 2026 10:15:00 -0700", body="Name: Private")
+            for index in range(3)
+        ]
+        gmail = FakeGmail(malformed)
+        kanban = FakeKanban()
+        first = process_feedback(gmail, kanban, self.state_path, max_messages=3)
+        self.assertEqual(first["quarantined"], 3)
+
+        valid = dict(self.message, id="valid-later", date="Mon, 20 Jul 2026 10:15:00 -0700")
+        gmail.messages.append(valid)
+        gmail.get_calls.clear()
+        second = process_feedback(gmail, kanban, self.state_path, max_messages=1)
+
+        self.assertEqual(second["created"], 1)
+        self.assertEqual(gmail.get_calls, ["valid-later"])
 
     def test_processes_oldest_first_and_bounds_each_run(self):
         messages = [

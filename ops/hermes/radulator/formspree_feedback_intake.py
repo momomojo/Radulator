@@ -26,6 +26,7 @@ SEARCH_QUERY = (
 EXPECTED_SUBJECT = "New submission from Radulator Feedback"
 EXPECTED_SENDER = "noreply@formspree.io"
 STATE_VERSION = 1
+PARSER_VERSION = 1
 MAX_SCAN = 100
 MAX_MESSAGE_LENGTH = 4000
 MAX_SCALAR_LENGTH = 80
@@ -350,6 +351,13 @@ def _process_feedback_locked(
         if isinstance(existing_receipt, dict) and existing_receipt.get("classification") == "feedback":
             outcome["already_processed"] += 1
             continue
+        if (
+            isinstance(existing_receipt, dict)
+            and existing_receipt.get("classification") == "quarantined"
+            and existing_receipt.get("parser_version") == PARSER_VERSION
+        ):
+            outcome["already_processed"] += 1
+            continue
         if attempted >= max_messages:
             break
         attempted += 1
@@ -390,6 +398,7 @@ def _process_feedback_locked(
         state["processed"][digest] = {
             "task_id": task_id,
             "classification": classification,
+            "parser_version": PARSER_VERSION,
         }
         _write_state(state_path, state)
         if classification == "quarantined":

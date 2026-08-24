@@ -47,6 +47,7 @@ jobs:
 
       - name: Run tooling checks
         run: |
+          npm audit --omit=dev --audit-level=high
           node --check scripts/capture-feature-proof.mjs
           node --check scripts/check-radulator-invariants.mjs
           node --check scripts/check-radulator-invariants.test.mjs
