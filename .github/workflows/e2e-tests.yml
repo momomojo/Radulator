@@ -117,7 +117,9 @@ jobs:
           retention-days: 3
 
   hermes-release-control-tests:
-    name: Release Control and Production Audit
+    # Keep this context stable: the protected develop/main rules require this
+    # exact GitHub Actions check name. The job also runs the production audit.
+    name: Hermes Release Control Tests
     if: github.event_name == 'pull_request'
     timeout-minutes: 10
     runs-on: ubuntu-latest

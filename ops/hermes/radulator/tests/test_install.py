@@ -177,7 +177,7 @@ class InstallerTests(unittest.TestCase):
         ):
             self.assertIn(command, smoke_job)
         self.assertIn("hermes-release-control-tests:", workflow)
-        self.assertIn("name: Release Control and Production Audit", workflow)
+        self.assertIn("name: Hermes Release Control Tests", workflow)
         for command in (
             "npm audit --omit=dev --audit-level=high",
             "npm run test:reconcile-deployment",
