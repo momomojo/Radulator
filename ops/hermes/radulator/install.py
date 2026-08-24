@@ -47,7 +47,7 @@ class InstallError(RuntimeError):
 
 
 def _now() -> str:
-    return dt.datetime.now(dt.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def _job_id(name: str) -> str:

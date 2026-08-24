@@ -53,7 +53,7 @@ def _event_hash(payload: dict[str, Any]) -> str:
 
 
 def _timestamp() -> str:
-    return dt.datetime.now(dt.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 @dataclasses.dataclass(frozen=True)
