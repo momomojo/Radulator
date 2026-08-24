@@ -10,6 +10,7 @@ import {
 } from "./release-policy.mjs";
 
 export const REQUIRED_CONTEXT = "Radulator Clinical Release Gate (exact head)";
+export const ENFORCEMENT_CONTEXT = "Radulator Clinical Release Authorization";
 export const MAX_PR_FILES = 3000;
 export const RECORD_SCHEMA = "radulator-clinical-gate-result/v1";
 export const ATTESTATION_MARKER = "<!-- radulator-clinical-attestation/v1 -->";
@@ -17,6 +18,7 @@ export const ATTESTATION_MARKER = "<!-- radulator-clinical-attestation/v1 -->";
 const E2E_WORKFLOW_PATH = ".github/workflows/e2e-tests.yml";
 const E2E_WORKFLOW_FILE = "e2e-tests.yml";
 const PUBLISHER_APP_ID = 15368;
+const PUBLISHER_USER_ID = 41898282;
 const ALLOWED_BASE_REFS = new Set(["develop", "main"]);
 const HOLD_LABELS = new Set([
   "hold",
@@ -504,6 +506,168 @@ export function checkCompletionPayload(result) {
   };
 }
 
+export function authorizationStatusPayload(result, check) {
+  return {
+    state: result.conclusion === "success" ? "success" : "failure",
+    context: ENFORCEMENT_CONTEXT,
+    description: `${result.reasonCode} ${result.fingerprint}`,
+    target_url: check.html_url,
+  };
+}
+
+export function pendingAuthorizationStatusPayload(targetUrl, prNumber, runId) {
+  return {
+    state: "pending",
+    context: ENFORCEMENT_CONTEXT,
+    description: `Evaluating exact state for PR #${prNumber} in run ${runId}`,
+    target_url: targetUrl,
+  };
+}
+
+export async function publishAuthorizationStatus(token, owner, repo, headSha, payload, api = null) {
+  if (!owner || !repo || !sha(headSha)) throw new Error("Authorization status repository/head identity is malformed.");
+  if (
+    !payload ||
+    !["pending", "success", "failure"].includes(payload.state) ||
+    payload.context !== ENFORCEMENT_CONTEXT ||
+    typeof payload.description !== "string" ||
+    !payload.description ||
+    payload.description.length > 140 ||
+    typeof payload.target_url !== "string" ||
+    !payload.target_url.startsWith("https://github.com/")
+  ) throw new Error("Authorization status payload is malformed.");
+  const client = api || {
+    request: githubRequest,
+    list: (authToken, path) => paged(authToken, path),
+  };
+  const created = await client.request(token, `/repos/${owner}/${repo}/statuses/${headSha}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!positiveInteger(created?.id)) throw new Error("Authorization status creation returned a malformed identity.");
+  const statuses = await client.list(token, `/repos/${owner}/${repo}/commits/${headSha}/statuses`);
+  const readback = statuses.find((status) => status.id === created.id);
+  if (
+    !readback ||
+    readback.sha !== headSha ||
+    readback.state !== payload.state ||
+    readback.context !== payload.context ||
+    readback.description !== payload.description ||
+    readback.target_url !== payload.target_url ||
+    readback.creator?.id !== PUBLISHER_USER_ID ||
+    readback.creator?.login !== "github-actions[bot]"
+  ) throw new Error(`Published authorization status ${created.id} failed exact readback verification.`);
+  return readback;
+}
+
+export async function runGateForPullRequest({
+  prNumber,
+  initial,
+  runId,
+  runUrl,
+  dryRun,
+  api,
+  evaluateGateImpl = evaluateGate,
+  fingerprintImpl = gateStateFingerprint,
+}) {
+  if (!positiveInteger(prNumber) || !sha(initial?.headSha || "") || !sha(initial?.baseSha || "")) {
+    throw new Error("Gate lifecycle initial PR state is malformed.");
+  }
+  if (!api?.loadState || !api?.publishStatus || !api?.createCheck || !api?.completeAndVerify) {
+    throw new Error("Gate lifecycle API is incomplete.");
+  }
+  const active = {
+    headSha: initial.headSha,
+    baseSha: initial.baseSha,
+    check: null,
+  };
+
+  async function beginPublication(headSha, baseSha) {
+    active.headSha = headSha;
+    active.baseSha = baseSha;
+    active.check = null;
+    await api.publishStatus(headSha, pendingAuthorizationStatusPayload(runUrl, prNumber, runId));
+    active.check = await api.createCheck(headSha);
+    if (!active.check || active.check.head_sha !== headSha || !positiveInteger(active.check.id)) {
+      throw new Error("Pending gate check creation returned the wrong head or identity.");
+    }
+  }
+
+  async function completePublication(result) {
+    if (!active.check || result.headSha !== active.headSha || result.baseSha !== active.baseSha) {
+      throw new Error("Terminal gate publication does not match the active head/base.");
+    }
+    const verifiedCheck = await api.completeAndVerify(active.check, result);
+    await api.publishStatus(result.headSha, authorizationStatusPayload(result, verifiedCheck));
+    return verifiedCheck;
+  }
+
+  try {
+    if (!dryRun) await beginPublication(initial.headSha, initial.baseSha);
+    const before = await api.loadState();
+    const beforeFingerprint = fingerprintImpl(before);
+    const after = await api.loadState();
+    const afterFingerprint = fingerprintImpl(after);
+    let result = beforeFingerprint === afterFingerprint
+      ? evaluateGateImpl(after)
+      : failure(after.pr.headSha, after.pr.baseSha, "Concurrent PR/judge/CI/file state change detected; refusing PASS.", "CONCURRENT_STATE_CHANGE");
+
+    if (!dryRun && active.headSha !== result.headSha) {
+      const oldResult = failure(
+        active.headSha,
+        active.baseSha,
+        "PR head changed during evaluation; old-head authorization is revoked.",
+        "HEAD_CHANGED",
+      );
+      await completePublication(oldResult);
+      await beginPublication(result.headSha, result.baseSha);
+    }
+
+    if (!dryRun) {
+      await completePublication(result);
+      const post = await api.loadState();
+      if (fingerprintImpl(post) !== afterFingerprint) {
+        const nextResult = failure(
+          post.pr.headSha,
+          post.pr.baseSha,
+          "State changed during/after check publication; success is revoked.",
+          "POST_PUBLISH_STATE_CHANGE",
+        );
+        if (active.headSha !== post.pr.headSha) {
+          const revoked = failure(
+            active.headSha,
+            active.baseSha,
+            "PR head changed after publication; old-head authorization is revoked.",
+            "POST_PUBLISH_STATE_CHANGE",
+          );
+          await completePublication(revoked);
+          await beginPublication(post.pr.headSha, post.pr.baseSha);
+        }
+        await completePublication(nextResult);
+        result = nextResult;
+      }
+    }
+
+    return { result, error: null };
+  } catch (error) {
+    const result = failure(
+      active.headSha,
+      active.baseSha,
+      `Gate evaluation error: ${error.message}`,
+      "EVALUATION_ERROR",
+    );
+    let publicationError = null;
+    if (!dryRun && active.check) {
+      try {
+        await completePublication(result);
+      } catch (publishError) {
+        publicationError = publishError;
+      }
+    }
+    return { result, error, publicationError };
+  }
+}
+
 async function completeCheck(token, owner, repo, checkId, result) {
   return githubRequest(token, `/repos/${owner}/${repo}/check-runs/${checkId}`, {
     method: "PATCH",
@@ -550,54 +714,47 @@ async function run() {
   const dryRun = process.argv.includes("--dry-run") || process.env.DRY_RUN === "1";
   const [owner, repo] = repository.split("/");
   const prNumbers = await findPullNumbers(token, owner, repo, process.env);
+  const runId = process.env.GITHUB_RUN_ID || "manual";
+  const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
 
   for (const prNumber of prNumbers) {
     const initial = normalizePr(await githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}`));
-    let check = dryRun ? null : await createPendingCheck(token, owner, repo, initial.headSha, prNumber);
-    try {
-      const before = await loadGateState(token, owner, repo, prNumber, config);
-      const beforeFingerprint = gateStateFingerprint(before);
-      const after = await loadGateState(token, owner, repo, prNumber, config);
-      const afterFingerprint = gateStateFingerprint(after);
-      let result = beforeFingerprint === afterFingerprint
-        ? evaluateGate(after)
-        : failure(after.pr.headSha, after.pr.baseSha, "Concurrent PR/judge/CI/file state change detected; refusing PASS.", "CONCURRENT_STATE_CHANGE");
-
-      if (!dryRun && check.head_sha !== result.headSha) {
-        const oldResult = failure(check.head_sha, initial.baseSha, "PR head changed during evaluation; old-head check is invalid.", "HEAD_CHANGED");
-        await completeCheck(token, owner, repo, check.id, oldResult);
-        await verifyCheck(token, owner, repo, check.id, oldResult);
-        check = await createPendingCheck(token, owner, repo, result.headSha, prNumber);
-      }
-      if (!dryRun) {
-        await completeCheck(token, owner, repo, check.id, result);
-        await verifyCheck(token, owner, repo, check.id, result);
-        const post = await loadGateState(token, owner, repo, prNumber, config);
-        if (gateStateFingerprint(post) !== afterFingerprint) {
-          result = failure(post.pr.headSha, post.pr.baseSha, "State changed during/after check publication; success is revoked.", "POST_PUBLISH_STATE_CHANGE");
-          if (check.head_sha !== post.pr.headSha) check = await createPendingCheck(token, owner, repo, post.pr.headSha, prNumber);
+    const outcome = await runGateForPullRequest({
+      prNumber,
+      initial,
+      runId,
+      runUrl,
+      dryRun,
+      api: {
+        loadState: () => loadGateState(token, owner, repo, prNumber, config),
+        publishStatus: (headSha, payload) => publishAuthorizationStatus(token, owner, repo, headSha, payload),
+        createCheck: (headSha) => createPendingCheck(token, owner, repo, headSha, prNumber),
+        completeAndVerify: async (check, result) => {
           await completeCheck(token, owner, repo, check.id, result);
-          await verifyCheck(token, owner, repo, check.id, result);
-        }
-      }
-      console.log(JSON.stringify({
-        pr: prNumber,
-        conclusion: result.conclusion,
-        eligible: result.eligible,
-        reasonCode: result.reasonCode,
-        headSha: result.headSha,
-        riskTier: result.risk?.tier || null,
-        fingerprint: result.fingerprint,
-        dryRun,
+          return verifyCheck(token, owner, repo, check.id, result);
+        },
+      },
+    });
+    const { result } = outcome;
+    const output = {
+      pr: prNumber,
+      conclusion: result.conclusion,
+      eligible: result.eligible,
+      reasonCode: result.reasonCode,
+      headSha: result.headSha,
+      riskTier: result.risk?.tier || null,
+      fingerprint: result.fingerprint,
+      dryRun,
+    };
+    if (outcome.error || outcome.publicationError) {
+      console.error(JSON.stringify({
+        ...output,
+        message: outcome.error?.message || null,
+        publicationError: outcome.publicationError?.message || null,
       }));
-    } catch (error) {
-      const result = failure(initial.headSha, initial.baseSha, `Gate evaluation error: ${error.message}`, "EVALUATION_ERROR");
-      if (!dryRun) {
-        await completeCheck(token, owner, repo, check.id, result);
-        await verifyCheck(token, owner, repo, check.id, result);
-      }
-      console.error(JSON.stringify({ pr: prNumber, conclusion: "failure", reasonCode: result.reasonCode, message: error.message }));
       process.exitCode = 1;
+    } else {
+      console.log(JSON.stringify(output));
     }
   }
 }

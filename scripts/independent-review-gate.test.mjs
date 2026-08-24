@@ -2,6 +2,8 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 
+import * as independentGate from "./independent-review-gate.mjs";
+
 import {
   ATTESTATION_MARKER,
   checkCompletionPayload,
@@ -26,6 +28,27 @@ const BASE = "b".repeat(40);
 const WORKFLOW_ID = 227376261;
 const CI_APP_ID = 15368;
 const CHECK_SUITE_ID = 700;
+
+assert.equal(
+  typeof independentGate.authorizationStatusPayload,
+  "function",
+  "the gate must expose a suite-independent authorization status payload",
+);
+assert.equal(
+  typeof independentGate.pendingAuthorizationStatusPayload,
+  "function",
+  "the gate must revoke an earlier authorization before re-evaluating the same head",
+);
+assert.equal(
+  typeof independentGate.publishAuthorizationStatus,
+  "function",
+  "the gate must publish and authoritatively read back its suite-independent status",
+);
+assert.equal(
+  typeof independentGate.runGateForPullRequest,
+  "function",
+  "the exact-head publication lifecycle must be directly regression-testable",
+);
 
 function keyFixture(keyId, role, profile) {
   const { publicKey, privateKey } = generateKeyPairSync("ed25519");
@@ -220,6 +243,199 @@ function expectBlocked(reasonCode, options = {}) {
 }
 
 {
+  const payload = {
+    state: "success",
+    context: "Radulator Clinical Release Authorization",
+    description: `PASS ${"f".repeat(64)}`,
+    target_url: "https://github.com/momomojo/Radulator/runs/5001",
+  };
+  const created = {
+    id: 7001,
+    sha: HEAD,
+    ...payload,
+    creator: { id: 41898282, login: "github-actions[bot]" },
+  };
+  const calls = [];
+  const readback = await independentGate.publishAuthorizationStatus(
+    "token",
+    "momomojo",
+    "Radulator",
+    HEAD,
+    payload,
+    {
+      async request(token, path, options) {
+        calls.push({ token, path, options });
+        return created;
+      },
+      async list(token, path) {
+        calls.push({ token, path });
+        return [created];
+      },
+    },
+  );
+  assert.ok(readback, "status readback must be returned");
+  assert.equal(readback.id, 7001);
+  assert.equal(calls[0].path, `/repos/momomojo/Radulator/statuses/${HEAD}`);
+  assert.equal(calls[0].options.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].options.body), payload);
+  assert.equal(calls[1].path, `/repos/momomojo/Radulator/commits/${HEAD}/statuses`);
+}
+
+{
+  const payload = {
+    state: "success",
+    context: "Radulator Clinical Release Authorization",
+    description: `PASS ${"f".repeat(64)}`,
+    target_url: "https://github.com/momomojo/Radulator/runs/5001",
+  };
+  const created = {
+    id: 7002,
+    sha: HEAD,
+    ...payload,
+    creator: { id: 1, login: "untrusted-bot" },
+  };
+  await assert.rejects(
+    independentGate.publishAuthorizationStatus(
+      "token",
+      "momomojo",
+      "Radulator",
+      HEAD,
+      payload,
+      {
+        async request() { return created; },
+        async list() { return [created]; },
+      },
+    ),
+    /failed exact readback verification/,
+    "a status whose readback source is not GitHub Actions must fail closed",
+  );
+}
+
+{
+  const nextHead = "d".repeat(40);
+  const states = [
+    { pr: { headSha: HEAD, baseSha: BASE }, snapshot: "stable" },
+    { pr: { headSha: HEAD, baseSha: BASE }, snapshot: "stable" },
+    { pr: { headSha: nextHead, baseSha: BASE }, snapshot: "changed" },
+  ];
+  const log = [];
+  let checkId = 8000;
+  const outcome = await independentGate.runGateForPullRequest({
+    prNumber: 99,
+    initial: { headSha: HEAD, baseSha: BASE },
+    runId: "45001",
+    runUrl: "https://github.com/momomojo/Radulator/actions/runs/45001",
+    dryRun: false,
+    api: {
+      async loadState() { return structuredClone(states.shift()); },
+      async publishStatus(headSha, payload) {
+        log.push({ operation: "status", headSha, state: payload.state, description: payload.description });
+      },
+      async createCheck(headSha) {
+        checkId += 1;
+        log.push({ operation: "create-check", headSha });
+        return { id: checkId, head_sha: headSha, html_url: `https://github.com/momomojo/Radulator/runs/${checkId}` };
+      },
+      async completeAndVerify(check, result) {
+        log.push({ operation: "complete-check", headSha: check.head_sha, conclusion: result.conclusion, reasonCode: result.reasonCode });
+        return check;
+      },
+    },
+    evaluateGateImpl: () => ({
+      conclusion: "success",
+      eligible: true,
+      reasonCode: "PASS",
+      headSha: HEAD,
+      baseSha: BASE,
+      fingerprint: "f".repeat(64),
+    }),
+    fingerprintImpl: (state) => state.snapshot,
+  });
+  assert.ok(outcome, "publication lifecycle must return its terminal result");
+  assert.equal(outcome.result.reasonCode, "POST_PUBLISH_STATE_CHANGE");
+  assert.equal(outcome.result.headSha, nextHead);
+  assert.deepEqual(
+    log.map(({ operation, headSha, state, conclusion, reasonCode }) => ({ operation, headSha, state, conclusion, reasonCode })),
+    [
+      { operation: "status", headSha: HEAD, state: "pending", conclusion: undefined, reasonCode: undefined },
+      { operation: "create-check", headSha: HEAD, state: undefined, conclusion: undefined, reasonCode: undefined },
+      { operation: "complete-check", headSha: HEAD, state: undefined, conclusion: "success", reasonCode: "PASS" },
+      { operation: "status", headSha: HEAD, state: "success", conclusion: undefined, reasonCode: undefined },
+      { operation: "complete-check", headSha: HEAD, state: undefined, conclusion: "failure", reasonCode: "POST_PUBLISH_STATE_CHANGE" },
+      { operation: "status", headSha: HEAD, state: "failure", conclusion: undefined, reasonCode: undefined },
+      { operation: "status", headSha: nextHead, state: "pending", conclusion: undefined, reasonCode: undefined },
+      { operation: "create-check", headSha: nextHead, state: undefined, conclusion: undefined, reasonCode: undefined },
+      { operation: "complete-check", headSha: nextHead, state: undefined, conclusion: "failure", reasonCode: "POST_PUBLISH_STATE_CHANGE" },
+      { operation: "status", headSha: nextHead, state: "failure", conclusion: undefined, reasonCode: undefined },
+    ],
+  );
+}
+
+{
+  const nextHead = "e".repeat(40);
+  const states = [
+    { pr: { headSha: HEAD, baseSha: BASE }, snapshot: "stable" },
+    { pr: { headSha: HEAD, baseSha: BASE }, snapshot: "stable" },
+    { pr: { headSha: nextHead, baseSha: BASE }, snapshot: "changed" },
+  ];
+  const log = [];
+  let checkId = 8100;
+  let injected = false;
+  const outcome = await independentGate.runGateForPullRequest({
+    prNumber: 99,
+    initial: { headSha: HEAD, baseSha: BASE },
+    runId: "45002",
+    runUrl: "https://github.com/momomojo/Radulator/actions/runs/45002",
+    dryRun: false,
+    api: {
+      async loadState() { return structuredClone(states.shift()); },
+      async publishStatus(headSha, payload) {
+        log.push({ operation: "status", headSha, state: payload.state, description: payload.description });
+        if (headSha === nextHead && payload.state === "failure" && !injected) {
+          injected = true;
+          throw new Error("injected current-head terminal status failure");
+        }
+      },
+      async createCheck(headSha) {
+        checkId += 1;
+        log.push({ operation: "create-check", headSha });
+        return { id: checkId, head_sha: headSha, html_url: `https://github.com/momomojo/Radulator/runs/${checkId}` };
+      },
+      async completeAndVerify(check, result) {
+        log.push({ operation: "complete-check", headSha: check.head_sha, conclusion: result.conclusion, reasonCode: result.reasonCode });
+        return check;
+      },
+    },
+    evaluateGateImpl: () => ({
+      conclusion: "success",
+      eligible: true,
+      reasonCode: "PASS",
+      headSha: HEAD,
+      baseSha: BASE,
+      fingerprint: "f".repeat(64),
+    }),
+    fingerprintImpl: (state) => state.snapshot,
+  });
+  assert.match(outcome.error.message, /injected current-head terminal status failure/);
+  assert.equal(outcome.publicationError, null);
+  assert.equal(outcome.result.reasonCode, "EVALUATION_ERROR");
+  assert.equal(outcome.result.headSha, nextHead, "catch publication must stay bound to the current head");
+  assert.ok(
+    log.some((entry) => entry.operation === "complete-check" && entry.headSha === nextHead && entry.reasonCode === "EVALUATION_ERROR"),
+    "the current-head check must be terminally failed after a transient publication error",
+  );
+  assert.ok(
+    log.some((entry) => entry.operation === "status" && entry.headSha === nextHead && entry.description.startsWith("EVALUATION_ERROR ")),
+    "the current-head failure status must be retried and published",
+  );
+  assert.equal(
+    log.some((entry) => entry.operation === "complete-check" && entry.headSha === HEAD && entry.reasonCode === "EVALUATION_ERROR"),
+    false,
+    "the catch path must never write its evaluation error back to the stale head",
+  );
+}
+
+{
   const result = evaluateGate(gateFixture());
   assert.equal(result.context, REQUIRED_CONTEXT);
   assert.equal(result.conclusion, "success");
@@ -230,6 +446,28 @@ function expectBlocked(reasonCode, options = {}) {
   const update = checkCompletionPayload(result);
   assert.equal(update.conclusion, "success");
   assert.equal(update.output.title, "Clinical release gate passed");
+  const authorization = independentGate.authorizationStatusPayload(result, {
+    html_url: "https://github.com/momomojo/Radulator/runs/5001",
+  });
+  assert.deepEqual(authorization, {
+    state: "success",
+    context: "Radulator Clinical Release Authorization",
+    description: `PASS ${result.fingerprint}`,
+    target_url: "https://github.com/momomojo/Radulator/runs/5001",
+  });
+  assert.deepEqual(
+    independentGate.pendingAuthorizationStatusPayload(
+      "https://github.com/momomojo/Radulator/actions/runs/45001",
+      99,
+      "45001",
+    ),
+    {
+      state: "pending",
+      context: "Radulator Clinical Release Authorization",
+      description: "Evaluating exact state for PR #99 in run 45001",
+      target_url: "https://github.com/momomojo/Radulator/actions/runs/45001",
+    },
+  );
 }
 
 {
