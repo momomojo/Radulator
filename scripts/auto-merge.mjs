@@ -92,7 +92,10 @@ export function evaluateAutoMerge({ pr, gateResult, checkRuns, commitStatuses, b
     reasonCode: "MERGE_AUTHORIZED",
     payload: {
       sha: pr.headSha,
-      merge_method: "squash",
+      // A production promotion must retain the exact develop head as a parent
+      // of main. Squashing disconnects the branch histories and makes every
+      // later promotion appear to require an unsafe back-merge.
+      merge_method: pr.baseRef === "main" ? "merge" : "squash",
       commit_title: `PR #${pr.number}: exact-head clinical gate passed`,
     },
   };
