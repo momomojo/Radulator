@@ -150,6 +150,88 @@ class LifecycleLedgerTests(unittest.TestCase):
         self.assertEqual(resumed.state, "implementing")
         self.assertEqual(resumed.head_sha, NEXT_HEAD)
 
+    def test_blocked_smoke_phase_resumes_exactly_and_completes_learning(self):
+        states = [
+            "feedback", "implementing", "testing", "review", "approved",
+            "merged_develop", "promotion", "merged_main", "deploying",
+            "deployed", "smoke_passed",
+        ]
+        for index, state in enumerate(states):
+            self.append(state, index)
+
+        blocked = self.append("blocked", 20, {"reason": "temporary Kanban readback failure"})
+        self.assertEqual(blocked.evidence["resume_state"], "smoke_passed")
+        with self.assertRaisesRegex(LedgerError, "resume.*smoke_passed"):
+            self.append("learned", 21)
+
+        resumed = self.append("smoke_passed", 22, {"proof": "smoke readback recovered"})
+        learned = self.append("learned", 23)
+        completed = self.append("complete", 24)
+        self.assertEqual(resumed.state, "smoke_passed")
+        self.assertEqual(learned.state, "learned")
+        self.assertEqual(completed.state, "complete")
+
+    def test_blocked_learning_phase_resumes_exactly_before_completion(self):
+        states = [
+            "feedback", "implementing", "testing", "review", "approved",
+            "merged_develop", "promotion", "merged_main", "deploying",
+            "deployed", "smoke_passed", "learned",
+        ]
+        for index, state in enumerate(states):
+            self.append(state, index)
+
+        blocked = self.append("blocked", 20, {"reason": "terminal receipt temporarily unavailable"})
+        self.assertEqual(blocked.evidence["resume_state"], "learned")
+        with self.assertRaisesRegex(LedgerError, "resume.*learned"):
+            self.append("complete", 21)
+
+        self.append("learned", 22, {"proof": "terminal readback recovered"})
+        completed = self.append("complete", 23)
+        self.assertEqual(completed.state, "complete")
+
+    def test_duplicate_blocked_event_remains_idempotent(self):
+        self.append("feedback", 0)
+        first = self.append("blocked", 1, {"reason": "temporary external failure"})
+        duplicate = self.append("blocked", 1, {"reason": "temporary external failure"})
+
+        self.assertEqual(first.event_hash, duplicate.event_hash)
+        self.assertEqual(first.evidence["resume_state"], "feedback")
+        self.assertEqual(len(self.ledger_path.read_text().splitlines()), 2)
+
+    def test_legacy_blocked_event_recovers_to_derived_prior_phase(self):
+        states = [
+            "feedback", "implementing", "testing", "review", "approved",
+            "merged_develop", "promotion", "merged_main", "deploying",
+            "deployed", "smoke_passed",
+        ]
+        for index, state in enumerate(states):
+            self.append(state, index)
+        self.append("blocked", 20, {"reason": "legacy transient failure"})
+
+        records = [json.loads(line) for line in self.ledger_path.read_text().splitlines()]
+        legacy_blocked = records[-1]
+        legacy_blocked["evidence"].pop("resume_state", None)
+        unhashed = dict(legacy_blocked)
+        unhashed.pop("event_hash")
+        legacy_blocked["event_hash"] = lifecycle_module._event_hash(unhashed)
+        self.ledger_path.write_text("\n".join(
+            json.dumps(record, sort_keys=True, separators=(",", ":")) for record in records
+        ) + "\n")
+
+        replay = LifecycleLedger(self.ledger_path).replay()
+        self.assertEqual(replay.blocked_resume_by_task["t_parent"], "smoke_passed")
+        resumed = LifecycleLedger(self.ledger_path).append(
+            idempotency_key="legacy-resume",
+            source_id="feedback-17",
+            task_id="t_parent",
+            state="smoke_passed",
+            pr=42,
+            head_sha=HEAD,
+            evidence={"proof": "legacy phase derived"},
+            timestamp="2026-08-23T20:22:00Z",
+        )
+        self.assertEqual(resumed.state, "smoke_passed")
+
     def test_kanban_adapter_is_idempotent_and_verifies_readback(self):
         self.append("feedback", 0)
         self.append("implementing", 1)
