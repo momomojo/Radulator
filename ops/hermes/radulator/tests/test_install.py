@@ -28,7 +28,7 @@ class InstallerTests(unittest.TestCase):
         for home in (self.radulator_home, self.default_home):
             home.mkdir(parents=True)
             (home / "config.yaml").write_text(
-                "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_runs: 1\n"
+                "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_jobs: 1\n"
             )
             (home / "cron").mkdir()
         self.original_radulator_jobs = (
@@ -70,6 +70,36 @@ class InstallerTests(unittest.TestCase):
         with mock.patch.object(install_module, "dt", fake_datetime):
             self.assertEqual(install_module._now(), "2026-08-23T22:00:00Z")
 
+    def test_profiles_require_single_flight_cron(self):
+        (self.radulator_home / "config.yaml").write_text(
+            "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_jobs: 2\n"
+        )
+        with self.assertRaisesRegex(InstallError, "single-flight"):
+            build_plan(**self.kwargs())
+
+    def test_profile_accepts_valid_quoted_xhigh_scalar(self):
+        for quoted in ('"xhigh"', "'xhigh'"):
+            (self.radulator_home / "config.yaml").write_text(
+                f"model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: {quoted}\ncron:\n  max_parallel_jobs: 1\n"
+            )
+            self.assertEqual(len(build_plan(**self.kwargs())["jobs"]), 4)
+
+    def test_single_flight_setting_must_be_in_top_level_cron_mapping(self):
+        (self.radulator_home / "config.yaml").write_text(
+            "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\nnot_cron:\n  max_parallel_jobs: 1\n"
+        )
+        with self.assertRaisesRegex(InstallError, "cron.max_parallel_jobs"):
+            build_plan(**self.kwargs())
+
+    def test_duplicate_cron_or_parallel_keys_are_rejected(self):
+        for text in (
+            "agent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_jobs: 1\ncron:\n  max_parallel_jobs: 1\n",
+            "agent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_jobs: 1\n  max_parallel_jobs: 1\n",
+        ):
+            (self.radulator_home / "config.yaml").write_text(text)
+            with self.assertRaisesRegex(InstallError, "ambiguous"):
+                build_plan(**self.kwargs())
+
     def test_dry_plan_is_read_only_and_uses_profile_level_xhigh(self):
         plan = build_plan(**self.kwargs())
         self.assertEqual(plan["schema"], "radulator-hermes-install/v1")
@@ -85,6 +115,10 @@ class InstallerTests(unittest.TestCase):
             self.assertFalse(job["enabled"])
         judge_jobs = [job for job in plan["jobs"] if job["name"].startswith("radulator-clinical-judge-")]
         self.assertTrue(all("--public-keys-file" in job["prompt"] for job in judge_jobs))
+        self.assertTrue(all("--limit 1" in job["prompt"] for job in judge_jobs))
+        self.assertTrue(all("Invoke that collector exactly once" in job["prompt"] for job in judge_jobs))
+        self.assertTrue(all("If it returns zero candidates, stop immediately" in job["prompt"] for job in judge_jobs))
+        self.assertTrue(all("never invoke the collector again" in job["prompt"] for job in judge_jobs))
 
     def test_apply_is_disabled_first_idempotent_and_separates_keys(self):
         first = apply_install(**self.kwargs())

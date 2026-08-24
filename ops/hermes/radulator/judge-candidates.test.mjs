@@ -2,11 +2,16 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { generateKeyPairSync, sign } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { collectCandidates, writeCandidateCache } from "./judge-candidates.mjs";
+import {
+  claimNextCandidate,
+  collectCandidates,
+  selectCandidateBatch,
+  writeCandidateCache,
+} from "./judge-candidates.mjs";
 import { resolveCiIdentity } from "./github-ci-identity.mjs";
 import { resolveGithubToken } from "./github-token.mjs";
 import {
@@ -38,6 +43,133 @@ const PUBLIC_KEYS = {
     publicKey: verificationKeys.publicKey.export({ type: "spki", format: "pem" }),
   },
 };
+
+{
+  const backlog = [{ pr: 82 }, { pr: 93 }, { pr: 112 }];
+  assert.deepEqual(selectCandidateBatch(backlog), [{ pr: 82 }], "one candidate is the safe default batch");
+  assert.throws(() => selectCandidateBatch(backlog, 2), /exactly one/i);
+  assert.throws(() => selectCandidateBatch(backlog, 0), /positive integer/i);
+  assert.throws(() => selectCandidateBatch(backlog, 1.5), /positive integer/i);
+}
+
+{
+  const root = await mkdtemp(path.join(os.tmpdir(), "radulator-judge-claims-"));
+  const stateFile = path.join(root, "primary.json");
+  const backlog = [
+    { candidateId: "candidate-a", pr: 82 },
+    { candidateId: "candidate-b", pr: 93 },
+  ];
+  try {
+    const [left, right] = await Promise.all([
+      claimNextCandidate(backlog, { role: "primary", stateFile, nowMs: 1_000, leaseMs: 100 }),
+      claimNextCandidate(backlog, { role: "primary", stateFile, nowMs: 1_000, leaseMs: 100 }),
+    ]);
+    assert.equal(
+      [left, right].filter((result) => result.candidate).length,
+      1,
+      "concurrent collectors may create only one role claim",
+    );
+    assert.equal([left, right].find((result) => result.candidate).candidate.candidateId, "candidate-a");
+    assert.equal((await stat(stateFile)).mode & 0o777, 0o600, "claim state is private");
+
+    const overlap = await claimNextCandidate(backlog, {
+      role: "primary",
+      stateFile,
+      nowMs: 1_050,
+      leaseMs: 100,
+    });
+    assert.equal(overlap.candidate, null);
+    assert.equal(overlap.reason, "active-lease", "an active role lease prevents a second review turn");
+
+    const rotated = await claimNextCandidate(backlog, {
+      role: "primary",
+      stateFile,
+      nowMs: 1_101,
+      leaseMs: 100,
+      retryLimit: 1,
+      cooldownMs: 1_000,
+    });
+    assert.equal(rotated.candidate.candidateId, "candidate-b", "an expired failing claim rotates to later work");
+
+    const resolved = await claimNextCandidate([backlog[0]], {
+      role: "primary",
+      stateFile,
+      nowMs: 1_102,
+      leaseMs: 100,
+      retryLimit: 1,
+      cooldownMs: 1_000,
+    });
+    assert.equal(resolved.candidate, null, "cooldown remains bounded after authoritative backlog pruning");
+
+    const retried = await claimNextCandidate([backlog[0]], {
+      role: "primary",
+      stateFile,
+      nowMs: 2_102,
+      leaseMs: 100,
+      retryLimit: 1,
+      cooldownMs: 1_000,
+    });
+    assert.equal(retried.candidate.candidateId, "candidate-a", "cooled-down work automatically becomes eligible again");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
+{
+  const root = await mkdtemp(path.join(os.tmpdir(), "radulator-judge-readback-"));
+  const stateFile = path.join(root, "verification.json");
+  const primary = { candidateId: "high-a", pr: 82 };
+  const next = { candidateId: "high-b", pr: 93 };
+  try {
+    const first = await claimNextCandidate([primary, next], {
+      role: "verification",
+      stateFile,
+      nowMs: 5_000,
+      leaseMs: 10_000,
+    });
+    assert.equal(first.candidate.candidateId, primary.candidateId);
+    const afterReadback = await claimNextCandidate([next], {
+      role: "verification",
+      stateFile,
+      nowMs: 5_001,
+      leaseMs: 10_000,
+    });
+    assert.equal(
+      afterReadback.candidate.candidateId,
+      next.candidateId,
+      "authoritative attestation readback removes the resolved lease without waiting for expiry",
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
+{
+  const root = await mkdtemp(path.join(os.tmpdir(), "radulator-judge-stale-lock-"));
+  const stateFile = path.join(root, "primary.json");
+  const lockFile = `${stateFile}.lock`;
+  const candidate = { candidateId: "stale-lock-candidate", pr: 101 };
+  try {
+    await writeFile(lockFile, "orphaned lock content\n", { mode: 0o600 });
+    const staleTime = new Date(Date.now() - 10_000);
+    await utimes(lockFile, staleTime, staleTime);
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () => claimNextCandidate([candidate], {
+        role: "primary",
+        stateFile,
+        nowMs: 10_000,
+        leaseMs: 10_000,
+      })),
+    );
+    assert.equal(
+      results.filter((result) => result.candidate).length,
+      1,
+      "concurrent stale-lock recovery must preserve exactly one critical-section owner",
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
 
 {
   const calls = [];
