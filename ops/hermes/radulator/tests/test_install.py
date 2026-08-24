@@ -132,6 +132,17 @@ class InstallerTests(unittest.TestCase):
             self.assertIn("Process only its single returned tracker", job["prompt"])
         self.assertNotIn("--state smoke_passed", lifecycle["prompt"])
         self.assertIn("--state smoke_passed", learning["prompt"])
+        self.assertIn("retain_learning.py", learning["prompt"])
+        self.assertIn("--task-id <candidate.task_id>", learning["prompt"])
+        self.assertIn("--config", learning["prompt"])
+        self.assertIn("do not call hindsight_retain", learning["prompt"].lower())
+
+        learning_skill = (
+            self.repo / "ops/hermes/radulator/skills/radulator-release-learning/SKILL.md"
+        ).read_text()
+        self.assertIn("retain_learning.py", learning_skill)
+        self.assertIn("kanban_closure", learning_skill)
+        self.assertNotIn("Call `hindsight_retain`", learning_skill)
 
     def test_judge_skill_prescribes_complete_sign_and_post_commands(self):
         skill = (self.repo / "ops/hermes/radulator/skills/radulator-clinical-judge/SKILL.md").read_text()

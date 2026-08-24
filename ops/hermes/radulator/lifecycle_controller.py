@@ -351,6 +351,7 @@ def actions_for_event(event: LifecycleEvent) -> list[dict[str, Any]]:
             ),
             "head_sha": event.head_sha,
             "workflow": "release_learning",
+            "assignee": "radulator",
         }]
     if event.state == "learned":
         return [{
@@ -399,15 +400,26 @@ def _find_task_id(value: Any) -> str | None:
     return None
 
 
-def _has_completed_status(value: Any) -> bool:
+def _terminal_status(value: Any) -> str | None:
     if isinstance(value, dict):
         for key in ("status", "state"):
-            if str(value.get(key, "")).lower() in {"complete", "completed", "done"}:
-                return True
-        return any(_has_completed_status(nested) for nested in value.values())
+            status = str(value.get(key, "")).lower()
+            if status in {"complete", "completed", "done", "archived"}:
+                return status
+        for nested in value.values():
+            status = _terminal_status(nested)
+            if status:
+                return status
     if isinstance(value, list):
-        return any(_has_completed_status(nested) for nested in value)
-    return False
+        for nested in value:
+            status = _terminal_status(nested)
+            if status:
+                return status
+    return None
+
+
+def _has_completed_status(value: Any) -> bool:
+    return _terminal_status(value) is not None
 
 
 class HermesKanbanCLI:
@@ -499,7 +511,12 @@ class HermesKanbanCLI:
                 readback = self.show(action["task_id"])
             if not _has_completed_status(readback):
                 raise LedgerError("Kanban completion failed authoritative readback.")
-            return {"kind": kind, "task_id": action["task_id"], "idempotency_key": action["idempotency_key"]}
+            return {
+                "kind": kind,
+                "task_id": action["task_id"],
+                "idempotency_key": action["idempotency_key"],
+                "terminal_status": _terminal_status(readback),
+            }
         raise LedgerError(f"Unsupported Kanban action kind {kind!r}.")
 
 

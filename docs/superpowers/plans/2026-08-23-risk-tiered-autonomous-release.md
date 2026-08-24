@@ -124,7 +124,9 @@
 - Create: `ops/hermes/radulator/lifecycle_controller.py`
 - Create: `ops/hermes/radulator/tests/test_lifecycle_controller.py`
 - Create: `ops/hermes/radulator/learning_context.py`
+- Create: `ops/hermes/radulator/retain_learning.py`
 - Create: `ops/hermes/radulator/tests/test_learning_context.py`
+- Create: `ops/hermes/radulator/tests/test_retain_learning.py`
 - Create: `ops/hermes/radulator/skills/radulator-release-learning/SKILL.md`
 
 **Interfaces:**
@@ -135,7 +137,7 @@
 - [ ] Write failing replay tests for every state transition, duplicate event, crash/replay, tamper detection, NEEDS_FIX requeue, exact-SHA handoff without attachments, completion only after smoke, and one-time learning.
 - [ ] Run Python unit tests and confirm missing controller behavior fails.
 - [ ] Implement the ledger core and adapters using atomic writes and readback verification.
-- [ ] Implement learning context and skill so only deployed stable lessons call `hindsight_retain` and append `learned`.
+- [ ] Implement learning context and a bounded `kanban_closure` retention helper so only deployed stable lessons receive exact Hindsight readback before `learned` is appended; do not route release closure through the general conversational `hindsight_retain` tool.
 - [ ] Run Python tests and commit `feat: retain autonomous release progress and learning`.
 
 ### Task 7: Idempotent Mac mini installer and job configuration
