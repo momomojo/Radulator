@@ -400,26 +400,38 @@ def _find_task_id(value: Any) -> str | None:
     return None
 
 
-def _terminal_status(value: Any) -> str | None:
+def _task_records(value: Any, task_id: str) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
     if isinstance(value, dict):
-        for key in ("status", "state"):
-            status = str(value.get(key, "")).lower()
-            if status in {"complete", "completed", "done", "archived"}:
-                return status
+        if task_id in (value.get("task_id"), value.get("id")):
+            records.append(value)
         for nested in value.values():
-            status = _terminal_status(nested)
-            if status:
-                return status
-    if isinstance(value, list):
+            records.extend(_task_records(nested, task_id))
+    elif isinstance(value, list):
         for nested in value:
-            status = _terminal_status(nested)
-            if status:
-                return status
-    return None
+            records.extend(_task_records(nested, task_id))
+    return records
 
 
-def _has_completed_status(value: Any) -> bool:
-    return _terminal_status(value) is not None
+def _terminal_status(value: Any, task_id: str) -> str | None:
+    records = _task_records(value, task_id)
+    if not records:
+        return None
+    statuses: list[str] = []
+    for record in records:
+        status = next((
+            str(record.get(key, "")).lower()
+            for key in ("status", "state")
+            if str(record.get(key, "")).lower() in {"complete", "completed", "done", "archived"}
+        ), None)
+        if status is None:
+            return None
+        statuses.append(status)
+    return statuses[0] if len(set(statuses)) == 1 else None
+
+
+def _has_completed_status(value: Any, task_id: str) -> bool:
+    return _terminal_status(value, task_id) is not None
 
 
 class HermesKanbanCLI:
@@ -447,7 +459,7 @@ class HermesKanbanCLI:
 
     def show(self, task_id: str) -> dict[str, Any]:
         result = self._run(["show", task_id, "--json"], expect_json=True)
-        if _find_task_id(result) != task_id:
+        if not _task_records(result, task_id):
             raise LedgerError(f"Kanban readback did not identify task {task_id}.")
         return result
 
@@ -502,20 +514,20 @@ class HermesKanbanCLI:
             return {"kind": kind, "task_id": action["task_id"], "idempotency_key": action["idempotency_key"]}
         if kind == "complete":
             readback = self.show(action["task_id"])
-            if not _has_completed_status(readback):
+            if not _has_completed_status(readback, action["task_id"]):
                 metadata = _canonical({"idempotency_key": action["idempotency_key"]})
                 self._run([
                     "complete", action["task_id"], "--result", action["result"],
                     "--summary", action["summary"], "--metadata", metadata,
                 ])
                 readback = self.show(action["task_id"])
-            if not _has_completed_status(readback):
+            if not _has_completed_status(readback, action["task_id"]):
                 raise LedgerError("Kanban completion failed authoritative readback.")
             return {
                 "kind": kind,
                 "task_id": action["task_id"],
                 "idempotency_key": action["idempotency_key"],
-                "terminal_status": _terminal_status(readback),
+                "terminal_status": _terminal_status(readback, action["task_id"]),
             }
         raise LedgerError(f"Unsupported Kanban action kind {kind!r}.")
 

@@ -240,6 +240,37 @@ class LifecycleLedgerTests(unittest.TestCase):
         self.assertEqual(receipt["terminal_status"], "archived")
         self.assertEqual([command[2] for command in commands], ["show"])
 
+    def test_unrelated_nested_terminal_task_cannot_complete_requested_tracker(self):
+        states = [
+            "feedback", "implementing", "testing", "review", "approved",
+            "merged_develop", "promotion", "merged_main", "deploying",
+            "deployed", "smoke_passed", "learned",
+        ]
+        for index, state in enumerate(states):
+            event = self.append(state, index)
+        action = actions_for_event(event)[0]
+        commands = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "show":
+                return subprocess.CompletedProcess(command, 0, json.dumps({
+                    "task": {
+                        "id": "t_parent",
+                        "status": "in_progress",
+                        "children": [{"id": "t_unrelated", "status": "archived"}],
+                    },
+                }), "")
+            if args[0] == "complete":
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            return subprocess.CompletedProcess(command, 1, "", "unexpected mutation")
+
+        with self.assertRaisesRegex(LedgerError, "completion failed authoritative readback"):
+            HermesKanbanCLI(runner=runner).perform(action)
+
+        self.assertEqual([command[2] for command in commands], ["show", "complete", "show"])
+
     def test_next_candidate_is_bounded_round_robin_and_excludes_complete(self):
         cursor = Path(self.temp.name) / "lifecycle-cursor.json"
         self.ledger.append(

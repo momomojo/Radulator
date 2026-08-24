@@ -102,6 +102,51 @@ class RetainLearningTests(unittest.TestCase):
                 opener=lambda _request, timeout=None: next(responses),
             )
 
+    def test_fails_closed_when_readback_contains_a_second_valid_record(self):
+        document_id = f"radulator-release-learning-{CANDIDATE['retention_id']}"
+        tags = ["radulator-release-learning", f"retention_id:{CANDIDATE['retention_id']}"]
+        posted_content = None
+
+        def opener(request, timeout=None):
+            nonlocal posted_content
+            if request.get_method() == "POST":
+                posted_content = json.loads(request.data)["items"][0]["content"]
+                return FakeResponse({
+                    "success": True,
+                    "bank_id": "hermes-radulator",
+                    "items_count": 1,
+                    "async": False,
+                })
+            return FakeResponse({
+                "items": [
+                    {
+                        "id": "receipt-exact",
+                        "text": posted_content,
+                        "context": CANDIDATE["retention_id"],
+                        "document_id": document_id,
+                        "state": "valid",
+                        "tags": tags,
+                    },
+                    {
+                        "id": "receipt-conflicting",
+                        "text": "stale conflicting content",
+                        "context": CANDIDATE["retention_id"],
+                        "document_id": document_id,
+                        "state": "valid",
+                        "tags": tags,
+                    },
+                ],
+                "total": 2,
+            })
+
+        with self.assertRaisesRegex(RetentionError, "exact-document readback"):
+            retain_learning(
+                CANDIDATE,
+                api_url="http://hindsight.test:8890",
+                bank_id="hermes-radulator",
+                opener=opener,
+            )
+
     def test_rejects_non_http_endpoint_before_network_access(self):
         opener = mock.Mock()
 

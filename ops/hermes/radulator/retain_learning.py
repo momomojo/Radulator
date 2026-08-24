@@ -154,6 +154,12 @@ def retain_learning(
     items = readback.get("items")
     if not isinstance(items, list):
         raise RetentionError("Hindsight readback did not return a memory list.")
+    total = readback.get("total")
+    if len(items) != 1 or (
+        total is not None
+        and (not isinstance(total, int) or isinstance(total, bool) or total != 1)
+    ):
+        raise RetentionError("Hindsight exact-document readback did not yield exactly one valid record.")
     matching = [
         item for item in items
         if isinstance(item, dict)
