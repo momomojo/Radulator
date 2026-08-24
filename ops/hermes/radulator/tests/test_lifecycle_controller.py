@@ -1,9 +1,12 @@
 import json
 import subprocess
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
+import ops.hermes.radulator.lifecycle_controller as lifecycle_module
 from ops.hermes.radulator.lifecycle_controller import (
     LedgerError,
     HermesKanbanCLI,
@@ -38,6 +41,18 @@ class LifecycleLedgerTests(unittest.TestCase):
             evidence=evidence or {"proof": f"proof-{index}"},
             timestamp=f"2026-08-23T20:{index:02d}:00Z",
         )
+
+    def test_timestamp_generation_uses_python39_compatible_timezone_api(self):
+        sentinel = object()
+        rendered = types.SimpleNamespace(
+            isoformat=lambda **_kwargs: "2026-08-23T22:00:00+00:00",
+        )
+        fake_datetime = types.SimpleNamespace(
+            datetime=types.SimpleNamespace(now=lambda timezone: rendered if timezone is sentinel else None),
+            timezone=types.SimpleNamespace(utc=sentinel),
+        )
+        with mock.patch.object(lifecycle_module, "dt", fake_datetime):
+            self.assertEqual(lifecycle_module._timestamp(), "2026-08-23T22:00:00Z")
 
     def test_replays_complete_lifecycle_and_survives_restart(self):
         states = [
