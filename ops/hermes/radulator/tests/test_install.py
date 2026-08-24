@@ -77,6 +77,13 @@ class InstallerTests(unittest.TestCase):
         with self.assertRaisesRegex(InstallError, "single-flight"):
             build_plan(**self.kwargs())
 
+    def test_profile_accepts_valid_quoted_xhigh_scalar(self):
+        for quoted in ('"xhigh"', "'xhigh'"):
+            (self.radulator_home / "config.yaml").write_text(
+                f"model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: {quoted}\ncron:\n  max_parallel_jobs: 1\n"
+            )
+            self.assertEqual(len(build_plan(**self.kwargs())["jobs"]), 4)
+
     def test_single_flight_setting_must_be_in_top_level_cron_mapping(self):
         (self.radulator_home / "config.yaml").write_text(
             "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\nnot_cron:\n  max_parallel_jobs: 1\n"

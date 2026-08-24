@@ -103,12 +103,25 @@ def _top_level_mapping_scalar(text: str, section: str, key: str, label: str) -> 
     return value
 
 
+def _yaml_string_scalar(value: str | None) -> str | None:
+    if not value or len(value) < 2 or value[0] != value[-1] or value[0] not in {"'", '"'}:
+        return value
+    if value[0] == "'":
+        return value[1:-1].replace("''", "'")
+    try:
+        decoded = json.loads(value)
+    except json.JSONDecodeError:
+        return value
+    return decoded if isinstance(decoded, str) else value
+
+
 def _verify_profile(home: Path, label: str) -> None:
     config = home / "config.yaml"
     if not config.is_file():
         raise InstallError(f"{label} config.yaml is missing.")
     text = config.read_text(encoding="utf-8")
-    if _top_level_mapping_scalar(text, "agent", "reasoning_effort", label) != "xhigh":
+    effort = _top_level_mapping_scalar(text, "agent", "reasoning_effort", label)
+    if _yaml_string_scalar(effort) != "xhigh":
         raise InstallError(f"{label} must set profile-level agent.reasoning_effort to xhigh.")
     if _top_level_mapping_scalar(text, "cron", "max_parallel_jobs", label) != "1":
         raise InstallError(f"{label} must set cron.max_parallel_jobs to 1 for single-flight judgment.")
