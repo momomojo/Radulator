@@ -559,6 +559,12 @@ export async function publishAuthorizationStatus(token, owner, repo, headSha, pa
   return readback;
 }
 
+function isDefaultBranchStatusPermissionTransition(error) {
+  return error instanceof Error &&
+    /POST \/repos\/[^/]+\/[^/]+\/statuses\/[0-9a-f]{40} failed: 403\b/.test(error.message) &&
+    error.message.includes("Resource not accessible by integration");
+}
+
 export async function runGateForPullRequest({
   prNumber,
   initial,
@@ -580,12 +586,32 @@ export async function runGateForPullRequest({
     baseSha: initial.baseSha,
     check: null,
   };
+  let statusPublicationWarning = null;
+  let statusPublicationAvailable = true;
+
+  async function publishStatus(headSha, payload) {
+    if (!statusPublicationAvailable) return null;
+    try {
+      return await api.publishStatus(headSha, payload);
+    } catch (error) {
+      // pull_request_target permissions come from the default branch workflow,
+      // even when the trusted evaluator is checked out from develop. During the
+      // one-time rollout, keep the existing exact-head check authoritative until
+      // main contains statuses:write. The new merge controller and final branch
+      // rule both still require this status, so a missing status can never merge
+      // once the replacement enforcement is active.
+      if (!isDefaultBranchStatusPermissionTransition(error)) throw error;
+      statusPublicationAvailable = false;
+      statusPublicationWarning = error;
+      return null;
+    }
+  }
 
   async function beginPublication(headSha, baseSha) {
     active.headSha = headSha;
     active.baseSha = baseSha;
     active.check = null;
-    await api.publishStatus(headSha, pendingAuthorizationStatusPayload(runUrl, prNumber, runId));
+    await publishStatus(headSha, pendingAuthorizationStatusPayload(runUrl, prNumber, runId));
     active.check = await api.createCheck(headSha);
     if (!active.check || active.check.head_sha !== headSha || !positiveInteger(active.check.id)) {
       throw new Error("Pending gate check creation returned the wrong head or identity.");
@@ -597,7 +623,7 @@ export async function runGateForPullRequest({
       throw new Error("Terminal gate publication does not match the active head/base.");
     }
     const verifiedCheck = await api.completeAndVerify(active.check, result);
-    await api.publishStatus(result.headSha, authorizationStatusPayload(result, verifiedCheck));
+    await publishStatus(result.headSha, authorizationStatusPayload(result, verifiedCheck));
     return verifiedCheck;
   }
 
@@ -647,7 +673,7 @@ export async function runGateForPullRequest({
       }
     }
 
-    return { result, error: null };
+    return { result, error: null, statusPublicationWarning };
   } catch (error) {
     const result = failure(
       active.headSha,
@@ -663,7 +689,7 @@ export async function runGateForPullRequest({
         publicationError = publishError;
       }
     }
-    return { result, error, publicationError };
+    return { result, error, publicationError, statusPublicationWarning };
   }
 }
 
@@ -744,6 +770,7 @@ async function run() {
       riskTier: result.risk?.tier || null,
       fingerprint: result.fingerprint,
       dryRun,
+      authorizationStatus: outcome.statusPublicationWarning ? "awaiting-default-branch-permission" : "published",
     };
     if (outcome.error || outcome.publicationError) {
       console.error(JSON.stringify({

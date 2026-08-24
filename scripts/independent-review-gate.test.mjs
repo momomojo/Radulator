@@ -434,6 +434,56 @@ function expectBlocked(reasonCode, options = {}) {
 }
 
 {
+  const states = [
+    { pr: { headSha: HEAD, baseSha: BASE }, snapshot: "stable" },
+    { pr: { headSha: HEAD, baseSha: BASE }, snapshot: "stable" },
+    { pr: { headSha: HEAD, baseSha: BASE }, snapshot: "stable" },
+  ];
+  const log = [];
+  const outcome = await independentGate.runGateForPullRequest({
+    prNumber: 99,
+    initial: { headSha: HEAD, baseSha: BASE },
+    runId: "45003",
+    runUrl: "https://github.com/momomojo/Radulator/actions/runs/45003",
+    dryRun: false,
+    api: {
+      async loadState() { return structuredClone(states.shift()); },
+      async publishStatus(headSha, payload) {
+        log.push({ operation: "status", headSha, state: payload.state });
+        throw new Error(
+          `POST /repos/momomojo/Radulator/statuses/${headSha} failed: 403 {"message":"Resource not accessible by integration"}`,
+        );
+      },
+      async createCheck(headSha) {
+        log.push({ operation: "create-check", headSha });
+        return { id: 8201, head_sha: headSha, html_url: "https://github.com/momomojo/Radulator/runs/8201" };
+      },
+      async completeAndVerify(check, result) {
+        log.push({ operation: "complete-check", headSha: check.head_sha, conclusion: result.conclusion });
+        return check;
+      },
+    },
+    evaluateGateImpl: () => ({
+      conclusion: "success",
+      eligible: true,
+      reasonCode: "PASS",
+      headSha: HEAD,
+      baseSha: BASE,
+      fingerprint: "f".repeat(64),
+    }),
+    fingerprintImpl: (state) => state.snapshot,
+  });
+  assert.equal(outcome.error, null, "the legacy default-branch token must not break the existing exact-head gate");
+  assert.equal(outcome.result.reasonCode, "PASS");
+  assert.match(outcome.statusPublicationWarning.message, /Resource not accessible by integration/);
+  assert.deepEqual(log, [
+    { operation: "status", headSha: HEAD, state: "pending" },
+    { operation: "create-check", headSha: HEAD },
+    { operation: "complete-check", headSha: HEAD, conclusion: "success" },
+  ]);
+}
+
+{
   const result = evaluateGate(gateFixture());
   assert.equal(result.context, REQUIRED_CONTEXT);
   assert.equal(result.conclusion, "success");
