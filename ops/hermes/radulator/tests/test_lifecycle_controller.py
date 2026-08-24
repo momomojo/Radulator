@@ -44,6 +44,18 @@ class LifecycleLedgerTests(unittest.TestCase):
             timestamp=f"2026-08-23T20:{index:02d}:00Z",
         )
 
+    def make_last_blocked_record_legacy(self):
+        records = [json.loads(line) for line in self.ledger_path.read_text().splitlines()]
+        legacy_blocked = records[-1]
+        self.assertEqual(legacy_blocked["state"], "blocked")
+        legacy_blocked["evidence"].pop("resume_state", None)
+        unhashed = dict(legacy_blocked)
+        unhashed.pop("event_hash")
+        legacy_blocked["event_hash"] = lifecycle_module._event_hash(unhashed)
+        self.ledger_path.write_text("\n".join(
+            json.dumps(record, sort_keys=True, separators=(",", ":")) for record in records
+        ) + "\n")
+
     def test_timestamp_generation_uses_python39_compatible_timezone_api(self):
         sentinel = object()
         rendered = types.SimpleNamespace(
@@ -208,15 +220,7 @@ class LifecycleLedgerTests(unittest.TestCase):
             self.append(state, index)
         self.append("blocked", 20, {"reason": "legacy transient failure"})
 
-        records = [json.loads(line) for line in self.ledger_path.read_text().splitlines()]
-        legacy_blocked = records[-1]
-        legacy_blocked["evidence"].pop("resume_state", None)
-        unhashed = dict(legacy_blocked)
-        unhashed.pop("event_hash")
-        legacy_blocked["event_hash"] = lifecycle_module._event_hash(unhashed)
-        self.ledger_path.write_text("\n".join(
-            json.dumps(record, sort_keys=True, separators=(",", ":")) for record in records
-        ) + "\n")
+        self.make_last_blocked_record_legacy()
 
         replay = LifecycleLedger(self.ledger_path).replay()
         self.assertEqual(replay.blocked_resume_by_task["t_parent"], "smoke_passed")
@@ -231,6 +235,53 @@ class LifecycleLedgerTests(unittest.TestCase):
             timestamp="2026-08-23T20:22:00Z",
         )
         self.assertEqual(resumed.state, "smoke_passed")
+
+    def test_legacy_blocked_event_allows_one_valid_direct_advance(self):
+        for index, state in enumerate(["feedback", "implementing", "testing", "review"]):
+            self.append(state, index)
+        self.append("blocked", 20, {"reason": "legacy review handoff failure"})
+        self.make_last_blocked_record_legacy()
+
+        advanced = LifecycleLedger(self.ledger_path).append(
+            idempotency_key="legacy-review-needs-fix",
+            source_id="feedback-17",
+            task_id="t_parent",
+            state="needs_fix",
+            pr=42,
+            head_sha=HEAD,
+            evidence={"verdict_id": "comment-legacy", "reason": "Correction required."},
+            timestamp="2026-08-23T20:21:00Z",
+        )
+        self.assertEqual(advanced.state, "needs_fix")
+
+    def test_legacy_blocked_event_still_rejects_skipped_phases(self):
+        for index, state in enumerate(["feedback", "implementing", "testing", "review"]):
+            self.append(state, index)
+        self.append("blocked", 20, {"reason": "legacy review handoff failure"})
+        self.make_last_blocked_record_legacy()
+
+        with self.assertRaisesRegex(LedgerError, "transition"):
+            LifecycleLedger(self.ledger_path).append(
+                idempotency_key="legacy-review-skips-to-main",
+                source_id="feedback-17",
+                task_id="t_parent",
+                state="merged_main",
+                pr=42,
+                head_sha=HEAD,
+                evidence={"proof": "must not skip approval"},
+                timestamp="2026-08-23T20:21:00Z",
+            )
+
+    def test_promotion_may_return_to_review_before_main_approval(self):
+        states = [
+            "feedback", "implementing", "testing", "review", "approved",
+            "merged_develop", "promotion", "review", "approved", "merged_main",
+        ]
+        for index, state in enumerate(states):
+            self.append(state, index)
+
+        replay = self.ledger.replay()
+        self.assertEqual(replay.current_by_task["t_parent"].state, "merged_main")
 
     def test_kanban_adapter_is_idempotent_and_verifies_readback(self):
         self.append("feedback", 0)
