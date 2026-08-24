@@ -159,6 +159,14 @@ class InstallerTests(unittest.TestCase):
 
     def test_e2e_workflow_publishes_authoritative_hermes_release_control_check(self):
         workflow = (self.repo / ".github/workflows/e2e-tests.yml").read_text()
+        smoke_job = workflow[:workflow.index("hermes-release-control-tests:")]
+        self.assertIn("name: Verify Hermes release-control suites in Smoke evidence", smoke_job)
+        for command in (
+            "npm run test:hermes-lifecycle",
+            "npm run test:hermes-learning",
+            "npm run test:hermes-install",
+        ):
+            self.assertIn(command, smoke_job)
         self.assertIn("hermes-release-control-tests:", workflow)
         self.assertIn("name: Hermes Release Control Tests", workflow)
         for command in (
