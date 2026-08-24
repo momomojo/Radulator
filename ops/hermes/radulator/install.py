@@ -171,6 +171,9 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
 
     overlay = repo / "ops/hermes/radulator"
     ledger = radulator_home / "state/radulator-release-lifecycle.jsonl"
+    lifecycle_cursor = radulator_home / "state/radulator-release-lifecycle-cursor.json"
+    learning_cursor = radulator_home / "state/radulator-release-learning-cursor.json"
+    signer = overlay / "judge-attest.mjs"
     primary_private = radulator_home / "keys/radulator-clinical/radulator-primary-v1.private.pem"
     verification_private = default_home / "keys/radulator-clinical/radulator-verification-v1.private.pem"
     primary_public = primary_private.with_name("radulator-primary-v1.public.pem")
@@ -185,9 +188,11 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             f"--public-keys-file {primary_public_keys_config}. "
             "Invoke that collector exactly once in this run. If it returns zero candidates, stop immediately. Review only its single "
             "returned candidate and never invoke the collector again in the same run. Use radulator-clinical-judge, write one decision "
-            "JSON, sign with the configured primary key, "
-            f"key id radulator-primary-v1, role primary, profile radulator, model {MODEL}, provider {PROVIDER}, and private key "
-            f"{primary_private}; post with --public-keys-file {primary_public_keys_config} and require authoritative GitHub comment "
+            "JSON. Replace the angle-bracket path placeholders, then run exactly: "
+            f"node {signer} sign --candidate <cachedPaths[0]> --decision <decision-json-path> --private-key {primary_private} "
+            f"--key-id radulator-primary-v1 --role primary --profile radulator --model {MODEL} --provider {PROVIDER} "
+            f"--output <attestation-json-path> && node {signer} post --repo {CANONICAL_GITHUB_REPOSITORY} "
+            f"--attestation <attestation-json-path> --public-keys-file {primary_public_keys_config}. Require authoritative GitHub comment "
             "readback. Never edit source or self-improve during judgment.",
             ["radulator-clinical-judge"], "*/10 * * * *",
         ),
@@ -198,23 +203,31 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             f"--public-keys-file {verification_public_keys_config}. "
             "Invoke that collector exactly once in this run. If it returns zero candidates, stop immediately. Review only its single "
             "returned candidate and never invoke the collector again in the same run. Act only after an exact primary PASS. Use "
-            "radulator-clinical-judge independently, sign only with the verification key, "
-            f"key id radulator-verification-v1, role verification, profile default, model {MODEL}, provider {PROVIDER}, and private "
-            f"key {verification_private}; post with --public-keys-file {verification_public_keys_config} and require authoritative GitHub "
+            "radulator-clinical-judge independently and write one decision JSON. Replace the angle-bracket path placeholders, then run "
+            f"exactly: node {signer} sign --candidate <cachedPaths[0]> --decision <decision-json-path> "
+            f"--private-key {verification_private} --key-id radulator-verification-v1 --role verification --profile default "
+            f"--model {MODEL} --provider {PROVIDER} --output <attestation-json-path> && node {signer} post "
+            f"--repo {CANONICAL_GITHUB_REPOSITORY} --attestation <attestation-json-path> "
+            f"--public-keys-file {verification_public_keys_config}. Require authoritative GitHub "
             "comment readback. Never edit source or self-improve during judgment.",
             ["radulator-clinical-judge"], "3-59/10 * * * *",
         ),
         _job(
             "radulator-release-lifecycle", radulator_home, repo,
-            "Reconcile Radulator GitHub, deploy, and Kanban facts into the append-only ledger at "
-            f"{ledger}. Use radulator-release-controller. Append only authoritative exact-SHA transitions; run lifecycle_controller.py "
-            "apply-actions for NEEDS_FIX, smoke_passed, or learned states and verify every Kanban readback.",
+            f"Run python3 {overlay / 'lifecycle_controller.py'} next --ledger {ledger} --cursor-state {lifecycle_cursor}. "
+            "Invoke that collector exactly once in this run. If it returns count 0, stop immediately. Process only its single returned "
+            "tracker and never enumerate the full ledger, board, or session history in this run. Reconcile only that tracker's Radulator "
+            "GitHub, deploy, and Kanban facts. Use radulator-release-controller. Append only authoritative exact-SHA transitions; run "
+            "lifecycle_controller.py apply-actions for NEEDS_FIX, smoke_passed, or learned states and verify every Kanban readback.",
             ["radulator-release-controller"], "*/5 * * * *",
         ),
         _job(
             "radulator-release-learning", radulator_home, repo,
-            f"Find smoke_passed tasks in {ledger}. Use radulator-release-learning once per task. Retain only the sanitized candidate, "
-            "read back Hindsight, append learned, verify Kanban completion, then append complete.",
+            f"Run python3 {overlay / 'lifecycle_controller.py'} next --ledger {ledger} --cursor-state {learning_cursor} "
+            "--state smoke_passed. Invoke that collector exactly once in this run. If it returns count 0, stop immediately. Process only "
+            "its single returned tracker and never enumerate the full ledger, board, or session history in this run. Use "
+            "radulator-release-learning once for that tracker. Retain only the sanitized candidate, read back Hindsight, append learned, "
+            "verify Kanban completion, then append complete.",
             ["radulator-release-learning"], "2-59/10 * * * *",
         ),
     ]

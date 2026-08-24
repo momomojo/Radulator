@@ -26,7 +26,14 @@ Create one decision JSON per candidate:
 }
 ```
 
-Use `judge-attest.mjs sign` with only this profile's configured key/role, then `judge-attest.mjs post --public-keys-file <this-profile>/keys/radulator-clinical/public-keys.json`. Treat the posted-comment readback as the completion proof. Never copy, request, or print a private key.
+Write the decision JSON to a private local path. Use the collector's `cachedPaths[0]` as the only candidate input. Replace each angle-bracket placeholder with the job-configured value, then run these two commands in order; do not invoke `judge-attest` as a bare command or rediscover its arguments:
+
+```bash
+node <repo>/ops/hermes/radulator/judge-attest.mjs sign --candidate <cachedPaths[0]> --decision <decision-json-path> --private-key <job-configured-private-key> --key-id <job-configured-key-id> --role <job-configured-role> --profile <job-configured-profile> --model <job-configured-model> --provider <job-configured-provider> --output <attestation-json-path>
+node <repo>/ops/hermes/radulator/judge-attest.mjs post --repo momomojo/Radulator --attestation <attestation-json-path> --public-keys-file <job-configured-public-keys-file>
+```
+
+Treat the posted-comment readback as the completion proof. Never copy, request, or print a private key.
 
 ## Boundaries
 

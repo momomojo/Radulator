@@ -12,11 +12,14 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
 
 SCHEMA = "radulator-lifecycle-event/v1"
+CURSOR_SCHEMA = "radulator-lifecycle-cursor/v1"
+CANDIDATE_SCHEMA = "radulator-lifecycle-candidate/v1"
 ZERO_HASH = "0" * 64
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
@@ -118,6 +121,7 @@ class LifecycleLedger:
             return ReplayState((), {}, {})
         if handle is None:
             with self.path.open("r", encoding="utf-8") as reader:
+                fcntl.flock(reader.fileno(), fcntl.LOCK_SH)
                 return self.replay(reader)
 
         handle.seek(0)
@@ -211,6 +215,97 @@ class LifecycleLedger:
             return proposed
 
 
+def _read_cursor_state(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {"schema": CURSOR_SCHEMA, "positions": {}}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise LedgerError(f"Lifecycle cursor state is unreadable: {error}") from error
+    positions = value.get("positions") if isinstance(value, dict) else None
+    if (
+        not isinstance(value, dict)
+        or value.get("schema") != CURSOR_SCHEMA
+        or not isinstance(positions, dict)
+        or any(not isinstance(key, str) or not isinstance(task_id, str) for key, task_id in positions.items())
+    ):
+        raise LedgerError("Lifecycle cursor state is malformed or unsupported.")
+    return value
+
+
+def _write_cursor_state(path: Path, value: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(_canonical(value) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        os.chmod(path, 0o600)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def select_next_candidate(
+    ledger: LifecycleLedger,
+    cursor_state: str | Path,
+    *,
+    required_state: str | None = None,
+) -> dict[str, Any]:
+    """Select exactly one active tracker with durable per-filter round-robin fairness."""
+    if required_state is not None and required_state not in TRANSITIONS:
+        raise LedgerError(f"Unknown lifecycle state filter {required_state!r}.")
+    cursor_path = Path(cursor_state)
+    cursor_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    lock_path = Path(f"{cursor_path}.lock")
+    descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    os.chmod(lock_path, 0o600)
+    with os.fdopen(descriptor, "r+", encoding="utf-8") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        cursor = _read_cursor_state(cursor_path)
+        replay = ledger.replay()
+        eligible = sorted(
+            (
+                event for event in replay.current_by_task.values()
+                if event.state != "complete" and (required_state is None or event.state == required_state)
+            ),
+            key=lambda event: (event.timestamp, event.task_id),
+        )
+        position_key = f"state:{required_state}" if required_state else "all"
+        selected = None
+        if eligible:
+            last_task_id = cursor["positions"].get(position_key)
+            task_ids = [event.task_id for event in eligible]
+            selected_index = (task_ids.index(last_task_id) + 1) % len(eligible) if last_task_id in task_ids else 0
+            selected = eligible[selected_index]
+            cursor["positions"][position_key] = selected.task_id
+        _write_cursor_state(cursor_path, cursor)
+
+    candidate = None if selected is None else {
+        "task_id": selected.task_id,
+        "source_id": selected.source_id,
+        "state": selected.state,
+        "pr": selected.pr,
+        "head_sha": selected.head_sha,
+        "event_hash": selected.event_hash,
+        "timestamp": selected.timestamp,
+    }
+    return {
+        "schema": CANDIDATE_SCHEMA,
+        "count": 1 if candidate else 0,
+        "filter_state": required_state,
+        "candidate": candidate,
+    }
+
+
 def actions_for_event(event: LifecycleEvent) -> list[dict[str, Any]]:
     """Return deterministic Kanban actions; the caller performs and reads them back."""
     if event.state == "needs_fix":
@@ -232,6 +327,10 @@ def actions_for_event(event: LifecycleEvent) -> list[dict[str, Any]]:
                 "pr": event.pr,
                 "head_sha": event.head_sha,
                 "verdict_id": verdict_id,
+                "assignee": "codex-coding",
+                "priority": 90,
+                "max_runtime": "45m",
+                "created_by": "radulator-lifecycle",
             },
             {
                 "kind": "comment",
@@ -343,15 +442,26 @@ class HermesKanbanCLI:
     def perform(self, action: dict[str, Any]) -> dict[str, Any]:
         kind = action.get("kind")
         if kind == "create_child":
-            created = self._run([
+            arguments = [
                 "create",
                 action["title"],
+                "--body",
+                action["body"],
                 "--parent",
                 action["parent_task_id"],
                 "--idempotency-key",
                 action["idempotency_key"],
-                "--json",
-            ], expect_json=True)
+            ]
+            for key, option in (
+                ("assignee", "--assignee"),
+                ("priority", "--priority"),
+                ("max_runtime", "--max-runtime"),
+                ("created_by", "--created-by"),
+            ):
+                if action.get(key) is not None:
+                    arguments.extend([option, str(action[key])])
+            arguments.append("--json")
+            created = self._run(arguments, expect_json=True)
             child_id = _find_task_id(created)
             if not child_id:
                 raise LedgerError("Kanban create response did not contain a child task id.")
@@ -361,8 +471,14 @@ class HermesKanbanCLI:
                 self._run(["comment", child_id, action["body"], "--author", "radulator-lifecycle"])
                 readback = self.show(child_id)
                 serialized = _canonical(readback)
+            if action.get("assignee") and action["assignee"] not in serialized:
+                self._run(["assign", child_id, action["assignee"]])
+                readback = self.show(child_id)
+                serialized = _canonical(readback)
             if action["parent_task_id"] not in serialized or action["head_sha"] not in serialized:
                 raise LedgerError("Created child failed exact parent/SHA Kanban readback.")
+            if action.get("assignee") and action["assignee"] not in serialized:
+                raise LedgerError("Created child failed assignee Kanban readback.")
             return {"kind": kind, "task_id": child_id, "idempotency_key": action["idempotency_key"]}
         if kind == "comment":
             readback = self.show(action["task_id"])
@@ -413,6 +529,10 @@ def main() -> None:
     replay = subparsers.add_parser("replay")
     replay.add_argument("--ledger", required=True)
     replay.add_argument("--task-id")
+    next_candidate = subparsers.add_parser("next")
+    next_candidate.add_argument("--ledger", required=True)
+    next_candidate.add_argument("--cursor-state", required=True)
+    next_candidate.add_argument("--state", choices=sorted(state for state in TRANSITIONS if state))
     actions = subparsers.add_parser("actions")
     actions.add_argument("--ledger", required=True)
     actions.add_argument("--task-id", required=True)
@@ -445,6 +565,8 @@ def main() -> None:
             evidence=args.evidence_json,
         )
         print(_canonical(event.as_dict()))
+    elif args.command == "next":
+        print(_canonical(select_next_candidate(ledger, args.cursor_state, required_state=args.state)))
     elif args.command == "replay":
         state = ledger.replay()
         if args.task_id:

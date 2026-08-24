@@ -119,6 +119,32 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue(all("Invoke that collector exactly once" in job["prompt"] for job in judge_jobs))
         self.assertTrue(all("If it returns zero candidates, stop immediately" in job["prompt"] for job in judge_jobs))
         self.assertTrue(all("never invoke the collector again" in job["prompt"] for job in judge_jobs))
+        self.assertTrue(all("sign --candidate <cachedPaths[0]> --decision <decision-json-path>" in job["prompt"] for job in judge_jobs))
+        self.assertTrue(all("post --repo momomojo/Radulator --attestation <attestation-json-path>" in job["prompt"] for job in judge_jobs))
+
+        lifecycle = next(job for job in plan["jobs"] if job["name"] == "radulator-release-lifecycle")
+        learning = next(job for job in plan["jobs"] if job["name"] == "radulator-release-learning")
+        for job in (lifecycle, learning):
+            self.assertIn("lifecycle_controller.py next", job["prompt"])
+            self.assertIn("--cursor-state", job["prompt"])
+            self.assertIn("Invoke that collector exactly once", job["prompt"])
+            self.assertIn("If it returns count 0, stop immediately", job["prompt"])
+            self.assertIn("Process only its single returned tracker", job["prompt"])
+        self.assertNotIn("--state smoke_passed", lifecycle["prompt"])
+        self.assertIn("--state smoke_passed", learning["prompt"])
+
+    def test_judge_skill_prescribes_complete_sign_and_post_commands(self):
+        skill = (self.repo / "ops/hermes/radulator/skills/radulator-clinical-judge/SKILL.md").read_text()
+        self.assertIn("judge-attest.mjs sign", skill)
+        for argument in (
+            "--candidate <cachedPaths[0]>", "--decision <decision-json-path>", "--private-key",
+            "--key-id", "--role", "--profile", "--model", "--provider", "--output <attestation-json-path>",
+        ):
+            self.assertIn(argument, skill)
+        self.assertIn("judge-attest.mjs post", skill)
+        self.assertIn("--repo momomojo/Radulator", skill)
+        self.assertIn("--attestation <attestation-json-path>", skill)
+        self.assertIn("--public-keys-file", skill)
 
     def test_apply_is_disabled_first_idempotent_and_separates_keys(self):
         first = apply_install(**self.kwargs())
