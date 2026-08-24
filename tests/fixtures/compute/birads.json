@@ -1,0 +1,216 @@
+{
+  "calculatorId": "birads",
+  "calculatorName": "Mammography Assessment Guide",
+  "version": "fda-mqsa-2024-birads-v2025-context-v1",
+  "cases": [
+    {
+      "id": "missing-selection",
+      "inputs": {},
+      "expect": {
+        "noError": false,
+        "fields": [
+          {
+            "key": "Error",
+            "equals": "Select the radiologist-assigned mammography assessment category."
+          }
+        ]
+      }
+    },
+    {
+      "id": "incomplete-additional-imaging",
+      "inputs": { "assessment": "0_additional" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Assessment",
+            "equals": "Incomplete — additional imaging evaluation is needed"
+          },
+          {
+            "key": "MQSA category",
+            "equals": "Incomplete: Need additional imaging evaluation"
+          },
+          {
+            "key": "Next step",
+            "includes": "Complete the recommended imaging evaluation"
+          }
+        ]
+      }
+    },
+    {
+      "id": "incomplete-prior-comparison",
+      "inputs": { "assessment": "0_priors" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Assessment",
+            "equals": "Incomplete — prior mammograms are needed for comparison"
+          },
+          {
+            "key": "MQSA category",
+            "equals": "Incomplete: Need prior mammograms for comparison"
+          },
+          {
+            "key": "U.S. reporting requirement",
+            "includes": "within 30 calendar days"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-1",
+      "inputs": { "assessment": "1" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Assessment", "equals": "1 — Negative" },
+          {
+            "key": "Next step",
+            "includes": "screening plan based on age, risk, symptoms, and local protocol"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-2",
+      "inputs": { "assessment": "2" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Assessment", "equals": "2 — Benign" },
+          {
+            "key": "Likelihood context",
+            "equals": "The imaging finding is assessed as benign; this guide does not calculate patient-specific risk."
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-3",
+      "inputs": { "assessment": "3" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Assessment", "equals": "3 — Probably benign" },
+          {
+            "key": "Likelihood context",
+            "equals": ">0% to ≤2% expected likelihood of malignancy"
+          },
+          { "key": "Next step", "includes": "initial 6-month follow-up" }
+        ]
+      }
+    },
+    {
+      "id": "category-4",
+      "inputs": { "assessment": "4" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Assessment", "equals": "4 — Suspicious" },
+          {
+            "key": "Likelihood context",
+            "equals": ">2% to <95% expected likelihood of malignancy"
+          },
+          { "key": "Next step", "includes": "Tissue sampling is generally indicated" }
+        ]
+      }
+    },
+    {
+      "id": "category-4a",
+      "inputs": { "assessment": "4A" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Assessment", "equals": "4A — Low suspicion" },
+          {
+            "key": "Likelihood context",
+            "equals": ">2% to ≤10% expected likelihood of malignancy"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-4b",
+      "inputs": { "assessment": "4B" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Assessment", "equals": "4B — Moderate suspicion" },
+          {
+            "key": "Likelihood context",
+            "equals": ">10% to ≤50% expected likelihood of malignancy"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-4c",
+      "inputs": { "assessment": "4C" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Assessment", "equals": "4C — High suspicion" },
+          {
+            "key": "Likelihood context",
+            "equals": ">50% to <95% expected likelihood of malignancy"
+          }
+        ]
+      }
+    },
+    {
+      "id": "category-5",
+      "inputs": { "assessment": "5" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Assessment",
+            "equals": "5 — Highly suggestive of malignancy"
+          },
+          {
+            "key": "Likelihood context",
+            "equals": "≥95% expected likelihood of malignancy"
+          },
+          { "key": "Next step", "includes": "Prompt tissue confirmation" }
+        ]
+      }
+    },
+    {
+      "id": "category-6",
+      "inputs": { "assessment": "6" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Assessment",
+            "equals": "6 — Known tissue-proven malignancy"
+          },
+          {
+            "key": "Likelihood context",
+            "equals": "Not applicable — malignancy has already been established by tissue diagnosis"
+          },
+          { "key": "Next step", "includes": "treatment planning or response assessment" }
+        ]
+      }
+    },
+    {
+      "id": "post-procedure-marker",
+      "inputs": { "assessment": "post_marker" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Assessment",
+            "equals": "Post-procedure mammogram for marker placement"
+          },
+          {
+            "key": "BI-RADS numbering",
+            "equals": "None — this FDA MQSA assessment is not a numbered BI-RADS category"
+          },
+          { "key": "Next step", "includes": "document marker deployment and position" }
+        ]
+      }
+    }
+  ]
+}
