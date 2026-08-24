@@ -57,9 +57,9 @@ test.describe("CAC/MESA Calculator", () => {
         sex: "male",
         race: "white",
         vessels: "0",
-        category: "Stage 0 - No calcified coronary plaque",
+        category: "No calcified coronary plaque",
         cacDrs: "A0",
-        percentile: "0th percentile",
+        position: "At 25th reference score (0)",
         probability: "56%",
         refs: "25th 0, 50th 6, 75th 68, 90th 234",
       },
@@ -69,9 +69,9 @@ test.describe("CAC/MESA Calculator", () => {
         sex: "female",
         race: "chinese",
         vessels: "1",
-        category: "Stage 1 - Mild calcified plaque burden",
+        category: "Mild calcified plaque burden",
         cacDrs: "A1/N1",
-        percentile: "97th percentile",
+        position: "Above 90th reference score (0)",
         probability: "7%",
         refs: "25th 0, 50th 0, 75th 0, 90th 0",
       },
@@ -81,9 +81,9 @@ test.describe("CAC/MESA Calculator", () => {
         sex: "female",
         race: "black",
         vessels: "2",
-        category: "Stage 2 - Moderate calcified plaque burden",
+        category: "Moderate calcified plaque burden",
         cacDrs: "A2/N2",
-        percentile: "91st percentile",
+        position: "Above 90th reference score (102)",
         probability: "32%",
         refs: "25th 0, 50th 0, 75th 11, 90th 102",
       },
@@ -93,9 +93,9 @@ test.describe("CAC/MESA Calculator", () => {
         sex: "male",
         race: "hispanic",
         vessels: "3",
-        category: "Stage 3 - Severe calcified plaque burden",
+        category: "Severe calcified plaque burden",
         cacDrs: "A3/N3",
-        percentile: "84th percentile",
+        position: "Between 75th (247) and 90th (666) reference scores",
         probability: "75%",
         refs: "25th 1, 50th 56, 75th 247, 90th 666",
       },
@@ -105,9 +105,9 @@ test.describe("CAC/MESA Calculator", () => {
         sex: "male",
         race: "white",
         vessels: "4",
-        category: "Stage 4 - Extensive/extreme calcified plaque burden",
+        category: "Severe calcified plaque burden",
         cacDrs: "A3/N4",
-        percentile: "85th percentile",
+        position: "Between 75th (641) and 90th (1584) reference scores",
         probability: "86%",
         refs: "25th 32, 50th 180, 75th 641, 90th 1584",
       },
@@ -116,11 +116,11 @@ test.describe("CAC/MESA Calculator", () => {
     for (const example of examples) {
       await fillCacMesa(page, example);
       const results = resultsRegion(page);
-      await expectResultValue(results, "Absolute CAC Category", example.category);
+      await expectResultValue(results, "Absolute CAC Band", example.category);
       await expectResultValue(results, "CAC-DRS", example.cacDrs, {
         exact: true,
       });
-      await expectResultValue(results, "MESA Percentile", example.percentile);
+      await expectResultValue(results, "MESA Reference Position", example.position);
       await expectResultValue(
         results,
         "MESA Probability Nonzero CAC",
@@ -135,15 +135,15 @@ test.describe("CAC/MESA Calculator", () => {
     page,
   }) => {
     const cases = [
-      [0, "Stage 0 - No calcified coronary plaque", "A0", "0"],
-      [1, "Stage 1 - Mild calcified plaque burden", "A1 / N not reported", "1-99"],
-      [99, "Stage 1 - Mild calcified plaque burden", "A1 / N not reported", "1-99"],
-      [100, "Stage 2 - Moderate calcified plaque burden", "A2 / N not reported", "100-299"],
-      [299, "Stage 2 - Moderate calcified plaque burden", "A2 / N not reported", "100-299"],
-      [300, "Stage 3 - Severe calcified plaque burden", "A3 / N not reported", "300-999"],
-      [301, "Stage 3 - Severe calcified plaque burden", "A3 / N not reported", "300-999"],
-      [999, "Stage 3 - Severe calcified plaque burden", "A3 / N not reported", "300-999"],
-      [1000, "Stage 4 - Extensive/extreme calcified plaque burden", "A3 / N not reported", ">=1000"],
+      [0, "No calcified coronary plaque", "A0", "0"],
+      [1, "Mild calcified plaque burden", "A1 / N not reported", "1-99"],
+      [99, "Mild calcified plaque burden", "A1 / N not reported", "1-99"],
+      [100, "Moderate calcified plaque burden", "A2 / N not reported", "100-299"],
+      [299, "Moderate calcified plaque burden", "A2 / N not reported", "100-299"],
+      [300, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
+      [301, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
+      [999, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
+      [1000, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
     ];
 
     for (const [score, category, cacDrs, range] of cases) {
@@ -155,7 +155,7 @@ test.describe("CAC/MESA Calculator", () => {
         vessels: score === 0 ? "0" : "not_reported",
       });
       const results = resultsRegion(page);
-      await expectResultValue(results, "Absolute CAC Category", category);
+      await expectResultValue(results, "Absolute CAC Band", category);
       await expectResultValue(results, "CAC-DRS", cacDrs, { exact: true });
       await expectResultValue(results, "CAC Score Range", range, { exact: true });
     }
@@ -173,12 +173,12 @@ test.describe("CAC/MESA Calculator", () => {
     });
     await expectResultValue(
       resultsRegion(page),
-      "Absolute CAC Category",
-      "Stage 2 - Moderate calcified plaque burden",
+      "Absolute CAC Band",
+      "Moderate calcified plaque burden",
     );
     await expectResultValue(
       resultsRegion(page),
-      "MESA Percentile",
+      "MESA Reference Position",
       "age is outside 45-84 years",
     );
 
@@ -191,7 +191,7 @@ test.describe("CAC/MESA Calculator", () => {
     });
     await expectResultValue(
       resultsRegion(page),
-      "MESA Percentile",
+      "MESA Reference Position",
       "age is outside 45-84 years",
     );
 
@@ -204,7 +204,7 @@ test.describe("CAC/MESA Calculator", () => {
     });
     await expectResultValue(
       resultsRegion(page),
-      "MESA Percentile",
+      "MESA Reference Position",
       "MESA percentile unavailable: use only",
     );
   });
@@ -236,5 +236,22 @@ test.describe("CAC/MESA Calculator", () => {
       "A1 / N not reported",
       { exact: true },
     );
+  });
+
+  test("rejects fractional scores instead of applying integer reference data", async ({
+    page,
+  }) => {
+    await fillCacMesa(page, {
+      score: 0.5,
+      age: 55,
+      sex: "male",
+      race: "white",
+      vessels: "1",
+    });
+    await expect(
+      resultsRegion(page).getByText(
+        "Total Agatston CAC score must be a non-negative whole number.",
+      ),
+    ).toBeVisible();
   });
 });

@@ -30,13 +30,12 @@ function parseOptionalInteger(value) {
 }
 
 function formatScore(score) {
-  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+  return String(score);
 }
 
 function getAbsoluteCategory(score) {
   if (score === 0) {
     return {
-      stage: "Stage 0",
       label: "No calcified coronary plaque",
       range: "0",
       severity: "success",
@@ -44,7 +43,6 @@ function getAbsoluteCategory(score) {
   }
   if (score < 100) {
     return {
-      stage: "Stage 1",
       label: "Mild calcified plaque burden",
       range: "1-99",
       severity: "success",
@@ -52,24 +50,14 @@ function getAbsoluteCategory(score) {
   }
   if (score < 300) {
     return {
-      stage: "Stage 2",
       label: "Moderate calcified plaque burden",
       range: "100-299",
       severity: "warning",
     };
   }
-  if (score < 1000) {
-    return {
-      stage: "Stage 3",
-      label: "Severe calcified plaque burden",
-      range: "300-999",
-      severity: "danger",
-    };
-  }
   return {
-    stage: "Stage 4",
-    label: "Extensive/extreme calcified plaque burden",
-    range: ">=1000",
+    label: "Severe calcified plaque burden",
+    range: ">=300",
     severity: "danger",
   };
 }
@@ -85,14 +73,32 @@ function getCacDrs(score, vesselCount) {
   return `${aCategory}/N${vesselCount}`;
 }
 
-function getMesaPercentile(record, score) {
-  if (score === 0) return 0;
-  let percentile = 0;
-  for (let i = 0; i < record.t.length; i += 1) {
-    if (score >= record.t[i]) percentile = i + 1;
-    else break;
+function getMesaReferencePosition(referenceScores, score) {
+  const labels = ["25th", "50th", "75th", "90th"];
+  const exact = referenceScores
+    .map((value, index) => ({ value, label: labels[index] }))
+    .filter(({ value }) => value === score);
+  if (exact.length > 0) {
+    const joined = exact.map(({ label }) => label).join("/");
+    const tied = exact.length > 1 ? "tied " : "";
+    return `At ${tied}${joined} reference score (${score})`;
   }
-  return percentile;
+  if (score < referenceScores[0]) {
+    return `Below 25th reference score (${referenceScores[0]})`;
+  }
+  if (score > referenceScores[3]) {
+    return `Above 90th reference score (${referenceScores[3]})`;
+  }
+  let lowerIndex = 0;
+  let upperIndex = 3;
+  for (let index = 0; index < referenceScores.length; index += 1) {
+    if (referenceScores[index] < score) lowerIndex = index;
+    if (referenceScores[index] > score) {
+      upperIndex = index;
+      break;
+    }
+  }
+  return `Between ${labels[lowerIndex]} (${referenceScores[lowerIndex]}) and ${labels[upperIndex]} (${referenceScores[upperIndex]}) reference scores`;
 }
 
 function getMesaContext({ age, sex, race, score }) {
@@ -140,24 +146,10 @@ function getMesaContext({ age, sex, race, score }) {
 
   return {
     available: true,
-    percentile: getMesaPercentile(record, score),
+    referencePosition: getMesaReferencePosition(record.r, score),
     probabilityNonzero: record.p,
     referenceScores: record.r,
   };
-}
-
-function getOrdinal(value) {
-  const suffix =
-    value % 100 >= 11 && value % 100 <= 13
-      ? "th"
-      : value % 10 === 1
-        ? "st"
-        : value % 10 === 2
-          ? "nd"
-          : value % 10 === 3
-            ? "rd"
-            : "th";
-  return `${value}${suffix}`;
 }
 
 function buildReportSnippet({
@@ -170,12 +162,12 @@ function buildReportSnippet({
   race,
 }) {
   const mesaLine = mesa.available
-    ? `MESA: ${getOrdinal(mesa.percentile)} percentile for ${race} ${sex}, age ${age}; probability of nonzero CAC ${mesa.probabilityNonzero}%; reference 25/50/75/90 ${mesa.referenceScores.join("/")}.`
+    ? `MESA reference for ${race} ${sex}, age ${age}: ${mesa.referencePosition}; probability of nonzero CAC ${mesa.probabilityNonzero}%; reference 25/50/75/90 ${mesa.referenceScores.join("/")}.`
     : `MESA: ${mesa.reason}`;
 
   return [
     `Agatston CAC total: ${formatScore(score)}.`,
-    `Absolute category: ${category.stage} (${category.label}; ${category.range}).`,
+    `Absolute CAC band: ${category.label} (${category.range}).`,
     `CAC-DRS: ${cacDrs}.`,
     mesaLine,
     "Educational/radiology support only; correlate clinically.",
@@ -186,22 +178,20 @@ function buildReportSnippet({
  * CAC/MESA Calculator
  *
  * Total Agatston CAC score interpretation, CAC-DRS A/N output, and MESA
- * percentile context. MESA data are static thresholds generated from the
- * official MESA CAC Score Reference Values calculator, not runtime calls.
+ * reference context. MESA data are reproducible reference landmarks generated
+ * from the official MESA CAC Score Reference Values calculator, not runtime calls.
  *
  * Primary sources:
  * - Agatston 1990 DOI 10.1016/0735-1097(90)90282-T, PMID 2407762
  * - McClelland 2006 DOI 10.1161/CIRCULATIONAHA.105.580696, PMID 16365194
  * - Hecht 2018 CAC-DRS DOI 10.1016/j.jcct.2018.03.008, PMID 29793848
- * - Maron/Budoff 2024 CAC staging DOI 10.1016/j.jacadv.2024.101287,
- *   PMID 39385944
  */
 export const CACMesa = {
   id: "cac-mesa",
   category: "Cardiac Imaging",
   name: "CAC/MESA Calculator",
-  desc: "Agatston coronary calcium category, CAC-DRS, and MESA percentile context",
-  guidelineVersion: "CAC/MESA percentile + CAC-DRS v1",
+  desc: "Agatston coronary calcium band, CAC-DRS, and MESA reference context",
+  guidelineVersion: "MESA reference values + CAC-DRS v2",
   keywords: [
     "CAC",
     "Agatston",
@@ -212,13 +202,13 @@ export const CACMesa = {
   ],
   tags: ["Cardiac", "Radiology"],
   metaDesc:
-    "Free CAC/MESA Calculator. Interpret total Agatston coronary calcium score with CAC category, CAC-DRS output, and MESA percentile context.",
+    "Free CAC/MESA Calculator. Interpret a whole-number Agatston coronary calcium score with CAC-DRS and official MESA reference context.",
 
   info: {
     text:
       "This calculator interprets a total Agatston coronary artery calcium score already produced by CT software. It does not calculate Agatston score from CT pixels, lesion area, HU bins, scanner protocol, or slice data.\n\n" +
-      "Outputs include absolute CAC burden stage, optional CAC-DRS A/N code, and MESA percentile context for age 45-84 using only the MESA-supported race/ethnicity categories.\n\n" +
-      "MESA percentile values are shown only within the reference population. Outside those limits, the absolute category and CAC-DRS remain available, but percentile is not extrapolated.",
+      "Outputs include an absolute CAC burden band, optional CAC-DRS A/N code, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories.\n\n" +
+      "The local MESA output compares the score with the official 25th, 50th, 75th, and 90th reference scores. It does not estimate an exact percentile. Outside the MESA limits, the absolute band and CAC-DRS remain available without extrapolation.",
     link: {
       label: "View MESA CAC Score Reference Values",
       url: "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values",
@@ -264,8 +254,14 @@ export const CACMesa = {
     if (score === undefined || score === null || score === "") {
       return { Error: "Enter the total Agatston CAC score." };
     }
-    if (!Number.isFinite(parsedScore) || parsedScore < 0) {
-      return { Error: "Total Agatston CAC score must be a non-negative number." };
+    if (
+      !Number.isFinite(parsedScore) ||
+      parsedScore < 0 ||
+      !Number.isInteger(parsedScore)
+    ) {
+      return {
+        Error: "Total Agatston CAC score must be a non-negative whole number.",
+      };
     }
 
     const parsedAge = parseOptionalInteger(age);
@@ -306,12 +302,12 @@ export const CACMesa = {
       : "Unavailable";
 
     const result = {
-      "Absolute CAC Category": `${category.stage} - ${category.label}`,
+      "Absolute CAC Band": category.label,
       "Agatston Score": formatScore(parsedScore),
       "CAC Score Range": category.range,
       "CAC-DRS": cacDrs,
-      "MESA Percentile": mesa.available
-        ? `${getOrdinal(mesa.percentile)} percentile`
+      "MESA Reference Position": mesa.available
+        ? mesa.referencePosition
         : mesa.reason,
       "MESA Probability Nonzero CAC": mesa.available
         ? `${mesa.probabilityNonzero}%`
@@ -331,10 +327,9 @@ export const CACMesa = {
       _severity: category.severity,
     };
 
-    if (!mesa.available) {
-      result["MESA Limitation"] =
-        "Do not extrapolate beyond the MESA age 45-84 and supported race/ethnicity reference groups.";
-    }
+    result["MESA Limitation"] = mesa.available
+      ? "This local tool compares only the official 25th, 50th, 75th, and 90th reference scores; use the official MESA calculator when an estimated exact percentile is needed."
+      : "Do not extrapolate beyond the MESA age 45-84 and supported race/ethnicity reference groups.";
 
     return result;
   },
@@ -367,10 +362,6 @@ export const CACMesa = {
     {
       t: "Arnett DK et al. 2019 ACC/AHA Primary Prevention Guideline. Circulation. 2019;140(11):e596-e646. PMID 30879355.",
       u: "https://doi.org/10.1161/CIR.0000000000000678",
-    },
-    {
-      t: "Maron DJ, Budoff MJ, Sky J, et al. Coronary Artery Calcium Staging to Guide Preventive Interventions. JACC Adv. 2024;3(11):101287. PMID 39385944.",
-      u: "https://doi.org/10.1016/j.jacadv.2024.101287",
     },
   ],
 };

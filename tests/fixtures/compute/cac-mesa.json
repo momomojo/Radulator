@@ -16,10 +16,10 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Category", "equals": "Stage 0 - No calcified coronary plaque" },
+          { "key": "Absolute CAC Band", "equals": "No calcified coronary plaque" },
           { "key": "CAC Score Range", "equals": "0" },
           { "key": "CAC-DRS", "equals": "A0" },
-          { "key": "MESA Percentile", "equals": "0th percentile" },
+          { "key": "MESA Reference Position", "equals": "At 25th reference score (0)" },
           { "key": "MESA Probability Nonzero CAC", "equals": "56%" },
           { "key": "MESA Reference Scores", "equals": "25th 0, 50th 6, 75th 68, 90th 234" }
         ]
@@ -38,10 +38,10 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Category", "equals": "Stage 1 - Mild calcified plaque burden" },
+          { "key": "Absolute CAC Band", "equals": "Mild calcified plaque burden" },
           { "key": "CAC Score Range", "equals": "1-99" },
           { "key": "CAC-DRS", "equals": "A1/N1" },
-          { "key": "MESA Percentile", "equals": "97th percentile" },
+          { "key": "MESA Reference Position", "equals": "Above 90th reference score (0)" },
           { "key": "MESA Probability Nonzero CAC", "equals": "7%" },
           { "key": "MESA Reference Scores", "equals": "25th 0, 50th 0, 75th 0, 90th 0" }
         ]
@@ -60,10 +60,10 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Category", "equals": "Stage 2 - Moderate calcified plaque burden" },
+          { "key": "Absolute CAC Band", "equals": "Moderate calcified plaque burden" },
           { "key": "CAC Score Range", "equals": "100-299" },
           { "key": "CAC-DRS", "equals": "A2/N2" },
-          { "key": "MESA Percentile", "equals": "91st percentile" },
+          { "key": "MESA Reference Position", "equals": "Above 90th reference score (102)" },
           { "key": "MESA Probability Nonzero CAC", "equals": "32%" },
           { "key": "MESA Reference Scores", "equals": "25th 0, 50th 0, 75th 11, 90th 102" }
         ]
@@ -82,10 +82,10 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Category", "equals": "Stage 3 - Severe calcified plaque burden" },
-          { "key": "CAC Score Range", "equals": "300-999" },
+          { "key": "Absolute CAC Band", "equals": "Severe calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": ">=300" },
           { "key": "CAC-DRS", "equals": "A3/N3" },
-          { "key": "MESA Percentile", "equals": "84th percentile" },
+          { "key": "MESA Reference Position", "equals": "Between 75th (247) and 90th (666) reference scores" },
           { "key": "MESA Probability Nonzero CAC", "equals": "75%" },
           { "key": "MESA Reference Scores", "equals": "25th 1, 50th 56, 75th 247, 90th 666" }
         ]
@@ -104,10 +104,10 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Category", "equals": "Stage 4 - Extensive/extreme calcified plaque burden" },
-          { "key": "CAC Score Range", "equals": ">=1000" },
+          { "key": "Absolute CAC Band", "equals": "Severe calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": ">=300" },
           { "key": "CAC-DRS", "equals": "A3/N4" },
-          { "key": "MESA Percentile", "equals": "85th percentile" },
+          { "key": "MESA Reference Position", "equals": "Between 75th (641) and 90th (1584) reference scores" },
           { "key": "MESA Probability Nonzero CAC", "equals": "86%" },
           { "key": "MESA Reference Scores", "equals": "25th 32, 50th 180, 75th 641, 90th 1584" }
         ]
@@ -115,7 +115,7 @@
     },
     {
       "id": "score-300-maps-to-a3",
-      "description": "Signed-off boundary: exact CAC score 300 maps to Stage 3 and CAC-DRS A3.",
+      "description": "Source-defined boundary: exact CAC score 300 maps to the severe band and CAC-DRS A3.",
       "inputs": {
         "score": "300",
         "age": "55",
@@ -125,8 +125,8 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Category", "equals": "Stage 3 - Severe calcified plaque burden" },
-          { "key": "CAC Score Range", "equals": "300-999" },
+          { "key": "Absolute CAC Band", "equals": "Severe calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": ">=300" },
           { "key": "CAC-DRS", "equals": "A3 / N not reported" }
         ]
       }
@@ -144,8 +144,8 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Category", "equals": "Stage 2 - Moderate calcified plaque burden" },
-          { "key": "MESA Percentile", "includes": "age is outside 45-84 years" },
+          { "key": "Absolute CAC Band", "equals": "Moderate calcified plaque burden" },
+          { "key": "MESA Reference Position", "includes": "age is outside 45-84 years" },
           { "key": "MESA Probability Nonzero CAC", "equals": "Unavailable" },
           { "key": "MESA Limitation", "includes": "Do not extrapolate" }
         ]
@@ -164,8 +164,8 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Category", "equals": "Stage 2 - Moderate calcified plaque burden" },
-          { "key": "MESA Percentile", "includes": "age is outside 45-84 years" },
+          { "key": "Absolute CAC Band", "equals": "Moderate calcified plaque burden" },
+          { "key": "MESA Reference Position", "includes": "age is outside 45-84 years" },
           { "key": "MESA Probability Nonzero CAC", "equals": "Unavailable" },
           { "key": "MESA Limitation", "includes": "Do not extrapolate" }
         ]
@@ -184,10 +184,27 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Category", "equals": "Stage 2 - Moderate calcified plaque burden" },
-          { "key": "MESA Percentile", "includes": "use only White/Caucasian, Black/African American, Chinese American, or Hispanic categories" },
+          { "key": "Absolute CAC Band", "equals": "Moderate calcified plaque burden" },
+          { "key": "MESA Reference Position", "includes": "use only White/Caucasian, Black/African American, Chinese American, or Hispanic categories" },
           { "key": "MESA Probability Nonzero CAC", "equals": "Unavailable" },
           { "key": "MESA Limitation", "includes": "Do not extrapolate" }
+        ]
+      }
+    },
+    {
+      "id": "reject-fractional-score",
+      "description": "The locally reproducible MESA reference contract accepts whole-number Agatston scores only.",
+      "inputs": {
+        "score": "0.5",
+        "age": "55",
+        "sex": "male",
+        "race": "white",
+        "vessel_count": "1"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          { "key": "Error", "equals": "Total Agatston CAC score must be a non-negative whole number." }
         ]
       }
     },
