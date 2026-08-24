@@ -2,6 +2,7 @@
  * WelcomeCard — One-time dismissible banner shown on first visit.
  * Appears below the medical disclaimer. Slate tones to differentiate from the blue disclaimer.
  */
+import { medicalCalculatorCount } from "@/components/calculators";
 import { trackOnboarding } from "@/lib/analytics";
 
 export function WelcomeCard({ onDismiss, onOpenGuide }) {
@@ -22,8 +23,8 @@ export function WelcomeCard({ onDismiss, onOpenGuide }) {
       className="bg-slate-50 dark:bg-slate-900/30 border-b border-slate-200 dark:border-slate-700 px-4 py-2 text-xs md:text-sm text-slate-700 dark:text-slate-300 flex items-center justify-between gap-3"
     >
       <p>
-        <strong>Welcome to Radulator.</strong> 38 evidence-based medical
-        calculators across 11 specialties.{" "}
+        <strong>Welcome to Radulator.</strong> {medicalCalculatorCount}{" "}
+        evidence-based medical calculators across 11 specialties.{" "}
         <button
           type="button"
           onClick={handleOpenGuide}
