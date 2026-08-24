@@ -9,7 +9,7 @@
 
 const ASSESSMENTS = {
   "0_additional": {
-    option: "0A — Additional imaging evaluation is needed",
+    option: "Additional imaging evaluation is needed",
     assessment: "Incomplete — additional imaging evaluation is needed",
     mqsa: "Incomplete: Need additional imaging evaluation",
     likelihood: "Not a final malignancy-risk category",
@@ -18,7 +18,7 @@ const ASSESSMENTS = {
     severity: "info",
   },
   "0_priors": {
-    option: "0P — Prior mammograms are needed for comparison",
+    option: "Prior mammograms are needed for comparison",
     assessment: "Incomplete — prior mammograms are needed for comparison",
     mqsa: "Incomplete: Need prior mammograms for comparison",
     likelihood: "Not a final malignancy-risk category",
@@ -103,8 +103,8 @@ const ASSESSMENTS = {
     severity: "danger",
   },
   6: {
-    option: "6 — Known tissue-proven malignancy",
-    assessment: "6 — Known tissue-proven malignancy",
+    option: "6 — Known Biopsy-Proven Malignancy",
+    assessment: "6 — Known Biopsy-Proven Malignancy",
     mqsa: "Known Biopsy-Proven Malignancy",
     likelihood:
       "Not applicable — malignancy has already been established by tissue diagnosis",
@@ -113,7 +113,7 @@ const ASSESSMENTS = {
     severity: "danger",
   },
   post_marker: {
-    option: "P — Post-procedure mammogram for marker placement",
+    option: "Post-procedure mammogram for marker placement",
     assessment: "Post-procedure mammogram for marker placement",
     mqsa: "Post-Procedure Mammogram for Marker Placement",
     likelihood:
@@ -263,6 +263,10 @@ Category-specific next steps below are independently worded educational summarie
 
   refs: [
     {
+      t: "American College of Radiology. BI-RADS v2025 Mammography Summary: assessment labels, malignancy-likelihood ranges, and management context.",
+      u: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+    },
+    {
       t: "FDA MQSA final-rule overview: mammography report assessment categories (enforced September 10, 2024)",
       u: "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
     },
@@ -293,10 +297,6 @@ Category-specific next steps below are independently worded educational summarie
     {
       t: "Berg WA, et al. Cancer yield and follow-up for category 3 after screening mammography recall. Radiology. 2020;296:32-41. PMID 32427557.",
       u: "https://pubmed.ncbi.nlm.nih.gov/32427557/",
-    },
-    {
-      t: "Strigel RM, et al. Published category 4A, 4B and 4C malignancy-probability boundaries. AJR Am J Roentgenol. 2017;208(6):1392-1399. PMID 28792802.",
-      u: "https://pubmed.ncbi.nlm.nih.gov/28792802/",
     },
   ],
 };

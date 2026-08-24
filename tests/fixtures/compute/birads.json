@@ -192,7 +192,7 @@
         "fields": [
           {
             "key": "Assessment",
-            "equals": "6 — Known tissue-proven malignancy"
+            "equals": "6 — Known Biopsy-Proven Malignancy"
           },
           {
             "key": "Likelihood context",

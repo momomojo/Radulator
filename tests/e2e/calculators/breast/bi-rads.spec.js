@@ -28,11 +28,11 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
   });
 
   test("distinguishes the two incomplete-assessment paths", async ({ page }) => {
-    await calculate(page, "0A — Additional imaging evaluation is needed");
+    await calculate(page, "Additional imaging evaluation is needed");
     await expect(page.getByText("Incomplete — additional imaging evaluation is needed")).toBeVisible();
     await expect(page.getByText("Complete the recommended imaging evaluation")).toBeVisible();
 
-    await calculate(page, "0P — Prior mammograms are needed for comparison");
+    await calculate(page, "Prior mammograms are needed for comparison");
     await expect(page.getByText("Incomplete — prior mammograms are needed for comparison")).toBeVisible();
     await expect(
       page.getByText(
@@ -63,7 +63,7 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
   }
 
   test("keeps known malignancy distinct from a new probability assessment", async ({ page }) => {
-    await calculate(page, "6 — Known tissue-proven malignancy");
+    await calculate(page, "6 — Known Biopsy-Proven Malignancy");
     await expect(page.getByText("malignancy has already been established by tissue diagnosis")).toBeVisible();
     await expect(page.getByText("surgeon and/or oncologist")).toBeVisible();
     await expect(page.getByText("Definitive local therapy")).toBeVisible();
@@ -72,8 +72,12 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
   });
 
   test("includes the FDA marker-placement assessment without assigning a BI-RADS number", async ({ page }) => {
-    await calculate(page, "P — Post-procedure mammogram for marker placement");
-    await expect(page.getByText("Post-procedure mammogram for marker placement", { exact: true })).toBeVisible();
+    await calculate(page, "Post-procedure mammogram for marker placement");
+    await expect(
+      page
+        .getByRole("status", { name: "Calculator results" })
+        .getByText("Post-procedure mammogram for marker placement", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("not a numbered BI-RADS category")).toBeVisible();
     await expect(page.getByText("document marker deployment and position")).toBeVisible();
   });
@@ -94,12 +98,14 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
       "href",
       "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
     );
+    await expect(
+      page.locator(
+        'a[href="https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf"]',
+      ),
+    ).toBeVisible();
     await page.getByRole("button", { name: /Show 6 more references/i }).click();
     await expect(
       page.locator('a[href="https://pubmed.ncbi.nlm.nih.gov/42233890/"]'),
-    ).toBeVisible();
-    await expect(
-      page.getByText(/Strigel RM.*AJR Am J Roentgenol\. 2017;208\(6\):1392-1399/),
     ).toBeVisible();
   });
 });
