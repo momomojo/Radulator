@@ -19,6 +19,7 @@ import {
   verifyAttestation,
 } from "../../../scripts/release-policy.mjs";
 import { loadPublicKeysFile } from "./public-keys.mjs";
+import { resolveGithubToken } from "./github-token.mjs";
 
 export const CANDIDATE_SCHEMA = "radulator-judge-candidate/v1";
 
@@ -174,7 +175,7 @@ function requiredArgument(name) {
 }
 
 async function run() {
-  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  const token = resolveGithubToken();
   const repository = argument("--repo", process.env.PIPELINE_REPO || "momomojo/Radulator");
   const role = argument("--role");
   const cacheDir = argument("--cache-dir", path.join(process.env.HERMES_HOME || process.cwd(), "state", "radulator-judge-candidates"));
