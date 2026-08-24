@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { collectCandidates, writeCandidateCache } from "./judge-candidates.mjs";
+import { resolveGithubToken } from "./github-token.mjs";
 import {
   ATTESTATION_MARKER,
   relevantLabelsDigest,
@@ -36,6 +37,34 @@ const PUBLIC_KEYS = {
     publicKey: verificationKeys.publicKey.export({ type: "spki", format: "pem" }),
   },
 };
+
+{
+  let fallbackCalls = 0;
+  const fromEnvironment = resolveGithubToken({
+    env: { GH_TOKEN: " environment-token ", GITHUB_TOKEN: "lower-priority-token" },
+    execFile() {
+      fallbackCalls += 1;
+      return "unexpected";
+    },
+  });
+  assert.equal(fromEnvironment, "environment-token");
+  assert.equal(fallbackCalls, 0, "an explicit environment token never invokes the gh fallback");
+
+  let invocation;
+  const fromGh = resolveGithubToken({
+    env: {},
+    execFile(command, arguments_, options) {
+      invocation = { command, arguments_, options };
+      return " cli-token\n";
+    },
+  });
+  assert.equal(fromGh, "cli-token");
+  assert.equal(invocation.command, "gh");
+  assert.deepEqual(invocation.arguments_, ["auth", "token", "--hostname", "github.com"]);
+  assert.deepEqual(invocation.options.stdio, ["ignore", "pipe", "ignore"], "token fallback never prints credentials");
+
+  assert.equal(resolveGithubToken({ env: {}, execFile() { throw new Error("not authenticated"); } }), "");
+}
 
 const STANDARD_FILES = [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }];
 const HIGH_FILES = [{ filename: "src/components/calculators/MELDNa.jsx", status: "modified", patch: "@@ -1 +1 @@\n-1\n+2" }];
