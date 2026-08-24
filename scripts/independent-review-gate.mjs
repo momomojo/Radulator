@@ -86,8 +86,9 @@ function success(pr, risk, quorum) {
 }
 
 export function requiredCiForBase(baseRef) {
-  if (baseRef === "develop") return ["Smoke Tests", "Targeted Calculator Tests"];
-  if (baseRef === "main") return ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"];
+  const common = ["Smoke Tests", "Targeted Calculator Tests", "Release Control and Production Audit"];
+  if (baseRef === "develop") return common;
+  if (baseRef === "main") return [...common, "Full Test Suite"];
   return [];
 }
 

@@ -601,9 +601,18 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     expectedCiAppId: CI_APP_ID,
   }).ok, false);
 
-  assert.deepEqual(requiredCiForBase("develop"), ["Smoke Tests", "Targeted Calculator Tests"]);
+  assert.deepEqual(requiredCiForBase("develop"), [
+    "Smoke Tests",
+    "Targeted Calculator Tests",
+    "Release Control and Production Audit",
+  ]);
   const mainPr = prFixture({ baseRef: "main" });
-  assert.deepEqual(requiredCiForBase(mainPr.baseRef), ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"]);
+  assert.deepEqual(requiredCiForBase(mainPr.baseRef), [
+    "Smoke Tests",
+    "Targeted Calculator Tests",
+    "Release Control and Production Audit",
+    "Full Test Suite",
+  ]);
 }
 
 console.log("independent clinical exact-head gate tests passed");

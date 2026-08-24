@@ -37,6 +37,7 @@
     "test:hermes-judge-attest": "node ops/hermes/radulator/judge-attest.test.mjs",
     "test:hermes-lifecycle": "python3 -m unittest discover -s ops/hermes/radulator/tests -p 'test_lifecycle_controller.py'",
     "test:hermes-learning": "python3 -m unittest discover -s ops/hermes/radulator/tests -p 'test_*learning*.py'",
+    "test:hermes-feedback-intake": "python3 -m unittest discover -s ops/hermes/radulator/tests -p 'test_formspree_feedback_intake.py'",
     "test:hermes-install": "python3 -m unittest discover -s ops/hermes/radulator/tests -p 'test_install.py'",
     "test:dev-local": "bash tests/scripts/dev-local-restart.sh",
     "test:decompose-full-suite": "node scripts/full-suite-decomposer.mjs",
