@@ -147,15 +147,28 @@ def _verify_profile(home: Path, label: str) -> None:
         raise InstallError(f"{label} must set cron.max_parallel_jobs to 1 for single-flight judgment.")
 
 
-def _job(name: str, home: Path, repo: Path, prompt: str, skills: list[str], expression: str) -> dict[str, Any]:
+def _inference_identity(model: str, provider: str) -> tuple[str, str]:
+    model_pattern = r"[A-Za-z0-9][A-Za-z0-9._:/+@-]{0,255}"
+    provider_pattern = r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}"
+    if not re.fullmatch(model_pattern, model or ""):
+        raise InstallError("Agent inference model is blank or contains unsupported characters.")
+    if not re.fullmatch(provider_pattern, provider or ""):
+        raise InstallError("Agent inference provider is blank or contains unsupported characters.")
+    return model, provider
+
+
+def _job(
+    name: str, home: Path, repo: Path, prompt: str, skills: list[str], expression: str,
+    model: str, provider: str,
+) -> dict[str, Any]:
     return {
         "id": _job_id(name),
         "name": name,
         "prompt": prompt,
         "skills": skills,
         "skill": skills[0] if len(skills) == 1 else None,
-        "model": MODEL,
-        "provider": PROVIDER,
+        "model": model,
+        "provider": provider,
         "base_url": None,
         "script": None,
         "no_agent": False,
@@ -199,6 +212,8 @@ def _script_agent_job(
     skill: str,
     script: str,
     expression: str,
+    model: str,
+    provider: str,
 ) -> dict[str, Any]:
     return {
         "id": job_id,
@@ -206,8 +221,8 @@ def _script_agent_job(
         "prompt": prompt,
         "skills": [skill],
         "skill": skill,
-        "model": None,
-        "provider": None,
+        "model": model,
+        "provider": provider,
         "base_url": None,
         "script": script,
         "no_agent": False,
@@ -222,12 +237,16 @@ def _script_agent_job(
     }
 
 
-def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[str, Any]:
+def build_plan(
+    *, repo: Path, radulator_home: Path, default_home: Path,
+    agent_model: str = MODEL, agent_provider: str = PROVIDER,
+) -> dict[str, Any]:
     repo = _require_absolute(Path(repo), "repo")
     radulator_home = _require_absolute(Path(radulator_home), "radulator_home")
     default_home = _require_absolute(Path(default_home), "default_home")
     if radulator_home == default_home:
         raise InstallError("radulator_home and default_home must be distinct judge profiles.")
+    agent_model, agent_provider = _inference_identity(agent_model, agent_provider)
     for home, label in ((radulator_home, "radulator profile"), (default_home, "verification profile")):
         _verify_profile(home, label)
     required = [
@@ -267,11 +286,11 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             "returned candidate and never invoke the collector again in the same run. Use radulator-clinical-judge, write one decision "
             "JSON. Replace the angle-bracket path placeholders, then run exactly: "
             f"node {signer} sign --candidate <cachedPaths[0]> --decision <decision-json-path> --private-key {primary_private} "
-            f"--key-id radulator-primary-v1 --role primary --profile radulator --model {MODEL} --provider {PROVIDER} "
+            f"--key-id radulator-primary-v1 --role primary --profile radulator --model {agent_model} --provider {agent_provider} "
             f"--output <attestation-json-path> && node {signer} post --repo {CANONICAL_GITHUB_REPOSITORY} "
             f"--attestation <attestation-json-path> --public-keys-file {primary_public_keys_config}. Require authoritative GitHub comment "
             "readback. Never edit source or self-improve during judgment.",
-            ["radulator-clinical-judge"], "*/10 * * * *",
+            ["radulator-clinical-judge"], "*/10 * * * *", agent_model, agent_provider,
         ),
         _job(
             "radulator-clinical-judge-verification", default_home, repo,
@@ -283,11 +302,11 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             "radulator-clinical-judge independently and write one decision JSON. Replace the angle-bracket path placeholders, then run "
             f"exactly: node {signer} sign --candidate <cachedPaths[0]> --decision <decision-json-path> "
             f"--private-key {verification_private} --key-id radulator-verification-v1 --role verification --profile default "
-            f"--model {MODEL} --provider {PROVIDER} --output <attestation-json-path> && node {signer} post "
+            f"--model {agent_model} --provider {agent_provider} --output <attestation-json-path> && node {signer} post "
             f"--repo {CANONICAL_GITHUB_REPOSITORY} --attestation <attestation-json-path> "
             f"--public-keys-file {verification_public_keys_config}. Require authoritative GitHub "
             "comment readback. Never edit source or self-improve during judgment.",
-            ["radulator-clinical-judge"], "3-59/10 * * * *",
+            ["radulator-clinical-judge"], "3-59/10 * * * *", agent_model, agent_provider,
         ),
         _job(
             "radulator-release-lifecycle", radulator_home, repo,
@@ -296,7 +315,7 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             "tracker and never enumerate the full ledger, board, or session history in this run. Reconcile only that tracker's Radulator "
             "GitHub, deploy, and Kanban facts. Use radulator-release-controller. Append only authoritative exact-SHA transitions; run "
             "lifecycle_controller.py apply-actions for NEEDS_FIX, smoke_passed, or learned states and verify every Kanban readback.",
-            ["radulator-release-controller"], "*/5 * * * *",
+            ["radulator-release-controller"], "*/5 * * * *", agent_model, agent_provider,
         ),
         _job(
             "radulator-release-learning", radulator_home, repo,
@@ -307,7 +326,7 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             f"python3 {overlay / 'retain_learning.py'} --ledger {ledger} --task-id <candidate.task_id> "
             f"--config {hindsight_config}. Do not call hindsight_retain. "
             "Use only its exact readback receipt to append learned, verify Kanban terminal readback, then append complete.",
-            ["radulator-release-learning"], "2-59/10 * * * *",
+            ["radulator-release-learning"], "2-59/10 * * * *", agent_model, agent_provider,
         ),
         _script_job(
             "radulator-formspree-feedback-intake",
@@ -323,6 +342,8 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             "radulator-operations",
             "seed_convert_gate_dedupe.py",
             "0 9 * * *",
+            agent_model,
+            agent_provider,
         ),
     ]
     return {
@@ -331,6 +352,7 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
         "github_repository": CANONICAL_GITHUB_REPOSITORY,
         "radulator_home": str(radulator_home),
         "default_home": str(default_home),
+        "inference": {"model": agent_model, "provider": agent_provider},
         "jobs": jobs,
         "keys": {
             "primary_private": str(primary_private),
@@ -572,10 +594,15 @@ def apply_install(
     *, repo: Path, radulator_home: Path, default_home: Path, enable: bool = False, disable: bool = False,
     expected_public_keys: dict[str, Any] | None = None,
     activation_test_runner=None,
+    agent_model: str = MODEL,
+    agent_provider: str = PROVIDER,
 ) -> dict[str, Any]:
     if enable and disable:
         raise InstallError("enable and disable are mutually exclusive.")
-    plan = build_plan(repo=repo, radulator_home=radulator_home, default_home=default_home)
+    plan = build_plan(
+        repo=repo, radulator_home=radulator_home, default_home=default_home,
+        agent_model=agent_model, agent_provider=agent_provider,
+    )
     if enable:
         _verify_activation_trust(plan, expected_public_keys)
         _run_activation_self_tests(plan, activation_test_runner)
@@ -632,6 +659,7 @@ def apply_install(
         "repo": plan["repo"],
         "profiles": {"primary": plan["radulator_home"], "verification": plan["default_home"]},
         "job_ids": {job["name"]: job["id"] for job in plan["jobs"]},
+        "inference": plan["inference"],
         "keys": plan["keys"],
         "backup_manifest": str(_backup_path(plan)),
     }
@@ -725,13 +753,18 @@ def main() -> None:
     state.add_argument("--disable", action="store_true", help="Disable all managed jobs without removing their configuration.")
     parser.add_argument("--generate-keys", action="store_true", help="Create persistent signing credentials; requires operator approval.")
     parser.add_argument("--github-repository", default=CANONICAL_GITHUB_REPOSITORY)
+    parser.add_argument("--agent-model", default=MODEL, help="Inference model pinned to all managed agent jobs.")
+    parser.add_argument("--agent-provider", default=PROVIDER, help="Inference provider pinned to all managed agent jobs.")
     args = parser.parse_args()
     if args.restore:
         print(json.dumps(restore_install(args.radulator_home), indent=2, sort_keys=True))
         return
     if args.repo is None or args.default_home is None:
         parser.error("--repo and --default-home are required for dry-run/apply")
-    plan = build_plan(repo=args.repo, radulator_home=args.radulator_home, default_home=args.default_home)
+    plan = build_plan(
+        repo=args.repo, radulator_home=args.radulator_home, default_home=args.default_home,
+        agent_model=args.agent_model, agent_provider=args.agent_provider,
+    )
     if args.dry_run:
         sanitized = {**plan, "jobs": [{key: value for key, value in job.items() if not key.startswith("_")} for job in plan["jobs"]]}
         print(json.dumps(sanitized, indent=2, sort_keys=True))
@@ -740,6 +773,7 @@ def main() -> None:
     result = apply_install(
         repo=args.repo, radulator_home=args.radulator_home, default_home=args.default_home,
         enable=args.enable, disable=args.disable, expected_public_keys=expected_public_keys,
+        agent_model=args.agent_model, agent_provider=args.agent_provider,
     )
     if args.generate_keys:
         result["public_keys"] = generate_keys(plan)

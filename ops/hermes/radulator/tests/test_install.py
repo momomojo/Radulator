@@ -107,18 +107,15 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(plan["github_repository"], "momomojo/Radulator")
         self.assertEqual(len(plan["jobs"]), 6)
         self.assertFalse((self.radulator_home / "state" / "radulator-release-control.json").exists())
-        agent_jobs = [
-            job
-            for job in plan["jobs"]
-            if not job.get("no_agent") and job["name"] != "radulator-seed-convert"
-        ]
+        agent_jobs = [job for job in plan["jobs"] if not job.get("no_agent")]
         for job in agent_jobs:
-            self.assertEqual(job["workdir"], str(self.repo))
             self.assertEqual(job["model"], "gpt-5.6-sol")
             self.assertEqual(job["provider"], "openai-codex")
             self.assertNotIn("effort", job)
             self.assertNotIn("reasoning_effort", job)
             self.assertFalse(job["enabled"])
+        repository_agent_jobs = [job for job in agent_jobs if job["name"] != "radulator-seed-convert"]
+        self.assertTrue(all(job["workdir"] == str(self.repo) for job in repository_agent_jobs))
         feedback = next(job for job in plan["jobs"] if job["name"] == "radulator-formspree-feedback-intake")
         self.assertTrue(feedback["no_agent"])
         self.assertEqual(feedback["script"], "radulator_formspree_feedback_intake.py")
@@ -136,6 +133,8 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("Process at most 2 oldest first", seed_convert["prompt"])
         self.assertIn("authoritative readback", seed_convert["prompt"])
         self.assertIn("NEEDS_FIX is not a terminal hold", seed_convert["prompt"])
+        self.assertEqual(seed_convert["model"], "gpt-5.6-sol")
+        self.assertEqual(seed_convert["provider"], "openai-codex")
         self.assertFalse(seed_convert["enabled"])
         judge_jobs = [job for job in plan["jobs"] if job["name"].startswith("radulator-clinical-judge-")]
         self.assertTrue(all("--public-keys-file" in job["prompt"] for job in judge_jobs))
@@ -167,6 +166,50 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("retain_learning.py", learning_skill)
         self.assertIn("kanban_closure", learning_skill)
         self.assertNotIn("Call `hindsight_retain`", learning_skill)
+
+    def test_plan_can_pin_a_truthful_self_hosted_inference_identity(self):
+        plan = build_plan(
+            **self.kwargs(),
+            agent_model="mtplx-qwen38-27b-optimized-quality",
+            agent_provider="mtplx-qwen38",
+        )
+
+        agent_jobs = [job for job in plan["jobs"] if not job.get("no_agent")]
+        self.assertTrue(agent_jobs)
+        self.assertTrue(all(job["model"] == "mtplx-qwen38-27b-optimized-quality" for job in agent_jobs))
+        self.assertTrue(all(job["provider"] == "mtplx-qwen38" for job in agent_jobs))
+        judges = [job for job in agent_jobs if job["name"].startswith("radulator-clinical-judge-")]
+        self.assertTrue(all("--model mtplx-qwen38-27b-optimized-quality" in job["prompt"] for job in judges))
+        self.assertTrue(all("--provider mtplx-qwen38" in job["prompt"] for job in judges))
+        self.assertEqual(plan["inference"], {
+            "model": "mtplx-qwen38-27b-optimized-quality",
+            "provider": "mtplx-qwen38",
+        })
+
+        result = apply_install(
+            **self.kwargs(),
+            agent_model="mtplx-qwen38-27b-optimized-quality",
+            agent_provider="mtplx-qwen38",
+        )
+        manifest = json.loads(Path(result["manifest_path"]).read_text())
+        self.assertEqual(manifest["inference"], plan["inference"])
+        radulator_jobs = json.loads((self.radulator_home / "cron" / "jobs.json").read_text())["jobs"]
+        default_jobs = json.loads((self.default_home / "cron" / "jobs.json").read_text())
+        managed = [job for job in [*radulator_jobs, *default_jobs] if job.get("id") in result["job_ids"].values()]
+        managed_agents = [job for job in managed if not job.get("no_agent")]
+        self.assertTrue(all(job["model"] == plan["inference"]["model"] for job in managed_agents))
+        self.assertTrue(all(job["provider"] == plan["inference"]["provider"] for job in managed_agents))
+
+    def test_inference_identity_rejects_blank_or_prompt_injection_values(self):
+        invalid = (
+            {"agent_model": ""},
+            {"agent_provider": ""},
+            {"agent_model": "safe-model\n--private-key /tmp/attacker"},
+            {"agent_provider": "provider with spaces"},
+        )
+        for override in invalid:
+            with self.subTest(override=override), self.assertRaisesRegex(InstallError, "inference"):
+                build_plan(**self.kwargs(), **override)
 
     def test_judge_skill_prescribes_complete_sign_and_post_commands(self):
         skill = (self.repo / "ops/hermes/radulator/skills/radulator-clinical-judge/SKILL.md").read_text()

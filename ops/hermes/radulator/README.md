@@ -21,6 +21,7 @@ To canary the two-judge path without changing clinical behavior, use an operatio
 - Use the canonical Radulator clone and pull the reviewed control-plane release before installation.
 - The primary and verification Hermes homes must be distinct profiles. Both `config.yaml` files must set `agent.reasoning_effort: xhigh`; Hermes 0.19 has no per-job effort field.
 - Both profiles need working GitHub authentication. Do not put tokens or private keys in this repository or in job prompts. Judge jobs resolve the trusted E2E workflow ID from authoritative GitHub workflow metadata on every collection/post and reject any configured identity mismatch.
+- The inference provider/model pinned by the installer must be registered and reachable from both profiles. For a self-hosted provider, prove authenticated health, exact model discovery, visible completion content, and a Hermes tool call from the Mac mini before enabling it. The installer records this identity in every agent job, both signed judge prompts, and the protected control manifest so an attestation cannot claim the retired metered provider while another model actually reviewed the change.
 - Judge collectors and posters prefer `GH_TOKEN`/`GITHUB_TOKEN` when supplied and otherwise read the authenticated `gh` token without printing it. Verify `gh auth status` in the noninteractive Mac mini account before activation.
 - The repository's protected checks, clinical gate, automatic merger, deployment smoke, and rollback workflows must already be active. An enforced repository ruleset for both `develop` and `main` must require `Radulator Clinical Release Authorization` from the GitHub Actions App with `strict_required_status_checks_policy: true`; the controller also verifies the paired fingerprint-bearing exact-head check through GitHub's metadata-readable APIs before every merge.
 
@@ -80,6 +81,15 @@ python3 ops/hermes/radulator/install.py \
   --github-repository momomojo/Radulator \
   --apply --enable
 ```
+
+To pin the managed jobs to a previously registered self-hosted provider instead of the default metered identity, add the same reviewed identity to the dry-run, disabled-first install, and enable commands:
+
+```bash
+  --agent-provider mtplx-qwen38 \
+  --agent-model mtplx-qwen38-27b-optimized-quality
+```
+
+Both values are validated as nonblank command-safe identifiers. Changing them rewrites the job pins and the model/provider fields embedded in newly signed attestations; it does not alter signing keys or weaken the exact-head quorum.
 
 Activation requires `cron.max_parallel_jobs: 1` in both judge profiles and refuses missing/mismatched keys, a local/GitHub public-map mismatch, or any failed release, judge, deployment, lifecycle, invariant, lint, or build self-test. It then pauses legacy `pr-gate-poller` and `judge-queue` jobs in either judge profile with the reason `replaced-by-radulator-signed-clinical-gate`. Disabled-first installation leaves them unchanged, so there is no unguarded interval before the signed replacement is ready. The baseline restore returns both profiles' complete cron files—including those legacy jobs—to their exact pre-install bytes.
 
