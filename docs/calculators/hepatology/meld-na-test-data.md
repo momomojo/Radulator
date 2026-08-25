@@ -1,303 +1,603 @@
-# MELD 3.0 / MELD-Na Calculator Test Data
+# Archived MELD-Na 2016 Test Data — Not Current Validation Evidence
 
-This document lists the focused QA scenarios for the `meld-na` calculator after adding current MELD 3.0 while preserving the temporary legacy MELD-Na option.
+> **Historical record only.** These fixtures describe the superseded pre-MELD-3.0 implementation. They are retained solely so the clinical reviewer can compare the replacement against the repository baseline. Use [`meld-3-test-data.md`](meld-3-test-data.md) for current MELD 3.0 validation evidence.
 
-## Scope
+# MELD-Na Calculator Test Data (Archived)
 
-- Current model: MELD 3.0 for candidates currently at least 12 years old.
-- Registered-before-18 path: `+7.33` constant for all sexes, including candidates who registered before age 12 and later aged into MELD.
-- Adult path: registered at age 18 or older, female term `+1.33` when applicable plus `+6` constant.
-- Legacy model: MELD-Na (OPTN 2016) remains available for comparison and education.
+## Comprehensive Test Scenarios for QA Validation
 
-Clinical signoff source: kanban parent gate `t_10a996a5`, comment `868`, owner-authenticated at `2026-07-07T04:05:53Z`.
+This document provides detailed test cases with expected results for validating the MELD-Na calculator implementation.
 
-Signed-off packet SHA-256: `cef58cc2577687e7f795e82c6fa9213c8cff35e47df70d1c64d51c14a6b1cc35`
+---
 
-Verifier output: `/Users/agent/.hermes/profiles/radulator/task-notes/meld30_audit_recompute_t45134910.json`
+## 1. Score Range Test Cases
 
-## MELD 3.0 Verifier Examples
+### Test Case 1.1: Low Risk (MELD-Na 6-9)
+**Clinical Scenario**: Compensated cirrhosis with well-controlled liver function
 
-### Test Case 1: Low-Score Bounded Normal Male
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 0.8 mg/dL | Below lower bound |
+| Bilirubin | 0.9 mg/dL | Below lower bound |
+| INR | 1.0 | At lower bound |
+| Sodium | 140 mEq/L | Normal |
+| Dialysis | No | - |
 
-| Parameter | Value |
-|---|---:|
-| Current age | 45 |
-| Age at registration | 45 |
-| Sex | Male |
-| Creatinine | 0.8 mg/dL |
-| Total bilirubin | 0.8 mg/dL |
-| INR | 1.0 |
-| Sodium | 140 mEq/L |
-| Albumin | 4.0 g/dL |
-| Dialysis | No |
-
-Expected:
-
-- MELD 3.0 Score: 6
-- Calculation Path: Registered at age ≥18
-- Notes include lower/upper bounds for creatinine, bilirubin, sodium, and albumin.
-
-### Test Case 2: Adult Female Sex Term
-
-| Parameter | Value |
-|---|---:|
-| Current age | 45 |
-| Age at registration | 45 |
-| Sex | Female |
-| Creatinine | 1.0 mg/dL |
-| Total bilirubin | 1.5 mg/dL |
-| INR | 1.2 |
-| Sodium | 135 mEq/L |
-| Albumin | 3.0 g/dL |
-| Dialysis | No |
-
-Expected:
-
-- MELD 3.0 Score: 13
-- Same labs with adult male selected: 12
-- Notes include adult female MELD 3.0 sex term when female is selected.
-
-### Test Case 3: Hypoalbuminemia
-
-| Parameter | Value |
-|---|---:|
-| Current age | 45 |
-| Age at registration | 45 |
-| Sex | Male |
-| Creatinine | 1.0 mg/dL |
-| Total bilirubin | 2.0 mg/dL |
-| INR | 1.5 |
-| Sodium | 137 mEq/L |
-| Albumin | 1.8 g/dL |
-| Dialysis | No |
-
-Expected:
-
-- MELD 3.0 Score: 16
-
-### Test Case 4: High-Score Female with Hyponatremia
-
-| Parameter | Value |
-|---|---:|
-| Current age | 45 |
-| Age at registration | 45 |
-| Sex | Female |
-| Creatinine | 2.5 mg/dL |
-| Total bilirubin | 10.0 mg/dL |
-| INR | 2.2 |
-| Sodium | 128 mEq/L |
-| Albumin | 2.8 g/dL |
-| Dialysis | No |
-
-Expected:
-
-- MELD 3.0 Score: 38
-- Same labs with adult male selected: 36
-
-### Test Case 5: Dialysis / Creatinine Cap
-
-| Parameter | Value |
-|---|---:|
-| Current age | 45 |
-| Age at registration | 45 |
-| Sex | Male |
-| Creatinine | 5.0 mg/dL |
-| Total bilirubin | 2.0 mg/dL |
-| INR | 1.5 |
-| Sodium | 137 mEq/L |
-| Albumin | 3.5 g/dL |
-| Dialysis | Yes |
-
-Expected:
-
-- MELD 3.0 Score: 25
-- Clinical Notes: "Creatinine set to 3.0 mg/dL for MELD 3.0 (dialysis/CVVHD rule)"
-
-### Test Case 6: Registered-Before-18 Path
-
-| Parameter | Value |
-|---|---:|
-| Current age | 16 |
-| Age at registration | 16 |
-| Creatinine | 1.0 mg/dL |
-| Total bilirubin | 1.5 mg/dL |
-| INR | 1.2 |
-| Sodium | 135 mEq/L |
-| Albumin | 3.0 g/dL |
-| Dialysis | No |
-
-Expected:
-
-- MELD 3.0 Score: 13
-- Calculation Path: Registered before age 18; candidate currently age ≥12
-- Clinical Notes: "Registered-before-18 path used: MELD 3.0 applies +7.33 constant for all sexes"
-- Adult sex selector is hidden.
-
-### Test Case 7: Registered Before Age 12 and Aged into MELD
-
-| Parameter | Value |
-|---|---:|
-| Current age | 12 |
-| Age at registration | 8 |
-| Creatinine | 1.0 mg/dL |
-| Total bilirubin | 1.5 mg/dL |
-| INR | 1.2 |
-| Sodium | 135 mEq/L |
-| Albumin | 3.0 g/dL |
-| Dialysis | No |
-
-Expected:
-
-- MELD 3.0 Score: 13
-- Calculation Path: Registered before age 18; candidate currently age ≥12
-- Adult sex selector is hidden.
-
-## MELD 3.0 Validation Cases
-
-### Missing Current Age
-
-Inputs: current MELD 3.0 model selected with shared labs and registration age present but no current age.
-
-Expected error:
-
-```text
-Please enter current age for MELD 3.0.
-```
-
-### Missing Registration Age
-
-Inputs: current MELD 3.0 model selected with shared labs and current age present but no registration age.
-
-Expected error:
-
-```text
-Please enter age at registration for MELD 3.0.
-```
-
-### Current Age Under 12
-
-Inputs: current age 11 and age at registration 8 with otherwise valid MELD 3.0 labs.
-
-Expected error:
-
-```text
-MELD applies only when the candidate is currently at least 12 years old; use PELD/PELD Cr for younger candidates.
-```
-
-### Registration Age Exceeds Current Age
-
-Inputs: current age 16 and age at registration 18 with otherwise valid MELD 3.0 labs.
-
-Expected error:
-
-```text
-Age at registration cannot exceed current age.
-```
-
-### Missing Adult Sex
-
-Inputs: age at registration 18 or older with otherwise valid MELD 3.0 labs and no adult sex selection.
-
-Expected error:
-
-```text
-Please select sex for adult MELD 3.0 calculation.
-```
-
-### Adult Sex Selection Guidance
-
-When age at registration is 18 or older, the field exposes the current OPTN guidance to select Male or Female in consultation with the candidate. The help text includes the OPTN examples for a candidate receiving feminizing or masculinizing gender-affirming hormone therapy so the `+1.33` term is not applied from an unlabeled assumption.
-
-### No Unsupported Upper-Age Limit
-
-Inputs: current age 121, age at registration 121, adult Male selection, creatinine 1.0, bilirubin 1.5, INR 1.2, sodium 135, and albumin 3.0.
-
-Expected:
-
-- No validation error from an invented maximum age.
-- MELD 3.0 Score: 12.
-- Prognosis Context begins `MELD 3.0 numeric stratum 10-19` and does not use a qualitative low/intermediate/high label.
-
-### Albumin Bounds
-
-| Albumin input | Expected adjustment |
-|---:|---|
-| 1.0 g/dL | Albumin set to lower bound of 1.5 g/dL |
-| 4.5 g/dL | Albumin set to upper bound of 3.5 g/dL |
-
-## Legacy MELD-Na Regression Cases
-
-The temporary legacy option must preserve existing MELD-Na behavior.
-
-### Legacy Low Risk
-
-| Parameter | Value |
-|---|---:|
-| Creatinine | 0.8 mg/dL |
-| Total bilirubin | 0.9 mg/dL |
-| INR | 1.0 |
-| Sodium | 140 mEq/L |
-| Dialysis | No |
-
-Expected:
-
+**Expected Results**:
 - MELD Score: 6
 - MELD-Na Score: 6
 - 3-Month Mortality: 1.9%
 - Risk Category: Low risk
+- Clinical Notes: "Creatinine set to lower bound of 1.0 mg/dL; Bilirubin set to lower bound of 1.0 mg/dL; MELD score capped at minimum of 6"
+- Interpretation: "Low risk of 3-month mortality... Monitor closely; transplant evaluation if disease progresses"
 
-### Legacy Sodium Correction Applied
+---
 
-| Parameter | Value |
-|---|---:|
-| Creatinine | 2.0 mg/dL |
-| Total bilirubin | 3.0 mg/dL |
-| INR | 1.8 |
-| Sodium | 130 mEq/L |
-| Dialysis | No |
+### Test Case 1.2: Moderate Risk (MELD-Na 10-19)
+**Clinical Scenario**: Decompensated cirrhosis, early transplant candidate
 
-Expected:
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 1.5 mg/dL | Mildly elevated |
+| Bilirubin | 2.5 mg/dL | Elevated |
+| INR | 1.5 | Elevated |
+| Sodium | 135 mEq/L | Low-normal |
+| Dialysis | No | - |
 
-- MELD-Na Score is greater than MELD Score.
-- No "MELD-Na equals MELD" note.
+**Expected Results**:
+- MELD Score: 13-15 (calculated)
+- MELD-Na Score: ~16-18 (with sodium correction)
+- 3-Month Mortality: 6.0%
+- Risk Category: Moderate risk
+- Interpretation: Should include "Patient meets criteria for liver transplant evaluation" and "Candidate for transplant listing"
 
-### Legacy Sodium Correction Not Applied
+---
 
-| Parameter | Value |
-|---|---:|
-| Creatinine | 1.0 mg/dL |
-| Total bilirubin | 1.5 mg/dL |
-| INR | 1.2 |
-| Sodium | 130 mEq/L |
-| Dialysis | No |
+### Test Case 1.3: High Risk (MELD-Na 20-29)
+**Clinical Scenario**: Advanced cirrhosis with hepatorenal component
 
-Expected:
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 2.5 mg/dL | Significantly elevated |
+| Bilirubin | 8.0 mg/dL | Significantly elevated |
+| INR | 2.0 | Significantly elevated |
+| Sodium | 130 mEq/L | Hyponatremia |
+| Dialysis | No | - |
 
-- MELD Score: 11 or lower
-- MELD-Na Score equals MELD Score
+**Expected Results**:
+- MELD Score: ~23-25
+- MELD-Na Score: ~26-28
+- 3-Month Mortality: 19.6%
+- Risk Category: High risk
+- Interpretation: "Patient meets criteria for liver transplant evaluation... High priority for transplantation"
+
+---
+
+### Test Case 1.4: Very High Risk (MELD-Na 30-39)
+**Clinical Scenario**: Severe decompensated cirrhosis with multi-organ dysfunction
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 3.5 mg/dL | Severe renal dysfunction |
+| Bilirubin | 15.0 mg/dL | Severe hyperbilirubinemia |
+| INR | 2.5 | Severe coagulopathy |
+| Sodium | 128 mEq/L | Moderate hyponatremia |
+| Dialysis | No | - |
+
+**Expected Results**:
+- MELD Score: ~32-35
+- MELD-Na Score: ~34-37
+- 3-Month Mortality: 52.6%
+- Risk Category: Very high risk
+- Interpretation: Urgent transplantation needed
+
+---
+
+### Test Case 1.5: Critical Risk (MELD-Na = 40)
+**Clinical Scenario**: Acute-on-chronic liver failure
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 4.0 mg/dL | At upper cap |
+| Bilirubin | 30.0 mg/dL | Extreme hyperbilirubinemia |
+| INR | 4.0 | Extreme coagulopathy |
+| Sodium | 125 mEq/L | Lower bound for calculation |
+| Dialysis | No | - |
+
+**Expected Results**:
+- MELD Score: 40 (capped)
+- MELD-Na Score: 40 (capped)
+- 3-Month Mortality: >70%
+- Risk Category: Critical risk
+- Clinical Notes: "MELD score capped at maximum of 40"
+
+---
+
+## 2. Sodium Correction Test Cases
+
+### Test Case 2.1: Sodium Correction Applied (MELD > 11)
+**Clinical Scenario**: MELD score above threshold triggers sodium correction
+
+| Parameter | Value | Expected Behavior |
+|-----------|-------|-------------------|
+| Creatinine | 2.0 mg/dL | Within normal calculation range |
+| Bilirubin | 3.0 mg/dL | Moderate elevation |
+| INR | 1.8 | Moderate elevation |
+| Sodium | 130 mEq/L | Below 137 - should increase MELD-Na |
+| Dialysis | No | - |
+
+**Expected Results**:
+- MELD Score: ~17-19
+- MELD-Na Score: > MELD (due to hyponatremia)
+- Delta: MELD-Na should be 2-4 points higher than MELD
+- Clinical Notes: Should NOT mention "MELD-Na equals MELD"
+
+---
+
+### Test Case 2.2: Sodium Correction NOT Applied (MELD ≤ 11)
+**Clinical Scenario**: Low MELD score, no sodium correction
+
+| Parameter | Value | Expected Behavior |
+|-----------|-------|-------------------|
+| Creatinine | 1.0 mg/dL | Lower bound |
+| Bilirubin | 1.5 mg/dL | Minimal elevation |
+| INR | 1.2 | Minimal elevation |
+| Sodium | 130 mEq/L | Low but should not affect score |
+| Dialysis | No | - |
+
+**Expected Results**:
+- MELD Score: ≤11
+- MELD-Na Score: = MELD (identical)
 - Clinical Notes: "MELD-Na equals MELD (sodium correction only applies when MELD > 11)"
 
-### Legacy Dialysis Rule
+---
 
-| Parameter | Value |
-|---|---:|
-| Creatinine | 5.0 mg/dL |
-| Total bilirubin | 3.0 mg/dL |
-| INR | 1.5 |
-| Sodium | 135 mEq/L |
-| Dialysis | Yes |
+### Test Case 2.3: Sodium Lower Bound (125 mEq/L)
+**Clinical Scenario**: Severe hyponatremia capped at lower bound
 
-Expected:
+| Parameter | Value | Expected Behavior |
+|-----------|-------|-------------------|
+| Creatinine | 2.0 mg/dL | - |
+| Bilirubin | 4.0 mg/dL | - |
+| INR | 1.8 | - |
+| Sodium | 120 mEq/L | Should be adjusted to 125 |
+| Dialysis | No | - |
 
-- Clinical Notes: "Creatinine set to 4.0 mg/dL (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)"
-- Should not show "Creatinine capped at 4.0 mg/dL" for this branch.
+**Expected Results**:
+- Clinical Notes: "Sodium set to lower bound of 125 mEq/L for MELD-Na calculation"
+- MELD-Na calculation uses Na = 125, not 120
 
-## Reference Checks
+---
 
-The calculator references should include:
+### Test Case 2.4: Sodium Upper Bound (137 mEq/L)
+**Clinical Scenario**: Normal/high sodium capped at upper bound
 
-1. OPTN/HRSA MELD/PELD policy notice.
-2. OPTN/HRSA implementation FAQ.
-3. Kim WR et al. Gastroenterology 2021 MELD 3.0 paper.
-4. Kim WR et al. Gastroenterology 2008 MELD-Na paper.
-5. Kamath PS et al. Hepatology 2001 original MELD paper.
+| Parameter | Value | Expected Behavior |
+|-----------|-------|-------------------|
+| Creatinine | 2.0 mg/dL | - |
+| Bilirubin | 4.0 mg/dL | - |
+| INR | 1.8 | - |
+| Sodium | 145 mEq/L | Should be adjusted to 137 |
+| Dialysis | No | - |
+
+**Expected Results**:
+- Clinical Notes: "Sodium set to upper bound of 137 mEq/L for MELD-Na calculation"
+- MELD-Na = MELD (no increase from sodium when at/above 137)
+
+---
+
+## 3. Dialysis Adjustment Test Cases
+
+### Test Case 3.1: Dialysis Override (Low Creatinine)
+**Clinical Scenario**: Patient on dialysis with otherwise low creatinine
+
+| Parameter | Value | Expected Behavior |
+|-----------|-------|-------------------|
+| Creatinine | 1.5 mg/dL | Should be overridden to 4.0 |
+| Bilirubin | 3.0 mg/dL | - |
+| INR | 1.5 | - |
+| Sodium | 135 mEq/L | - |
+| Dialysis | Yes | Triggers Cr = 4.0 |
+
+**Expected Results**:
+- Clinical Notes: "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)"
+- MELD Score: Should reflect Cr = 4.0, not 1.5
+- Significantly higher MELD than if dialysis unchecked
+
+---
+
+### Test Case 3.2: Dialysis Override (High Creatinine)
+**Clinical Scenario**: Patient on dialysis with already high creatinine
+
+| Parameter | Value | Expected Behavior |
+|-----------|-------|-------------------|
+| Creatinine | 5.0 mg/dL | Would normally cap at 4.0 |
+| Bilirubin | 3.0 mg/dL | - |
+| INR | 1.5 | - |
+| Sodium | 135 mEq/L | - |
+| Dialysis | Yes | Sets Cr = 4.0 (takes precedence) |
+
+**Expected Results**:
+- Clinical Notes: "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)" (NOT "capped at 4.0")
+- Dialysis note takes precedence over capping note
+
+---
+
+## 4. Lower Bound Adjustment Test Cases
+
+### Test Case 4.1: Creatinine Lower Bound
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 0.5 mg/dL | Adjusted to 1.0 |
+| Bilirubin | 2.0 mg/dL | No adjustment |
+| INR | 1.5 | No adjustment |
+| Sodium | 135 mEq/L | No adjustment |
+| Dialysis | No | - |
+
+**Expected**: Clinical Notes: "Creatinine set to lower bound of 1.0 mg/dL"
+
+---
+
+### Test Case 4.2: Bilirubin Lower Bound
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 1.5 mg/dL | No adjustment |
+| Bilirubin | 0.5 mg/dL | Adjusted to 1.0 |
+| INR | 1.5 | No adjustment |
+| Sodium | 135 mEq/L | No adjustment |
+| Dialysis | No | - |
+
+**Expected**: Clinical Notes: "Bilirubin set to lower bound of 1.0 mg/dL"
+
+---
+
+### Test Case 4.3: INR Lower Bound
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 1.5 mg/dL | No adjustment |
+| Bilirubin | 2.0 mg/dL | No adjustment |
+| INR | 0.9 | Adjusted to 1.0 |
+| Sodium | 135 mEq/L | No adjustment |
+| Dialysis | No | - |
+
+**Expected**: Clinical Notes: "INR set to lower bound of 1.0"
+
+---
+
+### Test Case 4.4: All Lower Bounds Simultaneously
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 0.5 mg/dL | Adjusted to 1.0 |
+| Bilirubin | 0.5 mg/dL | Adjusted to 1.0 |
+| INR | 0.9 | Adjusted to 1.0 |
+| Sodium | 140 mEq/L | No adjustment |
+| Dialysis | No | - |
+
+**Expected**:
+- MELD Score: 6 (minimum)
+- Clinical Notes should include all three adjustments:
+  - "Creatinine set to lower bound of 1.0 mg/dL"
+  - "Bilirubin set to lower bound of 1.0 mg/dL"
+  - "INR set to lower bound of 1.0"
+  - "MELD score capped at minimum of 6"
+
+---
+
+## 5. Upper Bound Adjustment Test Cases
+
+### Test Case 5.1: Creatinine Upper Bound (Without Dialysis)
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 6.0 mg/dL | Capped at 4.0 |
+| Bilirubin | 3.0 mg/dL | No adjustment |
+| INR | 1.5 | No adjustment |
+| Sodium | 135 mEq/L | No adjustment |
+| Dialysis | No | - |
+
+**Expected**: Clinical Notes: "Creatinine capped at 4.0 mg/dL"
+
+---
+
+### Test Case 5.2: MELD Score Upper Bound (40)
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 4.0 mg/dL | At cap |
+| Bilirubin | 50.0 mg/dL | At input maximum |
+| INR | 10.0 | At input maximum |
+| Sodium | 135 mEq/L | - |
+| Dialysis | No | - |
+
+**Expected**:
+- MELD Score: 40 (capped)
+- MELD-Na Score: 40 (capped)
+- Clinical Notes: May include "MELD score capped at maximum of 40"
+
+---
+
+## 6. Input Validation Test Cases
+
+### Test Case 6.1: Missing All Inputs
+**Action**: Click Calculate without entering any values
+
+**Expected**: Error: "Please enter all required values (creatinine, bilirubin, INR, and sodium)."
+
+---
+
+### Test Case 6.2: Creatinine Out of Range (Too Low)
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 0.05 mg/dL | Validation error |
+| Bilirubin | 2.0 mg/dL | - |
+| INR | 1.5 | - |
+| Sodium | 135 mEq/L | - |
+
+**Expected**: Error: "Creatinine must be between 0.1 and 15.0 mg/dL"
+
+---
+
+### Test Case 6.3: Creatinine Out of Range (Too High)
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 20.0 mg/dL | Validation error |
+| Bilirubin | 2.0 mg/dL | - |
+| INR | 1.5 | - |
+| Sodium | 135 mEq/L | - |
+
+**Expected**: Error: "Creatinine must be between 0.1 and 15.0 mg/dL"
+
+---
+
+### Test Case 6.4: Bilirubin Out of Range
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 1.5 mg/dL | - |
+| Bilirubin | 60.0 mg/dL | Validation error |
+| INR | 1.5 | - |
+| Sodium | 135 mEq/L | - |
+
+**Expected**: Error: "Bilirubin must be between 0.1 and 50.0 mg/dL"
+
+---
+
+### Test Case 6.5: INR Out of Range
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 1.5 mg/dL | - |
+| Bilirubin | 2.0 mg/dL | - |
+| INR | 12.0 | Validation error |
+| Sodium | 135 mEq/L | - |
+
+**Expected**: Error: "INR must be between 0.8 and 10.0"
+
+---
+
+### Test Case 6.6: Sodium Out of Range (Too Low)
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 1.5 mg/dL | - |
+| Bilirubin | 2.0 mg/dL | - |
+| INR | 1.5 | - |
+| Sodium | 100 mEq/L | Validation error |
+
+**Expected**: Error: "Sodium must be between 110 and 160 mEq/L"
+
+---
+
+### Test Case 6.7: Sodium Out of Range (Too High)
+| Parameter | Value | Expected |
+|-----------|-------|----------|
+| Creatinine | 1.5 mg/dL | - |
+| Bilirubin | 2.0 mg/dL | - |
+| INR | 1.5 | - |
+| Sodium | 170 mEq/L | Validation error |
+
+**Expected**: Error: "Sodium must be between 110 and 160 mEq/L"
+
+---
+
+## 7. Edge Cases and Special Scenarios
+
+### Test Case 7.1: Normal Healthy Patient
+**Clinical Scenario**: Hypothetical healthy individual (educational purposes)
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 1.0 mg/dL | Normal |
+| Bilirubin | 1.0 mg/dL | Normal |
+| INR | 1.0 | Normal |
+| Sodium | 140 mEq/L | Normal |
+| Dialysis | No | - |
+
+**Expected Results**:
+- MELD Score: 6 (minimum)
+- MELD-Na Score: 6
+- Risk Category: Low risk
+- 3-Month Mortality: 1.9%
+
+---
+
+### Test Case 7.2: Borderline MELD = 11 (Exactly)
+**Clinical Scenario**: Testing sodium correction threshold
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 1.0 mg/dL | - |
+| Bilirubin | 3.0 mg/dL | Tuned for MELD ≈ 11 |
+| INR | 1.2 | - |
+| Sodium | 130 mEq/L | Low |
+| Dialysis | No | - |
+
+**Expected Results**:
+- MELD Score: Should be ≤11
+- MELD-Na Score: = MELD (no sodium correction at boundary)
+- Clinical Notes: "MELD-Na equals MELD (sodium correction only applies when MELD > 11)"
+
+---
+
+### Test Case 7.3: Borderline MELD = 12 (Just Above Threshold)
+**Clinical Scenario**: Testing sodium correction activation
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 1.0 mg/dL | - |
+| Bilirubin | 3.5 mg/dL | Tuned for MELD ≈ 12 |
+| INR | 1.3 | - |
+| Sodium | 130 mEq/L | Low |
+| Dialysis | No | - |
+
+**Expected Results**:
+- MELD Score: Should be >11
+- MELD-Na Score: > MELD (sodium correction should apply)
+- No "MELD-Na equals MELD" note
+
+---
+
+### Test Case 7.4: Decimal Input Precision
+**Clinical Scenario**: Testing decimal handling
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 1.23 mg/dL | Decimal |
+| Bilirubin | 2.45 mg/dL | Decimal |
+| INR | 1.67 | Decimal |
+| Sodium | 134.5 mEq/L | Decimal |
+| Dialysis | No | - |
+
+**Expected Results**:
+- Should calculate correctly
+- Results displayed as integers (rounded)
+
+---
+
+### Test Case 7.5: Minimum Sodium (125) with High MELD
+**Clinical Scenario**: Maximum sodium impact on MELD-Na
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Creatinine | 2.0 mg/dL | - |
+| Bilirubin | 4.0 mg/dL | - |
+| INR | 1.8 | - |
+| Sodium | 125 mEq/L | At lower bound |
+| Dialysis | No | - |
+
+**Expected Results**:
+- MELD-Na should be significantly higher than MELD
+- Maximum sodium correction applied
+- Delta: MELD-Na - MELD should be ~4-6 points
+
+---
+
+## 8. Transplant Eligibility Test Cases
+
+### Test Case 8.1: Below Threshold (MELD-Na < 15)
+**Clinical Scenario**: Not yet transplant candidate
+
+| Parameter | Value | Expected Interpretation |
+|-----------|-------|------------------------|
+| Creatinine | 1.2 mg/dL | - |
+| Bilirubin | 1.5 mg/dL | - |
+| INR | 1.3 | - |
+| Sodium | 138 mEq/L | - |
+
+**Expected**: "Monitor closely; transplant evaluation if disease progresses"
+**Should NOT include**: "Patient meets criteria for liver transplant evaluation"
+
+---
+
+### Test Case 8.2: Transplant Eligible (MELD-Na 15-24)
+**Clinical Scenario**: Meets criteria, candidate for listing
+
+| Parameter | Value | Expected Interpretation |
+|-----------|-------|------------------------|
+| Creatinine | 2.0 mg/dL | - |
+| Bilirubin | 3.0 mg/dL | - |
+| INR | 1.6 | - |
+| Sodium | 132 mEq/L | - |
+
+**Expected**:
+- "Patient meets criteria for liver transplant evaluation (MELD-Na ≥15)"
+- "Candidate for transplant listing"
+
+---
+
+### Test Case 8.3: High Priority (MELD-Na ≥ 25)
+**Clinical Scenario**: High priority for transplantation
+
+| Parameter | Value | Expected Interpretation |
+|-----------|-------|------------------------|
+| Creatinine | 3.0 mg/dL | - |
+| Bilirubin | 10.0 mg/dL | - |
+| INR | 2.2 | - |
+| Sodium | 128 mEq/L | - |
+
+**Expected**:
+- "Patient meets criteria for liver transplant evaluation (MELD-Na ≥15)"
+- "High priority for transplantation"
+
+---
+
+## 9. Clinical Workflow Test Cases
+
+### Test Case 9.1: Complete Workflow
+**Steps**:
+1. Enter initial values (Cr 2.8, Bili 5.2, INR 1.9, Na 131)
+2. Calculate
+3. Verify results display
+4. Check dialysis checkbox
+5. Recalculate
+6. Verify dialysis note appears and score changes
+
+**Expected**: All results should update correctly, dialysis note should appear
+
+---
+
+### Test Case 9.2: Recalculation with Different Values
+**Steps**:
+1. Calculate with low values (MELD ~10)
+2. Update to high values (MELD ~25)
+3. Recalculate
+4. Verify second MELD > first MELD
+
+**Expected**: Progressive increase in scores
+
+---
+
+## 10. Accessibility Test Cases
+
+### Test Case 10.1: Keyboard Navigation
+**Steps**:
+1. Tab to creatinine field, enter value
+2. Tab to bilirubin field, enter value
+3. Tab to INR field, enter value
+4. Tab to sodium field, enter value
+5. Tab to dialysis switch, press Space to toggle
+6. Tab to Calculate button, press Enter
+
+**Expected**: All values entered correctly, calculation triggered
+
+---
+
+### Test Case 10.2: ARIA Labels
+**Verify**:
+- All inputs have proper type attributes
+- Dialysis switch has `role="switch"` and `aria-checked`
+- Results section has `aria-live="polite"`
+
+---
+
+## Summary Statistics
+
+- **Total Test Scenarios**: 40+
+- **Coverage Categories**: 10
+- **Score Ranges Tested**: 5 (Low, Moderate, High, Very High, Critical)
+- **Boundary Conditions**: 15+
+- **Validation Errors**: 7
+- **Edge Cases**: 5+
+- **Clinical Workflows**: 2
+- **Accessibility Tests**: 2
+
+---
+
+**Test Data Version**: 1.0
+**Last Updated**: 2025-11-17
+**Test File**: `/tests/e2e/calculators/hepatology/meld-na.spec.js`

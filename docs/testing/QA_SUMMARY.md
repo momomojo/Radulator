@@ -228,7 +228,7 @@ docs/
 #### 13. MELD-Na Score ✅ PASS (100%)
 - **Quality Score:** 5/5 stars (EXCELLENT)
 - **Test File:** `tests/e2e/calculators/hepatology/meld-na.spec.js` (34 tests)
-- **Documentation:** `docs/calculators/hepatology/meld-na.md`
+- **Current documentation:** `docs/calculators/hepatology/meld-3.md`
 - **Key Findings:**
   - ✅ OPTN/UNOS compliant formula
   - ✅ All bounds and caps correctly implemented
