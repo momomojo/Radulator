@@ -45,13 +45,13 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
     page,
   }) => {
     await expect(page.getByTestId("welcome-card")).toContainText(
-      "39 evidence-based medical calculators",
+      "40 evidence-based medical calculators",
     );
 
     await page.getByTestId("welcome-open-guide").click();
     await expect(page.getByTestId("guide-panel")).toBeVisible();
     await expect(page.getByTestId("guide-overlay")).toContainText(
-      "suite of 39 evidence-based medical calculators",
+      "suite of 40 evidence-based medical calculators",
     );
   });
 
