@@ -83,7 +83,7 @@
         "noError": true,
         "fields": [
           { "key": "Absolute CAC Band", "equals": "Severe calcified plaque burden" },
-          { "key": "CAC Score Range", "equals": ">=300" },
+          { "key": "CAC Score Range", "equals": "300-999" },
           { "key": "CAC-DRS", "equals": "A3/N3" },
           { "key": "MESA Reference Position", "equals": "Between 75th (247) and 90th (666) reference scores" },
           { "key": "MESA Probability Nonzero CAC", "equals": "75%" },
@@ -104,8 +104,8 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Band", "equals": "Severe calcified plaque burden" },
-          { "key": "CAC Score Range", "equals": ">=300" },
+          { "key": "Absolute CAC Band", "equals": "Extensive calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": ">=1000" },
           { "key": "CAC-DRS", "equals": "A3/N4" },
           { "key": "MESA Reference Position", "equals": "Between 75th (641) and 90th (1584) reference scores" },
           { "key": "MESA Probability Nonzero CAC", "equals": "86%" },
@@ -126,7 +126,7 @@
         "noError": true,
         "fields": [
           { "key": "Absolute CAC Band", "equals": "Severe calcified plaque burden" },
-          { "key": "CAC Score Range", "equals": ">=300" },
+          { "key": "CAC Score Range", "equals": "300-999" },
           { "key": "CAC-DRS", "includes": "A category unassigned at exact 300" }
         ]
       }

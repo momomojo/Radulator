@@ -55,9 +55,16 @@ function getAbsoluteCategory(score) {
       severity: "warning",
     };
   }
+  if (score < 1000) {
+    return {
+      label: "Severe calcified plaque burden",
+      range: "300-999",
+      severity: "danger",
+    };
+  }
   return {
-    label: "Severe calcified plaque burden",
-    range: ">=300",
+    label: "Extensive calcified plaque burden",
+    range: ">=1000",
     severity: "danger",
   };
 }
@@ -188,13 +195,14 @@ function buildReportSnippet({
  * - Agatston 1990 DOI 10.1016/0735-1097(90)90282-T, PMID 2407762
  * - McClelland 2006 DOI 10.1161/CIRCULATIONAHA.105.580696, PMID 16365194
  * - Hecht 2018 CAC-DRS DOI 10.1016/j.jcct.2018.03.008, PMID 29793848
+ * - Maron 2024 proposed CAC staging DOI 10.1016/j.jacadv.2024.101287, PMID 39385944
  */
 export const CACMesa = {
   id: "cac-mesa",
   category: "Cardiac Imaging",
   name: "CAC/MESA Calculator",
   desc: "Agatston coronary calcium band, CAC-DRS, and MESA reference context",
-  guidelineVersion: "MESA reference values + CAC-DRS v2",
+  guidelineVersion: "MESA reference values + CAC-DRS (SCCT 2018)",
   keywords: [
     "CAC",
     "Agatston",
@@ -210,7 +218,7 @@ export const CACMesa = {
   info: {
     text:
       "This calculator interprets a total Agatston coronary artery calcium score already produced by CT software. It does not calculate Agatston score from CT pixels, lesion area, HU bins, scanner protocol, or slice data.\n\n" +
-      "Outputs include an absolute CAC burden band, optional CAC-DRS A/N code, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. The primary CAC-DRS table defines A2 as 100-299 and A3 as >300, leaving exact 300 unassigned; this tool discloses that boundary instead of inferring a category.\n\n" +
+      "Outputs include an absolute CAC burden band from the Maron et al. 2024 proposed staging bands, an optional CAC-DRS A/N code from the original SCCT 2018 CAC-DRS publication, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. The proposed absolute bands are 0, 1-99, 100-299, 300-999, and >=1000; this tool reports burden labels only and does not reproduce the proposal's treatment recommendations. The primary CAC-DRS table separately defines A2 as 100-299 and A3 as >300, leaving exact 300 unassigned; this tool discloses that boundary instead of inferring a CAC-DRS category.\n\n" +
       "The local MESA output compares the score with the official 25th, 50th, 75th, and 90th reference scores. It does not estimate an exact percentile. Outside the MESA limits, the absolute band and CAC-DRS remain available without extrapolation.",
     link: {
       label: "View MESA CAC Score Reference Values",
@@ -306,6 +314,7 @@ export const CACMesa = {
 
     const result = {
       "Absolute CAC Band": category.label,
+      "Absolute CAC Source": "Maron et al. 2024 proposed staging bands",
       "Agatston Score": formatScore(parsedScore),
       "CAC Score Range": category.range,
       "CAC-DRS": cacDrs,
@@ -353,6 +362,10 @@ export const CACMesa = {
     {
       t: "Hecht HS et al. CAC-DRS: Coronary Artery Calcium Data and Reporting System. J Cardiovasc Comput Tomogr. 2018;12(3):185-191. PMID 29793848.",
       u: "https://doi.org/10.1016/j.jcct.2018.03.008",
+    },
+    {
+      t: "Maron DJ et al. Coronary Artery Calcium Staging to Guide Preventive Interventions: A Proposal and Call to Action. JACC Adv. 2024;3(11):101287. PMID 39385944.",
+      u: "https://doi.org/10.1016/j.jacadv.2024.101287",
     },
     {
       t: "Kumar P, Bhatia M. Coronary Artery Calcium Data and Reporting System (CAC-DRS): A Primer. J Cardiovasc Imaging. 2023;31(1):1-17. PMID 36693339.",

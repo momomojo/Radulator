@@ -37,7 +37,7 @@ test.describe("CAC/MESA Calculator", () => {
     await navigateToCalculator(page, "CAC/MESA Calculator");
   });
 
-  test("renders the approved CAC/MESA v1 calculator", async ({ page }) => {
+  test("renders the source-identified CAC/MESA calculator", async ({ page }) => {
     await expect(page.getByTestId("calculator-title").first()).toContainText(
       "CAC/MESA Calculator",
     );
@@ -46,6 +46,12 @@ test.describe("CAC/MESA Calculator", () => {
     await expect(page.getByText("Vessel Count for CAC-DRS")).toBeVisible();
     await expect(
       page.getByText("It does not calculate Agatston score from CT pixels"),
+    ).toBeVisible();
+    await expect(page.getByTestId("guideline-badge")).toHaveText(
+      "MESA reference values + CAC-DRS (SCCT 2018)",
+    );
+    await expect(
+      page.getByText("Maron et al. 2024 proposed staging bands"),
     ).toBeVisible();
   });
 
@@ -105,7 +111,7 @@ test.describe("CAC/MESA Calculator", () => {
         sex: "male",
         race: "white",
         vessels: "4",
-        category: "Severe calcified plaque burden",
+        category: "Extensive calcified plaque burden",
         cacDrs: "A3/N4",
         position: "Between 75th (641) and 90th (1584) reference scores",
         probability: "86%",
@@ -144,11 +150,11 @@ test.describe("CAC/MESA Calculator", () => {
         300,
         "Severe calcified plaque burden",
         "A category unassigned at exact 300 (primary CAC-DRS table defines A3 as >300)",
-        ">=300",
+        "300-999",
       ],
-      [301, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
-      [999, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
-      [1000, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
+      [301, "Severe calcified plaque burden", "A3 / N not reported", "300-999"],
+      [999, "Severe calcified plaque burden", "A3 / N not reported", "300-999"],
+      [1000, "Extensive calcified plaque burden", "A3 / N not reported", ">=1000"],
     ];
 
     for (const [score, category, cacDrs, range] of cases) {

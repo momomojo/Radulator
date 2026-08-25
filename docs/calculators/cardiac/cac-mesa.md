@@ -2,15 +2,17 @@
 
 ## Scope
 
-This v2 calculator interprets a whole-number total Agatston coronary artery
+This calculator (Radulator implementation schema v2) interprets a whole-number total Agatston coronary artery
 calcium (CAC) score that has already been produced by CT workstation/software. It does not
 calculate raw Agatston score from CT pixels, lesion area, HU bins, scanner
 protocol, or slice data.
 
 Outputs:
 
-- Absolute CAC burden band: 0, 1-99, 100-299, >=300. These are not presented
-  as numbered clinical stages.
+- Absolute CAC burden band from the **Maron et al. 2024 proposal**: 0, 1-99,
+  100-299, 300-999, and >=1000. These are reported as source-specific burden
+  labels rather than numbered clinical stages, and the calculator does not
+  reproduce the proposal's treatment recommendations.
 - CAC-DRS A category: A0 for 0, A1 for 1-99, A2 for 100-299, and A3 for
   scores above 300. At exactly 300, the primary CAC-DRS table leaves a gap
   between `100-299` and `>300`, so this tool reports the A category as
@@ -78,6 +80,9 @@ These examples are preserved in Playwright coverage:
 - MESA/NHLBI CAC Score Reference Values.
 - Hecht HS et al. J Cardiovasc Comput Tomogr. 2018;12(3):185-191. DOI
   `10.1016/j.jcct.2018.03.008`, PMID `29793848`.
+- Maron DJ et al. JACC Adv. 2024;3(11):101287. DOI
+  `10.1016/j.jacadv.2024.101287`, PMID `39385944`. This is a proposal and call
+  to action; Radulator uses only its explicit absolute burden bands.
 - Kumar P, Bhatia M. J Cardiovasc Imaging. 2023;31(1):1-17. DOI
   `10.4250/jcvi.2022.0029`, PMID `36693339`.
 - Grundy SM et al. Circulation. 2019;139(25):e1082-e1143. DOI
