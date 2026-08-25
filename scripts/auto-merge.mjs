@@ -121,6 +121,14 @@ function defaultApi(env) {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
+    getMergeability: (prNumber) => githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}`),
+    updateBranch: async (prNumber, payload) => {
+      const response = await githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}/update-branch`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      return { accepted: true, response };
+    },
     getPr: (prNumber) => githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}`),
     dispatchDeployment: async (payload) => {
       await githubRequest(token, `/repos/${owner}/${repo}/dispatches`, {
@@ -196,6 +204,26 @@ export async function runAutoMerge({
     });
     if (!decision.ok) {
       results.push(decision);
+      continue;
+    }
+
+    const mergeability = await client.getMergeability(prNumber);
+    if (mergeability?.head?.sha !== finalState.pr.headSha) {
+      results.push(blocked("CONCURRENT_GATE_STATE_CHANGE", "Pull request head changed during mergeability preflight."));
+      continue;
+    }
+    if (mergeability.mergeable_state === "behind") {
+      const refresh = await client.updateBranch(prNumber, { expected_head_sha: finalState.pr.headSha });
+      if (!refresh?.accepted) {
+        throw new Error(`GitHub refused base refresh for PR #${prNumber}.`);
+      }
+      results.push({
+        ok: true,
+        reasonCode: "BASE_REFRESH_REQUESTED",
+        pr: prNumber,
+        headSha: finalState.pr.headSha,
+        baseRefreshRequested: true,
+      });
       continue;
     }
 

@@ -223,6 +223,7 @@ console.log("approval-bound automatic merge tests passed");
       calls.push({ number, payload });
       return { merged: true, sha: "e".repeat(40), message: "merged" };
     },
+    async getMergeability() { return { mergeable: true, mergeable_state: "clean", head: { sha: HEAD } }; },
     async getPr() { return { merged: true, state: "closed", merge_commit_sha: "e".repeat(40) }; },
   };
   const evaluateGateImpl = () => gateFixture();
@@ -269,6 +270,7 @@ console.log("approval-bound automatic merge tests passed");
       async listCheckRuns() { return [checkFixture()]; },
       async listCommitStatuses() { return [statusFixture()]; },
       async merge() { return { merged: true, sha: mergeSha }; },
+      async getMergeability() { return { mergeable: true, mergeable_state: "clean", head: { sha: HEAD } }; },
       async getPr() { return { merged: true, state: "closed", merge_commit_sha: mergeSha }; },
       async dispatchDeployment(payload) {
         deploymentDispatches.push(payload);
@@ -302,6 +304,44 @@ console.log("approval-bound automatic merge tests passed");
   });
   assert.equal(result[0].reasonCode, "CONCURRENT_GATE_STATE_CHANGE");
   assert.equal(merged, false);
+}
+
+{
+  const state = {
+    pr: prFixture(),
+    requiredCi: ["Smoke Tests", "Targeted Calculator Tests"],
+    ci: { ok: true, evidence: [] },
+    files: [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }],
+    reviews: [],
+    publicKeys: {},
+  };
+  const updates = [];
+  let merged = false;
+  const result = await runAutoMerge({
+    env: { RADULATOR_AUTO_MERGE_ENABLED: "true" },
+    api: {
+      async findPullNumbers() { return [123]; },
+      async loadGateState() { return structuredClone(state); },
+      async getBranchRules() { return decisionFixture().branchRules; },
+      async listCheckRuns() { return [checkFixture()]; },
+      async listCommitStatuses() { return [statusFixture()]; },
+      async getMergeability() {
+        return { mergeable: true, mergeable_state: "behind", head: { sha: HEAD } };
+      },
+      async updateBranch(number, payload) {
+        updates.push({ number, payload });
+        return { accepted: true };
+      },
+      async merge() { merged = true; return { merged: true, sha: "e".repeat(40) }; },
+      async getPr() { return { merged: true, state: "closed", merge_commit_sha: "e".repeat(40) }; },
+    },
+    evaluateGateImpl: () => gateFixture(),
+    fingerprintImpl: () => "stable",
+  });
+  assert.equal(merged, false, "a behind pull request must not attempt a stale-base merge");
+  assert.deepEqual(updates, [{ number: 123, payload: { expected_head_sha: HEAD } }]);
+  assert.equal(result[0].reasonCode, "BASE_REFRESH_REQUESTED");
+  assert.equal(result[0].baseRefreshRequested, true);
 }
 
 console.log("automatic merge runtime orchestration tests passed");
