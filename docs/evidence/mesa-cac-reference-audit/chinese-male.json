@@ -1,0 +1,453 @@
+{
+  "schema": "radulator-mesa-cac-reference-audit-chunk/v1",
+  "auditedAt": "2026-08-24T22:01:16.168Z",
+  "officialCalculator": "https://tools.mesa-nhlbi.org/Calcium/input.aspx",
+  "tlsVerified": true,
+  "race": "chinese",
+  "sex": "male",
+  "groupCount": 40,
+  "dataSha256": "1fcabd9ab706021de7865e309e612d376908a5a1ff71d113e65bb46bbb9b2b27",
+  "chunkSha256": "df7c2277adb2d558a743d12df19ec195290e4c823861b8810f5ab01f252b03a7",
+  "groups": [
+    {
+      "key": "chinese:male:45",
+      "p": 28,
+      "r": [
+        0,
+        0,
+        3,
+        50
+      ],
+      "recordSha256": "2e528c7b1b98e140b6d17f198541277202d835e3d09302883fc024d5e7214631"
+    },
+    {
+      "key": "chinese:male:46",
+      "p": 29,
+      "r": [
+        0,
+        0,
+        4,
+        56
+      ],
+      "recordSha256": "cba2a219c099fc44241df097bee017cccc7c7ce72d149af6784c5bc7620847d3"
+    },
+    {
+      "key": "chinese:male:47",
+      "p": 31,
+      "r": [
+        0,
+        0,
+        6,
+        63
+      ],
+      "recordSha256": "a4c7ec4e1be063f89f59f8cf7000a1eec502bee89fa39ebb0ecc38573300dc25"
+    },
+    {
+      "key": "chinese:male:48",
+      "p": 33,
+      "r": [
+        0,
+        0,
+        8,
+        71
+      ],
+      "recordSha256": "547ac164c355572a4331ae48c476b9855516ee4c61a99052bfa130441ac6e6d8"
+    },
+    {
+      "key": "chinese:male:49",
+      "p": 34,
+      "r": [
+        0,
+        0,
+        11,
+        80
+      ],
+      "recordSha256": "9ec004ca3c00517ade1411a4370a140762d2a809a980e0d8190f31a3b41322a4"
+    },
+    {
+      "key": "chinese:male:50",
+      "p": 36,
+      "r": [
+        0,
+        0,
+        14,
+        89
+      ],
+      "recordSha256": "72b6695097bd311d96bb496b94e0a6df6ae931fb0d06a79aeb376344a92770f5"
+    },
+    {
+      "key": "chinese:male:51",
+      "p": 38,
+      "r": [
+        0,
+        0,
+        17,
+        98
+      ],
+      "recordSha256": "721c56dfa3d979d959bf671240872b746124c6eb9a9526b16b2ee5f269367906"
+    },
+    {
+      "key": "chinese:male:52",
+      "p": 40,
+      "r": [
+        0,
+        0,
+        21,
+        110
+      ],
+      "recordSha256": "09e49f2f5dbdb7f408ca7baaf28ffd0f12d170423a6017c18983cf2b8f3d07cf"
+    },
+    {
+      "key": "chinese:male:53",
+      "p": 41,
+      "r": [
+        0,
+        0,
+        25,
+        124
+      ],
+      "recordSha256": "77e0f3b7db209b8f6b371727e3ca45d4afbc597b785ab92fae27529574031102"
+    },
+    {
+      "key": "chinese:male:54",
+      "p": 43,
+      "r": [
+        0,
+        0,
+        29,
+        136
+      ],
+      "recordSha256": "405bcfb1496291c8fee1e5c486accc2f15d29d2f54660dbda5c4b317092ea756"
+    },
+    {
+      "key": "chinese:male:55",
+      "p": 45,
+      "r": [
+        0,
+        0,
+        34,
+        150
+      ],
+      "recordSha256": "749eebb4cc3cbeca03887698baf640fef0c73eb2330bce7d39becf6cac2beb16"
+    },
+    {
+      "key": "chinese:male:56",
+      "p": 47,
+      "r": [
+        0,
+        0,
+        38,
+        163
+      ],
+      "recordSha256": "9c6014166fdcfd4590be3c34b42bebd4a0379e82f5876d24e798cd60d4dfd35b"
+    },
+    {
+      "key": "chinese:male:57",
+      "p": 48,
+      "r": [
+        0,
+        0,
+        43,
+        176
+      ],
+      "recordSha256": "395eae2cefd72b1693023c647342be67505fc8144f7c76c2f1c71f1d3160f62f"
+    },
+    {
+      "key": "chinese:male:58",
+      "p": 50,
+      "r": [
+        0,
+        1,
+        49,
+        194
+      ],
+      "recordSha256": "87a93b467d601ade73dd029cb6c7818568a2155366d362c914a01ff92d0704c6"
+    },
+    {
+      "key": "chinese:male:59",
+      "p": 52,
+      "r": [
+        0,
+        3,
+        58,
+        215
+      ],
+      "recordSha256": "34e587ff5a8a8c168161dcfbbf406fa940e288ac2effd61972a81ba37f3301ef"
+    },
+    {
+      "key": "chinese:male:60",
+      "p": 54,
+      "r": [
+        0,
+        5,
+        67,
+        242
+      ],
+      "recordSha256": "57b21a90d98a4bf431d8b24e61ab63d32b921ab9e440c520c96eb6b2e28606dd"
+    },
+    {
+      "key": "chinese:male:61",
+      "p": 56,
+      "r": [
+        0,
+        7,
+        79,
+        273
+      ],
+      "recordSha256": "37ba35217f8978d1b996b331399e0ec5657a418f2e01e341c1e340f68fd194cc"
+    },
+    {
+      "key": "chinese:male:62",
+      "p": 58,
+      "r": [
+        0,
+        10,
+        91,
+        304
+      ],
+      "recordSha256": "67efcb96a2e033e93971ac7e9a06ac789e5a3b484f2f9d7f4b01a8fa26274b39"
+    },
+    {
+      "key": "chinese:male:63",
+      "p": 60,
+      "r": [
+        0,
+        13,
+        102,
+        329
+      ],
+      "recordSha256": "f17e88f288253aa4435855e4178095dca57ab30dce3239a0270989ff17cd926f"
+    },
+    {
+      "key": "chinese:male:64",
+      "p": 62,
+      "r": [
+        0,
+        15,
+        112,
+        350
+      ],
+      "recordSha256": "fd4feac126cefe21ec0338b24dc8bebdfacd342d479c37f3bf49f233402d1630"
+    },
+    {
+      "key": "chinese:male:65",
+      "p": 64,
+      "r": [
+        0,
+        18,
+        121,
+        372
+      ],
+      "recordSha256": "01ea5e25a29a5f5ba31ca6eaa5ee237a69fc0a9b1ca59667213e2421a5fa8c3e"
+    },
+    {
+      "key": "chinese:male:66",
+      "p": 65,
+      "r": [
+        0,
+        21,
+        132,
+        397
+      ],
+      "recordSha256": "b9422f37d595ffa44780bc0a1fb464f71dbebe457800880a2f2c6b2dd9861448"
+    },
+    {
+      "key": "chinese:male:67",
+      "p": 67,
+      "r": [
+        0,
+        24,
+        143,
+        427
+      ],
+      "recordSha256": "f167c07b33f86388d38ae0b91ff228d42ce1770ea2d0f8d116737ece4fd75e6c"
+    },
+    {
+      "key": "chinese:male:68",
+      "p": 68,
+      "r": [
+        0,
+        28,
+        154,
+        450
+      ],
+      "recordSha256": "253f91b6c5054750faf5d4f5730346b6f7041d389cd1b5242973f4f9688bd993"
+    },
+    {
+      "key": "chinese:male:69",
+      "p": 70,
+      "r": [
+        0,
+        32,
+        166,
+        470
+      ],
+      "recordSha256": "76d030f5ffd4dd6d5cb14a1fd277dc9adc16256fc5511c57cc6a3f82c97b4aba"
+    },
+    {
+      "key": "chinese:male:70",
+      "p": 71,
+      "r": [
+        0,
+        34,
+        174,
+        487
+      ],
+      "recordSha256": "ac791d6a9a11c4ce4749e8c83e2c2110c86fa5a0466bccde4cc0403ada96f1fe"
+    },
+    {
+      "key": "chinese:male:71",
+      "p": 72,
+      "r": [
+        0,
+        37,
+        183,
+        503
+      ],
+      "recordSha256": "69c7953f00b5a0e8d4fb788cb085a9a78d12b96b44defe08a4671060bce2e86d"
+    },
+    {
+      "key": "chinese:male:72",
+      "p": 73,
+      "r": [
+        0,
+        40,
+        191,
+        522
+      ],
+      "recordSha256": "c32743d032d7f867ec6c31bc24993dc45fa6da01467815151e01f9f6a62b790b"
+    },
+    {
+      "key": "chinese:male:73",
+      "p": 75,
+      "r": [
+        1,
+        45,
+        201,
+        546
+      ],
+      "recordSha256": "5f934cef484ca1d8b107a716030448bff7552a06260b9de8c1191d9739ef5f5a"
+    },
+    {
+      "key": "chinese:male:74",
+      "p": 76,
+      "r": [
+        2,
+        49,
+        216,
+        570
+      ],
+      "recordSha256": "db662436c29c2727ddeb011c9b74561100b5d19008b89fd658055c476ea005db"
+    },
+    {
+      "key": "chinese:male:75",
+      "p": 77,
+      "r": [
+        3,
+        53,
+        229,
+        599
+      ],
+      "recordSha256": "e48e03ba4e78fd6ddd0b0332f77962d74e98a6b70a0329c17d4dd1ef3c39ea08"
+    },
+    {
+      "key": "chinese:male:76",
+      "p": 78,
+      "r": [
+        5,
+        58,
+        241,
+        629
+      ],
+      "recordSha256": "d18ed2e9135137e5054e3e002851181676fc2af779e38e00cdc2299bb75d0143"
+    },
+    {
+      "key": "chinese:male:77",
+      "p": 79,
+      "r": [
+        6,
+        63,
+        254,
+        659
+      ],
+      "recordSha256": "f4f76ab324e6fa519c35b6430d5f1805427622ee27b9c06c1cad9660dea17385"
+    },
+    {
+      "key": "chinese:male:78",
+      "p": 80,
+      "r": [
+        8,
+        70,
+        273,
+        695
+      ],
+      "recordSha256": "7a65e6a03cc2c4887293b7199a6d8d83aa2773f4c56d4332f432894e056f08cd"
+    },
+    {
+      "key": "chinese:male:79",
+      "p": 81,
+      "r": [
+        9,
+        75,
+        288,
+        735
+      ],
+      "recordSha256": "0565fe42de3c575ab4ebcd56509de601a5ec1ef9ee1e49782aeedb6e42ab6dd6"
+    },
+    {
+      "key": "chinese:male:80",
+      "p": 82,
+      "r": [
+        11,
+        81,
+        305,
+        769
+      ],
+      "recordSha256": "bc8362d4b9847449d9c3a99e95da4143aa8691b664509a23f35ed4c738ca103e"
+    },
+    {
+      "key": "chinese:male:81",
+      "p": 83,
+      "r": [
+        13,
+        88,
+        325,
+        808
+      ],
+      "recordSha256": "1354e47ce11eedacf65c5699fae01c7072e228a8f037ba21c026694ae9014347"
+    },
+    {
+      "key": "chinese:male:82",
+      "p": 84,
+      "r": [
+        15,
+        95,
+        344,
+        855
+      ],
+      "recordSha256": "fdc4546cf7a11709aae6f958ce927ec151338fc547f0a55257f670470cd99ce5"
+    },
+    {
+      "key": "chinese:male:83",
+      "p": 85,
+      "r": [
+        18,
+        103,
+        369,
+        913
+      ],
+      "recordSha256": "60cce803b51d1fbf7fe3b09609334fe5ced2347fb2a14c0379c963abc43928b1"
+    },
+    {
+      "key": "chinese:male:84",
+      "p": 86,
+      "r": [
+        20,
+        112,
+        391,
+        971
+      ],
+      "recordSha256": "193b5fcd42db103a2b91030c04e049b19e1c5a03a30bd6df71565feec8ae1d6d"
+    }
+  ]
+}
