@@ -276,7 +276,10 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertIn("production smoke", receipt_body)
         self.assertIn("retained learning", receipt_body)
         self.assertIn(triage_id, receipt_body)
-        self.assertRegex(receipt_key, r"^radulator-formspree:[0-9a-f]{64}$")
+        self.assertRegex(
+            receipt_key,
+            r"^radulator-formspree-closure:[0-9a-f]{64}$",
+        )
         state = json.loads(self.state_path.read_text())
         receipt = next(iter(state["processed"].values()))
         self.assertEqual(receipt["task_id"], receipt_id)
@@ -328,7 +331,9 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertEqual(len(kanban.created), 3)
         self.assertTrue(kanban.created[0][2].startswith("radulator-formspree-quarantine:"))
         self.assertTrue(kanban.created[1][2].startswith("radulator-formspree-triage:"))
-        self.assertTrue(kanban.created[2][2].startswith("radulator-formspree:"))
+        self.assertTrue(
+            kanban.created[2][2].startswith("radulator-formspree-closure:")
+        )
         state = json.loads(self.state_path.read_text())
         self.assertEqual(next(iter(state["processed"].values()))["classification"], "feedback")
 

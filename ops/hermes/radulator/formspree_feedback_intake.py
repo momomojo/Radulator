@@ -467,7 +467,7 @@ def _process_feedback_locked(
                 task_id = kanban.create(
                     closure_title,
                     closure_body,
-                    "radulator-formspree:" + digest,
+                    "radulator-formspree-closure:" + digest,
                     triage=False,
                     parents=(triage_task_id,),
                 )
