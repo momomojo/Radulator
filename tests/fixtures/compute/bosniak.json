@@ -286,6 +286,92 @@
       }
     },
     {
+      "id": "hereditary-rcc-syndrome-outside-general-population-guidance",
+      "inputs": {
+        "scopeEligibility": "hereditaryRccSyndrome",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not applicable" },
+          { "key": "v2019 Term", "includes": "hereditary renal cell carcinoma syndrome" },
+          { "key": "Management", "includes": "syndrome-specific" },
+          { "key": "Rationale", "includes": "general population" }
+        ]
+      }
+    },
+    {
+      "id": "renal-mass-protocol-nonenhancing-over-20-hu-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "renalMassNonenhancing"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "Rationale", "includes": "non-enhancing >20 HU at renal mass protocol CT" }
+        ]
+      }
+    },
+    {
+      "id": "portal-venous-21-to-30-hu-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "portalVenous21to30"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "Rationale", "includes": "21-30 HU at portal venous phase CT" }
+        ]
+      }
+    },
+    {
+      "id": "too-small-low-attenuation-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "tooSmallLowAttenuation"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "Rationale", "includes": "too small to characterize" }
+        ]
+      }
+    },
+    {
       "id": "confirmed-enhancing-nodule-dominates-unrelated-indeterminate-features",
       "inputs": {
         "scopeEligibility": "eligible",

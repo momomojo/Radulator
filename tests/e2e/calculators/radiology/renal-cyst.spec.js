@@ -94,6 +94,9 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(infoPanel).toContainText(
       "infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded",
     );
+    await expect(infoPanel).toContainText(
+      "not patients with a known or suspected renal cell carcinoma syndrome",
+    );
     await expect(infoPanel).toContainText("Version history");
     await expect(infoPanel).toContainText("2/3/4 mm");
     await expect(infoPanel).toContainText("10.1148/radiol.2019182646");
@@ -201,6 +204,22 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     );
     await expect(results).toContainText("Management: No follow-up required");
   });
+
+  for (const [density, expectedText] of [
+    ["renalMassNonenhancing", "non-enhancing >20 HU at renal mass protocol CT"],
+    ["portalVenous21to30", "21-30 HU at portal venous phase CT"],
+    ["tooSmallLowAttenuation", "low-attenuation mass too small to characterize"],
+  ]) {
+    test(`should classify ${density} benign CT subtype as Bosniak II`, async ({ page }) => {
+      await fillBaseBosniakV2019(page, { density });
+
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = resultPanel(page);
+      await expect(results).toContainText("Bosniak Category: II");
+      await expect(results).toContainText(expectedText);
+    });
+  }
 
   test("should classify calcifications-only case as Bosniak II", async ({
     page,
@@ -502,5 +521,22 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).toContainText(
       "infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded",
     );
+  });
+
+  test("should not apply general-population Bosniak management to a hereditary RCC syndrome", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      scopeEligibility: "hereditaryRccSyndrome",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not applicable");
+    await expect(results).toContainText("hereditary renal cell carcinoma syndrome");
+    await expect(results).toContainText("general population");
+    await expect(results).toContainText("syndrome-specific");
+    await expect(results).not.toContainText("No follow-up required");
   });
 });

@@ -119,20 +119,25 @@ export const RenalCystBosniak = {
   metaDesc:
     "Free Bosniak v2019 Classification Calculator for cystic renal masses. Classify cystic kidney masses (I, II, IIF, III, IV) with CT-based version 2019 criteria.",
   info: {
-    text: "Bosniak Classification, version 2019 applies to cystic renal masses with less than approximately 25% enhancing tissue after infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded. Enhancement must be associated with the wall, septum, or nodule used for classification and may be visually unequivocal or quantitatively confirmed at CT by a >=20 HU increase.\n\nVersion history: v2019 replaces the prior qualitative 2005 CT criteria with explicit 2/3/4 mm wall and septal thresholds, septa counts, a nodule definition, calcification treatment, and homogeneous HU-based Bosniak II density subtypes. All CT Bosniak II masses must remain well defined with a thin (<=2 mm), smooth wall. Intrarenal location and size >=3 cm alone no longer upgrade a mass.\n\nMany nonenhancing septa, a nonenhancing wall or septum >=3 mm, abundant calcification that could conceal enhancement, and other incompletely characterized CT combinations should be evaluated with renal mass protocol MRI before assigning a class. Use the separate Bosniak v2019 MRI criteria for that assessment. Silverman SG, Pedrosa I, Ellis JH, et al. Radiology. 2019;292(2):475-488. DOI: 10.1148/radiol.2019182646",
+    text: "Bosniak Classification, version 2019 applies to cystic renal masses with less than approximately 25% enhancing tissue after infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded. Its suggested reporting content is intended for the general population, not patients with a known or suspected renal cell carcinoma syndrome such as von Hippel-Lindau syndrome or hereditary leiomyomatosis and renal cell cancer. Enhancement must be associated with the wall, septum, or nodule used for classification and may be visually unequivocal or quantitatively confirmed at CT by a >=20 HU increase.\n\nVersion history: v2019 replaces the prior qualitative 2005 CT criteria with explicit 2/3/4 mm wall and septal thresholds, septa counts, a nodule definition, calcification treatment, and homogeneous HU-based Bosniak II density subtypes. All CT Bosniak II masses must remain well defined with a thin (<=2 mm), smooth wall. Intrarenal location and size >=3 cm alone no longer upgrade a mass.\n\nMany nonenhancing septa, a nonenhancing wall or septum >=3 mm, abundant calcification that could conceal enhancement, and other incompletely characterized CT combinations should be evaluated with renal mass protocol MRI before assigning a class. Use the separate Bosniak v2019 MRI criteria for that assessment. Silverman SG, Pedrosa I, Ellis JH, et al. Radiology. 2019;292(2):475-488. DOI: 10.1148/radiol.2019182646",
   },
   fields: [
     {
       id: "scopeEligibility",
       label: "Bosniak v2019 eligibility",
       helpText:
-        "Apply Bosniak only after infectious, inflammatory, and vascular etiologies and necrotic solid masses are excluded.",
+        "Apply the general-population Bosniak guidance only after infectious, inflammatory, and vascular etiologies and necrotic solid masses are excluded, and only when a hereditary renal cell carcinoma syndrome is not known or suspected.",
       type: "radio",
       opts: [
         {
           value: "eligible",
           label:
-            "alternative etiologies and necrotic solid mass have been excluded",
+            "general-population criteria apply; alternative etiologies and necrotic solid mass have been excluded",
+        },
+        {
+          value: "hereditaryRccSyndrome",
+          label:
+            "known or suspected hereditary RCC syndrome (for example, VHL or HLRCC/FH)",
         },
         {
           value: "notExcluded",
@@ -296,6 +301,21 @@ export const RenalCystBosniak = {
         Error:
           "Complete the eligibility, enhancing-tissue proportion, mass definition, wall, feature-specific enhancement, septa, calcification, density, and nodule fields before applying Bosniak v2019.",
         _severity: "error",
+      };
+    }
+
+    if (v.scopeEligibility === "hereditaryRccSyndrome") {
+      return {
+        "Bosniak Category": "Not applicable",
+        "v2019 Term":
+          "Outside general-population guidance: hereditary renal cell carcinoma syndrome",
+        Management:
+          "Do not use this calculator's Bosniak I/II no-follow-up guidance; use syndrome-specific renal-mass evaluation and surveillance with the appropriate specialist.",
+        Rationale:
+          "The Bosniak v2019 suggested reporting content is intended for the general population and not patients with a renal cell carcinoma syndrome.",
+        "Text Module":
+          "Bosniak Classification, version 2019 general-population management not applied because a hereditary renal cell carcinoma syndrome is known or suspected.",
+        _severity: "warning",
       };
     }
 
