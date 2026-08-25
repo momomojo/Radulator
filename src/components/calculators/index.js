@@ -31,6 +31,7 @@ export { WellsDVT } from "./WellsDVT";
 export { PESI } from "./PESI";
 export { MehranCIN } from "./MehranCIN";
 export { CockcroftGault } from "./CockcroftGault";
+export { KidneyBiopsyBleedingRisk } from "./KidneyBiopsyBleedingRisk";
 export { DLPDose } from "./DLPDose";
 export { CTPancreatitis } from "./CTPancreatitis";
 export { LUNGRADS } from "./LUNGRADS";
