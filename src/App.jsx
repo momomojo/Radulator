@@ -1012,6 +1012,8 @@ function AppContent() {
                       >
                         <button
                           type="button"
+                          data-calculator-id={calc.id}
+                          data-calculator-category={categoryName}
                           onClick={() =>
                             handleSelectCalculator(calc, categoryName)
                           }

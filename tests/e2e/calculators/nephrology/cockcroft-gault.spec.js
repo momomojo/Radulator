@@ -44,14 +44,21 @@ test.describe("Cockcroft-Gault eCrCl Calculator", () => {
   test("shows the registry-derived public calculator count", async ({
     page,
   }) => {
+    const medicalCalculatorCount = await page
+      .locator(
+        'aside button[data-calculator-id]:not([data-calculator-category="Feedback"])',
+      )
+      .count();
+
+    expect(medicalCalculatorCount).toBeGreaterThan(0);
     await expect(page.getByTestId("welcome-card")).toContainText(
-      "40 evidence-based medical calculators",
+      `${medicalCalculatorCount} evidence-based medical calculators`,
     );
 
     await page.getByTestId("welcome-open-guide").click();
     await expect(page.getByTestId("guide-panel")).toBeVisible();
     await expect(page.getByTestId("guide-overlay")).toContainText(
-      "suite of 40 evidence-based medical calculators",
+      `suite of ${medicalCalculatorCount} evidence-based medical calculators`,
     );
   });
 
