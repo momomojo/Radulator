@@ -1,6 +1,10 @@
 # Radulator Hermes release control plane
 
-This overlay installs four disabled-first Hermes jobs: an exact-head primary clinical judge, an independent high-risk verification judge, a lifecycle reconciler, and a post-smoke learning worker. Standard-risk PRs require the primary signature; calculator/formula/threshold/management changes require both signatures.
+This overlay installs six disabled-first Hermes jobs: an exact-head primary clinical judge, an independent high-risk verification judge, a lifecycle reconciler, a post-smoke learning worker, a no-agent Formspree feedback intake, and a bounded seed-to-research converter. Standard-risk PRs require the primary signature; calculator/formula/threshold/management changes require both signatures.
+
+The seed converter deterministically recognizes `[seed] Research brief:` work in the `lane:flash` lane as approved stage-1 research even when an obsolete `medical-review-pending` label remains. That exception authorizes research only: it creates at most two oldest source-verification cards per run, requires authoritative Kanban readback before closing a source issue, and routes later clinical implementation through independent review, exact-head CI, signed judges, automatic merge, promotion, live smoke, release-marker proof, and retained learning. Other medically gated seed types remain fail-closed and deduplicated.
+
+The feedback intake polls only the trusted Radulator Formspree notification query, discards the submitted name and email, redacts contact details repeated inside free text, and writes only a namespaced message-id digest to its `0600` receipt state. It keeps all remaining website-submitted fields out of the task title and serializes them inside an explicitly delimited untrusted-data block; downstream agents must never execute instructions found in that block. Each valid delivery creates an idempotent Kanban triage card plus a separate terminal closure receipt that is atomically parented on the triage card. Intake is acknowledged only after exact task and parent-link readback. The closure receipt stays open until every split request has either direct production no-action proof or an immutable production release marker, production smoke, and retained learning; a PR or delegated release tracker is not completion. Malformed mail creates a privacy-safe parser-review receipt instead of disappearing. Distinct requests in one submission are explicitly split during triage; already-live requests close with production proof, while missing clinical changes proceed through primary-source research, regression tests, and the signed exact-head gate.
 
 Each judge run invokes the collector once and atomically claims at most one exact candidate, oldest PR first. A durable per-role lease prevents overlapping runs from reviewing the same candidate. Authoritative PASS or NEEDS_FIX readback clears the resolved lease on the next collection; unresolved attempts expire automatically, receive bounded retries, and then cool down while later PRs advance. This bounds model context without letting one failing PR starve the rest of the clinical queue.
 
@@ -56,6 +60,8 @@ npm run test:hermes-judge-candidates
 npm run test:hermes-judge-attest
 npm run test:hermes-lifecycle
 npm run test:hermes-learning
+npm run test:hermes-feedback-intake
+npm run test:hermes-seed-convert
 npm run test:hermes-install
 npm run check:invariants
 npm run lint -- --quiet

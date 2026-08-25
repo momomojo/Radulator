@@ -1,0 +1,625 @@
+{
+  "calculatorId": "bosniak",
+  "cases": [
+    {
+      "id": "simple-cyst-category-i",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "I" }]
+      }
+    },
+    {
+      "id": "few-thin-enhancing-septa-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "few",
+        "septaThickness": "thin",
+        "septaEnhancement": "present",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Benign Bosniak II renal cyst" }
+        ]
+      }
+    },
+    {
+      "id": "many-thin-nonenhancing-septa-require-mri",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "many",
+        "septaThickness": "thin",
+        "septaEnhancement": "absent",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" }
+        ]
+      }
+    },
+    {
+      "id": "thick-nonenhancing-wall-with-calcification-not-benign-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "thin (≤2 mm), smooth wall" }
+        ]
+      }
+    },
+    {
+      "id": "irregular-nonenhancing-wall-with-benign-density-not-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "irregular",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "hyperattenuating70",
+        "hyperattenuatingSize": "atMost3"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "Not assigned" }]
+      }
+    },
+    {
+      "id": "unconfirmed-nodule-not-benign-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "obtuse4",
+        "noduleEnhancement": "absent",
+        "calcifications": "present",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "selected protrusion is not confirmed to enhance" }
+        ]
+      }
+    },
+    {
+      "id": "minimally-thick-enhancing-wall-category-iif",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "minimallyThick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "IIF" }]
+      }
+    },
+    {
+      "id": "thick-enhancing-wall-category-iii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "III" }]
+      }
+    },
+    {
+      "id": "acute-margin-enhancing-nodule-category-iv",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "acuteAny",
+        "noduleEnhancement": "present",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "IV" }]
+      }
+    },
+    {
+      "id": "approximately-quarter-enhancing-tissue-out-of-scope",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "over25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "Not applicable" }]
+      }
+    },
+    {
+      "id": "nonenhancing-thick-wall-with-unrelated-enhancing-septa-not-category-iii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "absent",
+        "septaCount": "few",
+        "septaThickness": "thin",
+        "septaEnhancement": "present",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "thick or irregular wall is not confirmed to enhance" }
+        ]
+      }
+    },
+    {
+      "id": "nonenhancing-thick-septa-with-unrelated-wall-enhancement-not-category-iii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "present",
+        "septaCount": "few",
+        "septaThickness": "thick",
+        "septaEnhancement": "absent",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "thick or irregular septum is not confirmed to enhance" }
+        ]
+      }
+    },
+    {
+      "id": "nonenhancing-nodule-with-unrelated-wall-enhancement-not-category-iv",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "acuteAny",
+        "noduleEnhancement": "absent",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "selected protrusion is not confirmed to enhance" }
+        ]
+      }
+    },
+    {
+      "id": "alternative-etiologies-not-excluded",
+      "inputs": {
+        "scopeEligibility": "notExcluded",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not applicable" },
+          { "key": "Rationale", "includes": "infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded" }
+        ]
+      }
+    },
+    {
+      "id": "hereditary-rcc-syndrome-outside-general-population-guidance",
+      "inputs": {
+        "scopeEligibility": "hereditaryRccSyndrome",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not applicable" },
+          { "key": "v2019 Term", "includes": "hereditary renal cell carcinoma syndrome" },
+          { "key": "Management", "includes": "syndrome-specific" },
+          { "key": "Rationale", "includes": "general population" }
+        ]
+      }
+    },
+    {
+      "id": "renal-mass-protocol-nonenhancing-over-20-hu-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "renalMassNonenhancing"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Likely benign Bosniak II renal mass" },
+          { "key": "Rationale", "includes": "non-enhancing >20 HU at renal mass protocol CT" }
+        ]
+      }
+    },
+    {
+      "id": "portal-venous-21-to-30-hu-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "portalVenous21to30"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Likely benign Bosniak II renal mass" },
+          { "key": "Rationale", "includes": "21-30 HU at portal venous phase CT" }
+        ]
+      }
+    },
+    {
+      "id": "too-small-low-attenuation-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "tooSmallLowAttenuation"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Likely benign Bosniak II renal mass" },
+          { "key": "Rationale", "includes": "too small to characterize" }
+        ]
+      }
+    },
+    {
+      "id": "confirmed-enhancing-nodule-dominates-unrelated-indeterminate-features",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "absent",
+        "septaCount": "many",
+        "septaThickness": "thick",
+        "septaEnhancement": "absent",
+        "nodule": "acuteAny",
+        "noduleEnhancement": "present",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "IV" },
+          { "key": "Rationale", "includes": "Enhancing nodule with acute margins" }
+        ]
+      }
+    },
+    {
+      "id": "ill-defined-mass-not-benign-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "no",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "Bosniak I and II require a well-defined mass" }
+        ]
+      }
+    },
+    {
+      "id": "ill-defined-mass-not-category-iif",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "no",
+        "wall": "minimallyThick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "IIF requires a well-defined" }
+        ]
+      }
+    },
+    {
+      "id": "large-hyperattenuating-mass-requires-mri-before-assignment",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "hyperattenuating70",
+        "hyperattenuatingSize": "over3OrUncertain"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "larger than 3 cm" }
+        ]
+      }
+    },
+    {
+      "id": "heterogeneous-nonenhancing-density-requires-mri",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "few",
+        "septaThickness": "thin",
+        "septaEnhancement": "absent",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "heterogeneousOrIncomplete"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "heterogeneous or otherwise incompletely characterized" }
+        ]
+      }
+    },
+    {
+      "id": "heterogeneous-density-with-enhancing-3mm-wall-still-requires-mri",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "minimallyThick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "heterogeneousOrIncomplete"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "heterogeneous or otherwise incompletely characterized" }
+        ]
+      }
+    },
+    {
+      "id": "heterogeneous-density-with-enhancing-thick-wall-still-requires-mri",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "heterogeneousOrIncomplete"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "heterogeneous or otherwise incompletely characterized" }
+        ]
+      }
+    },
+    {
+      "id": "other-characterized-density-with-enhancing-3mm-wall-category-iif",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "minimallyThick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "IIF" },
+          { "key": "Rationale", "includes": "Enhancing 3 mm" }
+        ]
+      }
+    },
+    {
+      "id": "other-characterized-density-with-enhancing-thick-wall-category-iii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "III" },
+          { "key": "Rationale", "includes": "Enhancing thick" }
+        ]
+      }
+    },
+    {
+      "id": "large-hyperattenuating-mass-with-enhancing-3mm-wall-category-iif",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "minimallyThick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "hyperattenuating70",
+        "hyperattenuatingSize": "over3OrUncertain"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "IIF" },
+          { "key": "Rationale", "includes": "Enhancing 3 mm" }
+        ]
+      }
+    },
+    {
+      "id": "large-hyperattenuating-mass-with-enhancing-thick-wall-category-iii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "hyperattenuating70",
+        "hyperattenuatingSize": "over3OrUncertain"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "III" },
+          { "key": "Rationale", "includes": "Enhancing thick" }
+        ]
+      }
+    }
+  ]
+}

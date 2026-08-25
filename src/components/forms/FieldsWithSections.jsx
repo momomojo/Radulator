@@ -34,6 +34,7 @@ function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
             key={f.id}
             f={f}
             val={vals[f.id]}
+            vals={vals}
             on={onFieldChange}
             onBatch={onBatchUpdate}
           />
@@ -69,6 +70,7 @@ function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
                   key={f.id}
                   f={f}
                   val={vals[f.id]}
+                  vals={vals}
                   on={onFieldChange}
                   onBatch={onBatchUpdate}
                 />
@@ -126,6 +128,7 @@ function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
                   key={f.id}
                   f={f}
                   val={vals[f.id]}
+                  vals={vals}
                   on={onFieldChange}
                   onBatch={onBatchUpdate}
                 />

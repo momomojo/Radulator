@@ -1,0 +1,109 @@
+{
+  "calculatorId": "kidney-biopsy-bleeding-risk",
+  "calculatorName": "Kidney Biopsy Major Bleeding Risk (KBRC)",
+  "cases": [
+    {
+      "id": "paper-typical-native",
+      "inputs": {
+        "age": 57,
+        "weight": 81.7292,
+        "height": 170,
+        "platelets": 220,
+        "hemoglobin": 107,
+        "kidney_size": 11.4,
+        "kidney_type": "native"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "2.5%"
+          },
+          { "key": "Calculated BMI", "equals": "28.28 kg/m²" }
+        ]
+      }
+    },
+    {
+      "id": "paper-typical-allograft",
+      "inputs": {
+        "age": 57,
+        "weight": 81.7292,
+        "height": 170,
+        "platelets": 220,
+        "hemoglobin": 107,
+        "kidney_size": 11.4,
+        "kidney_type": "allograft"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "1.0%"
+          }
+        ]
+      }
+    },
+    {
+      "id": "paper-higher-risk-native",
+      "inputs": {
+        "age": 65,
+        "weight": 69.36,
+        "height": 170,
+        "platelets": 150,
+        "hemoglobin": 100,
+        "kidney_size": 10,
+        "kidney_type": "native"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "7.4%"
+          }
+        ]
+      }
+    },
+    {
+      "id": "paper-lower-risk-allograft",
+      "inputs": {
+        "age": 45,
+        "weight": 86.7,
+        "height": 170,
+        "platelets": 300,
+        "hemoglobin": 110,
+        "kidney_size": 12,
+        "kidney_type": "allograft"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "0.4%"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-out-of-range",
+      "inputs": {
+        "age": 91,
+        "weight": 70,
+        "height": 170,
+        "platelets": 220,
+        "hemoglobin": 107,
+        "kidney_size": 11.4,
+        "kidney_type": "native"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          { "key": "Error", "includes": "supported entry range" }
+        ]
+      }
+    }
+  ]
+}
