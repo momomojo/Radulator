@@ -16,7 +16,11 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
+import { readFileSync } from "node:fs";
+import {
+  navigateToCalculator,
+  selectRadio,
+} from "../../../helpers/calculator-test-helper.js";
 
 // The results render in a region with role="status" / aria-label="Calculator results".
 // Each key/value is rendered in separate elements (the primary "MELD Score" puts its value
@@ -53,37 +57,91 @@ async function getMeldNaScore(page) {
   return parseInt(val.trim(), 10);
 }
 
+function meld3ScoreBlock(page) {
+  return resultsRegion(page)
+    .locator("div", {
+      has: page.locator("span", { hasText: /^MELD 3\.0 Score:/ }),
+    })
+    .first();
+}
+
+async function getMeld3Score(page) {
+  const val = await meld3ScoreBlock(page).locator("div.text-2xl").textContent();
+  return parseInt(val.trim(), 10);
+}
+
+async function selectLegacyMeldNa(page) {
+  await selectRadio(page, "Scoring model", "Temporary legacy MELD-Na");
+}
+
+async function selectCurrentMeld3(page) {
+  await selectRadio(page, "Scoring model", "MELD 3.0 current allocation score");
+}
+
+async function fillMeld3Inputs(
+  page,
+  {
+    currentAge,
+    age = "45",
+    sex = "male",
+    creatinine,
+    bilirubin,
+    inr,
+    sodium,
+    albumin,
+  },
+) {
+  await page.fill('input[id="currentAge"]', String(currentAge ?? age));
+  await page.fill('input[id="ageAtRegistration"]', String(age));
+  if (Number.parseFloat(age) >= 18) {
+    await expect(
+      page.locator('label:has-text("Sex for Adult MELD 3.0 Calculation")'),
+    ).toBeVisible();
+    await selectRadio(
+      page,
+      "Sex for Adult MELD 3.0 Calculation",
+      sex === "female" ? "Female" : "Male",
+    );
+  }
+  await page.fill('input[id="creatinine"]', String(creatinine));
+  await page.fill('input[id="bilirubin"]', String(bilirubin));
+  await page.fill('input[id="inr"]', String(inr));
+  await page.fill('input[id="sodium"]', String(sodium));
+  await page.fill('input[id="albumin"]', String(albumin));
+}
+
 test.describe("MELD-Na Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, "MELD-Na Score");
     await expect(page.getByTestId('calculator-title').first()).toContainText("MELD-Na Score");
+    await selectLegacyMeldNa(page);
   });
 
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with proper layout", async ({ page }) => {
       // Check header
       await expect(page.getByTestId('calculator-title').first()).toContainText("MELD-Na Score");
-      await expect(
-        page.locator("text=Model for End-Stage Liver Disease").first(),
-      ).toBeVisible();
 
       // Check info section
       await expect(
-        page.locator("text=The MELD-Na score predicts"),
+        page.locator("text=MELD 3.0 is the current OPTN"),
       ).toBeVisible();
       await expect(
-        page.locator("text=Interpretation guides allocation priority"),
+        page.locator("text=Temporary legacy option"),
       ).toBeVisible();
 
       // Check all input fields are present
-      await expect(page.locator('label:has-text("Creatinine")')).toBeVisible();
+      await expect(page.locator('label:has-text("Scoring model")')).toBeVisible();
+      await expect(page.locator('label[for="creatinine"]')).toBeVisible();
       await expect(
         page.locator('label:has-text("Total Bilirubin")'),
       ).toBeVisible();
       await expect(page.locator('label:has-text("INR")').first()).toBeVisible();
       await expect(page.locator('label:has-text("Sodium")')).toBeVisible();
       await expect(
-        page.locator('label:has-text("Dialysis ≥2 times")'),
+        page.locator(
+          'label:has-text("Had dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test?")',
+        ),
       ).toBeVisible();
 
       // Check Calculate button
@@ -96,10 +154,16 @@ test.describe("MELD-Na Calculator", () => {
     });
 
     test("should show subLabels with units and ranges", async ({ page }) => {
-      await expect(page.locator("text=mg/dL (0.1-15.0)")).toBeVisible();
-      await expect(page.locator("text=mg/dL (0.1-50.0)")).toBeVisible();
-      await expect(page.locator("text=0.8-10.0")).toBeVisible();
-      await expect(page.locator("text=mEq/L (110-160)")).toBeVisible();
+      await expect(page.locator('label[for="creatinine"]')).toContainText(
+        "mg/dL (0.01-40)",
+      );
+      await expect(page.locator('label[for="bilirubin"]')).toContainText(
+        "mg/dL (0-99)",
+      );
+      await expect(page.locator('label[for="inr"]')).toContainText("0.5-99");
+      await expect(page.locator('label[for="sodium"]')).toContainText(
+        "mEq/L (100-200)",
+      );
     });
 
     test("should have working dialysis checkbox", async ({ page }) => {
@@ -115,6 +179,285 @@ test.describe("MELD-Na Calculator", () => {
       // Click to uncheck
       await dialysisCheckbox.click();
       await expect(dialysisCheckbox).toHaveAttribute("aria-checked", "false");
+    });
+  });
+
+  test.describe("MELD 3.0 Current Model", () => {
+    test("should default to MELD 3.0 when no model is selected", async ({
+      page,
+    }) => {
+      await page.reload();
+      await expect(page.getByTestId('calculator-title').first()).toContainText("MELD-Na Score");
+      await fillMeld3Inputs(page, {
+        age: "45",
+        sex: "male",
+        creatinine: "0.8",
+        bilirubin: "0.8",
+        inr: "1.0",
+        sodium: "140",
+        albumin: "4.0",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      expect(await getMeld3Score(page)).toBe(6);
+      await expect(page.locator("text=MELD 3.0 Score:")).toBeVisible();
+      await expect(page.locator("text=Calculation Path:")).toBeVisible();
+    });
+
+    test("verifier example 1: normal low-score male should be MELD 3.0 6", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        age: "45",
+        sex: "male",
+        creatinine: "0.8",
+        bilirubin: "0.8",
+        inr: "1.0",
+        sodium: "140",
+        albumin: "4.0",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      expect(await getMeld3Score(page)).toBe(6);
+    });
+
+    test("verifier example 2: adult female sex term rounds to 13 and same labs male to 12", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        age: "45",
+        sex: "female",
+        creatinine: "1.0",
+        bilirubin: "1.5",
+        inr: "1.2",
+        sodium: "135",
+        albumin: "3.0",
+      });
+
+      await page.click('button:has-text("Calculate")');
+      expect(await getMeld3Score(page)).toBe(13);
+      await expect(
+        page.locator("text=Adult female MELD 3.0 sex term applied"),
+      ).toBeVisible();
+
+      await selectRadio(
+        page,
+        "Sex for Adult MELD 3.0 Calculation",
+        "Male",
+      );
+      await page.click('button:has-text("Calculate")');
+      expect(await getMeld3Score(page)).toBe(12);
+    });
+
+    test("shows the official OPTN adult-sex selection guidance", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await page.fill('input[id="currentAge"]', "45");
+      await page.fill('input[id="ageAtRegistration"]', "45");
+
+      const help = page.getByRole("button", {
+        name: "Help for Sex for Adult MELD 3.0 Calculation",
+      });
+      await expect(help).toBeVisible();
+      await expect(help).toHaveAttribute(
+        "title",
+        /in consultation with the candidate/i,
+      );
+      await expect(help).toHaveAttribute(
+        "title",
+        /gender affirming hormone therapy/i,
+      );
+    });
+
+    test("does not impose an unsupported upper-age eligibility limit and uses neutral numeric strata", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        currentAge: "121",
+        age: "121",
+        sex: "male",
+        creatinine: "1.0",
+        bilirubin: "1.5",
+        inr: "1.2",
+        sodium: "135",
+        albumin: "3.0",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(resultsRegion(page)).not.toContainText("Error");
+      expect(await getMeld3Score(page)).toBe(12);
+      await expect(resultsRegion(page)).toContainText(
+        "MELD 3.0 numeric stratum 10-19",
+      );
+      await expect(resultsRegion(page)).not.toContainText(
+        "Intermediate MELD 3.0 range",
+      );
+    });
+
+    test("verifier example 3: hypoalbuminemia case should be MELD 3.0 16", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        age: "45",
+        sex: "male",
+        creatinine: "1.0",
+        bilirubin: "2.0",
+        inr: "1.5",
+        sodium: "137",
+        albumin: "1.8",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      expect(await getMeld3Score(page)).toBe(16);
+    });
+
+    test("verifier example 4: high-score female/hyponatremia rounds to 38 and same labs male to 36", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        age: "45",
+        sex: "female",
+        creatinine: "2.5",
+        bilirubin: "10.0",
+        inr: "2.2",
+        sodium: "128",
+        albumin: "2.8",
+      });
+
+      await page.click('button:has-text("Calculate")');
+      expect(await getMeld3Score(page)).toBe(38);
+
+      await selectRadio(
+        page,
+        "Sex for Adult MELD 3.0 Calculation",
+        "Male",
+      );
+      await page.click('button:has-text("Calculate")');
+      expect(await getMeld3Score(page)).toBe(36);
+    });
+
+    test("verifier example 5: dialysis/creatinine cap case should be MELD 3.0 25", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        age: "45",
+        sex: "male",
+        creatinine: "5.0",
+        bilirubin: "2.0",
+        inr: "1.5",
+        sodium: "137",
+        albumin: "3.5",
+      });
+      await page.locator('button[role="switch"]').click();
+
+      await page.click('button:has-text("Calculate")');
+
+      expect(await getMeld3Score(page)).toBe(25);
+      await expect(
+        page.locator("text=Creatinine set to 3.0 mg/dL for MELD 3.0"),
+      ).toBeVisible();
+    });
+
+    test("accepts the official OPTN laboratory input domain before applying MELD 3.0 bounds", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        age: "45",
+        sex: "male",
+        creatinine: "20",
+        bilirubin: "0",
+        inr: "0.5",
+        sodium: "105",
+        albumin: "9.9",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(resultsRegion(page)).not.toContainText("Error");
+      await expect(resultsRegion(page)).toContainText(
+        "Creatinine capped at 3.0 mg/dL for MELD 3.0",
+      );
+      await expect(resultsRegion(page)).toContainText(
+        "Bilirubin set to lower bound of 1.0 mg/dL",
+      );
+      await expect(resultsRegion(page)).toContainText(
+        "INR set to lower bound of 1.0",
+      );
+      await expect(resultsRegion(page)).toContainText(
+        "Sodium set to lower bound of 125 mEq/L for MELD 3.0 calculation",
+      );
+      await expect(resultsRegion(page)).toContainText(
+        "Albumin set to upper bound of 3.5 g/dL",
+      );
+    });
+
+    test("should use registered-before-18 MELD 3.0 +7.33 path", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        age: "16",
+        creatinine: "1.0",
+        bilirubin: "1.5",
+        inr: "1.2",
+        sodium: "135",
+        albumin: "3.0",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      expect(await getMeld3Score(page)).toBe(13);
+      await expect(
+        resultsRegion(page).getByText(
+          "Registered before age 18; candidate currently age ≥12",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(
+        page.getByText(
+          "Registered-before-18 path used: MELD 3.0 applies +7.33 constant for all sexes",
+        ),
+      ).toBeVisible();
+      await expect(
+        page.locator('label:has-text("Sex for Adult MELD 3.0 Calculation")'),
+      ).not.toBeVisible();
+    });
+
+    test("uses the registered-before-18 path after a candidate ages into MELD", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        currentAge: "12",
+        age: "8",
+        creatinine: "1.0",
+        bilirubin: "1.5",
+        inr: "1.2",
+        sodium: "135",
+        albumin: "3.0",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      expect(await getMeld3Score(page)).toBe(13);
+      await expect(
+        resultsRegion(page).getByText(
+          "Registered before age 18; candidate currently age ≥12",
+          { exact: true },
+        ),
+      ).toBeVisible();
     });
   });
 
@@ -394,8 +737,8 @@ test.describe("MELD-Na Calculator", () => {
     });
   });
 
-  test.describe("Transplant Eligibility Interpretation", () => {
-    test("should suggest monitoring for MELD-Na < 15", async ({ page }) => {
+  test.describe("Legacy educational interpretation", () => {
+    test("does not turn a MELD-Na result below 15 into management advice", async ({ page }) => {
       await page.fill('input[id="creatinine"]', "1.2");
       await page.fill('input[id="bilirubin"]', "1.5");
       await page.fill('input[id="inr"]', "1.3");
@@ -404,13 +747,14 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator(
-          "text=Monitor closely; transplant evaluation if disease progresses",
+        resultsRegion(page).getByText(
+          /comparison and education only; current OPTN allocation uses MELD 3\.0/i,
         ),
       ).toBeVisible();
+      await expect(resultsRegion(page)).not.toContainText("Monitor closely");
     });
 
-    test("should indicate transplant candidacy for MELD-Na 15-24", async ({
+    test("does not turn a MELD-Na result from 15 through 24 into listing advice", async ({
       page,
     }) => {
       await page.fill('input[id="creatinine"]', "1.6");
@@ -421,16 +765,16 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator(
-          "text=Patient meets criteria for liver transplant evaluation",
+        resultsRegion(page).getByText(
+          /does not determine transplant evaluation, listing, priority, monitoring, or treatment/i,
         ),
       ).toBeVisible();
-      await expect(
-        page.locator("text=Candidate for transplant listing"),
-      ).toBeVisible();
+      await expect(resultsRegion(page)).not.toContainText(
+        "Candidate for transplant listing",
+      );
     });
 
-    test("should indicate high priority for MELD-Na >= 25", async ({
+    test("does not turn a MELD-Na result of at least 25 into priority advice", async ({
       page,
     }) => {
       await page.fill('input[id="creatinine"]', "3.0");
@@ -441,13 +785,13 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator(
-          "text=Patient meets criteria for liver transplant evaluation",
+        resultsRegion(page).getByText(
+          /does not determine transplant evaluation, listing, priority, monitoring, or treatment/i,
         ),
       ).toBeVisible();
-      await expect(
-        page.locator("text=High priority for transplantation"),
-      ).toBeVisible();
+      await expect(resultsRegion(page)).not.toContainText(
+        "High priority for transplantation",
+      );
     });
   });
 
@@ -463,7 +807,7 @@ test.describe("MELD-Na Calculator", () => {
     test("should show error for creatinine out of range (too low)", async ({
       page,
     }) => {
-      await page.fill('input[id="creatinine"]', "0.05");
+      await page.fill('input[id="creatinine"]', "0.009");
       await page.fill('input[id="bilirubin"]', "2.0");
       await page.fill('input[id="inr"]', "1.5");
       await page.fill('input[id="sodium"]', "135");
@@ -471,14 +815,14 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Creatinine must be between 0.1 and 15.0 mg/dL"),
+        page.locator("text=Creatinine must be between 0.01 and 40 mg/dL"),
       ).toBeVisible();
     });
 
     test("should show error for creatinine out of range (too high)", async ({
       page,
     }) => {
-      await page.fill('input[id="creatinine"]', "20.0");
+      await page.fill('input[id="creatinine"]', "40.01");
       await page.fill('input[id="bilirubin"]', "2.0");
       await page.fill('input[id="inr"]', "1.5");
       await page.fill('input[id="sodium"]', "135");
@@ -486,33 +830,33 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Creatinine must be between 0.1 and 15.0 mg/dL"),
+        page.locator("text=Creatinine must be between 0.01 and 40 mg/dL"),
       ).toBeVisible();
     });
 
     test("should show error for bilirubin out of range", async ({ page }) => {
       await page.fill('input[id="creatinine"]', "1.5");
-      await page.fill('input[id="bilirubin"]', "60.0");
+      await page.fill('input[id="bilirubin"]', "99.01");
       await page.fill('input[id="inr"]', "1.5");
       await page.fill('input[id="sodium"]', "135");
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Bilirubin must be between 0.1 and 50.0 mg/dL"),
+        page.locator("text=Bilirubin must be between 0 and 99 mg/dL"),
       ).toBeVisible();
     });
 
     test("should show error for INR out of range", async ({ page }) => {
       await page.fill('input[id="creatinine"]', "1.5");
       await page.fill('input[id="bilirubin"]', "2.0");
-      await page.fill('input[id="inr"]', "12.0");
+      await page.fill('input[id="inr"]', "99.01");
       await page.fill('input[id="sodium"]', "135");
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=INR must be between 0.8 and 10.0"),
+        page.locator("text=INR must be between 0.5 and 99"),
       ).toBeVisible();
     });
 
@@ -522,12 +866,12 @@ test.describe("MELD-Na Calculator", () => {
       await page.fill('input[id="creatinine"]', "1.5");
       await page.fill('input[id="bilirubin"]', "2.0");
       await page.fill('input[id="inr"]', "1.5");
-      await page.fill('input[id="sodium"]', "100");
+      await page.fill('input[id="sodium"]', "99.9");
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Sodium must be between 110 and 160 mEq/L"),
+        page.locator("text=Sodium must be between 100 and 200 mEq/L"),
       ).toBeVisible();
     });
 
@@ -537,12 +881,33 @@ test.describe("MELD-Na Calculator", () => {
       await page.fill('input[id="creatinine"]', "1.5");
       await page.fill('input[id="bilirubin"]', "2.0");
       await page.fill('input[id="inr"]', "1.5");
-      await page.fill('input[id="sodium"]', "170");
+      await page.fill('input[id="sodium"]', "200.1");
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Sodium must be between 110 and 160 mEq/L"),
+        page.locator("text=Sodium must be between 100 and 200 mEq/L"),
+      ).toBeVisible();
+    });
+
+    test("should reject albumin outside the official OPTN input domain", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        age: "45",
+        sex: "male",
+        creatinine: "1.5",
+        bilirubin: "2.0",
+        inr: "1.5",
+        sodium: "135",
+        albumin: "9.91",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(
+        page.locator("text=Albumin must be between 0.50 and 9.90 g/dL"),
       ).toBeVisible();
     });
   });
@@ -625,6 +990,28 @@ test.describe("MELD-Na Calculator", () => {
   });
 
   test.describe("Reference Links", () => {
+    test("keeps the clinical QA reference checklist aligned with the runtime sources", () => {
+      const qaDocument = readFileSync(
+        "docs/calculators/hepatology/meld-3-test-data.md",
+        "utf8",
+      );
+
+      expect(qaDocument).toContain(
+        "OPTN/HRSA MELD and PELD Calculators User Guide",
+      );
+      expect(qaDocument).toContain(
+        "Kim WR et al. New England Journal of Medicine 2008 - MELD-Na Development",
+      );
+      expect(qaDocument).not.toContain("OPTN/HRSA implementation FAQ");
+      expect(qaDocument).not.toContain(
+        "Kim WR et al. Gastroenterology 2008 MELD-Na paper",
+      );
+      expect(qaDocument).toContain(
+        "Creatinine set to 3.0 mg/dL for MELD 3.0 (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)",
+      );
+      expect(qaDocument).not.toContain("(dialysis/CVVHD rule)");
+    });
+
     test("should display all 6 references", async ({ page }) => {
       // Expand collapsed references (CollapsibleReferences shows only 3 by default)
       const expandButton = page.getByRole("button", {
@@ -651,17 +1038,24 @@ test.describe("MELD-Na Calculator", () => {
     test("should include key references", async ({ page }) => {
       // The first 3 references are visible by default.
       await expect(
-        page.locator("text=Kamath PS et al. Hepatology 2001"),
+        page.getByRole("link", { name: "OPTN Policy 9.1.D - MELD Score" }),
       ).toBeVisible();
       await expect(
-        page.locator("text=Kim WR et al. Gastroenterology 2008"),
+        page.locator("text=OPTN/HRSA MELD and PELD Calculators User Guide"),
       ).toBeVisible();
 
-      // "UNOS Policy 9" is reference #5, hidden until expanded.
+      // Legacy MELD-Na citation is hidden until expanded.
       await page
         .getByRole("button", { name: /Show \d+ more reference/ })
         .click();
-      await expect(page.locator("text=UNOS Policy 9")).toBeVisible();
+      await expect(
+        page.locator("text=Kim WR et al. Gastroenterology 2021"),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", {
+          name: "Kim WR et al. New England Journal of Medicine 2008 - MELD-Na Development",
+        }),
+      ).toHaveAttribute("href", "https://doi.org/10.1056/NEJMoa0801209");
     });
   });
 
