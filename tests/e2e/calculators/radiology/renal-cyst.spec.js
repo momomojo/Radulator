@@ -22,6 +22,7 @@ async function fillBaseBosniakV2019(page, overrides = {}) {
   const values = {
     scopeEligibility: "eligible",
     solidComponent: "under25",
+    wellDefined: "yes",
     wall: "thin",
     wallEnhancement: "absent",
     septaCount: "none",
@@ -36,6 +37,7 @@ async function fillBaseBosniakV2019(page, overrides = {}) {
 
   await choose(page, "scopeEligibility", values.scopeEligibility);
   await choose(page, "solidComponent", values.solidComponent);
+  await choose(page, "wellDefined", values.wellDefined);
   await choose(page, "wall", values.wall);
   await choose(page, "wallEnhancement", values.wallEnhancement);
   await choose(page, "septaCount", values.septaCount);
@@ -105,6 +107,9 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     ).toBeVisible();
     await expect(
       page.getByText("Enhancing-tissue proportion", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Mass definition", { exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText("Wall thickness / morphology", { exact: true }),
@@ -282,7 +287,10 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).toContainText(
       "Probably benign cystic mass",
     );
-    await expect(results).toContainText("Follow-up imaging at 6 months");
+    await expect(results).toContainText(
+      "Imaging follow-up is recommended",
+    );
+    await expect(results).not.toContainText("annually for 5 years");
   });
 
   test("should classify a minimally thick enhancing wall as Bosniak IIF", async ({
@@ -366,6 +374,45 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).toContainText(
       "Enhancing >=4 mm convex protrusion with obtuse margins",
     );
+  });
+
+  test("should preserve confirmed Bosniak IV when unrelated lower features are nonenhancing", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wall: "thick",
+      wallEnhancement: "absent",
+      septaCount: "many",
+      septaThickness: "thick",
+      septaEnhancement: "absent",
+      nodule: "acuteAny",
+      noduleEnhancement: "present",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: IV");
+    await expect(results).toContainText("Enhancing nodule with acute margins");
+    await expect(results).not.toContainText("Bosniak Category: Not assigned");
+  });
+
+  test("should not assign Bosniak I or II when the mass is not well defined", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wellDefined: "no",
+      calcifications: "present",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText(
+      "Bosniak I and II require a well-defined mass",
+    );
+    await expect(results).not.toContainText("Bosniak Category: II");
   });
 
   test("should gate masses with approximately one-quarter enhancing tissue", async ({

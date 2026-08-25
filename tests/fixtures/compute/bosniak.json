@@ -6,6 +6,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
         "wallEnhancement": "absent",
         "septaCount": "none",
@@ -23,6 +24,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
         "wallEnhancement": "absent",
         "septaCount": "few",
@@ -42,6 +44,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
         "wallEnhancement": "absent",
         "septaCount": "many",
@@ -64,6 +67,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thick",
         "wallEnhancement": "absent",
         "septaCount": "none",
@@ -84,6 +88,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "irregular",
         "wallEnhancement": "absent",
         "septaCount": "none",
@@ -101,6 +106,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
         "wallEnhancement": "absent",
         "septaCount": "none",
@@ -122,6 +128,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "minimallyThick",
         "wallEnhancement": "present",
         "septaCount": "none",
@@ -139,6 +146,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thick",
         "wallEnhancement": "present",
         "septaCount": "none",
@@ -156,6 +164,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
         "wallEnhancement": "absent",
         "septaCount": "none",
@@ -174,6 +183,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "over25",
+        "wellDefined": "yes",
         "wall": "thin",
         "wallEnhancement": "absent",
         "septaCount": "none",
@@ -191,6 +201,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thick",
         "wallEnhancement": "absent",
         "septaCount": "few",
@@ -213,6 +224,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
         "wallEnhancement": "present",
         "septaCount": "few",
@@ -235,6 +247,7 @@
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thick",
         "wallEnhancement": "present",
         "septaCount": "none",
@@ -256,6 +269,7 @@
       "inputs": {
         "scopeEligibility": "notExcluded",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
         "wallEnhancement": "absent",
         "septaCount": "none",
@@ -268,6 +282,51 @@
         "fields": [
           { "key": "Bosniak Category", "equals": "Not applicable" },
           { "key": "Rationale", "includes": "infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded" }
+        ]
+      }
+    },
+    {
+      "id": "confirmed-enhancing-nodule-dominates-unrelated-indeterminate-features",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "absent",
+        "septaCount": "many",
+        "septaThickness": "thick",
+        "septaEnhancement": "absent",
+        "nodule": "acuteAny",
+        "noduleEnhancement": "present",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "IV" },
+          { "key": "Rationale", "includes": "Enhancing nodule with acute margins" }
+        ]
+      }
+    },
+    {
+      "id": "ill-defined-mass-not-benign-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "no",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "Bosniak I and II require a well-defined mass" }
         ]
       }
     }

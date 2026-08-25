@@ -27,6 +27,7 @@ Key changes from the retired 2005 implementation:
 - **Removed standalone upgrades**: intrarenal location and size `>=3 cm` alone no longer upgrade to IIF
 - **Eligibility gate**: Apply Bosniak v2019 only after infectious, inflammatory, and vascular etiologies and necrotic solid masses are excluded
 - **Enhancing-tissue gate**: Bosniak v2019 is intended for masses with less than approximately `25%` enhancing tissue; masses with approximately one-quarter or more are evaluated as solid masses with cystic or necrotic change
+- **Well-defined gate**: Bosniak I and II are assigned only when the mass is explicitly recorded as well defined
 - **Feature-specific enhancement**: wall, septal, and nodule enhancement are recorded separately; enhancement elsewhere cannot upgrade an unrelated feature
 
 ---
@@ -45,9 +46,9 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 
 | Category | v2019 Criteria in Calculator | Reporting Term | Management |
 |---|---|---|---|
-| **I** | Homogeneous `-9 to 20 HU` simple fluid, thin smooth wall, no septa, no calcification, no nodule | Benign simple cyst | No follow-up required |
+| **I** | Well-defined homogeneous `-9 to 20 HU` simple fluid, thin smooth wall, no septa, no calcification, no nodule | Benign simple cyst | No follow-up required |
 | **II** | All are well defined with a thin smooth `<=2 mm` wall, plus few `1-3` thin septa (which may enhance), any calcification morphology when features remain assessable, or a benign homogeneous CT density subtype | Benign cystic mass | No follow-up required |
-| **IIF** | Smooth 3 mm enhancing wall or septa, or many `>=4` thin enhancing septa | Probably benign cystic mass | Follow-up at 6 months, 12 months, then annually for 5 years |
+| **IIF** | Smooth 3 mm enhancing wall or septa, or many `>=4` thin enhancing septa | Probably benign cystic mass | Imaging follow-up is recommended; choose interval and modality using current specialty guidance and patient factors |
 | **III** | Enhancing thick `>=4 mm` or irregular obtuse wall/septa without enhancing nodule | Indeterminate cystic mass | Consider urology consultation |
 | **IV** | Enhancing nodule: `>=4 mm` obtuse convex protrusion or any size acute-margin convex protrusion | Cystic mass, highly suspicious for malignancy | Consider urology consultation |
 
@@ -59,6 +60,7 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 |---|---|---|
 | **Bosniak v2019 eligibility** | Alternative etiologies and necrotic solid mass excluded; not excluded or uncertain | Prevents use outside the source-defined population |
 | **Enhancing-tissue proportion** | Less than approximately `25%` or absent; approximately `25%` or more | Applies the cystic-mass scope gate |
+| **Mass definition** | Well defined; ill defined or uncertain | Enforces the source-defined well-defined requirement before assigning Bosniak I or II |
 | **Wall enhancement** | Absent/not confirmed; present | Binds enhancement to the wall feature |
 | **Septal enhancement** | Absent/not confirmed; present | Binds enhancement to the selected septa |
 | **Protrusion/nodule enhancement** | Absent/not confirmed; present | Binds enhancement to the selected protrusion |
@@ -76,7 +78,7 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 
 ### Bosniak I
 
-Thin smooth wall, no septa, no calcifications, no nodule, homogeneous `-9 to 20 HU` fluid, and no enhancing solid tissue.
+Well-defined mass with a thin smooth wall, no septa, no calcifications, no nodule, homogeneous `-9 to 20 HU` fluid, and no enhancing solid tissue.
 
 **Result**: Bosniak I, benign simple cyst, no follow-up required.
 
@@ -102,7 +104,7 @@ A nonenhancing wall or septum measuring `3 mm` or more, an irregular nonenhancin
 
 Many `>=4` thin enhancing septa without thick wall, irregular septa, or nodule.
 
-**Result**: Bosniak IIF, probably benign cystic mass, follow-up at 6 months, 12 months, then annually for 5 years.
+**Result**: Bosniak IIF, probably benign cystic mass. Imaging follow-up is recommended; use current specialty guidance and patient factors to choose interval and modality. Bosniak v2019 predicts malignancy risk but is not a comprehensive management algorithm.
 
 ### Bosniak III
 
@@ -112,7 +114,7 @@ Enhancing smooth wall `>=4 mm` without an enhancing nodule.
 
 ### Bosniak IV
 
-Enhancing convex protrusion with acute margins, any size.
+Enhancing convex protrusion with acute margins, any size. When other features fall into a lower or incompletely characterized class, the confirmed enhancing nodule remains the highest feature and Bosniak IV is assigned.
 
 **Result**: Bosniak IV, cystic mass highly suspicious for malignancy, consider urology consultation.
 

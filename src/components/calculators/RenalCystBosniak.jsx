@@ -11,7 +11,8 @@ const categoryDetails = {
   },
   IIF: {
     term: "Probably benign cystic mass",
-    management: "Follow-up imaging at 6 months, 12 months, then annually for 5 years",
+    management:
+      "Imaging follow-up is recommended; choose interval and modality using current specialty guidance and patient factors",
     severity: "warning",
   },
   III: {
@@ -48,6 +49,7 @@ const densityIsBosniakII = (density) =>
 const hasRequiredInputs = (v) =>
   v.scopeEligibility &&
   v.solidComponent &&
+  v.wellDefined &&
   v.wall &&
   v.wallEnhancement &&
   v.septaCount &&
@@ -153,6 +155,17 @@ export const RenalCystBosniak = {
           value: "over25",
           label: "approximately 25% of mass or more",
         },
+      ],
+    },
+    {
+      id: "wellDefined",
+      label: "Mass definition",
+      helpText:
+        "Bosniak I and II require a well-defined mass; an ill-defined or uncertain margin cannot be assigned to those benign categories from this CT pathway.",
+      type: "radio",
+      opts: [
+        { value: "yes", label: "well defined" },
+        { value: "no", label: "ill defined or uncertain" },
       ],
     },
     {
@@ -281,7 +294,7 @@ export const RenalCystBosniak = {
     if (!hasRequiredInputs(v)) {
       return {
         Error:
-          "Complete the eligibility, enhancing-tissue proportion, wall, feature-specific enhancement, septa, calcification, density, and nodule fields before applying Bosniak v2019.",
+          "Complete the eligibility, enhancing-tissue proportion, mass definition, wall, feature-specific enhancement, septa, calcification, density, and nodule fields before applying Bosniak v2019.",
         _severity: "error",
       };
     }
@@ -343,6 +356,15 @@ export const RenalCystBosniak = {
       );
     }
 
+    if (noduleEnhancing) {
+      return buildResult(
+        "IV",
+        v.nodule === "acuteAny"
+          ? "Enhancing nodule with acute margins meets Bosniak v2019 IV criteria. The highest class is assigned when features span classes."
+          : "Enhancing >=4 mm convex protrusion with obtuse margins meets Bosniak v2019 IV criteria. The highest class is assigned when features span classes.",
+      );
+    }
+
     if (!wallEnhancing && v.wall !== "thin") {
       return buildUnassignedResult(
         "Bosniak II requires a well-defined thin (≤2 mm), smooth wall. The selected 3 mm, thick or irregular wall is not confirmed to enhance; enhancement of septa or a nodule cannot substitute. Renal mass protocol MRI is recommended before classification.",
@@ -356,15 +378,6 @@ export const RenalCystBosniak = {
     ) {
       return buildUnassignedResult(
         "The selected many (≥4), 3 mm, thick or irregular septum is not confirmed to enhance; enhancement of the wall or a nodule cannot substitute. Renal mass protocol MRI is recommended before assigning a Bosniak class.",
-      );
-    }
-
-    if (noduleEnhancing) {
-      return buildResult(
-        "IV",
-        v.nodule === "acuteAny"
-          ? "Enhancing nodule with acute margins meets Bosniak v2019 IV criteria."
-          : "Enhancing >=4 mm convex protrusion with obtuse margins meets Bosniak v2019 IV criteria.",
       );
     }
 
@@ -385,6 +398,12 @@ export const RenalCystBosniak = {
       return buildResult(
         "IIF",
         "Enhancing 3 mm smooth wall/septa or many (>=4) thin enhancing septa meet Bosniak v2019 IIF criteria.",
+      );
+    }
+
+    if (v.wellDefined !== "yes") {
+      return buildUnassignedResult(
+        "Bosniak I and II require a well-defined mass with a thin, smooth wall. The selected mass is ill defined or uncertain, so a benign category cannot be assigned from this CT pathway.",
       );
     }
 

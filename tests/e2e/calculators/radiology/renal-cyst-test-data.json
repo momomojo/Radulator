@@ -8,14 +8,16 @@
       "name": "Bosniak I - Simple Benign Cyst",
       "category": "I",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "septaThickness": null,
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "absent"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "I",
@@ -29,14 +31,17 @@
       "name": "Bosniak II - Few Thin Septa",
       "category": "II",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "few",
         "septaThickness": "thin",
+        "septaEnhancement": "present",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "II",
@@ -51,14 +56,16 @@
       "category": "II",
       "changedFrom2005": "2005 implementation classified high attenuation >20 HU as IIF.",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "septaThickness": null,
         "nodule": "none",
         "calcifications": "absent",
-        "density": "hyperattenuating70",
-        "enhancement": "absent"
+        "density": "hyperattenuating70"
       },
       "expectedOutputs": {
         "bosniakCategory": "II",
@@ -73,14 +80,16 @@
       "category": "II",
       "changedFrom2005": "The retired implementation upgraded thick/nodular calcifications to III.",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "septaThickness": null,
         "nodule": "none",
         "calcifications": "present",
-        "density": "water",
-        "enhancement": "absent"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "II",
@@ -94,14 +103,16 @@
       "name": "Not Assigned - Thick Nonenhancing Wall with Calcification",
       "category": "Not assigned",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thick",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "septaThickness": null,
         "nodule": "none",
         "calcifications": "present",
-        "density": "water",
-        "enhancement": "absent"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "Not assigned",
@@ -115,14 +126,17 @@
       "name": "Not Assigned - Many Nonenhancing Septa",
       "category": "Not assigned",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "many",
         "septaThickness": "thin",
+        "septaEnhancement": "absent",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "absent"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "Not assigned",
@@ -136,19 +150,22 @@
       "name": "Bosniak IIF - Many Thin Enhancing Septa",
       "category": "IIF",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "many",
         "septaThickness": "thin",
+        "septaEnhancement": "present",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "IIF",
         "term": "Probably benign cystic mass",
-        "management": "Follow-up imaging at 6 months, 12 months, then annually for 5 years"
+        "management": "Imaging follow-up is recommended; choose interval and modality using current specialty guidance and patient factors"
       },
       "clinicalContext": "Many (>=4) thin smooth enhancing septa meet the v2019 IIF criterion."
     },
@@ -157,19 +174,21 @@
       "name": "Bosniak IIF - Smooth 3 mm Enhancing Wall",
       "category": "IIF",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "minimallyThick",
+        "wallEnhancement": "present",
         "septaCount": "none",
         "septaThickness": null,
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "IIF",
         "term": "Probably benign cystic mass",
-        "management": "Follow-up imaging at 6 months, 12 months, then annually for 5 years"
+        "management": "Imaging follow-up is recommended; choose interval and modality using current specialty guidance and patient factors"
       },
       "clinicalContext": "Smooth minimally thickened 3 mm enhancing wall meets v2019 IIF criteria."
     },
@@ -178,14 +197,16 @@
       "name": "Bosniak III - Thick Enhancing Wall",
       "category": "III",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thick",
+        "wallEnhancement": "present",
         "septaCount": "none",
         "septaThickness": null,
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "III",
@@ -199,14 +220,17 @@
       "name": "Bosniak III - Irregular Enhancing Septa",
       "category": "III",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "few",
         "septaThickness": "irregular",
+        "septaEnhancement": "present",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "III",
@@ -220,14 +244,17 @@
       "name": "Bosniak IV - Enhancing Acute-Margin Nodule",
       "category": "IV",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
+        "wellDefined": "yes",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "septaThickness": null,
         "nodule": "acuteAny",
+        "noduleEnhancement": "present",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "IV",
@@ -241,14 +268,16 @@
       "name": "Not Applicable - Approximately One-Quarter or More Enhancing Tissue",
       "category": "Not applicable",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "over25",
+        "wellDefined": "yes",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "septaThickness": null,
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expectedOutputs": {
         "bosniakCategory": "Not applicable",
