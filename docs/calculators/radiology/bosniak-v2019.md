@@ -48,8 +48,8 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 
 | Category | v2019 Criteria in Calculator | Reporting Term | Management |
 |---|---|---|---|
-| **I** | Well-defined homogeneous `-9 to 20 HU` simple fluid, thin smooth wall, no septa, no calcification, no nodule | Benign simple cyst | No follow-up required |
-| **II** | All are well defined with a thin smooth `<=2 mm` wall, plus few `1-3` thin septa (which may enhance), any calcification morphology when features remain assessable, or a benign homogeneous CT density subtype | Benign cystic mass | No follow-up required |
+| **I** | Fully characterized well-defined homogeneous simple fluid on a renal mass protocol examination, thin smooth wall, no septa, no calcification, no nodule | Benign simple cyst | No follow-up required |
+| **II** | All are well defined with a thin smooth `<=2 mm` wall, plus few `1-3` thin septa (which may enhance), any calcification morphology when features remain assessable, or a benign homogeneous CT density subtype including a homogeneous `-9 to 20 HU` mass known only from noncontrast CT | Benign cystic mass | No follow-up required |
 | **IIF** | Smooth 3 mm enhancing wall or septa, or many `>=4` thin enhancing septa | Probably benign cystic mass | Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors |
 | **III** | Enhancing thick `>=4 mm` or irregular obtuse wall/septa without enhancing nodule | Indeterminate cystic mass | Consider urology consultation |
 | **IV** | Enhancing nodule: `>=4 mm` obtuse convex protrusion or any size acute-margin convex protrusion | Cystic mass, highly suspicious for malignancy | Consider urology consultation |
@@ -71,7 +71,7 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 | **Septal thickness / morphology** | Thin `<=2 mm`; smooth 3 mm; smooth `>=4 mm`; irregular obtuse protrusion `<=3 mm` | Determines II/IIF/III septal criteria |
 | **Enhancing nodule morphology** | None; `>=4 mm` obtuse; any size acute | Applies the v2019 IV nodule definition |
 | **Calcifications** | Absent; present | Any morphology may occur in Bosniak II only with a well-defined thin smooth wall and assessable underlying features; abundant calcification may require MRI |
-| **Homogeneous CT density subtype** | Water `-9 to 20 HU`; `>=70 HU` noncontrast; non-enhancing `>20 HU`; `21-30 HU` portal venous; low attenuation too small to characterize; other | Applies v2019 benign HU subtypes; `other` is treated as heterogeneous or otherwise incompletely characterized and cannot be overridden into II by calcification or few thin septa |
+| **Homogeneous CT density subtype** | Fully characterized simple fluid on renal mass protocol CT; `-9 to 20 HU` at noncontrast CT only; `>=70 HU` noncontrast; non-enhancing `>20 HU`; `21-30 HU` portal venous; low attenuation too small to characterize; other | Separates a fully characterized Bosniak I simple cyst from the source-defined Bosniak II noncontrast `-9 to 20 HU` subtype; applies the other v2019 benign HU subtypes; `other` is treated as heterogeneous or otherwise incompletely characterized and cannot be overridden into II by calcification or few thin septa |
 | **Hyperattenuating mass size** | `<=3 cm`; `>3 cm` or uncertain | Shown for the `>=70 HU` subtype; larger or size-uncertain masses return Not assigned with MRI characterization guidance |
 | **Wall, septal, or nodule enhancement** | Absent/not confirmed; present | Required for IIF/III/IV criteria |
 
@@ -81,9 +81,19 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 
 ### Bosniak I
 
-Well-defined mass with a thin smooth wall, no septa, no calcifications, no nodule, homogeneous `-9 to 20 HU` fluid, and no enhancing solid tissue.
+Fully characterized homogeneous simple-fluid mass on a renal mass protocol examination with a thin smooth wall, no septa, no calcifications, no nodule, and no enhancing solid tissue.
 
 **Result**: Bosniak I, benign simple cyst, no follow-up required.
+
+### Bosniak II: Noncontrast −9 to 20 HU Subtype
+
+Well-defined homogeneous `-9 to 20 HU` mass evaluated only at noncontrast CT,
+with a thin smooth wall and no higher-order feature.
+
+**Result**: Bosniak II, likely benign renal mass, no follow-up required. This is
+not labeled a fully characterized Bosniak I simple cyst because enhancement and
+the complete simple-fluid characterization were not established by a renal mass
+protocol examination.
 
 ### Bosniak II: High-Attenuation Case That Changed from 2005
 
@@ -97,6 +107,7 @@ Homogeneous `>=70 HU` noncontrast CT mass with thin wall, no septa, no calcifica
 With a well-defined thin smooth wall and no higher-risk enhancing features, each of these source-defined inputs returns Bosniak II in a separate exact regression vector:
 
 - homogeneous nonenhancing `>20 HU` at renal mass protocol CT;
+- homogeneous `-9 to 20 HU` known only from noncontrast CT;
 - homogeneous `21-30 HU` at portal venous phase CT;
 - homogeneous low-attenuation mass too small to characterize.
 

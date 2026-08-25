@@ -52,7 +52,9 @@ test.describe("CAC/MESA Calculator", () => {
       "MESA reference values + CAC-DRS (SCCT 2018)",
     );
     await expect(
-      page.getByText("Maron et al. 2024 proposed staging bands"),
+      page.getByText("Maron et al. 2024 proposed CAC stage", {
+        exact: false,
+      }),
     ).toBeVisible();
   });
 
@@ -100,6 +102,8 @@ test.describe("CAC/MESA Calculator", () => {
         race: "white",
         vessels: "0",
         category: "No calcified coronary plaque",
+        stage: "0",
+        stagingBurden: "No calcified atherosclerotic burden",
         cacDrs: "A0",
         position: "At 25th reference score (0)",
         probability: "56%",
@@ -111,7 +115,9 @@ test.describe("CAC/MESA Calculator", () => {
         sex: "female",
         race: "chinese",
         vessels: "1",
-        category: "Mild calcified plaque burden",
+        category: "CAC 1-99",
+        stage: "2",
+        stagingBurden: "Moderate calcified atherosclerotic burden",
         cacDrs: "A1/N1",
         position: "Above 90th reference score (0)",
         probability: "7%",
@@ -124,6 +130,8 @@ test.describe("CAC/MESA Calculator", () => {
         race: "black",
         vessels: "2",
         category: "Moderate calcified plaque burden",
+        stage: "2",
+        stagingBurden: "Moderate calcified atherosclerotic burden",
         cacDrs: "A2/N2",
         position: "Above 90th reference score (102)",
         probability: "32%",
@@ -136,6 +144,8 @@ test.describe("CAC/MESA Calculator", () => {
         race: "hispanic",
         vessels: "3",
         category: "Severe calcified plaque burden",
+        stage: "3",
+        stagingBurden: "Severe calcified atherosclerotic burden",
         cacDrs: "A3/N3",
         position: "Between 75th (247) and 90th (666) reference scores",
         probability: "75%",
@@ -148,6 +158,8 @@ test.describe("CAC/MESA Calculator", () => {
         race: "white",
         vessels: "4",
         category: "Extensive calcified plaque burden",
+        stage: "4",
+        stagingBurden: "Extensive calcified atherosclerotic burden",
         cacDrs: "A3/N4",
         position: "Between 75th (641) and 90th (1584) reference scores",
         probability: "86%",
@@ -159,6 +171,14 @@ test.describe("CAC/MESA Calculator", () => {
       await fillCacMesa(page, example);
       const results = resultsRegion(page);
       await expectResultValue(results, "Absolute CAC Band", example.category);
+      await expectResultValue(results, "Maron CAC Stage", example.stage, {
+        exact: true,
+      });
+      await expectResultValue(
+        results,
+        "CAC Staging Burden",
+        example.stagingBurden,
+      );
       await expectResultValue(results, "CAC-DRS", example.cacDrs, {
         exact: true,
       });
@@ -177,23 +197,24 @@ test.describe("CAC/MESA Calculator", () => {
     page,
   }) => {
     const cases = [
-      [0, "No calcified coronary plaque", "A0", "0"],
-      [1, "Mild calcified plaque burden", "A1 / N not reported", "1-99"],
-      [99, "Mild calcified plaque burden", "A1 / N not reported", "1-99"],
-      [100, "Moderate calcified plaque burden", "A2 / N not reported", "100-299"],
-      [299, "Moderate calcified plaque burden", "A2 / N not reported", "100-299"],
+      [0, "No calcified coronary plaque", "A0", "0", "0"],
+      [1, "CAC 1-99", "A1 / N not reported", "1-99", "1"],
+      [99, "CAC 1-99", "A1 / N not reported", "1-99", "2"],
+      [100, "Moderate calcified plaque burden", "A2 / N not reported", "100-299", "2"],
+      [299, "Moderate calcified plaque burden", "A2 / N not reported", "100-299", "2"],
       [
         300,
         "Severe calcified plaque burden",
         "Not reported at exact 300 because the primary CAC-DRS source has a boundary conflict",
         "300-999",
+        "3",
       ],
-      [301, "Severe calcified plaque burden", "A3 / N not reported", "300-999"],
-      [999, "Severe calcified plaque burden", "A3 / N not reported", "300-999"],
-      [1000, "Extensive calcified plaque burden", "A3 / N not reported", ">=1000"],
+      [301, "Severe calcified plaque burden", "A3 / N not reported", "300-999", "3"],
+      [999, "Severe calcified plaque burden", "A3 / N not reported", "300-999", "3"],
+      [1000, "Extensive calcified plaque burden", "A3 / N not reported", ">=1000", "4"],
     ];
 
-    for (const [score, category, cacDrs, range] of cases) {
+    for (const [score, category, cacDrs, range, stage] of cases) {
       await fillCacMesa(page, {
         score,
         age: 55,
@@ -205,7 +226,36 @@ test.describe("CAC/MESA Calculator", () => {
       await expectResultValue(results, "Absolute CAC Band", category);
       await expectResultValue(results, "CAC-DRS", cacDrs, { exact: true });
       await expectResultValue(results, "CAC Score Range", range, { exact: true });
+      await expectResultValue(results, "Maron CAC Stage", stage, { exact: true });
     }
+  });
+
+  test("upstages CAC 1-99 at the MESA 75th-percentile boundary", async ({
+    page,
+  }) => {
+    await fillCacMesa(page, {
+      score: 35,
+      age: 46,
+      sex: "female",
+      race: "chinese",
+      vessels: "1",
+    });
+
+    const results = resultsRegion(page);
+    await expectResultValue(results, "Absolute CAC Band", "CAC 1-99", {
+      exact: true,
+    });
+    await expectResultValue(results, "Maron CAC Stage", "2", { exact: true });
+    await expectResultValue(
+      results,
+      "CAC Staging Burden",
+      "Moderate calcified atherosclerotic burden",
+    );
+    await expectResultValue(
+      results,
+      "CAC Stage Criterion",
+      ">=75th MESA reference score (0)",
+    );
   });
 
   test("keeps absolute output while marking MESA unavailable outside limits", async ({

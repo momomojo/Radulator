@@ -24,7 +24,30 @@
         "term": "Benign simple cyst",
         "management": "No follow-up required"
       },
-      "clinicalContext": "Homogeneous -9 to 20 HU simple fluid mass with thin smooth wall, no septa, no calcification, and no nodule."
+      "clinicalContext": "Fully characterized homogeneous simple-fluid mass on a renal mass protocol examination with thin smooth wall, no septa, no calcification, and no nodule."
+    },
+    {
+      "id": "v2019-category-ii-noncontrast-minus9-to20",
+      "name": "Bosniak II - Noncontrast -9 to 20 HU Mass",
+      "category": "II",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "septaThickness": null,
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "noncontrastMinus9To20"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "II",
+        "term": "Likely benign Bosniak II renal mass",
+        "management": "No follow-up required"
+      },
+      "clinicalContext": "Homogeneous -9 to 20 HU mass characterized only at noncontrast CT; v2019 assigns class II rather than fully characterized class I."
     },
     {
       "id": "v2019-category-ii-few-thin-septa",

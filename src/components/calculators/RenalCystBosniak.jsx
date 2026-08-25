@@ -28,7 +28,8 @@ const categoryDetails = {
 };
 
 const densityLabels = {
-  water: "homogeneous -9 to 20 HU at noncontrast CT",
+  water: "fully characterized homogeneous simple fluid at renal mass protocol CT",
+  noncontrastMinus9To20: "homogeneous -9 to 20 HU at noncontrast CT",
   hyperattenuating70: "homogeneous >=70 HU at noncontrast CT",
   renalMassNonenhancing:
     "homogeneous non-enhancing >20 HU at renal mass protocol CT",
@@ -47,6 +48,7 @@ const densityIsBosniakII = (density) =>
     "renalMassNonenhancing",
     "portalVenous21to30",
     "tooSmallLowAttenuation",
+    "noncontrastMinus9To20",
   ].includes(density);
 
 const hasRequiredInputs = (v) =>
@@ -284,10 +286,17 @@ export const RenalCystBosniak = {
       id: "density",
       label: "CT attenuation characterization",
       helpText:
-        "Choose a source-defined homogeneous density-only subtype when present. Heterogeneous or incompletely characterized internal attenuation requires renal mass protocol MRI before Bosniak assignment because occult enhancing elements may change the class.",
+        "Choose fully characterized simple fluid only when a renal mass protocol examination establishes the Bosniak I features. A homogeneous -9 to 20 HU mass known only from noncontrast CT is a Bosniak II density-only subtype. Heterogeneous or incompletely characterized internal attenuation requires renal mass protocol MRI before assignment because occult enhancing elements may change the class.",
       type: "radio",
       opts: [
-        { value: "water", label: "-9 to 20 HU at noncontrast CT" },
+        {
+          value: "water",
+          label: "fully characterized homogeneous simple fluid at renal mass protocol CT",
+        },
+        {
+          value: "noncontrastMinus9To20",
+          label: "-9 to 20 HU at noncontrast CT only",
+        },
         { value: "hyperattenuating70", label: ">=70 HU at noncontrast CT" },
         {
           value: "renalMassNonenhancing",
@@ -483,7 +492,7 @@ export const RenalCystBosniak = {
     if (simpleWaterMass) {
       return buildResult(
         "I",
-        "Well-defined homogeneous simple fluid (-9 to 20 HU) mass with thin wall, no septa, no calcification, and no nodule.",
+        "Fully characterized well-defined homogeneous simple-fluid mass with thin wall, no septa, no calcification, and no nodule.",
       );
     }
 

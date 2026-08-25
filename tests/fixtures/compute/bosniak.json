@@ -20,6 +20,29 @@
       }
     },
     {
+      "id": "noncontrast-minus9-to20-category-ii-not-simple-cyst",
+      "description": "A homogeneous -9 to 20 HU mass characterized only at noncontrast CT is a Bosniak v2019 class II density-only subtype, not a fully characterized class I simple cyst.",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "noncontrastMinus9To20"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Likely benign Bosniak II renal mass" },
+          { "key": "Rationale", "includes": "homogeneous -9 to 20 HU at noncontrast CT" }
+        ]
+      }
+    },
+    {
       "id": "few-thin-enhancing-septa-category-ii",
       "inputs": {
         "scopeEligibility": "eligible",

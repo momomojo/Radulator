@@ -38,7 +38,10 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Absolute CAC Band", "equals": "Mild calcified plaque burden" },
+          { "key": "Absolute CAC Band", "equals": "CAC 1-99" },
+          { "key": "Maron CAC Stage", "equals": "2" },
+          { "key": "CAC Staging Burden", "equals": "Moderate calcified atherosclerotic burden" },
+          { "key": "CAC Stage Criterion", "includes": ">=75th MESA reference score" },
           { "key": "CAC Score Range", "equals": "1-99" },
           { "key": "CAC-DRS", "equals": "A1/N1" },
           { "key": "MESA Reference Position", "equals": "Above 90th reference score (0)" },
@@ -66,6 +69,46 @@
           { "key": "MESA Reference Position", "equals": "Above 90th reference score (102)" },
           { "key": "MESA Probability Nonzero CAC", "equals": "32%" },
           { "key": "MESA Reference Scores", "equals": "25th 0, 50th 0, 75th 11, 90th 102" }
+        ]
+      }
+    },
+    {
+      "id": "stage1-requires-cac-below-75th-reference",
+      "description": "A CAC score from 1 to 99 is Maron stage 1 only when it remains below the supported MESA 75th-percentile reference score.",
+      "inputs": {
+        "score": "1",
+        "age": "55",
+        "sex": "male",
+        "race": "white",
+        "vessel_count": "1"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Band", "equals": "CAC 1-99" },
+          { "key": "Maron CAC Stage", "equals": "1" },
+          { "key": "CAC Staging Burden", "equals": "Mild calcified atherosclerotic burden" },
+          { "key": "CAC Stage Criterion", "includes": "<75th MESA reference score (68)" }
+        ]
+      }
+    },
+    {
+      "id": "stage1-versus-stage2-not-assigned-without-mesa-context",
+      "description": "CAC 1-99 preserves its absolute range but is not assigned Maron stage 1 or 2 when supported percentile context is unavailable.",
+      "inputs": {
+        "score": "35",
+        "age": "44",
+        "sex": "female",
+        "race": "chinese",
+        "vessel_count": "1"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Band", "equals": "CAC 1-99" },
+          { "key": "Maron CAC Stage", "equals": "Not assigned" },
+          { "key": "CAC Staging Burden", "equals": "Percentile-adjusted staging not assigned" },
+          { "key": "CAC Stage Criterion", "includes": "requires supported age, sex, and race/ethnicity reference context" }
         ]
       }
     },

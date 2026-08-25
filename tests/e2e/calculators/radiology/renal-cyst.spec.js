@@ -177,6 +177,25 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).toContainText("Management: No follow-up required");
   });
 
+  test("should distinguish noncontrast -9 to 20 HU as Bosniak II from a fully characterized simple cyst", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      density: "noncontrastMinus9To20",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: II");
+    await expect(results).toContainText(
+      "v2019 Term: Likely benign Bosniak II renal mass",
+    );
+    await expect(results).toContainText(
+      "homogeneous -9 to 20 HU at noncontrast CT",
+    );
+  });
+
   test("should classify few thin septa as Bosniak II", async ({ page }) => {
     await fillBaseBosniakV2019(page, {
       septaCount: "few",
