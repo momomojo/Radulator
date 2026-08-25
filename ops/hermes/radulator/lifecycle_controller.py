@@ -32,15 +32,20 @@ TRANSITIONS = {
     "needs_fix": {"implementing", "blocked"},
     "approved": {"merged_develop", "merged_main", "blocked"},
     "merged_develop": {"promotion", "blocked"},
-    "promotion": {"merged_main", "needs_fix", "blocked"},
+    "promotion": {"review", "merged_main", "needs_fix", "blocked"},
     "merged_main": {"deploying", "blocked"},
     "deploying": {"deployed", "blocked"},
     "deployed": {"smoke_passed", "needs_fix", "blocked"},
     "smoke_passed": {"learned", "blocked"},
     "learned": {"complete", "blocked"},
     "complete": set(),
-    "blocked": {"implementing", "testing", "review", "promotion", "deploying", "needs_fix"},
+    "blocked": set(),
 }
+RESUMABLE_STATES = frozenset(
+    state for state, destinations in TRANSITIONS.items()
+    if state is not None and "blocked" in destinations
+)
+TRANSITIONS["blocked"] = set(RESUMABLE_STATES)
 
 
 class LedgerError(RuntimeError):
@@ -89,18 +94,32 @@ class ReplayState:
     events: tuple[LifecycleEvent, ...]
     current_by_task: dict[str, LifecycleEvent]
     by_idempotency_key: dict[str, LifecycleEvent]
+    blocked_resume_by_task: dict[str, str]
 
 
-def _validate_transition(previous: LifecycleEvent | None, event: LifecycleEvent) -> None:
+def _validate_transition(
+    previous: LifecycleEvent | None,
+    event: LifecycleEvent,
+    *,
+    blocked_resume_state: str | None = None,
+) -> None:
     previous_state = previous.state if previous else None
-    if event.state not in TRANSITIONS.get(previous_state, set()):
-        raise LedgerError(f"Invalid lifecycle transition {previous_state!r} -> {event.state!r}.")
+    transition_origin = previous_state
+    if previous_state == "blocked" and event.state != blocked_resume_state:
+        is_legacy_block = previous is not None and "resume_state" not in previous.evidence
+        if not is_legacy_block:
+            raise LedgerError(
+                f"Blocked lifecycle must resume at retained {blocked_resume_state!r} phase, not {event.state!r}."
+            )
+        transition_origin = blocked_resume_state
+    if event.state not in TRANSITIONS.get(transition_origin, set()):
+        raise LedgerError(f"Invalid lifecycle transition {transition_origin!r} -> {event.state!r}.")
     if previous and previous.source_id != event.source_id:
         raise LedgerError("A task source_id cannot change during replay.")
-    if event.state == "implementing" and previous_state in {"needs_fix", "blocked"}:
+    if event.state == "implementing" and transition_origin in {"needs_fix", "blocked"}:
         if not event.evidence.get("prerequisite_change_id"):
             raise LedgerError("Requeue transition requires prerequisite_change_id evidence.")
-    if previous_state == "needs_fix" and event.state == "implementing":
+    if transition_origin == "needs_fix" and event.state == "implementing":
         if not previous.head_sha or not event.head_sha or event.head_sha == previous.head_sha:
             raise LedgerError("NEEDS_FIX requeue requires a new exact head SHA with the correction.")
 
@@ -118,7 +137,7 @@ class LifecycleLedger:
 
     def replay(self, handle=None) -> ReplayState:
         if handle is None and not self.path.exists():
-            return ReplayState((), {}, {})
+            return ReplayState((), {}, {}, {})
         if handle is None:
             with self.path.open("r", encoding="utf-8") as reader:
                 fcntl.flock(reader.fileno(), fcntl.LOCK_SH)
@@ -128,6 +147,7 @@ class LifecycleLedger:
         events: list[LifecycleEvent] = []
         current: dict[str, LifecycleEvent] = {}
         idempotency: dict[str, LifecycleEvent] = {}
+        blocked_resume: dict[str, str] = {}
         expected_previous = ZERO_HASH
         for line_number, line in enumerate(handle, start=1):
             if not line.strip():
@@ -147,12 +167,21 @@ class LifecycleLedger:
                 raise LedgerError(f"Invalid event hash at line {line_number}.")
             if event.idempotency_key in idempotency:
                 raise LedgerError(f"Duplicate idempotency key at line {line_number}.")
-            _validate_transition(current.get(event.task_id), event)
+            previous = current.get(event.task_id)
+            resume_state = blocked_resume.get(event.task_id) if previous and previous.state == "blocked" else None
+            _validate_transition(previous, event, blocked_resume_state=resume_state)
+            if event.state == "blocked":
+                retained_state = event.evidence.get("resume_state", previous.state if previous else None)
+                if retained_state not in RESUMABLE_STATES or not previous or retained_state != previous.state:
+                    raise LedgerError("Blocked lifecycle resume_state must retain the exact prior resumable phase.")
+                blocked_resume[event.task_id] = retained_state
+            else:
+                blocked_resume.pop(event.task_id, None)
             events.append(event)
             current[event.task_id] = event
             idempotency[event.idempotency_key] = event
             expected_previous = event.event_hash
-        return ReplayState(tuple(events), current, idempotency)
+        return ReplayState(tuple(events), current, idempotency, blocked_resume)
 
     def append(
         self,
@@ -178,14 +207,27 @@ class LifecycleLedger:
             evidence = {}
         if not isinstance(evidence, dict):
             raise LedgerError("evidence must be an object.")
-        serialized_evidence = json.loads(_canonical(evidence))
-
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         descriptor = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
         os.chmod(self.path, 0o600)
         with os.fdopen(descriptor, "r+", encoding="utf-8") as handle:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
             replay = self.replay(handle)
+            previous = replay.current_by_task.get(task_id)
+            existing = replay.by_idempotency_key.get(idempotency_key)
+            serialized_evidence = json.loads(_canonical(evidence))
+            if state == "blocked" and existing:
+                retained_state = existing.evidence.get("resume_state")
+                supplied_resume = serialized_evidence.get("resume_state")
+                if supplied_resume is not None and supplied_resume != retained_state:
+                    raise LedgerError("Blocked lifecycle resume_state conflicts with the existing idempotent event.")
+                if retained_state is not None:
+                    serialized_evidence["resume_state"] = retained_state
+            elif state == "blocked" and previous:
+                supplied_resume = serialized_evidence.get("resume_state")
+                if supplied_resume is not None and supplied_resume != previous.state:
+                    raise LedgerError("Blocked lifecycle resume_state must retain the exact prior resumable phase.")
+                serialized_evidence["resume_state"] = previous.state
             proposed = LifecycleEvent(
                 schema=SCHEMA,
                 idempotency_key=idempotency_key,
@@ -199,12 +241,15 @@ class LifecycleLedger:
                 evidence=serialized_evidence,
                 timestamp=timestamp or _timestamp(),
             )
-            existing = replay.by_idempotency_key.get(idempotency_key)
             if existing:
                 if _semantic_payload(existing) != _semantic_payload(proposed):
                     raise LedgerError(f"Conflicting event for idempotency key {idempotency_key!r}.")
                 return existing
-            _validate_transition(replay.current_by_task.get(task_id), proposed)
+            _validate_transition(
+                previous,
+                proposed,
+                blocked_resume_state=replay.blocked_resume_by_task.get(task_id),
+            )
             unhashed = proposed.as_dict()
             unhashed.pop("event_hash")
             proposed = dataclasses.replace(proposed, event_hash=_event_hash(unhashed))

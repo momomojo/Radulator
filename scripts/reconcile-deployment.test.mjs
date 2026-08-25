@@ -59,6 +59,29 @@ function api(overrides = {}) {
   const client = api({
     async listDeployRunsForHead() {
       return [{
+        id: 5001,
+        head_branch: null,
+        head_sha: MAIN_SHA,
+        event: "repository_dispatch",
+        display_title: autoTitle,
+        status: "completed",
+        conclusion: "success",
+      }];
+    },
+  });
+  const result = await reconcileCurrentMainDeployment({ api: client });
+  assert.equal(
+    result.status,
+    "already-satisfied",
+    "a workflow-scoped successful repository dispatch remains authoritative when optional name/branch metadata is absent",
+  );
+  assert.equal(client.dispatches.length, 0, "a successful exact-SHA deployment is never dispatched twice");
+}
+
+{
+  const client = api({
+    async listDeployRunsForHead() {
+      return [{
         id: 501, name: "Deploy to GitHub Pages", head_branch: "main", head_sha: MAIN_SHA,
         event: "repository_dispatch", display_title: autoTitle, status: "completed", conclusion: "failure",
       }];

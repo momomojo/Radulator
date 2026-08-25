@@ -1,0 +1,453 @@
+{
+  "schema": "radulator-mesa-cac-reference-audit-chunk/v1",
+  "auditedAt": "2026-08-24T22:01:16.168Z",
+  "officialCalculator": "https://tools.mesa-nhlbi.org/Calcium/input.aspx",
+  "tlsVerified": true,
+  "race": "hispanic",
+  "sex": "female",
+  "groupCount": 40,
+  "dataSha256": "1fcabd9ab706021de7865e309e612d376908a5a1ff71d113e65bb46bbb9b2b27",
+  "chunkSha256": "89c70548ac36488f5eef3d2f1aebccdd7a9ce9e9628b5f1ec7d375cc36182361",
+  "groups": [
+    {
+      "key": "hispanic:female:45",
+      "p": 4,
+      "r": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordSha256": "8bb88f8f240c71633cc8b77869e5b469f2d69fc43f448a9b0b004549e7804086"
+    },
+    {
+      "key": "hispanic:female:46",
+      "p": 5,
+      "r": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordSha256": "a63f6d1d884de3c248b7746b5b4ceaebf2a54a6ae62ac75e87aab29b929fac10"
+    },
+    {
+      "key": "hispanic:female:47",
+      "p": 7,
+      "r": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordSha256": "eb77a08479d979ad5e254a0d39ce18d9b068177af2b41c5ed57e388918bfffb4"
+    },
+    {
+      "key": "hispanic:female:48",
+      "p": 8,
+      "r": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordSha256": "50e834abd2efbc29db0028a43af8ce3f032987d651f3bff1fd5e95e798d18ed0"
+    },
+    {
+      "key": "hispanic:female:49",
+      "p": 10,
+      "r": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordSha256": "49a3ee21d3bc2cac25cc9bddfa06a2954c1b4e7665d9331ccedf3d4b4b6ae765"
+    },
+    {
+      "key": "hispanic:female:50",
+      "p": 11,
+      "r": [
+        0,
+        0,
+        0,
+        2
+      ],
+      "recordSha256": "d057dc6565c3baecb631c30a7463931abe6621344fcbd2673dbb8d0143e80af6"
+    },
+    {
+      "key": "hispanic:female:51",
+      "p": 13,
+      "r": [
+        0,
+        0,
+        0,
+        4
+      ],
+      "recordSha256": "9e74844cbc5880cfcb5b2b0c906347d16db7c26cb67d00632be246c9b8cb4d8c"
+    },
+    {
+      "key": "hispanic:female:52",
+      "p": 15,
+      "r": [
+        0,
+        0,
+        0,
+        7
+      ],
+      "recordSha256": "0d42879c2629368cf8e6361e8427754f6e0b55df854a097ca20ebd932e9e255b"
+    },
+    {
+      "key": "hispanic:female:53",
+      "p": 16,
+      "r": [
+        0,
+        0,
+        0,
+        10
+      ],
+      "recordSha256": "06af8d3eb1c77abc75cddf044b9dba087ac69d8f32a1c7b941e12c550f7fa0ed"
+    },
+    {
+      "key": "hispanic:female:54",
+      "p": 18,
+      "r": [
+        0,
+        0,
+        0,
+        14
+      ],
+      "recordSha256": "59c942cbf44b83df7a195b5d4587cc45c93b08608d261a36cc407a14ec35bbee"
+    },
+    {
+      "key": "hispanic:female:55",
+      "p": 19,
+      "r": [
+        0,
+        0,
+        0,
+        18
+      ],
+      "recordSha256": "acd40eee46e9062cbf1e0b8be690f808a78c21ceac2935a5bcfae45d2804247d"
+    },
+    {
+      "key": "hispanic:female:56",
+      "p": 21,
+      "r": [
+        0,
+        0,
+        0,
+        23
+      ],
+      "recordSha256": "01f3a1ae0d75aa0b0753a77e13b2d2815496f17dec775170518f85610ffd8edf"
+    },
+    {
+      "key": "hispanic:female:57",
+      "p": 22,
+      "r": [
+        0,
+        0,
+        0,
+        28
+      ],
+      "recordSha256": "4b255fadf15907912d15be4eaa009df8ea82c959f274b82024796970b0924ae1"
+    },
+    {
+      "key": "hispanic:female:58",
+      "p": 24,
+      "r": [
+        0,
+        0,
+        0,
+        33
+      ],
+      "recordSha256": "410049feb72402f5c07ce871e121b19d0e820b4ba1c9f8bd35892e86621f0a86"
+    },
+    {
+      "key": "hispanic:female:59",
+      "p": 25,
+      "r": [
+        0,
+        0,
+        1,
+        41
+      ],
+      "recordSha256": "ff017fe2eed0560ac345c6140a6e63020fd7106fc2df874eb1db1500c75ce93b"
+    },
+    {
+      "key": "hispanic:female:60",
+      "p": 27,
+      "r": [
+        0,
+        0,
+        2,
+        50
+      ],
+      "recordSha256": "e163a7ca068085a40b9c20f7f3ed71a014dc8aed7daf6f4414096dd0f0add312"
+    },
+    {
+      "key": "hispanic:female:61",
+      "p": 29,
+      "r": [
+        0,
+        0,
+        4,
+        60
+      ],
+      "recordSha256": "b32d801fb5ba073bfda706eb2acaf05263517fb3820cb93b430aba84301a8543"
+    },
+    {
+      "key": "hispanic:female:62",
+      "p": 31,
+      "r": [
+        0,
+        0,
+        7,
+        70
+      ],
+      "recordSha256": "7d78e4fff6ae88e78fd69f68f7965fbf3867fd6ab3f6bbb1a950a8acabcec65f"
+    },
+    {
+      "key": "hispanic:female:63",
+      "p": 34,
+      "r": [
+        0,
+        0,
+        11,
+        83
+      ],
+      "recordSha256": "e77bd8eb6bf821a85aa535fa5fdfbf537ffcec3e7d352b3a663a18581dc3d057"
+    },
+    {
+      "key": "hispanic:female:64",
+      "p": 36,
+      "r": [
+        0,
+        0,
+        14,
+        94
+      ],
+      "recordSha256": "171cb760f6899a9c78307fd765c27e9b9fbd9a2326281eaca46b57b2809873e5"
+    },
+    {
+      "key": "hispanic:female:65",
+      "p": 38,
+      "r": [
+        0,
+        0,
+        19,
+        106
+      ],
+      "recordSha256": "2b29ca5a673ebdeb58817a4317f3329c1754070fef065bfb2eef792e6c4873bc"
+    },
+    {
+      "key": "hispanic:female:66",
+      "p": 41,
+      "r": [
+        0,
+        0,
+        24,
+        123
+      ],
+      "recordSha256": "f86427be91e25c6d5f4623080060b3f6ac2ffe972432367d5d6e3f723f5f79de"
+    },
+    {
+      "key": "hispanic:female:67",
+      "p": 43,
+      "r": [
+        0,
+        0,
+        30,
+        139
+      ],
+      "recordSha256": "dd0baa444cff0b1c5a271a4ff205ee753820012b4a6319fa9da13f9fe3276f7b"
+    },
+    {
+      "key": "hispanic:female:68",
+      "p": 45,
+      "r": [
+        0,
+        0,
+        37,
+        162
+      ],
+      "recordSha256": "6382c1420aecdd34301fb24fe06b2b3693395fc3a2d6de401387f6423dc0f597"
+    },
+    {
+      "key": "hispanic:female:69",
+      "p": 48,
+      "r": [
+        0,
+        0,
+        43,
+        181
+      ],
+      "recordSha256": "246d1c055cd86a016b775c3e15e5eb0f5232fe42a1d1028c7fb4c0907fb7894b"
+    },
+    {
+      "key": "hispanic:female:70",
+      "p": 50,
+      "r": [
+        0,
+        1,
+        51,
+        203
+      ],
+      "recordSha256": "468d53a87836a673c52dfed25037cf79b6e421de319ee62847abb3647f5c7e18"
+    },
+    {
+      "key": "hispanic:female:71",
+      "p": 53,
+      "r": [
+        0,
+        3,
+        62,
+        228
+      ],
+      "recordSha256": "6cb68b02cce978ceae7406262207ce3b96f9c7a88a0f90d85e90360fba64836d"
+    },
+    {
+      "key": "hispanic:female:72",
+      "p": 55,
+      "r": [
+        0,
+        5,
+        75,
+        264
+      ],
+      "recordSha256": "cabb046b41ed620f7a8d361a537bded8353b9f6298e62faa211fb91b7b055366"
+    },
+    {
+      "key": "hispanic:female:73",
+      "p": 57,
+      "r": [
+        0,
+        8,
+        88,
+        298
+      ],
+      "recordSha256": "428e132c41c8ce998ae2e570202a5f7b1c00768e216d406de8a85fd480e92eec"
+    },
+    {
+      "key": "hispanic:female:74",
+      "p": 60,
+      "r": [
+        0,
+        12,
+        102,
+        331
+      ],
+      "recordSha256": "9bd275eefcc931bec0b3d335f8aa7668417acc79554047887cd3061b410a3bb3"
+    },
+    {
+      "key": "hispanic:female:75",
+      "p": 62,
+      "r": [
+        0,
+        16,
+        116,
+        362
+      ],
+      "recordSha256": "3e4b9d8a5dec74593cd44625117b33bdc3f69de303c40e4cc127aafac8b4c3a0"
+    },
+    {
+      "key": "hispanic:female:76",
+      "p": 65,
+      "r": [
+        0,
+        21,
+        131,
+        396
+      ],
+      "recordSha256": "517eba2bd078b450b469d8f055ab8c2c2ba7fbc0e213076e5625fb1fde77e7d4"
+    },
+    {
+      "key": "hispanic:female:77",
+      "p": 67,
+      "r": [
+        0,
+        25,
+        148,
+        436
+      ],
+      "recordSha256": "cab1b8b7e782e59b78632bdf2f0007d4dab4c9a8cfeb0f8975d17e83881dd154"
+    },
+    {
+      "key": "hispanic:female:78",
+      "p": 69,
+      "r": [
+        0,
+        32,
+        165,
+        470
+      ],
+      "recordSha256": "3e98e920d85045e72b14525e904953ccb5850f55d42f4bfc60b134d68840e36d"
+    },
+    {
+      "key": "hispanic:female:79",
+      "p": 72,
+      "r": [
+        0,
+        37,
+        185,
+        510
+      ],
+      "recordSha256": "6c35016b47b39fc50706ba5e2da252bd5770cc871c8a1e332477cf6dcae7d6cd"
+    },
+    {
+      "key": "hispanic:female:80",
+      "p": 74,
+      "r": [
+        0,
+        45,
+        205,
+        557
+      ],
+      "recordSha256": "39f51923252f960bc92ca1f625040539fb9873dbe918fc7afca528888e307fec"
+    },
+    {
+      "key": "hispanic:female:81",
+      "p": 76,
+      "r": [
+        3,
+        53,
+        230,
+        606
+      ],
+      "recordSha256": "8d20062949b55c90bdff56cd742eae182f971aa5d31b6c346b16eddfdf4031de"
+    },
+    {
+      "key": "hispanic:female:82",
+      "p": 79,
+      "r": [
+        6,
+        62,
+        252,
+        654
+      ],
+      "recordSha256": "c4231ef7d6d2802872225f7c886d5c51c541d515778d5198bfdbbc6d2b381ccd"
+    },
+    {
+      "key": "hispanic:female:83",
+      "p": 81,
+      "r": [
+        9,
+        73,
+        280,
+        715
+      ],
+      "recordSha256": "3ac3cfe9726041b5b1764ca46855712196ac43b128ba8258fdf15cd6d9e05759"
+    },
+    {
+      "key": "hispanic:female:84",
+      "p": 83,
+      "r": [
+        12,
+        83,
+        309,
+        768
+      ],
+      "recordSha256": "1e8237090b60d29e5ffbbd6db9863f3a4e3e3d9f5aff5bd47102d3930e5ddfdb"
+    }
+  ]
+}
