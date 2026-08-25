@@ -1,7 +1,7 @@
 {
   "calculatorId": "birads",
   "calculatorName": "Mammography Assessment Guide",
-  "version": "fda-mqsa-2024-birads-v2025-context-v1",
+  "version": "fda-mqsa-2024-birads-v2025-context-v2",
   "cases": [
     {
       "id": "missing-selection",
@@ -103,9 +103,11 @@
           { "key": "Assessment", "equals": "3 — Probably benign" },
           {
             "key": "Likelihood context",
-            "equals": ">0% to ≤2% expected likelihood of malignancy"
+            "equals": ">0% but ≤2% expected likelihood of malignancy"
           },
-          { "key": "Next step", "includes": "initial 6-month follow-up" }
+          { "key": "Next step", "includes": "initial 6-month follow-up" },
+          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" },
+          { "key": "U.S. self-referred patient pathway", "includes": "patients who do not have a health care provider" }
         ]
       }
     },
@@ -118,9 +120,13 @@
           { "key": "Assessment", "equals": "4 — Suspicious" },
           {
             "key": "Likelihood context",
-            "equals": ">2% to <95% expected likelihood of malignancy"
+            "equals": "2% but <95% expected likelihood of malignancy"
           },
-          { "key": "Next step", "includes": "Tissue sampling is generally indicated" }
+          { "key": "Next step", "includes": "Tissue sampling is generally indicated" },
+          { "key": "U.S. reporting requirement", "includes": "patient lay summary to the patient" },
+          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" },
+          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" }
         ]
       }
     },
@@ -134,7 +140,9 @@
           {
             "key": "Likelihood context",
             "equals": ">2% to ≤10% expected likelihood of malignancy"
-          }
+          },
+          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" }
         ]
       }
     },
@@ -148,7 +156,10 @@
           {
             "key": "Likelihood context",
             "equals": ">10% to ≤50% expected likelihood of malignancy"
-          }
+          },
+          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" },
+          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" }
         ]
       }
     },
@@ -161,8 +172,11 @@
           { "key": "Assessment", "equals": "4C — High suspicion" },
           {
             "key": "Likelihood context",
-            "equals": ">50% to <95% expected likelihood of malignancy"
-          }
+            "equals": "50% to <95% expected likelihood of malignancy"
+          },
+          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" },
+          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" }
         ]
       }
     },
@@ -180,7 +194,9 @@
             "key": "Likelihood context",
             "equals": "≥95% expected likelihood of malignancy"
           },
-          { "key": "Next step", "includes": "Prompt tissue confirmation" }
+          { "key": "Next step", "includes": "Prompt tissue confirmation" },
+          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" }
         ]
       }
     },
