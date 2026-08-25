@@ -1006,6 +1006,10 @@ test.describe("MELD-Na Calculator", () => {
       expect(qaDocument).not.toContain(
         "Kim WR et al. Gastroenterology 2008 MELD-Na paper",
       );
+      expect(qaDocument).toContain(
+        "Creatinine set to 3.0 mg/dL for MELD 3.0 (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)",
+      );
+      expect(qaDocument).not.toContain("(dialysis/CVVHD rule)");
     });
 
     test("should display all 6 references", async ({ page }) => {

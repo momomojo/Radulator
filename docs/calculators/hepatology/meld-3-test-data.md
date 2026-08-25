@@ -111,7 +111,7 @@ Expected:
 Expected:
 
 - MELD 3.0 Score: 25
-- Clinical Notes: "Creatinine set to 3.0 mg/dL for MELD 3.0 (dialysis/CVVHD rule)"
+- Clinical Notes: "Creatinine set to 3.0 mg/dL for MELD 3.0 (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)"
 
 ### Test Case 6: Registered-Before-18 Path
 
