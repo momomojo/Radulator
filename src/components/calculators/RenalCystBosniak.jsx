@@ -12,7 +12,7 @@ const categoryDetails = {
   IIF: {
     term: "Probably benign cystic mass",
     management:
-      "Imaging follow-up is recommended; choose interval and modality using current specialty guidance and patient factors",
+      "Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors",
     severity: "warning",
   },
   III: {

@@ -48,7 +48,7 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 |---|---|---|---|
 | **I** | Well-defined homogeneous `-9 to 20 HU` simple fluid, thin smooth wall, no septa, no calcification, no nodule | Benign simple cyst | No follow-up required |
 | **II** | All are well defined with a thin smooth `<=2 mm` wall, plus few `1-3` thin septa (which may enhance), any calcification morphology when features remain assessable, or a benign homogeneous CT density subtype | Benign cystic mass | No follow-up required |
-| **IIF** | Smooth 3 mm enhancing wall or septa, or many `>=4` thin enhancing septa | Probably benign cystic mass | Imaging follow-up is recommended; choose interval and modality using current specialty guidance and patient factors |
+| **IIF** | Smooth 3 mm enhancing wall or septa, or many `>=4` thin enhancing septa | Probably benign cystic mass | Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors |
 | **III** | Enhancing thick `>=4 mm` or irregular obtuse wall/septa without enhancing nodule | Indeterminate cystic mass | Consider urology consultation |
 | **IV** | Enhancing nodule: `>=4 mm` obtuse convex protrusion or any size acute-margin convex protrusion | Cystic mass, highly suspicious for malignancy | Consider urology consultation |
 
@@ -104,7 +104,7 @@ A nonenhancing wall or septum measuring `3 mm` or more, an irregular nonenhancin
 
 Many `>=4` thin enhancing septa without thick wall, irregular septa, or nodule.
 
-**Result**: Bosniak IIF, probably benign cystic mass. Imaging follow-up is recommended; use current specialty guidance and patient factors to choose interval and modality. Bosniak v2019 predicts malignancy risk but is not a comprehensive management algorithm.
+**Result**: Bosniak IIF, probably benign cystic mass. Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change. Tailor surveillance to patient factors. Bosniak v2019 predicts malignancy risk and is not a substitute for patient-specific management.
 
 ### Bosniak III
 

@@ -99,7 +99,7 @@ All classes may now demonstrate enhancement (in 2005, enhancement was restricted
 |-------|-------------|-------------|-----------------|------------|----------------------|
 | **I** | Well-defined thin (≤2 mm) smooth wall; homogeneous simple fluid (−9 to 20 HU); no septa, no calcifications | Wall **may** enhance (new) | 0% (benign) | No follow-up required | Table 1, Fig. 1 |
 | **II** (6 subtypes) | All have thin (≤2 mm) smooth walls. <br>1. Thin (≤2 mm) few (1–3) septa; any calcification<br>2. Homogeneous hyperattenuating **≥70 HU** (noncontrast)<br>3. Homogeneous non-enhancing >20 HU (renal mass protocol)<br>4. Homogeneous −9 to 20 HU (noncontrast)<br>5. Homogeneous **21–30 HU** (portal venous)<br>6. Homogeneous low attenuation, "too small to characterize" | Walls/septa **may** enhance | <1% (benign/likely benign) | No follow-up required | Tables 1, 4; Figs. 3–6 |
-| **IIF** | Smooth minimally thickened **(3 mm) enhancing wall** **OR**<br> Smooth minimally thickened **(3 mm) enhancing septum/septa** (1–3) **OR**<br> Many **(≥4) thin (≤2 mm) enhancing** septa | **Enhancement required** | 0–38% (probably benign; nearly all indolent when malignant) | Imaging follow-up is recommended; the v2019 primary paper does not prescribe a complete interval schedule | Table 1; Figs. 7–8 |
+| **IIF** | Smooth minimally thickened **(3 mm) enhancing wall** **OR**<br> Smooth minimally thickened **(3 mm) enhancing septum/septa** (1–3) **OR**<br> Many **(≥4) thin (≤2 mm) enhancing** septa | **Enhancement required** | 0–38% (probably benign; nearly all indolent when malignant) | Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors | Tables 1 and 4; Figs. 7–8 |
 | **III** | One or more enhancing **thick (≥4 mm)** **OR** **irregular** (≤3 mm obtuse convex protrusion) walls/septa. No nodular enhancement. | Enhancement required | ~50% (indeterminate) | Consider urology consultation | Table 3; Figs. 9–10 |
 | **IV** | One or more enhancing **nodule(s)** :<br> • ≥4 mm convex protrusion with **obtuse** margins **OR**<br> • Any size convex protrusion with **acute** margins | Enhancement required | ~90% (highly suspicious) | Consider urology consultation | Table 3; Figs. 11–13 |
 
@@ -218,8 +218,8 @@ Bosniak v2019 provides **separate CT and MRI algorithms** (Silverman 2019, Table
 
 **v2019: Bosniak IIF** (many thin enhancing septa).
 **v2005: Bosniak IIF** (few-thin septa with possible enhancement — qualitative criterion). Same final category, but v2019 requires septal counting and explicit enhancement confirmation.
-**Management:** Imaging follow-up is recommended. Choose interval and modality using current specialty guidance and patient factors; the v2019 paper is a malignancy-prediction system rather than a complete management algorithm.
-**Source:** Silverman 2019, Table 1, Figs. 7–8
+**Management:** Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors. The v2019 paper is a malignancy-prediction system and is not a substitute for patient-specific management.
+**Source:** Silverman 2019, Tables 1 and 4, Figs. 7–8
 
 ---
 

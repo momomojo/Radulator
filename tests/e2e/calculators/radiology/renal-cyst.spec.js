@@ -288,9 +288,8 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
       "Probably benign cystic mass",
     );
     await expect(results).toContainText(
-      "Imaging follow-up is recommended",
+      "Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years",
     );
-    await expect(results).not.toContainText("annually for 5 years");
   });
 
   test("should classify a minimally thick enhancing wall as Bosniak IIF", async ({
