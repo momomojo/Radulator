@@ -7,6 +7,12 @@
  * imaging features.
  */
 
+const MQSA_SEVEN_DAY_REQUIREMENT =
+  "Under U.S. MQSA, the facility must provide the written report to the referring health care provider and the patient lay summary within seven calendar days of interpretation for Suspicious or Highly Suggestive of Malignancy assessments.";
+
+const MAMMOGRAPHY_INTERVAL_NOTE =
+  'The public ACR mammography summary table prints Category 4 as "2% but <95%," Category 4B as ">10% to ≤50%," and Category 4C as "50% to <95%." This creates a source-literal overlap at exactly 50%; the values shown here preserve the published table and are not a normalized clinical decision rule. See the linked ACR mammography summary form.';
+
 const ASSESSMENTS = {
   "0_additional": {
     option: "Additional imaging evaluation is needed",
@@ -61,9 +67,11 @@ const ASSESSMENTS = {
     option: "4 — Suspicious",
     assessment: "4 — Suspicious",
     mqsa: "Suspicious",
-    likelihood: ">2% to <95% expected likelihood of malignancy",
+    likelihood: "2% but <95% expected likelihood of malignancy",
     nextStep:
       "Tissue sampling is generally indicated after the interpreting radiologist confirms imaging, clinical, and procedural concordance.",
+    reportingRequirement: MQSA_SEVEN_DAY_REQUIREMENT,
+    sourceNote: MAMMOGRAPHY_INTERVAL_NOTE,
     severity: "danger",
   },
   "4A": {
@@ -73,6 +81,7 @@ const ASSESSMENTS = {
     likelihood: ">2% to ≤10% expected likelihood of malignancy",
     nextStep:
       "Tissue sampling is generally indicated after the interpreting radiologist confirms imaging, clinical, and procedural concordance.",
+    reportingRequirement: MQSA_SEVEN_DAY_REQUIREMENT,
     severity: "danger",
   },
   "4B": {
@@ -82,15 +91,19 @@ const ASSESSMENTS = {
     likelihood: ">10% to ≤50% expected likelihood of malignancy",
     nextStep:
       "Tissue sampling is generally indicated after the interpreting radiologist confirms imaging, clinical, and procedural concordance.",
+    reportingRequirement: MQSA_SEVEN_DAY_REQUIREMENT,
+    sourceNote: MAMMOGRAPHY_INTERVAL_NOTE,
     severity: "danger",
   },
   "4C": {
     option: "4C — High suspicion",
     assessment: "4C — High suspicion",
     mqsa: "Suspicious",
-    likelihood: ">50% to <95% expected likelihood of malignancy",
+    likelihood: "50% to <95% expected likelihood of malignancy",
     nextStep:
       "Tissue sampling is generally indicated with timely clinical coordination and radiologic-pathologic concordance review.",
+    reportingRequirement: MQSA_SEVEN_DAY_REQUIREMENT,
+    sourceNote: MAMMOGRAPHY_INTERVAL_NOTE,
     severity: "danger",
   },
   5: {
@@ -100,6 +113,7 @@ const ASSESSMENTS = {
     likelihood: "≥95% expected likelihood of malignancy",
     nextStep:
       "Prompt tissue confirmation and multidisciplinary care coordination are generally indicated.",
+    reportingRequirement: MQSA_SEVEN_DAY_REQUIREMENT,
     severity: "danger",
   },
   6: {
@@ -203,7 +217,7 @@ export const BIRADS = {
   info: {
     text: `This independent educational guide covers mammography assessment categories only. It is not an ACR-licensed BI-RADS implementation, is not affiliated with or endorsed by the American College of Radiology, and does not reproduce the ACR manual or lexicon.
 
-Select the final category already assigned by a qualified interpreting physician. Radulator does not assign a category from imaging features, interpret images, replace a report, calculate patient-specific cancer risk, or determine management for an individual patient.
+Select the assessment already assigned by a qualified interpreting physician. Radulator does not assign a category from imaging features, interpret images, replace a report, calculate patient-specific cancer risk, or determine management for an individual patient.
 
 The FDA MQSA terminology shown here governs U.S. mammography report categories; MQSA is a regulatory framework, not a complete clinical-practice guideline. The ACR owns and maintains BI-RADS® and released v2025 on December 1, 2025 across mammography, ultrasound, MRI, contrast-enhanced mammography, and outcomes auditing. This page uses that current version only as context and links users to the official materials.
 
@@ -221,7 +235,7 @@ Category-specific next steps below are independently worded educational summarie
       subLabel:
         "Selected-category reference only; this guide does not interpret imaging findings.",
       helpText:
-        "Choose the final assessment already assigned by a qualified interpreting physician.",
+        "Choose the assessment already assigned by a qualified interpreting physician.",
       type: "radio",
       opts: ASSESSMENT_ORDER.map((value) => ({
         value,
@@ -255,6 +269,9 @@ Category-specific next steps below are independently worded educational summarie
     if (row.reportingRequirement) {
       result["U.S. reporting requirement"] = row.reportingRequirement;
     }
+    if (row.sourceNote) {
+      result["Published interval note"] = row.sourceNote;
+    }
     if (row.biradsNumbering) {
       result["BI-RADS numbering"] = row.biradsNumbering;
     }
@@ -267,7 +284,7 @@ Category-specific next steps below are independently worded educational summarie
       u: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
     },
     {
-      t: "FDA MQSA final-rule overview: mammography report assessment categories (enforced September 10, 2024)",
+      t: "FDA MQSA final-rule overview: mammography report assessment categories and seven-day communication requirement (enforced September 10, 2024)",
       u: "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
     },
     {
