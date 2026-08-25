@@ -71,7 +71,7 @@ function getAbsoluteCategory(score) {
 
 function getCacDrs(score, vesselCount) {
   if (score === 300) {
-    return "A category unassigned at exact 300 (primary CAC-DRS table defines A3 as >300)";
+    return "Not reported at exact 300 because the primary CAC-DRS source has a boundary conflict";
   }
   const aCategory =
     score === 0 ? "A0" : score < 100 ? "A1" : score < 300 ? "A2" : "A3";
@@ -218,7 +218,7 @@ export const CACMesa = {
   info: {
     text:
       "This calculator interprets a total Agatston coronary artery calcium score already produced by CT software. It does not calculate Agatston score from CT pixels, lesion area, HU bins, scanner protocol, or slice data.\n\n" +
-      "Outputs include an absolute CAC burden band from the Maron et al. 2024 proposed staging bands, an optional CAC-DRS A/N code from the original SCCT 2018 CAC-DRS publication, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. The proposed absolute bands are 0, 1-99, 100-299, 300-999, and >=1000; this tool reports burden labels only and does not reproduce the proposal's treatment recommendations. The primary CAC-DRS table separately defines A2 as 100-299 and A3 as >300, leaving exact 300 unassigned; this tool discloses that boundary instead of inferring a CAC-DRS category.\n\n" +
+      "Outputs include an absolute CAC burden band from the Maron et al. 2024 proposed staging bands, an optional CAC-DRS A/N code from the original SCCT 2018 CAC-DRS publication, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. The proposed absolute bands are 0, 1-99, 100-299, 300-999, and >=1000; this tool reports burden labels only and does not reproduce the proposal's treatment recommendations. The primary CAC-DRS source conflicts at exact 300: narrative text describes the traditional 300-1000 band while the formal table defines A2 as 100-299 and A3 as >300. This tool therefore does not report a CAC-DRS A category at exact 300 and limits that input to the separately sourced absolute burden band.\n\n" +
       "The local MESA output compares the score with the official 25th, 50th, 75th, and 90th reference scores. It does not estimate an exact percentile. The reference cohort comprised participants free of clinical cardiovascular disease and treated diabetes at baseline. A relative reference position does not by itself establish that a patient is at high clinical risk. Outside the MESA limits, the absolute band and CAC-DRS remain available without extrapolation.",
     link: {
       label: "View MESA CAC Score Reference Values",

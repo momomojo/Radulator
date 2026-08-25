@@ -250,6 +250,29 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).not.toContainText("No follow-up required");
   });
 
+  for (const wall of ["minimallyThick", "thick"]) {
+    test(`should require MRI for heterogeneous CT attenuation despite an enhancing ${wall} wall`, async ({
+      page,
+    }) => {
+      await fillBaseBosniakV2019(page, {
+        wall,
+        wallEnhancement: "present",
+        density: "heterogeneousOrIncomplete",
+      });
+
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = resultPanel(page);
+      await expect(results).toContainText("Bosniak Category: Not assigned");
+      await expect(results).toContainText(
+        "heterogeneous or otherwise incompletely characterized",
+      );
+      await expect(results).toContainText("renal mass protocol MRI");
+      await expect(results).not.toContainText("Bosniak Category: IIF");
+      await expect(results).not.toContainText("Bosniak Category: III");
+    });
+  }
+
   for (const [wall, expectedCategory] of [
     ["minimallyThick", "IIF"],
     ["thick", "III"],
