@@ -183,20 +183,10 @@ function computeLegacyMeldNa(inputs) {
   }
 
   const { mortality, riskCategory } = getLegacyMortalityContext(meldNa);
-
-  let interpretation = `${riskCategory} of 3-month mortality without transplantation. `;
-  if (meldNa >= 15) {
-    interpretation +=
-      "Patient meets criteria for liver transplant evaluation (MELD-Na ≥15). ";
-  }
-  if (meldNa >= 25) {
-    interpretation += "High priority for transplantation.";
-  } else if (meldNa >= 15) {
-    interpretation += "Candidate for transplant listing.";
-  } else {
-    interpretation +=
-      "Monitor closely; transplant evaluation if disease progresses.";
-  }
+  const interpretation =
+    `${riskCategory} historical 3-month mortality stratum without transplantation. ` +
+    "This legacy MELD-Na result is for comparison and education only; current OPTN allocation uses MELD 3.0. " +
+    "It does not determine transplant evaluation, listing, priority, monitoring, or treatment.";
 
   const result = {
     "MELD Score": meld.toString(),

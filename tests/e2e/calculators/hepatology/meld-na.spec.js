@@ -737,8 +737,8 @@ test.describe("MELD-Na Calculator", () => {
     });
   });
 
-  test.describe("Transplant Eligibility Interpretation", () => {
-    test("should suggest monitoring for MELD-Na < 15", async ({ page }) => {
+  test.describe("Legacy educational interpretation", () => {
+    test("does not turn a MELD-Na result below 15 into management advice", async ({ page }) => {
       await page.fill('input[id="creatinine"]', "1.2");
       await page.fill('input[id="bilirubin"]', "1.5");
       await page.fill('input[id="inr"]', "1.3");
@@ -747,13 +747,14 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator(
-          "text=Monitor closely; transplant evaluation if disease progresses",
+        resultsRegion(page).getByText(
+          /comparison and education only; current OPTN allocation uses MELD 3\.0/i,
         ),
       ).toBeVisible();
+      await expect(resultsRegion(page)).not.toContainText("Monitor closely");
     });
 
-    test("should indicate transplant candidacy for MELD-Na 15-24", async ({
+    test("does not turn a MELD-Na result from 15 through 24 into listing advice", async ({
       page,
     }) => {
       await page.fill('input[id="creatinine"]', "1.6");
@@ -764,16 +765,16 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator(
-          "text=Patient meets criteria for liver transplant evaluation",
+        resultsRegion(page).getByText(
+          /does not determine transplant evaluation, listing, priority, monitoring, or treatment/i,
         ),
       ).toBeVisible();
-      await expect(
-        page.locator("text=Candidate for transplant listing"),
-      ).toBeVisible();
+      await expect(resultsRegion(page)).not.toContainText(
+        "Candidate for transplant listing",
+      );
     });
 
-    test("should indicate high priority for MELD-Na >= 25", async ({
+    test("does not turn a MELD-Na result of at least 25 into priority advice", async ({
       page,
     }) => {
       await page.fill('input[id="creatinine"]', "3.0");
@@ -784,13 +785,13 @@ test.describe("MELD-Na Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator(
-          "text=Patient meets criteria for liver transplant evaluation",
+        resultsRegion(page).getByText(
+          /does not determine transplant evaluation, listing, priority, monitoring, or treatment/i,
         ),
       ).toBeVisible();
-      await expect(
-        page.locator("text=High priority for transplantation"),
-      ).toBeVisible();
+      await expect(resultsRegion(page)).not.toContainText(
+        "High priority for transplantation",
+      );
     });
   });
 
