@@ -41,7 +41,7 @@ assert.match(
 );
 assert.equal(
   watchedFiles.length,
-  39,
+  41,
   "development registry metadata must watch every calculator source file",
 );
 
