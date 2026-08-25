@@ -492,6 +492,50 @@
       }
     },
     {
+      "id": "heterogeneous-density-with-enhancing-3mm-wall-still-requires-mri",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "minimallyThick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "heterogeneousOrIncomplete"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "heterogeneous or otherwise incompletely characterized" }
+        ]
+      }
+    },
+    {
+      "id": "heterogeneous-density-with-enhancing-thick-wall-still-requires-mri",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "heterogeneousOrIncomplete"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "heterogeneous or otherwise incompletely characterized" }
+        ]
+      }
+    },
+    {
       "id": "other-characterized-density-with-enhancing-3mm-wall-category-iif",
       "inputs": {
         "scopeEligibility": "eligible",

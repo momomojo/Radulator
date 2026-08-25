@@ -124,7 +124,7 @@ export const RenalCystBosniak = {
   metaDesc:
     "Free Bosniak v2019 Classification Calculator for cystic renal masses. Classify cystic kidney masses (I, II, IIF, III, IV) with CT-based version 2019 criteria.",
   info: {
-    text: "Bosniak Classification, version 2019 applies to cystic renal masses with less than approximately 25% enhancing tissue after infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded. Its suggested reporting content is intended for the general population, not patients with a known or suspected renal cell carcinoma syndrome such as von Hippel-Lindau syndrome or hereditary leiomyomatosis and renal cell cancer. Enhancement must be associated with the wall, septum, or nodule used for classification and may be visually unequivocal or quantitatively confirmed at CT by a >=20 HU increase.\n\nVersion history: v2019 replaces the prior qualitative 2005 CT criteria with explicit 2/3/4 mm wall and septal thresholds, septa counts, a nodule definition, calcification treatment, and homogeneous HU-based Bosniak II density subtypes. CT Bosniak II masses must remain well defined with a thin (<=2 mm), smooth wall, and Bosniak IIF cystic masses must also be well defined. Intrarenal location and size >=3 cm alone no longer upgrade a mass, but a homogeneous hyperattenuating nonenhancing mass larger than 3 cm may be best characterized with MRI before class assignment.\n\nMany nonenhancing septa, a nonenhancing wall or septum >=3 mm, abundant calcification that could conceal enhancement, and heterogeneous or otherwise incompletely characterized internal attenuation without a definite enhancing wall, septum, or nodule criterion should be evaluated with renal mass protocol MRI before assigning a class. When a definite enhancing feature is established, assign the highest source-defined wall, septal, or nodular class. Use the separate Bosniak v2019 MRI criteria when MRI is required. Silverman SG, Pedrosa I, Ellis JH, et al. Radiology. 2019;292(2):475-488. DOI: 10.1148/radiol.2019182646",
+    text: "Bosniak Classification, version 2019 applies to cystic renal masses with less than approximately 25% enhancing tissue after infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded. Its suggested reporting content is intended for the general population, not patients with a known or suspected renal cell carcinoma syndrome such as von Hippel-Lindau syndrome or hereditary leiomyomatosis and renal cell cancer. Enhancement must be associated with the wall, septum, or nodule used for classification and may be visually unequivocal or quantitatively confirmed at CT by a >=20 HU increase.\n\nVersion history: v2019 replaces the prior qualitative 2005 CT criteria with explicit 2/3/4 mm wall and septal thresholds, septa counts, a nodule definition, calcification treatment, and homogeneous HU-based Bosniak II density subtypes. CT Bosniak II masses must remain well defined with a thin (<=2 mm), smooth wall, and Bosniak IIF cystic masses must also be well defined. Intrarenal location and size >=3 cm alone no longer upgrade a mass, but a homogeneous hyperattenuating nonenhancing mass larger than 3 cm may be best characterized with MRI before class assignment.\n\nMany nonenhancing septa, a nonenhancing wall or septum >=3 mm, abundant calcification that could conceal enhancement, and heterogeneous or otherwise incompletely characterized internal attenuation should be evaluated with renal mass protocol MRI before assigning a class. A definite enhancing wall or septal feature does not remove the need to characterize potentially occult higher-order enhancing elements in a heterogeneous or incomplete CT examination. Use the separate Bosniak v2019 MRI criteria when MRI is required. Silverman SG, Pedrosa I, Ellis JH, et al. Radiology. 2019;292(2):475-488. DOI: 10.1148/radiol.2019182646",
   },
   fields: [
     {
@@ -284,7 +284,7 @@ export const RenalCystBosniak = {
       id: "density",
       label: "CT attenuation characterization",
       helpText:
-        "Choose a source-defined homogeneous density-only subtype when present. Heterogeneous or incompletely characterized internal attenuation without a definite enhancing wall, septum, or nodule requires MRI; a separately confirmed enhancing feature is classified by its highest Bosniak wall, septal, or nodular criterion.",
+        "Choose a source-defined homogeneous density-only subtype when present. Heterogeneous or incompletely characterized internal attenuation requires renal mass protocol MRI before Bosniak assignment because occult enhancing elements may change the class.",
       type: "radio",
       opts: [
         { value: "water", label: "-9 to 20 HU at noncontrast CT" },
@@ -426,13 +426,9 @@ export const RenalCystBosniak = {
       );
     }
 
-    if (
-      v.density === "heterogeneousOrIncomplete" &&
-      !wallEnhancing &&
-      !septaEnhancing
-    ) {
+    if (v.density === "heterogeneousOrIncomplete") {
       return buildUnassignedResult(
-        "The selected internal attenuation is heterogeneous or otherwise incompletely characterized at CT without a definite enhancing wall, septum, or nodule criterion. Calcification or few thin septa cannot substitute for complete characterization; renal mass protocol MRI is recommended before assignment.",
+        "The selected internal attenuation is heterogeneous or otherwise incompletely characterized at CT. A known wall or septal feature does not exclude occult enhancing elements that could change the highest class; renal mass protocol MRI is recommended before assignment.",
       );
     }
 
