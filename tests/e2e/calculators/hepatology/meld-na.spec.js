@@ -252,6 +252,54 @@ test.describe("MELD-Na Calculator", () => {
       expect(await getMeld3Score(page)).toBe(12);
     });
 
+    test("shows the official OPTN adult-sex selection guidance", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await page.fill('input[id="currentAge"]', "45");
+      await page.fill('input[id="ageAtRegistration"]', "45");
+
+      const help = page.getByRole("button", {
+        name: "Help for Sex for Adult MELD 3.0 Calculation",
+      });
+      await expect(help).toBeVisible();
+      await expect(help).toHaveAttribute(
+        "title",
+        /in consultation with the candidate/i,
+      );
+      await expect(help).toHaveAttribute(
+        "title",
+        /gender affirming hormone therapy/i,
+      );
+    });
+
+    test("does not impose an unsupported upper-age eligibility limit and uses neutral numeric strata", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        currentAge: "121",
+        age: "121",
+        sex: "male",
+        creatinine: "1.0",
+        bilirubin: "1.5",
+        inr: "1.2",
+        sodium: "135",
+        albumin: "3.0",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(resultsRegion(page)).not.toContainText("Error");
+      expect(await getMeld3Score(page)).toBe(12);
+      await expect(resultsRegion(page)).toContainText(
+        "MELD 3.0 numeric stratum 10-19",
+      );
+      await expect(resultsRegion(page)).not.toContainText(
+        "Intermediate MELD 3.0 range",
+      );
+    });
+
     test("verifier example 3: hypoalbuminemia case should be MELD 3.0 16", async ({
       page,
     }) => {

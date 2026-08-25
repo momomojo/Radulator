@@ -93,8 +93,8 @@ Legacy MELD-Na bounds:
 
 - **Scoring model**: current MELD 3.0 or temporary legacy MELD-Na.
 - **Current age**: required for MELD 3.0; candidates currently under age 12 use PELD/PELD Cr.
-- **Age at registration**: required for MELD 3.0; validates 0-120 years, cannot exceed current age, and selects the registered-before-18 or adult equation.
-- **Sex for adult MELD 3.0 calculation**: required only when age at registration is 18 or older.
+- **Age at registration**: required for MELD 3.0; must be non-negative, cannot exceed current age, and selects the registered-before-18 or adult equation. The cited OPTN guide uses date of birth and waiting-list registration date and does not define a maximum age, so Radulator does not invent one.
+- **Sex for adult MELD 3.0 calculation**: required only when age at registration is 18 or older. Follow current OPTN guidance and select Male or Female in consultation with the candidate; the field help includes the OPTN examples for candidates receiving feminizing or masculinizing gender-affirming hormone therapy.
 - **Creatinine**: mg/dL, OPTN calculator entry range 0.01-40; calculation bounds are applied afterward.
 - **Total bilirubin**: mg/dL, OPTN calculator entry range 0-99; calculation bounds are applied afterward.
 - **INR**: OPTN calculator entry range 0.5-99; calculation bounds are applied afterward.
@@ -108,7 +108,7 @@ Legacy MELD-Na bounds:
 
 - **MELD 3.0 Score**: integer 6-40.
 - **Calculation Path**: registered-before-18 or adult age-at-registration path.
-- **Prognosis Context**: cautious text describing that higher MELD 3.0 values correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts.
+- **Prognosis Context**: neutral numeric strata (`6-9`, `10-19`, `20-29`, `30-39`, and `40`) used in peer-reviewed model evaluation, without unsupported qualitative risk labels or treatment/allocation recommendations.
 - **Legacy MELD-Na**: notes that legacy MELD-Na remains available in the temporary option.
 - **Clinical Notes**: value bounds and path-specific adjustments applied.
 

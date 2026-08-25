@@ -91,15 +91,18 @@ function getLegacyMortalityContext(score) {
 
 function getMeld3PrognosisContext(score) {
   if (score <= 9) {
-    return "Low MELD 3.0 range. Higher MELD 3.0 values correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts; this calculator does not determine listing, exception scores, or allocation decisions.";
+    return "MELD 3.0 numeric stratum 6-9. These numeric strata mirror bands used in peer-reviewed model evaluation; they are not qualitative risk categories or treatment/allocation recommendations. Higher scores correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts.";
   }
   if (score <= 19) {
-    return "Intermediate MELD 3.0 range. Higher MELD 3.0 values correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts; this calculator does not determine listing, exception scores, or allocation decisions.";
+    return "MELD 3.0 numeric stratum 10-19. These numeric strata mirror bands used in peer-reviewed model evaluation; they are not qualitative risk categories or treatment/allocation recommendations. Higher scores correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts.";
   }
   if (score <= 29) {
-    return "High MELD 3.0 range. Higher MELD 3.0 values correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts; this calculator does not determine listing, exception scores, or allocation decisions.";
+    return "MELD 3.0 numeric stratum 20-29. These numeric strata mirror bands used in peer-reviewed model evaluation; they are not qualitative risk categories or treatment/allocation recommendations. Higher scores correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts.";
   }
-  return "Very high MELD 3.0 range. Higher MELD 3.0 values correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts; this calculator does not determine listing, exception scores, or allocation decisions.";
+  if (score <= 39) {
+    return "MELD 3.0 numeric stratum 30-39. These numeric strata mirror bands used in peer-reviewed model evaluation; they are not qualitative risk categories or treatment/allocation recommendations. Higher scores correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts.";
+  }
+  return "MELD 3.0 numeric stratum 40. These numeric strata mirror bands used in peer-reviewed model evaluation; they are not qualitative risk categories or treatment/allocation recommendations. This calculator does not determine listing, exception scores, organ offers, or treatment decisions.";
 }
 
 function computeLegacyMeldNa(inputs) {
@@ -225,16 +228,12 @@ function computeMeld3(inputs) {
         "MELD applies only when the candidate is currently at least 12 years old; use PELD/PELD Cr for younger candidates.",
     };
   }
-  if (currentAge > 120) {
-    return { Error: "Current age must be between 12 and 120 years." };
-  }
-
   const registrationAge = parseNumericInput(inputs.ageAtRegistration);
   if (!Number.isFinite(registrationAge)) {
     return { Error: "Please enter age at registration for MELD 3.0." };
   }
-  if (registrationAge < 0 || registrationAge > 120) {
-    return { Error: "Age at registration must be between 0 and 120 years." };
+  if (registrationAge < 0) {
+    return { Error: "Age at registration must be zero or greater." };
   }
   if (registrationAge > currentAge) {
     return { Error: "Age at registration cannot exceed current age." };
@@ -407,20 +406,22 @@ export const MELDNa = {
     {
       id: "currentAge",
       label: "Current Age",
-      subLabel: "years (12-120)",
+      subLabel: "years (must currently be at least 12 for MELD)",
       type: "number",
       showIf: isMeld3Selected,
     },
     {
       id: "ageAtRegistration",
       label: "Age at Registration",
-      subLabel: "years (0-120; determines MELD 3.0 path)",
+      subLabel: "years (non-negative; determines MELD 3.0 path)",
       type: "number",
       showIf: isMeld3Selected,
     },
     {
       id: "sex",
       label: "Sex for Adult MELD 3.0 Calculation",
+      helpText:
+        "Select Male or Female in consultation with the candidate and consistent with current OPTN guidance. Select Female when sex recorded at birth is female or, for example, when sex recorded at birth was male and the candidate is currently taking feminizing gender affirming hormone therapy. Select Male when sex recorded at birth is male or, for example, when sex recorded at birth was female and the candidate is currently taking masculinizing gender affirming hormone therapy.",
       type: "radio",
       opts: [
         { value: "male", label: "Male" },

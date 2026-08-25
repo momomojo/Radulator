@@ -204,6 +204,20 @@ Expected error:
 Please select sex for adult MELD 3.0 calculation.
 ```
 
+### Adult Sex Selection Guidance
+
+When age at registration is 18 or older, the field exposes the current OPTN guidance to select Male or Female in consultation with the candidate. The help text includes the OPTN examples for a candidate receiving feminizing or masculinizing gender-affirming hormone therapy so the `+1.33` term is not applied from an unlabeled assumption.
+
+### No Unsupported Upper-Age Limit
+
+Inputs: current age 121, age at registration 121, adult Male selection, creatinine 1.0, bilirubin 1.5, INR 1.2, sodium 135, and albumin 3.0.
+
+Expected:
+
+- No validation error from an invented maximum age.
+- MELD 3.0 Score: 12.
+- Prognosis Context begins `MELD 3.0 numeric stratum 10-19` and does not use a qualitative low/intermediate/high label.
+
 ### Albumin Bounds
 
 | Albumin input | Expected adjustment |

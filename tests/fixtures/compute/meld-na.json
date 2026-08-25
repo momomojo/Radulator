@@ -66,6 +66,28 @@
       }
     },
     {
+      "id": "meld3-does-not-invent-upper-age-eligibility-limit",
+      "inputs": {
+        "scoringModel": "meld3",
+        "currentAge": "121",
+        "ageAtRegistration": "121",
+        "sex": "male",
+        "creatinine": "1.0",
+        "bilirubin": "1.5",
+        "inr": "1.2",
+        "sodium": "135",
+        "albumin": "3.0",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "12" },
+          { "key": "Prognosis Context", "includes": "MELD 3.0 numeric stratum 10-19" }
+        ]
+      }
+    },
+    {
       "id": "meld3-hypoalbuminemia",
       "inputs": {
         "scoringModel": "meld3",
