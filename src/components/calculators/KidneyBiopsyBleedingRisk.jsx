@@ -160,6 +160,12 @@ export function computeKidneyBiopsyBleedingRisk(values) {
       "2026 recalibrated preprocedure model for adults undergoing diagnostic percutaneous native- or transplant-kidney biopsy.",
     "Clinical Limitation":
       "Use this estimate with clinical judgment, local biopsy protocols, medication and coagulation review, blood-pressure assessment, and appropriate postprocedure monitoring. Canadian development and validation cohorts used different procedural practices and follow-up windows (one week and one month), so performance may differ elsewhere.",
+    ...(probability > 0.25
+      ? {
+          "Calibration Warning":
+            "Estimates above 25% may overpredict major bleeding risk. The 2026 external-validation study reported mild overprediction in this range; do not treat 25% as a risk category or action threshold.",
+        }
+      : {}),
     "Safety Note":
       "Do not use this percentage alone to decide whether to perform a biopsy, change antithrombotic therapy or prophylaxis, choose monitoring duration, or trigger treatment.",
     _linearPredictor: linearPredictor,

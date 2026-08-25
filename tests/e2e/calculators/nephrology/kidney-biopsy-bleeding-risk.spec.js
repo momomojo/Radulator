@@ -131,6 +131,27 @@ test.describe("Kidney Biopsy Major Bleeding Risk (KBRC)", () => {
     await expect(result).not.toContainText(/low[- ]risk|moderate[- ]risk|high[- ]risk/i);
   });
 
+  test("warns that valid estimates above 25% may be overpredicted", async ({
+    page,
+  }) => {
+    await fillProfile(page, {
+      age: 18,
+      weight: 30,
+      height: 210,
+      platelets: 50,
+      hemoglobin: 70,
+      kidney_size: 8,
+      kidney_type: "native",
+    });
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const result = resultRegion(page);
+    await expect(result).toContainText("30.2%");
+    await expect(result).toContainText(
+      "Estimates above 25% may overpredict major bleeding risk",
+    );
+  });
+
   test("fails closed for missing and out-of-range inputs", async ({
     page,
   }) => {
