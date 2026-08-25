@@ -156,9 +156,17 @@ function Field({ f, val, vals, on, onBatch }) {
           subLabel={f.subLabel}
           helpText={f.helpText}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+          role="radiogroup"
+          aria-label={f.label}
+          aria-required={f.required || undefined}
+        >
           {f.opts.map((opt) => (
-            <div key={opt.value} className="flex items-center space-x-2">
+            <div
+              key={opt.value}
+              className="flex min-h-11 items-center space-x-2 rounded-md border border-border px-3"
+            >
               <input
                 id={`${f.id}-${opt.value}`}
                 type="radio"
@@ -166,11 +174,12 @@ function Field({ f, val, vals, on, onBatch }) {
                 value={opt.value}
                 checked={val === opt.value}
                 onChange={(e) => on(f.id, e.target.value)}
+                required={f.required}
                 className="text-primary focus:ring-primary accent-primary"
               />
               <Label
                 htmlFor={`${f.id}-${opt.value}`}
-                className="text-sm font-normal cursor-pointer text-foreground"
+                className="flex min-h-10 flex-1 cursor-pointer items-center text-sm font-normal text-foreground"
               >
                 {opt.label}
               </Label>
@@ -208,6 +217,7 @@ function Field({ f, val, vals, on, onBatch }) {
         value={val ?? ""}
         onChange={(e) => on(f.id, e.target.value)}
         placeholder={f.subLabel}
+        required={f.required}
         min={f.min}
         max={f.max}
         step={f.step}

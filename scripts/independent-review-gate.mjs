@@ -378,7 +378,11 @@ export async function githubRequest(token, path, options = {}) {
       ...options.headers,
     },
   });
-  if (!response.ok) throw new Error(`${options.method || "GET"} ${path} failed: ${response.status} ${await response.text()}`);
+  if (!response.ok) {
+    const error = new Error(`${options.method || "GET"} ${path} failed: ${response.status} ${await response.text()}`);
+    error.status = response.status;
+    throw error;
+  }
   return response.status === 204 ? null : response.json();
 }
 

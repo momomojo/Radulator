@@ -1,4 +1,8 @@
-# MELD-Na Calculator Test Data
+# Archived MELD-Na 2016 Test Data — Not Current Validation Evidence
+
+> **Historical record only.** These fixtures describe the superseded pre-MELD-3.0 implementation. They are retained solely so the clinical reviewer can compare the replacement against the repository baseline. Use [`meld-3-test-data.md`](meld-3-test-data.md) for current MELD 3.0 validation evidence.
+
+# MELD-Na Calculator Test Data (Archived)
 
 ## Comprehensive Test Scenarios for QA Validation
 
