@@ -18,7 +18,10 @@ test.describe("Guideline Version Badges", () => {
       { name: "PI-RADS v2.1", expected: "PI-RADS v2.1 (2019)" },
       { name: "LI-RADS v2018", expected: "LI-RADS v2018" },
       { name: "Lung-RADS v2022", expected: "Lung-RADS v2022" },
-      { name: "ACR BI-RADS", expected: "ACR BI-RADS 5th Ed. 2013" },
+      {
+        name: "Mammography Assessment Guide (BI-RADS v2025 context)",
+        expected: "FDA MQSA 2024 · ACR BI-RADS v2025 context",
+      },
       { name: "CAD-RADS 2.0", expected: "CAD-RADS 2.0 (2022)" },
       { name: "ACR NI-RADS", expected: "ACR NI-RADS 2018" },
       { name: "ACR O-RADS", expected: "ACR O-RADS 2020" },
@@ -26,12 +29,15 @@ test.describe("Guideline Version Badges", () => {
       { name: "Wells Criteria for PE", expected: "Wells Criteria (2000)" },
       { name: "Wells Criteria for DVT", expected: "Wells Criteria (2003)" },
       { name: "Child-Pugh Score", expected: "Child-Pugh (Pugh 1973)" },
-      { name: "MELD-Na Score", expected: "MELD-Na (OPTN 2016)" },
+      {
+        name: "MELD-Na Score",
+        expected: "MELD 3.0 (OPTN Policy 9.1.D)",
+      },
       { name: "BCLC Staging", expected: "BCLC 2022" },
       { name: "Mehran CIN Risk Score", expected: "Mehran Score (2004)" },
       {
         name: "Bosniak Classification (Renal Cysts)",
-        expected: "Bosniak (2005) — v2019 update planned",
+        expected: "Bosniak v2019",
       },
     ];
 
@@ -99,10 +105,11 @@ test.describe("Guideline Version Badges", () => {
       await expect(panel).toBeVisible();
       await expect(panel).toContainText("Bosniak v2019 (2019)");
       await expect(panel).toContainText(
-        "has been approved (physician sign-off 2026-07-05)",
+        "active calculator version; the retired 2005 logic is retained only as historical context",
       );
-      await expect(panel).toContainText("is being implemented");
-      await expect(panel).toContainText("currently runs 2005 logic");
+      await expect(panel).toContainText(
+        "retired 2005 logic is retained only as historical context",
+      );
       await expect(panel).toContainText("wall and septal thickness");
       await expect(panel).toContainText("intrarenal location");
 

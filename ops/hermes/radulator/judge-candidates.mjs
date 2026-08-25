@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { Buffer } from "node:buffer";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -25,6 +26,133 @@ import { loadPublicKeysFile } from "./public-keys.mjs";
 
 export const CANDIDATE_SCHEMA = "radulator-judge-candidate/v1";
 export const CLAIM_SCHEMA = "radulator-judge-claims/v1";
+export const FILE_REVIEW_EVIDENCE_SCHEMA = "radulator-file-review-evidence/v1";
+
+const GIT_OBJECT_PATTERN = /^[0-9a-f]{40}$/;
+const MAX_REVIEW_BLOB_BYTES = 1_000_000;
+
+function gitObjectMetadata(entry, pathName) {
+  if (
+    !entry ||
+    typeof pathName !== "string" ||
+    !pathName ||
+    !/^[0-7]{6}$/.test(entry.mode || "") ||
+    !["blob", "commit"].includes(entry.type) ||
+    !GIT_OBJECT_PATTERN.test(entry.sha || "")
+  ) {
+    throw new Error(`Git object evidence is malformed for ${pathName}.`);
+  }
+  return {
+    path: pathName,
+    mode: entry.mode,
+    type: entry.type,
+    sha: entry.sha,
+    size: Number.isSafeInteger(entry.size) && entry.size >= 0 ? entry.size : null,
+  };
+}
+
+async function loadTree(request, token, owner, repo, commitSha) {
+  const commit = await request(token, `/repos/${owner}/${repo}/git/commits/${commitSha}`);
+  if (!GIT_OBJECT_PATTERN.test(commit?.tree?.sha || "")) {
+    throw new Error(`Git commit ${commitSha} did not return an exact tree identity.`);
+  }
+  const tree = await request(token, `/repos/${owner}/${repo}/git/trees/${commit.tree.sha}?recursive=1`);
+  if (tree?.truncated || !Array.isArray(tree?.tree)) {
+    throw new Error(`Git tree evidence for ${commitSha} is truncated or malformed.`);
+  }
+  return new Map(tree.tree.map((entry) => [entry.path, entry]));
+}
+
+async function objectEvidence({ request, token, owner, repo, entry, pathName, blobCache }) {
+  if (!entry) return null;
+  const evidence = gitObjectMetadata(entry, pathName);
+  if (evidence.type !== "blob") return evidence;
+  if (!Number.isSafeInteger(evidence.size) || evidence.size > MAX_REVIEW_BLOB_BYTES) {
+    throw new Error(`Patchless blob ${pathName} is too large for bounded exact review evidence.`);
+  }
+  let blob = blobCache.get(evidence.sha);
+  if (!blob) {
+    blob = await request(token, `/repos/${owner}/${repo}/git/blobs/${evidence.sha}`);
+    blobCache.set(evidence.sha, blob);
+  }
+  const content = typeof blob?.content === "string" ? blob.content.replace(/\s/g, "") : "";
+  if (
+    blob?.encoding !== "base64" ||
+    !content ||
+    !Number.isSafeInteger(blob.size) ||
+    blob.size !== evidence.size ||
+    Buffer.from(content, "base64").length !== evidence.size
+  ) {
+    throw new Error(`Patchless blob content is malformed for ${pathName}.`);
+  }
+  return { ...evidence, encoding: "base64", content };
+}
+
+export async function hydratePatchlessReviewEvidence({
+  token,
+  owner,
+  repo,
+  headSha,
+  baseSha,
+  files,
+  request = githubRequest,
+}) {
+  if (
+    !token ||
+    !owner ||
+    !repo ||
+    !GIT_OBJECT_PATTERN.test(headSha || "") ||
+    !GIT_OBJECT_PATTERN.test(baseSha || "") ||
+    !Array.isArray(files)
+  ) {
+    throw new Error("Patchless review-evidence identity is malformed.");
+  }
+  const missingPatch = files.filter((file) => typeof file?.patch !== "string");
+  if (!missingPatch.length) return files;
+
+  const [headTree, baseTree] = await Promise.all([
+    loadTree(request, token, owner, repo, headSha),
+    loadTree(request, token, owner, repo, baseSha),
+  ]);
+  const blobCache = new Map();
+  const hydrated = [];
+  for (const file of files) {
+    if (typeof file?.patch === "string") {
+      hydrated.push(file);
+      continue;
+    }
+    const headPath = file.status === "removed" ? null : file.filename;
+    const basePath = file.status === "added" ? null : (file.previousFilename || file.previous_filename || file.filename);
+    const headEntry = headPath ? headTree.get(headPath) : null;
+    const baseEntry = basePath ? baseTree.get(basePath) : null;
+    if ((headPath && !headEntry) || (basePath && !baseEntry)) {
+      throw new Error(`Exact Git object evidence is missing for ${file.filename}.`);
+    }
+    hydrated.push({
+      ...file,
+      reviewEvidence: {
+        schema: FILE_REVIEW_EVIDENCE_SCHEMA,
+        headSha,
+        baseSha,
+        head: await objectEvidence({ request, token, owner, repo, entry: headEntry, pathName: headPath, blobCache }),
+        base: await objectEvidence({ request, token, owner, repo, entry: baseEntry, pathName: basePath, blobCache }),
+      },
+    });
+  }
+  return hydrated;
+}
+
+function completeReviewEvidence(files, headSha, baseSha) {
+  return files.every((file) => {
+    if (typeof file.patch === "string") return true;
+    const evidence = file.reviewEvidence;
+    return evidence?.schema === FILE_REVIEW_EVIDENCE_SCHEMA &&
+      evidence.headSha === headSha &&
+      evidence.baseSha === baseSha &&
+      (file.status === "removed" ? evidence.head === null : GIT_OBJECT_PATTERN.test(evidence.head?.sha || "")) &&
+      (file.status === "added" ? evidence.base === null : GIT_OBJECT_PATTERN.test(evidence.base?.sha || ""));
+  });
+}
 
 function exactState(state, risk) {
   return {
@@ -134,6 +262,15 @@ export async function collectCandidates({ repository, role, publicKeys, api, now
     if (!labels.has("ready-for-gate")) continue;
     const state = await api.loadGateState(pr.number);
     if (!state.ci?.ok || !completeFileList(state.pr, state.files)) continue;
+    if (state.files.some((file) => typeof file.patch !== "string")) {
+      if (typeof api.hydrateReviewEvidence !== "function") {
+        throw new Error(`Patchless files for PR #${state.pr.number} require exact Git object evidence.`);
+      }
+      state.files = await api.hydrateReviewEvidence(state.pr, state.files);
+    }
+    if (!completeReviewEvidence(state.files, state.pr.headSha, state.pr.baseSha)) {
+      throw new Error(`Exact file review evidence is incomplete for PR #${state.pr.number}.`);
+    }
     const { risk, details: riskDetails } = analyzeRisk(state.files, state.pr);
     const exact = exactState(state, risk);
     const existing = newestByRole(state, publicKeys, exact);
@@ -377,6 +514,14 @@ async function run() {
       return [...develop, ...main];
     },
     loadGateState: (prNumber) => loadGateState(token, owner, repo, prNumber, config),
+    hydrateReviewEvidence: (pr, files) => hydratePatchlessReviewEvidence({
+      token,
+      owner,
+      repo,
+      headSha: pr.headSha,
+      baseSha: pr.baseSha,
+      files,
+    }),
   };
   // Prove the token reaches the intended repository without printing it.
   await githubRequest(token, `/repos/${owner}/${repo}`);

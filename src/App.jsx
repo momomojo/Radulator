@@ -189,6 +189,7 @@ function AppContent() {
     selectCalculator,
     updateField,
     batchUpdateFields,
+    resetCalculator,
     setResults,
     addMreRow,
     removeMreRow,
@@ -373,6 +374,13 @@ function AppContent() {
     }
   };
 
+  const reset = () => {
+    resetCalculator();
+    setCopied(false);
+    setSnippetCopied(false);
+    setComputeError(null);
+  };
+
   const hasReportSnippet = useMemo(
     () => canBuildReportSnippet(def?.id, out),
     [def?.id, out],
@@ -440,8 +448,10 @@ function AppContent() {
     }
   };
 
-  // Disable Calculate for MRE until at least one valid ROI pair exists
+  // Allow calculators to require complete input before calculation. MRE keeps
+  // its legacy ROI-specific readiness check below.
   const canRun = useMemo(() => {
+    if (typeof def?.canRun === "function" && !def.canRun(vals)) return false;
     if (def?.id !== "mr-elastography") return true;
     const parseValue = (val) => {
       if (val === undefined || val === null || val === "") return NaN;
@@ -491,7 +501,7 @@ function AppContent() {
           )
       : [];
     return roisFromFields.length + roisFromCsv.length + roisFromRows.length > 0;
-  }, [def?.id, vals, mreRows]);
+  }, [def, vals, mreRows]);
 
   const prostateVolumeMl = useMemo(() => {
     if (def?.id !== "prostate-volume" || !out) return NaN;
@@ -1002,6 +1012,8 @@ function AppContent() {
                       >
                         <button
                           type="button"
+                          data-calculator-id={calc.id}
+                          data-calculator-category={categoryName}
                           onClick={() =>
                             handleSelectCalculator(calc, categoryName)
                           }
@@ -1347,6 +1359,15 @@ function AppContent() {
                   CSV, or dynamic rows to enable Calculate.
                 </p>
               )}
+              {!canRun && def.canRunMessage && (
+                <p
+                  id={`${def.id}-calculate-requirements`}
+                  className="text-xs text-muted-foreground"
+                  role="status"
+                >
+                  {def.canRunMessage}
+                </p>
+              )}
               {computeError && !def.isCustomComponent && (
                 <div
                   ref={computeErrorRef}
@@ -1374,14 +1395,34 @@ function AppContent() {
                 </div>
               )}
               {!def.isCustomComponent && (
-                <Button
-                  className="w-full"
-                  onClick={run}
-                  disabled={!canRun}
-                  aria-disabled={!canRun}
+                <div
+                  className={def.showReset ? "grid grid-cols-2 gap-3" : undefined}
                 >
-                  Calculate
-                </Button>
+                  <Button
+                    className="w-full"
+                    onClick={run}
+                    disabled={!canRun}
+                    aria-disabled={!canRun}
+                    aria-describedby={
+                      !canRun && def.canRunMessage
+                        ? `${def.id}-calculate-requirements`
+                        : undefined
+                    }
+                  >
+                    Calculate
+                  </Button>
+                  {def.showReset && (
+                    <Button
+                      className="w-full"
+                      type="button"
+                      variant="secondary"
+                      onClick={reset}
+                      disabled={Object.keys(vals).length === 0 && !out}
+                    >
+                      Reset
+                    </Button>
+                  )}
+                </div>
               )}
 
               {out && !def.isCustomComponent && (

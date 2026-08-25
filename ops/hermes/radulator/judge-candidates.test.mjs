@@ -9,6 +9,7 @@ import path from "node:path";
 import {
   claimNextCandidate,
   collectCandidates,
+  hydratePatchlessReviewEvidence,
   selectCandidateBatch,
   writeCandidateCache,
 } from "./judge-candidates.mjs";
@@ -252,6 +253,116 @@ const PUBLIC_KEYS = {
 
 const STANDARD_FILES = [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }];
 const HIGH_FILES = [{ filename: "src/components/calculators/MELDNa.jsx", status: "modified", patch: "@@ -1 +1 @@\n-1\n+2" }];
+
+{
+  const headTreeSha = "1".repeat(40);
+  const baseTreeSha = "2".repeat(40);
+  const headBlobSha = "3".repeat(40);
+  const baseBlobSha = "4".repeat(40);
+  const files = [
+    {
+      filename: "tests/fixtures/compute/meld-na.json",
+      status: "modified",
+      additions: 0,
+      deletions: 0,
+      changes: 0,
+      patch: null,
+    },
+    ...STANDARD_FILES,
+  ];
+  const calls = [];
+  const hydrated = await hydratePatchlessReviewEvidence({
+    token: "opaque-token",
+    owner: "momomojo",
+    repo: "Radulator",
+    headSha: HEAD,
+    baseSha: BASE,
+    files,
+    async request(token, endpoint) {
+      calls.push({ token, endpoint });
+      if (endpoint === `/repos/momomojo/Radulator/git/commits/${HEAD}`) {
+        return { tree: { sha: headTreeSha } };
+      }
+      if (endpoint === `/repos/momomojo/Radulator/git/commits/${BASE}`) {
+        return { tree: { sha: baseTreeSha } };
+      }
+      if (endpoint === `/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`) {
+        return {
+          truncated: false,
+          tree: [{
+            path: "tests/fixtures/compute/meld-na.json",
+            mode: "100644",
+            type: "blob",
+            sha: headBlobSha,
+            size: 18,
+          }],
+        };
+      }
+      if (endpoint === `/repos/momomojo/Radulator/git/trees/${baseTreeSha}?recursive=1`) {
+        return {
+          truncated: false,
+          tree: [{
+            path: "tests/fixtures/compute/meld-na.json",
+            mode: "100644",
+            type: "blob",
+            sha: baseBlobSha,
+            size: 16,
+          }],
+        };
+      }
+      if (endpoint === `/repos/momomojo/Radulator/git/blobs/${headBlobSha}`) {
+        return { encoding: "base64", size: 18, content: Buffer.from('{"current": true}\n').toString("base64") };
+      }
+      if (endpoint === `/repos/momomojo/Radulator/git/blobs/${baseBlobSha}`) {
+        return { encoding: "base64", size: 16, content: Buffer.from('{"prior": true}\n').toString("base64") };
+      }
+      throw new Error(`Unexpected endpoint: ${endpoint}`);
+    },
+  });
+
+  assert.equal(hydrated[1], files[1], "ordinary textual patches do not gain redundant blob evidence");
+  assert.deepEqual(hydrated[0].reviewEvidence, {
+    schema: "radulator-file-review-evidence/v1",
+    headSha: HEAD,
+    baseSha: BASE,
+    head: {
+      path: "tests/fixtures/compute/meld-na.json",
+      mode: "100644",
+      type: "blob",
+      sha: headBlobSha,
+      size: 18,
+      encoding: "base64",
+      content: Buffer.from('{"current": true}\n').toString("base64"),
+    },
+    base: {
+      path: "tests/fixtures/compute/meld-na.json",
+      mode: "100644",
+      type: "blob",
+      sha: baseBlobSha,
+      size: 16,
+      encoding: "base64",
+      content: Buffer.from('{"prior": true}\n').toString("base64"),
+    },
+  });
+  assert.ok(calls.every((call) => call.token === "opaque-token"));
+
+  await assert.rejects(
+    hydratePatchlessReviewEvidence({
+      token: "opaque-token",
+      owner: "momomojo",
+      repo: "Radulator",
+      headSha: HEAD,
+      baseSha: BASE,
+      files: [files[0]],
+      async request(_token, endpoint) {
+        if (endpoint.includes("/git/commits/")) return { tree: { sha: headTreeSha } };
+        return { truncated: true, tree: [] };
+      },
+    }),
+    /truncated/i,
+    "patchless files are never judged from an incomplete Git tree",
+  );
+}
 
 function stateFixture(files = STANDARD_FILES, reviews = []) {
   const labels = relevantLabelsDigest(["ready-for-gate"]);
