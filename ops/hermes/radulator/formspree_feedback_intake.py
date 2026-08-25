@@ -31,6 +31,8 @@ MAX_SCAN = 100
 MAX_MESSAGE_LENGTH = 4000
 MAX_SCALAR_LENGTH = 80
 MAX_COMMAND_OUTPUT = 8 * 1024 * 1024
+MAX_AUTHENTICATION_RESULTS = 8
+MAX_AUTHENTICATION_BYTES = 32 * 1024
 
 
 class FeedbackIntakeError(RuntimeError):
@@ -205,7 +207,7 @@ def _sort_key(summary: Dict[str, Any]) -> Any:
     return (timestamp, str(summary.get("id", "")))
 
 
-def _trusted_notification(value: Dict[str, Any]) -> bool:
+def _candidate_notification(value: Dict[str, Any]) -> bool:
     if not isinstance(value, dict):
         return False
     sender = email.utils.parseaddr(str(value.get("from", "")))[1].lower()
@@ -214,6 +216,44 @@ def _trusted_notification(value: Dict[str, Any]) -> bool:
         and value.get("subject") == EXPECTED_SUBJECT
         and sender == EXPECTED_SENDER
     )
+
+
+def _authenticated_formspree_origin(value: Dict[str, Any]) -> bool:
+    results = value.get("authentication_results")
+    if not isinstance(results, list) or not results:
+        return False
+    # Gmail prepends its own Authentication-Results field. Trust only that
+    # first field, never a later user-injected lookalike.
+    authoritative = results[0]
+    if not isinstance(authoritative, str):
+        return False
+    normalized = re.sub(r"\s+", " ", authoritative).strip().lower()
+    segments = [segment.strip() for segment in normalized.split(";")]
+    if not segments or segments[0] != "mx.google.com":
+        return False
+    dkim_pass = any(
+        segment.startswith("dkim=pass")
+        and re.search(r"\bheader\.i=@formspree\.io(?:\s|$)", segment)
+        for segment in segments[1:]
+    )
+    spf_pass = any(
+        segment.startswith("spf=pass")
+        and re.search(
+            r"\bsmtp\.mailfrom=(?:\"[^\"]*@email\.formspree\.io\"|[^\s;]*@email\.formspree\.io)(?:\s|$)",
+            segment,
+        )
+        for segment in segments[1:]
+    )
+    dmarc_pass = any(
+        segment.startswith("dmarc=pass")
+        and re.search(r"\bheader\.from=formspree\.io(?:\s|$)", segment)
+        for segment in segments[1:]
+    )
+    return dkim_pass and spf_pass and dmarc_pass
+
+
+def _trusted_notification(value: Dict[str, Any]) -> bool:
+    return _candidate_notification(value) and _authenticated_formspree_origin(value)
 
 
 def _find_task_id(value: Any) -> Optional[str]:
@@ -379,15 +419,18 @@ def _process_feedback_locked(
     if not isinstance(summaries, list):
         raise FeedbackIntakeError("Gmail feedback search returned an invalid response.")
 
-    trusted = [item for item in summaries if _trusted_notification(item)]
-    trusted.sort(key=_sort_key)
+    candidates = [item for item in summaries if _candidate_notification(item)]
+    candidates.sort(key=_sort_key)
     new_attempted = 0
     replay_attempted = 0
-    for summary in trusted:
+    for summary in candidates:
         message_id = summary["id"]
         digest = _receipt_digest(message_id)
         existing_receipt = state["processed"].get(digest)
         if isinstance(existing_receipt, dict) and existing_receipt.get("classification") == "feedback":
+            outcome["already_processed"] += 1
+            continue
+        if isinstance(existing_receipt, dict) and existing_receipt.get("classification") == "untrusted":
             outcome["already_processed"] += 1
             continue
         if (
@@ -408,19 +451,26 @@ def _process_feedback_locked(
         else:
             if new_attempted >= max_messages:
                 break
-            new_attempted += 1
 
         received = _received_date(summary.get("date"))
         try:
             full = gmail.get(message_id)
         except Exception as error:
             raise FeedbackIntakeError("Gmail feedback read failed.") from error
-        if (
-            not _trusted_notification(full)
-            or full.get("id") != message_id
-            or not isinstance(full.get("body"), str)
-        ):
+        if not isinstance(full, dict) or full.get("id") != message_id:
             raise FeedbackIntakeError("Gmail feedback read did not match the trusted notification.")
+        if not _trusted_notification(full):
+            state["processed"][digest] = {
+                "classification": "untrusted",
+                "parser_version": PARSER_VERSION,
+            }
+            _write_state(state_path, state)
+            outcome["rejected_untrusted"] = outcome.get("rejected_untrusted", 0) + 1
+            continue
+        if not isinstance(full.get("body"), str):
+            raise FeedbackIntakeError("Gmail feedback read did not contain a message body.")
+        if not stale_quarantine:
+            new_attempted += 1
 
         classification = "feedback"
         try:
@@ -579,7 +629,86 @@ class GoogleGmailClient:
         value = self._run(["get", message_id])
         if not isinstance(value, dict):
             raise FeedbackIntakeError("Google helper message response is invalid.")
-        return value
+        environment = dict(os.environ)
+        environment["HERMES_HOME"] = self.hermes_home
+        authentication_output = self.runner.run(
+            [
+                self.python,
+                str(Path(__file__).resolve()),
+                "--read-authentication-results",
+                message_id,
+                "--hermes-home",
+                self.hermes_home,
+            ],
+            environment,
+        )
+        try:
+            authentication_results = json.loads(authentication_output)
+        except json.JSONDecodeError as error:
+            raise FeedbackIntakeError(
+                "Gmail authentication evidence was not valid JSON."
+            ) from error
+        if (
+            not isinstance(authentication_results, list)
+            or len(authentication_results) > MAX_AUTHENTICATION_RESULTS
+            or any(not isinstance(item, str) for item in authentication_results)
+            or len(authentication_output.encode("utf-8")) > MAX_AUTHENTICATION_BYTES
+        ):
+            raise FeedbackIntakeError("Gmail authentication evidence was invalid.")
+        result = dict(value)
+        result["authentication_results"] = authentication_results
+        return result
+
+
+def _read_gmail_authentication_results(
+    hermes_home: Path,
+    message_id: str,
+) -> List[str]:
+    if not isinstance(message_id, str) or not message_id.strip():
+        raise FeedbackIntakeError("Gmail authentication read is missing a message id.")
+    token_path = Path(hermes_home) / "google_token.json"
+    if not token_path.is_file():
+        raise FeedbackIntakeError("Gmail authentication token is unavailable.")
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        credentials = Credentials.from_authorized_user_file(str(token_path))
+        service = build(
+            "gmail",
+            "v1",
+            credentials=credentials,
+            cache_discovery=False,
+        )
+        message = service.users().messages().get(
+            userId="me",
+            id=message_id,
+            format="metadata",
+            metadataHeaders=["Authentication-Results"],
+        ).execute()
+    except Exception as error:
+        raise FeedbackIntakeError(
+            "Gmail authentication evidence could not be read."
+        ) from error
+    if not isinstance(message, dict) or message.get("id") != message_id:
+        raise FeedbackIntakeError("Gmail authentication readback mismatched the message.")
+    headers = message.get("payload", {}).get("headers", [])
+    if not isinstance(headers, list):
+        raise FeedbackIntakeError("Gmail authentication headers were invalid.")
+    results = [
+        header.get("value")
+        for header in headers
+        if isinstance(header, dict)
+        and str(header.get("name", "")).lower() == "authentication-results"
+        and isinstance(header.get("value"), str)
+    ]
+    serialized_size = len(json.dumps(results).encode("utf-8"))
+    if (
+        len(results) > MAX_AUTHENTICATION_RESULTS
+        or serialized_size > MAX_AUTHENTICATION_BYTES
+    ):
+        raise FeedbackIntakeError("Gmail authentication evidence was too large.")
+    return results
 
 
 class HermesKanbanClient:
@@ -667,11 +796,27 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--project", default="")
     parser.add_argument("--assignee", default="radulator")
     parser.add_argument("--max-messages", type=int, default=20)
+    parser.add_argument(
+        "--read-authentication-results",
+        metavar="MESSAGE_ID",
+        help=argparse.SUPPRESS,
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
+    if args.read_authentication_results:
+        try:
+            results = _read_gmail_authentication_results(
+                args.hermes_home,
+                args.read_authentication_results,
+            )
+        except FeedbackIntakeError as error:
+            print("Radulator feedback authentication read failed: " + str(error), file=sys.stderr)
+            return 1
+        print(json.dumps(results, separators=(",", ":")))
+        return 0
     gmail = GoogleGmailClient(args.google_python, args.google_api, args.hermes_home)
     kanban = HermesKanbanClient(args.hermes, args.project, args.assignee)
     try:
@@ -679,7 +824,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     except FeedbackIntakeError as error:
         print("Radulator feedback intake failed: " + str(error), file=sys.stderr)
         return 1
-    if result["created"] or result["quarantined"]:
+    if result["created"] or result["quarantined"] or result.get("rejected_untrusted"):
         print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0
 

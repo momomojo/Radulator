@@ -33,6 +33,12 @@ FORM_BODY = """
 </body></html>
 """
 
+AUTHENTICATION_RESULTS = (
+    "mx.google.com; dkim=pass header.i=@formspree.io header.s=s1; "
+    "spf=pass smtp.mailfrom=notice@email.formspree.io; "
+    "dmarc=pass header.from=formspree.io"
+)
+
 
 class FakeGmail:
     def __init__(self, messages):
@@ -106,6 +112,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             "date": "Fri, 10 Jul 2026 10:15:00 -0700",
             "from": "Formspree <noreply@formspree.io>",
             "subject": "New submission from Radulator Feedback",
+            "authentication_results": [AUTHENTICATION_RESULTS],
             "body": FORM_BODY,
         }
 
@@ -132,6 +139,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             "id": "message-1",
             "from": "Formspree <noreply@formspree.io>",
             "subject": "New submission from Radulator Feedback",
+            "authentication_results": [AUTHENTICATION_RESULTS],
         }
         spoofed = dict(trusted, **{
             "from": "noreply@formspree.io <attacker@example.test>",
@@ -139,7 +147,62 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
 
         self.assertTrue(_trusted_notification(trusted))
         self.assertFalse(_trusted_notification(spoofed))
+        self.assertFalse(_trusted_notification({
+            "id": "message-1",
+            "from": "Formspree <noreply@formspree.io>",
+            "subject": "New submission from Radulator Feedback",
+        }))
+        self.assertFalse(_trusted_notification(dict(
+            trusted,
+            authentication_results=[
+                "mx.google.com; dkim=fail header.i=@formspree.io; "
+                "spf=pass smtp.mailfrom=notice@email.formspree.io; "
+                "dmarc=fail header.from=formspree.io",
+                AUTHENTICATION_RESULTS,
+            ],
+        )))
         self.assertFalse(_trusted_notification("not a message"))
+
+    def test_rejects_forged_visible_headers_without_blocking_later_feedback(self):
+        forged = dict(
+            self.message,
+            id="forged-message",
+            date="Thu, 09 Jul 2026 10:15:00 -0700",
+            authentication_results=[
+                "mx.google.com; dkim=fail header.i=@formspree.io; "
+                "spf=fail smtp.mailfrom=attacker.example; "
+                "dmarc=fail header.from=formspree.io"
+            ],
+        )
+        valid = dict(self.message, id="valid-message")
+        gmail = FakeGmail([forged, valid])
+        kanban = FakeKanban()
+
+        result = process_feedback(
+            gmail,
+            kanban,
+            self.state_path,
+            max_messages=1,
+        )
+
+        self.assertEqual(
+            result,
+            {
+                "created": 1,
+                "already_processed": 0,
+                "quarantined": 0,
+                "rejected_untrusted": 1,
+            },
+        )
+        self.assertEqual(len(kanban.created), 2)
+        self.assertEqual(gmail.get_calls, ["forged-message", "valid-message"])
+        state_text = self.state_path.read_text()
+        state = json.loads(state_text)
+        classifications = sorted(
+            receipt["classification"] for receipt in state["processed"].values()
+        )
+        self.assertEqual(classifications, ["feedback", "untrusted"])
+        self.assertNotIn("forged-message", state_text)
 
     def test_redacts_contact_data_inside_the_free_text(self):
         body = """
@@ -423,6 +486,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
                 "date": "Fri, 10 Jul 2026 10:15:00 -0700",
                 "body": FORM_BODY,
             }),
+            json.dumps([AUTHENTICATION_RESULTS]),
         ])
         client = GoogleGmailClient(
             Path("/runtime/python"),
@@ -437,6 +501,10 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertEqual(summaries[0]["id"], "message-id")
         self.assertEqual(message["body"], FORM_BODY)
         self.assertEqual(
+            message["authentication_results"],
+            [AUTHENTICATION_RESULTS],
+        )
+        self.assertEqual(
             runner.calls[0][0],
             [
                 "/runtime/python", "/runtime/google_api.py", "gmail",
@@ -446,6 +514,19 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertEqual(
             runner.calls[1][0],
             ["/runtime/python", "/runtime/google_api.py", "gmail", "get", "message-id"],
+        )
+        self.assertEqual(runner.calls[2][0][0], "/runtime/python")
+        self.assertTrue(
+            runner.calls[2][0][1].endswith("formspree_feedback_intake.py")
+        )
+        self.assertEqual(
+            runner.calls[2][0][2:],
+            [
+                "--read-authentication-results",
+                "message-id",
+                "--hermes-home",
+                "/profiles/radulator",
+            ],
         )
         self.assertEqual(runner.calls[0][1]["HERMES_HOME"], "/profiles/radulator")
 
