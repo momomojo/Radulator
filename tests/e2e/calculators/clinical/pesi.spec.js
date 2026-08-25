@@ -174,9 +174,18 @@ test.describe("PESI Score Calculator", () => {
   test("shows all primary and current-context references", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "References" })).toBeVisible();
     await expect(page.getByText(/Derivation and validation of a prognostic model/)).toBeVisible();
+    await expect(
+      page.getByRole("link", {
+        name: /Aujesky D, Perrier A, Roy PM, et al\. Validation of a clinical prognostic model to identify low-risk patients with pulmonary embolism\./,
+      }),
+    ).toHaveAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/17547715/");
     await page.getByRole("button", { name: "Show 3 more references" }).click();
     await expect(page.getByText(/2026 AHA\/ACC\/ACCP/)).toBeVisible();
-    await expect(page.getByText(/ISTH SSC communication/)).toBeVisible();
+    await expect(
+      page.getByRole("link", {
+        name: /Talerico R, de Wit K, Barco S, et al\. Evidence-based risk stratification of patients with acute pulmonary embolism/,
+      }),
+    ).toHaveAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/41354154/");
   });
 
   test("reset clears inputs and the calculated result", async ({ page }) => {

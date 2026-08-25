@@ -311,7 +311,7 @@ The original five classes are reported with mortality ranges observed across the
       u: "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/",
     },
     {
-      t: "Aujesky D, Roy PM, Verschuren F, et al. Prospective multicenter validation of the Pulmonary Embolism Severity Index. J Intern Med. 2007;261(6):597-604.",
+      t: "Aujesky D, Perrier A, Roy PM, et al. Validation of a clinical prognostic model to identify low-risk patients with pulmonary embolism. J Intern Med. 2007;261(6):597-604.",
       u: "https://pubmed.ncbi.nlm.nih.gov/17547715/",
     },
     {
@@ -327,7 +327,7 @@ The original five classes are reported with mortality ranges observed across the
       u: "https://www.jacc.org/doi/10.1016/j.jacc.2025.12.023",
     },
     {
-      t: "Jimenez D, Bikdeli B, Barco S, et al. Risk stratification and management of intermediate- and high-risk acute pulmonary embolism: an ISTH SSC communication. J Thromb Haemost. 2026.",
+      t: "Talerico R, de Wit K, Barco S, et al. Evidence-based risk stratification of patients with acute pulmonary embolism: communication from the ISTH SSC Subcommittee on Predictive and Diagnostic Variables in Thrombotic Disease. J Thromb Haemost. 2026.",
       u: "https://pubmed.ncbi.nlm.nih.gov/41354154/",
     },
   ],
