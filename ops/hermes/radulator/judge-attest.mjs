@@ -30,7 +30,8 @@ const MAX_CITATIONS = 16;
 const MAX_CITATION_BYTES = 1024;
 const MAX_CARRIER_BYTES = 50_000;
 
-async function atomicWrite(destination, content, mode) {
+export async function atomicWrite(destination, content, mode) {
+  await mkdir(path.dirname(destination), { recursive: true, mode: 0o700 });
   const temporary = `${destination}.tmp-${process.pid}`;
   await writeFile(temporary, content, { encoding: "utf8", mode });
   await chmod(temporary, mode);
