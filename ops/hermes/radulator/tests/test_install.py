@@ -71,6 +71,10 @@ class InstallerTests(unittest.TestCase):
         with mock.patch.object(install_module, "dt", fake_datetime):
             self.assertEqual(install_module._now(), "2026-08-23T22:00:00Z")
 
+    def test_repository_lint_ignores_managed_worktree_storage(self):
+        eslint_config = (self.repo / "eslint.config.js").read_text()
+        self.assertRegex(eslint_config, r"globalIgnores\([^\n]*['\"]\.worktrees(?:/\*\*)?['\"]")
+
     def test_profiles_require_single_flight_cron(self):
         (self.radulator_home / "config.yaml").write_text(
             "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_jobs: 2\n"
