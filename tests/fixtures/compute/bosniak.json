@@ -1,0 +1,176 @@
+{
+  "calculatorId": "bosniak",
+  "cases": [
+    {
+      "id": "simple-cyst-category-i",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "thin",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water",
+        "enhancement": "absent"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "I" }]
+      }
+    },
+    {
+      "id": "few-thin-enhancing-septa-category-ii",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "thin",
+        "septaCount": "few",
+        "septaThickness": "thin",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water",
+        "enhancement": "present"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "II" }]
+      }
+    },
+    {
+      "id": "many-thin-nonenhancing-septa-require-mri",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "thin",
+        "septaCount": "many",
+        "septaThickness": "thin",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water",
+        "enhancement": "absent"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" }
+        ]
+      }
+    },
+    {
+      "id": "thick-nonenhancing-wall-with-calcification-not-benign-ii",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "thick",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "water",
+        "enhancement": "absent"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "thin (≤2 mm), smooth wall" }
+        ]
+      }
+    },
+    {
+      "id": "irregular-nonenhancing-wall-with-benign-density-not-ii",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "irregular",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "hyperattenuating70",
+        "enhancement": "absent"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "Not assigned" }]
+      }
+    },
+    {
+      "id": "unconfirmed-nodule-not-benign-ii",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "thin",
+        "septaCount": "none",
+        "nodule": "obtuse4",
+        "calcifications": "present",
+        "density": "water",
+        "enhancement": "absent"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "enhancement is not confirmed" }
+        ]
+      }
+    },
+    {
+      "id": "minimally-thick-enhancing-wall-category-iif",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "minimallyThick",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water",
+        "enhancement": "present"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "IIF" }]
+      }
+    },
+    {
+      "id": "thick-enhancing-wall-category-iii",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "thick",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water",
+        "enhancement": "present"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "III" }]
+      }
+    },
+    {
+      "id": "acute-margin-enhancing-nodule-category-iv",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "thin",
+        "septaCount": "none",
+        "nodule": "acuteAny",
+        "calcifications": "absent",
+        "density": "water",
+        "enhancement": "present"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "IV" }]
+      }
+    },
+    {
+      "id": "approximately-quarter-enhancing-tissue-out-of-scope",
+      "inputs": {
+        "solidComponent": "over25",
+        "wall": "thin",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water",
+        "enhancement": "absent"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [{ "key": "Bosniak Category", "equals": "Not applicable" }]
+      }
+    }
+  ]
+}

@@ -102,7 +102,7 @@ test.describe("Guideline Version Badges", () => {
       await expect(panel).toBeVisible();
       await expect(panel).toContainText("Bosniak v2019 (2019)");
       await expect(panel).toContainText(
-        "active calculator version after physician sign-off on 2026-07-05",
+        "active calculator version; the retired 2005 logic is retained only as historical context",
       );
       await expect(panel).toContainText(
         "retired 2005 logic is retained only as historical context",

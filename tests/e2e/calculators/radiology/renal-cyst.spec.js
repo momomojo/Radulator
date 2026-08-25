@@ -198,6 +198,57 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).toContainText("Management: No follow-up required");
   });
 
+  test("should not let calcification override a nonenhancing thick wall", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wall: "thick",
+      calcifications: "present",
+      enhancement: "absent",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText(
+      "Bosniak II requires a well-defined thin (≤2 mm), smooth wall",
+    );
+    await expect(results).toContainText("renal mass protocol MRI");
+  });
+
+  test("should require MRI for many thin septa without confirmed enhancement", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      septaCount: "many",
+      septaThickness: "thin",
+      enhancement: "absent",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText("Many (≥4) nonenhancing septa");
+  });
+
+  test("should not treat a protrusion without confirmed enhancement as benign", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      nodule: "obtuse4",
+      calcifications: "present",
+      enhancement: "absent",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText("enhancement is not confirmed");
+  });
+
   test("should classify many thin enhancing septa as Bosniak IIF", async ({
     page,
   }) => {
@@ -217,6 +268,21 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).toContainText("Follow-up imaging at 6 months");
   });
 
+  test("should classify a minimally thick enhancing wall as Bosniak IIF", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wall: "minimallyThick",
+      enhancement: "present",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: IIF");
+    await expect(results).toContainText("Enhancing 3 mm smooth wall");
+  });
+
   test("should classify thick enhancing wall as Bosniak III", async ({
     page,
   }) => {
@@ -231,6 +297,21 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).toContainText("Bosniak Category: III");
     await expect(results).toContainText("Indeterminate cystic mass");
     await expect(results).toContainText("Consider urology consultation");
+  });
+
+  test("should classify an irregular enhancing wall as Bosniak III", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wall: "irregular",
+      enhancement: "present",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: III");
+    await expect(results).toContainText("irregular wall/septa");
   });
 
   test("should classify enhancing acute-margin nodule as Bosniak IV", async ({
@@ -251,7 +332,26 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).toContainText("acute margins");
   });
 
-  test("should gate masses with >25% enhancing solid tissue", async ({
+  test("should classify an enhancing >=4 mm obtuse-margin nodule as Bosniak IV", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      nodule: "obtuse4",
+      calcifications: "present",
+      density: "hyperattenuating70",
+      enhancement: "present",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: IV");
+    await expect(results).toContainText(
+      "Enhancing >=4 mm convex protrusion with obtuse margins",
+    );
+  });
+
+  test("should gate masses with approximately one-quarter enhancing tissue", async ({
     page,
   }) => {
     await fillBaseBosniakV2019(page, {
@@ -265,6 +365,8 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).toContainText(
       "Not a Bosniak-classifiable cystic renal mass",
     );
-    await expect(results).toContainText(">25% enhancing solid tissue");
+    await expect(results).toContainText(
+      "approximately one-quarter or more of the mass is enhancing tissue",
+    );
   });
 });

@@ -1,7 +1,7 @@
 {
   "calculator": "Renal Cyst (Bosniak Classification)",
   "guidelineVersion": "Bosniak Classification, version 2019",
-  "description": "Bosniak v2019 CT test data covering all categories, the >25% solid-component exclusion, and category changes from the 2005 implementation.",
+  "description": "Bosniak v2019 CT test data covering all categories, the approximately one-quarter enhancing-tissue exclusion, MRI-before-classification cases, and category changes from the 2005 implementation.",
   "testCases": [
     {
       "id": "v2019-category-i-simple-cyst",
@@ -87,7 +87,49 @@
         "term": "Benign cystic mass",
         "management": "No follow-up required"
       },
-      "clinicalContext": "Any calcification morphology is Bosniak II under v2019 if other features remain assessable."
+      "clinicalContext": "Any calcification morphology may occur in Bosniak II under v2019 when the mass remains well defined with a thin smooth wall and other features remain assessable."
+    },
+    {
+      "id": "v2019-unassigned-thick-nonenhancing-wall",
+      "name": "Not Assigned - Thick Nonenhancing Wall with Calcification",
+      "category": "Not assigned",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "thick",
+        "septaCount": "none",
+        "septaThickness": null,
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "water",
+        "enhancement": "absent"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "Not assigned",
+        "term": "Incomplete CT characterization",
+        "management": "Obtain or review renal mass protocol MRI features before assigning a Bosniak v2019 class."
+      },
+      "clinicalContext": "Calcification does not override the requirement that all Bosniak II masses have a well-defined thin smooth wall. MRI is recommended to assess occult enhancement."
+    },
+    {
+      "id": "v2019-unassigned-many-nonenhancing-septa",
+      "name": "Not Assigned - Many Nonenhancing Septa",
+      "category": "Not assigned",
+      "inputs": {
+        "solidComponent": "under25",
+        "wall": "thin",
+        "septaCount": "many",
+        "septaThickness": "thin",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water",
+        "enhancement": "absent"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "Not assigned",
+        "term": "Incomplete CT characterization",
+        "management": "Obtain or review renal mass protocol MRI features before assigning a Bosniak v2019 class."
+      },
+      "clinicalContext": "The v2019 CT table footnote recommends MRI before assigning a class when many nonenhancing septa may conceal enhancing elements."
     },
     {
       "id": "v2019-category-iif-many-enhancing-septa",
@@ -196,7 +238,7 @@
     },
     {
       "id": "v2019-solid-component-exclusion",
-      "name": "Not Applicable - >25% Enhancing Solid Tissue",
+      "name": "Not Applicable - Approximately One-Quarter or More Enhancing Tissue",
       "category": "Not applicable",
       "inputs": {
         "solidComponent": "over25",

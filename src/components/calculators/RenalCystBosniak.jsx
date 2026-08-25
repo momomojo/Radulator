@@ -68,6 +68,17 @@ const buildResult = (cat, rationale, extra = {}) => {
   };
 };
 
+const buildUnassignedResult = (rationale) => ({
+  "Bosniak Category": "Not assigned",
+  "v2019 Term": "Incomplete CT characterization",
+  Management:
+    "Obtain or review renal mass protocol MRI features before assigning a Bosniak v2019 class.",
+  Rationale: rationale,
+  "Text Module":
+    "Bosniak Classification, version 2019 not assigned: CT features are insufficiently characterized; renal mass protocol MRI may reveal occult enhancement.",
+  _severity: "warning",
+});
+
 export const RenalCystBosniak = {
   id: "bosniak",
   category: "Radiology",
@@ -81,9 +92,9 @@ export const RenalCystBosniak = {
       year: 2019,
       replaces: "Bosniak 2005",
       status:
-        "Bosniak v2019 is the active calculator version after physician sign-off on 2026-07-05; the retired 2005 logic is retained only as historical context.",
+        "Bosniak v2019 is the active calculator version; the retired 2005 logic is retained only as historical context.",
       summary:
-        "v2019 quantifies wall and septal thickness (≤2 mm, 3 mm, ≥4 mm), counts septa, formalizes enhancement and nodule definitions, treats any calcification morphology as Class II when features remain assessable, reclassifies many homogeneous high-attenuation nonenhancing masses as Class II, and removes size ≥3 cm and intrarenal location as standalone IIF criteria.",
+        "v2019 quantifies wall and septal thickness (≤2 mm, 3 mm, ≥4 mm), counts septa, formalizes enhancement and nodule definitions, allows any calcification morphology in Class II only when the mass remains well defined with a thin smooth wall, reclassifies many homogeneous high-attenuation nonenhancing masses as Class II, and removes size ≥3 cm and intrarenal location as standalone IIF criteria.",
       whySuperseded:
         "The newer criteria replace qualitative 2005 descriptors with explicit measurements and enhancement rules, separate irregular thickening from nodules, and remove older upgrade paths that the brief identifies as unsupported standalone predictors.",
       citations: [
@@ -103,7 +114,7 @@ export const RenalCystBosniak = {
   metaDesc:
     "Free Bosniak v2019 Classification Calculator for cystic renal masses. Classify cystic kidney masses (I, II, IIF, III, IV) with CT-based version 2019 criteria.",
   info: {
-    text: "Bosniak Classification, version 2019 applies to cystic renal masses with less than approximately 25% enhancing tissue. Enhancement may be visually unequivocal or quantitatively confirmed at CT by a >=20 HU increase.\n\nVersion history: v2019 replaces the prior qualitative 2005 CT criteria with explicit 2/3/4 mm wall and septal thresholds, septa counts, a nodule definition, binary calcification treatment, and homogeneous HU-based Bosniak II density subtypes. Intrarenal location and size >=3 cm alone no longer upgrade a mass.\n\nUse the separate Bosniak v2019 MRI criteria when evaluating renal masses on MRI. Silverman SG, Pedrosa I, Ellis JH, et al. Radiology. 2019;292(2):475-488. DOI: 10.1148/radiol.2019182646",
+    text: "Bosniak Classification, version 2019 applies to cystic renal masses with less than approximately 25% enhancing tissue. Enhancement may be visually unequivocal or quantitatively confirmed at CT by a >=20 HU increase.\n\nVersion history: v2019 replaces the prior qualitative 2005 CT criteria with explicit 2/3/4 mm wall and septal thresholds, septa counts, a nodule definition, calcification treatment, and homogeneous HU-based Bosniak II density subtypes. All CT Bosniak II masses must remain well defined with a thin (<=2 mm), smooth wall. Intrarenal location and size >=3 cm alone no longer upgrade a mass.\n\nMany nonenhancing septa, a nonenhancing wall or septum >=3 mm, abundant calcification that could conceal enhancement, and other incompletely characterized CT combinations should be evaluated with renal mass protocol MRI before assigning a class. Use the separate Bosniak v2019 MRI criteria for that assessment. Silverman SG, Pedrosa I, Ellis JH, et al. Radiology. 2019;292(2):475-488. DOI: 10.1148/radiol.2019182646",
   },
   fields: [
     {
@@ -113,8 +124,14 @@ export const RenalCystBosniak = {
         "Bosniak v2019 applies only when enhancing tissue is less than approximately 25% of the mass.",
       type: "radio",
       opts: [
-        { value: "under25", label: "<=25% of mass or absent" },
-        { value: "over25", label: ">25% of mass" },
+        {
+          value: "under25",
+          label: "less than approximately 25% of mass or absent",
+        },
+        {
+          value: "over25",
+          label: "approximately 25% of mass or more",
+        },
       ],
     },
     {
@@ -177,7 +194,7 @@ export const RenalCystBosniak = {
       id: "calcifications",
       label: "Calcifications",
       helpText:
-        "In v2019, any calcification morphology is Bosniak II if other features are assessable.",
+        "In v2019, any calcification morphology may occur in Bosniak II when the mass remains well defined with a thin smooth wall and other features are assessable; abundant calcification may require MRI.",
       type: "radio",
       opts: [
         { value: "absent", label: "absent" },
@@ -229,11 +246,11 @@ export const RenalCystBosniak = {
         "Bosniak Category": "Not applicable",
         "v2019 Term": "Not a Bosniak-classifiable cystic renal mass",
         Management:
-          "Evaluate as a solid renal mass with cystic or necrotic change; Bosniak v2019 is not intended for masses with >25% enhancing solid tissue.",
+          "Evaluate as a solid renal mass with cystic or necrotic change; Bosniak v2019 is intended for masses with less than approximately 25% enhancing tissue.",
         Rationale:
           "Bosniak v2019 defines cystic renal masses as having less than approximately 25% enhancing tissue.",
         "Text Module":
-          "Bosniak Classification, version 2019 not applied: more than 25% of the mass is enhancing solid tissue.",
+          "Bosniak Classification, version 2019 not applied: approximately one-quarter or more of the mass is enhancing tissue.",
         _severity: "warning",
       };
     }
@@ -256,6 +273,28 @@ export const RenalCystBosniak = {
       v.calcifications === "absent" &&
       v.density === "water" &&
       v.nodule === "none";
+
+    if (!enhancing && v.nodule !== "none") {
+      return buildUnassignedResult(
+        "A convex protrusion was selected, but enhancement is not confirmed. A Bosniak v2019 nodule is enhancing; renal mass protocol MRI is needed before classification.",
+      );
+    }
+
+    if (!enhancing && v.wall !== "thin") {
+      return buildUnassignedResult(
+        "Bosniak II requires a well-defined thin (≤2 mm), smooth wall. A nonenhancing 3 mm, thick, or irregular wall may conceal enhancement and is not safely assigned to a benign CT class; renal mass protocol MRI is recommended.",
+      );
+    }
+
+    if (
+      !enhancing &&
+      septaPresent &&
+      (v.septaCount === "many" || v.septaThickness !== "thin")
+    ) {
+      return buildUnassignedResult(
+        "Many (≥4) nonenhancing septa or nonenhancing septa 3 mm or thicker are incompletely characterized at CT; renal mass protocol MRI is recommended before assigning a Bosniak class.",
+      );
+    }
 
     if (enhancing && v.nodule !== "none") {
       return buildResult(
@@ -291,15 +330,12 @@ export const RenalCystBosniak = {
     }
 
     if (
-      thinFewSepta ||
-      thinManySepta ||
-      v.calcifications === "present" ||
-      benignIIByDensity
+      v.wall === "thin" &&
+      v.nodule === "none" &&
+      (thinFewSepta || v.calcifications === "present" || benignIIByDensity)
     ) {
       const reasons = [];
       if (thinFewSepta) reasons.push("few (1-3) thin septa");
-      if (thinManySepta && !enhancing)
-        reasons.push("many thin septa without confirmed enhancement");
       if (v.calcifications === "present")
         reasons.push("calcification of any morphology");
       if (benignIIByDensity) reasons.push(densityLabels[v.density]);
@@ -310,17 +346,9 @@ export const RenalCystBosniak = {
       );
     }
 
-    return {
-      "Bosniak Category": "Not assigned",
-      "v2019 Term": "Incomplete CT characterization",
-      Management:
-        "Obtain or review renal mass protocol CT/MRI features before assigning a Bosniak v2019 class.",
-      Rationale:
-        "The selected inputs do not match a benign homogeneous density subtype or enhancing wall/septal/nodule criterion.",
-      "Text Module":
-        "Bosniak Classification, version 2019 not assigned: CT features are insufficiently characterized.",
-      _severity: "warning",
-    };
+    return buildUnassignedResult(
+      "The selected inputs do not match a benign homogeneous CT density subtype with a thin smooth wall or an enhancing wall, septal, or nodule criterion.",
+    );
   },
   refs: [
     {

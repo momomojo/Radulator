@@ -104,7 +104,7 @@ listed spec when a cross-cutting spec also navigates to it.
 | 27 | PI-RADS v2.1 | `PIRADS.jsx` / `pirads` | `tests/e2e/calculators/urology/pirads.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 28 | Prostate Volume & PSA Density | `ProstateVolume.jsx` / `prostate-volume` | `tests/e2e/calculators/copy-results.spec.js`<br>`tests/e2e/calculators/radiology/prostate-volume.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 29 | Radiation Dose Converter | `RadiationDoseConverter.jsx` / `radiation-dose-converter` | `tests/e2e/calculators/radiology/radiation-dose-converter.spec.js` | 2026-07-06 source/spec-map audit | Covered |
-| 30 | Bosniak Classification (Renal Cysts) | `RenalCystBosniak.jsx` / `bosniak` | `tests/e2e/calculators/radiology/renal-cyst.spec.js` | 2026-07-06 source/spec-map audit | Covered |
+| 30 | Bosniak Classification (Renal Cysts) | `RenalCystBosniak.jsx` / `bosniak` | `tests/fixtures/compute/bosniak.json`<br>`tests/e2e/calculators/radiology/renal-cyst.spec.js` | 2026-08-24 Bosniak v2019 primary-source, incomplete-CT-path, compute-fixture, and browser-regression audit | Covered |
 | 31 | RENAL Nephrometry Score | `RenalNephrometry.jsx` / `renal-nephrometry` | `tests/e2e/calculators/urology/renal-nephrometry.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 32 | IIEF-5 (SHIM Score) | `SHIMCalculator.jsx` / `shim` | `tests/e2e/calculators/urology/shim.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 33 | Spleen Size | `SpleenSizeULN.jsx` / `spleen-size` | `tests/e2e/calculators/radiology/spleen-size.spec.js` | 2026-07-06 source/spec-map audit | Covered |

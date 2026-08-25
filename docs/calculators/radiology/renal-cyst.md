@@ -21,11 +21,11 @@ Key changes from the retired 2005 implementation:
 - **Quantitative thresholds**: thin `<=2 mm`, minimally thickened `3 mm`, thick `>=4 mm`
 - **Septa count**: few `1-3`, many `>=4`
 - **Nodule decision tree**: `>=4 mm` convex protrusion with obtuse margins or any convex protrusion with acute margins is Bosniak IV when enhancing
-- **Calcifications**: binary present/absent; any morphology is Bosniak II if other features remain assessable
+- **Calcifications**: any morphology may occur in Bosniak II only when the mass remains well defined with a thin smooth wall and underlying features remain assessable; abundant calcification may require MRI
 - **Density subtypes**: homogeneous `>=70 HU` noncontrast, non-enhancing `>20 HU` renal mass protocol, `21-30 HU` portal venous phase, and too-small-to-characterize low-attenuation masses are Bosniak II
 - **Enhancement confirmation**: wall, septal, or nodule enhancement is required for IIF, III, and IV criteria
 - **Removed standalone upgrades**: intrarenal location and size `>=3 cm` alone no longer upgrade to IIF
-- **Solid-component gate**: masses with `>25%` enhancing solid tissue are not Bosniak-classifiable cystic renal masses
+- **Solid-component gate**: Bosniak v2019 is intended for masses with less than approximately `25%` enhancing tissue; masses with approximately one-quarter or more are evaluated as solid masses with cystic or necrotic change
 
 ---
 
@@ -44,7 +44,7 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 | Category | v2019 Criteria in Calculator | Reporting Term | Management |
 |---|---|---|---|
 | **I** | Homogeneous `-9 to 20 HU` simple fluid, thin smooth wall, no septa, no calcification, no nodule | Benign simple cyst | No follow-up required |
-| **II** | Few `1-3` thin `<=2 mm` septa; any calcification morphology; or benign homogeneous CT density subtype | Benign cystic mass | No follow-up required |
+| **II** | All are well defined with a thin smooth `<=2 mm` wall, plus few `1-3` thin septa (which may enhance), any calcification morphology when features remain assessable, or a benign homogeneous CT density subtype | Benign cystic mass | No follow-up required |
 | **IIF** | Smooth 3 mm enhancing wall or septa, or many `>=4` thin enhancing septa | Probably benign cystic mass | Follow-up at 6 months, 12 months, then annually for 5 years |
 | **III** | Enhancing thick `>=4 mm` or irregular obtuse wall/septa without enhancing nodule | Indeterminate cystic mass | Consider urology consultation |
 | **IV** | Enhancing nodule: `>=4 mm` obtuse convex protrusion or any size acute-margin convex protrusion | Cystic mass, highly suspicious for malignancy | Consider urology consultation |
@@ -55,12 +55,12 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 
 | Field | Options | Purpose |
 |---|---|---|
-| **Enhancing solid component** | `<=25% or absent`, `>25%` | Applies the cystic-mass scope gate |
+| **Enhancing solid component** | Less than approximately `25%` or absent; approximately `25%` or more | Applies the cystic-mass scope gate |
 | **Wall thickness / morphology** | Thin `<=2 mm`; smooth 3 mm; smooth `>=4 mm`; irregular obtuse protrusion `<=3 mm` | Determines I/IIF/III wall criteria |
 | **Septa count** | None; few `1-3`; many `>=4` | Applies v2019 septal-count thresholds |
 | **Septal thickness / morphology** | Thin `<=2 mm`; smooth 3 mm; smooth `>=4 mm`; irregular obtuse protrusion `<=3 mm` | Determines II/IIF/III septal criteria |
 | **Enhancing nodule morphology** | None; `>=4 mm` obtuse; any size acute | Applies the v2019 IV nodule definition |
-| **Calcifications** | Absent; present | Any morphology is Bosniak II if other features are assessable |
+| **Calcifications** | Absent; present | Any morphology may occur in Bosniak II only with a well-defined thin smooth wall and assessable underlying features; abundant calcification may require MRI |
 | **Homogeneous CT density subtype** | Water `-9 to 20 HU`; `>=70 HU` noncontrast; non-enhancing `>20 HU`; `21-30 HU` portal venous; low attenuation too small to characterize; other | Applies v2019 benign HU subtypes |
 | **Wall, septal, or nodule enhancement** | Absent/not confirmed; present | Required for IIF/III/IV criteria |
 
@@ -87,6 +87,10 @@ Thin smooth wall, no septa, calcifications present, water density, no enhancing 
 
 **Result**: Bosniak II, benign cystic mass, no follow-up required.
 **Prior 2005 behavior**: thick or nodular calcifications could upgrade the result.
+
+### Not Assigned at CT: MRI Needed
+
+A nonenhancing wall or septum measuring `3 mm` or more, an irregular nonenhancing wall/septum, many (`>=4`) nonenhancing septa, or a protrusion without confirmed enhancement is not forced into Bosniak II. The calculator returns **Not assigned** and recommends renal mass protocol MRI to evaluate for occult enhancement before classification.
 
 ### Bosniak IIF
 
