@@ -185,7 +185,7 @@ test.describe("CAC/MESA Calculator", () => {
       [
         300,
         "Severe calcified plaque burden",
-        "A category unassigned at exact 300 (primary CAC-DRS table defines A3 as >300)",
+        "Not reported at exact 300 because the primary CAC-DRS source has a boundary conflict",
         "300-999",
       ],
       [301, "Severe calcified plaque burden", "A3 / N not reported", "300-999"],
