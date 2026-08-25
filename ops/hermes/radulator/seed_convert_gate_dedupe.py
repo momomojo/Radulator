@@ -34,6 +34,7 @@ STATE_FILE = PROFILE_DIR / "state" / "radulator-seed-convert-gate-alerts.json"
 MEDICAL_GATE_LABEL = os.environ.get("RADULATOR_MEDICAL_GATE_LABEL", "medical-review-pending")
 SEED_LABEL = os.environ.get("RADULATOR_SEED_LABEL", "seed")
 FLASH_LANE_LABEL = os.environ.get("RADULATOR_FLASH_LANE_LABEL", "lane:flash")
+MAX_ACTIONABLE = max(1, int(os.environ.get("RADULATOR_SEED_MAX_ACTIONABLE", "2")))
 UA = {"User-Agent": "radulator-seed-convert-gate-dedupe/2.0 (+local cron preflight)"}
 
 
@@ -252,6 +253,10 @@ def preflight(*, dry_run: bool = False) -> dict[str, Any]:
 
         actionable.append(summary)
 
+    actionable.sort(key=lambda item: (item.get("created_at") or "", item.get("number") or 0))
+    deferred_actionable = actionable[MAX_ACTIONABLE:]
+    actionable = actionable[:MAX_ACTIONABLE]
+
     if not dry_run:
         save_state(state)
 
@@ -266,6 +271,7 @@ def preflight(*, dry_run: bool = False) -> dict[str, Any]:
         "gated_state_changes": changed,
         "cleared_gate_changes": cleared,
         "actionable_seed_issues": actionable,
+        "deferred_actionable_seed_issues": deferred_actionable,
         "suppressed_gated_issues": suppressed,
     }
 

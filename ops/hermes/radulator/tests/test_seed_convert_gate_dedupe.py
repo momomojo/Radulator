@@ -71,6 +71,21 @@ class SeedConvertGateDedupeTests(unittest.TestCase):
         self.assertEqual([item["number"] for item in result["actionable_seed_issues"]], [3])
         self.assertEqual([item["number"] for item in result["gated_state_changes"]], [1, 2])
 
+    def test_preflight_limits_actionable_queue_to_two_oldest(self):
+        candidates = [
+            issue(number, f"[seed] Improve feature {number}", ["seed", "lane:flash"])
+            for number in (10, 11, 12)
+        ]
+
+        with mock.patch.object(seed_dedupe, "open_seed_issues", return_value=candidates):
+            result = seed_dedupe.preflight()
+
+        self.assertEqual([item["number"] for item in result["actionable_seed_issues"]], [10, 11])
+        self.assertEqual(
+            [item["number"] for item in result["deferred_actionable_seed_issues"]],
+            [12],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
