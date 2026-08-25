@@ -31,6 +31,21 @@ function statusSort(left, right) {
   return time || (right.id || 0) - (left.id || 0);
 }
 
+async function requestBaseRefresh(client, prNumber, headSha, extras = {}) {
+  const refresh = await client.updateBranch(prNumber, { expected_head_sha: headSha });
+  if (!refresh?.accepted) {
+    throw new Error(`GitHub refused base refresh for PR #${prNumber}.`);
+  }
+  return {
+    ok: true,
+    reasonCode: "BASE_REFRESH_REQUESTED",
+    pr: prNumber,
+    headSha,
+    baseRefreshRequested: true,
+    ...extras,
+  };
+}
+
 export function evaluateAutoMerge({ pr, gateResult, checkRuns, commitStatuses, branchRules, expectedGateAppId }) {
   if (pr?.merged) return blocked("ALREADY_MERGED", "Pull request is already merged.");
   if (!pr || pr.state !== "open" || pr.draft) return blocked("PR_NOT_OPEN_READY", "Pull request is not open and ready.");
@@ -213,21 +228,26 @@ export async function runAutoMerge({
       continue;
     }
     if (mergeability.mergeable_state === "behind") {
-      const refresh = await client.updateBranch(prNumber, { expected_head_sha: finalState.pr.headSha });
-      if (!refresh?.accepted) {
-        throw new Error(`GitHub refused base refresh for PR #${prNumber}.`);
-      }
-      results.push({
-        ok: true,
-        reasonCode: "BASE_REFRESH_REQUESTED",
-        pr: prNumber,
-        headSha: finalState.pr.headSha,
-        baseRefreshRequested: true,
-      });
+      results.push(await requestBaseRefresh(client, prNumber, finalState.pr.headSha));
       continue;
     }
 
-    const merged = await client.merge(prNumber, decision.payload);
+    let merged;
+    try {
+      merged = await client.merge(prNumber, decision.payload);
+    } catch (error) {
+      if (error?.status !== 405) throw error;
+      const afterRefusal = await client.getMergeability(prNumber);
+      if (afterRefusal?.head?.sha !== finalState.pr.headSha) {
+        results.push(blocked("CONCURRENT_GATE_STATE_CHANGE", "Pull request head changed after protected merge refusal."));
+        continue;
+      }
+      if (afterRefusal.mergeable_state !== "behind") throw error;
+      results.push(await requestBaseRefresh(client, prNumber, finalState.pr.headSha, {
+        mergeRefusalRecovered: true,
+      }));
+      continue;
+    }
     if (!merged?.merged || typeof merged.sha !== "string" || !merged.sha) {
       throw new Error(`GitHub refused exact-head merge for PR #${prNumber}: ${merged?.message || "unknown response"}`);
     }

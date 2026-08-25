@@ -344,4 +344,48 @@ console.log("approval-bound automatic merge tests passed");
   assert.equal(result[0].baseRefreshRequested, true);
 }
 
+{
+  const state = {
+    pr: prFixture(),
+    requiredCi: ["Smoke Tests", "Targeted Calculator Tests"],
+    ci: { ok: true, evidence: [] },
+    files: [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }],
+    reviews: [],
+    publicKeys: {},
+  };
+  const updates = [];
+  let mergeabilityReads = 0;
+  const mergeRefusal = Object.assign(new Error("strict required checks are expected"), { status: 405 });
+  const result = await runAutoMerge({
+    env: { RADULATOR_AUTO_MERGE_ENABLED: "true" },
+    api: {
+      async findPullNumbers() { return [123]; },
+      async loadGateState() { return structuredClone(state); },
+      async getBranchRules() { return decisionFixture().branchRules; },
+      async listCheckRuns() { return [checkFixture()]; },
+      async listCommitStatuses() { return [statusFixture()]; },
+      async getMergeability() {
+        mergeabilityReads += 1;
+        return {
+          mergeable: true,
+          mergeable_state: mergeabilityReads === 1 ? "clean" : "behind",
+          head: { sha: HEAD },
+        };
+      },
+      async updateBranch(number, payload) {
+        updates.push({ number, payload });
+        return { accepted: true };
+      },
+      async merge() { throw mergeRefusal; },
+      async getPr() { throw new Error("merge readback must not run after a refused merge"); },
+    },
+    evaluateGateImpl: () => gateFixture(),
+    fingerprintImpl: () => "stable",
+  });
+  assert.equal(mergeabilityReads, 2, "a protected merge refusal must re-read authoritative mergeability");
+  assert.deepEqual(updates, [{ number: 123, payload: { expected_head_sha: HEAD } }]);
+  assert.equal(result[0].reasonCode, "BASE_REFRESH_REQUESTED");
+  assert.equal(result[0].mergeRefusalRecovered, true);
+}
+
 console.log("automatic merge runtime orchestration tests passed");
