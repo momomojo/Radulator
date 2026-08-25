@@ -304,20 +304,29 @@ export async function takeScreenshot(page, calculatorName, testName) {
  */
 export async function verifyReferenceLinks(page) {
   const links = await page.locator('a[href^="http"]').all();
-  const checks = links.map(async (link) => {
-    const href = await link.getAttribute("href");
-    try {
-      const response = await page.request.get(href, { timeout: 5000 });
-      if (response.status() >= 400) {
-        return { href, status: response.status() };
+  const results = new Array(links.length);
+  let nextIndex = 0;
+  const workers = Array.from(
+    { length: Math.min(4, links.length) },
+    async () => {
+      while (nextIndex < links.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        const href = await links[index].getAttribute("href");
+        try {
+          const response = await page.request.get(href, { timeout: 5000 });
+          if (response.status() >= 400) {
+            results[index] = { href, status: response.status() };
+          }
+        } catch (error) {
+          results[index] = { href, error: error.message };
+        }
       }
-    } catch (error) {
-      return { href, error: error.message };
-    }
-    return null;
-  });
+    },
+  );
 
-  return (await Promise.all(checks)).filter(Boolean);
+  await Promise.all(workers);
+  return results.filter(Boolean);
 }
 
 /**

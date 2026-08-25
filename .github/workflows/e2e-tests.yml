@@ -74,6 +74,7 @@ jobs:
             ops/hermes/radulator/install.py
           bash -n scripts/dev-local.sh
           npm run test:search-verification
+          npm run test:calculator-helper
           npm run test:invariants
           npm run test:release-policy
           npm run test:independent-review-gate
@@ -150,6 +151,7 @@ jobs:
             ops/hermes/radulator/seed_convert_gate_dedupe.py \
             ops/hermes/radulator/install.py
           npm run test:search-verification
+          npm run test:calculator-helper
           npm run test:invariants
           npm run test:release-policy
           npm run test:independent-review-gate
