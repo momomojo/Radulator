@@ -57,20 +57,43 @@ assert.equal(
   hashReferenceData(MESA_CAC_REFERENCE),
 );
 
+const auditManifestUrl = new URL(
+  "../docs/evidence/mesa-cac-reference-audit/manifest.json",
+  import.meta.url,
+);
 const audit = JSON.parse(
   readFileSync(
-    new URL("../docs/evidence/mesa-cac-reference-audit.json", import.meta.url),
+    auditManifestUrl,
     "utf8",
   ),
 );
 assert.equal(audit.tlsVerified, true);
 assert.equal(audit.groupCount, 320);
 assert.equal(audit.dataSha256, MESA_CAC_REFERENCE_SOURCE.dataSha256);
+assert.equal(audit.chunks.length, 8);
+const auditedEntries = [];
+for (const chunkMetadata of audit.chunks) {
+  const chunk = JSON.parse(
+    readFileSync(new URL(chunkMetadata.file, auditManifestUrl), "utf8"),
+  );
+  assert.equal(chunk.tlsVerified, true);
+  assert.equal(chunk.dataSha256, audit.dataSha256);
+  assert.equal(chunk.groups.length, 40);
+  const chunkData = Object.fromEntries(
+    chunk.groups.map(({ key, p, r }) => [key, { p, r }]),
+  );
+  assert.equal(
+    chunk.chunkSha256,
+    createHash("sha256").update(JSON.stringify(chunkData)).digest("hex"),
+  );
+  assert.equal(chunk.chunkSha256, chunkMetadata.chunkSha256);
+  auditedEntries.push(...chunk.groups);
+}
 assert.deepEqual(
-  audit.groups.map(({ key }) => key),
+  auditedEntries.map(({ key }) => key),
   groups.map(({ key }) => key),
 );
-for (const entry of audit.groups) {
+for (const entry of auditedEntries) {
   const record = MESA_CAC_REFERENCE[entry.key];
   assert.deepEqual({ p: entry.p, r: entry.r }, record);
   assert.equal(

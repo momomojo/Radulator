@@ -1,0 +1,66 @@
+{
+  "schema": "radulator-mesa-cac-reference-audit-manifest/v1",
+  "auditedAt": "2026-08-24T22:01:16.168Z",
+  "officialCalculator": "https://tools.mesa-nhlbi.org/Calcium/input.aspx",
+  "tlsVerified": true,
+  "groupCount": 320,
+  "dataSha256": "1fcabd9ab706021de7865e309e612d376908a5a1ff71d113e65bb46bbb9b2b27",
+  "chunks": [
+    {
+      "file": "black-female.json",
+      "race": "black",
+      "sex": "female",
+      "groupCount": 40,
+      "chunkSha256": "2975da8ae8573c641652f549477e421e3fea8cd0b413dab7446fedaeebd5041e"
+    },
+    {
+      "file": "black-male.json",
+      "race": "black",
+      "sex": "male",
+      "groupCount": 40,
+      "chunkSha256": "c19e834223c31da31561ceaacd192be3484ac7160032d19964f3a292dad40216"
+    },
+    {
+      "file": "chinese-female.json",
+      "race": "chinese",
+      "sex": "female",
+      "groupCount": 40,
+      "chunkSha256": "551e3f667dbe0b14e786d5915950be815025e8692d7ae49894e1e583ca23b26d"
+    },
+    {
+      "file": "chinese-male.json",
+      "race": "chinese",
+      "sex": "male",
+      "groupCount": 40,
+      "chunkSha256": "df7c2277adb2d558a743d12df19ec195290e4c823861b8810f5ab01f252b03a7"
+    },
+    {
+      "file": "hispanic-female.json",
+      "race": "hispanic",
+      "sex": "female",
+      "groupCount": 40,
+      "chunkSha256": "89c70548ac36488f5eef3d2f1aebccdd7a9ce9e9628b5f1ec7d375cc36182361"
+    },
+    {
+      "file": "hispanic-male.json",
+      "race": "hispanic",
+      "sex": "male",
+      "groupCount": 40,
+      "chunkSha256": "e737e8937508ebf3371b2f85907ae462488fac60777a921e87c66ec58267734e"
+    },
+    {
+      "file": "white-female.json",
+      "race": "white",
+      "sex": "female",
+      "groupCount": 40,
+      "chunkSha256": "b09c112ef7be01ec265ba40545d50803d27c607143d849e93622f434c65a06f2"
+    },
+    {
+      "file": "white-male.json",
+      "race": "white",
+      "sex": "male",
+      "groupCount": 40,
+      "chunkSha256": "30dca8485e870b555beccadcaea5d547568ad7914307bc8e0cc151fc523c29c2"
+    }
+  ]
+}

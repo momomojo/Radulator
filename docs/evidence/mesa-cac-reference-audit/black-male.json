@@ -1,0 +1,453 @@
+{
+  "schema": "radulator-mesa-cac-reference-audit-chunk/v1",
+  "auditedAt": "2026-08-24T22:01:16.168Z",
+  "officialCalculator": "https://tools.mesa-nhlbi.org/Calcium/input.aspx",
+  "tlsVerified": true,
+  "race": "black",
+  "sex": "male",
+  "groupCount": 40,
+  "dataSha256": "1fcabd9ab706021de7865e309e612d376908a5a1ff71d113e65bb46bbb9b2b27",
+  "chunkSha256": "c19e834223c31da31561ceaacd192be3484ac7160032d19964f3a292dad40216",
+  "groups": [
+    {
+      "key": "black:male:45",
+      "p": 19,
+      "r": [
+        0,
+        0,
+        0,
+        16
+      ],
+      "recordSha256": "d1526416a5d88d63b6983c061e94cdeb83e1add08649d4e02d1cccd40cc4231c"
+    },
+    {
+      "key": "black:male:46",
+      "p": 21,
+      "r": [
+        0,
+        0,
+        0,
+        21
+      ],
+      "recordSha256": "d143e68e3557048f3f497e4c83ff23e27863a0e709277396ed552789c8a19572"
+    },
+    {
+      "key": "black:male:47",
+      "p": 22,
+      "r": [
+        0,
+        0,
+        0,
+        25
+      ],
+      "recordSha256": "a96d775508d5761a75613070d34092b472fb2cbd275f5f06995aeff47d476a68"
+    },
+    {
+      "key": "black:male:48",
+      "p": 24,
+      "r": [
+        0,
+        0,
+        0,
+        31
+      ],
+      "recordSha256": "975eb3f60b8b4a1ba9eb65f80d507d2a7508230b70979633ee93d14e67c5f897"
+    },
+    {
+      "key": "black:male:49",
+      "p": 26,
+      "r": [
+        0,
+        0,
+        1,
+        38
+      ],
+      "recordSha256": "bec36b0599e371ed26681c7ff4a26273560e9f4265b1ca326cb98a7a250b787e"
+    },
+    {
+      "key": "black:male:50",
+      "p": 28,
+      "r": [
+        0,
+        0,
+        2,
+        45
+      ],
+      "recordSha256": "80b354dcbedd5cd6c147dada90526d25934cd651cba339c24fad9a8cb5c2fcda"
+    },
+    {
+      "key": "black:male:51",
+      "p": 29,
+      "r": [
+        0,
+        0,
+        4,
+        52
+      ],
+      "recordSha256": "f9e8a8fceb4f12db65a88309a9fbccbf356e5c93c76a3529a5d0cb40b0c5add0"
+    },
+    {
+      "key": "black:male:52",
+      "p": 31,
+      "r": [
+        0,
+        0,
+        6,
+        60
+      ],
+      "recordSha256": "baa457fe986e0e709eae5ccdcb5da09baab514521c883f0fe7575f4e20a4fae3"
+    },
+    {
+      "key": "black:male:53",
+      "p": 33,
+      "r": [
+        0,
+        0,
+        8,
+        70
+      ],
+      "recordSha256": "d8ab2c3b879a40bacf16faaba05b787daa512888d4c67c100315a81b84a2b492"
+    },
+    {
+      "key": "black:male:54",
+      "p": 35,
+      "r": [
+        0,
+        0,
+        12,
+        81
+      ],
+      "recordSha256": "4879ddde5a32582cde91d0cc3973b27916ca82c9f6f413e96ea5f6b371a01e71"
+    },
+    {
+      "key": "black:male:55",
+      "p": 37,
+      "r": [
+        0,
+        0,
+        15,
+        94
+      ],
+      "recordSha256": "84a2dc529e3b8ad75de775ac0a06aa85dcb07d18b365a7fc4347270eaf7e0de1"
+    },
+    {
+      "key": "black:male:56",
+      "p": 39,
+      "r": [
+        0,
+        0,
+        19,
+        106
+      ],
+      "recordSha256": "9116945854cfd96c7bd19ca0f394495e27bc56cdb6c183e648994e3ca0eb4a6b"
+    },
+    {
+      "key": "black:male:57",
+      "p": 41,
+      "r": [
+        0,
+        0,
+        24,
+        123
+      ],
+      "recordSha256": "f86427be91e25c6d5f4623080060b3f6ac2ffe972432367d5d6e3f723f5f79de"
+    },
+    {
+      "key": "black:male:58",
+      "p": 43,
+      "r": [
+        0,
+        0,
+        29,
+        139
+      ],
+      "recordSha256": "1c44587029cebd2da9a0f954bb13a099af3aad839d23810d672c8da7483bc0f7"
+    },
+    {
+      "key": "black:male:59",
+      "p": 44,
+      "r": [
+        0,
+        0,
+        35,
+        155
+      ],
+      "recordSha256": "57fc70d32e76c95e365513fec0d634766b6cdb95579132f848e2b52bb98560e1"
+    },
+    {
+      "key": "black:male:60",
+      "p": 46,
+      "r": [
+        0,
+        0,
+        40,
+        173
+      ],
+      "recordSha256": "3cb3e01e5ea23e05170b3b92e880a5bd87c238d911e48eef15641796540be0b6"
+    },
+    {
+      "key": "black:male:61",
+      "p": 48,
+      "r": [
+        0,
+        0,
+        48,
+        198
+      ],
+      "recordSha256": "c558a6f57a1c71838b046842e0fe61d4ad5cc3228ba6151cf3dee33d11207716"
+    },
+    {
+      "key": "black:male:62",
+      "p": 50,
+      "r": [
+        0,
+        1,
+        57,
+        224
+      ],
+      "recordSha256": "629f4f72e02dbeaa6dfd10d91615a9fd5f78f90c085e4a19ee97cb2e60a7bc1e"
+    },
+    {
+      "key": "black:male:63",
+      "p": 52,
+      "r": [
+        0,
+        3,
+        69,
+        256
+      ],
+      "recordSha256": "a777021048c834819f33cca6eba381b8737159e2c6ab1f6082457fb4e7a9da82"
+    },
+    {
+      "key": "black:male:64",
+      "p": 54,
+      "r": [
+        0,
+        5,
+        81,
+        293
+      ],
+      "recordSha256": "b3373bb3671e0418d955921453da66875312b07c976d08f0ccd145f91097aa1c"
+    },
+    {
+      "key": "black:male:65",
+      "p": 56,
+      "r": [
+        0,
+        8,
+        95,
+        330
+      ],
+      "recordSha256": "5947262e64fd0bc379c78f99c11d18b6c4c871ab50be78cb9ecda20156dc0247"
+    },
+    {
+      "key": "black:male:66",
+      "p": 58,
+      "r": [
+        0,
+        12,
+        113,
+        379
+      ],
+      "recordSha256": "d15f2c499e83f41060c477cd25ca13a0e67b6ae1f3502fd75690c80be5e55476"
+    },
+    {
+      "key": "black:male:67",
+      "p": 60,
+      "r": [
+        0,
+        16,
+        129,
+        417
+      ],
+      "recordSha256": "87521d70602ec1bc4353f142dfef9c45bcdb2e74c0c2c72780d85c1bab5249d8"
+    },
+    {
+      "key": "black:male:68",
+      "p": 62,
+      "r": [
+        0,
+        20,
+        147,
+        461
+      ],
+      "recordSha256": "3c06fc5bb11cab13d0a1272c793638ca9cccb9a5c4ae99c61ad13c9879fe6abd"
+    },
+    {
+      "key": "black:male:69",
+      "p": 64,
+      "r": [
+        0,
+        26,
+        168,
+        512
+      ],
+      "recordSha256": "832aca88f11193948c135d5d1e88c0eee49e73f936e0aad1427cca2fe9d1dacb"
+    },
+    {
+      "key": "black:male:70",
+      "p": 66,
+      "r": [
+        0,
+        32,
+        191,
+        575
+      ],
+      "recordSha256": "ac6aadf0353fc66a34fbbbd52051aa62d52c9451938e6d9dc0995089aa0d3d16"
+    },
+    {
+      "key": "black:male:71",
+      "p": 68,
+      "r": [
+        0,
+        39,
+        218,
+        636
+      ],
+      "recordSha256": "a4bca3f1c010c8cea118cd3b653345c10125a1c5a20599c11c1cf371b28b7108"
+    },
+    {
+      "key": "black:male:72",
+      "p": 70,
+      "r": [
+        0,
+        48,
+        248,
+        699
+      ],
+      "recordSha256": "a019701f5f7139a2a1ee939a6748a7cef38ccebaaaea77c802fee141042412c1"
+    },
+    {
+      "key": "black:male:73",
+      "p": 72,
+      "r": [
+        0,
+        56,
+        277,
+        765
+      ],
+      "recordSha256": "3443ffd861c3844b8984ad3b4c88f9b0d5689f6d30983c6637676f12b559f36e"
+    },
+    {
+      "key": "black:male:74",
+      "p": 73,
+      "r": [
+        0,
+        64,
+        304,
+        831
+      ],
+      "recordSha256": "0a01e735b4636520d0054bc7c1424a8d45b7b4f077e997919b25dd4ef88c8ac9"
+    },
+    {
+      "key": "black:male:75",
+      "p": 75,
+      "r": [
+        2,
+        75,
+        331,
+        891
+      ],
+      "recordSha256": "6793a062cbc9a64f75f5adf7a3fae69c89fcd495e39d1e717d64d6fd680db05a"
+    },
+    {
+      "key": "black:male:76",
+      "p": 77,
+      "r": [
+        6,
+        84,
+        364,
+        952
+      ],
+      "recordSha256": "613dc8719753a3d88fb50b3b4ed105db60e86cda149cca4ccf1da2c59117aeb1"
+    },
+    {
+      "key": "black:male:77",
+      "p": 79,
+      "r": [
+        9,
+        96,
+        393,
+        1019
+      ],
+      "recordSha256": "80702596f3f74558d12818943b425530f51535bbfe5648fe0efd1da451608d1a"
+    },
+    {
+      "key": "black:male:78",
+      "p": 81,
+      "r": [
+        13,
+        111,
+        432,
+        1103
+      ],
+      "recordSha256": "a30b3feb49bfab0fbcb0aaacba49a11f8363889d3f80ba07d64866f5022fa77a"
+    },
+    {
+      "key": "black:male:79",
+      "p": 82,
+      "r": [
+        17,
+        125,
+        471,
+        1187
+      ],
+      "recordSha256": "7c54fbb83f68859b6aa8260d9e6ab4cc6d0782f023cf8554d8c58e0f93772a6d"
+    },
+    {
+      "key": "black:male:80",
+      "p": 84,
+      "r": [
+        23,
+        141,
+        516,
+        1281
+      ],
+      "recordSha256": "9aebb4681e9561f68fd9cc241bb2d33ac2c1e0f675d88893c07a3920383c5cab"
+    },
+    {
+      "key": "black:male:81",
+      "p": 86,
+      "r": [
+        28,
+        160,
+        568,
+        1401
+      ],
+      "recordSha256": "907b9c5dea76ebf82440afe2ce1c563ed598e09914c67cd3ed123e924fdb8fad"
+    },
+    {
+      "key": "black:male:82",
+      "p": 88,
+      "r": [
+        35,
+        180,
+        616,
+        1523
+      ],
+      "recordSha256": "56074bcada3315aa463c24b11305fe3ad4cddc07b3703210f249f37f01a59128"
+    },
+    {
+      "key": "black:male:83",
+      "p": 90,
+      "r": [
+        43,
+        203,
+        672,
+        1663
+      ],
+      "recordSha256": "1b458c53c4f0940ad2f28cf182eb3b31c6a25119444e9a35d4806f7962ece74e"
+    },
+    {
+      "key": "black:male:84",
+      "p": 92,
+      "r": [
+        52,
+        224,
+        726,
+        1794
+      ],
+      "recordSha256": "7f4aa709351b1d05bcc361d335e3ace8da69c6adc923ac2f6f831ae207e2c579"
+    }
+  ]
+}

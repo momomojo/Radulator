@@ -131,7 +131,7 @@ test.describe("CAC/MESA Calculator", () => {
     }
   });
 
-  test("maps score boundaries and exact 300 to approved categories", async ({
+  test("maps boundaries without inferring the ambiguous exact-300 CAC-DRS category", async ({
     page,
   }) => {
     const cases = [
@@ -140,7 +140,12 @@ test.describe("CAC/MESA Calculator", () => {
       [99, "Mild calcified plaque burden", "A1 / N not reported", "1-99"],
       [100, "Moderate calcified plaque burden", "A2 / N not reported", "100-299"],
       [299, "Moderate calcified plaque burden", "A2 / N not reported", "100-299"],
-      [300, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
+      [
+        300,
+        "Severe calcified plaque burden",
+        "A category unassigned at exact 300 (primary CAC-DRS table defines A3 as >300)",
+        ">=300",
+      ],
       [301, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
       [999, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],
       [1000, "Severe calcified plaque burden", "A3 / N not reported", ">=300"],

@@ -63,6 +63,9 @@ function getAbsoluteCategory(score) {
 }
 
 function getCacDrs(score, vesselCount) {
+  if (score === 300) {
+    return "A category unassigned at exact 300 (primary CAC-DRS table defines A3 as >300)";
+  }
   const aCategory =
     score === 0 ? "A0" : score < 100 ? "A1" : score < 300 ? "A2" : "A3";
 
@@ -207,7 +210,7 @@ export const CACMesa = {
   info: {
     text:
       "This calculator interprets a total Agatston coronary artery calcium score already produced by CT software. It does not calculate Agatston score from CT pixels, lesion area, HU bins, scanner protocol, or slice data.\n\n" +
-      "Outputs include an absolute CAC burden band, optional CAC-DRS A/N code, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories.\n\n" +
+      "Outputs include an absolute CAC burden band, optional CAC-DRS A/N code, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. The primary CAC-DRS table defines A2 as 100-299 and A3 as >300, leaving exact 300 unassigned; this tool discloses that boundary instead of inferring a category.\n\n" +
       "The local MESA output compares the score with the official 25th, 50th, 75th, and 90th reference scores. It does not estimate an exact percentile. Outside the MESA limits, the absolute band and CAC-DRS remain available without extrapolation.",
     link: {
       label: "View MESA CAC Score Reference Values",

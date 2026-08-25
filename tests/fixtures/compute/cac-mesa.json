@@ -114,8 +114,8 @@
       }
     },
     {
-      "id": "score-300-maps-to-a3",
-      "description": "Source-defined boundary: exact CAC score 300 maps to the severe band and CAC-DRS A3.",
+      "id": "score-300-keeps-absolute-band-but-does-not-infer-cac-drs",
+      "description": "Exact CAC score 300 is in the severe absolute band, but the primary CAC-DRS table leaves it between A2 100-299 and A3 >300.",
       "inputs": {
         "score": "300",
         "age": "55",
@@ -127,7 +127,7 @@
         "fields": [
           { "key": "Absolute CAC Band", "equals": "Severe calcified plaque burden" },
           { "key": "CAC Score Range", "equals": ">=300" },
-          { "key": "CAC-DRS", "equals": "A3 / N not reported" }
+          { "key": "CAC-DRS", "includes": "A category unassigned at exact 300" }
         ]
       }
     },

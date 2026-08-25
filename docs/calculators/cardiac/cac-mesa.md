@@ -11,7 +11,10 @@ Outputs:
 
 - Absolute CAC burden band: 0, 1-99, 100-299, >=300. These are not presented
   as numbered clinical stages.
-- CAC-DRS A category: A0 for 0, A1 for 1-99, A2 for 100-299, A3 for >=300.
+- CAC-DRS A category: A0 for 0, A1 for 1-99, A2 for 100-299, and A3 for
+  scores above 300. At exactly 300, the primary CAC-DRS table leaves a gap
+  between `100-299` and `>300`, so this tool reports the A category as
+  unassigned instead of silently choosing a side.
 - Optional CAC-DRS N modifier for 1-4 involved coronary vessels.
 - MESA reference position against the official 25th, 50th, 75th, and 90th
   scores only for age 45-84, female/male, and the four MESA race/ethnicity
@@ -45,8 +48,9 @@ For every one of the 320 age/sex/race groups, the generated file stores only:
 - No estimated exact percentile and no locally reconstructed percentile model.
 
 The complete replay is recorded in
-`docs/evidence/mesa-cac-reference-audit.json`. It binds all 320 normalized
-records to data SHA-256
+`docs/evidence/mesa-cac-reference-audit/manifest.json` plus eight reviewable
+race/sex audit chunks in the same directory. Together they bind all 320
+normalized records to data SHA-256
 `1fcabd9ab706021de7865e309e612d376908a5a1ff71d113e65bb46bbb9b2b27`
 and records a separate SHA-256 for each group. A second live replay produced
 the same normalized source file and audit hash. No patient data or PHI was

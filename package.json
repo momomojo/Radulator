@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy": "vite build && gh-pages -d dist",
-    "generate:mesa-reference": "node scripts/generate-mesa-cac-reference.mjs --output src/data/mesaCacReference.js --audit-output docs/evidence/mesa-cac-reference-audit.json --concurrency 1",
+    "generate:mesa-reference": "node scripts/generate-mesa-cac-reference.mjs --output src/data/mesaCacReference.js --audit-output-dir docs/evidence/mesa-cac-reference-audit --concurrency 1",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
