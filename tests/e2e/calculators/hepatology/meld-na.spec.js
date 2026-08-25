@@ -1027,6 +1027,11 @@ test.describe("MELD-Na Calculator", () => {
       await expect(
         page.locator("text=Kim WR et al. Gastroenterology 2021"),
       ).toBeVisible();
+      await expect(
+        page.getByRole("link", {
+          name: "Kim WR et al. New England Journal of Medicine 2008 - MELD-Na Development",
+        }),
+      ).toHaveAttribute("href", "https://doi.org/10.1056/NEJMoa0801209");
     });
   });
 

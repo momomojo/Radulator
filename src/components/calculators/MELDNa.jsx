@@ -493,8 +493,8 @@ export const MELDNa = {
       u: "https://doi.org/10.1053/j.gastro.2021.08.050",
     },
     {
-      t: "Kim WR et al. Gastroenterology 2008 - MELD-Na Development",
-      u: "https://doi.org/10.1053/j.gastro.2008.01.029",
+      t: "Kim WR et al. New England Journal of Medicine 2008 - MELD-Na Development",
+      u: "https://doi.org/10.1056/NEJMoa0801209",
     },
     {
       t: "Kamath PS et al. Hepatology 2001 - Original MELD Score",
