@@ -16,6 +16,7 @@
  */
 
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import {
   navigateToCalculator,
   selectRadio,
@@ -988,6 +989,24 @@ test.describe("MELD-Na Calculator", () => {
   });
 
   test.describe("Reference Links", () => {
+    test("keeps the clinical QA reference checklist aligned with the runtime sources", () => {
+      const qaDocument = readFileSync(
+        "docs/calculators/hepatology/meld-3-test-data.md",
+        "utf8",
+      );
+
+      expect(qaDocument).toContain(
+        "OPTN/HRSA MELD and PELD Calculators User Guide",
+      );
+      expect(qaDocument).toContain(
+        "Kim WR et al. New England Journal of Medicine 2008 - MELD-Na Development",
+      );
+      expect(qaDocument).not.toContain("OPTN/HRSA implementation FAQ");
+      expect(qaDocument).not.toContain(
+        "Kim WR et al. Gastroenterology 2008 MELD-Na paper",
+      );
+    });
+
     test("should display all 6 references", async ({ page }) => {
       // Expand collapsed references (CollapsibleReferences shows only 3 by default)
       const expandButton = page.getByRole("button", {

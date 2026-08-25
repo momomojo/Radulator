@@ -296,8 +296,9 @@ Expected:
 
 The calculator references should include:
 
-1. OPTN/HRSA MELD/PELD policy notice.
-2. OPTN/HRSA implementation FAQ.
-3. Kim WR et al. Gastroenterology 2021 MELD 3.0 paper.
-4. Kim WR et al. Gastroenterology 2008 MELD-Na paper.
-5. Kamath PS et al. Hepatology 2001 original MELD paper.
+1. OPTN Policy 9.1.D - MELD Score.
+2. OPTN/HRSA MELD and PELD Calculators User Guide.
+3. OPTN/HRSA Policy Notice - Improving Liver Allocation: MELD, PELD, Status 1A, Status 1B.
+4. Kim WR et al. Gastroenterology 2021 - MELD 3.0.
+5. Kim WR et al. New England Journal of Medicine 2008 - MELD-Na Development.
+6. Kamath PS et al. Hepatology 2001 - Original MELD Score.
