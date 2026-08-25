@@ -179,6 +179,8 @@ for (const [field, range] of Object.entries(NUMERIC_RANGES)) {
     ["NaN", Number.NaN],
     ["positive infinity", Number.POSITIVE_INFINITY],
     ["negative infinity", Number.NEGATIVE_INFINITY],
+    ["zero", 0],
+    ["negative", -1],
     ["below range", range.min - 0.01],
     ["above range", range.max + 0.01],
   ]) {

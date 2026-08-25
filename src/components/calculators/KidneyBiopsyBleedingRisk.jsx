@@ -196,7 +196,7 @@ The displayed estimate uses only the Thorne et al. 2026 recalibrated major-bleed
 
 Intended scope: adults undergoing an imaging-guided diagnostic percutaneous biopsy of a native or transplanted kidney. It is not validated here for pediatric, kidney-mass, intraoperative implantation, open, or nonpercutaneous biopsy.
 
-The model was developed and validated in Canadian cohorts with few major-bleeding events. Technique, needle size, medication practices, prophylaxis, case mix, and follow-up differed between cohorts and centers. The estimate complements rather than replaces patient-specific assessment and local protocols.`,
+The model was developed and validated in adult Canadian cohorts with few major-bleeding events. Technique, needle size, medication practices, prophylaxis, case mix, and follow-up differed between cohorts and centers. The estimate complements rather than replaces patient-specific assessment and local protocols.`,
     link: {
       label: "View the 2026 external validation and recalibration study",
       url: "https://doi.org/10.1016/j.xkme.2026.101352",

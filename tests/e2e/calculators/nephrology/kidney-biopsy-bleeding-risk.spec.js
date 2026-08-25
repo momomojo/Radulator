@@ -169,8 +169,11 @@ test.describe("Kidney Biopsy Major Bleeding Risk (KBRC)", () => {
     await page.locator("#age").focus();
     await page.keyboard.press("Tab");
     await expect(page.locator("#kidney_type-native")).toBeFocused();
-    await page.keyboard.press("Tab");
+    await page.keyboard.press("ArrowRight");
     await expect(page.locator("#kidney_type-allograft")).toBeFocused();
+    await expect(page.locator("#kidney_type-allograft")).toBeChecked();
+    await page.keyboard.press("Tab");
+    await expect(page.locator("#weight")).toBeFocused();
 
     const horizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth,
