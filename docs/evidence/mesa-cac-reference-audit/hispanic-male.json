@@ -1,0 +1,453 @@
+{
+  "schema": "radulator-mesa-cac-reference-audit-chunk/v1",
+  "auditedAt": "2026-08-24T22:01:16.168Z",
+  "officialCalculator": "https://tools.mesa-nhlbi.org/Calcium/input.aspx",
+  "tlsVerified": true,
+  "race": "hispanic",
+  "sex": "male",
+  "groupCount": 40,
+  "dataSha256": "1fcabd9ab706021de7865e309e612d376908a5a1ff71d113e65bb46bbb9b2b27",
+  "chunkSha256": "e737e8937508ebf3371b2f85907ae462488fac60777a921e87c66ec58267734e",
+  "groups": [
+    {
+      "key": "hispanic:male:45",
+      "p": 23,
+      "r": [
+        0,
+        0,
+        0,
+        42
+      ],
+      "recordSha256": "1b3c958054af53c7c02ffde80795325a5e8f2e771b1116fb2677eccf3214978d"
+    },
+    {
+      "key": "hispanic:male:46",
+      "p": 25,
+      "r": [
+        0,
+        0,
+        1,
+        50
+      ],
+      "recordSha256": "f60fe898fa38cc787af6223af5e43f15bed9fc5d65e2d4c46cfdb79fd5c9ca19"
+    },
+    {
+      "key": "hispanic:male:47",
+      "p": 26,
+      "r": [
+        0,
+        0,
+        2,
+        59
+      ],
+      "recordSha256": "8ab27bbc37b8243b9e11508326092e1a8bc198021879518e565ea566d78f335f"
+    },
+    {
+      "key": "hispanic:male:48",
+      "p": 28,
+      "r": [
+        0,
+        0,
+        4,
+        68
+      ],
+      "recordSha256": "4b4db8f3c6f2a8f6225f66d7d4ae3fbc80f74d2bcd966ad4f71e69519703bcb6"
+    },
+    {
+      "key": "hispanic:male:49",
+      "p": 29,
+      "r": [
+        0,
+        0,
+        6,
+        78
+      ],
+      "recordSha256": "1095549409ea98dcd4629059a22ea1691b0599886ab6d57819a1433357223d94"
+    },
+    {
+      "key": "hispanic:male:50",
+      "p": 31,
+      "r": [
+        0,
+        0,
+        9,
+        88
+      ],
+      "recordSha256": "1efa6abf442ffff8ae4f6b3e045b9e306c8ed457099c12405c4b98ca0720ef51"
+    },
+    {
+      "key": "hispanic:male:51",
+      "p": 32,
+      "r": [
+        0,
+        0,
+        12,
+        100
+      ],
+      "recordSha256": "b3b5ac442136466ac08d1b3c265d457cd42772ba10dc0e7ffd88d37adbd0d90e"
+    },
+    {
+      "key": "hispanic:male:52",
+      "p": 34,
+      "r": [
+        0,
+        0,
+        15,
+        112
+      ],
+      "recordSha256": "07fd8e78d7298fb7b8119a39c09f091416304ce0feb53e74ad9392cfd82e69b2"
+    },
+    {
+      "key": "hispanic:male:53",
+      "p": 35,
+      "r": [
+        0,
+        0,
+        18,
+        124
+      ],
+      "recordSha256": "6e7bffec224ef6a06c50eb6116d5c381615879442a076f55c043c735a9fb4007"
+    },
+    {
+      "key": "hispanic:male:54",
+      "p": 37,
+      "r": [
+        0,
+        0,
+        23,
+        138
+      ],
+      "recordSha256": "2e2fe1dcc920b86d7c06be5362be683891612f5ec01e2e5e3068d01266f9b8cc"
+    },
+    {
+      "key": "hispanic:male:55",
+      "p": 38,
+      "r": [
+        0,
+        0,
+        27,
+        153
+      ],
+      "recordSha256": "29f19489b0179937474da714c8fcfbf0be908bd72f62ac768dd182e9c1bcf4fe"
+    },
+    {
+      "key": "hispanic:male:56",
+      "p": 40,
+      "r": [
+        0,
+        0,
+        35,
+        177
+      ],
+      "recordSha256": "779c939b621becf5da9e0f37ee92d2aa71912fb478c12c8a63c17f62f12c2172"
+    },
+    {
+      "key": "hispanic:male:57",
+      "p": 43,
+      "r": [
+        0,
+        0,
+        44,
+        203
+      ],
+      "recordSha256": "d8b9abda0108abc6cd0fb44b5086d3dcd309cda3672c014b96b639372bc11eea"
+    },
+    {
+      "key": "hispanic:male:58",
+      "p": 46,
+      "r": [
+        0,
+        0,
+        55,
+        239
+      ],
+      "recordSha256": "648ab5a74f90c507ff419a810941a66e8ffaab4aaffe03476b08f0e2ca1fdcd0"
+    },
+    {
+      "key": "hispanic:male:59",
+      "p": 49,
+      "r": [
+        0,
+        0,
+        64,
+        263
+      ],
+      "recordSha256": "4e1969ca04e7fcf19ec48c8342b3b70974c943cbb459be3f84cc1ffbb0db6b4c"
+    },
+    {
+      "key": "hispanic:male:60",
+      "p": 51,
+      "r": [
+        0,
+        3,
+        75,
+        291
+      ],
+      "recordSha256": "b151e84ea77ed5a5a5035e9d85de948899a910a19ea0a87dfe6fafe6ab42919f"
+    },
+    {
+      "key": "hispanic:male:61",
+      "p": 54,
+      "r": [
+        0,
+        6,
+        88,
+        317
+      ],
+      "recordSha256": "38f9aa9f037f09beac37d01345112d79082200d7115e3a28ecb281f6b5951d72"
+    },
+    {
+      "key": "hispanic:male:62",
+      "p": 57,
+      "r": [
+        0,
+        9,
+        98,
+        337
+      ],
+      "recordSha256": "3d14b02b04dc7a283d626b88e479ac04f51bd5238cf3833996357714518abc5f"
+    },
+    {
+      "key": "hispanic:male:63",
+      "p": 59,
+      "r": [
+        0,
+        13,
+        111,
+        364
+      ],
+      "recordSha256": "2e9ac4438ae8ecbe51a1b136b9c77643c85da8353733f1523b3cdad12b1dd720"
+    },
+    {
+      "key": "hispanic:male:64",
+      "p": 62,
+      "r": [
+        0,
+        17,
+        125,
+        393
+      ],
+      "recordSha256": "f48377537a031de4ef96d345126ef26ea23495e16a3e8473e5566cb7f48f7e25"
+    },
+    {
+      "key": "hispanic:male:65",
+      "p": 64,
+      "r": [
+        0,
+        22,
+        141,
+        429
+      ],
+      "recordSha256": "b80094a58504dcbf58b022e8cc1ccfeb617fe47d97f4ef297aa562a1f07ea959"
+    },
+    {
+      "key": "hispanic:male:66",
+      "p": 67,
+      "r": [
+        0,
+        26,
+        159,
+        474
+      ],
+      "recordSha256": "0ebce2b61befadc000eec50a6b3a93a56703daa6c0a2e13a5881b63fc3e53747"
+    },
+    {
+      "key": "hispanic:male:67",
+      "p": 69,
+      "r": [
+        0,
+        34,
+        180,
+        516
+      ],
+      "recordSha256": "a2e7d884ac726be5e6cf015167a79c78a55632fcfcfb5597efb679fc024a8140"
+    },
+    {
+      "key": "hispanic:male:68",
+      "p": 71,
+      "r": [
+        0,
+        40,
+        200,
+        558
+      ],
+      "recordSha256": "d314afca040a2cfe4f05fe32b4ce1cec4436b781927d6bd0635df4267313da30"
+    },
+    {
+      "key": "hispanic:male:69",
+      "p": 73,
+      "r": [
+        0,
+        47,
+        224,
+        614
+      ],
+      "recordSha256": "fade51054a6a12feda7eb6718accc42dee78a6a5633906b0153571d652626f5f"
+    },
+    {
+      "key": "hispanic:male:70",
+      "p": 75,
+      "r": [
+        1,
+        56,
+        247,
+        666
+      ],
+      "recordSha256": "c6e05941f8cd36e57c5693f92f19fe187672c1622b787c1e9f6fdd754af6ef72"
+    },
+    {
+      "key": "hispanic:male:71",
+      "p": 77,
+      "r": [
+        4,
+        63,
+        272,
+        712
+      ],
+      "recordSha256": "8e1d53872f6331e0a254fee8d4b97219bdc18ad3287467425d7f1f9f6c3b6928"
+    },
+    {
+      "key": "hispanic:male:72",
+      "p": 79,
+      "r": [
+        6,
+        71,
+        289,
+        753
+      ],
+      "recordSha256": "f2855a71a3429255df23c91d5b3ba0c909e6de5877a63970ea44d3e23c578c9a"
+    },
+    {
+      "key": "hispanic:male:73",
+      "p": 80,
+      "r": [
+        9,
+        80,
+        313,
+        800
+      ],
+      "recordSha256": "a7e4cfc3ded495e0d6bdd9af2efc1a2dbaba317492df70b5e27ebdd7911353aa"
+    },
+    {
+      "key": "hispanic:male:74",
+      "p": 82,
+      "r": [
+        12,
+        89,
+        334,
+        844
+      ],
+      "recordSha256": "7b28f69f48992c1f3fecc1198713789d7982c950ba222567af3b3050b5c36dea"
+    },
+    {
+      "key": "hispanic:male:75",
+      "p": 84,
+      "r": [
+        15,
+        97,
+        358,
+        888
+      ],
+      "recordSha256": "1f4501d7e5a5905ae70be6673557318bdd536a413e3b17c747424ac1767ca8f4"
+    },
+    {
+      "key": "hispanic:male:76",
+      "p": 86,
+      "r": [
+        19,
+        108,
+        385,
+        953
+      ],
+      "recordSha256": "ddbb0990cd4ba0968978c2d42c22f7bd69ad7ef6570dd25e60dc1056af589130"
+    },
+    {
+      "key": "hispanic:male:77",
+      "p": 87,
+      "r": [
+        22,
+        118,
+        408,
+        1011
+      ],
+      "recordSha256": "707862a76275de731ea4fa8aa1d8c871e2e9e6a28e3f0580b90eb8bf6ccae42b"
+    },
+    {
+      "key": "hispanic:male:78",
+      "p": 89,
+      "r": [
+        27,
+        130,
+        434,
+        1082
+      ],
+      "recordSha256": "e6aff53c5e11a65359bbd78a86a094cf10a49da13819809d9ca2a33d10376c68"
+    },
+    {
+      "key": "hispanic:male:79",
+      "p": 91,
+      "r": [
+        32,
+        142,
+        463,
+        1151
+      ],
+      "recordSha256": "b0d2730baa0392853db5991123271ab96c91857dda4df15d99c5d90043eaca11"
+    },
+    {
+      "key": "hispanic:male:80",
+      "p": 92,
+      "r": [
+        36,
+        153,
+        494,
+        1221
+      ],
+      "recordSha256": "5edd399426a828c89ca6e6850197f6e80c628b0504e1c766ec14a450aab3ab0e"
+    },
+    {
+      "key": "hispanic:male:81",
+      "p": 94,
+      "r": [
+        42,
+        164,
+        522,
+        1280
+      ],
+      "recordSha256": "ad1b7d215beff9c9a8fd0f4d8f59c708107e2b0ae523f1014265145a60e5494e"
+    },
+    {
+      "key": "hispanic:male:82",
+      "p": 96,
+      "r": [
+        47,
+        176,
+        549,
+        1340
+      ],
+      "recordSha256": "c2c53d62b3668c921ce234da0743922eef307d3434a7da7062fa65cb0bcc216c"
+    },
+    {
+      "key": "hispanic:male:83",
+      "p": 99,
+      "r": [
+        56,
+        193,
+        580,
+        1366
+      ],
+      "recordSha256": "ab05f6a62531f889c3f3892c2d7bd38b16ce0144da1430d820274ab1b5514fb0"
+    },
+    {
+      "key": "hispanic:male:84",
+      "p": 99,
+      "r": [
+        59,
+        203,
+        619,
+        1468
+      ],
+      "recordSha256": "0eba3db5fb550a5b2ab2f513d8610c24a7f1579961b271de107d8c101aed0734"
+    }
+  ]
+}
