@@ -70,7 +70,7 @@ v2019 corrections:
 >
 > — Silverman et al., Radiology 2019;292(2):475–488, Table 1
 
-If >25% enhancing solid tissue → **not a Bosniak mass** — classify as a solid renal mass with cystic/necrotic changes.
+If approximately 25% or more is enhancing tissue → **not a Bosniak mass** — classify as a solid renal mass with cystic/necrotic changes.
 
 ### 2.2 Unified Enhancement Definition
 
@@ -99,7 +99,7 @@ All classes may now demonstrate enhancement (in 2005, enhancement was restricted
 |-------|-------------|-------------|-----------------|------------|----------------------|
 | **I** | Well-defined thin (≤2 mm) smooth wall; homogeneous simple fluid (−9 to 20 HU); no septa, no calcifications | Wall **may** enhance (new) | 0% (benign) | No follow-up required | Table 1, Fig. 1 |
 | **II** (6 subtypes) | All have thin (≤2 mm) smooth walls. <br>1. Thin (≤2 mm) few (1–3) septa; any calcification<br>2. Homogeneous hyperattenuating **≥70 HU** (noncontrast)<br>3. Homogeneous non-enhancing >20 HU (renal mass protocol)<br>4. Homogeneous −9 to 20 HU (noncontrast)<br>5. Homogeneous **21–30 HU** (portal venous)<br>6. Homogeneous low attenuation, "too small to characterize" | Walls/septa **may** enhance | <1% (benign/likely benign) | No follow-up required | Tables 1, 4; Figs. 3–6 |
-| **IIF** | Smooth minimally thickened **(3 mm) enhancing wall** **OR**<br> Smooth minimally thickened **(3 mm) enhancing septum/septa** (1–3) **OR**<br> Many **(≥4) thin (≤2 mm) enhancing** septa | **Enhancement required** | 0–38% (probably benign; nearly all indolent when malignant) | Follow-up at 6 mo, 12 mo, then annually ×5 years | Table 1; Figs. 7–8 |
+| **IIF** | Well-defined cystic mass with a smooth minimally thickened **(3 mm) enhancing wall** **OR**<br> Smooth minimally thickened **(3 mm) enhancing septum/septa** (one or more) **OR**<br> Many **(≥4) thin (≤2 mm) enhancing** septa | **Enhancement required** | 0–38% (probably benign; nearly all indolent when malignant) | Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors | Tables 1 and 4; Figs. 7–8 |
 | **III** | One or more enhancing **thick (≥4 mm)** **OR** **irregular** (≤3 mm obtuse convex protrusion) walls/septa. No nodular enhancement. | Enhancement required | ~50% (indeterminate) | Consider urology consultation | Table 3; Figs. 9–10 |
 | **IV** | One or more enhancing **nodule(s)** :<br> • ≥4 mm convex protrusion with **obtuse** margins **OR**<br> • Any size convex protrusion with **acute** margins | Enhancement required | ~90% (highly suspicious) | Consider urology consultation | Table 3; Figs. 11–13 |
 
@@ -108,7 +108,7 @@ All classes may now demonstrate enhancement (in 2005, enhancement was restricted
 | Class | Recommended Term |
 |-------|-----------------|
 | **I** | "Benign simple cyst" |
-| **II** | "Benign cystic mass" (or "Benign cyst" if confirmed) |
+| **II** | "Benign Bosniak II renal cyst" when confirmed as a cyst; "Likely benign Bosniak II renal mass" for included incompletely characterized density-only subtypes |
 | **IIF** | "Probably benign cystic mass" |
 | **III** | "Indeterminate cystic mass" |
 | **IV** | "Cystic mass, highly suspicious for malignancy" |
@@ -119,7 +119,7 @@ All classes may now demonstrate enhancement (in 2005, enhancement was restricted
 ### 2.6 Exclusions from Bosniak Classification
 
 Do not apply Bosniak classification to:
-- Lesions with >25% enhancing solid tissue (necrotic solid mass)
+- Lesions with approximately 25% or more enhancing tissue (solid or necrotic solid mass)
 - Infectious, inflammatory, or vascular cyst-like lesions (e.g., abscess)
 - Patients with a hereditary renal cell carcinoma syndrome
 - Abundant thick nodular calcifications that obscure feature assessment (recommend MRI with subtraction)
@@ -218,8 +218,8 @@ Bosniak v2019 provides **separate CT and MRI algorithms** (Silverman 2019, Table
 
 **v2019: Bosniak IIF** (many thin enhancing septa).
 **v2005: Bosniak IIF** (few-thin septa with possible enhancement — qualitative criterion). Same final category, but v2019 requires septal counting and explicit enhancement confirmation.
-**Management:** Follow-up at 6 mo, 12 mo, then annually ×5 years.
-**Source:** Silverman 2019, Table 1, Figs. 7–8
+**Management:** Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors. The v2019 paper is a malignancy-prediction system and is not a substitute for patient-specific management.
+**Source:** Silverman 2019, Tables 1 and 4, Figs. 7–8
 
 ---
 
@@ -275,7 +275,7 @@ Three options, in increasing order of complexity:
 4. **Density:** Replace single "high >20 HU" with multiple HU ranges matching v2019 subtypes 2–6
 5. **Enhancement confirmation:** New field — "enhancement present?" (≥20 HU increase) — required for IIF and above
 6. **Intrarenal + large:** Remove both checkboxes
-7. **Solid component >25% gate:** New exclusion criterion — requires user to estimate enhancing solid proportion
+7. **Enhancing tissue approximately 25% or more gate:** New exclusion criterion — requires user to estimate enhancing proportion
 8. **Reporting:** Update output text to use v2019 recommended terminology
 
 **Validation requirement:** After implementation, Mohib must clinically validate against ≥5 test cases spanning Classes I–IV, including edge cases that would change category from 2005.

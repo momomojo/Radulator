@@ -35,6 +35,7 @@ ACTIVATION_SELF_TESTS = (
     ("npm", "run", "test:hermes-judge-attest"),
     ("npm", "run", "test:hermes-lifecycle"),
     ("npm", "run", "test:hermes-learning"),
+    ("npm", "run", "test:hermes-feedback-intake"),
     ("npm", "run", "check:invariants"),
     ("npm", "run", "lint", "--", "--quiet"),
     ("npm", "run", "build"),
@@ -149,6 +150,28 @@ def _job(name: str, home: Path, repo: Path, prompt: str, skills: list[str], expr
     }
 
 
+def _script_job(name: str, home: Path, script: str, expression: str) -> dict[str, Any]:
+    return {
+        "id": _job_id(name),
+        "name": name,
+        "prompt": "",
+        "skills": [],
+        "skill": None,
+        "model": None,
+        "provider": None,
+        "base_url": None,
+        "script": script,
+        "no_agent": True,
+        "context_from": None,
+        "schedule": {"kind": "cron", "expr": expression, "display": expression},
+        "schedule_display": expression,
+        "enabled": False,
+        "deliver": None,
+        "workdir": None,
+        "_home": str(home),
+    }
+
+
 def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[str, Any]:
     repo = _require_absolute(Path(repo), "repo")
     radulator_home = _require_absolute(Path(radulator_home), "radulator_home")
@@ -165,6 +188,7 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
         repo / "ops/hermes/radulator/lifecycle_controller.py",
         repo / "ops/hermes/radulator/learning_context.py",
         repo / "ops/hermes/radulator/retain_learning.py",
+        repo / "ops/hermes/radulator/formspree_feedback_intake.py",
     ]
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
@@ -233,6 +257,12 @@ def build_plan(*, repo: Path, radulator_home: Path, default_home: Path) -> dict[
             f"--config {hindsight_config}. Do not call hindsight_retain. "
             "Use only its exact readback receipt to append learned, verify Kanban terminal readback, then append complete.",
             ["radulator-release-learning"], "2-59/10 * * * *",
+        ),
+        _script_job(
+            "radulator-formspree-feedback-intake",
+            radulator_home,
+            "radulator_formspree_feedback_intake.py",
+            "7-59/15 * * * *",
         ),
     ]
     return {
@@ -350,6 +380,15 @@ def _skill_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
     ]
 
 
+def _script_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
+    repo = Path(plan["repo"])
+    radulator = Path(plan["radulator_home"])
+    return [(
+        repo / "ops/hermes/radulator/formspree_feedback_intake.py",
+        radulator / "scripts/radulator_formspree_feedback_intake.py",
+    )]
+
+
 def _backup_path(plan: dict[str, Any]) -> Path:
     return Path(plan["radulator_home"]) / "state/radulator-release-backup.json"
 
@@ -419,10 +458,32 @@ def _run_activation_self_tests(plan: dict[str, Any], runner=None) -> None:
 
 def _capture_backup(plan: dict[str, Any], targets: list[Path]) -> None:
     destination = _backup_path(plan)
+    def canonical(value: str | Path) -> str:
+        return str(Path(value).expanduser().resolve(strict=False))
+
     if destination.exists():
-        return
-    entries = []
+        try:
+            backup = json.loads(destination.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise InstallError(f"Backup manifest is unreadable: {destination}") from error
+        if backup.get("schema") != BACKUP_SCHEMA or not isinstance(backup.get("entries"), list):
+            raise InstallError(f"Backup manifest schema is invalid: {destination}")
+        entries = list(backup["entries"])
+        raw_paths = [entry.get("path") for entry in entries if isinstance(entry, dict)]
+        if len(raw_paths) != len(entries) or not all(isinstance(path, str) for path in raw_paths):
+            raise InstallError(f"Backup manifest contains invalid or duplicate targets: {destination}")
+        recorded_paths = [canonical(path) for path in raw_paths]
+        if len(set(recorded_paths)) != len(recorded_paths):
+            raise InstallError(f"Backup manifest contains invalid or duplicate targets: {destination}")
+    else:
+        entries = []
+        recorded_paths = []
+
+    changed = False
     for target in targets:
+        canonical_target = canonical(target)
+        if canonical_target in recorded_paths:
+            continue
         exists = target.is_file()
         entries.append({
             "path": str(target),
@@ -430,7 +491,10 @@ def _capture_backup(plan: dict[str, Any], targets: list[Path]) -> None:
             "mode": (target.stat().st_mode & 0o777) if exists else None,
             "content_base64": base64.b64encode(target.read_bytes()).decode("ascii") if exists else None,
         })
-    _atomic_write(destination, _serialize({"schema": BACKUP_SCHEMA, "entries": entries}), 0o600)
+        recorded_paths.append(canonical_target)
+        changed = True
+    if changed or not destination.exists():
+        _atomic_write(destination, _serialize({"schema": BACKUP_SCHEMA, "entries": entries}), 0o600)
 
 
 def apply_install(
@@ -449,8 +513,14 @@ def apply_install(
         homes[template["_home"]].append(template)
     jobs_paths = [Path(home) / "cron/jobs.json" for home in homes]
     skill_copies = _skill_copies(plan)
+    script_copies = _script_copies(plan)
     control_manifest = _control_manifest_path(plan)
-    _capture_backup(plan, [*jobs_paths, *(destination for _, destination in skill_copies), control_manifest])
+    _capture_backup(plan, [
+        *jobs_paths,
+        *(destination for _, destination in skill_copies),
+        *(destination for _, destination in script_copies),
+        control_manifest,
+    ])
 
     for home, templates in homes.items():
         path = Path(home) / "cron/jobs.json"
@@ -478,6 +548,13 @@ def apply_install(
         content = source.read_bytes()
         if not destination.exists() or destination.read_bytes() != content:
             _atomic_write(destination, content, 0o644)
+
+    for source, destination in script_copies:
+        if not source.is_file():
+            raise InstallError(f"Required script source is missing: {source}")
+        content = source.read_bytes()
+        if not destination.exists() or destination.read_bytes() != content:
+            _atomic_write(destination, content, 0o700)
 
     manifest = {
         "schema": SCHEMA,
