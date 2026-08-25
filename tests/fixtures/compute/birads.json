@@ -103,9 +103,11 @@
           { "key": "Assessment", "equals": "3 — Probably benign" },
           {
             "key": "Likelihood context",
-            "equals": ">0% to ≤2% expected likelihood of malignancy"
+            "equals": ">0% but ≤2% expected likelihood of malignancy"
           },
-          { "key": "Next step", "includes": "initial 6-month follow-up" }
+          { "key": "Next step", "includes": "initial 6-month follow-up" },
+          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" },
+          { "key": "U.S. self-referred patient pathway", "includes": "patients who do not have a health care provider" }
         ]
       }
     },
@@ -121,8 +123,10 @@
             "equals": "2% but <95% expected likelihood of malignancy"
           },
           { "key": "Next step", "includes": "Tissue sampling is generally indicated" },
+          { "key": "U.S. reporting requirement", "includes": "patient lay summary to the patient" },
           { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
-          { "key": "Published interval note", "includes": "source-literal overlap at exactly 50%" }
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" },
+          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" }
         ]
       }
     },
@@ -137,7 +141,8 @@
             "key": "Likelihood context",
             "equals": ">2% to ≤10% expected likelihood of malignancy"
           },
-          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" }
+          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" }
         ]
       }
     },
@@ -153,7 +158,8 @@
             "equals": ">10% to ≤50% expected likelihood of malignancy"
           },
           { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
-          { "key": "Published interval note", "includes": "source-literal overlap at exactly 50%" }
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" },
+          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" }
         ]
       }
     },
@@ -169,7 +175,8 @@
             "equals": "50% to <95% expected likelihood of malignancy"
           },
           { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
-          { "key": "Published interval note", "includes": "source-literal overlap at exactly 50%" }
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" },
+          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" }
         ]
       }
     },
@@ -188,7 +195,8 @@
             "equals": "≥95% expected likelihood of malignancy"
           },
           { "key": "Next step", "includes": "Prompt tissue confirmation" },
-          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" }
+          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
+          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" }
         ]
       }
     },

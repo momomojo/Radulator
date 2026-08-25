@@ -51,9 +51,10 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
 
   test("reports the probably-benign boundary and evidence-supported initial follow-up", async ({ page }) => {
     await calculate(page, "3 — Probably benign");
-    await expect(page.getByText(">0% to ≤2% expected likelihood of malignancy")).toBeVisible();
+    await expect(page.getByText(">0% but ≤2% expected likelihood of malignancy")).toBeVisible();
     await expect(page.getByText("initial 6-month follow-up")).toBeVisible();
     await expect(page.getByText("does not calculate patient-specific risk")).toBeVisible();
+    await expect(page.getByText(/accepts patients who do not have a health care provider/)).toBeVisible();
   });
 
   for (const category of [
@@ -68,15 +69,17 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
       await expect(page.getByText(`${category[1]} expected likelihood of malignancy`)).toBeVisible();
       await expect(page.getByText("a qualified interpreting physician assigns the category")).toBeVisible();
       await expect(
-        page.getByText(/written report.*patient lay summary.*within seven calendar days of interpretation/),
+        page.getByText(/mammography report to the health care provider.*patient lay summary to the patient.*within seven calendar days of interpretation/),
       ).toBeVisible();
+      await expect(page.getByText(/must maintain a referral system when clinically indicated/)).toBeVisible();
     });
   }
 
-  test("discloses the source-literal 50% overlap instead of silently normalizing it", async ({ page }) => {
+  test("discloses the source-literal 2% and 50% overlaps instead of silently normalizing them", async ({ page }) => {
     await calculate(page, "4C — High suspicion");
-    await expect(page.getByText(/source-literal overlap at exactly 50%/)).toBeVisible();
-    await expect(page.getByText(/not a normalized clinical decision rule/)).toBeVisible();
+    await expect(page.getByText(/source-literal overlaps at exactly 2% and exactly 50%/)).toBeVisible();
+    await expect(page.getByText(/does not infer or normalize an assessment/)).toBeVisible();
+    await expect(page.getByText(/official BI-RADS manual govern/)).toBeVisible();
   });
 
   test("keeps known malignancy distinct from a new probability assessment", async ({ page }) => {
