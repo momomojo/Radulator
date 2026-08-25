@@ -108,7 +108,7 @@ docs/
 
 #### 4. Renal Cyst (Bosniak) ✅ PASS (87.1%)
 - **Quality Score:** 87.1/100 (VERY GOOD)
-- **Test File:** `tests/e2e/calculators/radiology/renal-cyst.spec.js` (35 tests)
+- **Test File:** `tests/e2e/calculators/radiology/renal-cyst.spec.js` (37 tests)
 - **Test Data:** `tests/e2e/calculators/radiology/renal-cyst-test-data.json`
 - **Current documentation:** `docs/calculators/radiology/bosniak-v2019.md`
 - **Key Findings:**
