@@ -56,28 +56,35 @@ class FakeGmail:
 
 
 class FakeKanban:
-    def __init__(self, fail_readback=False):
+    def __init__(self, fail_readback=False, drop_parents=False):
         self.fail_readback = fail_readback
+        self.drop_parents = drop_parents
         self.created = []
+        self.create_options = []
         self.tasks = {}
 
-    def create(self, title, body, idempotency_key):
+    def create(self, title, body, idempotency_key, *, triage=True, parents=()):
         self.created.append((title, body, idempotency_key))
-        task_id = "t_feedback_1"
+        self.create_options.append({"triage": triage, "parents": tuple(parents)})
+        task_id = f"t_feedback_{len(self.created)}"
         self.tasks[task_id] = {
             "id": task_id,
             "title": title,
             "body": body,
             "idempotency_key": idempotency_key,
-            "status": "triage",
+            "status": "triage" if triage else "todo",
             "assignee": "radulator",
+            "parents": list(parents),
         }
         return task_id
 
     def show(self, task_id):
         if self.fail_readback:
             return {"id": task_id, "body": "incomplete"}
-        return self.tasks[task_id]
+        value = dict(self.tasks[task_id])
+        if self.drop_parents:
+            value["parents"] = []
+        return value
 
 
 class FakeCommandRunner:
@@ -207,7 +214,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             "Message: this colon is part of the submitted feedback.",
         )
 
-    def test_creates_one_triage_task_and_persists_only_a_digest_receipt(self):
+    def test_creates_triage_and_closure_tasks_and_persists_only_digest_receipts(self):
         gmail = FakeGmail([self.message])
         kanban = FakeKanban()
 
@@ -216,9 +223,9 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
 
         self.assertEqual(first, {"created": 1, "already_processed": 0, "quarantined": 0})
         self.assertEqual(second, {"created": 0, "already_processed": 1, "quarantined": 0})
-        self.assertEqual(len(kanban.created), 1)
+        self.assertEqual(len(kanban.created), 2)
         title, body, idempotency_key = kanban.created[0]
-        self.assertRegex(title, r"^Radulator website feedback receipt [0-9a-f]{12}$")
+        self.assertRegex(title, r"^Triage Radulator website feedback [0-9a-f]{12}$")
         self.assertIn("BI-RADS updated in 2025", body)
         self.assertIn("Dark mode for reading rooms", body)
         self.assertIn("BEGIN UNTRUSTED WEBSITE FEEDBACK JSON", body)
@@ -231,7 +238,10 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertIn('"type": "Feature"', untrusted)
         self.assertNotIn("Private Submitter", body)
         self.assertNotIn("private.submitter", body)
-        self.assertRegex(idempotency_key, r"^radulator-formspree:[0-9a-f]{64}$")
+        self.assertRegex(
+            idempotency_key,
+            r"^radulator-formspree-triage:[0-9a-f]{64}$",
+        )
 
         state_text = self.state_path.read_text()
         state = json.loads(state_text)
@@ -241,6 +251,45 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertNotIn("Private Submitter", state_text)
         self.assertNotIn("private.submitter", state_text)
         self.assertEqual(os.stat(self.state_path).st_mode & 0o777, 0o600)
+
+    def test_feedback_receipt_closes_only_after_a_linked_release_verifier(self):
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+
+        result = process_feedback(gmail, kanban, self.state_path)
+
+        self.assertEqual(result, {"created": 1, "already_processed": 0, "quarantined": 0})
+        self.assertEqual(len(kanban.created), 2)
+        triage_id = "t_feedback_1"
+        receipt_id = "t_feedback_2"
+        self.assertEqual(kanban.create_options[0], {"triage": True, "parents": ()})
+        self.assertEqual(
+            kanban.create_options[1],
+            {"triage": False, "parents": (triage_id,)},
+        )
+        receipt_title, receipt_body, receipt_key = kanban.created[1]
+        self.assertRegex(
+            receipt_title,
+            r"^Radulator website feedback receipt [0-9a-f]{12}$",
+        )
+        self.assertIn("immutable production release marker", receipt_body)
+        self.assertIn("production smoke", receipt_body)
+        self.assertIn("retained learning", receipt_body)
+        self.assertIn(triage_id, receipt_body)
+        self.assertRegex(receipt_key, r"^radulator-formspree:[0-9a-f]{64}$")
+        state = json.loads(self.state_path.read_text())
+        receipt = next(iter(state["processed"].values()))
+        self.assertEqual(receipt["task_id"], receipt_id)
+        self.assertEqual(receipt["triage_task_id"], triage_id)
+
+    def test_does_not_acknowledge_closure_until_parent_link_readback(self):
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban(drop_parents=True)
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "closure"):
+            process_feedback(gmail, kanban, self.state_path)
+
+        self.assertFalse(self.state_path.exists())
 
     def test_does_not_acknowledge_a_message_until_exact_kanban_readback(self):
         gmail = FakeGmail([self.message])
@@ -276,9 +325,10 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.state_path.write_text(json.dumps(state))
         repaired = process_feedback(gmail, kanban, self.state_path)
         self.assertEqual(repaired, {"created": 1, "already_processed": 0, "quarantined": 0})
-        self.assertEqual(len(kanban.created), 2)
+        self.assertEqual(len(kanban.created), 3)
         self.assertTrue(kanban.created[0][2].startswith("radulator-formspree-quarantine:"))
-        self.assertTrue(kanban.created[1][2].startswith("radulator-formspree:"))
+        self.assertTrue(kanban.created[1][2].startswith("radulator-formspree-triage:"))
+        self.assertTrue(kanban.created[2][2].startswith("radulator-formspree:"))
         state = json.loads(self.state_path.read_text())
         self.assertEqual(next(iter(state["processed"].values()))["classification"], "feedback")
 
@@ -320,7 +370,11 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
 
         self.assertEqual(first_upgrade_poll["created"], 1)
         self.assertEqual(gmail.get_calls, ["old-bad-0", "new-valid"])
-        self.assertEqual(len(kanban.created), 4, "quarantine task must not be duplicated")
+        self.assertEqual(len(kanban.created), 5, "quarantine task must not be duplicated")
+        self.assertTrue(all(
+            item[2].startswith("radulator-formspree-quarantine:")
+            for item in kanban.created[:3]
+        ))
         upgraded = json.loads(self.state_path.read_text())["processed"]
         self.assertEqual(sum(receipt["parser_version"] == 1 for receipt in upgraded.values()), 2)
 
@@ -417,6 +471,34 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertEqual(
             runner.calls[1][0],
             ["/runtime/hermes", "kanban", "show", "t_feedback_contract", "--json"],
+        )
+
+    def test_hermes_kanban_adapter_atomically_parents_non_triage_closure(self):
+        runner = FakeCommandRunner([
+            json.dumps({"task": {"id": "t_feedback_closure"}}),
+        ])
+        client = HermesKanbanClient(
+            "/runtime/hermes", project="radulator", assignee="radulator", runner=runner
+        )
+
+        task_id = client.create(
+            "Close feedback receipt",
+            "Wait for production proof",
+            "receipt-key",
+            triage=False,
+            parents=("t_feedback_triage",),
+        )
+
+        self.assertEqual(task_id, "t_feedback_closure")
+        self.assertEqual(
+            runner.calls[0][0],
+            [
+                "/runtime/hermes", "kanban", "create", "Close feedback receipt",
+                "--body", "Wait for production proof", "--assignee", "radulator",
+                "--project", "radulator", "--parent", "t_feedback_triage",
+                "--idempotency-key", "receipt-key",
+                "--created-by", "radulator-formspree-intake", "--json",
+            ],
         )
 
     def test_default_dependencies_match_the_managed_hermes_install_layout(self):

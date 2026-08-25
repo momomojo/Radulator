@@ -244,11 +244,22 @@ def _contains_text(value: Any, needle: str) -> bool:
     return False
 
 
+def _has_parent(value: Any, parent_id: str) -> bool:
+    if isinstance(value, dict):
+        parents = value.get("parents")
+        if isinstance(parents, list) and parent_id in parents:
+            return True
+        return any(_has_parent(item, parent_id) for item in value.values())
+    if isinstance(value, list):
+        return any(_has_parent(item, parent_id) for item in value)
+    return False
+
+
 def _feedback_task(feedback: FormspreeFeedback, received: str, digest: str) -> Any:
     # No submitter-controlled text is placed in the task title. The complete
     # minimized payload is serialized as one explicitly untrusted data block
     # so downstream agents cannot mistake website prose for instructions.
-    title = "Radulator website feedback receipt " + digest[:12]
+    title = "Triage Radulator website feedback " + digest[:12]
     untrusted_payload = json.dumps(
         feedback.to_dict(), ensure_ascii=False, sort_keys=True, separators=(",", ": ")
     )
@@ -271,6 +282,25 @@ def _feedback_task(feedback: FormspreeFeedback, received: str, digest: str) -> A
         "- For a missing feature, implement it with regression tests and exact deployment readback.",
         "- For clinical content, use current primary society/research sources, independent wording, citations, and the exact-head clinical judge gate.",
         "- A hold is not terminal: create a concrete corrective task, fix the stated reason, and resume the lifecycle automatically.",
+    ])
+    return title, body
+
+
+def _closure_task(received: str, digest: str, triage_task_id: str) -> Any:
+    title = "Radulator website feedback receipt " + digest[:12]
+    body = "\n".join([
+        "Source: Radulator website feedback lifecycle closure",
+        "Repository: momomojo/Radulator",
+        "Received: " + received,
+        "Receipt digest: " + digest,
+        "Triage task: " + triage_task_id,
+        "",
+        "This is the terminal lifecycle receipt. Do not mark it done merely because an audit, implementation, pull request, or delegated release tracker exists.",
+        "Read the linked triage result and its descendants, then keep this receipt open until every requested change has one of these authoritative outcomes:",
+        "- no implementation was needed and current production behavior was directly verified; or",
+        "- the exact approved commit is present in an immutable production release marker, production smoke passes, and retained learning records the feedback-to-release outcome.",
+        "Clinical changes also require current primary-source citations and the exact-head independent judge quorum before merge.",
+        "A hold or failed check is corrective work, not a terminal outcome: create or resume the fix, wait for a new exact head, and re-run this closure check automatically.",
     ])
     return title, body
 
@@ -405,21 +435,61 @@ def _process_feedback_locked(
             classification = "quarantined"
             title, body = _quarantine_task(received, digest)
 
-        prefix = "radulator-formspree-quarantine:" if classification == "quarantined" else "radulator-formspree:"
-        idempotency_key = prefix + digest
+        triage_task_id = None
         try:
-            task_id = kanban.create(title, body, idempotency_key)
-            readback = kanban.show(task_id)
+            if classification == "quarantined":
+                task_id = kanban.create(
+                    title,
+                    body,
+                    "radulator-formspree-quarantine:" + digest,
+                    triage=True,
+                )
+                readback = kanban.show(task_id)
+                if _find_task_id(readback) != task_id or not _contains_text(readback, digest):
+                    raise FeedbackIntakeError("Kanban feedback receipt failed exact readback.")
+            else:
+                triage_task_id = kanban.create(
+                    title,
+                    body,
+                    "radulator-formspree-triage:" + digest,
+                    triage=True,
+                )
+                triage_readback = kanban.show(triage_task_id)
+                if (
+                    _find_task_id(triage_readback) != triage_task_id
+                    or not _contains_text(triage_readback, digest)
+                ):
+                    raise FeedbackIntakeError("Kanban feedback triage failed exact readback.")
+
+                closure_title, closure_body = _closure_task(
+                    received, digest, triage_task_id
+                )
+                task_id = kanban.create(
+                    closure_title,
+                    closure_body,
+                    "radulator-formspree:" + digest,
+                    triage=False,
+                    parents=(triage_task_id,),
+                )
+                readback = kanban.show(task_id)
+                if (
+                    _find_task_id(readback) != task_id
+                    or not _contains_text(readback, digest)
+                    or not _has_parent(readback, triage_task_id)
+                ):
+                    raise FeedbackIntakeError("Kanban feedback closure failed exact readback.")
+        except FeedbackIntakeError:
+            raise
         except Exception as error:
             raise FeedbackIntakeError("Kanban feedback receipt failed readback.") from error
-        if _find_task_id(readback) != task_id or not _contains_text(readback, digest):
-            raise FeedbackIntakeError("Kanban feedback receipt failed exact readback.")
 
         state["processed"][digest] = {
             "task_id": task_id,
             "classification": classification,
             "parser_version": PARSER_VERSION,
         }
+        if triage_task_id:
+            state["processed"][digest]["triage_task_id"] = triage_task_id
         _write_state(state_path, state)
         if classification == "quarantined":
             outcome["quarantined"] += 1
@@ -532,7 +602,15 @@ class HermesKanbanClient:
         except json.JSONDecodeError as error:
             raise FeedbackIntakeError("Hermes Kanban did not return valid JSON.") from error
 
-    def create(self, title: str, body: str, idempotency_key: str) -> str:
+    def create(
+        self,
+        title: str,
+        body: str,
+        idempotency_key: str,
+        *,
+        triage: bool = True,
+        parents: Any = (),
+    ) -> str:
         arguments = [
             "create", title,
             "--body", body,
@@ -540,8 +618,11 @@ class HermesKanbanClient:
         ]
         if self.project:
             arguments.extend(["--project", self.project])
+        for parent in parents:
+            arguments.extend(["--parent", str(parent)])
+        if triage:
+            arguments.append("--triage")
         arguments.extend([
-            "--triage",
             "--idempotency-key", idempotency_key,
             "--created-by", "radulator-formspree-intake",
             "--json",
