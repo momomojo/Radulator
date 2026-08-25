@@ -95,12 +95,12 @@ Legacy MELD-Na bounds:
 - **Current age**: required for MELD 3.0; candidates currently under age 12 use PELD/PELD Cr.
 - **Age at registration**: required for MELD 3.0; validates 0-120 years, cannot exceed current age, and selects the registered-before-18 or adult equation.
 - **Sex for adult MELD 3.0 calculation**: required only when age at registration is 18 or older.
-- **Creatinine**: mg/dL, input validation 0.1-15.0.
-- **Total bilirubin**: mg/dL, input validation 0.1-50.0.
-- **INR**: input validation 0.8-10.0.
-- **Sodium**: mEq/L, input validation 110-160.
-- **Serum albumin**: g/dL, required for MELD 3.0, input validation 0.5-8.0.
-- **Dialysis**: dialysis at least twice in the past week or 24-hour CVVHD.
+- **Creatinine**: mg/dL, OPTN calculator entry range 0.01-40; calculation bounds are applied afterward.
+- **Total bilirubin**: mg/dL, OPTN calculator entry range 0-99; calculation bounds are applied afterward.
+- **INR**: OPTN calculator entry range 0.5-99; calculation bounds are applied afterward.
+- **Sodium**: mEq/L, OPTN calculator entry range 100-200; calculation bounds are applied afterward.
+- **Serum albumin**: g/dL, required for MELD 3.0, OPTN calculator entry range 0.50-9.90; calculation bounds are applied afterward.
+- **Dialysis**: whether the candidate had dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test.
 
 ## Outputs
 

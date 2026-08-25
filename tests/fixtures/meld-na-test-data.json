@@ -16,7 +16,7 @@
         "lowerBound": 1.0,
         "upperBound": 4.0,
         "dialysisValue": 4.0,
-        "note": "If Cr < 1.0, set to 1.0. If dialysis ≥2x/week or 24hr CVVHD, set to 4.0. If Cr > 4.0, cap at 4.0"
+        "note": "If Cr < 1.0, set to 1.0. If dialysis twice, or 24 hours of CVVHD, occurred within a week prior to the serum creatinine test, set to 4.0. If Cr > 4.0, cap at 4.0"
       },
       "bilirubin": {
         "lowerBound": 1.0,
@@ -302,7 +302,7 @@
     {
       "name": "Dialysis Patient: Creatinine Override",
       "category": "Dialysis Adjustments",
-      "description": "Patient on dialysis ≥2x/week. Creatinine automatically set to 4.0 regardless of actual value.",
+      "description": "Patient had dialysis twice within a week prior to the serum creatinine test. Creatinine automatically set to 4.0 regardless of actual value.",
       "inputs": {
         "creatinine": "1.2",
         "bilirubin": "2.5",
@@ -345,7 +345,7 @@
         "MELD-Na Score": "29",
         "3-Month Mortality": "19.6%",
         "Risk Category": "High risk",
-        "Clinical Notes": "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)"
+        "Clinical Notes": "Creatinine set to 4.0 mg/dL (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)"
       }
     },
     {
@@ -393,7 +393,7 @@
         "MELD-Na Score": "32",
         "3-Month Mortality": "52.6%",
         "Risk Category": "Very high risk",
-        "Clinical Notes": "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)"
+        "Clinical Notes": "Creatinine set to 4.0 mg/dL (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)"
       }
     },
     {
@@ -578,7 +578,7 @@
         "MELD-Na Score": "40",
         "3-Month Mortality": ">70%",
         "Risk Category": "Critical risk",
-        "Clinical Notes": "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD); MELD score capped at maximum of 40; Sodium set to lower bound of 125 mEq/L for MELD-Na calculation"
+        "Clinical Notes": "Creatinine set to 4.0 mg/dL (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test); MELD score capped at maximum of 40; Sodium set to lower bound of 125 mEq/L for MELD-Na calculation"
       }
     },
     {
@@ -938,26 +938,26 @@
   "validationRules": [
     {
       "field": "creatinine",
-      "validRange": { "min": 0.1, "max": 15.0 },
+      "validRange": { "min": 0.01, "max": 40 },
       "unit": "mg/dL",
-      "errorMessage": "Creatinine must be between 0.1 and 15.0 mg/dL"
+      "errorMessage": "Creatinine must be between 0.01 and 40 mg/dL"
     },
     {
       "field": "bilirubin",
-      "validRange": { "min": 0.1, "max": 50.0 },
+      "validRange": { "min": 0, "max": 99 },
       "unit": "mg/dL",
-      "errorMessage": "Bilirubin must be between 0.1 and 50.0 mg/dL"
+      "errorMessage": "Bilirubin must be between 0 and 99 mg/dL"
     },
     {
       "field": "inr",
-      "validRange": { "min": 0.8, "max": 10.0 },
-      "errorMessage": "INR must be between 0.8 and 10.0"
+      "validRange": { "min": 0.5, "max": 99 },
+      "errorMessage": "INR must be between 0.5 and 99"
     },
     {
       "field": "sodium",
-      "validRange": { "min": 110, "max": 160 },
+      "validRange": { "min": 100, "max": 200 },
       "unit": "mEq/L",
-      "errorMessage": "Sodium must be between 110 and 160 mEq/L"
+      "errorMessage": "Sodium must be between 100 and 200 mEq/L"
     }
   ],
   "errorTestCases": [
@@ -975,68 +975,68 @@
     {
       "name": "Creatinine Too Low",
       "inputs": {
-        "creatinine": "0.05",
+        "creatinine": "0.009",
         "bilirubin": "2.0",
         "inr": "1.5",
         "sodium": "135",
         "dialysis": false
       },
-      "expectedError": "Creatinine must be between 0.1 and 15.0 mg/dL"
+      "expectedError": "Creatinine must be between 0.01 and 40 mg/dL"
     },
     {
       "name": "Creatinine Too High",
       "inputs": {
-        "creatinine": "16.0",
+        "creatinine": "40.01",
         "bilirubin": "2.0",
         "inr": "1.5",
         "sodium": "135",
         "dialysis": false
       },
-      "expectedError": "Creatinine must be between 0.1 and 15.0 mg/dL"
+      "expectedError": "Creatinine must be between 0.01 and 40 mg/dL"
     },
     {
       "name": "Bilirubin Too Low",
       "inputs": {
         "creatinine": "1.0",
-        "bilirubin": "0.05",
+        "bilirubin": "-0.01",
         "inr": "1.5",
         "sodium": "135",
         "dialysis": false
       },
-      "expectedError": "Bilirubin must be between 0.1 and 50.0 mg/dL"
+      "expectedError": "Bilirubin must be between 0 and 99 mg/dL"
     },
     {
       "name": "Bilirubin Too High",
       "inputs": {
         "creatinine": "1.0",
-        "bilirubin": "55.0",
+        "bilirubin": "99.01",
         "inr": "1.5",
         "sodium": "135",
         "dialysis": false
       },
-      "expectedError": "Bilirubin must be between 0.1 and 50.0 mg/dL"
+      "expectedError": "Bilirubin must be between 0 and 99 mg/dL"
     },
     {
       "name": "INR Too Low",
       "inputs": {
         "creatinine": "1.0",
         "bilirubin": "2.0",
-        "inr": "0.5",
+        "inr": "0.49",
         "sodium": "135",
         "dialysis": false
       },
-      "expectedError": "INR must be between 0.8 and 10.0"
+      "expectedError": "INR must be between 0.5 and 99"
     },
     {
       "name": "INR Too High",
       "inputs": {
         "creatinine": "1.0",
         "bilirubin": "2.0",
-        "inr": "12.0",
+        "inr": "99.01",
         "sodium": "135",
         "dialysis": false
       },
-      "expectedError": "INR must be between 0.8 and 10.0"
+      "expectedError": "INR must be between 0.5 and 99"
     },
     {
       "name": "Sodium Too Low",
@@ -1044,10 +1044,10 @@
         "creatinine": "1.0",
         "bilirubin": "2.0",
         "inr": "1.5",
-        "sodium": "105",
+        "sodium": "99.9",
         "dialysis": false
       },
-      "expectedError": "Sodium must be between 110 and 160 mEq/L"
+      "expectedError": "Sodium must be between 100 and 200 mEq/L"
     },
     {
       "name": "Sodium Too High",
@@ -1055,10 +1055,10 @@
         "creatinine": "1.0",
         "bilirubin": "2.0",
         "inr": "1.5",
-        "sodium": "165",
+        "sodium": "200.1",
         "dialysis": false
       },
-      "expectedError": "Sodium must be between 110 and 160 mEq/L"
+      "expectedError": "Sodium must be between 100 and 200 mEq/L"
     }
   ],
   "references": [

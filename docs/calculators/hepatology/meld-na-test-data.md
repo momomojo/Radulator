@@ -275,7 +275,7 @@ Expected:
 
 Expected:
 
-- Clinical Notes: "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)"
+- Clinical Notes: "Creatinine set to 4.0 mg/dL (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)"
 - Should not show "Creatinine capped at 4.0 mg/dL" for this branch.
 
 ## Reference Checks

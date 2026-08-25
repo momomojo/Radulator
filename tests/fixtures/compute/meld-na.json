@@ -228,6 +228,68 @@
       }
     },
     {
+      "id": "meld3-official-input-domain-clamps-laboratory-values",
+      "inputs": {
+        "scoringModel": "meld3",
+        "currentAge": "45",
+        "ageAtRegistration": "45",
+        "sex": "male",
+        "creatinine": "20",
+        "bilirubin": "0",
+        "inr": "0.5",
+        "sodium": "105",
+        "albumin": "9.9",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Clinical Notes", "includes": "Creatinine capped at 3.0 mg/dL for MELD 3.0" },
+          { "key": "Clinical Notes", "includes": "Bilirubin set to lower bound of 1.0 mg/dL" },
+          { "key": "Clinical Notes", "includes": "INR set to lower bound of 1.0" },
+          { "key": "Clinical Notes", "includes": "Sodium set to lower bound of 125 mEq/L" },
+          { "key": "Clinical Notes", "includes": "Albumin set to upper bound of 3.5 g/dL" },
+          { "key": "_severity", "equals": "info" }
+        ]
+      }
+    },
+    {
+      "id": "meld3-rejects-creatinine-below-official-domain",
+      "inputs": {
+        "scoringModel": "meld3",
+        "currentAge": "45",
+        "ageAtRegistration": "45",
+        "sex": "male",
+        "creatinine": "0.009",
+        "bilirubin": "2",
+        "inr": "1.5",
+        "sodium": "135",
+        "albumin": "3",
+        "dialysis": false
+      },
+      "expect": {
+        "errorIncludes": "between 0.01 and 40"
+      }
+    },
+    {
+      "id": "meld3-rejects-albumin-above-official-domain",
+      "inputs": {
+        "scoringModel": "meld3",
+        "currentAge": "45",
+        "ageAtRegistration": "45",
+        "sex": "male",
+        "creatinine": "1",
+        "bilirubin": "2",
+        "inr": "1.5",
+        "sodium": "135",
+        "albumin": "9.91",
+        "dialysis": false
+      },
+      "expect": {
+        "errorIncludes": "between 0.50 and 9.90"
+      }
+    },
+    {
       "id": "legacy-meld-na-regression",
       "inputs": {
         "scoringModel": "legacy-meld-na",
@@ -242,7 +304,8 @@
         "fields": [
           { "key": "MELD Score", "equals": "6" },
           { "key": "MELD-Na Score", "equals": "6" },
-          { "key": "Risk Category", "equals": "Low risk" }
+          { "key": "Risk Category", "equals": "Low risk" },
+          { "key": "_severity", "equals": "info" }
         ]
       }
     }

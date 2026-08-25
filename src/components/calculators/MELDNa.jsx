@@ -39,9 +39,6 @@ const isAdultMeld3Selected = (vals) => {
   );
 };
 
-const scoreSeverity = (score) =>
-  score < 15 ? "success" : score <= 25 ? "warning" : "danger";
-
 function validateSharedInputs({ creatinine, bilirubin, inr, sodium }) {
   const cr = parseNumericInput(creatinine);
   const bili = parseNumericInput(bilirubin);
@@ -60,17 +57,17 @@ function validateSharedInputs({ creatinine, bilirubin, inr, sodium }) {
     };
   }
 
-  if (cr < 0.1 || cr > 15.0) {
-    return { Error: "Creatinine must be between 0.1 and 15.0 mg/dL" };
+  if (cr < 0.01 || cr > 40) {
+    return { Error: "Creatinine must be between 0.01 and 40 mg/dL" };
   }
-  if (bili < 0.1 || bili > 50.0) {
-    return { Error: "Bilirubin must be between 0.1 and 50.0 mg/dL" };
+  if (bili < 0 || bili > 99) {
+    return { Error: "Bilirubin must be between 0 and 99 mg/dL" };
   }
-  if (inrVal < 0.8 || inrVal > 10.0) {
-    return { Error: "INR must be between 0.8 and 10.0" };
+  if (inrVal < 0.5 || inrVal > 99) {
+    return { Error: "INR must be between 0.5 and 99" };
   }
-  if (na < 110 || na > 160) {
-    return { Error: "Sodium must be between 110 and 160 mEq/L" };
+  if (na < 100 || na > 200) {
+    return { Error: "Sodium must be between 100 and 200 mEq/L" };
   }
 
   return { cr, bili, inrVal, na };
@@ -121,7 +118,7 @@ function computeLegacyMeldNa(inputs) {
   if (inputs.dialysis) {
     adjustedCr = 4.0;
     notes.push(
-      "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)",
+      "Creatinine set to 4.0 mg/dL (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)",
     );
   } else if (adjustedCr > 4.0) {
     adjustedCr = 4.0;
@@ -210,7 +207,7 @@ function computeLegacyMeldNa(inputs) {
     result["Clinical Notes"] = notes.join("; ");
   }
 
-  result._severity = scoreSeverity(meldNa);
+  result._severity = "info";
   return result;
 }
 
@@ -247,8 +244,8 @@ function computeMeld3(inputs) {
   if (!Number.isFinite(albumin)) {
     return { Error: "Please enter serum albumin for MELD 3.0." };
   }
-  if (albumin < 0.5 || albumin > 8.0) {
-    return { Error: "Albumin must be between 0.5 and 8.0 g/dL" };
+  if (albumin < 0.5 || albumin > 9.9) {
+    return { Error: "Albumin must be between 0.50 and 9.90 g/dL" };
   }
 
   const usesRegisteredBefore18Path = registrationAge < 18;
@@ -271,7 +268,7 @@ function computeMeld3(inputs) {
   if (inputs.dialysis) {
     adjustedCr = 3.0;
     notes.push(
-      "Creatinine set to 3.0 mg/dL for MELD 3.0 (dialysis/CVVHD rule)",
+      "Creatinine set to 3.0 mg/dL for MELD 3.0 (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)",
     );
   } else if (adjustedCr > 3.0) {
     adjustedCr = 3.0;
@@ -344,7 +341,7 @@ function computeMeld3(inputs) {
       : "Registered at age ≥18",
     "Prognosis Context": getMeld3PrognosisContext(meld3),
     "Legacy MELD-Na": "Available in the temporary legacy option.",
-    _severity: scoreSeverity(meld3),
+    _severity: "info",
   };
 
   if (notes.length > 0) {
@@ -380,6 +377,7 @@ export const MELDNa = {
       "• Currently age ≥12 and registered before age 18: MELD 3.0 path with +7.33 constant for all sexes\n" +
       "• Registered at age ≥18: adult MELD 3.0 path with +1.33 female term when applicable\n" +
       "• Creatinine cap is 3.0 mg/dL; bilirubin/INR lower bound is 1.0; sodium is bounded 125-137; albumin is bounded 1.5-3.5\n\n" +
+      "• Accepted laboratory-entry ranges follow the OPTN calculator: bilirubin 0-99 mg/dL, sodium 100-200 mEq/L, INR 0.5-99, creatinine 0.01-40 mg/dL, and albumin 0.50-9.90 g/dL. The calculation bounds above are then applied.\n\n" +
       "Temporary legacy option:\n" +
       "• MELD-Na (OPTN 2016) remains available for comparison and education while clinical workflows transition.\n\n" +
       "Outputs are educational and do not determine listing, exception scores, organ offers, or treatment decisions.",
@@ -433,37 +431,38 @@ export const MELDNa = {
     {
       id: "creatinine",
       label: "Creatinine",
-      subLabel: "mg/dL (0.1-15.0)",
+      subLabel: "mg/dL (0.01-40)",
       type: "number",
     },
     {
       id: "bilirubin",
       label: "Total Bilirubin",
-      subLabel: "mg/dL (0.1-50.0)",
+      subLabel: "mg/dL (0-99)",
       type: "number",
     },
     {
       id: "inr",
       label: "INR",
-      subLabel: "0.8-10.0",
+      subLabel: "0.5-99",
       type: "number",
     },
     {
       id: "sodium",
       label: "Sodium",
-      subLabel: "mEq/L (110-160)",
+      subLabel: "mEq/L (100-200)",
       type: "number",
     },
     {
       id: "albumin",
       label: "Serum Albumin",
-      subLabel: "g/dL (0.5-8.0)",
+      subLabel: "g/dL (0.50-9.90)",
       type: "number",
       showIf: isMeld3Selected,
     },
     {
       id: "dialysis",
-      label: "Dialysis ≥2 times in past week OR 24hr CVVHD",
+      label:
+        "Had dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test?",
       type: "checkbox",
     },
   ],
