@@ -23,6 +23,7 @@ PROVIDER = "openai-codex"
 CANONICAL_GITHUB_REPOSITORY = "momomojo/Radulator"
 LEGACY_GATE_JOB_NAMES = frozenset({"pr-gate-poller", "judge-queue"})
 SEED_CONVERT_JOB_ID = "c41b8448cce4"
+PROMOTER_JOB_ID = "f191f946d6fa"
 SEED_CONVERT_PROMPT = """Seed conversion pass (WF-2b) with automatic clinical governance. Load radulator-operations and treat SEED_CONVERT_PREFLIGHT_JSON as control data.
 
 Owner policy:
@@ -182,9 +183,17 @@ def _job(
     }
 
 
-def _script_job(name: str, home: Path, script: str, expression: str) -> dict[str, Any]:
+def _script_job(
+    name: str,
+    home: Path,
+    script: str,
+    expression: str,
+    *,
+    job_id: str | None = None,
+    preserve_existing: tuple[str, ...] = (),
+) -> dict[str, Any]:
     return {
-        "id": _job_id(name),
+        "id": job_id or _job_id(name),
         "name": name,
         "prompt": "",
         "skills": [],
@@ -201,6 +210,7 @@ def _script_job(name: str, home: Path, script: str, expression: str) -> dict[str
         "deliver": None,
         "workdir": None,
         "_home": str(home),
+        "_preserve_existing": list(preserve_existing),
     }
 
 
@@ -259,6 +269,8 @@ def build_plan(
         repo / "ops/hermes/radulator/retain_learning.py",
         repo / "ops/hermes/radulator/formspree_feedback_intake.py",
         repo / "ops/hermes/radulator/seed_convert_gate_dedupe.py",
+        repo / "ops/hermes/radulator/release_promoter.py",
+        repo / "ops/hermes/radulator/release_promoter_cron.sh",
     ]
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
@@ -327,6 +339,14 @@ def build_plan(
             f"--config {hindsight_config}. Do not call hindsight_retain. "
             "Use only its exact readback receipt to append learned, verify Kanban terminal readback, then append complete.",
             ["radulator-release-learning"], "2-59/10 * * * *", agent_model, agent_provider,
+        ),
+        _script_job(
+            "radulator-release-promoter",
+            radulator_home,
+            "release_promoter_cron.sh",
+            "*/10 * * * *",
+            job_id=PROMOTER_JOB_ID,
+            preserve_existing=("deliver",),
         ),
         _script_job(
             "radulator-formspree-feedback-intake",
@@ -478,6 +498,14 @@ def _script_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
         (
             repo / "ops/hermes/radulator/seed_convert_gate_dedupe.py",
             radulator / "scripts/seed_convert_gate_dedupe.py",
+        ),
+        (
+            repo / "ops/hermes/radulator/release_promoter.py",
+            radulator / "scripts/release_promoter.py",
+        ),
+        (
+            repo / "ops/hermes/radulator/release_promoter_cron.sh",
+            radulator / "scripts/release_promoter_cron.sh",
         ),
     ]
 
