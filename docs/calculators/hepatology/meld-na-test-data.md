@@ -4,9 +4,9 @@ This document lists the focused QA scenarios for the `meld-na` calculator after 
 
 ## Scope
 
-- Current model: MELD 3.0 for candidates at least 12 years old.
-- Adolescent path: age 12-17 at registration, `+7.33` constant for all sexes.
-- Adult path: age 18 or older at registration, adult female term `+1.33` plus `+6` constant.
+- Current model: MELD 3.0 for candidates currently at least 12 years old.
+- Registered-before-18 path: `+7.33` constant for all sexes, including candidates who registered before age 12 and later aged into MELD.
+- Adult path: registered at age 18 or older, female term `+1.33` when applicable plus `+6` constant.
 - Legacy model: MELD-Na (OPTN 2016) remains available for comparison and education.
 
 Clinical signoff source: kanban parent gate `t_10a996a5`, comment `868`, owner-authenticated at `2026-07-07T04:05:53Z`.
@@ -21,6 +21,7 @@ Verifier output: `/Users/agent/.hermes/profiles/radulator/task-notes/meld30_audi
 
 | Parameter | Value |
 |---|---:|
+| Current age | 45 |
 | Age at registration | 45 |
 | Sex | Male |
 | Creatinine | 0.8 mg/dL |
@@ -33,13 +34,14 @@ Verifier output: `/Users/agent/.hermes/profiles/radulator/task-notes/meld30_audi
 Expected:
 
 - MELD 3.0 Score: 6
-- Calculation Path: Adult age ≥18 at registration
+- Calculation Path: Registered at age ≥18
 - Notes include lower/upper bounds for creatinine, bilirubin, sodium, and albumin.
 
 ### Test Case 2: Adult Female Sex Term
 
 | Parameter | Value |
 |---|---:|
+| Current age | 45 |
 | Age at registration | 45 |
 | Sex | Female |
 | Creatinine | 1.0 mg/dL |
@@ -59,6 +61,7 @@ Expected:
 
 | Parameter | Value |
 |---|---:|
+| Current age | 45 |
 | Age at registration | 45 |
 | Sex | Male |
 | Creatinine | 1.0 mg/dL |
@@ -76,6 +79,7 @@ Expected:
 
 | Parameter | Value |
 |---|---:|
+| Current age | 45 |
 | Age at registration | 45 |
 | Sex | Female |
 | Creatinine | 2.5 mg/dL |
@@ -94,6 +98,7 @@ Expected:
 
 | Parameter | Value |
 |---|---:|
+| Current age | 45 |
 | Age at registration | 45 |
 | Sex | Male |
 | Creatinine | 5.0 mg/dL |
@@ -108,10 +113,11 @@ Expected:
 - MELD 3.0 Score: 25
 - Clinical Notes: "Creatinine set to 3.0 mg/dL for MELD 3.0 (dialysis/CVVHD rule)"
 
-### Test Case 6: Adolescent Path
+### Test Case 6: Registered-Before-18 Path
 
 | Parameter | Value |
 |---|---:|
+| Current age | 16 |
 | Age at registration | 16 |
 | Creatinine | 1.0 mg/dL |
 | Total bilirubin | 1.5 mg/dL |
@@ -123,15 +129,44 @@ Expected:
 Expected:
 
 - MELD 3.0 Score: 13
-- Calculation Path: Adolescent age 12-17 at registration
-- Clinical Notes: "Age 12-17 path used: MELD 3.0 applies +7.33 constant for all sexes"
+- Calculation Path: Registered before age 18; candidate currently age ≥12
+- Clinical Notes: "Registered-before-18 path used: MELD 3.0 applies +7.33 constant for all sexes"
+- Adult sex selector is hidden.
+
+### Test Case 7: Registered Before Age 12 and Aged into MELD
+
+| Parameter | Value |
+|---|---:|
+| Current age | 12 |
+| Age at registration | 8 |
+| Creatinine | 1.0 mg/dL |
+| Total bilirubin | 1.5 mg/dL |
+| INR | 1.2 |
+| Sodium | 135 mEq/L |
+| Albumin | 3.0 g/dL |
+| Dialysis | No |
+
+Expected:
+
+- MELD 3.0 Score: 13
+- Calculation Path: Registered before age 18; candidate currently age ≥12
 - Adult sex selector is hidden.
 
 ## MELD 3.0 Validation Cases
 
-### Missing Age
+### Missing Current Age
 
-Inputs: current MELD 3.0 model selected with shared labs present but no age.
+Inputs: current MELD 3.0 model selected with shared labs and registration age present but no current age.
+
+Expected error:
+
+```text
+Please enter current age for MELD 3.0.
+```
+
+### Missing Registration Age
+
+Inputs: current MELD 3.0 model selected with shared labs and current age present but no registration age.
 
 Expected error:
 
@@ -139,14 +174,24 @@ Expected error:
 Please enter age at registration for MELD 3.0.
 ```
 
-### Age Under 12
+### Current Age Under 12
 
-Inputs: age at registration 11 with otherwise valid MELD 3.0 labs.
+Inputs: current age 11 and age at registration 8 with otherwise valid MELD 3.0 labs.
 
 Expected error:
 
 ```text
-MELD 3.0 applies to candidates at least 12 years old; use the pediatric PELD/PELD Cr pathway for younger candidates.
+MELD applies only when the candidate is currently at least 12 years old; use PELD/PELD Cr for younger candidates.
+```
+
+### Registration Age Exceeds Current Age
+
+Inputs: current age 16 and age at registration 18 with otherwise valid MELD 3.0 labs.
+
+Expected error:
+
+```text
+Age at registration cannot exceed current age.
 ```
 
 ### Missing Adult Sex

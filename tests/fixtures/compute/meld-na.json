@@ -4,6 +4,7 @@
     {
       "id": "meld3-default-low-score-male",
       "inputs": {
+        "currentAge": "45",
         "ageAtRegistration": "45",
         "sex": "male",
         "creatinine": "0.8",
@@ -17,7 +18,7 @@
         "noError": true,
         "fields": [
           { "key": "MELD 3.0 Score", "equals": "6" },
-          { "key": "Calculation Path", "includes": "Adult age" }
+          { "key": "Calculation Path", "includes": "Registered at age" }
         ]
       }
     },
@@ -25,6 +26,7 @@
       "id": "meld3-adult-female-sex-term",
       "inputs": {
         "scoringModel": "meld3",
+        "currentAge": "45",
         "ageAtRegistration": "45",
         "sex": "female",
         "creatinine": "1.0",
@@ -46,6 +48,7 @@
       "id": "meld3-adult-male-sex-comparator",
       "inputs": {
         "scoringModel": "meld3",
+        "currentAge": "45",
         "ageAtRegistration": "45",
         "sex": "male",
         "creatinine": "1.0",
@@ -66,6 +69,7 @@
       "id": "meld3-hypoalbuminemia",
       "inputs": {
         "scoringModel": "meld3",
+        "currentAge": "45",
         "ageAtRegistration": "45",
         "sex": "male",
         "creatinine": "1.0",
@@ -86,6 +90,7 @@
       "id": "meld3-high-score-female",
       "inputs": {
         "scoringModel": "meld3",
+        "currentAge": "45",
         "ageAtRegistration": "45",
         "sex": "female",
         "creatinine": "2.5",
@@ -106,6 +111,7 @@
       "id": "meld3-high-score-male-comparator",
       "inputs": {
         "scoringModel": "meld3",
+        "currentAge": "45",
         "ageAtRegistration": "45",
         "sex": "male",
         "creatinine": "2.5",
@@ -126,6 +132,7 @@
       "id": "meld3-dialysis-creatinine-cap",
       "inputs": {
         "scoringModel": "meld3",
+        "currentAge": "45",
         "ageAtRegistration": "45",
         "sex": "male",
         "creatinine": "5.0",
@@ -147,6 +154,7 @@
       "id": "meld3-adolescent-path",
       "inputs": {
         "scoringModel": "meld3",
+        "currentAge": "16",
         "ageAtRegistration": "16",
         "creatinine": "1.0",
         "bilirubin": "1.5",
@@ -159,9 +167,64 @@
         "noError": true,
         "fields": [
           { "key": "MELD 3.0 Score", "equals": "13" },
-          { "key": "Calculation Path", "includes": "Adolescent age 12-17" },
+          { "key": "Calculation Path", "includes": "Registered before age 18" },
           { "key": "Clinical Notes", "includes": "+7.33 constant for all sexes" }
         ]
+      }
+    },
+    {
+      "id": "meld3-aged-up-from-peld-path",
+      "inputs": {
+        "scoringModel": "meld3",
+        "currentAge": "12",
+        "ageAtRegistration": "8",
+        "creatinine": "1.0",
+        "bilirubin": "1.5",
+        "inr": "1.2",
+        "sodium": "135",
+        "albumin": "3.0",
+        "dialysis": false
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "MELD 3.0 Score", "equals": "13" },
+          { "key": "Calculation Path", "includes": "Registered before age 18" }
+        ]
+      }
+    },
+    {
+      "id": "meld3-currently-under-12-uses-peld",
+      "inputs": {
+        "scoringModel": "meld3",
+        "currentAge": "11",
+        "ageAtRegistration": "8",
+        "creatinine": "1.0",
+        "bilirubin": "1.5",
+        "inr": "1.2",
+        "sodium": "135",
+        "albumin": "3.0",
+        "dialysis": false
+      },
+      "expect": {
+        "errorIncludes": "currently at least 12 years old"
+      }
+    },
+    {
+      "id": "meld3-registration-age-cannot-exceed-current-age",
+      "inputs": {
+        "scoringModel": "meld3",
+        "currentAge": "16",
+        "ageAtRegistration": "18",
+        "creatinine": "1.0",
+        "bilirubin": "1.5",
+        "inr": "1.2",
+        "sodium": "135",
+        "albumin": "3.0",
+        "dialysis": false
+      },
+      "expect": {
+        "errorIncludes": "cannot exceed current age"
       }
     },
     {

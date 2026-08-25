@@ -8,7 +8,7 @@
  * + 11.14*ln(creatinine) + 1.85*(3.5-albumin)
  * - 1.83*(3.5-albumin)*ln(creatinine) + 6
  *
- * MELD 3.0 adolescent path (age at registration 12-17):
+ * MELD 3.0 registered-before-18 path (candidate currently at least age 12):
  * same laboratory terms with +7.33 constant for all sexes.
  *
  * Temporary legacy option:
@@ -31,8 +31,12 @@ const parseNumericInput = (value) => {
 const selectedModel = (vals) => vals?.scoringModel || MODEL_MELD3;
 const isMeld3Selected = (vals) => selectedModel(vals) === MODEL_MELD3;
 const isAdultMeld3Selected = (vals) => {
-  const age = parseNumericInput(vals?.ageAtRegistration);
-  return isMeld3Selected(vals) && Number.isFinite(age) && age >= 18;
+  const registrationAge = parseNumericInput(vals?.ageAtRegistration);
+  return (
+    isMeld3Selected(vals) &&
+    Number.isFinite(registrationAge) &&
+    registrationAge >= 18
+  );
 };
 
 const scoreSeverity = (score) =>
@@ -214,18 +218,29 @@ function computeMeld3(inputs) {
   const validation = validateSharedInputs(inputs);
   if (validation.Error) return validation;
 
-  const age = parseNumericInput(inputs.ageAtRegistration);
-  if (!Number.isFinite(age)) {
-    return { Error: "Please enter age at registration for MELD 3.0." };
+  const currentAge = parseNumericInput(inputs.currentAge);
+  if (!Number.isFinite(currentAge)) {
+    return { Error: "Please enter current age for MELD 3.0." };
   }
-  if (age < 12) {
+  if (currentAge < 12) {
     return {
       Error:
-        "MELD 3.0 applies to candidates at least 12 years old; use the pediatric PELD/PELD Cr pathway for younger candidates.",
+        "MELD applies only when the candidate is currently at least 12 years old; use PELD/PELD Cr for younger candidates.",
     };
   }
-  if (age > 120) {
-    return { Error: "Age at registration must be between 12 and 120 years." };
+  if (currentAge > 120) {
+    return { Error: "Current age must be between 12 and 120 years." };
+  }
+
+  const registrationAge = parseNumericInput(inputs.ageAtRegistration);
+  if (!Number.isFinite(registrationAge)) {
+    return { Error: "Please enter age at registration for MELD 3.0." };
+  }
+  if (registrationAge < 0 || registrationAge > 120) {
+    return { Error: "Age at registration must be between 0 and 120 years." };
+  }
+  if (registrationAge > currentAge) {
+    return { Error: "Age at registration cannot exceed current age." };
   }
 
   const albumin = parseNumericInput(inputs.albumin);
@@ -236,9 +251,9 @@ function computeMeld3(inputs) {
     return { Error: "Albumin must be between 0.5 and 8.0 g/dL" };
   }
 
-  const isAdolescent = age < 18;
+  const usesRegisteredBefore18Path = registrationAge < 18;
   const sex = inputs.sex;
-  if (!isAdolescent && !["male", "female"].includes(sex)) {
+  if (!usesRegisteredBefore18Path && !["male", "female"].includes(sex)) {
     return {
       Error: "Please select sex for adult MELD 3.0 calculation.",
     };
@@ -297,9 +312,12 @@ function computeMeld3(inputs) {
     notes.push("Albumin set to upper bound of 3.5 g/dL");
   }
 
-  const sexTerm = isAdolescent ? 1.33 : sex === "female" ? 1.33 : 0;
+  const registrationPathAdjustment = usesRegisteredBefore18Path ? 1.33 : 0;
+  const adultFemaleAdjustment =
+    !usesRegisteredBefore18Path && sex === "female" ? 1.33 : 0;
   const raw =
-    sexTerm +
+    registrationPathAdjustment +
+    adultFemaleAdjustment +
     4.56 * Math.log(adjustedBili) +
     0.82 * (137 - adjustedNa) -
     0.24 * (137 - adjustedNa) * Math.log(adjustedBili) +
@@ -311,9 +329,9 @@ function computeMeld3(inputs) {
 
   const meld3 = clamp(Math.round(raw), 6, 40);
 
-  if (isAdolescent) {
+  if (usesRegisteredBefore18Path) {
     notes.push(
-      "Age 12-17 path used: MELD 3.0 applies +7.33 constant for all sexes",
+      "Registered-before-18 path used: MELD 3.0 applies +7.33 constant for all sexes",
     );
   } else if (sex === "female") {
     notes.push("Adult female MELD 3.0 sex term applied (+1.33)");
@@ -321,9 +339,9 @@ function computeMeld3(inputs) {
 
   const result = {
     "MELD 3.0 Score": meld3.toString(),
-    "Calculation Path": isAdolescent
-      ? "Adolescent age 12-17 at registration"
-      : "Adult age ≥18 at registration",
+    "Calculation Path": usesRegisteredBefore18Path
+      ? "Registered before age 18; candidate currently age ≥12"
+      : "Registered at age ≥18",
     "Prognosis Context": getMeld3PrognosisContext(meld3),
     "Legacy MELD-Na": "Available in the temporary legacy option.",
     _severity: scoreSeverity(meld3),
@@ -341,7 +359,7 @@ export const MELDNa = {
   category: "Hepatology/Liver",
   name: "MELD-Na Score",
   desc: "MELD 3.0 current OPTN allocation score with a temporary legacy MELD-Na option",
-  guidelineVersion: "MELD 3.0 (OPTN 2023)",
+  guidelineVersion: "MELD 3.0 (OPTN Policy 9.1.D)",
   keywords: [
     "MELD 3.0",
     "MELD-Na",
@@ -353,21 +371,21 @@ export const MELDNa = {
   ],
   tags: ["Hepatology", "Transplant"],
   metaDesc:
-    "Free MELD 3.0 Calculator with legacy MELD-Na option. Calculates OPTN liver allocation score for candidates at least 12 years old, with adolescent and adult MELD 3.0 paths.",
+    "Free MELD 3.0 Calculator with legacy MELD-Na option. Calculates the OPTN liver allocation score for candidates currently at least 12 years old using the registration-age-appropriate MELD 3.0 path.",
 
   info: {
     text:
       "MELD 3.0 is the current OPTN liver allocation score for candidates at least 12 years old. It updates MELD-Na by adding albumin, adult sex term handling, revised coefficients, interaction terms, sodium bounds, and a lower creatinine cap.\n\n" +
       "Current MELD 3.0 option:\n" +
-      "• Age 12-17 at registration: adolescent MELD 3.0 path with +7.33 constant for all sexes\n" +
-      "• Age ≥18 at registration: adult MELD 3.0 path with +1.33 adult female term\n" +
+      "• Currently age ≥12 and registered before age 18: MELD 3.0 path with +7.33 constant for all sexes\n" +
+      "• Registered at age ≥18: adult MELD 3.0 path with +1.33 female term when applicable\n" +
       "• Creatinine cap is 3.0 mg/dL; bilirubin/INR lower bound is 1.0; sodium is bounded 125-137; albumin is bounded 1.5-3.5\n\n" +
       "Temporary legacy option:\n" +
       "• MELD-Na (OPTN 2016) remains available for comparison and education while clinical workflows transition.\n\n" +
       "Outputs are educational and do not determine listing, exception scores, organ offers, or treatment decisions.",
     link: {
-      label: "View OPTN MELD/PELD policy notice",
-      url: "https://www.hrsa.gov/sites/default/files/hrsa/optn/policy-guid-change_impr-liv-alloc-meld-peld-sta-1a-sta-1b_liv.pdf",
+      label: "View current OPTN Policy 9",
+      url: "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf#page=183",
     },
   },
 
@@ -389,9 +407,16 @@ export const MELDNa = {
       ],
     },
     {
+      id: "currentAge",
+      label: "Current Age",
+      subLabel: "years (12-120)",
+      type: "number",
+      showIf: isMeld3Selected,
+    },
+    {
       id: "ageAtRegistration",
       label: "Age at Registration",
-      subLabel: "years (12-120)",
+      subLabel: "years (0-120; determines MELD 3.0 path)",
       type: "number",
       showIf: isMeld3Selected,
     },
@@ -452,12 +477,16 @@ export const MELDNa = {
 
   refs: [
     {
-      t: "OPTN/HRSA Policy Notice - Improving Liver Allocation: MELD, PELD, Status 1A, Status 1B",
-      u: "https://www.hrsa.gov/sites/default/files/hrsa/optn/policy-guid-change_impr-liv-alloc-meld-peld-sta-1a-sta-1b_liv.pdf",
+      t: "OPTN Policy 9.1.D - MELD Score",
+      u: "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf#page=183",
     },
     {
-      t: "OPTN/HRSA Implementation FAQ - Improving Liver Allocation",
-      u: "https://www.hrsa.gov/sites/default/files/hrsa/optn/improving-liver-allocation-general-implementation-faq.pdf",
+      t: "OPTN/HRSA MELD and PELD Calculators User Guide",
+      u: "https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf",
+    },
+    {
+      t: "OPTN/HRSA Policy Notice - Improving Liver Allocation: MELD, PELD, Status 1A, Status 1B",
+      u: "https://www.hrsa.gov/sites/default/files/hrsa/optn/policy-guid-change_impr-liv-alloc-meld-peld-sta-1a-sta-1b_liv.pdf",
     },
     {
       t: "Kim WR et al. Gastroenterology 2021 - MELD 3.0",

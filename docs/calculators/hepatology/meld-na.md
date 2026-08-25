@@ -21,9 +21,9 @@ Packet SHA-256: `cef58cc2577687e7f795e82c6fa9213c8cff35e47df70d1c64d51c14a6b1cc3
 
 ### Current MELD 3.0 Option
 
-- Applies to liver-transplant candidates at least 12 years old.
-- Age 12-17 at registration uses the adolescent MELD 3.0 path with `+7.33` constant for all sexes.
-- Age 18 or older at registration uses the adult MELD 3.0 path with `+1.33` adult female term and `+6` constant.
+- Applies to liver-transplant candidates who are currently at least 12 years old.
+- Registration before age 18 uses the `+7.33` MELD 3.0 path for all sexes, including candidates who were registered before age 12 and later aged into MELD.
+- Registration at age 18 or older uses the adult MELD 3.0 path with `+1.33` female term when applicable and a `+6` constant.
 - Outputs the MELD 3.0 score plus cautious prognosis context.
 - Does not provide treatment directives, exception-score workflow, listing decisions, or organ-allocation decisions.
 
@@ -35,7 +35,7 @@ Packet SHA-256: `cef58cc2577687e7f795e82c6fa9213c8cff35e47df70d1c64d51c14a6b1cc3
 
 ## MELD 3.0 Formula
 
-### Adult Path, Age at Registration 18 or Older
+### Adult Path, Registered at Age 18 or Older
 
 ```text
 MELD 3.0 =
@@ -50,7 +50,7 @@ MELD 3.0 =
 + 6
 ```
 
-### Adolescent Path, Age at Registration 12-17
+### Registered-Before-18 Path, Currently Age 12 or Older
 
 ```text
 MELD 3.0 =
@@ -92,7 +92,8 @@ Legacy MELD-Na bounds:
 ## Inputs
 
 - **Scoring model**: current MELD 3.0 or temporary legacy MELD-Na.
-- **Age at registration**: required for MELD 3.0; validates 12-120 years.
+- **Current age**: required for MELD 3.0; candidates currently under age 12 use PELD/PELD Cr.
+- **Age at registration**: required for MELD 3.0; validates 0-120 years, cannot exceed current age, and selects the registered-before-18 or adult equation.
 - **Sex for adult MELD 3.0 calculation**: required only when age at registration is 18 or older.
 - **Creatinine**: mg/dL, input validation 0.1-15.0.
 - **Total bilirubin**: mg/dL, input validation 0.1-50.0.
@@ -106,7 +107,7 @@ Legacy MELD-Na bounds:
 ### MELD 3.0
 
 - **MELD 3.0 Score**: integer 6-40.
-- **Calculation Path**: adult or adolescent age-at-registration path.
+- **Calculation Path**: registered-before-18 or adult age-at-registration path.
 - **Prognosis Context**: cautious text describing that higher MELD 3.0 values correspond to higher 90-day waitlist mortality risk in transplant-candidate cohorts.
 - **Legacy MELD-Na**: notes that legacy MELD-Na remains available in the temporary option.
 - **Clinical Notes**: value bounds and path-specific adjustments applied.
@@ -124,21 +125,23 @@ Legacy MELD-Na bounds:
 
 | Scenario | Inputs | Expected MELD 3.0 |
 |---|---|---:|
-| Low-score bounded normal male | male, Cr 0.8, bili 0.8, INR 1.0, Na 140, albumin 4.0, no dialysis | 6 |
-| Adult female sex term | female, Cr 1.0, bili 1.5, INR 1.2, Na 135, albumin 3.0, no dialysis | 13 |
-| Same labs as prior, adult male | male, Cr 1.0, bili 1.5, INR 1.2, Na 135, albumin 3.0, no dialysis | 12 |
-| Hypoalbuminemia | male, Cr 1.0, bili 2.0, INR 1.5, Na 137, albumin 1.8, no dialysis | 16 |
-| High-score female with hyponatremia | female, Cr 2.5, bili 10.0, INR 2.2, Na 128, albumin 2.8, no dialysis | 38 |
-| Same labs as prior, adult male | male, Cr 2.5, bili 10.0, INR 2.2, Na 128, albumin 2.8, no dialysis | 36 |
-| Dialysis/creatinine cap | male, Cr 5.0, bili 2.0, INR 1.5, Na 137, albumin 3.5, dialysis | 25 |
-| Adolescent path check | age 16, Cr 1.0, bili 1.5, INR 1.2, Na 135, albumin 3.0, no dialysis | 13 |
+| Low-score bounded normal male | current/registration age 45, male, Cr 0.8, bili 0.8, INR 1.0, Na 140, albumin 4.0, no dialysis | 6 |
+| Adult female sex term | current/registration age 45, female, Cr 1.0, bili 1.5, INR 1.2, Na 135, albumin 3.0, no dialysis | 13 |
+| Same labs as prior, adult male | current/registration age 45, male, Cr 1.0, bili 1.5, INR 1.2, Na 135, albumin 3.0, no dialysis | 12 |
+| Hypoalbuminemia | current/registration age 45, male, Cr 1.0, bili 2.0, INR 1.5, Na 137, albumin 1.8, no dialysis | 16 |
+| High-score female with hyponatremia | current/registration age 45, female, Cr 2.5, bili 10.0, INR 2.2, Na 128, albumin 2.8, no dialysis | 38 |
+| Same labs as prior, adult male | current/registration age 45, male, Cr 2.5, bili 10.0, INR 2.2, Na 128, albumin 2.8, no dialysis | 36 |
+| Dialysis/creatinine cap | current/registration age 45, male, Cr 5.0, bili 2.0, INR 1.5, Na 137, albumin 3.5, dialysis | 25 |
+| Registered-before-18 path | current/registration age 16, Cr 1.0, bili 1.5, INR 1.2, Na 135, albumin 3.0, no dialysis | 13 |
+| Aged into MELD | current age 12, registration age 8, same labs as prior | 13 |
 
 Verifier output: `/Users/agent/.hermes/profiles/radulator/task-notes/meld30_audit_recompute_t45134910.json`
 
 ## References
 
-1. OPTN/HRSA. *Improving Liver Allocation: MELD, PELD, Status 1A, Status 1B.* Policy notice, Board approved June 27, 2022. https://www.hrsa.gov/sites/default/files/hrsa/optn/policy-guid-change_impr-liv-alloc-meld-peld-sta-1a-sta-1b_liv.pdf
-2. OPTN/HRSA. *Improving Liver Allocation: General Implementation FAQ.* https://www.hrsa.gov/sites/default/files/hrsa/optn/improving-liver-allocation-general-implementation-faq.pdf
-3. Kim WR et al. MELD 3.0: The Model for End-Stage Liver Disease Updated for the Modern Era. *Gastroenterology.* 2021. https://doi.org/10.1053/j.gastro.2021.08.050
-4. Kim WR et al. Hyponatremia and mortality among patients on the liver-transplant waiting list. *N Engl J Med.* 2008. https://doi.org/10.1056/NEJMoa0801209
-5. Kamath PS et al. A model to predict survival in patients with end-stage liver disease. *Hepatology.* 2001. https://doi.org/10.1053/jhep.2001.22172
+1. OPTN/HRSA. *OPTN Policies, Policy 9.1.D: MELD Score.* https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf#page=183
+2. OPTN/HRSA. *MELD and PELD Calculators User Guide.* https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf
+3. OPTN/HRSA. *Improving Liver Allocation: MELD, PELD, Status 1A, Status 1B.* Policy notice, Board approved June 27, 2022. https://www.hrsa.gov/sites/default/files/hrsa/optn/policy-guid-change_impr-liv-alloc-meld-peld-sta-1a-sta-1b_liv.pdf
+4. Kim WR et al. MELD 3.0: The Model for End-Stage Liver Disease Updated for the Modern Era. *Gastroenterology.* 2021. https://doi.org/10.1053/j.gastro.2021.08.050
+5. Kim WR et al. Hyponatremia and mortality among patients on the liver-transplant waiting list. *N Engl J Med.* 2008. https://doi.org/10.1056/NEJMoa0801209
+6. Kamath PS et al. A model to predict survival in patients with end-stage liver disease. *Hepatology.* 2001. https://doi.org/10.1053/jhep.2001.22172

@@ -79,8 +79,18 @@ async function selectCurrentMeld3(page) {
 
 async function fillMeld3Inputs(
   page,
-  { age = "45", sex = "male", creatinine, bilirubin, inr, sodium, albumin },
+  {
+    currentAge,
+    age = "45",
+    sex = "male",
+    creatinine,
+    bilirubin,
+    inr,
+    sodium,
+    albumin,
+  },
 ) {
+  await page.fill('input[id="currentAge"]', String(currentAge ?? age));
   await page.fill('input[id="ageAtRegistration"]', String(age));
   if (Number.parseFloat(age) >= 18) {
     await expect(
@@ -302,7 +312,7 @@ test.describe("MELD-Na Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should use adolescent age 12-17 MELD 3.0 +7.33 path", async ({
+    test("should use registered-before-18 MELD 3.0 +7.33 path", async ({
       page,
     }) => {
       await selectCurrentMeld3(page);
@@ -319,16 +329,44 @@ test.describe("MELD-Na Calculator", () => {
 
       expect(await getMeld3Score(page)).toBe(13);
       await expect(
-        page.locator("text=Adolescent age 12-17 at registration"),
+        resultsRegion(page).getByText(
+          "Registered before age 18; candidate currently age ≥12",
+          { exact: true },
+        ),
       ).toBeVisible();
       await expect(
         page.getByText(
-          "Age 12-17 path used: MELD 3.0 applies +7.33 constant for all sexes",
+          "Registered-before-18 path used: MELD 3.0 applies +7.33 constant for all sexes",
         ),
       ).toBeVisible();
       await expect(
         page.locator('label:has-text("Sex for Adult MELD 3.0 Calculation")'),
       ).not.toBeVisible();
+    });
+
+    test("uses the registered-before-18 path after a candidate ages into MELD", async ({
+      page,
+    }) => {
+      await selectCurrentMeld3(page);
+      await fillMeld3Inputs(page, {
+        currentAge: "12",
+        age: "8",
+        creatinine: "1.0",
+        bilirubin: "1.5",
+        inr: "1.2",
+        sodium: "135",
+        albumin: "3.0",
+      });
+
+      await page.click('button:has-text("Calculate")');
+
+      expect(await getMeld3Score(page)).toBe(13);
+      await expect(
+        resultsRegion(page).getByText(
+          "Registered before age 18; candidate currently age ≥12",
+          { exact: true },
+        ),
+      ).toBeVisible();
     });
   });
 
@@ -839,7 +877,7 @@ test.describe("MELD-Na Calculator", () => {
   });
 
   test.describe("Reference Links", () => {
-    test("should display all 5 references", async ({ page }) => {
+    test("should display all 6 references", async ({ page }) => {
       // Expand collapsed references (CollapsibleReferences shows only 3 by default)
       const expandButton = page.getByRole("button", {
         name: /Show \d+ more reference/,
@@ -851,7 +889,7 @@ test.describe("MELD-Na Calculator", () => {
       const references = await page
         .locator('section:has-text("References") li')
         .count();
-      expect(references).toBe(5);
+      expect(references).toBe(6);
     });
 
     test("should have clickable reference links", async ({ page }) => {
@@ -865,10 +903,10 @@ test.describe("MELD-Na Calculator", () => {
     test("should include key references", async ({ page }) => {
       // The first 3 references are visible by default.
       await expect(
-        page.locator("text=OPTN/HRSA Policy Notice"),
+        page.getByRole("link", { name: "OPTN Policy 9.1.D - MELD Score" }),
       ).toBeVisible();
       await expect(
-        page.locator("text=Kim WR et al. Gastroenterology 2021"),
+        page.locator("text=OPTN/HRSA MELD and PELD Calculators User Guide"),
       ).toBeVisible();
 
       // Legacy MELD-Na citation is hidden until expanded.
@@ -876,7 +914,7 @@ test.describe("MELD-Na Calculator", () => {
         .getByRole("button", { name: /Show \d+ more reference/ })
         .click();
       await expect(
-        page.locator("text=Kim WR et al. Gastroenterology 2008"),
+        page.locator("text=Kim WR et al. Gastroenterology 2021"),
       ).toBeVisible();
     });
   });
