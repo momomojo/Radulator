@@ -70,6 +70,7 @@ jobs:
             ops/hermes/radulator/lifecycle_controller.py \
             ops/hermes/radulator/learning_context.py \
             ops/hermes/radulator/formspree_feedback_intake.py \
+            ops/hermes/radulator/seed_convert_gate_dedupe.py \
             ops/hermes/radulator/install.py
           bash -n scripts/dev-local.sh
           npm run test:search-verification
@@ -95,6 +96,7 @@ jobs:
           npm run test:hermes-lifecycle
           npm run test:hermes-learning
           npm run test:hermes-feedback-intake
+          npm run test:hermes-seed-convert
           npm run test:hermes-install
 
       - name: Build application
@@ -145,6 +147,7 @@ jobs:
             ops/hermes/radulator/lifecycle_controller.py \
             ops/hermes/radulator/learning_context.py \
             ops/hermes/radulator/formspree_feedback_intake.py \
+            ops/hermes/radulator/seed_convert_gate_dedupe.py \
             ops/hermes/radulator/install.py
           npm run test:search-verification
           npm run test:invariants
@@ -162,6 +165,7 @@ jobs:
           npm run test:hermes-lifecycle
           npm run test:hermes-learning
           npm run test:hermes-feedback-intake
+          npm run test:hermes-seed-convert
           npm run test:hermes-install
           npm run check:invariants
 
