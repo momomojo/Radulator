@@ -83,7 +83,7 @@ listed spec when a cross-cutting spec also navigates to it.
 | 6 | Adrenal Vein Sampling – Aldosterone | `AdrenalVeinSamplingAldo.jsx` / `avs-hyperaldo` | `tests/e2e/calculators/interventional/avs-hyperaldo.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 7 | Adrenal Vein Sampling – Cortisol | `AdrenalVeinSamplingCortisol.jsx` / `avs-cortisol` | `tests/e2e/calculators/interventional/avs-cortisol.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 8 | BCLC Staging (HCC) | `BCLCStaging.jsx` / `bclc-staging` | `tests/e2e/calculators/hepatology/bclc-staging.spec.js` | 2026-07-06 source/spec-map audit | Covered |
-| 9 | ACR BI-RADS | `BIRADS.jsx` / `birads` | `tests/e2e/calculators/breast/bi-rads.spec.js` | 2026-07-06 source/spec-map audit | Covered |
+| 9 | Mammography Assessment Guide (BI-RADS v2025 context) | `BIRADS.jsx` / `birads` | `tests/e2e/calculators/breast/bi-rads.spec.js` | 2026-08-24 FDA/ACR/PubMed source, compute-fixture, and browser-regression audit | Covered |
 | 10 | CAD-RADS 2.0 | `CADRADS.jsx` / `cad-rads` | `tests/e2e/calculators/cardiac/cad-rads.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 11 | CT Severity Index (CTSI) | `CTPancreatitis.jsx` / `ct-pancreatitis` | `tests/e2e/calculators/hepatology/ct-pancreatitis.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 12 | Child-Pugh Score | `ChildPugh.jsx` / `child-pugh` | `tests/e2e/calculators/copy-results.spec.js`<br>`tests/e2e/calculators/hepatology/child-pugh.spec.js` | 2026-07-06 source/spec-map audit | Covered |
@@ -104,7 +104,7 @@ listed spec when a cross-cutting spec also navigates to it.
 | 27 | PI-RADS v2.1 | `PIRADS.jsx` / `pirads` | `tests/e2e/calculators/urology/pirads.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 28 | Prostate Volume & PSA Density | `ProstateVolume.jsx` / `prostate-volume` | `tests/e2e/calculators/copy-results.spec.js`<br>`tests/e2e/calculators/radiology/prostate-volume.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 29 | Radiation Dose Converter | `RadiationDoseConverter.jsx` / `radiation-dose-converter` | `tests/e2e/calculators/radiology/radiation-dose-converter.spec.js` | 2026-07-06 source/spec-map audit | Covered |
-| 30 | Bosniak Classification (Renal Cysts) | `RenalCystBosniak.jsx` / `bosniak` | `tests/e2e/calculators/radiology/renal-cyst.spec.js` | 2026-07-06 source/spec-map audit | Covered |
+| 30 | Bosniak Classification (Renal Cysts) | `RenalCystBosniak.jsx` / `bosniak` | `tests/fixtures/compute/bosniak.json`<br>`tests/e2e/calculators/radiology/renal-cyst.spec.js` | 2026-08-24 Bosniak v2019 primary-source, eligibility-gate, feature-specific enhancement, discordance, incomplete-CT-path, compute-fixture, and browser-regression audit | Covered |
 | 31 | RENAL Nephrometry Score | `RenalNephrometry.jsx` / `renal-nephrometry` | `tests/e2e/calculators/urology/renal-nephrometry.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 32 | IIEF-5 (SHIM Score) | `SHIMCalculator.jsx` / `shim` | `tests/e2e/calculators/urology/shim.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 33 | Spleen Size | `SpleenSizeULN.jsx` / `spleen-size` | `tests/e2e/calculators/radiology/spleen-size.spec.js` | 2026-07-06 source/spec-map audit | Covered |
