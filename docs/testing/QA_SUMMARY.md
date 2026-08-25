@@ -110,7 +110,7 @@ docs/
 - **Quality Score:** 87.1/100 (VERY GOOD)
 - **Test File:** `tests/e2e/calculators/radiology/renal-cyst.spec.js` (17 tests)
 - **Test Data:** `tests/fixtures/renal-cyst-test-data.json`
-- **Documentation:** `docs/calculators/radiology/renal-cyst.md`
+- **Current documentation:** `docs/calculators/radiology/bosniak-v2019.md`
 - **Key Findings:**
   - ✅ All 5 Bosniak categories tested (I, II, IIF, III, IV)
   - ✅ Complex decision tree with imaging findings correctly implemented
