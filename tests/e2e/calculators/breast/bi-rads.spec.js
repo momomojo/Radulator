@@ -21,6 +21,14 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
     await expect(page.getByText("not an ACR-licensed BI-RADS implementation")).toBeVisible();
     await expect(page.getByText("does not assign a category from imaging features")).toBeVisible();
     await expect(page.getByText("mammography assessment categories only")).toBeVisible();
+    const assessmentHelp = page.getByRole("button", {
+      name: "Help for Radiologist-assigned mammography assessment",
+    });
+    await expect(assessmentHelp).toHaveAttribute(
+      "title",
+      "Choose the assessment already assigned by a qualified interpreting physician.",
+    );
+    await expect(page.locator('button[title*="Choose the final assessment"]')).toHaveCount(0);
 
     await expect(page.getByText("Imaging Modality")).not.toBeVisible();
     await expect(page.getByText("Mass Shape")).not.toBeVisible();
@@ -43,24 +51,36 @@ test.describe("Mammography assessment categories with BI-RADS v2025 context", ()
 
   test("reports the probably-benign boundary and evidence-supported initial follow-up", async ({ page }) => {
     await calculate(page, "3 — Probably benign");
-    await expect(page.getByText(">0% to ≤2% expected likelihood of malignancy")).toBeVisible();
+    await expect(page.getByText(">0% but ≤2% expected likelihood of malignancy")).toBeVisible();
     await expect(page.getByText("initial 6-month follow-up")).toBeVisible();
     await expect(page.getByText("does not calculate patient-specific risk")).toBeVisible();
+    await expect(page.getByText(/accepts patients who do not have a health care provider/)).toBeVisible();
   });
 
   for (const category of [
-    ["4 — Suspicious", ">2% to <95%"],
+    ["4 — Suspicious", "2% but <95%"],
     ["4A — Low suspicion", ">2% to ≤10%"],
     ["4B — Moderate suspicion", ">10% to ≤50%"],
-    ["4C — High suspicion", ">50% to <95%"],
+    ["4C — High suspicion", "50% to <95%"],
     ["5 — Highly suggestive of malignancy", "≥95%"],
   ]) {
-    test(`preserves the ${category[0]} malignancy boundary`, async ({ page }) => {
+    test(`preserves the ${category[0]} boundary and seven-day requirement`, async ({ page }) => {
       await calculate(page, category[0]);
       await expect(page.getByText(`${category[1]} expected likelihood of malignancy`)).toBeVisible();
       await expect(page.getByText("a qualified interpreting physician assigns the category")).toBeVisible();
+      await expect(
+        page.getByText(/mammography report to the health care provider.*patient lay summary to the patient.*within seven calendar days of interpretation/),
+      ).toBeVisible();
+      await expect(page.getByText(/must maintain a referral system when clinically indicated/)).toBeVisible();
     });
   }
+
+  test("discloses the source-literal 2% and 50% overlaps instead of silently normalizing them", async ({ page }) => {
+    await calculate(page, "4C — High suspicion");
+    await expect(page.getByText(/source-literal overlaps at exactly 2% and exactly 50%/)).toBeVisible();
+    await expect(page.getByText(/does not infer or normalize an assessment/)).toBeVisible();
+    await expect(page.getByText(/official BI-RADS manual govern/)).toBeVisible();
+  });
 
   test("keeps known malignancy distinct from a new probability assessment", async ({ page }) => {
     await calculate(page, "6 — Known Biopsy-Proven Malignancy");
