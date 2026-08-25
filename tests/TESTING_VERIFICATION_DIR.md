@@ -83,7 +83,7 @@ listed spec when a cross-cutting spec also navigates to it.
 | 6 | Adrenal Vein Sampling – Aldosterone | `AdrenalVeinSamplingAldo.jsx` / `avs-hyperaldo` | `tests/e2e/calculators/interventional/avs-hyperaldo.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 7 | Adrenal Vein Sampling – Cortisol | `AdrenalVeinSamplingCortisol.jsx` / `avs-cortisol` | `tests/e2e/calculators/interventional/avs-cortisol.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 8 | BCLC Staging (HCC) | `BCLCStaging.jsx` / `bclc-staging` | `tests/e2e/calculators/hepatology/bclc-staging.spec.js` | 2026-07-06 source/spec-map audit | Covered |
-| 9 | ACR BI-RADS | `BIRADS.jsx` / `birads` | `tests/e2e/calculators/breast/bi-rads.spec.js` | 2026-07-06 source/spec-map audit | Covered |
+| 9 | Mammography Assessment Guide (BI-RADS v2025 context) | `BIRADS.jsx` / `birads` | `tests/e2e/calculators/breast/bi-rads.spec.js` | 2026-08-24 FDA/ACR/PubMed source, compute-fixture, and browser-regression audit | Covered |
 | 10 | CAD-RADS 2.0 | `CADRADS.jsx` / `cad-rads` | `tests/e2e/calculators/cardiac/cad-rads.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 11 | CT Severity Index (CTSI) | `CTPancreatitis.jsx` / `ct-pancreatitis` | `tests/e2e/calculators/hepatology/ct-pancreatitis.spec.js` | 2026-07-06 source/spec-map audit | Covered |
 | 12 | Child-Pugh Score | `ChildPugh.jsx` / `child-pugh` | `tests/e2e/calculators/copy-results.spec.js`<br>`tests/e2e/calculators/hepatology/child-pugh.spec.js` | 2026-07-06 source/spec-map audit | Covered |
