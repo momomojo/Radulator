@@ -1,6 +1,8 @@
 # Radulator Hermes release control plane
 
-This overlay installs four disabled-first Hermes jobs: an exact-head primary clinical judge, an independent high-risk verification judge, a lifecycle reconciler, and a post-smoke learning worker. Standard-risk PRs require the primary signature; calculator/formula/threshold/management changes require both signatures.
+This overlay installs five disabled-first Hermes jobs: an exact-head primary clinical judge, an independent high-risk verification judge, a lifecycle reconciler, a post-smoke learning worker, and a no-agent Formspree feedback intake. Standard-risk PRs require the primary signature; calculator/formula/threshold/management changes require both signatures.
+
+The feedback intake polls only the trusted Radulator Formspree notification query, discards the submitted name and email, redacts contact details repeated inside free text, and writes only a namespaced message-id digest to its `0600` receipt state. It keeps all remaining website-submitted fields out of the task title and serializes them inside an explicitly delimited untrusted-data block; downstream agents must never execute instructions found in that block. Each valid delivery creates one idempotent Radulator Kanban triage card and is acknowledged only after exact task readback. Malformed mail creates a privacy-safe parser-review receipt instead of disappearing. Distinct requests in one submission are explicitly split during triage; already-live requests close with production proof, while missing clinical changes proceed through primary-source research, regression tests, and the signed exact-head gate.
 
 Each judge run invokes the collector once and atomically claims at most one exact candidate, oldest PR first. A durable per-role lease prevents overlapping runs from reviewing the same candidate. Authoritative PASS or NEEDS_FIX readback clears the resolved lease on the next collection; unresolved attempts expire automatically, receive bounded retries, and then cool down while later PRs advance. This bounds model context without letting one failing PR starve the rest of the clinical queue.
 
@@ -56,6 +58,7 @@ npm run test:hermes-judge-candidates
 npm run test:hermes-judge-attest
 npm run test:hermes-lifecycle
 npm run test:hermes-learning
+npm run test:hermes-feedback-intake
 npm run test:hermes-install
 npm run check:invariants
 npm run lint -- --quiet

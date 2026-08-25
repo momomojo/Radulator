@@ -110,7 +110,7 @@ docs/
 - **Quality Score:** 87.1/100 (VERY GOOD)
 - **Test File:** `tests/e2e/calculators/radiology/renal-cyst.spec.js` (17 tests)
 - **Test Data:** `tests/fixtures/renal-cyst-test-data.json`
-- **Documentation:** `docs/calculators/radiology/renal-cyst.md`
+- **Current documentation:** `docs/calculators/radiology/bosniak-v2019.md`
 - **Key Findings:**
   - ✅ All 5 Bosniak categories tested (I, II, IIF, III, IV)
   - ✅ Complex decision tree with imaging findings correctly implemented
@@ -228,7 +228,7 @@ docs/
 #### 13. MELD-Na Score ✅ PASS (100%)
 - **Quality Score:** 5/5 stars (EXCELLENT)
 - **Test File:** `tests/e2e/calculators/hepatology/meld-na.spec.js` (34 tests)
-- **Documentation:** `docs/calculators/hepatology/meld-na.md`
+- **Current documentation:** `docs/calculators/hepatology/meld-3.md`
 - **Key Findings:**
   - ✅ OPTN/UNOS compliant formula
   - ✅ All bounds and caps correctly implemented

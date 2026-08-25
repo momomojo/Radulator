@@ -2,7 +2,7 @@
  * WelcomeCard — One-time dismissible banner shown on first visit.
  * Appears below the medical disclaimer. Slate tones to differentiate from the blue disclaimer.
  */
-import { medicalCalculatorCount } from "@/components/calculators";
+import { medicalCalculatorCount } from "@/components/calculators/registry";
 import { trackOnboarding } from "@/lib/analytics";
 
 export function WelcomeCard({ onDismiss, onOpenGuide }) {
