@@ -20,27 +20,35 @@ async function choose(page, name, value) {
 
 async function fillBaseBosniakV2019(page, overrides = {}) {
   const values = {
+    scopeEligibility: "eligible",
     solidComponent: "under25",
     wall: "thin",
+    wallEnhancement: "absent",
     septaCount: "none",
     septaThickness: null,
+    septaEnhancement: null,
     nodule: "none",
+    noduleEnhancement: null,
     calcifications: "absent",
     density: "water",
-    enhancement: "absent",
     ...overrides,
   };
 
+  await choose(page, "scopeEligibility", values.scopeEligibility);
   await choose(page, "solidComponent", values.solidComponent);
   await choose(page, "wall", values.wall);
+  await choose(page, "wallEnhancement", values.wallEnhancement);
   await choose(page, "septaCount", values.septaCount);
   if (values.septaCount !== "none" && values.septaThickness) {
     await choose(page, "septaThickness", values.septaThickness);
+    await choose(page, "septaEnhancement", values.septaEnhancement);
   }
   await choose(page, "nodule", values.nodule);
+  if (values.nodule !== "none") {
+    await choose(page, "noduleEnhancement", values.noduleEnhancement);
+  }
   await choose(page, "calcifications", values.calcifications);
   await choose(page, "density", values.density);
-  await choose(page, "enhancement", values.enhancement);
 }
 
 test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
@@ -81,6 +89,9 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(infoPanel).toContainText(
       "less than approximately 25% enhancing tissue",
     );
+    await expect(infoPanel).toContainText(
+      "infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded",
+    );
     await expect(infoPanel).toContainText("Version history");
     await expect(infoPanel).toContainText("2/3/4 mm");
     await expect(infoPanel).toContainText("10.1148/radiol.2019182646");
@@ -90,14 +101,17 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     page,
   }) => {
     await expect(
-      page.getByText("Enhancing solid component", { exact: true }),
+      page.getByText("Bosniak v2019 eligibility", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Enhancing-tissue proportion", { exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText("Wall thickness / morphology", { exact: true }),
     ).toBeVisible();
     await expect(page.getByText("Septa count", { exact: true })).toBeVisible();
     await expect(
-      page.getByText("Enhancing nodule morphology", { exact: true }),
+      page.getByText("Convex protrusion / nodule morphology", { exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText("Calcifications", { exact: true }),
@@ -106,7 +120,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
       page.getByText("Homogeneous CT density subtype", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText("Wall, septal, or nodule enhancement", { exact: true }),
+      page.getByText("Wall enhancement", { exact: true }),
     ).toBeVisible();
 
     await expect(page.getByText("Totally intrarenal")).toHaveCount(0);
@@ -155,7 +169,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await fillBaseBosniakV2019(page, {
       septaCount: "few",
       septaThickness: "thin",
-      enhancement: "present",
+      septaEnhancement: "present",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
@@ -204,7 +218,6 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await fillBaseBosniakV2019(page, {
       wall: "thick",
       calcifications: "present",
-      enhancement: "absent",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
@@ -223,14 +236,16 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await fillBaseBosniakV2019(page, {
       septaCount: "many",
       septaThickness: "thin",
-      enhancement: "absent",
+      septaEnhancement: "absent",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
     const results = resultPanel(page);
     await expect(results).toContainText("Bosniak Category: Not assigned");
-    await expect(results).toContainText("Many (≥4) nonenhancing septa");
+    await expect(results).toContainText(
+      "selected many (≥4), 3 mm, thick or irregular septum is not confirmed to enhance",
+    );
   });
 
   test("should not treat a protrusion without confirmed enhancement as benign", async ({
@@ -238,15 +253,17 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
   }) => {
     await fillBaseBosniakV2019(page, {
       nodule: "obtuse4",
+      noduleEnhancement: "absent",
       calcifications: "present",
-      enhancement: "absent",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
 
     const results = resultPanel(page);
     await expect(results).toContainText("Bosniak Category: Not assigned");
-    await expect(results).toContainText("enhancement is not confirmed");
+    await expect(results).toContainText(
+      "selected protrusion is not confirmed to enhance",
+    );
   });
 
   test("should classify many thin enhancing septa as Bosniak IIF", async ({
@@ -255,7 +272,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await fillBaseBosniakV2019(page, {
       septaCount: "many",
       septaThickness: "thin",
-      enhancement: "present",
+      septaEnhancement: "present",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
@@ -273,7 +290,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
   }) => {
     await fillBaseBosniakV2019(page, {
       wall: "minimallyThick",
-      enhancement: "present",
+      wallEnhancement: "present",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
@@ -288,7 +305,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
   }) => {
     await fillBaseBosniakV2019(page, {
       wall: "thick",
-      enhancement: "present",
+      wallEnhancement: "present",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
@@ -304,7 +321,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
   }) => {
     await fillBaseBosniakV2019(page, {
       wall: "irregular",
-      enhancement: "present",
+      wallEnhancement: "present",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
@@ -319,7 +336,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
   }) => {
     await fillBaseBosniakV2019(page, {
       nodule: "acuteAny",
-      enhancement: "present",
+      noduleEnhancement: "present",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
@@ -337,9 +354,9 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
   }) => {
     await fillBaseBosniakV2019(page, {
       nodule: "obtuse4",
+      noduleEnhancement: "present",
       calcifications: "present",
       density: "hyperattenuating70",
-      enhancement: "present",
     });
 
     await page.getByRole("button", { name: "Calculate" }).click();
@@ -367,6 +384,77 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     );
     await expect(results).toContainText(
       "approximately one-quarter or more of the mass is enhancing tissue",
+    );
+  });
+
+  test("should not let enhancing septa upgrade an unrelated nonenhancing thick wall", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wall: "thick",
+      wallEnhancement: "absent",
+      septaCount: "few",
+      septaThickness: "thin",
+      septaEnhancement: "present",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText("thick or irregular wall is not confirmed to enhance");
+    await expect(results).not.toContainText("Bosniak Category: III");
+  });
+
+  test("should not let wall enhancement upgrade unrelated nonenhancing thick septa", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wallEnhancement: "present",
+      septaCount: "few",
+      septaThickness: "thick",
+      septaEnhancement: "absent",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText("thick or irregular septum is not confirmed to enhance");
+    await expect(results).not.toContainText("Bosniak Category: III");
+  });
+
+  test("should not let wall enhancement turn an unrelated nonenhancing protrusion into category IV", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wall: "thick",
+      wallEnhancement: "present",
+      nodule: "acuteAny",
+      noduleEnhancement: "absent",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText("selected protrusion is not confirmed to enhance");
+    await expect(results).not.toContainText("Bosniak Category: IV");
+  });
+
+  test("should not apply Bosniak before alternative etiologies and necrotic solid masses are excluded", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      scopeEligibility: "notExcluded",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not applicable");
+    await expect(results).toContainText(
+      "infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded",
     );
   });
 });

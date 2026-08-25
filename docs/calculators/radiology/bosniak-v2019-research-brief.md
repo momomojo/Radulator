@@ -70,7 +70,7 @@ v2019 corrections:
 >
 > — Silverman et al., Radiology 2019;292(2):475–488, Table 1
 
-If >25% enhancing solid tissue → **not a Bosniak mass** — classify as a solid renal mass with cystic/necrotic changes.
+If approximately 25% or more is enhancing tissue → **not a Bosniak mass** — classify as a solid renal mass with cystic/necrotic changes.
 
 ### 2.2 Unified Enhancement Definition
 
@@ -119,7 +119,7 @@ All classes may now demonstrate enhancement (in 2005, enhancement was restricted
 ### 2.6 Exclusions from Bosniak Classification
 
 Do not apply Bosniak classification to:
-- Lesions with >25% enhancing solid tissue (necrotic solid mass)
+- Lesions with approximately 25% or more enhancing tissue (solid or necrotic solid mass)
 - Infectious, inflammatory, or vascular cyst-like lesions (e.g., abscess)
 - Patients with a hereditary renal cell carcinoma syndrome
 - Abundant thick nodular calcifications that obscure feature assessment (recommend MRI with subtraction)
@@ -275,7 +275,7 @@ Three options, in increasing order of complexity:
 4. **Density:** Replace single "high >20 HU" with multiple HU ranges matching v2019 subtypes 2–6
 5. **Enhancement confirmation:** New field — "enhancement present?" (≥20 HU increase) — required for IIF and above
 6. **Intrarenal + large:** Remove both checkboxes
-7. **Solid component >25% gate:** New exclusion criterion — requires user to estimate enhancing solid proportion
+7. **Enhancing tissue approximately 25% or more gate:** New exclusion criterion — requires user to estimate enhancing proportion
 8. **Reporting:** Update output text to use v2019 recommended terminology
 
 **Validation requirement:** After implementation, Mohib must clinically validate against ≥5 test cases spanning Classes I–IV, including edge cases that would change category from 2005.

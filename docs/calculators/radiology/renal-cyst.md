@@ -25,7 +25,9 @@ Key changes from the retired 2005 implementation:
 - **Density subtypes**: homogeneous `>=70 HU` noncontrast, non-enhancing `>20 HU` renal mass protocol, `21-30 HU` portal venous phase, and too-small-to-characterize low-attenuation masses are Bosniak II
 - **Enhancement confirmation**: wall, septal, or nodule enhancement is required for IIF, III, and IV criteria
 - **Removed standalone upgrades**: intrarenal location and size `>=3 cm` alone no longer upgrade to IIF
-- **Solid-component gate**: Bosniak v2019 is intended for masses with less than approximately `25%` enhancing tissue; masses with approximately one-quarter or more are evaluated as solid masses with cystic or necrotic change
+- **Eligibility gate**: Apply Bosniak v2019 only after infectious, inflammatory, and vascular etiologies and necrotic solid masses are excluded
+- **Enhancing-tissue gate**: Bosniak v2019 is intended for masses with less than approximately `25%` enhancing tissue; masses with approximately one-quarter or more are evaluated as solid masses with cystic or necrotic change
+- **Feature-specific enhancement**: wall, septal, and nodule enhancement are recorded separately; enhancement elsewhere cannot upgrade an unrelated feature
 
 ---
 
@@ -33,7 +35,7 @@ Key changes from the retired 2005 implementation:
 
 ### Scope Gate
 
-Bosniak v2019 applies to cystic renal masses where less than approximately 25% of the mass is composed of enhancing tissue. If the enhancing solid component is greater than 25%, evaluate the lesion as a solid renal mass with cystic or necrotic change rather than assigning a Bosniak class.
+Bosniak v2019 applies to cystic renal masses where less than approximately 25% of the mass is composed of enhancing tissue. If approximately 25% or more of the mass is enhancing tissue, evaluate the lesion as a solid renal mass with cystic or necrotic change rather than assigning a Bosniak class. Apply the classification only after infectious, inflammatory, and vascular etiologies and necrotic solid masses are excluded.
 
 ### Enhancement
 
@@ -55,7 +57,11 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 
 | Field | Options | Purpose |
 |---|---|---|
-| **Enhancing solid component** | Less than approximately `25%` or absent; approximately `25%` or more | Applies the cystic-mass scope gate |
+| **Bosniak v2019 eligibility** | Alternative etiologies and necrotic solid mass excluded; not excluded or uncertain | Prevents use outside the source-defined population |
+| **Enhancing-tissue proportion** | Less than approximately `25%` or absent; approximately `25%` or more | Applies the cystic-mass scope gate |
+| **Wall enhancement** | Absent/not confirmed; present | Binds enhancement to the wall feature |
+| **Septal enhancement** | Absent/not confirmed; present | Binds enhancement to the selected septa |
+| **Protrusion/nodule enhancement** | Absent/not confirmed; present | Binds enhancement to the selected protrusion |
 | **Wall thickness / morphology** | Thin `<=2 mm`; smooth 3 mm; smooth `>=4 mm`; irregular obtuse protrusion `<=3 mm` | Determines I/IIF/III wall criteria |
 | **Septa count** | None; few `1-3`; many `>=4` | Applies v2019 septal-count thresholds |
 | **Septal thickness / morphology** | Thin `<=2 mm`; smooth 3 mm; smooth `>=4 mm`; irregular obtuse protrusion `<=3 mm` | Determines II/IIF/III septal criteria |

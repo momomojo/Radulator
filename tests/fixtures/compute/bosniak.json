@@ -4,13 +4,14 @@
     {
       "id": "simple-cyst-category-i",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "absent"
+        "density": "water"
       },
       "expect": {
         "noError": true,
@@ -20,14 +21,16 @@
     {
       "id": "few-thin-enhancing-septa-category-ii",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "few",
         "septaThickness": "thin",
+        "septaEnhancement": "present",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expect": {
         "noError": true,
@@ -37,14 +40,16 @@
     {
       "id": "many-thin-nonenhancing-septa-require-mri",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "many",
         "septaThickness": "thin",
+        "septaEnhancement": "absent",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "absent"
+        "density": "water"
       },
       "expect": {
         "noError": true,
@@ -57,13 +62,14 @@
     {
       "id": "thick-nonenhancing-wall-with-calcification-not-benign-ii",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
         "wall": "thick",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "nodule": "none",
         "calcifications": "present",
-        "density": "water",
-        "enhancement": "absent"
+        "density": "water"
       },
       "expect": {
         "noError": true,
@@ -76,13 +82,14 @@
     {
       "id": "irregular-nonenhancing-wall-with-benign-density-not-ii",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
         "wall": "irregular",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "hyperattenuating70",
-        "enhancement": "absent"
+        "density": "hyperattenuating70"
       },
       "expect": {
         "noError": true,
@@ -92,32 +99,35 @@
     {
       "id": "unconfirmed-nodule-not-benign-ii",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "nodule": "obtuse4",
+        "noduleEnhancement": "absent",
         "calcifications": "present",
-        "density": "water",
-        "enhancement": "absent"
+        "density": "water"
       },
       "expect": {
         "noError": true,
         "fields": [
           { "key": "Bosniak Category", "equals": "Not assigned" },
-          { "key": "Rationale", "includes": "enhancement is not confirmed" }
+          { "key": "Rationale", "includes": "selected protrusion is not confirmed to enhance" }
         ]
       }
     },
     {
       "id": "minimally-thick-enhancing-wall-category-iif",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
         "wall": "minimallyThick",
+        "wallEnhancement": "present",
         "septaCount": "none",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expect": {
         "noError": true,
@@ -127,13 +137,14 @@
     {
       "id": "thick-enhancing-wall-category-iii",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
         "wall": "thick",
+        "wallEnhancement": "present",
         "septaCount": "none",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expect": {
         "noError": true,
@@ -143,13 +154,15 @@
     {
       "id": "acute-margin-enhancing-nodule-category-iv",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "under25",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "nodule": "acuteAny",
+        "noduleEnhancement": "present",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "present"
+        "density": "water"
       },
       "expect": {
         "noError": true,
@@ -159,17 +172,103 @@
     {
       "id": "approximately-quarter-enhancing-tissue-out-of-scope",
       "inputs": {
+        "scopeEligibility": "eligible",
         "solidComponent": "over25",
         "wall": "thin",
+        "wallEnhancement": "absent",
         "septaCount": "none",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "water",
-        "enhancement": "absent"
+        "density": "water"
       },
       "expect": {
         "noError": true,
         "fields": [{ "key": "Bosniak Category", "equals": "Not applicable" }]
+      }
+    },
+    {
+      "id": "nonenhancing-thick-wall-with-unrelated-enhancing-septa-not-category-iii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wall": "thick",
+        "wallEnhancement": "absent",
+        "septaCount": "few",
+        "septaThickness": "thin",
+        "septaEnhancement": "present",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "thick or irregular wall is not confirmed to enhance" }
+        ]
+      }
+    },
+    {
+      "id": "nonenhancing-thick-septa-with-unrelated-wall-enhancement-not-category-iii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wall": "thin",
+        "wallEnhancement": "present",
+        "septaCount": "few",
+        "septaThickness": "thick",
+        "septaEnhancement": "absent",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "thick or irregular septum is not confirmed to enhance" }
+        ]
+      }
+    },
+    {
+      "id": "nonenhancing-nodule-with-unrelated-wall-enhancement-not-category-iv",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wall": "thick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "acuteAny",
+        "noduleEnhancement": "absent",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "selected protrusion is not confirmed to enhance" }
+        ]
+      }
+    },
+    {
+      "id": "alternative-etiologies-not-excluded",
+      "inputs": {
+        "scopeEligibility": "notExcluded",
+        "solidComponent": "under25",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not applicable" },
+          { "key": "Rationale", "includes": "infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded" }
+        ]
       }
     }
   ]

@@ -46,14 +46,17 @@ const densityIsBosniakII = (density) =>
   ].includes(density);
 
 const hasRequiredInputs = (v) =>
+  v.scopeEligibility &&
   v.solidComponent &&
   v.wall &&
+  v.wallEnhancement &&
   v.septaCount &&
-  (v.septaCount === "none" || v.septaThickness) &&
+  (v.septaCount === "none" ||
+    (v.septaThickness && v.septaEnhancement)) &&
   v.calcifications &&
   v.density &&
-  v.enhancement &&
-  v.nodule;
+  v.nodule &&
+  (v.nodule === "none" || v.noduleEnhancement);
 
 const buildResult = (cat, rationale, extra = {}) => {
   const detail = categoryDetails[cat];
@@ -114,12 +117,30 @@ export const RenalCystBosniak = {
   metaDesc:
     "Free Bosniak v2019 Classification Calculator for cystic renal masses. Classify cystic kidney masses (I, II, IIF, III, IV) with CT-based version 2019 criteria.",
   info: {
-    text: "Bosniak Classification, version 2019 applies to cystic renal masses with less than approximately 25% enhancing tissue. Enhancement may be visually unequivocal or quantitatively confirmed at CT by a >=20 HU increase.\n\nVersion history: v2019 replaces the prior qualitative 2005 CT criteria with explicit 2/3/4 mm wall and septal thresholds, septa counts, a nodule definition, calcification treatment, and homogeneous HU-based Bosniak II density subtypes. All CT Bosniak II masses must remain well defined with a thin (<=2 mm), smooth wall. Intrarenal location and size >=3 cm alone no longer upgrade a mass.\n\nMany nonenhancing septa, a nonenhancing wall or septum >=3 mm, abundant calcification that could conceal enhancement, and other incompletely characterized CT combinations should be evaluated with renal mass protocol MRI before assigning a class. Use the separate Bosniak v2019 MRI criteria for that assessment. Silverman SG, Pedrosa I, Ellis JH, et al. Radiology. 2019;292(2):475-488. DOI: 10.1148/radiol.2019182646",
+    text: "Bosniak Classification, version 2019 applies to cystic renal masses with less than approximately 25% enhancing tissue after infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded. Enhancement must be associated with the wall, septum, or nodule used for classification and may be visually unequivocal or quantitatively confirmed at CT by a >=20 HU increase.\n\nVersion history: v2019 replaces the prior qualitative 2005 CT criteria with explicit 2/3/4 mm wall and septal thresholds, septa counts, a nodule definition, calcification treatment, and homogeneous HU-based Bosniak II density subtypes. All CT Bosniak II masses must remain well defined with a thin (<=2 mm), smooth wall. Intrarenal location and size >=3 cm alone no longer upgrade a mass.\n\nMany nonenhancing septa, a nonenhancing wall or septum >=3 mm, abundant calcification that could conceal enhancement, and other incompletely characterized CT combinations should be evaluated with renal mass protocol MRI before assigning a class. Use the separate Bosniak v2019 MRI criteria for that assessment. Silverman SG, Pedrosa I, Ellis JH, et al. Radiology. 2019;292(2):475-488. DOI: 10.1148/radiol.2019182646",
   },
   fields: [
     {
+      id: "scopeEligibility",
+      label: "Bosniak v2019 eligibility",
+      helpText:
+        "Apply Bosniak only after infectious, inflammatory, and vascular etiologies and necrotic solid masses are excluded.",
+      type: "radio",
+      opts: [
+        {
+          value: "eligible",
+          label:
+            "alternative etiologies and necrotic solid mass have been excluded",
+        },
+        {
+          value: "notExcluded",
+          label: "not excluded or uncertain",
+        },
+      ],
+    },
+    {
       id: "solidComponent",
-      label: "Enhancing solid component",
+      label: "Enhancing-tissue proportion",
       helpText:
         "Bosniak v2019 applies only when enhancing tissue is less than approximately 25% of the mass.",
       type: "radio",
@@ -151,6 +172,17 @@ export const RenalCystBosniak = {
       ],
     },
     {
+      id: "wallEnhancement",
+      label: "Wall enhancement",
+      helpText:
+        "Record enhancement for the wall itself; enhancement elsewhere in the mass does not make a wall feature enhancing.",
+      type: "radio",
+      opts: [
+        { value: "absent", label: "absent / not confirmed" },
+        { value: "present", label: "present" },
+      ],
+    },
+    {
       id: "septaCount",
       label: "Septa count",
       helpText: "v2019 defines few as 1-3 septa and many as >=4 septa.",
@@ -179,8 +211,20 @@ export const RenalCystBosniak = {
       ],
     },
     {
+      id: "septaEnhancement",
+      label: "Septal enhancement",
+      helpText:
+        "Record enhancement for the selected septum or septa themselves; wall or nodule enhancement does not make septa enhancing.",
+      type: "radio",
+      showIf: (v) => v.septaCount && v.septaCount !== "none",
+      opts: [
+        { value: "absent", label: "absent / not confirmed" },
+        { value: "present", label: "present" },
+      ],
+    },
+    {
       id: "nodule",
-      label: "Enhancing nodule morphology",
+      label: "Convex protrusion / nodule morphology",
       helpText:
         "v2019 defines a nodule as >=4 mm with obtuse margins or any size with acute margins.",
       type: "radio",
@@ -188,6 +232,18 @@ export const RenalCystBosniak = {
         { value: "none", label: "none" },
         { value: "obtuse4", label: ">=4 mm convex protrusion, obtuse margins" },
         { value: "acuteAny", label: "any size convex protrusion, acute margins" },
+      ],
+    },
+    {
+      id: "noduleEnhancement",
+      label: "Protrusion / nodule enhancement",
+      helpText:
+        "A Bosniak v2019 nodule must itself enhance; wall or septal enhancement does not establish nodule enhancement.",
+      type: "radio",
+      showIf: (v) => v.nodule && v.nodule !== "none",
+      opts: [
+        { value: "absent", label: "absent / not confirmed" },
+        { value: "present", label: "present" },
       ],
     },
     {
@@ -220,24 +276,27 @@ export const RenalCystBosniak = {
         { value: "other", label: "other / not a benign HU subtype" },
       ],
     },
-    {
-      id: "enhancement",
-      label: "Wall, septal, or nodule enhancement",
-      helpText:
-        "Enhancement is visually unequivocal or CT >=20 HU increase from noncontrast to contrast-enhanced phases.",
-      type: "radio",
-      opts: [
-        { value: "absent", label: "absent / not confirmed" },
-        { value: "present", label: "present" },
-      ],
-    },
   ],
   compute: (v) => {
     if (!hasRequiredInputs(v)) {
       return {
         Error:
-          "Complete the solid-component gate, wall, septa, calcification, density, enhancement, and nodule fields before applying Bosniak v2019.",
+          "Complete the eligibility, enhancing-tissue proportion, wall, feature-specific enhancement, septa, calcification, density, and nodule fields before applying Bosniak v2019.",
         _severity: "error",
+      };
+    }
+
+    if (v.scopeEligibility !== "eligible") {
+      return {
+        "Bosniak Category": "Not applicable",
+        "v2019 Term": "Outside the Bosniak v2019 eligibility boundary",
+        Management:
+          "Resolve the alternative diagnosis or solid-mass question before applying Bosniak v2019.",
+        Rationale:
+          "Bosniak v2019 is intended for cystic renal masses only after infectious, inflammatory, or vascular etiologies and necrotic solid masses are excluded.",
+        "Text Module":
+          "Bosniak Classification, version 2019 not applied: required alternative etiologies and necrotic solid masses have not been excluded.",
+        _severity: "warning",
       };
     }
 
@@ -255,8 +314,12 @@ export const RenalCystBosniak = {
       };
     }
 
-    const enhancing = v.enhancement === "present";
+    const wallEnhancing = v.wallEnhancement === "present";
     const septaPresent = v.septaCount !== "none";
+    const septaEnhancing =
+      septaPresent && v.septaEnhancement === "present";
+    const noduleEnhancing =
+      v.nodule !== "none" && v.noduleEnhancement === "present";
     const thinFewSepta =
       v.septaCount === "few" && v.septaThickness === "thin";
     const thinManySepta =
@@ -274,29 +337,29 @@ export const RenalCystBosniak = {
       v.density === "water" &&
       v.nodule === "none";
 
-    if (!enhancing && v.nodule !== "none") {
+    if (v.nodule !== "none" && !noduleEnhancing) {
       return buildUnassignedResult(
-        "A convex protrusion was selected, but enhancement is not confirmed. A Bosniak v2019 nodule is enhancing; renal mass protocol MRI is needed before classification.",
+        "The selected protrusion is not confirmed to enhance. A Bosniak v2019 nodule must itself enhance; enhancement of the wall or septa cannot substitute. Renal mass protocol MRI is needed before classification.",
       );
     }
 
-    if (!enhancing && v.wall !== "thin") {
+    if (!wallEnhancing && v.wall !== "thin") {
       return buildUnassignedResult(
-        "Bosniak II requires a well-defined thin (≤2 mm), smooth wall. A nonenhancing 3 mm, thick, or irregular wall may conceal enhancement and is not safely assigned to a benign CT class; renal mass protocol MRI is recommended.",
+        "Bosniak II requires a well-defined thin (≤2 mm), smooth wall. The selected 3 mm, thick or irregular wall is not confirmed to enhance; enhancement of septa or a nodule cannot substitute. Renal mass protocol MRI is recommended before classification.",
       );
     }
 
     if (
-      !enhancing &&
+      !septaEnhancing &&
       septaPresent &&
       (v.septaCount === "many" || v.septaThickness !== "thin")
     ) {
       return buildUnassignedResult(
-        "Many (≥4) nonenhancing septa or nonenhancing septa 3 mm or thicker are incompletely characterized at CT; renal mass protocol MRI is recommended before assigning a Bosniak class.",
+        "The selected many (≥4), 3 mm, thick or irregular septum is not confirmed to enhance; enhancement of the wall or a nodule cannot substitute. Renal mass protocol MRI is recommended before assigning a Bosniak class.",
       );
     }
 
-    if (enhancing && v.nodule !== "none") {
+    if (noduleEnhancing) {
       return buildResult(
         "IV",
         v.nodule === "acuteAny"
@@ -305,7 +368,10 @@ export const RenalCystBosniak = {
       );
     }
 
-    if (enhancing && (v.wall === "thick" || v.wall === "irregular" || thickOrIrregularSepta)) {
+    if (
+      (wallEnhancing && (v.wall === "thick" || v.wall === "irregular")) ||
+      (septaEnhancing && thickOrIrregularSepta)
+    ) {
       return buildResult(
         "III",
         "Enhancing thick (>=4 mm) or irregular wall/septa meet Bosniak v2019 III criteria when no enhancing nodule is present.",
@@ -313,8 +379,8 @@ export const RenalCystBosniak = {
     }
 
     if (
-      enhancing &&
-      (v.wall === "minimallyThick" || minimallyThickSepta || thinManySepta)
+      (wallEnhancing && v.wall === "minimallyThick") ||
+      (septaEnhancing && (minimallyThickSepta || thinManySepta))
     ) {
       return buildResult(
         "IIF",
