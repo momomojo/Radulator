@@ -45,7 +45,7 @@
       },
       "expectedOutputs": {
         "bosniakCategory": "II",
-        "term": "Benign cystic mass",
+        "term": "Benign Bosniak II renal cyst",
         "management": "No follow-up required"
       },
       "clinicalContext": "Thin smooth wall with 1-3 thin septa. Wall or septa may enhance in Bosniak II under v2019."
@@ -70,7 +70,7 @@
       },
       "expectedOutputs": {
         "bosniakCategory": "II",
-        "term": "Benign cystic mass",
+        "term": "Likely benign Bosniak II renal mass",
         "management": "No follow-up required"
       },
       "clinicalContext": "Homogeneous >=70 HU noncontrast CT renal mass, non-enhancing and otherwise benign."
@@ -111,10 +111,10 @@
         "wallEnhancement": "absent",
         "septaCount": "few",
         "septaThickness": "thin",
-        "septaEnhancement": "present",
+        "septaEnhancement": "absent",
         "nodule": "none",
         "calcifications": "present",
-        "density": "other"
+        "density": "heterogeneousOrIncomplete"
       },
       "expectedOutputs": {
         "bosniakCategory": "Not assigned",
@@ -142,7 +142,7 @@
       },
       "expectedOutputs": {
         "bosniakCategory": "II",
-        "term": "Benign cystic mass",
+        "term": "Benign Bosniak II renal cyst",
         "management": "No follow-up required"
       },
       "clinicalContext": "Any calcification morphology may occur in Bosniak II under v2019 when the mass remains well defined with a thin smooth wall and other features remain assessable."

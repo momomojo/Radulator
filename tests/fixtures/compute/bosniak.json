@@ -36,7 +36,10 @@
       },
       "expect": {
         "noError": true,
-        "fields": [{ "key": "Bosniak Category", "equals": "II" }]
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Benign Bosniak II renal cyst" }
+        ]
       }
     },
     {
@@ -326,6 +329,7 @@
         "noError": true,
         "fields": [
           { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Likely benign Bosniak II renal mass" },
           { "key": "Rationale", "includes": "non-enhancing >20 HU at renal mass protocol CT" }
         ]
       }
@@ -347,6 +351,7 @@
         "noError": true,
         "fields": [
           { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Likely benign Bosniak II renal mass" },
           { "key": "Rationale", "includes": "21-30 HU at portal venous phase CT" }
         ]
       }
@@ -368,6 +373,7 @@
         "noError": true,
         "fields": [
           { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Likely benign Bosniak II renal mass" },
           { "key": "Rationale", "includes": "too small to characterize" }
         ]
       }
@@ -418,6 +424,27 @@
       }
     },
     {
+      "id": "ill-defined-mass-not-category-iif",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "no",
+        "wall": "minimallyThick",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Rationale", "includes": "IIF requires a well-defined" }
+        ]
+      }
+    },
+    {
       "id": "large-hyperattenuating-mass-requires-mri-before-assignment",
       "inputs": {
         "scopeEligibility": "eligible",
@@ -441,7 +468,7 @@
       }
     },
     {
-      "id": "uncharacterized-density-cannot-be-overridden-by-calcification-or-few-septa",
+      "id": "heterogeneous-nonenhancing-density-requires-mri",
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
@@ -450,10 +477,10 @@
         "wallEnhancement": "absent",
         "septaCount": "few",
         "septaThickness": "thin",
-        "septaEnhancement": "present",
+        "septaEnhancement": "absent",
         "nodule": "none",
         "calcifications": "present",
-        "density": "other"
+        "density": "heterogeneousOrIncomplete"
       },
       "expect": {
         "noError": true,
@@ -465,7 +492,7 @@
       }
     },
     {
-      "id": "uncharacterized-density-requires-mri-despite-enhancing-3mm-wall",
+      "id": "other-characterized-density-with-enhancing-3mm-wall-category-iif",
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
@@ -475,19 +502,18 @@
         "septaCount": "none",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "other"
+        "density": "otherCharacterized"
       },
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Bosniak Category", "equals": "Not assigned" },
-          { "key": "Management", "includes": "MRI" },
-          { "key": "Rationale", "includes": "heterogeneous or otherwise incompletely characterized" }
+          { "key": "Bosniak Category", "equals": "IIF" },
+          { "key": "Rationale", "includes": "Enhancing 3 mm" }
         ]
       }
     },
     {
-      "id": "uncharacterized-density-requires-mri-despite-enhancing-thick-wall",
+      "id": "other-characterized-density-with-enhancing-thick-wall-category-iii",
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
@@ -497,19 +523,18 @@
         "septaCount": "none",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "other"
+        "density": "otherCharacterized"
       },
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Bosniak Category", "equals": "Not assigned" },
-          { "key": "Management", "includes": "MRI" },
-          { "key": "Rationale", "includes": "heterogeneous or otherwise incompletely characterized" }
+          { "key": "Bosniak Category", "equals": "III" },
+          { "key": "Rationale", "includes": "Enhancing thick" }
         ]
       }
     },
     {
-      "id": "large-hyperattenuating-mass-requires-mri-despite-enhancing-3mm-wall",
+      "id": "large-hyperattenuating-mass-with-enhancing-3mm-wall-category-iif",
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
@@ -525,14 +550,13 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Bosniak Category", "equals": "Not assigned" },
-          { "key": "Management", "includes": "MRI" },
-          { "key": "Rationale", "includes": "larger than 3 cm" }
+          { "key": "Bosniak Category", "equals": "IIF" },
+          { "key": "Rationale", "includes": "Enhancing 3 mm" }
         ]
       }
     },
     {
-      "id": "large-hyperattenuating-mass-requires-mri-despite-enhancing-thick-wall",
+      "id": "large-hyperattenuating-mass-with-enhancing-thick-wall-category-iii",
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
@@ -548,9 +572,8 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Bosniak Category", "equals": "Not assigned" },
-          { "key": "Management", "includes": "MRI" },
-          { "key": "Rationale", "includes": "larger than 3 cm" }
+          { "key": "Bosniak Category", "equals": "III" },
+          { "key": "Rationale", "includes": "Enhancing thick" }
         ]
       }
     }
