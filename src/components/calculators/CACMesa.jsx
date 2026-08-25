@@ -219,7 +219,7 @@ export const CACMesa = {
     text:
       "This calculator interprets a total Agatston coronary artery calcium score already produced by CT software. It does not calculate Agatston score from CT pixels, lesion area, HU bins, scanner protocol, or slice data.\n\n" +
       "Outputs include an absolute CAC burden band from the Maron et al. 2024 proposed staging bands, an optional CAC-DRS A/N code from the original SCCT 2018 CAC-DRS publication, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. The proposed absolute bands are 0, 1-99, 100-299, 300-999, and >=1000; this tool reports burden labels only and does not reproduce the proposal's treatment recommendations. The primary CAC-DRS table separately defines A2 as 100-299 and A3 as >300, leaving exact 300 unassigned; this tool discloses that boundary instead of inferring a CAC-DRS category.\n\n" +
-      "The local MESA output compares the score with the official 25th, 50th, 75th, and 90th reference scores. It does not estimate an exact percentile. Outside the MESA limits, the absolute band and CAC-DRS remain available without extrapolation.",
+      "The local MESA output compares the score with the official 25th, 50th, 75th, and 90th reference scores. It does not estimate an exact percentile. The reference cohort comprised participants free of clinical cardiovascular disease and treated diabetes at baseline. A relative reference position does not by itself establish that a patient is at high clinical risk. Outside the MESA limits, the absolute band and CAC-DRS remain available without extrapolation.",
     link: {
       label: "View MESA CAC Score Reference Values",
       url: "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values",
@@ -340,7 +340,7 @@ export const CACMesa = {
     };
 
     result["MESA Limitation"] = mesa.available
-      ? "This local tool compares only the official 25th, 50th, 75th, and 90th reference scores; use the official MESA calculator when an estimated exact percentile is needed."
+      ? "The MESA reference cohort comprised participants free of clinical cardiovascular disease and treated diabetes at baseline. Relative reference position does not by itself establish high clinical risk. This local tool compares only the official 25th, 50th, 75th, and 90th reference scores; use the official MESA calculator when an estimated exact percentile is needed."
       : "Do not extrapolate beyond the MESA age 45-84 and supported race/ethnicity reference groups.";
 
     return result;

@@ -20,7 +20,10 @@ Outputs:
 - Optional CAC-DRS N modifier for 1-4 involved coronary vessels.
 - MESA reference position against the official 25th, 50th, 75th, and 90th
   scores only for age 45-84, female/male, and the four MESA race/ethnicity
-  categories. This local tool does not estimate an exact percentile.
+  categories. This local tool does not estimate an exact percentile. The
+  reference cohort comprised participants free of clinical cardiovascular
+  disease and treated diabetes at baseline. Relative reference position does
+  not by itself establish that a patient is at high clinical risk.
 
 The calculator is educational/radiology support only. It does not diagnose
 obstructive CAD and does not provide medication or prevention-management
@@ -42,6 +45,10 @@ npm run generate:mesa-reference
 - Reference page: `https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values`
 - Primary paper: McClelland 2006, DOI `10.1161/CIRCULATIONAHA.105.580696`,
   PMID `16365194`
+
+The official source describes these values as reference distributions, not a
+standalone clinical-risk determination. Radulator therefore presents relative
+position as context only and does not translate it into a high-risk label.
 
 For every one of the 320 age/sex/race groups, the generated file stores only:
 

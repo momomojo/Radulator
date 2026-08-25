@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
 const resultsRegion = (page) =>
@@ -53,6 +54,41 @@ test.describe("CAC/MESA Calculator", () => {
     await expect(
       page.getByText("Maron et al. 2024 proposed staging bands"),
     ).toBeVisible();
+  });
+
+  test("discloses the MESA cohort and relative-risk limitations", async ({
+    page,
+  }) => {
+    await expect(
+      page.getByText(
+        "free of clinical cardiovascular disease and treated diabetes at baseline",
+        { exact: false },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "does not by itself establish that a patient is at high clinical risk",
+        { exact: false },
+      ),
+    ).toBeVisible();
+
+    await fillCacMesa(page, { score: 120 });
+    await expectResultValue(
+      resultsRegion(page),
+      "MESA Limitation",
+      /free of clinical cardiovascular disease and treated diabetes.*does not by itself establish high clinical risk/i,
+    );
+
+    const clinicalDocument = readFileSync(
+      "docs/calculators/cardiac/cac-mesa.md",
+      "utf8",
+    ).replace(/\s+/g, " ");
+    expect(clinicalDocument).toContain(
+      "free of clinical cardiovascular disease and treated diabetes at baseline",
+    );
+    expect(clinicalDocument).toContain(
+      "does not by itself establish that a patient is at high clinical risk",
+    );
   });
 
   test("matches audited official MESA lookup examples", async ({ page }) => {
