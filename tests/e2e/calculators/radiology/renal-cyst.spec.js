@@ -248,6 +248,50 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).not.toContainText("No follow-up required");
   });
 
+  for (const [wall, priorCategory] of [
+    ["minimallyThick", "IIF"],
+    ["thick", "III"],
+  ]) {
+    test(`should require MRI for uncharacterized density before assigning ${priorCategory} wall features`, async ({
+      page,
+    }) => {
+      await fillBaseBosniakV2019(page, {
+        wall,
+        wallEnhancement: "present",
+        density: "other",
+      });
+
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = resultPanel(page);
+      await expect(results).toContainText("Bosniak Category: Not assigned");
+      await expect(results).toContainText(
+        "heterogeneous or otherwise incompletely characterized",
+      );
+      await expect(results).toContainText("renal mass protocol MRI");
+      await expect(results).not.toContainText(`Bosniak Category: ${priorCategory}`);
+    });
+
+    test(`should require MRI for a large hyperattenuating mass before assigning ${priorCategory} wall features`, async ({
+      page,
+    }) => {
+      await fillBaseBosniakV2019(page, {
+        wall,
+        wallEnhancement: "present",
+        density: "hyperattenuating70",
+        hyperattenuatingSize: "over3OrUncertain",
+      });
+
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = resultPanel(page);
+      await expect(results).toContainText("Bosniak Category: Not assigned");
+      await expect(results).toContainText("larger than 3 cm");
+      await expect(results).toContainText("renal mass protocol MRI");
+      await expect(results).not.toContainText(`Bosniak Category: ${priorCategory}`);
+    });
+  }
+
   for (const [density, expectedText] of [
     ["renalMassNonenhancing", "non-enhancing >20 HU at renal mass protocol CT"],
     ["portalVenous21to30", "21-30 HU at portal venous phase CT"],

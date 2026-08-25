@@ -401,6 +401,21 @@ export const RenalCystBosniak = {
       );
     }
 
+    if (
+      v.density === "hyperattenuating70" &&
+      v.hyperattenuatingSize === "over3OrUncertain"
+    ) {
+      return buildUnassignedResult(
+        "A homogeneous hyperattenuating nonenhancing mass larger than 3 cm, or one whose size is not confidently established, may be best characterized with renal mass protocol MRI before Bosniak assignment. Size is not used as an automatic IIF upgrade.",
+      );
+    }
+
+    if (v.density === "other") {
+      return buildUnassignedResult(
+        "The selected density is heterogeneous or otherwise incompletely characterized and is not one of the v2019 benign homogeneous CT density subtypes. Calcification or few thin septa cannot substitute for complete characterization; renal mass protocol MRI is recommended before assignment.",
+      );
+    }
+
     if (!wallEnhancing && v.wall !== "thin") {
       return buildUnassignedResult(
         "Bosniak II requires a well-defined thin (≤2 mm), smooth wall. The selected 3 mm, thick or irregular wall is not confirmed to enhance; enhancement of septa or a nodule cannot substitute. Renal mass protocol MRI is recommended before classification.",
@@ -434,21 +449,6 @@ export const RenalCystBosniak = {
       return buildResult(
         "IIF",
         "Enhancing 3 mm smooth wall/septa or many (>=4) thin enhancing septa meet Bosniak v2019 IIF criteria.",
-      );
-    }
-
-    if (
-      v.density === "hyperattenuating70" &&
-      v.hyperattenuatingSize === "over3OrUncertain"
-    ) {
-      return buildUnassignedResult(
-        "A homogeneous hyperattenuating nonenhancing mass larger than 3 cm, or one whose size is not confidently established, may be best characterized with renal mass protocol MRI before Bosniak assignment. Size is not used as an automatic IIF upgrade.",
-      );
-    }
-
-    if (v.density === "other") {
-      return buildUnassignedResult(
-        "The selected density is heterogeneous or otherwise incompletely characterized and is not one of the v2019 benign homogeneous CT density subtypes. Calcification or few thin septa cannot substitute for complete characterization; renal mass protocol MRI is recommended before assignment.",
       );
     }
 
