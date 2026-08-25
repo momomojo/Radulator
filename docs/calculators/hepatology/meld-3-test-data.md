@@ -15,6 +15,10 @@ Signed-off packet SHA-256: `cef58cc2577687e7f795e82c6fa9213c8cff35e47df70d1c64d5
 
 Verifier output: `/Users/agent/.hermes/profiles/radulator/task-notes/meld30_audit_recompute_t45134910.json`
 
+## Exact-Head Release Evidence
+
+Clinical formulas and reproducible fixtures belong in this document. Release-test results belong in GitHub check runs and the pull-request evidence because those records bind the result to an exact commit. Any branch refresh or corrective commit invalidates an earlier run reference; the current head must receive a fresh full browser suite before clinical attestation and merge.
+
 ## MELD 3.0 Verifier Examples
 
 ### Test Case 1: Low-Score Bounded Normal Male
