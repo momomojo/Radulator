@@ -6,7 +6,7 @@ A comprehensive radiology calculator application built with React and Vite, prov
 
 ## Overview
 
-Radulator is a modern web application providing evidence-based medical calculators for radiology and adjacent specialties. It features **39 specialized calculators across 11 specialty categories**, each with evidence-based formulas, proper academic references, and built-in result interpretation. Calculators are auto-discovered from their own metadata (`src/components/calculators/registry.js`), so this list always reflects the code:
+Radulator is a modern web application providing evidence-based medical calculators for radiology and adjacent specialties. It features **40 specialized calculators across 11 specialty categories**, each with evidence-based formulas, proper academic references, and built-in result interpretation. Calculators are auto-discovered from their own metadata (`src/components/calculators/registry.js`), so this list always reflects the code:
 
 ## Features
 
@@ -27,8 +27,8 @@ IIEF-5 (SHIM Score) · PI-RADS v2.1 · RENAL Nephrometry Score
 #### Neuroradiology (2)
 ACR NI-RADS · ASPECTS Score
 
-#### Clinical Decision (2)
-Wells Criteria for DVT · Wells Criteria for PE
+#### Clinical Decision (3)
+PESI Score · Wells Criteria for DVT · Wells Criteria for PE
 
 #### Additional specialties (6)
 ACR BI-RADS (Breast Imaging) · ACR O-RADS (Women's Imaging) · CAD-RADS 2.0 (Cardiac Imaging) · Cockcroft-Gault eCrCl (Nephrology) · Mehran CIN Risk Score (Nephrology) · AAST Trauma Grading (Trauma)
@@ -91,7 +91,7 @@ Radulator/
 ├── public/                    # Static assets and reference images
 ├── src/
 │   ├── components/
-│   │   ├── calculators/       # 39 calculator components (one .jsx each)
+│   │   ├── calculators/       # 40 calculator components (one .jsx each)
 │   │   │   ├── registry.js    # Auto-discovery via import.meta.glob
 │   │   │   └── ...
 │   │   └── ui/                # Reusable UI components (shadcn/ui)

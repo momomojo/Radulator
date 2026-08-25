@@ -28,6 +28,7 @@ export { RadiationDoseConverter } from "./RadiationDoseConverter";
 export { AASTTraumaGrading } from "./AASTTraumaGrading";
 export { WellsPE } from "./WellsPE";
 export { WellsDVT } from "./WellsDVT";
+export { PESI } from "./PESI";
 export { MehranCIN } from "./MehranCIN";
 export { CockcroftGault } from "./CockcroftGault";
 export { DLPDose } from "./DLPDose";
