@@ -70,8 +70,8 @@ export function computePESI(values = {}) {
   if (!Number.isFinite(age) || !Number.isInteger(age) || age < 18) {
     return { Error: "Enter age as a whole number of years (18 or older)." };
   }
-  if (!Number.isFinite(pulse)) {
-    return { Error: "Enter a finite pulse in beats per minute." };
+  if (!Number.isFinite(pulse) || pulse <= 0) {
+    return { Error: "Enter a finite positive pulse in beats per minute." };
   }
   if (!Number.isFinite(systolicBp) || systolicBp <= 0) {
     return { Error: "Enter a finite positive systolic blood pressure in mm Hg." };
@@ -204,6 +204,8 @@ The original five classes are reported with mortality ranges observed across the
     {
       id: "cancer",
       label: "Cancer",
+      subLabel:
+        "diagnosis of cancer other than basal-cell or squamous-cell skin cancer within 6 months, cancer treatment within 6 months, or recurrent/metastatic cancer",
       type: "radio",
       section: "Clinical History",
       required: true,
@@ -253,6 +255,7 @@ The original five classes are reported with mortality ranges observed across the
       subLabel: "beats/min; +20 at ≥110",
       section: "Vital Signs",
       required: true,
+      min: 1,
       step: "any",
     },
     {
@@ -262,6 +265,7 @@ The original five classes are reported with mortality ranges observed across the
       subLabel: "mm Hg; +30 below 100",
       section: "Vital Signs",
       required: true,
+      min: 1,
       step: "any",
     },
     {
@@ -271,6 +275,7 @@ The original five classes are reported with mortality ranges observed across the
       subLabel: "breaths/min; +20 at ≥30",
       section: "Vital Signs",
       required: true,
+      min: 1,
       step: "any",
     },
     {
@@ -280,6 +285,7 @@ The original five classes are reported with mortality ranges observed across the
       subLabel: "°C; +20 below 36.0",
       section: "Vital Signs",
       required: true,
+      min: 1,
       step: "any",
     },
     {

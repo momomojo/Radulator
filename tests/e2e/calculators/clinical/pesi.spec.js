@@ -105,13 +105,16 @@ test.describe("PESI Score Calculator", () => {
       "aria-describedby",
       "pesi-calculate-requirements",
     );
-    await expect(page.getByRole("status")).toContainText(
+    await expect(page.locator("#pesi-calculate-requirements")).toContainText(
       "Complete all 11 required inputs",
     );
     await expect(page.getByRole("radiogroup", { name: "Cancer" })).toHaveAttribute(
       "aria-required",
       "true",
     );
+    await expect(
+      page.getByText(/cancer other than basal-cell or squamous-cell skin cancer/i),
+    ).toBeVisible();
     const cancerOption = page
       .getByRole("radiogroup", { name: "Cancer" })
       .getByText("Present (+30)", { exact: true });
@@ -162,7 +165,7 @@ test.describe("PESI Score Calculator", () => {
     await expect(results(page)).toContainText("Pulse ≥110/min: +20");
     await expect(results(page)).toContainText("Altered mental status: +60");
     await expect(results(page)).toContainText(
-      "does not independently determine outpatient care, ICU need, reperfusion",
+      "does not diagnose PE or independently determine outpatient care, ICU need, reperfusion",
     );
     await expect(results(page)).not.toContainText("Category C");
     await expect(results(page)).not.toContainText("thrombolysis recommended");

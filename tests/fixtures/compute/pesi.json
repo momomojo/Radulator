@@ -84,6 +84,11 @@
       "expect": { "noError": false, "fields": [{ "key": "Error", "includes": "original-model male sex criterion" }] }
     },
     {
+      "id": "zero-pulse-rejected",
+      "inputs": { "age_years": "65", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "0", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": false, "fields": [{ "key": "Error", "includes": "positive pulse" }] }
+    },
+    {
       "id": "oxygen-saturation-over-100-rejected",
       "inputs": { "age_years": "65", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "101" },
       "expect": { "noError": false, "fields": [{ "key": "Error", "includes": "0% through 100%" }] }
