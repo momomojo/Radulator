@@ -65,7 +65,8 @@
         "septaThickness": null,
         "nodule": "none",
         "calcifications": "absent",
-        "density": "hyperattenuating70"
+        "density": "hyperattenuating70",
+        "hyperattenuatingSize": "atMost3"
       },
       "expectedOutputs": {
         "bosniakCategory": "II",
@@ -73,6 +74,54 @@
         "management": "No follow-up required"
       },
       "clinicalContext": "Homogeneous >=70 HU noncontrast CT renal mass, non-enhancing and otherwise benign."
+    },
+    {
+      "id": "v2019-unassigned-large-hyperattenuating-mass",
+      "name": "Not Assigned - Large or Size-Uncertain Hyperattenuating Mass",
+      "category": "Not assigned",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "septaThickness": null,
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "hyperattenuating70",
+        "hyperattenuatingSize": "over3OrUncertain"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "Not assigned",
+        "term": "Incomplete CT characterization",
+        "management": "Obtain or review renal mass protocol MRI features before assigning a Bosniak v2019 class."
+      },
+      "clinicalContext": "A homogeneous hyperattenuating nonenhancing mass larger than 3 cm may be best characterized with MRI before class assignment; size is not an automatic IIF upgrade."
+    },
+    {
+      "id": "v2019-unassigned-other-density-despite-ii-features",
+      "name": "Not Assigned - Uncharacterized Density with Calcification and Few Septa",
+      "category": "Not assigned",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "few",
+        "septaThickness": "thin",
+        "septaEnhancement": "present",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "other"
+      },
+      "expectedOutputs": {
+        "bosniakCategory": "Not assigned",
+        "term": "Incomplete CT characterization",
+        "management": "Obtain or review renal mass protocol MRI features before assigning a Bosniak v2019 class."
+      },
+      "clinicalContext": "Heterogeneous or otherwise incompletely characterized CT density cannot be overridden into Bosniak II by calcification or few thin septa."
     },
     {
       "id": "v2019-category-ii-calcification-only",

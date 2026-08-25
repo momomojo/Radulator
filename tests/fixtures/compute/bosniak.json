@@ -94,7 +94,8 @@
         "septaCount": "none",
         "nodule": "none",
         "calcifications": "absent",
-        "density": "hyperattenuating70"
+        "density": "hyperattenuating70",
+        "hyperattenuatingSize": "atMost3"
       },
       "expect": {
         "noError": true,
@@ -413,6 +414,53 @@
         "fields": [
           { "key": "Bosniak Category", "equals": "Not assigned" },
           { "key": "Rationale", "includes": "Bosniak I and II require a well-defined mass" }
+        ]
+      }
+    },
+    {
+      "id": "large-hyperattenuating-mass-requires-mri-before-assignment",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "hyperattenuating70",
+        "hyperattenuatingSize": "over3OrUncertain"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "larger than 3 cm" }
+        ]
+      }
+    },
+    {
+      "id": "uncharacterized-density-cannot-be-overridden-by-calcification-or-few-septa",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "few",
+        "septaThickness": "thin",
+        "septaEnhancement": "present",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "other"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "heterogeneous or otherwise incompletely characterized" }
         ]
       }
     }

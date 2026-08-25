@@ -32,6 +32,7 @@ async function fillBaseBosniakV2019(page, overrides = {}) {
     noduleEnhancement: null,
     calcifications: "absent",
     density: "water",
+    hyperattenuatingSize: "atMost3",
     ...overrides,
   };
 
@@ -51,6 +52,9 @@ async function fillBaseBosniakV2019(page, overrides = {}) {
   }
   await choose(page, "calcifications", values.calcifications);
   await choose(page, "density", values.density);
+  if (values.density === "hyperattenuating70") {
+    await choose(page, "hyperattenuatingSize", values.hyperattenuatingSize);
+  }
 }
 
 test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
@@ -102,7 +106,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(infoPanel).toContainText("10.1148/radiol.2019182646");
   });
 
-  test("should display v2019 fields and remove 2005 intrarenal/size criteria", async ({
+  test("should display v2019 fields and remove the 2005 intrarenal/automatic-size upgrade", async ({
     page,
   }) => {
     await expect(
@@ -203,6 +207,45 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
       "homogeneous >=70 HU at noncontrast CT",
     );
     await expect(results).toContainText("Management: No follow-up required");
+  });
+
+  test("should require MRI before assigning a large or size-uncertain hyperattenuating mass", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      density: "hyperattenuating70",
+      hyperattenuatingSize: "over3OrUncertain",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText("larger than 3 cm");
+    await expect(results).toContainText("renal mass protocol MRI");
+    await expect(results).not.toContainText("No follow-up required");
+  });
+
+  test("should not let calcification or few septa override uncharacterized density", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      septaCount: "few",
+      septaThickness: "thin",
+      septaEnhancement: "present",
+      calcifications: "present",
+      density: "other",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText(
+      "heterogeneous or otherwise incompletely characterized",
+    );
+    await expect(results).toContainText("renal mass protocol MRI");
+    await expect(results).not.toContainText("No follow-up required");
   });
 
   for (const [density, expectedText] of [

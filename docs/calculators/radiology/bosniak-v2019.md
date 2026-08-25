@@ -22,7 +22,7 @@ Key changes from the retired 2005 implementation:
 - **Septa count**: few `1-3`, many `>=4`
 - **Nodule decision tree**: `>=4 mm` convex protrusion with obtuse margins or any convex protrusion with acute margins is Bosniak IV when enhancing
 - **Calcifications**: any morphology may occur in Bosniak II only when the mass remains well defined with a thin smooth wall and underlying features remain assessable; abundant calcification may require MRI
-- **Density subtypes**: homogeneous `>=70 HU` noncontrast, non-enhancing `>20 HU` renal mass protocol, `21-30 HU` portal venous phase, and too-small-to-characterize low-attenuation masses are Bosniak II
+- **Density subtypes**: homogeneous `>=70 HU` noncontrast, non-enhancing `>20 HU` renal mass protocol, `21-30 HU` portal venous phase, and too-small-to-characterize low-attenuation masses are Bosniak II. A homogeneous hyperattenuating nonenhancing mass larger than `3 cm` may be best characterized with MRI before assignment; size is not an automatic IIF upgrade.
 - **Enhancement confirmation**: wall, septal, or nodule enhancement is required for IIF, III, and IV criteria
 - **Removed standalone upgrades**: intrarenal location and size `>=3 cm` alone no longer upgrade to IIF
 - **Eligibility gate**: Apply the general-population Bosniak v2019 guidance only after infectious, inflammatory, and vascular etiologies and necrotic solid masses are excluded and when a hereditary renal cell carcinoma syndrome is not known or suspected
@@ -71,7 +71,8 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 | **Septal thickness / morphology** | Thin `<=2 mm`; smooth 3 mm; smooth `>=4 mm`; irregular obtuse protrusion `<=3 mm` | Determines II/IIF/III septal criteria |
 | **Enhancing nodule morphology** | None; `>=4 mm` obtuse; any size acute | Applies the v2019 IV nodule definition |
 | **Calcifications** | Absent; present | Any morphology may occur in Bosniak II only with a well-defined thin smooth wall and assessable underlying features; abundant calcification may require MRI |
-| **Homogeneous CT density subtype** | Water `-9 to 20 HU`; `>=70 HU` noncontrast; non-enhancing `>20 HU`; `21-30 HU` portal venous; low attenuation too small to characterize; other | Applies v2019 benign HU subtypes |
+| **Homogeneous CT density subtype** | Water `-9 to 20 HU`; `>=70 HU` noncontrast; non-enhancing `>20 HU`; `21-30 HU` portal venous; low attenuation too small to characterize; other | Applies v2019 benign HU subtypes; `other` is treated as heterogeneous or otherwise incompletely characterized and cannot be overridden into II by calcification or few thin septa |
+| **Hyperattenuating mass size** | `<=3 cm`; `>3 cm` or uncertain | Shown for the `>=70 HU` subtype; larger or size-uncertain masses return Not assigned with MRI characterization guidance |
 | **Wall, septal, or nodule enhancement** | Absent/not confirmed; present | Required for IIF/III/IV criteria |
 
 ---
@@ -110,7 +111,7 @@ Thin smooth wall, no septa, calcifications present, water density, no enhancing 
 
 ### Not Assigned at CT: MRI Needed
 
-A nonenhancing wall or septum measuring `3 mm` or more, an irregular nonenhancing wall/septum, many (`>=4`) nonenhancing septa, or a protrusion without confirmed enhancement is not forced into Bosniak II. The calculator returns **Not assigned** and recommends renal mass protocol MRI to evaluate for occult enhancement before classification.
+A nonenhancing wall or septum measuring `3 mm` or more, an irregular nonenhancing wall/septum, many (`>=4`) nonenhancing septa, a protrusion without confirmed enhancement, heterogeneous or otherwise incompletely characterized density, or a homogeneous hyperattenuating nonenhancing mass larger than `3 cm` (or of uncertain size) is not forced into Bosniak II. The calculator returns **Not assigned** and recommends renal mass protocol MRI before classification.
 
 ### Bosniak IIF
 
