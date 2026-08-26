@@ -456,7 +456,7 @@ for (const [calculatorId, expected] of Object.entries({
   },
   pesi: {
     basis_type: "primary-model",
-    source_url: "https://professional.heart.org/en/guidelines-statements/2026-ahaaccaccpchestscaishmsirsvmsvn-guideline-for-the-evaluation-andcir0000000000001415",
+    source_url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/",
   },
   "kidney-biopsy-bleeding-risk": {
     basis_type: "primary-model",
