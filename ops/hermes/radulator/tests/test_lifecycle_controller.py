@@ -1017,6 +1017,57 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         self.assertEqual(self.ledger.replay().events, initial_events)
 
+    def test_reconciliation_preflights_later_idempotency_collision_before_append(self):
+        collision_key = "reconcile:t_second:feedback:batch-collision-audit"
+        self.ledger.append(
+            idempotency_key=collision_key,
+            source_id="unrelated-source",
+            task_id="t_unrelated",
+            state="feedback",
+            timestamp="2026-08-23T20:00:00Z",
+        )
+        initial_bytes = self.ledger_path.read_bytes()
+        tasks = {
+            task_id: {
+                "task": {"id": task_id, "status": "todo", "body": "readable"},
+                "parents": [],
+            }
+            for task_id in (
+                "t_first", "t_first_source", "t_second", "t_second_source",
+            )
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("semantic collision must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "batch-collision-audit",
+            "trackers": [
+                {
+                    "task_id": "t_first",
+                    "source_id": "first-source",
+                    "source": {"kind": "kanban_task", "task_id": "t_first_source"},
+                },
+                {
+                    "task_id": "t_second",
+                    "source_id": "second-source",
+                    "source": {"kind": "kanban_task", "task_id": "t_second_source"},
+                },
+            ],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "idempotency key"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(self.ledger_path.read_bytes(), initial_bytes)
+
     def test_reconciliation_rejects_prefixed_pr_reference_before_bootstrap(self):
         tasks = {
             "t_tracker": {
@@ -1060,6 +1111,86 @@ class LifecycleLedgerTests(unittest.TestCase):
             )
 
         self.assertEqual(self.ledger.replay().events, ())
+
+    def test_reconciliation_rejects_head_sha_prefix_of_longer_hex_token(self):
+        tasks = {
+            "t_tracker": {
+                "task": {
+                    "id": "t_tracker",
+                    "status": "todo",
+                    "body": (
+                        "Track PR #16 at head " + HEAD + "f and base " + NEXT_HEAD
+                    ),
+                },
+                "parents": [],
+            },
+            "t_source": {
+                "task": {"id": "t_source", "status": "done", "body": "source"},
+                "parents": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("ambiguous SHA token must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "exact-sha-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 16,
+                "head_sha": HEAD,
+                "base_sha": NEXT_HEAD,
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "head SHA"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(self.ledger.replay().events, ())
+
+    def test_reconciliation_spec_requires_owned_nonsymlink_exact_0600_file(self):
+        payload = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "file-trust-audit",
+            "trackers": [{
+                "task_id": "t_missing",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }
+        target = Path(self.temp.name) / "target.json"
+        target.write_text(json.dumps(payload))
+        target.chmod(0o600)
+        symlink = Path(self.temp.name) / "reviewed.json"
+        symlink.symlink_to(target)
+        with self.assertRaisesRegex(LedgerError, "symlink"):
+            lifecycle_module._load_reconciliation_spec(symlink)
+
+        loose = Path(self.temp.name) / "loose.json"
+        loose.write_text(json.dumps(payload))
+        loose.chmod(0o640)
+        with self.assertRaisesRegex(LedgerError, "0600"):
+            lifecycle_module._load_reconciliation_spec(loose)
+
+        wrong_owner = Path(self.temp.name) / "wrong-owner.json"
+        wrong_owner.write_text(json.dumps(payload))
+        wrong_owner.chmod(0o600)
+        with mock.patch.object(
+            lifecycle_module.os,
+            "geteuid",
+            return_value=wrong_owner.stat().st_uid + 1,
+        ):
+            with self.assertRaisesRegex(LedgerError, "owned"):
+                lifecycle_module._load_reconciliation_spec(wrong_owner)
 
     def test_archived_nonterminal_cac_tracker_keeps_needs_fix_and_plans_correction(self):
         self.assertTrue(

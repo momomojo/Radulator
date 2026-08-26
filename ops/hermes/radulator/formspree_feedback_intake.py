@@ -18,6 +18,8 @@ import subprocess
 import sys
 import tempfile
 from typing import Any, Dict, List, Optional
+import urllib.error
+import urllib.request
 from urllib.parse import urlparse
 
 
@@ -38,6 +40,11 @@ MAX_AUTHENTICATION_BYTES = 32 * 1024
 MAX_STATE_BYTES = 8 * 1024 * 1024
 CLOSURE_PROOF_SCHEMA = "radulator-feedback-closure-proof/v1"
 NO_ACTION_PROOF_SCHEMA = "radulator-feedback-no-action-proof/v1"
+LEARNING_RECEIPT_SCHEMA = "radulator-feedback-learning-receipt/v1"
+PRODUCTION_VERIFICATION_SCHEMA = "radulator-feedback-production-verification/v1"
+RELEASE_MARKER_SCHEMA = "radulator-release/v1"
+CANONICAL_GITHUB_REPOSITORY = "momomojo/Radulator"
+MAX_RELEASE_MARKER_BYTES = 4096
 RECEIPT_DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 TERMINAL_TASK_STATUSES = frozenset({"complete", "completed", "done", "archived"})
 OPEN_TASK_STATUSES = frozenset({
@@ -337,8 +344,12 @@ def _task_status(value: Any, task_id: str) -> str:
     return status
 
 
-def _release_proof_metadata(value: Any, task_id: str) -> List[Dict[str, Any]]:
-    """Return completed-run proof metadata bound to the exact shown task only."""
+def _completed_run_metadata(
+    value: Any,
+    task_id: str,
+    schema: str,
+) -> List[Dict[str, Any]]:
+    """Return completed-run metadata bound to the exact shown task only."""
     if not isinstance(value, dict):
         return []
     task = value
@@ -363,42 +374,18 @@ def _release_proof_metadata(value: Any, task_id: str) -> List[Dict[str, Any]]:
         if (
             status in TERMINAL_TASK_STATUSES
             and isinstance(metadata, dict)
-            and metadata.get("schema") == CLOSURE_PROOF_SCHEMA
+            and metadata.get("schema") == schema
         ):
             matches.append(metadata)
     return matches
+
+
+def _release_proof_metadata(value: Any, task_id: str) -> List[Dict[str, Any]]:
+    return _completed_run_metadata(value, task_id, CLOSURE_PROOF_SCHEMA)
 
 
 def _no_action_proof_metadata(value: Any, task_id: str) -> List[Dict[str, Any]]:
-    """Return no-action proof metadata bound to the exact shown task only."""
-    if not isinstance(value, dict):
-        return []
-    task = value
-    if task_id not in (task.get("task_id"), task.get("id")):
-        task = value.get("task")
-        if (
-            not isinstance(task, dict)
-            or task_id not in (task.get("task_id"), task.get("id"))
-        ):
-            return []
-    runs = value.get("runs")
-    if not isinstance(runs, list):
-        runs = task.get("runs")
-    if not isinstance(runs, list):
-        return []
-    matches: List[Dict[str, Any]] = []
-    for run in runs:
-        if not isinstance(run, dict):
-            continue
-        status = str(run.get("status", run.get("state", ""))).strip().lower()
-        metadata = run.get("metadata")
-        if (
-            status in TERMINAL_TASK_STATUSES
-            and isinstance(metadata, dict)
-            and metadata.get("schema") == NO_ACTION_PROOF_SCHEMA
-        ):
-            matches.append(metadata)
-    return matches
+    return _completed_run_metadata(value, task_id, NO_ACTION_PROOF_SCHEMA)
 
 
 def _trusted_radulator_url(value: Any) -> bool:
@@ -418,45 +405,141 @@ def _trusted_radulator_url(value: Any) -> bool:
     )
 
 
-def _has_release_closure_proof(value: Any, digest: str, task_id: str) -> bool:
+def _exact_release_marker_url(value: Any, sha: str) -> bool:
+    if not _trusted_radulator_url(value):
+        return False
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return False
+    return (
+        not parsed.query
+        and not parsed.fragment
+        and parsed.path == f"/releases/{sha}.json"
+    )
+
+
+def _authoritative_read(reader: Any, method: str, *arguments: Any) -> Any:
+    try:
+        return getattr(reader, method)(*arguments)
+    except Exception:
+        return None
+
+
+def _has_exact_task_receipt(
+    readback: Any,
+    task_id: str,
+    schema: str,
+    expected: Dict[str, Any],
+) -> bool:
+    try:
+        if _find_task_id(readback) != task_id:
+            return False
+        if _task_status(readback, task_id) not in TERMINAL_TASK_STATUSES:
+            return False
+    except FeedbackIntakeError:
+        return False
+    return any(
+        all(metadata.get(key) == value for key, value in expected.items())
+        for metadata in _completed_run_metadata(readback, task_id, schema)
+    )
+
+
+def _has_learning_receipt(
+    reader: Any,
+    *,
+    closure_task_id: str,
+    task_id: Any,
+    receipt_id: Any,
+    digest: str,
+    production_sha: str,
+) -> bool:
+    if (
+        not isinstance(task_id, str)
+        or not task_id.startswith("t_")
+        or task_id == closure_task_id
+        or not isinstance(receipt_id, str)
+        or not receipt_id.strip()
+    ):
+        return False
+    return _has_exact_task_receipt(
+        _authoritative_read(reader, "task", task_id),
+        task_id,
+        LEARNING_RECEIPT_SCHEMA,
+        {
+            "receipt_digest": digest,
+            "production_sha": production_sha,
+            "learning_receipt_id": receipt_id,
+        },
+    )
+
+
+def _has_release_closure_proof(
+    value: Any,
+    digest: str,
+    task_id: str,
+    evidence_reader: Any,
+) -> bool:
     for metadata in _release_proof_metadata(value, task_id):
         marker_sha = metadata.get("release_marker_sha")
         marker_url = metadata.get("release_marker_url")
         smoke_run_id = metadata.get("smoke_run_id")
+        learning_task_id = metadata.get("learning_task_id")
+        learning_receipt_id = metadata.get("learning_receipt_id")
         if (
             metadata.get("receipt_digest") == digest
             and isinstance(marker_sha, str)
             and re.fullmatch(r"[0-9a-f]{40}", marker_sha)
-            and isinstance(marker_url, str)
-            and marker_url.startswith("https://")
+            and _exact_release_marker_url(marker_url, marker_sha)
             and metadata.get("smoke_sha") == marker_sha
-            and isinstance(smoke_run_id, (int, str))
-            and str(smoke_run_id).strip()
-            and isinstance(metadata.get("learning_receipt_id"), str)
-            and metadata["learning_receipt_id"].strip()
+            and isinstance(smoke_run_id, int)
+            and not isinstance(smoke_run_id, bool)
+            and smoke_run_id > 0
         ):
-            return True
+            marker = _authoritative_read(evidence_reader, "release_marker", marker_url)
+            smoke = _authoritative_read(evidence_reader, "smoke_run", smoke_run_id)
+            if (
+                isinstance(marker, dict)
+                and marker.get("schema") == RELEASE_MARKER_SCHEMA
+                and marker.get("sha") == marker_sha
+                and isinstance(smoke, dict)
+                and smoke.get("id") == smoke_run_id
+                and smoke.get("path") == ".github/workflows/deploy.yml"
+                and smoke.get("head_sha") == marker_sha
+                and smoke.get("conclusion") == "success"
+                and _has_learning_receipt(
+                    evidence_reader,
+                    closure_task_id=task_id,
+                    task_id=learning_task_id,
+                    receipt_id=learning_receipt_id,
+                    digest=digest,
+                    production_sha=marker_sha,
+                )
+            ):
+                return True
     return False
 
 
-def _has_no_action_closure_proof(value: Any, digest: str, task_id: str) -> bool:
+def _has_no_action_closure_proof(
+    value: Any,
+    digest: str,
+    task_id: str,
+    evidence_reader: Any,
+) -> bool:
     for metadata in _no_action_proof_metadata(value, task_id):
         production_sha = metadata.get("production_sha")
         marker_url = metadata.get("release_marker_url")
         verification_url = metadata.get("verification_url")
+        verification_task_id = metadata.get("verification_task_id")
         verification_run_id = metadata.get("verification_run_id")
         behavior = metadata.get("verified_behavior")
+        learning_task_id = metadata.get("learning_task_id")
         learning_receipt_id = metadata.get("learning_receipt_id")
-        try:
-            marker_path = urlparse(marker_url).path if isinstance(marker_url, str) else ""
-        except ValueError:
-            marker_path = ""
         if (
             metadata.get("receipt_digest") == digest
             and isinstance(production_sha, str)
             and re.fullmatch(r"[0-9a-f]{40}", production_sha)
-            and _trusted_radulator_url(marker_url)
-            and marker_path == f"/releases/{production_sha}.json"
+            and _exact_release_marker_url(marker_url, production_sha)
             and _trusted_radulator_url(verification_url)
             and isinstance(verification_run_id, (int, str))
             and str(verification_run_id).strip()
@@ -465,14 +548,54 @@ def _has_no_action_closure_proof(value: Any, digest: str, task_id: str) -> bool:
             and isinstance(learning_receipt_id, str)
             and learning_receipt_id.strip()
         ):
-            return True
+            marker = _authoritative_read(evidence_reader, "release_marker", marker_url)
+            verification = _authoritative_read(
+                evidence_reader, "task", verification_task_id
+            )
+            if (
+                isinstance(marker, dict)
+                and marker.get("schema") == RELEASE_MARKER_SCHEMA
+                and marker.get("sha") == production_sha
+                and isinstance(verification_task_id, str)
+                and verification_task_id.startswith("t_")
+                and verification_task_id != task_id
+                and verification_task_id != learning_task_id
+                and _has_exact_task_receipt(
+                    verification,
+                    verification_task_id,
+                    PRODUCTION_VERIFICATION_SCHEMA,
+                    {
+                        "receipt_digest": digest,
+                        "production_sha": production_sha,
+                        "verification_url": verification_url,
+                        "verification_run_id": verification_run_id,
+                        "verified_behavior": behavior,
+                    },
+                )
+                and _has_learning_receipt(
+                    evidence_reader,
+                    closure_task_id=task_id,
+                    task_id=learning_task_id,
+                    receipt_id=learning_receipt_id,
+                    digest=digest,
+                    production_sha=production_sha,
+                )
+            ):
+                return True
     return False
 
 
-def _has_feedback_closure_proof(value: Any, digest: str, task_id: str) -> bool:
+def _has_feedback_closure_proof(
+    value: Any,
+    digest: str,
+    task_id: str,
+    evidence_reader: Any,
+) -> bool:
     return _has_release_closure_proof(
-        value, digest, task_id
-    ) or _has_no_action_closure_proof(value, digest, task_id)
+        value, digest, task_id, evidence_reader
+    ) or _has_no_action_closure_proof(
+        value, digest, task_id, evidence_reader
+    )
 
 
 def _feedback_task(feedback: FormspreeFeedback, received: str, digest: str) -> Any:
@@ -520,8 +643,8 @@ def _closure_task(received: str, digest: str, triage_task_id: str) -> Any:
         "- no implementation was needed and current production behavior was directly verified; or",
         "- the exact approved commit is present in an immutable production release marker, production smoke passes, and retained learning records the feedback-to-release outcome.",
         "Clinical changes also require current primary-source citations and the exact-head independent judge quorum before merge.",
-        "A deployed-change completion must use radulator-feedback-closure-proof/v1 and bind this receipt digest to the immutable release-marker SHA, the matching production-smoke SHA/run, and the retained-learning receipt id.",
-        "A no-change completion must instead use radulator-feedback-no-action-proof/v1 and bind this receipt digest to the currently deployed release-marker SHA, a direct Radulator production URL/run and observed behavior, and retained learning. These proof types are not interchangeable.",
+        "A deployed-change completion must use radulator-feedback-closure-proof/v1 and bind this receipt digest to the exact live Radulator release marker, an authoritative successful deploy workflow run at that SHA, and an exact terminal learning-receipt task/readback at that SHA.",
+        "A no-change completion must instead use radulator-feedback-no-action-proof/v1 and bind this receipt digest to the exact current live release marker plus separate exact terminal production-verification and learning-receipt tasks at that SHA. Opaque ids and prose are not proof, and these proof types are not interchangeable.",
         "A hold or failed check is corrective work, not a terminal outcome: create or resume the fix, wait for a new exact head, and re-run this closure check automatically.",
     ])
     return title, body
@@ -650,6 +773,7 @@ def _create_verified_closure(
 def _reconcile_feedback_receipt(
     kanban: Any,
     receipt: Dict[str, Any],
+    evidence_reader: Any,
     *,
     received: str,
     digest: str,
@@ -777,7 +901,7 @@ def _reconcile_feedback_receipt(
         )
         status = _task_status(readback, task_id)
         if status in TERMINAL_TASK_STATUSES and not _has_feedback_closure_proof(
-            readback, digest, task_id
+            readback, digest, task_id, evidence_reader
         ):
             if task_id not in superseded:
                 superseded.append(task_id)
@@ -793,7 +917,7 @@ def _reconcile_feedback_receipt(
             )
             status = _task_status(readback, task_id)
         if status in TERMINAL_TASK_STATUSES and not _has_feedback_closure_proof(
-            readback, digest, task_id
+            readback, digest, task_id, evidence_reader
         ):
             raise FeedbackIntakeError("Replacement feedback closure is already terminal without release proof.")
         receipt["triage_task_id"] = triage_task_id
@@ -810,7 +934,9 @@ def _reconcile_feedback_receipt(
         and _has_parent(readback, triage_task_id)
     ) or (
         status in TERMINAL_TASK_STATUSES
-        and _has_feedback_closure_proof(readback, digest, original_task_id)
+        and _has_feedback_closure_proof(
+            readback, digest, original_task_id, evidence_reader
+        )
     ):
         return "reconciled" if authenticated_changed else "unchanged"
 
@@ -859,6 +985,51 @@ def _quarantine_task(received: str, digest: str) -> Any:
         "Do not close this receipt without a linked parsed feedback task or documented no-action result.",
     ])
     return title, body
+
+
+def _reconciliation_failure_task(received: str, digest: str) -> Any:
+    title = "Repair blocked Radulator feedback receipt " + digest[:12]
+    body = "\n".join([
+        "Source: authenticated Radulator feedback reconciliation failure",
+        "Repository: momomojo/Radulator",
+        "Received: " + received,
+        "Receipt digest: " + digest,
+        "",
+        "Authoritative repair readback failed for this authenticated receipt.",
+        "Keep this corrective obligation open, repair the missing or malformed durable task/readback, and allow the bounded intake rotation to retry the receipt.",
+        "Do not infer reconciliation, deployment, or closure from this failure receipt.",
+    ])
+    return title, body
+
+
+def _create_verified_reconciliation_failure(
+    kanban: Any,
+    *,
+    received: str,
+    digest: str,
+) -> str:
+    title, body = _reconciliation_failure_task(received, digest)
+    try:
+        task_id = kanban.create(
+            title,
+            body,
+            "radulator-formspree-reconciliation-failure:" + digest,
+            triage=True,
+        )
+        readback = kanban.show(task_id)
+    except Exception as error:
+        raise FeedbackIntakeError(
+            "Kanban feedback reconciliation failure obligation failed readback."
+        ) from error
+    if (
+        _find_task_id(readback) != task_id
+        or not _contains_text(readback, digest)
+        or _task_status(readback, task_id) not in OPEN_TASK_STATUSES
+    ):
+        raise FeedbackIntakeError(
+            "Kanban feedback reconciliation failure obligation is not durably open."
+        )
+    return task_id
 
 
 def _load_state(path: Path) -> Dict[str, Any]:
@@ -951,6 +1122,7 @@ def _process_feedback_locked(
     kanban: Any,
     state_path: Path,
     max_messages: int,
+    evidence_reader: Any,
 ) -> Dict[str, int]:
     state = _load_state(state_path)
     outcome = {"created": 0, "already_processed": 0, "quarantined": 0}
@@ -968,12 +1140,27 @@ def _process_feedback_locked(
     ):
         digest = _receipt_digest(summary["id"])
         receipt = state["processed"][digest]
-        reconciliation = _reconcile_feedback_receipt(
-            kanban,
-            receipt,
-            received=_received_date(summary.get("date")),
-            digest=digest,
-        )
+        received = _received_date(summary.get("date"))
+        try:
+            reconciliation = _reconcile_feedback_receipt(
+                kanban,
+                receipt,
+                evidence_reader,
+                received=received,
+                digest=digest,
+            )
+        except FeedbackIntakeError:
+            receipt["reconciliation_failure_task_id"] = (
+                _create_verified_reconciliation_failure(
+                    kanban,
+                    received=received,
+                    digest=digest,
+                )
+            )
+            state["authenticated_reconciliation_cursor"] = digest
+            _write_state(state_path, state)
+            outcome["repair_failed"] = outcome.get("repair_failed", 0) + 1
+            continue
         state["authenticated_reconciliation_cursor"] = digest
         _write_state(state_path, state)
         _record_reconciliation_outcome(outcome, reconciliation)
@@ -1038,6 +1225,7 @@ def _process_feedback_locked(
             reconciliation = _reconcile_feedback_receipt(
                 kanban,
                 existing_receipt,
+                evidence_reader,
                 received=received,
                 digest=digest,
             )
@@ -1127,6 +1315,8 @@ def process_feedback(
     kanban: Any,
     state_path: Path,
     max_messages: int = 20,
+    *,
+    evidence_reader: Any = None,
 ) -> Dict[str, int]:
     if not 1 <= max_messages <= MAX_SCAN:
         raise FeedbackIntakeError("max_messages must be between 1 and 100.")
@@ -1140,7 +1330,10 @@ def process_feedback(
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as error:
             raise FeedbackIntakeError("Feedback intake is already running.") from error
-        return _process_feedback_locked(gmail, kanban, state_path, max_messages)
+        reader = evidence_reader or AuthoritativeClosureEvidenceReader(kanban)
+        return _process_feedback_locked(
+            gmail, kanban, state_path, max_messages, reader
+        )
     finally:
         os.close(descriptor)
 
@@ -1167,6 +1360,93 @@ class _BoundedCommand:
         if len(output.encode("utf-8")) > MAX_COMMAND_OUTPUT:
             raise FeedbackIntakeError("Required intake command returned too much data.")
         return output
+
+
+class AuthoritativeClosureEvidenceReader:
+    """Read closure facts from live production, GitHub, and exact Kanban tasks."""
+
+    def __init__(
+        self,
+        kanban: Any,
+        *,
+        runner: Optional[_BoundedCommand] = None,
+        opener: Any = urllib.request.urlopen,
+        repository: str = CANONICAL_GITHUB_REPOSITORY,
+    ) -> None:
+        if repository != CANONICAL_GITHUB_REPOSITORY:
+            raise FeedbackIntakeError("Closure evidence repository is not canonical.")
+        self.kanban = kanban
+        self.runner = runner or _BoundedCommand()
+        self.opener = opener
+        self.repository = repository
+
+    def release_marker(self, url: str) -> Dict[str, Any]:
+        request = urllib.request.Request(
+            url,
+            headers={
+                "cache-control": "no-cache",
+                "user-agent": "radulator-feedback-intake/v1",
+            },
+        )
+        try:
+            with self.opener(request, timeout=10) as response:
+                raw = response.read(MAX_RELEASE_MARKER_BYTES + 1)
+                final_url = response.geturl()
+                status_code = getattr(response, "status", None)
+        except (OSError, urllib.error.URLError, ValueError) as error:
+            raise FeedbackIntakeError(
+                "Authoritative production release marker is unavailable."
+            ) from error
+        if (
+            status_code != 200
+            or final_url != url
+            or len(raw) > MAX_RELEASE_MARKER_BYTES
+        ):
+            raise FeedbackIntakeError(
+                "Authoritative production release marker failed exact readback."
+            )
+        try:
+            value = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise FeedbackIntakeError(
+                "Authoritative production release marker is malformed."
+            ) from error
+        if not isinstance(value, dict):
+            raise FeedbackIntakeError(
+                "Authoritative production release marker is malformed."
+            )
+        return value
+
+    def smoke_run(self, run_id: int) -> Dict[str, Any]:
+        output = self.runner.run([
+            "gh",
+            "api",
+            f"repos/{self.repository}/actions/runs/{run_id}",
+        ])
+        try:
+            value = json.loads(output)
+        except json.JSONDecodeError as error:
+            raise FeedbackIntakeError(
+                "Authoritative production smoke run is malformed."
+            ) from error
+        if not isinstance(value, dict):
+            raise FeedbackIntakeError(
+                "Authoritative production smoke run is malformed."
+            )
+        return value
+
+    def task(self, task_id: str) -> Dict[str, Any]:
+        try:
+            value = self.kanban.show(task_id)
+        except Exception as error:
+            raise FeedbackIntakeError(
+                "Authoritative feedback proof task is unavailable."
+            ) from error
+        if not isinstance(value, dict):
+            raise FeedbackIntakeError(
+                "Authoritative feedback proof task is malformed."
+            )
+        return value
 
 
 class GoogleGmailClient:

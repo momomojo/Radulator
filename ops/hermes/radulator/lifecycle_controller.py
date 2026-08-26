@@ -200,69 +200,134 @@ class LifecycleLedger:
         head_sha: str | None = None,
         timestamp: str | None = None,
     ) -> LifecycleEvent:
-        if not all(isinstance(value, str) and value.strip() for value in (idempotency_key, source_id, task_id)):
-            raise LedgerError("idempotency_key, source_id, and task_id are required.")
-        if state not in TRANSITIONS:
-            raise LedgerError(f"Unknown lifecycle state {state!r}.")
-        if pr is not None and (not isinstance(pr, int) or pr <= 0):
-            raise LedgerError("pr must be a positive integer when present.")
-        if head_sha is not None and not SHA_PATTERN.fullmatch(head_sha):
-            raise LedgerError("head_sha must be a lowercase 40-character Git SHA.")
-        if evidence is None:
-            evidence = {}
-        if not isinstance(evidence, dict):
-            raise LedgerError("evidence must be an object.")
+        return self.append_batch([{
+            "idempotency_key": idempotency_key,
+            "source_id": source_id,
+            "task_id": task_id,
+            "state": state,
+            "evidence": evidence,
+            "pr": pr,
+            "head_sha": head_sha,
+            "timestamp": timestamp,
+        }])[0]
+
+    def append_batch(self, proposals: list[dict[str, Any]]) -> list[LifecycleEvent]:
+        """Validate a semantic batch under one lock before appending any record."""
+        if not isinstance(proposals, list) or not proposals:
+            raise LedgerError("Lifecycle append batch requires at least one event.")
+        allowed = {
+            "idempotency_key", "source_id", "task_id", "state", "evidence",
+            "pr", "head_sha", "timestamp",
+        }
+        if any(not isinstance(item, dict) or set(item) - allowed for item in proposals):
+            raise LedgerError("Lifecycle append batch contains malformed event arguments.")
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         descriptor = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
         os.chmod(self.path, 0o600)
         with os.fdopen(descriptor, "r+", encoding="utf-8") as handle:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
             replay = self.replay(handle)
-            previous = replay.current_by_task.get(task_id)
-            existing = replay.by_idempotency_key.get(idempotency_key)
-            serialized_evidence = json.loads(_canonical(evidence))
-            if state == "blocked" and existing:
-                retained_state = existing.evidence.get("resume_state")
-                supplied_resume = serialized_evidence.get("resume_state")
-                if supplied_resume is not None and supplied_resume != retained_state:
-                    raise LedgerError("Blocked lifecycle resume_state conflicts with the existing idempotent event.")
-                if retained_state is not None:
-                    serialized_evidence["resume_state"] = retained_state
-            elif state == "blocked" and previous:
-                supplied_resume = serialized_evidence.get("resume_state")
-                if supplied_resume is not None and supplied_resume != previous.state:
-                    raise LedgerError("Blocked lifecycle resume_state must retain the exact prior resumable phase.")
-                serialized_evidence["resume_state"] = previous.state
-            proposed = LifecycleEvent(
-                schema=SCHEMA,
-                idempotency_key=idempotency_key,
-                previous_hash=replay.events[-1].event_hash if replay.events else ZERO_HASH,
-                event_hash="",
-                source_id=source_id,
-                task_id=task_id,
-                pr=pr,
-                head_sha=head_sha,
-                state=state,
-                evidence=serialized_evidence,
-                timestamp=timestamp or _timestamp(),
-            )
-            if existing:
-                if _semantic_payload(existing) != _semantic_payload(proposed):
-                    raise LedgerError(f"Conflicting event for idempotency key {idempotency_key!r}.")
-                return existing
-            _validate_transition(
-                previous,
-                proposed,
-                blocked_resume_state=replay.blocked_resume_by_task.get(task_id),
-            )
-            unhashed = proposed.as_dict()
-            unhashed.pop("event_hash")
-            proposed = dataclasses.replace(proposed, event_hash=_event_hash(unhashed))
-            handle.seek(0, os.SEEK_END)
-            handle.write(_canonical(proposed.as_dict()) + "\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-            return proposed
+            results: list[LifecycleEvent] = []
+            pending: list[LifecycleEvent] = []
+            for arguments in proposals:
+                proposed, is_new = _prepare_event(replay, **arguments)
+                results.append(proposed)
+                if is_new:
+                    pending.append(proposed)
+                    replay = _replay_with_event(replay, proposed)
+            if pending:
+                handle.seek(0, os.SEEK_END)
+                handle.write("".join(
+                    _canonical(event.as_dict()) + "\n" for event in pending
+                ))
+                handle.flush()
+                os.fsync(handle.fileno())
+            return results
+
+
+def _prepare_event(
+    replay: ReplayState,
+    *,
+    idempotency_key: str,
+    source_id: str,
+    task_id: str,
+    state: str,
+    evidence: dict[str, Any] | None = None,
+    pr: int | None = None,
+    head_sha: str | None = None,
+    timestamp: str | None = None,
+) -> tuple[LifecycleEvent, bool]:
+    if not all(isinstance(value, str) and value.strip() for value in (idempotency_key, source_id, task_id)):
+        raise LedgerError("idempotency_key, source_id, and task_id are required.")
+    if state not in TRANSITIONS:
+        raise LedgerError(f"Unknown lifecycle state {state!r}.")
+    if pr is not None and (not isinstance(pr, int) or pr <= 0):
+        raise LedgerError("pr must be a positive integer when present.")
+    if head_sha is not None and not SHA_PATTERN.fullmatch(head_sha):
+        raise LedgerError("head_sha must be a lowercase 40-character Git SHA.")
+    if evidence is None:
+        evidence = {}
+    if not isinstance(evidence, dict):
+        raise LedgerError("evidence must be an object.")
+    previous = replay.current_by_task.get(task_id)
+    existing = replay.by_idempotency_key.get(idempotency_key)
+    serialized_evidence = json.loads(_canonical(evidence))
+    if state == "blocked" and existing:
+        retained_state = existing.evidence.get("resume_state")
+        supplied_resume = serialized_evidence.get("resume_state")
+        if supplied_resume is not None and supplied_resume != retained_state:
+            raise LedgerError("Blocked lifecycle resume_state conflicts with the existing idempotent event.")
+        if retained_state is not None:
+            serialized_evidence["resume_state"] = retained_state
+    elif state == "blocked" and previous:
+        supplied_resume = serialized_evidence.get("resume_state")
+        if supplied_resume is not None and supplied_resume != previous.state:
+            raise LedgerError("Blocked lifecycle resume_state must retain the exact prior resumable phase.")
+        serialized_evidence["resume_state"] = previous.state
+    proposed = LifecycleEvent(
+        schema=SCHEMA,
+        idempotency_key=idempotency_key,
+        previous_hash=replay.events[-1].event_hash if replay.events else ZERO_HASH,
+        event_hash="",
+        source_id=source_id,
+        task_id=task_id,
+        pr=pr,
+        head_sha=head_sha,
+        state=state,
+        evidence=serialized_evidence,
+        timestamp=timestamp or _timestamp(),
+    )
+    if existing:
+        if _semantic_payload(existing) != _semantic_payload(proposed):
+            raise LedgerError(f"Conflicting event for idempotency key {idempotency_key!r}.")
+        return existing, False
+    _validate_transition(
+        previous,
+        proposed,
+        blocked_resume_state=replay.blocked_resume_by_task.get(task_id),
+    )
+    unhashed = proposed.as_dict()
+    unhashed.pop("event_hash")
+    proposed = dataclasses.replace(proposed, event_hash=_event_hash(unhashed))
+    return proposed, True
+
+
+def _replay_with_event(replay: ReplayState, event: LifecycleEvent) -> ReplayState:
+    current = dict(replay.current_by_task)
+    current[event.task_id] = event
+    idempotency = dict(replay.by_idempotency_key)
+    idempotency[event.idempotency_key] = event
+    blocked_resume = dict(replay.blocked_resume_by_task)
+    if event.state == "blocked":
+        blocked_resume[event.task_id] = event.evidence["resume_state"]
+    else:
+        blocked_resume.pop(event.task_id, None)
+    return ReplayState(
+        replay.events + (event,),
+        current,
+        idempotency,
+        blocked_resume,
+    )
 
 
 def _read_cursor_state(path: Path) -> dict[str, Any]:
@@ -452,17 +517,48 @@ def _validate_reconciliation_spec(value: Any) -> dict[str, Any]:
 def _load_reconciliation_spec(path: str | Path) -> dict[str, Any]:
     spec_path = Path(path)
     try:
-        metadata = spec_path.stat()
+        metadata = spec_path.lstat()
     except OSError as error:
         raise LedgerError("Lifecycle reconciliation spec is unavailable.") from error
+    if stat.S_ISLNK(metadata.st_mode):
+        raise LedgerError("Lifecycle reconciliation spec must not be a symlink.")
     if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 1024 * 1024:
         raise LedgerError("Lifecycle reconciliation spec must be a bounded regular file.")
-    if metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
-        raise LedgerError("Lifecycle reconciliation spec must not be group/world writable.")
+    if metadata.st_uid != os.geteuid():
+        raise LedgerError("Lifecycle reconciliation spec must be owned by the running agent.")
+    if stat.S_IMODE(metadata.st_mode) != 0o600:
+        raise LedgerError("Lifecycle reconciliation spec must have exact mode 0600.")
+    descriptor = None
     try:
-        value = json.loads(spec_path.read_text(encoding="utf-8"))
+        descriptor = os.open(
+            spec_path,
+            os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
+        )
+        opened = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or opened.st_dev != metadata.st_dev
+            or opened.st_ino != metadata.st_ino
+            or opened.st_uid != os.geteuid()
+            or stat.S_IMODE(opened.st_mode) != 0o600
+            or opened.st_size > 1024 * 1024
+        ):
+            raise LedgerError(
+                "Lifecycle reconciliation spec changed across trust validation."
+            )
+        with os.fdopen(descriptor, "r", encoding="utf-8") as reader:
+            descriptor = None
+            raw = reader.read(1024 * 1024 + 1)
+        if len(raw.encode("utf-8")) > 1024 * 1024:
+            raise LedgerError(
+                "Lifecycle reconciliation spec must be a bounded regular file."
+            )
+        value = json.loads(raw)
     except (OSError, json.JSONDecodeError) as error:
         raise LedgerError("Lifecycle reconciliation spec is unreadable.") from error
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
     return _validate_reconciliation_spec(value)
 
 
@@ -562,14 +658,15 @@ def reconcile_trackers(
                 f"Reconciliation source receipt digest failed authoritative readback for {task_id}."
             )
         if tracker.get("pr") is not None:
-            serialized_tracker = _canonical(
-                _exact_task_evidence(tracker_readback, task_id)
-            )
             if not _has_exact_pr_reference(tracker_readback, task_id, tracker["pr"]):
                 raise LedgerError(f"Reconciliation PR failed Kanban readback for {task_id}.")
-            if tracker["head_sha"] not in serialized_tracker:
+            if not _has_exact_sha_reference(
+                tracker_readback, task_id, "head_sha", tracker["head_sha"]
+            ):
                 raise LedgerError(f"Reconciliation head SHA failed Kanban readback for {task_id}.")
-            if tracker["base_sha"] not in serialized_tracker:
+            if not _has_exact_sha_reference(
+                tracker_readback, task_id, "base_sha", tracker["base_sha"]
+            ):
                 raise LedgerError(f"Reconciliation base SHA failed Kanban readback for {task_id}.")
         verified_trackers.append((tracker, tracker_status))
 
@@ -631,32 +728,41 @@ def reconcile_trackers(
     if not apply:
         return result
 
+    bootstrap_items = [
+        item for item in frozen_plan if item["kind"] == "bootstrap"
+    ]
+    if bootstrap_items:
+        ledger.append_batch([
+            {
+                "idempotency_key": (
+                    f"reconcile:{item['tracker']['task_id']}:feedback:"
+                    f"{normalized['review_id']}"
+                ),
+                "source_id": item["tracker"]["source_id"],
+                "task_id": item["tracker"]["task_id"],
+                "state": "feedback",
+                "pr": item["tracker"].get("pr"),
+                "head_sha": item["tracker"].get("head_sha"),
+                "evidence": {
+                    "reconciliation_schema": RECONCILIATION_SCHEMA,
+                    "review_id": normalized["review_id"],
+                    "reconciliation_entry_sha256": item["entry_digest"],
+                    "source": item["tracker"]["source"],
+                    "kanban_status": item["tracker_status"],
+                    **(
+                        {"base_sha": item["tracker"]["base_sha"]}
+                        if item["tracker"].get("base_sha") is not None
+                        else {}
+                    ),
+                },
+            }
+            for item in bootstrap_items
+        ])
+
     for item in frozen_plan:
         if item["kind"] == "bootstrap":
             tracker = item["tracker"]
             task_id = tracker["task_id"]
-            ledger.append(
-                idempotency_key=(
-                    f"reconcile:{task_id}:feedback:{normalized['review_id']}"
-                ),
-                source_id=tracker["source_id"],
-                task_id=task_id,
-                state="feedback",
-                pr=tracker.get("pr"),
-                head_sha=tracker.get("head_sha"),
-                evidence={
-                    "reconciliation_schema": RECONCILIATION_SCHEMA,
-                    "review_id": normalized["review_id"],
-                    "reconciliation_entry_sha256": item["entry_digest"],
-                    "source": tracker["source"],
-                    "kanban_status": item["tracker_status"],
-                    **(
-                        {"base_sha": tracker["base_sha"]}
-                        if tracker.get("base_sha") is not None
-                        else {}
-                    ),
-                },
-            )
             result["bootstrapped"].append(task_id)
         elif item["actions"]:
             result["applied_actions"].extend(
@@ -799,7 +905,10 @@ def _exact_task_evidence(value: Any, task_id: str) -> dict[str, Any]:
     task = _exact_task_record(value, task_id)
     task_fields = {
         key: task[key]
-        for key in ("task_id", "id", "pr", "title", "body", "result", "branch_name")
+        for key in (
+            "task_id", "id", "pr", "head_sha", "base_sha", "title", "body",
+            "result", "branch_name",
+        )
         if isinstance(task.get(key), (str, int))
     }
     comment_bodies = [
@@ -816,6 +925,19 @@ def _has_exact_pr_reference(value: Any, task_id: str, pr: int) -> bool:
         return True
     rendered = _canonical(_exact_task_evidence(value, task_id))
     return re.search(rf"(?<!\d)#{pr}(?!\d)", rendered) is not None
+
+
+def _has_exact_sha_reference(
+    value: Any,
+    task_id: str,
+    field: str,
+    sha: str,
+) -> bool:
+    task = _exact_task_record(value, task_id)
+    if task.get(field) == sha:
+        return True
+    rendered = _canonical(_exact_task_evidence(value, task_id))
+    return re.search(rf"(?<![0-9A-Fa-f]){sha}(?![0-9A-Fa-f])", rendered) is not None
 
 
 def _terminal_status(value: Any, task_id: str) -> str | None:

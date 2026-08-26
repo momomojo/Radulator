@@ -2,10 +2,12 @@ import json
 import os
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 
 from ops.hermes.radulator.formspree_feedback_intake import (
+    AuthoritativeClosureEvidenceReader,
     FeedbackIntakeError,
     GoogleGmailClient,
     HermesKanbanClient,
@@ -108,6 +110,41 @@ class FakeCommandRunner:
         return self.outputs.pop(0)
 
 
+class FakeHttpResponse:
+    def __init__(self, body, url, status=200):
+        self.body = body
+        self.url = url
+        self.status = status
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def read(self, _limit):
+        return self.body
+
+    def geturl(self):
+        return self.url
+
+
+class FakeClosureEvidenceReader:
+    def __init__(self, *, markers=None, smoke_runs=None, tasks=None):
+        self.markers = markers or {}
+        self.smoke_runs = smoke_runs or {}
+        self.tasks = tasks or {}
+
+    def release_marker(self, url):
+        return self.markers.get(url)
+
+    def smoke_run(self, run_id):
+        return self.smoke_runs.get(run_id)
+
+    def task(self, task_id):
+        return self.tasks.get(task_id)
+
+
 class FormspreeFeedbackIntakeTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -138,6 +175,26 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertNotIn("Private Submitter", serialized)
         self.assertNotIn("private.submitter", serialized)
         self.assertNotIn("View submission", serialized)
+
+    def test_authoritative_marker_reader_rejects_missing_or_redirected_evidence(self):
+        sha = "a" * 40
+        url = "https://radulator.com/releases/" + sha + ".json"
+
+        def missing(_request, timeout):
+            self.assertEqual(timeout, 10)
+            raise urllib.error.URLError("missing")
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "release marker"):
+            AuthoritativeClosureEvidenceReader(FakeKanban(), opener=missing).release_marker(url)
+
+        redirected = FakeHttpResponse(
+            json.dumps({"schema": "radulator-release/v1", "sha": sha}).encode(),
+            "https://attacker.example/releases/" + sha + ".json",
+        )
+        with self.assertRaisesRegex(FeedbackIntakeError, "release marker"):
+            AuthoritativeClosureEvidenceReader(
+                FakeKanban(), opener=lambda _request, timeout: redirected,
+            ).release_marker(url)
 
     def test_sender_identity_must_match_exactly(self):
         trusted = {
@@ -595,6 +652,32 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             json.loads(self.state_path.read_text())["processed"].items()
         ))
         release_sha = "a" * 40
+        marker_url = "https://radulator.com/releases/" + release_sha + ".json"
+        smoke_run_id = 32876543210
+        learning_task_id = "t_learning_receipt_148"
+        learning_receipt_id = "learning-receipt-148"
+        evidence = FakeClosureEvidenceReader(
+            markers={marker_url: {"schema": "radulator-release/v1", "sha": release_sha}},
+            smoke_runs={smoke_run_id: {
+                "id": smoke_run_id,
+                "path": ".github/workflows/deploy.yml",
+                "head_sha": release_sha,
+                "conclusion": "success",
+            }},
+            tasks={learning_task_id: {
+                "id": learning_task_id,
+                "status": "done",
+                "runs": [{
+                    "status": "done",
+                    "metadata": {
+                        "schema": "radulator-feedback-learning-receipt/v1",
+                        "receipt_digest": digest,
+                        "production_sha": release_sha,
+                        "learning_receipt_id": learning_receipt_id,
+                    },
+                }],
+            }},
+        )
         closure = kanban.tasks[receipt["task_id"]]
         closure["status"] = "done"
         closure["runs"] = [{
@@ -603,16 +686,17 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
                 "schema": "radulator-feedback-closure-proof/v1",
                 "receipt_digest": digest,
                 "release_marker_sha": release_sha,
-                "release_marker_url": (
-                    "https://radulator.com/releases/" + release_sha + ".json"
-                ),
-                "smoke_run_id": 32876543210,
+                "release_marker_url": marker_url,
+                "smoke_run_id": smoke_run_id,
                 "smoke_sha": release_sha,
-                "learning_receipt_id": "learning-receipt-148",
+                "learning_task_id": learning_task_id,
+                "learning_receipt_id": learning_receipt_id,
             },
         }]
 
-        result = process_feedback(gmail, kanban, self.state_path)
+        result = process_feedback(
+            gmail, kanban, self.state_path, evidence_reader=evidence,
+        )
 
         self.assertEqual(result["already_processed"], 1)
         self.assertEqual(len(kanban.created), 2)
@@ -625,6 +709,48 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             json.loads(self.state_path.read_text())["processed"].items()
         ))
         production_sha = "b" * 40
+        marker_url = "https://radulator.com/releases/" + production_sha + ".json"
+        verification_url = "https://radulator.com/#/birads"
+        verification_task_id = "t_verification_birads"
+        verification_run_id = "browser-proof-birads-dark-mode"
+        learning_task_id = "t_learning_no_action_birads"
+        learning_receipt_id = "learning-no-action-birads"
+        verified_behavior = (
+            "The production BI-RADS route already exposes the persisted dark-mode control."
+        )
+        evidence = FakeClosureEvidenceReader(
+            markers={marker_url: {"schema": "radulator-release/v1", "sha": production_sha}},
+            tasks={
+                verification_task_id: {
+                    "id": verification_task_id,
+                    "status": "done",
+                    "runs": [{
+                        "status": "done",
+                        "metadata": {
+                            "schema": "radulator-feedback-production-verification/v1",
+                            "receipt_digest": digest,
+                            "production_sha": production_sha,
+                            "verification_url": verification_url,
+                            "verification_run_id": verification_run_id,
+                            "verified_behavior": verified_behavior,
+                        },
+                    }],
+                },
+                learning_task_id: {
+                    "id": learning_task_id,
+                    "status": "done",
+                    "runs": [{
+                        "status": "done",
+                        "metadata": {
+                            "schema": "radulator-feedback-learning-receipt/v1",
+                            "receipt_digest": digest,
+                            "production_sha": production_sha,
+                            "learning_receipt_id": learning_receipt_id,
+                        },
+                    }],
+                },
+            },
+        )
         closure = kanban.tasks[receipt["task_id"]]
         closure["status"] = "done"
         closure["runs"] = [{
@@ -633,17 +759,19 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
                 "schema": "radulator-feedback-no-action-proof/v1",
                 "receipt_digest": digest,
                 "production_sha": production_sha,
-                "release_marker_url": (
-                    "https://radulator.com/releases/" + production_sha + ".json"
-                ),
-                "verification_url": "https://radulator.com/#/birads",
-                "verification_run_id": "browser-proof-birads-dark-mode",
-                "verified_behavior": "The production BI-RADS route already exposes the persisted dark-mode control.",
-                "learning_receipt_id": "learning-no-action-birads",
+                "release_marker_url": marker_url,
+                "verification_url": verification_url,
+                "verification_task_id": verification_task_id,
+                "verification_run_id": verification_run_id,
+                "verified_behavior": verified_behavior,
+                "learning_task_id": learning_task_id,
+                "learning_receipt_id": learning_receipt_id,
             },
         }]
 
-        result = process_feedback(gmail, kanban, self.state_path)
+        result = process_feedback(
+            gmail, kanban, self.state_path, evidence_reader=evidence,
+        )
 
         self.assertEqual(result["already_processed"], 1)
         self.assertEqual(len(kanban.created), 2)
@@ -681,6 +809,164 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         replacement = json.loads(self.state_path.read_text())["processed"][digest]
         self.assertNotEqual(replacement["task_id"], closure["id"])
         self.assertEqual(kanban.tasks[replacement["task_id"]]["status"], "todo")
+
+    def test_rejects_deployed_closure_without_authoritative_marker_and_receipts(self):
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path)
+        digest, receipt = next(iter(
+            json.loads(self.state_path.read_text())["processed"].items()
+        ))
+        release_sha = "c" * 40
+        closure = kanban.tasks[receipt["task_id"]]
+        closure["status"] = "done"
+        closure["runs"] = [{
+            "status": "done",
+            "metadata": {
+                "schema": "radulator-feedback-closure-proof/v1",
+                "receipt_digest": digest,
+                "release_marker_sha": release_sha,
+                "release_marker_url": "https://example.test/releases/" + release_sha + ".json",
+                "smoke_run_id": 991,
+                "smoke_sha": release_sha,
+                "learning_task_id": "t_missing_learning",
+                "learning_receipt_id": "fabricated-learning",
+            },
+        }]
+
+        result = process_feedback(
+            gmail,
+            kanban,
+            self.state_path,
+            evidence_reader=FakeClosureEvidenceReader(),
+        )
+
+        self.assertEqual(result["reconciled"], 1)
+        replacement = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertNotEqual(replacement["task_id"], closure["id"])
+        self.assertEqual(kanban.tasks[replacement["task_id"]]["status"], "todo")
+
+    def test_rejects_no_action_proof_when_verification_receipts_bind_another_sha(self):
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path)
+        digest, receipt = next(iter(
+            json.loads(self.state_path.read_text())["processed"].items()
+        ))
+        production_sha = "d" * 40
+        wrong_sha = "e" * 40
+        marker_url = "https://radulator.com/releases/" + production_sha + ".json"
+        verification_task_id = "t_wrong_verification"
+        learning_task_id = "t_wrong_learning"
+        closure = kanban.tasks[receipt["task_id"]]
+        closure["status"] = "done"
+        closure["runs"] = [{
+            "status": "done",
+            "metadata": {
+                "schema": "radulator-feedback-no-action-proof/v1",
+                "receipt_digest": digest,
+                "production_sha": production_sha,
+                "release_marker_url": marker_url,
+                "verification_url": "https://radulator.com/calculators/birads/",
+                "verification_task_id": verification_task_id,
+                "verification_run_id": "verify-991",
+                "verified_behavior": "Production behavior was checked.",
+                "learning_task_id": learning_task_id,
+                "learning_receipt_id": "learning-991",
+            },
+        }]
+        evidence = FakeClosureEvidenceReader(
+            markers={marker_url: {"schema": "radulator-release/v1", "sha": production_sha}},
+            tasks={
+                verification_task_id: {
+                    "id": verification_task_id,
+                    "status": "done",
+                    "runs": [{"status": "done", "metadata": {
+                        "schema": "radulator-feedback-production-verification/v1",
+                        "receipt_digest": digest,
+                        "production_sha": wrong_sha,
+                        "verification_url": "https://radulator.com/calculators/birads/",
+                        "verification_run_id": "verify-991",
+                        "verified_behavior": "Production behavior was checked.",
+                    }}],
+                },
+                learning_task_id: {
+                    "id": learning_task_id,
+                    "status": "done",
+                    "runs": [{"status": "done", "metadata": {
+                        "schema": "radulator-feedback-learning-receipt/v1",
+                        "receipt_digest": digest,
+                        "production_sha": wrong_sha,
+                        "learning_receipt_id": "learning-991",
+                    }}],
+                },
+            },
+        )
+
+        result = process_feedback(
+            gmail, kanban, self.state_path, evidence_reader=evidence,
+        )
+
+        self.assertEqual(result["reconciled"], 1)
+        replacement = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertNotEqual(replacement["task_id"], closure["id"])
+
+    def test_no_action_proof_requires_distinct_verification_and_learning_tasks(self):
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path)
+        digest, receipt = next(iter(
+            json.loads(self.state_path.read_text())["processed"].items()
+        ))
+        production_sha = "f" * 40
+        marker_url = "https://radulator.com/releases/" + production_sha + ".json"
+        closure = kanban.tasks[receipt["task_id"]]
+        closure_id = closure["id"]
+        verification_url = "https://radulator.com/calculators/birads/"
+        closure["status"] = "done"
+        closure["runs"] = [{"status": "done", "metadata": {
+            "schema": "radulator-feedback-no-action-proof/v1",
+            "receipt_digest": digest,
+            "production_sha": production_sha,
+            "release_marker_url": marker_url,
+            "verification_url": verification_url,
+            "verification_task_id": closure_id,
+            "verification_run_id": "self-reported-run",
+            "verified_behavior": "Self-reported behavior.",
+            "learning_task_id": closure_id,
+            "learning_receipt_id": "self-reported-learning",
+        }}]
+        evidence = FakeClosureEvidenceReader(
+            markers={marker_url: {"schema": "radulator-release/v1", "sha": production_sha}},
+            tasks={closure_id: {
+                "id": closure_id,
+                "status": "done",
+                "runs": [
+                    {"status": "done", "metadata": {
+                        "schema": "radulator-feedback-production-verification/v1",
+                        "receipt_digest": digest,
+                        "production_sha": production_sha,
+                        "verification_url": verification_url,
+                        "verification_run_id": "self-reported-run",
+                        "verified_behavior": "Self-reported behavior.",
+                    }},
+                    {"status": "done", "metadata": {
+                        "schema": "radulator-feedback-learning-receipt/v1",
+                        "receipt_digest": digest,
+                        "production_sha": production_sha,
+                        "learning_receipt_id": "self-reported-learning",
+                    }},
+                ],
+            }},
+        )
+
+        result = process_feedback(
+            gmail, kanban, self.state_path, evidence_reader=evidence,
+        )
+
+        self.assertEqual(result["reconciled"], 1)
+        replacement = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertNotEqual(replacement["task_id"], closure_id)
 
     def test_ignores_release_proof_nested_under_an_unrelated_task(self):
         gmail = FakeGmail([self.message])
@@ -815,6 +1101,53 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             _receipt_digest(messages[-1]["id"]),
         )
         self.assertEqual(os.stat(self.state_path).st_mode & 0o777, 0o600)
+
+    def test_broken_authenticated_repair_creates_open_failure_and_does_not_starve(self):
+        existing_messages = [
+            dict(
+                self.message,
+                id=f"repair-{index}",
+                date=f"Fri, {10 + index:02d} Jul 2026 10:15:00 -0700",
+            )
+            for index in range(2)
+        ]
+        gmail = FakeGmail(existing_messages)
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path, max_messages=2)
+        state = json.loads(self.state_path.read_text())
+        first_digest = _receipt_digest(existing_messages[0]["id"])
+        second_digest = _receipt_digest(existing_messages[1]["id"])
+        broken_triage = state["processed"][first_digest]["triage_task_id"]
+        del kanban.tasks[broken_triage]
+        new_message = dict(
+            self.message,
+            id="new-after-broken-repair",
+            date="Mon, 20 Jul 2026 10:15:00 -0700",
+        )
+        gmail.messages.append(new_message)
+
+        failed = process_feedback(gmail, kanban, self.state_path, max_messages=1)
+        advanced = process_feedback(gmail, kanban, self.state_path, max_messages=1)
+
+        self.assertEqual(failed["repair_failed"], 1)
+        self.assertEqual(failed["created"], 1, "new mail must advance despite repair failure")
+        self.assertNotIn("reconciled", failed)
+        self.assertEqual(advanced["already_processed"], 1)
+        persisted = json.loads(self.state_path.read_text())
+        broken_receipt = persisted["processed"][first_digest]
+        failure_task_id = broken_receipt["reconciliation_failure_task_id"]
+        self.assertEqual(kanban.tasks[failure_task_id]["status"], "triage")
+        self.assertIn(first_digest, kanban.tasks[failure_task_id]["body"])
+        self.assertEqual(
+            persisted["authenticated_reconciliation_cursor"], second_digest,
+        )
+        failure_keys = [
+            key for _title, _body, key in kanban.created
+            if key == "radulator-formspree-reconciliation-failure:" + first_digest
+        ]
+        self.assertEqual(failure_keys, [
+            "radulator-formspree-reconciliation-failure:" + first_digest
+        ])
 
     def test_does_not_acknowledge_closure_until_parent_link_readback(self):
         gmail = FakeGmail([self.message])
