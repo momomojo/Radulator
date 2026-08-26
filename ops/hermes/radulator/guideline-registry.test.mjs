@@ -414,6 +414,46 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
     }
   }
+  if (record.calculator_id === "bosniak") {
+    const audit = evidence.source_audit;
+    assert.equal(typeof audit, "object", `${label}.source_audit is required`);
+    assert.equal(
+      audit.schema,
+      "radulator-live-source-audit/v1",
+      `${label}.source_audit.schema`,
+    );
+    assert.equal(
+      audit.command,
+      "npm run test:bosniak-source",
+      `${label}.source_audit.command`,
+    );
+    assert.equal(
+      audit.authority,
+      "Silverman et al., Radiology 2019",
+      `${label}.source_audit.authority`,
+    );
+    assert.deepEqual(
+      audit.source_urls,
+      ["https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/"],
+      `${label}.source_audit.source_urls`,
+    );
+    assert.deepEqual(
+      audit.vector_ids,
+      [
+        "exactly-70-hu-homogeneous-noncontrast-mass-category-ii",
+        "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv",
+      ],
+      `${label}.source_audit.vector_ids`,
+    );
+    assert.equal(
+      audit.source_bytes_committed,
+      false,
+      `${label}.source_audit.source_bytes_committed`,
+    );
+    for (const vectorId of audit.vector_ids) {
+      assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
+    }
+  }
 }
 
 const calculators = calculatorMetadata();
