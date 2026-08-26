@@ -46,10 +46,11 @@ RELEASE_MARKER_SCHEMA = "radulator-release/v1"
 CANONICAL_GITHUB_REPOSITORY = "momomojo/Radulator"
 MAX_RELEASE_MARKER_BYTES = 4096
 RECEIPT_DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-TERMINAL_TASK_STATUSES = frozenset({"complete", "completed", "done", "archived"})
+TERMINAL_TASK_STATUSES = frozenset({"done", "archived"})
 OPEN_TASK_STATUSES = frozenset({
     "triage", "todo", "ready", "running", "blocked", "review", "scheduled",
 })
+KANBAN_TASK_STATUSES = TERMINAL_TASK_STATUSES | OPEN_TASK_STATUSES
 
 
 class FeedbackIntakeError(RuntimeError):
@@ -291,40 +292,6 @@ def _find_task_id(value: Any) -> Optional[str]:
     return None
 
 
-def _contains_text(value: Any, needle: str) -> bool:
-    if isinstance(value, str):
-        return needle in value
-    if isinstance(value, dict):
-        return any(_contains_text(item, needle) for item in value.values())
-    if isinstance(value, list):
-        return any(_contains_text(item, needle) for item in value)
-    return False
-
-
-def _has_parent(value: Any, parent_id: str) -> bool:
-    if isinstance(value, dict):
-        parents = value.get("parents")
-        if isinstance(parents, list) and parent_id in parents:
-            return True
-        return any(_has_parent(item, parent_id) for item in value.values())
-    if isinstance(value, list):
-        return any(_has_parent(item, parent_id) for item in value)
-    return False
-
-
-def _task_records(value: Any, task_id: str) -> List[Dict[str, Any]]:
-    records: List[Dict[str, Any]] = []
-    if isinstance(value, dict):
-        if task_id in (value.get("task_id"), value.get("id")):
-            records.append(value)
-        for nested in value.values():
-            records.extend(_task_records(nested, task_id))
-    elif isinstance(value, list):
-        for nested in value:
-            records.extend(_task_records(nested, task_id))
-    return records
-
-
 def _exact_task_record(value: Any, task_id: str) -> Dict[str, Any]:
     if isinstance(value, dict) and task_id in (value.get("task_id"), value.get("id")):
         return value
@@ -345,6 +312,71 @@ def _exact_task_comments(value: Any, task: Dict[str, Any]) -> List[Dict[str, Any
     ):
         raise FeedbackIntakeError("Kanban feedback task comments are malformed.")
     return comments
+
+
+def _exact_task_reference_present(value: Any, task_id: str, needle: str) -> bool:
+    task = _exact_task_record(value, task_id)
+    bodies = [task.get("body")]
+    bodies.extend(
+        comment.get("body") for comment in _exact_task_comments(value, task)
+    )
+    pattern = re.compile(
+        rf"(?<![A-Za-z0-9_]){re.escape(needle)}(?![A-Za-z0-9_])"
+    )
+    return any(
+        isinstance(body, str) and pattern.search(body) is not None
+        for body in bodies
+    )
+
+
+def _direct_task_id(value: Any) -> Optional[str]:
+    if not isinstance(value, dict):
+        return None
+    for key in ("task_id", "id"):
+        candidate = value.get(key)
+        if isinstance(candidate, str) and candidate.startswith("t_"):
+            return candidate
+    return None
+
+
+def _exact_task_relation_ids(
+    value: Any,
+    task_id: str,
+    relation: str,
+) -> set[str]:
+    task = _exact_task_record(value, task_id)
+    containers: List[Any] = []
+    if relation in task:
+        containers.append(task[relation])
+    if isinstance(value, dict) and value is not task and relation in value:
+        containers.append(value[relation])
+    if not containers:
+        return set()
+
+    relation_sets: List[set[str]] = []
+    for container in containers:
+        if not isinstance(container, list):
+            raise FeedbackIntakeError(
+                f"Kanban feedback task {relation} are malformed."
+            )
+        related: set[str] = set()
+        for item in container:
+            candidate = item if isinstance(item, str) else _direct_task_id(item)
+            if not isinstance(candidate, str) or not candidate.startswith("t_"):
+                raise FeedbackIntakeError(
+                    f"Kanban feedback task {relation} are malformed."
+                )
+            related.add(candidate)
+        relation_sets.append(related)
+    if any(related != relation_sets[0] for related in relation_sets[1:]):
+        raise FeedbackIntakeError(
+            f"Kanban feedback task {relation} are ambiguous."
+        )
+    return relation_sets[0]
+
+
+def _has_exact_parent(value: Any, task_id: str, parent_id: str) -> bool:
+    return parent_id in _exact_task_relation_ids(value, task_id, "parents")
 
 
 def _has_exact_task_receipt_digest(
@@ -380,18 +412,18 @@ def _has_exact_task_receipt_digest(
 
 
 def _task_status(value: Any, task_id: str) -> str:
-    records = _task_records(value, task_id)
+    task = _exact_task_record(value, task_id)
     statuses = {
-        str(record.get("status", record.get("state", ""))).strip().lower()
-        for record in records
-        if str(record.get("status", record.get("state", ""))).strip()
+        str(task.get(key, "")).strip().lower()
+        for key in ("status", "state")
+        if str(task.get(key, "")).strip()
     }
     if len(statuses) != 1:
         raise FeedbackIntakeError(
             f"Kanban readback has ambiguous status for feedback task {task_id}."
         )
     status = next(iter(statuses))
-    if status not in TERMINAL_TASK_STATUSES | OPEN_TASK_STATUSES:
+    if status not in KANBAN_TASK_STATUSES:
         raise FeedbackIntakeError(
             f"Kanban readback has unsupported status for feedback task {task_id}."
         )
@@ -487,8 +519,7 @@ def _has_exact_task_receipt(
     expected: Dict[str, Any],
 ) -> bool:
     try:
-        if _find_task_id(readback) != task_id:
-            return False
+        _exact_task_record(readback, task_id)
         if _task_status(readback, task_id) not in TERMINAL_TASK_STATUSES:
             return False
     except FeedbackIntakeError:
@@ -709,8 +740,7 @@ def _feedback_task_readback(kanban: Any, task_id: str) -> Dict[str, Any]:
         readback = kanban.show(task_id)
     except Exception as error:
         raise FeedbackIntakeError("Kanban feedback task failed readback.") from error
-    if _find_task_id(readback) != task_id:
-        raise FeedbackIntakeError("Kanban feedback task failed exact task readback.")
+    _exact_task_record(readback, task_id)
     _task_status(readback, task_id)
     return readback
 
@@ -778,10 +808,10 @@ def _create_verified_legacy_binding_quarantine(
         raise FeedbackIntakeError(
             "Kanban legacy feedback binding quarantine failed readback."
         ) from error
+    _exact_task_record(readback, task_id)
     if (
-        _find_task_id(readback) != task_id
-        or not _has_exact_task_receipt_digest(readback, task_id, digest)
-        or not _contains_text(readback, legacy_task_id)
+        not _has_exact_task_receipt_digest(readback, task_id, digest)
+        or not _exact_task_reference_present(readback, task_id, legacy_task_id)
     ):
         raise FeedbackIntakeError(
             "Kanban legacy feedback binding quarantine failed exact readback."
@@ -815,10 +845,10 @@ def _create_verified_closure(
         readback = kanban.show(task_id)
     except Exception as error:
         raise FeedbackIntakeError("Kanban feedback closure failed readback.") from error
+    _exact_task_record(readback, task_id)
     if (
-        _find_task_id(readback) != task_id
-        or not _has_exact_task_receipt_digest(readback, task_id, digest)
-        or not _has_parent(readback, triage_task_id)
+        not _has_exact_task_receipt_digest(readback, task_id, digest)
+        or not _has_exact_parent(readback, task_id, triage_task_id)
     ):
         raise FeedbackIntakeError("Kanban feedback closure failed exact readback.")
     return task_id, readback
@@ -858,7 +888,9 @@ def _reconcile_feedback_receipt(
                 legacy_quarantine_id,
                 digest,
             )
-            if not _contains_text(quarantine, original_task_id):
+            if not _exact_task_reference_present(
+                quarantine, legacy_quarantine_id, original_task_id
+            ):
                 raise FeedbackIntakeError(
                     "Legacy feedback binding quarantine lost its task reference."
                 )
@@ -987,7 +1019,7 @@ def _reconcile_feedback_receipt(
     status = _task_status(readback, original_task_id)
     if (
         status in OPEN_TASK_STATUSES
-        and _has_parent(readback, triage_task_id)
+        and _has_exact_parent(readback, original_task_id, triage_task_id)
     ) or (
         status in TERMINAL_TASK_STATUSES
         and _has_feedback_closure_proof(
@@ -1086,10 +1118,8 @@ def _create_verified_reconciliation_failure(
         raise FeedbackIntakeError(
             "Kanban feedback reconciliation failure obligation failed readback."
         ) from error
-    if (
-        _find_task_id(readback) != task_id
-        or not _has_exact_task_receipt_digest(readback, task_id, digest)
-    ):
+    _exact_task_record(readback, task_id)
+    if not _has_exact_task_receipt_digest(readback, task_id, digest):
         raise FeedbackIntakeError(
             "Kanban feedback reconciliation failure obligation failed exact readback."
         )
@@ -1132,12 +1162,14 @@ def _create_verified_reconciliation_failure(
         raise FeedbackIntakeError(
             "Replacement feedback reconciliation failure obligation failed readback."
         ) from error
+    _exact_task_record(replacement, replacement_id)
     if (
-        _find_task_id(replacement) != replacement_id
-        or not _has_exact_task_receipt_digest(
+        not _has_exact_task_receipt_digest(
             replacement, replacement_id, digest,
         )
-        or not _contains_text(replacement, task_id)
+        or not _exact_task_reference_present(
+            replacement, replacement_id, task_id
+        )
         or _task_status(replacement, replacement_id) not in OPEN_TASK_STATUSES
     ):
         raise FeedbackIntakeError(
@@ -1385,11 +1417,9 @@ def _process_feedback_locked(
                     triage=True,
                 )
                 readback = kanban.show(task_id)
-                if (
-                    _find_task_id(readback) != task_id
-                    or not _has_exact_task_receipt_digest(
-                        readback, task_id, digest,
-                    )
+                _exact_task_record(readback, task_id)
+                if not _has_exact_task_receipt_digest(
+                    readback, task_id, digest,
                 ):
                     raise FeedbackIntakeError("Kanban feedback receipt failed exact readback.")
             else:
@@ -1400,11 +1430,9 @@ def _process_feedback_locked(
                     triage=True,
                 )
                 triage_readback = kanban.show(triage_task_id)
-                if (
-                    _find_task_id(triage_readback) != triage_task_id
-                    or not _has_exact_task_receipt_digest(
-                        triage_readback, triage_task_id, digest,
-                    )
+                _exact_task_record(triage_readback, triage_task_id)
+                if not _has_exact_task_receipt_digest(
+                    triage_readback, triage_task_id, digest,
                 ):
                     raise FeedbackIntakeError("Kanban feedback triage failed exact readback.")
 
@@ -1419,12 +1447,14 @@ def _process_feedback_locked(
                     parents=(triage_task_id,),
                 )
                 readback = kanban.show(task_id)
+                _exact_task_record(readback, task_id)
                 if (
-                    _find_task_id(readback) != task_id
-                    or not _has_exact_task_receipt_digest(
+                    not _has_exact_task_receipt_digest(
                         readback, task_id, digest,
                     )
-                    or not _has_parent(readback, triage_task_id)
+                    or not _has_exact_parent(
+                        readback, task_id, triage_task_id
+                    )
                 ):
                     raise FeedbackIntakeError("Kanban feedback closure failed exact readback.")
         except FeedbackIntakeError:

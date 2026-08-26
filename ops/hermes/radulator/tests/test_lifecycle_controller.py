@@ -1150,6 +1150,120 @@ class LifecycleLedgerTests(unittest.TestCase):
             )
         self.assertEqual(self.ledger.replay().events, ())
 
+    def test_reconciliation_rejects_unsupported_exact_task_status(self):
+        tasks = {
+            "t_tracker": {
+                "task": {
+                    "id": "t_tracker",
+                    "status": "not-a-kanban-status",
+                    "body": "tracker",
+                },
+                "parents": [],
+            },
+            "t_source": {
+                "task": {"id": "t_source", "status": "done", "body": "source"},
+                "parents": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("unsupported status must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "canonical-kanban-status-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "unsupported status"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+        self.assertEqual(self.ledger.replay().events, ())
+
+    def test_reconciliation_rechecks_exact_lifecycle_snapshot_before_each_action(self):
+        for index, state in enumerate((
+            "feedback", "implementing", "testing", "review",
+        )):
+            self.append(state, index)
+        self.append(
+            "needs_fix",
+            4,
+            {
+                "verdict_id": "stale-head-verdict",
+                "reason": "Correct the old head.",
+                "base_sha": "c" * 40,
+            },
+        )
+        actions = []
+
+        class Adapter:
+            advanced = False
+
+            def show(inner_self, task_id):
+                if task_id == "t_parent" and not inner_self.advanced:
+                    inner_self.advanced = True
+                    self.ledger.append(
+                        idempotency_key="concurrent-corrected-head",
+                        source_id="feedback-17",
+                        task_id="t_parent",
+                        state="implementing",
+                        pr=42,
+                        head_sha=NEXT_HEAD,
+                        evidence={"prerequisite_change_id": "correction-1"},
+                        timestamp="2026-08-23T20:05:00Z",
+                    )
+                if task_id == "t_parent":
+                    return {
+                        "task": {
+                            "id": task_id,
+                            "status": "archived",
+                            "pr": 42,
+                            "head_sha": HEAD,
+                            "base_sha": "c" * 40,
+                            "body": "tracker",
+                        },
+                        "parents": [],
+                    }
+                return {
+                    "task": {"id": task_id, "status": "done", "body": "source"},
+                    "parents": [],
+                }
+
+            def perform(self, action):
+                actions.append(action)
+                return {"kind": action["kind"]}
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "current-event-cas-audit",
+            "trackers": [{
+                "task_id": "t_parent",
+                "source_id": "feedback-17",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 42,
+                "head_sha": HEAD,
+                "base_sha": "c" * 40,
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "changed during reconciliation"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        current = self.ledger.replay().current_by_task["t_parent"]
+        self.assertEqual((current.state, current.head_sha), ("implementing", NEXT_HEAD))
+        self.assertEqual(actions, [])
+
     def test_reconciliation_rejects_receipt_digest_prefix_of_longer_hex_token(self):
         digest = "1" * 64
         tasks = {

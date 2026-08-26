@@ -12,7 +12,10 @@ from ops.hermes.radulator.formspree_feedback_intake import (
     GoogleGmailClient,
     HermesKanbanClient,
     SEARCH_QUERY,
+    _create_verified_closure,
+    _create_verified_legacy_binding_quarantine,
     _default_paths,
+    _feedback_task_readback,
     _receipt_digest,
     _trusted_notification,
     extract_formspree_feedback,
@@ -650,6 +653,119 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
                     + digest
                     + ":t_legacy",
                 )
+
+    def test_feedback_task_readback_rejects_requested_task_only_in_nested_history(self):
+        class NestedOnlyKanban:
+            def show(self, _task_id):
+                return {
+                    "children": [{
+                        "id": "t_requested",
+                        "status": "done",
+                        "body": "nested historical task",
+                    }],
+                }
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "exact feedback task"):
+            _feedback_task_readback(NestedOnlyKanban(), "t_requested")
+
+    def test_feedback_task_status_cannot_come_from_nested_duplicate(self):
+        class NestedStatusKanban:
+            def show(self, task_id):
+                return {
+                    "task": {
+                        "id": task_id,
+                        "body": "current task without status",
+                    },
+                    "events": [{"id": task_id, "status": "done"}],
+                }
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "status"):
+            _feedback_task_readback(NestedStatusKanban(), "t_requested")
+
+    def test_closure_parent_readback_ignores_unrelated_nested_relations(self):
+        digest = "a" * 64
+
+        class NestedParentKanban:
+            def create(self, *_args, **_kwargs):
+                return "t_closure"
+
+            def show(self, task_id):
+                return {
+                    "task": {
+                        "id": task_id,
+                        "status": "todo",
+                        "body": "Receipt digest: " + digest,
+                        "parents": [],
+                    },
+                    "children": [{
+                        "id": "t_unrelated",
+                        "status": "todo",
+                        "parents": ["t_triage"],
+                    }],
+                }
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "exact readback"):
+            _create_verified_closure(
+                NestedParentKanban(),
+                received="2026-08-25",
+                digest=digest,
+                triage_task_id="t_triage",
+                idempotency_key="nested-parent-regression",
+            )
+
+    def test_legacy_quarantine_reference_ignores_unrelated_nested_text(self):
+        digest = "b" * 64
+
+        class NestedReferenceKanban:
+            def create(self, *_args, **_kwargs):
+                return "t_quarantine"
+
+            def show(self, task_id):
+                return {
+                    "task": {
+                        "id": task_id,
+                        "status": "triage",
+                        "body": "Receipt digest: " + digest,
+                    },
+                    "events": [{
+                        "body": "unrelated historical mention t_legacy",
+                    }],
+                }
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "exact readback"):
+            _create_verified_legacy_binding_quarantine(
+                NestedReferenceKanban(),
+                received="2026-08-25",
+                digest=digest,
+                legacy_task_id="t_legacy",
+            )
+
+    def test_legacy_quarantine_reference_rejects_longer_task_id_prefix(self):
+        digest = "c" * 64
+
+        class PrefixedReferenceKanban:
+            def create(self, *_args, **_kwargs):
+                return "t_quarantine"
+
+            def show(self, task_id):
+                return {
+                    "task": {
+                        "id": task_id,
+                        "status": "triage",
+                        "body": (
+                            "Receipt digest: " + digest
+                            + "; unrelated task t_legacy_extra"
+                        ),
+                    },
+                }
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "exact readback"):
+            _create_verified_legacy_binding_quarantine(
+                PrefixedReferenceKanban(),
+                received="2026-08-25",
+                digest=digest,
+                legacy_task_id="t_legacy",
+            )
 
     def test_authenticated_origin_flag_is_not_trusted_from_a_writable_state_file(self):
         gmail = FakeGmail([self.message])

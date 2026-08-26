@@ -26,7 +26,11 @@ RECONCILIATION_RESULT_SCHEMA = "radulator-lifecycle-reconciliation-result/v1"
 ZERO_HASH = "0" * 64
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-TERMINAL_KANBAN_STATUSES = frozenset({"complete", "completed", "done", "archived"})
+KANBAN_STATUSES = frozenset({
+    "triage", "todo", "scheduled", "ready", "running", "blocked",
+    "review", "done", "archived",
+})
+TERMINAL_KANBAN_STATUSES = frozenset({"done", "archived"})
 
 TRANSITIONS = {
     None: {"feedback"},
@@ -628,6 +632,10 @@ def _verified_kanban_reconciliation_task(
         raise LedgerError(
             f"Kanban status readback is missing for exact task {task_id}."
         )
+    if status not in KANBAN_STATUSES:
+        raise LedgerError(
+            f"Kanban readback has unsupported status for exact task {task_id}."
+        )
     return readback, status
 
 
@@ -678,6 +686,25 @@ def _event_matches_reviewed_authority(
         and event.head_sha == tracker["head_sha"]
         and event.evidence.get("base_sha") == tracker["base_sha"]
     )
+
+
+def _assert_reconciliation_snapshot_current(
+    ledger: LifecycleLedger,
+    snapshot: dict[str, Any],
+) -> None:
+    current = ledger.replay().current_by_task.get(snapshot["task_id"])
+    if current is None or (
+        current.event_hash,
+        current.state,
+        current.head_sha,
+    ) != (
+        snapshot["event_hash"],
+        snapshot["state"],
+        snapshot["head_sha"],
+    ):
+        raise LedgerError(
+            f"Lifecycle task {snapshot['task_id']} changed during reconciliation."
+        )
 
 
 def reconcile_trackers(
@@ -816,7 +843,16 @@ def reconcile_trackers(
             result["planned_actions"].extend(actions)
         else:
             result["already_reconciled"].append(task_id)
-        frozen_plan.append({"kind": "actions", "actions": actions})
+        frozen_plan.append({
+            "kind": "actions",
+            "actions": actions,
+            "snapshot": {
+                "task_id": task_id,
+                "event_hash": current.event_hash,
+                "state": current.state,
+                "head_sha": current.head_sha,
+            },
+        })
 
     if not apply:
         return result
@@ -858,9 +894,11 @@ def reconcile_trackers(
             task_id = tracker["task_id"]
             result["bootstrapped"].append(task_id)
         elif item["actions"]:
-            result["applied_actions"].extend(
-                execute_actions(item["actions"], adapter)
-            )
+            for action in item["actions"]:
+                _assert_reconciliation_snapshot_current(
+                    ledger, item["snapshot"]
+                )
+                result["applied_actions"].append(adapter.perform(action))
     return result
 
 
@@ -1171,7 +1209,7 @@ def _terminal_status(value: Any, task_id: str) -> str | None:
         status = next((
             str(record.get(key, "")).lower()
             for key in ("status", "state")
-            if str(record.get(key, "")).lower() in {"complete", "completed", "done", "archived"}
+            if str(record.get(key, "")).lower() in TERMINAL_KANBAN_STATUSES
         ), None)
         if status is None:
             return None
@@ -1213,7 +1251,10 @@ def _task_status(value: Any, task_id: str) -> str:
     }
     if len(statuses) != 1:
         raise LedgerError(f"Kanban status readback is missing or ambiguous for {task_id}.")
-    return next(iter(statuses))
+    status = next(iter(statuses))
+    if status not in KANBAN_STATUSES:
+        raise LedgerError(f"Kanban status readback is unsupported for {task_id}.")
+    return status
 
 
 class HermesKanbanCLI:
