@@ -1,6 +1,6 @@
 # Radulator Hermes release control plane
 
-This overlay installs six disabled-first Hermes jobs: an exact-head primary clinical judge, an independent high-risk verification judge, a lifecycle reconciler, a post-smoke learning worker, a no-agent Formspree feedback intake, and a bounded seed-to-research converter. Standard-risk PRs require the primary signature; calculator/formula/threshold/management changes require both signatures.
+This overlay installs seven disabled-first Hermes jobs: an exact-head primary clinical judge, an independent high-risk verification judge, a lifecycle reconciler, a post-smoke learning worker, a no-agent release promoter, a no-agent Formspree feedback intake, and a bounded seed-to-research converter. Standard-risk PRs require the primary signature; calculator/formula/threshold/management changes require both signatures.
 
 The seed converter deterministically recognizes `[seed] Research brief:` work in the `lane:flash` lane as approved stage-1 research even when an obsolete `medical-review-pending` label remains. That exception authorizes research only: it creates at most two oldest source-verification cards per run, requires authoritative Kanban readback before closing a source issue, and routes later clinical implementation through independent review, exact-head CI, signed judges, automatic merge, promotion, live smoke, release-marker proof, and retained learning. Other medically gated seed types remain fail-closed and deduplicated.
 
@@ -11,6 +11,10 @@ Each judge run invokes the collector once and atomically claims at most one exac
 Post-smoke learning uses `retain_learning.py`, not the general conversational memory tool. The helper writes the six sanitized release-learning fields through Hindsight's configured `kanban_closure` chunk strategy with a retention-ID-derived document, then requires exact valid-document readback before the lifecycle can advance to `learned`. This keeps release closure independent of the slower structured-extraction backlog and makes every retry replace the same document rather than duplicating memory.
 
 The trusted merge controller explicitly dispatches the Pages workflow after an automatic merge to `main`; GitHub suppresses ordinary push-triggered workflows when the merge uses the repository `GITHUB_TOKEN`. A trusted authorizer accepts only the exact current-main merged PR, and a scheduled reconciler retries a missing dispatch. The deployment remains eligible for the same post-deploy smoke and narrowly scoped rollback path.
+
+The release promoter is source-controlled and installer-managed. It creates a replacement promotion before closing an obsolete one. Only after authoritative readback proves the obsolete PR is unmerged `CLOSED`, still targets `main`, and still names the recorded exact head does it consider ref cleanup. It then preserves the ref if it is current, default, protected, advanced, or used by any open PR. Deletion uses `git push --force-with-lease=<ref>:<expected-sha> --delete`, so a ref that advances after preflight is atomically preserved, followed by an absent-ref readback.
+
+Git worktrees are deliberately outside this automatic cleanup boundary. Worktrees span user and Hermes repositories on multiple hosts; a clean index does not prove a worktree is inactive, and detached worktrees may be serving release-control processes. Remove a registered worktree only with host-local evidence that it is not current, has no changes, has no open PR, and is not referenced by a running job. The promoter never prunes or removes worktrees.
 
 If `develop` and `main` acquire equivalent trees through independent merge histories, reconcile their ancestry through a reviewed PR into `develop` before opening the production promotion. Disclose any documentation-only audit note accompanying that merge as an exact-head file change. Never force-push or bypass the signed gate to resolve a history-only promotion conflict.
 
@@ -63,6 +67,7 @@ npm run test:hermes-lifecycle
 npm run test:hermes-learning
 npm run test:hermes-feedback-intake
 npm run test:hermes-seed-convert
+npm run test:hermes-release-promoter
 npm run test:hermes-install
 npm run check:invariants
 npm run lint -- --quiet

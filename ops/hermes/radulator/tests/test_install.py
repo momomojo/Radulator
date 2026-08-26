@@ -87,7 +87,7 @@ class InstallerTests(unittest.TestCase):
             (self.radulator_home / "config.yaml").write_text(
                 f"model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: {quoted}\ncron:\n  max_parallel_jobs: 1\n"
             )
-            self.assertEqual(len(build_plan(**self.kwargs())["jobs"]), 6)
+            self.assertEqual(len(build_plan(**self.kwargs())["jobs"]), 7)
 
     def test_single_flight_setting_must_be_in_top_level_cron_mapping(self):
         (self.radulator_home / "config.yaml").write_text(
@@ -109,7 +109,7 @@ class InstallerTests(unittest.TestCase):
         plan = build_plan(**self.kwargs())
         self.assertEqual(plan["schema"], "radulator-hermes-install/v1")
         self.assertEqual(plan["github_repository"], "momomojo/Radulator")
-        self.assertEqual(len(plan["jobs"]), 6)
+        self.assertEqual(len(plan["jobs"]), 7)
         self.assertFalse((self.radulator_home / "state" / "radulator-release-control.json").exists())
         agent_jobs = [job for job in plan["jobs"] if not job.get("no_agent")]
         for job in agent_jobs:
@@ -126,6 +126,13 @@ class InstallerTests(unittest.TestCase):
         self.assertIsNone(feedback["model"])
         self.assertIsNone(feedback["workdir"])
         self.assertFalse(feedback["enabled"])
+        promoter = next(job for job in plan["jobs"] if job["name"] == "radulator-release-promoter")
+        self.assertEqual(promoter["id"], "f191f946d6fa")
+        self.assertTrue(promoter["no_agent"])
+        self.assertEqual(promoter["script"], "release_promoter_cron.sh")
+        self.assertEqual(promoter["schedule"]["expr"], "*/10 * * * *")
+        self.assertIsNone(promoter["model"])
+        self.assertFalse(promoter["enabled"])
         seed_convert = next(job for job in plan["jobs"] if job["name"] == "radulator-seed-convert")
         self.assertEqual(seed_convert["id"], "c41b8448cce4")
         self.assertFalse(seed_convert["no_agent"])
@@ -267,12 +274,12 @@ class InstallerTests(unittest.TestCase):
         radulator_jobs = json.loads((self.radulator_home / "cron" / "jobs.json").read_text())["jobs"]
         default_jobs = json.loads((self.default_home / "cron" / "jobs.json").read_text())
         managed = [job for job in [*radulator_jobs, *default_jobs] if job.get("id") in first["job_ids"].values()]
-        self.assertEqual(len(managed), 6)
+        self.assertEqual(len(managed), 7)
         self.assertTrue(all(job["enabled"] is False for job in managed))
         legacy = [job for job in [*radulator_jobs, *default_jobs] if job["name"] in {"pr-gate-poller", "judge-queue"}]
         self.assertEqual(len(legacy), 2)
         self.assertTrue(all(job["enabled"] is True for job in legacy))
-        self.assertEqual(len({job["id"] for job in managed}), 6)
+        self.assertEqual(len({job["id"] for job in managed}), 7)
         self.assertTrue((self.radulator_home / "skills" / "radulator-clinical-judge" / "SKILL.md").exists())
         self.assertTrue((self.default_home / "skills" / "radulator-clinical-judge" / "SKILL.md").exists())
         feedback_script = self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py"
@@ -281,6 +288,16 @@ class InstallerTests(unittest.TestCase):
         seed_script = self.radulator_home / "scripts" / "seed_convert_gate_dedupe.py"
         self.assertTrue(seed_script.exists())
         self.assertEqual(stat.S_IMODE(seed_script.stat().st_mode), 0o700)
+        promoter_script = self.radulator_home / "scripts" / "release_promoter.py"
+        promoter_wrapper = self.radulator_home / "scripts" / "release_promoter_cron.sh"
+        self.assertEqual(promoter_script.read_bytes(), (
+            self.repo / "ops/hermes/radulator/release_promoter.py"
+        ).read_bytes())
+        self.assertEqual(promoter_wrapper.read_bytes(), (
+            self.repo / "ops/hermes/radulator/release_promoter_cron.sh"
+        ).read_bytes())
+        self.assertEqual(stat.S_IMODE(promoter_script.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(promoter_wrapper.stat().st_mode), 0o700)
 
         before = {
             "rad": (self.radulator_home / "cron" / "jobs.json").read_bytes(),
@@ -312,6 +329,32 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue(seed_job["enabled"])
         self.assertEqual(seed_job["deliver"], "telegram:existing-owner")
         self.assertEqual(seed_job["script"], "seed_convert_gate_dedupe.py")
+
+    def test_upgrade_preserves_existing_promoter_identity_state_and_delivery(self):
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        payload["jobs"].append({
+            "id": "f191f946d6fa",
+            "name": "radulator-release-promoter",
+            "enabled": True,
+            "state": "scheduled",
+            "deliver": "telegram",
+            "script": "legacy_release_promoter.sh",
+            "schedule": {"kind": "cron", "expr": "0 0 * * *", "display": "0 0 * * *"},
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+
+        result = apply_install(**self.kwargs())
+
+        jobs = json.loads(jobs_path.read_text())["jobs"]
+        promoter = next(job for job in jobs if job["name"] == "radulator-release-promoter")
+        self.assertEqual(result["job_ids"]["radulator-release-promoter"], "f191f946d6fa")
+        self.assertEqual(promoter["id"], "f191f946d6fa")
+        self.assertTrue(promoter["enabled"])
+        self.assertEqual(promoter["state"], "scheduled")
+        self.assertEqual(promoter["deliver"], "telegram")
+        self.assertEqual(promoter["script"], "release_promoter_cron.sh")
+        self.assertEqual(promoter["schedule"]["expr"], "*/10 * * * *")
 
     def test_upgrade_extends_existing_backup_for_new_managed_script(self):
         backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
@@ -379,6 +422,8 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual((self.default_home / "cron" / "jobs.json").read_bytes(), self.original_default_jobs)
         self.assertFalse((self.radulator_home / "skills" / "radulator-release-learning" / "SKILL.md").exists())
         self.assertFalse((self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py").exists())
+        self.assertFalse((self.radulator_home / "scripts" / "release_promoter.py").exists())
+        self.assertFalse((self.radulator_home / "scripts" / "release_promoter_cron.sh").exists())
 
     def test_enable_refuses_missing_local_judge_trust_configuration(self):
         apply_install(**self.kwargs())
