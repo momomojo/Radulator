@@ -966,10 +966,10 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             response(returncode=0),
             response(returncode=0),
             response(stdout=json.dumps([old]) + "\n"),
-            response(stdout=""),
-            response(stdout=json.dumps(old_unlabeled) + "\n"),
             self.remote_feature(BASE_SHA),
             self.remote_base(),
+            response(stdout=""),
+            response(stdout=json.dumps(old_unlabeled) + "\n"),
             response(stdout="pushed\n"),
             self.remote_feature(),
             response(stdout=json.dumps([exact_pr()]) + "\n"),
@@ -986,6 +986,61 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
         self.assertNotIn("--force", push)
         self.assertFalse(any(part.startswith("--force-with-lease") for part in push))
 
+    def test_correction_removes_and_reads_back_gate_label_even_when_history_looked_unlabeled(self):
+        stale_unlabeled = exact_pr(headRefOid=BASE_SHA, labels=[])
+        authoritative_unlabeled = exact_pr(headRefOid=BASE_SHA, labels=[])
+        runner = QueueRunner([
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(returncode=0),
+            response(returncode=0),
+            response(stdout=json.dumps([stale_unlabeled]) + "\n"),
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(authoritative_unlabeled) + "\n"),
+            response(stdout="pushed\n"),
+            self.remote_feature(),
+            response(stdout=json.dumps([exact_pr()]) + "\n"),
+        ])
+
+        result = publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertEqual(result.head_sha, HEAD_SHA)
+        remove_index = next(
+            index
+            for index, (call, _) in enumerate(runner.calls)
+            if Path(call[0]).name == "gh" and "--remove-label" in call
+        )
+        push_index = next(
+            index for index, (call, _) in enumerate(runner.calls) if "push" in call
+        )
+        self.assertEqual(push_index, remove_index + 2)
+
+    def test_correction_label_race_after_unlabeled_history_blocks_push(self):
+        stale_unlabeled = exact_pr(headRefOid=BASE_SHA, labels=[])
+        raced_labeled = exact_pr(
+            headRefOid=BASE_SHA,
+            labels=[{"name": "ready-for-gate"}],
+        )
+        runner = QueueRunner([
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(returncode=0),
+            response(returncode=0),
+            response(stdout=json.dumps([stale_unlabeled]) + "\n"),
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(raced_labeled) + "\n"),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherError, "remained"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertTrue(any("--remove-label" in call for call, _ in runner.calls))
+        self.assertFalse(any("push" in call for call, _ in runner.calls))
+
     def test_closed_correction_pr_loses_stale_gate_label_before_push_and_reopen(self):
         closed_labeled = exact_pr(
             state="CLOSED",
@@ -1000,13 +1055,15 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             response(returncode=0),
             response(returncode=0),
             response(stdout=json.dumps([closed_labeled]) + "\n"),
-            response(stdout="removed\n"),
-            response(stdout=json.dumps(closed_unlabeled) + "\n"),
             self.remote_feature(BASE_SHA),
             self.remote_base(),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(closed_unlabeled) + "\n"),
             response(stdout="pushed\n"),
             self.remote_feature(),
             response(stdout=json.dumps([closed_updated]) + "\n"),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(closed_updated) + "\n"),
             self.remote_base(),
             response(stdout="reopened\n"),
             response(stdout=json.dumps([exact_pr()]) + "\n"),
@@ -1039,6 +1096,8 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             response(returncode=0),
             response(returncode=0),
             response(stdout=json.dumps([closed_labeled]) + "\n"),
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
             response(returncode=1, stderr="label mutation failed"),
         ])
 
@@ -1075,6 +1134,8 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
                     response(returncode=0),
                     response(returncode=0),
                     response(stdout=json.dumps([closed_labeled]) + "\n"),
+                    self.remote_feature(BASE_SHA),
+                    self.remote_base(),
                     response(stdout="removed\n"),
                     response(stdout=json.dumps(readback) + "\n"),
                 ])
@@ -1101,6 +1162,8 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             response(stdout=json.dumps([old]) + "\n"),
             self.remote_feature(BASE_SHA),
             self.remote_base(target_sha),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(old) + "\n"),
             response(stdout="pushed\n"),
             self.remote_feature(),
             response(stdout=json.dumps([updated]) + "\n"),
@@ -1158,6 +1221,8 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             self.remote_feature(),
             self.remote_base(),
             response(stdout=json.dumps([closed]) + "\n"),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(closed) + "\n"),
             self.remote_base(),
             response(stdout="reopened\n"),
             response(stdout=json.dumps([opened]) + "\n"),
@@ -1168,6 +1233,10 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
         self.assertEqual(result.number, 181)
         self.assertTrue(any(
             Path(call[0]).name == "gh" and call[1:3] == ["pr", "reopen"]
+            for call, _ in runner.calls
+        ))
+        self.assertTrue(any(
+            Path(call[0]).name == "gh" and "--remove-label" in call
             for call, _ in runner.calls
         ))
         self.assertFalse(any(
@@ -2007,6 +2076,108 @@ class TrustedPublisherRunTests(unittest.TestCase):
             result = publisher.run_once(self.config, kb, object())
         self.assertEqual(result["status"], "pending_ci")
         handoff.assert_not_called()
+
+    def test_every_post_label_handoff_failure_removes_and_proves_label_absent(self):
+        failure_points = (
+            "bootstrap failed",
+            "ledger append failed",
+            "comment write failed",
+            "final authority CAS failed",
+            "final lifecycle readback failed",
+        )
+        for failure in failure_points:
+            with self.subTest(failure=failure), mock.patch.dict(
+                os.environ, {"GH_TOKEN": "test-token"}
+            ):
+                kb = FakeKanban(
+                    [task()],
+                    {"t_example": exact_events(changed_paths=["src/example.js"])},
+                )
+                runner = QueueRunner([
+                    response(stdout="removed\n"),
+                    response(stdout=json.dumps(exact_pr(labels=[])) + "\n"),
+                ])
+                with mock.patch.object(publisher, "validate_local_candidate"), \
+                     mock.patch.object(
+                         publisher, "ensure_remote_and_pr", return_value=self.pr
+                     ), \
+                     mock.patch.object(
+                         publisher, "ensure_ready_label", return_value=self.labeled
+                     ), \
+                     mock.patch.object(
+                         publisher,
+                         "complete_lifecycle_handoff",
+                         side_effect=publisher.PublisherError(failure),
+                     ):
+                    with self.assertRaisesRegex(publisher.PublisherError, failure):
+                        publisher.run_once(
+                            self.config, kb, object(), runner=runner
+                        )
+
+                self.assertTrue(any(
+                    Path(call[0]).name == "gh"
+                    and call[1:3] == ["pr", "edit"]
+                    and "--remove-label" in call
+                    for call, _ in runner.calls
+                ))
+                self.assertEqual(runner.responses, [])
+
+    def test_post_label_handoff_failure_reports_unsafe_when_absence_cannot_be_proven(self):
+        kb = FakeKanban(
+            [task()],
+            {"t_example": exact_events(changed_paths=["src/example.js"])},
+        )
+        runner = QueueRunner([
+            response(stdout="removed\n"),
+            response(
+                stdout=json.dumps(
+                    exact_pr(labels=[{"name": "ready-for-gate"}])
+                ) + "\n"
+            ),
+        ])
+        with mock.patch.dict(os.environ, {"GH_TOKEN": "test-token"}), \
+             mock.patch.object(publisher, "validate_local_candidate"), \
+             mock.patch.object(
+                 publisher, "ensure_remote_and_pr", return_value=self.pr
+             ), \
+             mock.patch.object(
+                 publisher, "ensure_ready_label", return_value=self.labeled
+             ), \
+             mock.patch.object(
+                 publisher,
+                 "complete_lifecycle_handoff",
+                 side_effect=publisher.PublisherError("ledger failed"),
+             ):
+            with self.assertRaisesRegex(
+                publisher.PublisherError, "UNSAFE_LABEL_STATE"
+            ):
+                publisher.run_once(self.config, kb, object(), runner=runner)
+
+    def test_post_label_handoff_failure_reports_unsafe_when_removal_fails(self):
+        kb = FakeKanban(
+            [task()],
+            {"t_example": exact_events(changed_paths=["src/example.js"])},
+        )
+        runner = QueueRunner([
+            response(returncode=1, stderr="synthetic label removal failure"),
+        ])
+        with mock.patch.dict(os.environ, {"GH_TOKEN": "test-token"}), \
+             mock.patch.object(publisher, "validate_local_candidate"), \
+             mock.patch.object(
+                 publisher, "ensure_remote_and_pr", return_value=self.pr
+             ), \
+             mock.patch.object(
+                 publisher, "ensure_ready_label", return_value=self.labeled
+             ), \
+             mock.patch.object(
+                 publisher,
+                 "complete_lifecycle_handoff",
+                 side_effect=publisher.PublisherError("bootstrap failed"),
+             ):
+            with self.assertRaisesRegex(
+                publisher.PublisherError, "UNSAFE_LABEL_STATE"
+            ):
+                publisher.run_once(self.config, kb, object(), runner=runner)
 
     def test_sparse_unbound_authority_receipt_is_pending_before_publication(self):
         kb = FakeKanban([task()], {"t_example": exact_events(changed_paths=["src/example.js"])})

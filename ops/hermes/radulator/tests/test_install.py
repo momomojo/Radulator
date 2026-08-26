@@ -984,6 +984,170 @@ class InstallerTests(unittest.TestCase):
         self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher.py").exists())
         self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher_cron.sh").exists())
 
+    def test_verification_profile_write_failure_restores_both_job_files_exactly(self):
+        result = apply_install(**self.kwargs())
+        plan = build_plan(**self.kwargs())
+        public_keys = generate_keys(plan)
+        primary_path = (self.radulator_home / "cron" / "jobs.json").resolve()
+        verification_path = (self.default_home / "cron" / "jobs.json").resolve()
+        before = {
+            primary_path: primary_path.read_bytes(),
+            verification_path: verification_path.read_bytes(),
+        }
+        managed_ids = set(result["job_ids"].values())
+        original_atomic_write = install_module._atomic_write
+        verification_failed = False
+
+        def fail_verification_enable(path, content, mode=0o600):
+            nonlocal verification_failed
+            path = Path(path)
+            if path == verification_path and not verification_failed:
+                payload = json.loads(content)
+                jobs = payload["jobs"] if isinstance(payload, dict) else payload
+                managed = [job for job in jobs if job.get("id") in managed_ids]
+                if managed and any(job.get("enabled") is True for job in managed):
+                    verification_failed = True
+                    raise InstallError("synthetic verification-profile write failure")
+            return original_atomic_write(path, content, mode)
+
+        with mock.patch.object(
+            install_module, "_atomic_write", side_effect=fail_verification_enable
+        ):
+            with self.assertRaisesRegex(
+                InstallError, "synthetic verification-profile write failure"
+            ):
+                apply_install(
+                    **self.kwargs(),
+                    enable=True,
+                    expected_public_keys=public_keys,
+                    activation_test_runner=self.passing_activation_runner,
+                )
+
+        self.assertTrue(verification_failed)
+        self.assertEqual(primary_path.read_bytes(), before[primary_path])
+        self.assertEqual(verification_path.read_bytes(), before[verification_path])
+
+    def test_job_snapshot_restore_failure_disables_and_reads_back_every_managed_job(self):
+        result = apply_install(**self.kwargs())
+        plan = build_plan(**self.kwargs())
+        public_keys = generate_keys(plan)
+        primary_path = (self.radulator_home / "cron" / "jobs.json").resolve()
+        verification_path = (self.default_home / "cron" / "jobs.json").resolve()
+        before_primary = primary_path.read_bytes()
+        managed_ids = set(result["job_ids"].values())
+        original_atomic_write = install_module._atomic_write
+        verification_failed = False
+        rollback_failed = False
+
+        def fail_verification_then_primary_restore(path, content, mode=0o600):
+            nonlocal verification_failed, rollback_failed
+            path = Path(path)
+            if path == verification_path and not verification_failed:
+                payload = json.loads(content)
+                jobs = payload["jobs"] if isinstance(payload, dict) else payload
+                managed = [job for job in jobs if job.get("id") in managed_ids]
+                if managed and any(job.get("enabled") is True for job in managed):
+                    verification_failed = True
+                    raise InstallError("synthetic verification-profile write failure")
+            if (
+                path == primary_path
+                and verification_failed
+                and not rollback_failed
+                and content == before_primary
+            ):
+                rollback_failed = True
+                raise InstallError("synthetic exact job rollback failure")
+            return original_atomic_write(path, content, mode)
+
+        with mock.patch.object(
+            install_module,
+            "_atomic_write",
+            side_effect=fail_verification_then_primary_restore,
+        ):
+            with self.assertRaisesRegex(
+                InstallError, "synthetic verification-profile write failure"
+            ):
+                apply_install(
+                    **self.kwargs(),
+                    enable=True,
+                    expected_public_keys=public_keys,
+                    activation_test_runner=self.passing_activation_runner,
+                )
+
+        self.assertTrue(verification_failed)
+        self.assertTrue(rollback_failed)
+        observed_ids = set()
+        for path in (primary_path, verification_path):
+            payload = json.loads(path.read_text())
+            jobs = payload["jobs"] if isinstance(payload, dict) else payload
+            for job in jobs:
+                if job.get("id") not in managed_ids:
+                    continue
+                observed_ids.add(job["id"])
+                self.assertIs(job.get("enabled"), False)
+                self.assertEqual(job.get("state"), "paused")
+                self.assertIsNone(job.get("next_run_at"))
+        self.assertEqual(observed_ids, managed_ids)
+
+    def test_invalid_verification_profile_is_rejected_before_primary_job_write(self):
+        apply_install(**self.kwargs())
+        plan = build_plan(**self.kwargs())
+        public_keys = generate_keys(plan)
+        primary_path = self.radulator_home / "cron" / "jobs.json"
+        verification_path = self.default_home / "cron" / "jobs.json"
+        before_primary = primary_path.read_bytes()
+        verification_path.write_text('{"jobs": "not-a-list"}\n')
+        before_verification = verification_path.read_bytes()
+
+        with self.assertRaisesRegex(InstallError, "Unsupported Hermes jobs.json shape"):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=public_keys,
+                activation_test_runner=self.passing_activation_runner,
+            )
+
+        self.assertEqual(primary_path.read_bytes(), before_primary)
+        self.assertEqual(verification_path.read_bytes(), before_verification)
+
+    def test_verification_failure_from_active_install_quiesces_every_managed_job(self):
+        result = apply_install(**self.kwargs())
+        plan = build_plan(**self.kwargs())
+        public_keys = generate_keys(plan)
+        apply_install(
+            **self.kwargs(),
+            enable=True,
+            expected_public_keys=public_keys,
+            activation_test_runner=self.passing_activation_runner,
+        )
+        mismatched = json.loads(json.dumps(public_keys))
+        mismatched["radulator-verification-v1"]["profile"] = "wrong"
+
+        with self.assertRaisesRegex(InstallError, "GitHub public-key"):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=mismatched,
+                activation_test_runner=self.passing_activation_runner,
+            )
+
+        managed_ids = set(result["job_ids"].values())
+        observed_ids = set()
+        for path in (
+            self.radulator_home / "cron" / "jobs.json",
+            self.default_home / "cron" / "jobs.json",
+        ):
+            payload = json.loads(path.read_text())
+            jobs = payload["jobs"] if isinstance(payload, dict) else payload
+            for job in jobs:
+                if job.get("id") not in managed_ids:
+                    continue
+                observed_ids.add(job["id"])
+                self.assertIs(job.get("enabled"), False)
+                self.assertEqual(job.get("state"), "paused")
+                self.assertIsNone(job.get("next_run_at"))
+        self.assertEqual(observed_ids, managed_ids)
+
     def test_enable_requires_exact_installed_broker_contract(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())

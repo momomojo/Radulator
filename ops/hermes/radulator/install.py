@@ -1166,6 +1166,167 @@ def _restore_publisher_snapshots(
             destination.unlink()
 
 
+def _job_file_snapshots(
+    plan: dict[str, Any], paths: list[Path]
+) -> dict[Path, tuple[bool, int | None, bytes | None]]:
+    snapshots: dict[Path, tuple[bool, int | None, bytes | None]] = {}
+    for path in paths:
+        _require_safe_target(path, plan, may_be_missing=True)
+        try:
+            details = path.lstat()
+        except FileNotFoundError:
+            snapshots[path] = (False, None, None)
+            continue
+        snapshots[path] = (
+            True,
+            stat.S_IMODE(details.st_mode),
+            path.read_bytes(),
+        )
+    return snapshots
+
+
+def _restore_job_file_snapshots(
+    plan: dict[str, Any],
+    snapshots: dict[Path, tuple[bool, int | None, bytes | None]],
+) -> None:
+    for path, (existed, mode, content) in snapshots.items():
+        _require_safe_target(path, plan, may_be_missing=True)
+        if existed:
+            if mode is None or content is None:
+                raise InstallError("Hermes job rollback snapshot is incomplete.")
+            if not path.exists() or path.read_bytes() != content or stat.S_IMODE(path.lstat().st_mode) != mode:
+                _atomic_write(path, content, mode)
+        else:
+            try:
+                details = path.lstat()
+            except FileNotFoundError:
+                continue
+            if not stat.S_ISREG(details.st_mode) or details.st_uid != os.getuid():
+                raise InstallError(
+                    f"Refusing to remove unsafe Hermes job file after failed activation: {path}"
+                )
+            path.unlink()
+
+    for path, (existed, mode, content) in snapshots.items():
+        try:
+            details = path.lstat()
+        except FileNotFoundError:
+            if existed:
+                raise InstallError(f"Hermes job rollback readback is missing: {path}")
+            continue
+        if not existed:
+            raise InstallError(f"Hermes job rollback left an unexpected file: {path}")
+        if (
+            mode is None
+            or content is None
+            or not stat.S_ISREG(details.st_mode)
+            or details.st_uid != os.getuid()
+            or stat.S_IMODE(details.st_mode) != mode
+            or path.read_bytes() != content
+        ):
+            raise InstallError(f"Hermes job rollback failed exact readback: {path}")
+
+
+def _job_snapshots_contain_enabled_managed_jobs(
+    snapshots: dict[Path, tuple[bool, int | None, bytes | None]],
+    homes: dict[str, list[dict[str, Any]]],
+) -> bool:
+    for home, templates in homes.items():
+        path = Path(home) / "cron/jobs.json"
+        existed, _, content = snapshots[path]
+        if not existed:
+            continue
+        if content is None:
+            return True
+        try:
+            payload = json.loads(content.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return True
+        if isinstance(payload, list):
+            jobs = payload
+        elif isinstance(payload, dict) and isinstance(payload.get("jobs"), list):
+            jobs = payload["jobs"]
+        else:
+            return True
+        if not all(isinstance(job, dict) for job in jobs):
+            return True
+        for template in templates:
+            matches = [
+                job
+                for job in jobs
+                if job.get("name") == template["name"] or job.get("id") == template["id"]
+            ]
+            if len(matches) > 1 or any(job.get("enabled") is not False for job in matches):
+                return True
+    return False
+
+
+def _disabled_managed_job_files(
+    plan: dict[str, Any], homes: dict[str, list[dict[str, Any]]]
+) -> dict[Path, bytes]:
+    rendered: dict[Path, bytes] = {}
+    for home, templates in homes.items():
+        path = Path(home) / "cron/jobs.json"
+        _require_safe_target(path, plan, may_be_missing=True)
+        payload, jobs = _load_jobs(path)
+        rewritten = list(jobs)
+        for template in templates:
+            matches = [
+                index
+                for index, job in enumerate(rewritten)
+                if job.get("name") == template["name"] or job.get("id") == template["id"]
+            ]
+            if len(matches) > 1:
+                raise InstallError(
+                    f"Managed Hermes job identity is duplicated or ambiguous: {template['name']}"
+                )
+            existing = rewritten[matches[0]] if matches else None
+            disabled = _job_for_write(template, existing, False, True)
+            disabled.update({
+                "enabled": False,
+                "state": "paused",
+                "paused_at": disabled.get("paused_at") or _now(),
+                "paused_reason": disabled.get("paused_reason") or "failed-activation-quiesce",
+                "updated_at": _now(),
+                "next_run_at": None,
+            })
+            if matches:
+                rewritten[matches[0]] = disabled
+            else:
+                rewritten.append(disabled)
+        updated = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
+        rendered[path] = _serialize(updated)
+    return rendered
+
+
+def _disable_and_verify_all_managed_jobs(
+    plan: dict[str, Any], homes: dict[str, list[dict[str, Any]]]
+) -> None:
+    rendered = _disabled_managed_job_files(plan, homes)
+    for path, content in rendered.items():
+        _atomic_write(path, content, 0o600)
+    for home, templates in homes.items():
+        path = Path(home) / "cron/jobs.json"
+        _, jobs = _load_jobs(path)
+        for template in templates:
+            matches = [
+                job
+                for job in jobs
+                if job.get("name") == template["name"] or job.get("id") == template["id"]
+            ]
+            if (
+                len(matches) != 1
+                or matches[0].get("name") != template["name"]
+                or matches[0].get("id") != template["id"]
+                or matches[0].get("enabled") is not False
+                or matches[0].get("state") != "paused"
+                or matches[0].get("next_run_at") is not None
+            ):
+                raise InstallError(
+                    f"Managed Hermes job did not read back as disabled: {template['name']}"
+                )
+
+
 def _verify_installed_publisher_assets(plan: dict[str, Any]) -> None:
     for source, destination in _publisher_copies(plan):
         try:
@@ -1217,11 +1378,23 @@ def apply_install(
         if current_publisher and current_publisher.get("enabled") is not False:
             _quiesce_publisher(plan)
         raise
-    if current_publisher and current_publisher.get("enabled") is not False and (publisher_drift or enable or disable):
-        _quiesce_publisher(plan)
-    publisher_snapshots = _publisher_snapshots(plan)
+    job_paths = [Path(home) / "cron/jobs.json" for home in homes]
+    job_snapshots = _job_file_snapshots(plan, job_paths)
+    jobs_were_enabled = _job_snapshots_contain_enabled_managed_jobs(
+        job_snapshots, homes
+    )
+    publisher_snapshots: dict[Path, tuple[bool, int | None, bytes | None]] | None = None
+    job_state_mutated = False
 
     try:
+        if (
+            current_publisher
+            and current_publisher.get("enabled") is not False
+            and (publisher_drift or enable or disable)
+        ):
+            _quiesce_publisher(plan)
+            job_state_mutated = True
+        publisher_snapshots = _publisher_snapshots(plan)
         for source, destination in skill_copies:
             if not source.is_file():
                 raise InstallError(f"Required skill source is missing: {source}")
@@ -1243,6 +1416,7 @@ def apply_install(
             _verify_publisher_auth(plan, activation_test_runner)
             _run_activation_self_tests(plan, activation_test_runner)
 
+        job_updates: dict[Path, bytes] = {}
         for home, templates in homes.items():
             path = Path(home) / "cron/jobs.json"
             payload, jobs = _load_jobs(path)
@@ -1265,8 +1439,11 @@ def apply_install(
             if enable:
                 rewritten = [_retire_legacy_gate(job) for job in rewritten]
             payload = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
-            content = _serialize(payload)
+            job_updates[path] = _serialize(payload)
+
+        for path, content in job_updates.items():
             if not path.exists() or path.read_bytes() != content:
+                job_state_mutated = True
                 _atomic_write(path, content, 0o600)
 
         publisher_readback = _publisher_job_readback(plan)
@@ -1294,8 +1471,23 @@ def apply_install(
         if not control_manifest.exists() or control_manifest.read_bytes() != content:
             _atomic_write(control_manifest, content, 0o600)
     except Exception:
-        _quiesce_publisher(plan)
-        _restore_publisher_snapshots(plan, publisher_snapshots)
+        job_recovery_error: Exception | None = None
+        try:
+            if job_state_mutated and jobs_were_enabled:
+                _disable_and_verify_all_managed_jobs(plan, homes)
+            else:
+                try:
+                    _restore_job_file_snapshots(plan, job_snapshots)
+                except Exception:
+                    _disable_and_verify_all_managed_jobs(plan, homes)
+        except Exception as recovery_error:
+            job_recovery_error = recovery_error
+        if publisher_snapshots is not None:
+            _restore_publisher_snapshots(plan, publisher_snapshots)
+        if job_recovery_error is not None:
+            raise InstallError(
+                "UNSAFE_JOB_STATE: managed Hermes jobs could not be restored or proven disabled."
+            ) from job_recovery_error
         raise
     return {"manifest_path": str(control_manifest), "job_ids": manifest["job_ids"], "mode": "enabled" if enable else "disabled" if disable else "installed"}
 

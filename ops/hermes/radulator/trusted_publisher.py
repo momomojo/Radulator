@@ -860,6 +860,7 @@ def ensure_remote_and_pr(
 ) -> PublishedPullRequest:
     """Non-force publish one exact sealed head and read back its PR."""
     workspace = Path(candidate.workspace)
+    correction_pr: PublishedPullRequest | None = None
     validate_local_candidate(candidate, config, runner=runner)
     if kb is not None:
         _revalidate_candidate(candidate, config, kb, conn)
@@ -937,32 +938,8 @@ def ensure_remote_and_pr(
             )
         ):
             raise PublisherError("existing correction PR does not match the sealed base")
-        if prior is not None and "ready-for-gate" in prior.labels:
-            validate_local_candidate(candidate, config, runner=runner)
-            if kb is not None:
-                _revalidate_candidate(candidate, config, kb, conn)
-            _gh(
-                "pr",
-                "edit",
-                str(prior.number),
-                "--repo",
-                config.repository,
-                "--remove-label",
-                "ready-for-gate",
-                cwd=workspace,
-                runner=runner,
-            )
-            prior = _read_pr_at_sha(
-                prior.number,
-                candidate,
-                config,
-                expected_sha=remote_head,
-                expected_base_sha=target_base_sha,
-                expected_state=prior.state,
-                runner=runner,
-            )
-            if "ready-for-gate" in prior.labels:
-                raise PublisherError("stale readiness label remained before correction push")
+        if prior is not None:
+            correction_pr = prior
     if remote_head != candidate.head_sha:
         if remote_head is None and _list_branch_prs(candidate, config, runner=runner):
             raise PublisherError(
@@ -976,6 +953,16 @@ def ensure_remote_and_pr(
         if kb is not None:
             _revalidate_candidate(candidate, config, kb, conn)
         validate_local_candidate(candidate, config, runner=runner)
+        if correction_pr is not None:
+            _remove_ready_label_and_read_back(
+                candidate,
+                correction_pr.number,
+                config,
+                expected_sha=remote_head,
+                expected_base_sha=target_base_sha,
+                expected_state=correction_pr.state,
+                runner=runner,
+            )
         _git(
             workspace,
             "-c",
@@ -1014,31 +1001,15 @@ def ensure_remote_and_pr(
             validate_local_candidate(candidate, config, runner=runner)
             if kb is not None:
                 _revalidate_candidate(candidate, config, kb, conn)
-            if "ready-for-gate" in prior.labels:
-                _gh(
-                    "pr",
-                    "edit",
-                    str(prior.number),
-                    "--repo",
-                    config.repository,
-                    "--remove-label",
-                    "ready-for-gate",
-                    cwd=workspace,
-                    runner=runner,
-                )
-                prior = _read_pr_at_sha(
-                    prior.number,
-                    candidate,
-                    config,
-                    expected_sha=candidate.head_sha,
-                    expected_base_sha=target_base_sha,
-                    expected_state="CLOSED",
-                    runner=runner,
-                )
-                if "ready-for-gate" in prior.labels:
-                    raise PublisherError(
-                        "stale readiness label remained before pull request reopen"
-                    )
+            prior = _remove_ready_label_and_read_back(
+                candidate,
+                prior.number,
+                config,
+                expected_sha=candidate.head_sha,
+                expected_base_sha=target_base_sha,
+                expected_state="CLOSED",
+                runner=runner,
+            )
             if _remote_target_base(candidate, config, runner=runner) != target_base_sha:
                 raise PublisherError("target base changed before pull request reopen")
             _gh(
@@ -1153,6 +1124,70 @@ def _load_pr(
         runner=runner,
     )
     return PublishedPullRequest.from_dict(_bounded_json(result, "pull request"))
+
+
+def _remove_ready_label_and_read_back(
+    candidate: TrustedCommit,
+    number: int,
+    config: PublisherConfig,
+    *,
+    expected_sha: str,
+    expected_base_sha: str,
+    expected_state: str = "OPEN",
+    runner: Any,
+) -> PublishedPullRequest:
+    """Remove readiness idempotently and prove exact authoritative absence."""
+    _gh(
+        "pr",
+        "edit",
+        str(number),
+        "--repo",
+        config.repository,
+        "--remove-label",
+        "ready-for-gate",
+        cwd=Path(candidate.workspace),
+        runner=runner,
+    )
+    readback = _read_pr_at_sha(
+        number,
+        candidate,
+        config,
+        expected_sha=expected_sha,
+        expected_base_sha=expected_base_sha,
+        expected_state=expected_state,
+        runner=runner,
+    )
+    if "ready-for-gate" in readback.labels:
+        raise PublisherError("ready-for-gate label remained after removal")
+    return readback
+
+
+def _compensate_ready_label(
+    candidate: TrustedCommit,
+    pr: PublishedPullRequest,
+    config: PublisherConfig,
+    *,
+    runner: Any,
+) -> None:
+    try:
+        _gh(
+            "pr",
+            "edit",
+            str(pr.number),
+            "--repo",
+            config.repository,
+            "--remove-label",
+            "ready-for-gate",
+            cwd=Path(candidate.workspace),
+            runner=runner,
+        )
+        cleanup = _load_pr(pr.number, candidate, config, runner=runner)
+        if cleanup.number != pr.number or "ready-for-gate" in cleanup.labels:
+            raise PublisherError("ready-for-gate compensation lacked exact absence readback")
+    except Exception as cleanup_error:
+        raise PublisherError(
+            "UNSAFE_LABEL_STATE: ready-for-gate absence could not be proven"
+        ) from cleanup_error
 
 
 def _required_checks_green(
@@ -1363,32 +1398,7 @@ def ensure_ready_label(
     except Exception as error:
         if not attempted and not observed_label:
             raise
-        try:
-            _gh(
-                "pr",
-                "edit",
-                str(pr.number),
-                "--repo",
-                config.repository,
-                "--remove-label",
-                "ready-for-gate",
-                cwd=Path(candidate.workspace),
-                runner=runner,
-            )
-            cleanup = _load_pr(pr.number, candidate, config, runner=runner)
-            if (
-                cleanup.state != "OPEN"
-                or cleanup.branch != candidate.branch
-                or cleanup.base != config.base_branch
-                or cleanup.head_repository_owner != config.repository.split("/", 1)[0]
-                or cleanup.is_cross_repository
-                or "ready-for-gate" in cleanup.labels
-            ):
-                raise PublisherError("compensation state is not authoritative")
-        except Exception as cleanup_error:
-            raise PublisherError(
-                "UNSAFE_LABEL_STATE: ready-for-gate absence could not be proven"
-            ) from cleanup_error
+        _compensate_ready_label(candidate, pr, config, runner=runner)
         raise
     return readback
 
@@ -2016,15 +2026,19 @@ def run_once(
             "pr": pr.number,
             "head_sha": candidate.head_sha,
         }
-    tracker_id = complete_lifecycle_handoff(
-        candidate,
-        labeled,
-        config,
-        kb,
-        conn,
-        authority=authority,
-        runner=runner,
-    )
+    try:
+        tracker_id = complete_lifecycle_handoff(
+            candidate,
+            labeled,
+            config,
+            kb,
+            conn,
+            authority=authority,
+            runner=runner,
+        )
+    except Exception:
+        _compensate_ready_label(candidate, labeled, config, runner=runner)
+        raise
     return {
         "status": "published",
         "task_id": candidate.task_id,
