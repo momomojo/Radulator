@@ -6,7 +6,7 @@
     {
       "id": "class-i-upper",
       "inputs": { "age_years": "65", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
-      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "65 points" }, { "key": "PESI Class", "includes": "I — Very low" }, { "key": "Observed 30-Day Mortality Range", "includes": "0-1.6%" }, { "key": "2026 AHA/ACC Clinical-Severity Context", "includes": "Low PESI" }] }
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "65 points" }, { "key": "PESI Class", "includes": "I — Very low" }, { "key": "Observed 30-Day Mortality Range", "includes": "0-1.6%" }, { "key": "2026 AHA/ACC Clinical-Severity Context", "includes": "Low PESI" }, { "key": "Scope / Safety", "includes": "does not diagnose PE or independently determine outpatient care" }] }
     },
     {
       "id": "class-ii-lower",
@@ -21,7 +21,7 @@
     {
       "id": "class-iii-lower",
       "inputs": { "age_years": "86", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
-      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "86 points" }, { "key": "PESI Class", "includes": "III — Intermediate" }, { "key": "Observed 30-Day Mortality Range", "includes": "3.2-7.1%" }, { "key": "2026 AHA/ACC Clinical-Severity Context", "includes": "Elevated PESI" }] }
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "86 points" }, { "key": "PESI Class", "includes": "III — Intermediate" }, { "key": "Observed 30-Day Mortality Range", "includes": "3.2-7.1%" }, { "key": "2026 AHA/ACC Clinical-Severity Context", "includes": "Elevated PESI" }, { "key": "Scope / Safety", "includes": "does not diagnose PE or independently determine outpatient care" }] }
     },
     {
       "id": "class-iv-lower",

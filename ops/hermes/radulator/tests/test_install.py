@@ -244,6 +244,7 @@ class InstallerTests(unittest.TestCase):
             "npm run test:hermes-learning",
             "npm run test:hermes-feedback-intake",
             "npm run test:hermes-seed-convert",
+            "npm run test:hermes-guideline-registry",
             "npm run test:hermes-install",
         ):
             self.assertIn(command, smoke_job)
@@ -258,6 +259,7 @@ class InstallerTests(unittest.TestCase):
             "npm run test:hermes-learning",
             "npm run test:hermes-feedback-intake",
             "npm run test:hermes-seed-convert",
+            "npm run test:hermes-guideline-registry",
             "npm run test:hermes-install",
         ):
             self.assertIn(command, workflow[workflow.index("hermes-release-control-tests:"):])
@@ -309,6 +311,22 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(before["rad"], (self.radulator_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["default"], (self.default_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["manifest"], manifest_path.read_bytes())
+
+    def test_apply_and_restore_manage_the_operations_guideline_registry(self):
+        apply_install(**self.kwargs())
+        source_root = self.repo / "ops/hermes/radulator/skills/radulator-operations/references"
+        destination_root = self.radulator_home / "skills/domain/radulator-operations/references"
+
+        for filename in ("guideline-versions.json", "guideline-versions.md"):
+            source = source_root / filename
+            destination = destination_root / filename
+            self.assertEqual(destination.read_bytes(), source.read_bytes())
+            self.assertEqual(stat.S_IMODE(destination.stat().st_mode), 0o644)
+
+        restore_install(self.radulator_home)
+
+        for filename in ("guideline-versions.json", "guideline-versions.md"):
+            self.assertFalse((destination_root / filename).exists())
 
     def test_upgrade_preserves_existing_seed_delivery_destination(self):
         jobs_path = self.radulator_home / "cron" / "jobs.json"

@@ -56,6 +56,7 @@ ACTIVATION_SELF_TESTS = (
     ("npm", "run", "test:hermes-learning"),
     ("npm", "run", "test:hermes-feedback-intake"),
     ("npm", "run", "test:hermes-seed-convert"),
+    ("npm", "run", "test:hermes-guideline-registry"),
     ("npm", "run", "check:invariants"),
     ("npm", "run", "lint", "--", "--quiet"),
     ("npm", "run", "build"),
@@ -271,6 +272,8 @@ def build_plan(
         repo / "ops/hermes/radulator/seed_convert_gate_dedupe.py",
         repo / "ops/hermes/radulator/release_promoter.py",
         repo / "ops/hermes/radulator/release_promoter_cron.sh",
+        repo / "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        repo / "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.md",
     ]
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
@@ -484,6 +487,14 @@ def _skill_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
         (source / "radulator-clinical-judge/SKILL.md", verification / "skills/radulator-clinical-judge/SKILL.md"),
         (source / "radulator-release-controller/SKILL.md", radulator / "skills/radulator-release-controller/SKILL.md"),
         (source / "radulator-release-learning/SKILL.md", radulator / "skills/radulator-release-learning/SKILL.md"),
+        (
+            source / "radulator-operations/references/guideline-versions.json",
+            radulator / "skills/domain/radulator-operations/references/guideline-versions.json",
+        ),
+        (
+            source / "radulator-operations/references/guideline-versions.md",
+            radulator / "skills/domain/radulator-operations/references/guideline-versions.md",
+        ),
     ]
 
 
