@@ -69,6 +69,52 @@ test.describe("Smoke Tests - Core Functionality", () => {
     await expect(page.locator("aside")).toBeVisible();
   });
 
+  test("should persist the reading-room dark-mode preference across reloads", async ({
+    page,
+  }) => {
+    await page.evaluate(() =>
+      localStorage.setItem("radulator-dark-mode", "false"),
+    );
+    await page.reload();
+
+    const documentRoot = page.locator("html");
+    await expect(documentRoot).not.toHaveClass(/\bdark\b/);
+
+    await page
+      .getByRole("button", { name: "Switch to dark mode" })
+      .first()
+      .click();
+    await expect(documentRoot).toHaveClass(/\bdark\b/);
+    await expect
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("radulator-dark-mode")),
+      )
+      .toBe("true");
+
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await expect(
+      page.getByRole("button", { name: "Switch to light mode" }).first(),
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "Switch to light mode" })
+      .first()
+      .click();
+    await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
+    await expect
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("radulator-dark-mode")),
+      )
+      .toBe("false");
+
+    await page.reload();
+    await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
+    await expect(
+      page.getByRole("button", { name: "Switch to dark mode" }).first(),
+    ).toBeVisible();
+  });
+
   test("should resolve direct calculator links across categories and recover from an unknown id", async ({ page }) => {
     for (const calculator of [
       { id: "adrenal-ct", title: "Adrenal CT Washout" },
@@ -197,7 +243,7 @@ test.describe("Smoke Tests - Core Functionality", () => {
     const html = await response.text();
 
     expect(html).toContain("MELD-Na Score Calculator");
-    expect(html).toContain("Free MELD-Na Score Calculator.");
+    expect(html).toContain("Free MELD 3.0 Calculator with legacy MELD-Na option.");
     expect(html).toContain("Kamath PS et al. Hepatology 2001");
     expect(html).toMatch(/<section[^>]+aria-labelledby="static-related-heading"/);
     expect(html.match(/href="\/calculators\/[^"]+\/"/g)?.length ?? 0).toBeGreaterThanOrEqual(3);

@@ -6,6 +6,9 @@ import { authorizeDeployment } from "./authorize-deployment.mjs";
 const MAIN_SHA = "a".repeat(40);
 const HEAD_SHA = "b".repeat(40);
 const ROLLBACK_SHA = "c".repeat(40);
+const DEPLOY_WORKFLOW_ID = 177436018;
+const DEPLOY_WORKFLOW_PATH = ".github/workflows/deploy.yml";
+const pushTitle = (sha) => `Deploy main-push:${sha}`;
 
 const validPr = {
   number: 123,
@@ -20,10 +23,16 @@ function api(overrides = {}) {
   return {
     async getMainRef() { return { object: { sha: MAIN_SHA } }; },
     async getPr() { return structuredClone(validPr); },
+    async getDeployWorkflow() {
+      return { id: DEPLOY_WORKFLOW_ID, path: DEPLOY_WORKFLOW_PATH };
+    },
     async getRun() {
       return {
         id: 900,
-        name: "Deploy to GitHub Pages",
+        name: pushTitle(MAIN_SHA),
+        display_title: pushTitle(MAIN_SHA),
+        workflow_id: DEPLOY_WORKFLOW_ID,
+        path: DEPLOY_WORKFLOW_PATH,
         event: "push",
         head_branch: "main",
         head_sha: MAIN_SHA,
@@ -41,7 +50,10 @@ function api(overrides = {}) {
     async listCompletedDeployRuns() {
       return [{
         id: 850,
-        name: "Deploy to GitHub Pages",
+        name: pushTitle(ROLLBACK_SHA),
+        display_title: pushTitle(ROLLBACK_SHA),
+        workflow_id: DEPLOY_WORKFLOW_ID,
+        path: DEPLOY_WORKFLOW_PATH,
         event: "push",
         head_branch: "main",
         head_sha: ROLLBACK_SHA,
@@ -113,7 +125,10 @@ assert.equal((await authorizeDeployment({
 {
   const newerRun = {
     id: 901,
-    name: "Deploy to GitHub Pages",
+    name: `Deploy radulator-auto-merge-deploy:${"d".repeat(40)}`,
+    display_title: `Deploy radulator-auto-merge-deploy:${"d".repeat(40)}`,
+    workflow_id: DEPLOY_WORKFLOW_ID,
+    path: DEPLOY_WORKFLOW_PATH,
     event: "repository_dispatch",
     head_branch: "main",
     head_sha: "d".repeat(40),
@@ -140,7 +155,10 @@ assert.equal((await authorizeDeployment({
 {
   const newerPreDeployFailure = {
     id: 901,
-    name: "Deploy to GitHub Pages",
+    name: `Deploy radulator-auto-merge-deploy:${"d".repeat(40)}`,
+    display_title: `Deploy radulator-auto-merge-deploy:${"d".repeat(40)}`,
+    workflow_id: DEPLOY_WORKFLOW_ID,
+    path: DEPLOY_WORKFLOW_PATH,
     event: "repository_dispatch",
     head_branch: "main",
     head_sha: "d".repeat(40),
