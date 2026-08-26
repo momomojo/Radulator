@@ -87,7 +87,7 @@ class InstallerTests(unittest.TestCase):
             (self.radulator_home / "config.yaml").write_text(
                 f"model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: {quoted}\ncron:\n  max_parallel_jobs: 1\n"
             )
-            self.assertEqual(len(build_plan(**self.kwargs())["jobs"]), 7)
+            self.assertEqual(len(build_plan(**self.kwargs())["jobs"]), 8)
 
     def test_single_flight_setting_must_be_in_top_level_cron_mapping(self):
         (self.radulator_home / "config.yaml").write_text(
@@ -109,7 +109,7 @@ class InstallerTests(unittest.TestCase):
         plan = build_plan(**self.kwargs())
         self.assertEqual(plan["schema"], "radulator-hermes-install/v1")
         self.assertEqual(plan["github_repository"], "momomojo/Radulator")
-        self.assertEqual(len(plan["jobs"]), 7)
+        self.assertEqual(len(plan["jobs"]), 8)
         self.assertFalse((self.radulator_home / "state" / "radulator-release-control.json").exists())
         agent_jobs = [job for job in plan["jobs"] if not job.get("no_agent")]
         for job in agent_jobs:
@@ -133,6 +133,15 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(promoter["schedule"]["expr"], "*/10 * * * *")
         self.assertIsNone(promoter["model"])
         self.assertFalse(promoter["enabled"])
+        publisher_job = next(job for job in plan["jobs"] if job["name"] == "radulator-trusted-publisher")
+        self.assertEqual(publisher_job["id"], "1def08dbcb74")
+        self.assertTrue(publisher_job["no_agent"])
+        self.assertEqual(publisher_job["script"], "trusted_publisher_cron.sh")
+        self.assertEqual(publisher_job["schedule"]["expr"], "4-59/5 * * * *")
+        self.assertEqual(publisher_job["prompt"], "")
+        self.assertIsNone(publisher_job["model"])
+        self.assertIsNone(publisher_job["provider"])
+        self.assertFalse(publisher_job["enabled"])
         seed_convert = next(job for job in plan["jobs"] if job["name"] == "radulator-seed-convert")
         self.assertEqual(seed_convert["id"], "c41b8448cce4")
         self.assertFalse(seed_convert["no_agent"])
@@ -280,12 +289,12 @@ class InstallerTests(unittest.TestCase):
         radulator_jobs = json.loads((self.radulator_home / "cron" / "jobs.json").read_text())["jobs"]
         default_jobs = json.loads((self.default_home / "cron" / "jobs.json").read_text())
         managed = [job for job in [*radulator_jobs, *default_jobs] if job.get("id") in first["job_ids"].values()]
-        self.assertEqual(len(managed), 7)
+        self.assertEqual(len(managed), 8)
         self.assertTrue(all(job["enabled"] is False for job in managed))
         legacy = [job for job in [*radulator_jobs, *default_jobs] if job["name"] in {"pr-gate-poller", "judge-queue"}]
         self.assertEqual(len(legacy), 2)
         self.assertTrue(all(job["enabled"] is True for job in legacy))
-        self.assertEqual(len({job["id"] for job in managed}), 7)
+        self.assertEqual(len({job["id"] for job in managed}), 8)
         self.assertTrue((self.radulator_home / "skills" / "radulator-clinical-judge" / "SKILL.md").exists())
         self.assertTrue((self.default_home / "skills" / "radulator-clinical-judge" / "SKILL.md").exists())
         feedback_script = self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py"
@@ -304,6 +313,16 @@ class InstallerTests(unittest.TestCase):
         ).read_bytes())
         self.assertEqual(stat.S_IMODE(promoter_script.stat().st_mode), 0o700)
         self.assertEqual(stat.S_IMODE(promoter_wrapper.stat().st_mode), 0o700)
+        publisher_script = self.radulator_home / "scripts" / "trusted_publisher.py"
+        publisher_wrapper = self.radulator_home / "scripts" / "trusted_publisher_cron.sh"
+        self.assertEqual(publisher_script.read_bytes(), (
+            self.repo / "ops/hermes/radulator/trusted_publisher.py"
+        ).read_bytes())
+        self.assertEqual(publisher_wrapper.read_bytes(), (
+            self.repo / "ops/hermes/radulator/trusted_publisher_cron.sh"
+        ).read_bytes())
+        self.assertEqual(stat.S_IMODE(publisher_script.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(publisher_wrapper.stat().st_mode), 0o700)
 
         before = {
             "rad": (self.radulator_home / "cron" / "jobs.json").read_bytes(),
@@ -446,6 +465,26 @@ class InstallerTests(unittest.TestCase):
         self.assertFalse((self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py").exists())
         self.assertFalse((self.radulator_home / "scripts" / "release_promoter.py").exists())
         self.assertFalse((self.radulator_home / "scripts" / "release_promoter_cron.sh").exists())
+        self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher.py").exists())
+        self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher_cron.sh").exists())
+
+    def test_enable_requires_exact_installed_broker_contract(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+
+        def runner(command, **_kwargs):
+            if any("kanban_git_broker" in str(part) for part in command):
+                return subprocess.CompletedProcess(command, 1, "", "missing contract")
+            return subprocess.CompletedProcess(command, 0, "passed", "")
+
+        with self.assertRaisesRegex(InstallError, "trusted local commit broker"):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=public_keys,
+                activation_test_runner=runner,
+            )
 
     def test_enable_refuses_missing_local_judge_trust_configuration(self):
         apply_install(**self.kwargs())
@@ -507,6 +546,8 @@ class InstallerTests(unittest.TestCase):
         public_keys = generate_keys(plan)
 
         def failing_runner(command, **_kwargs):
+            if any("kanban_git_broker" in str(part) for part in command):
+                return subprocess.CompletedProcess(command, 0, "", "")
             return subprocess.CompletedProcess(command, 1, "", "synthetic failure")
 
         before_radulator = (self.radulator_home / "cron" / "jobs.json").read_bytes()

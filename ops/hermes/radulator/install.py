@@ -24,6 +24,7 @@ CANONICAL_GITHUB_REPOSITORY = "momomojo/Radulator"
 LEGACY_GATE_JOB_NAMES = frozenset({"pr-gate-poller", "judge-queue"})
 SEED_CONVERT_JOB_ID = "c41b8448cce4"
 PROMOTER_JOB_ID = "f191f946d6fa"
+PUBLISHER_JOB_ID = "1def08dbcb74"
 SEED_CONVERT_PROMPT = """Seed conversion pass (WF-2b) with automatic clinical governance. Load radulator-operations and treat SEED_CONVERT_PREFLIGHT_JSON as control data.
 
 Owner policy:
@@ -57,6 +58,7 @@ ACTIVATION_SELF_TESTS = (
     ("npm", "run", "test:hermes-feedback-intake"),
     ("npm", "run", "test:hermes-seed-convert"),
     ("npm", "run", "test:hermes-guideline-registry"),
+    ("npm", "run", "test:hermes-trusted-publisher"),
     ("npm", "run", "check:invariants"),
     ("npm", "run", "lint", "--", "--quiet"),
     ("npm", "run", "build"),
@@ -272,6 +274,8 @@ def build_plan(
         repo / "ops/hermes/radulator/seed_convert_gate_dedupe.py",
         repo / "ops/hermes/radulator/release_promoter.py",
         repo / "ops/hermes/radulator/release_promoter_cron.sh",
+        repo / "ops/hermes/radulator/trusted_publisher.py",
+        repo / "ops/hermes/radulator/trusted_publisher_cron.sh",
         repo / "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         repo / "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.md",
     ]
@@ -350,6 +354,13 @@ def build_plan(
             "*/10 * * * *",
             job_id=PROMOTER_JOB_ID,
             preserve_existing=("deliver",),
+        ),
+        _script_job(
+            "radulator-trusted-publisher",
+            radulator_home,
+            "trusted_publisher_cron.sh",
+            "4-59/5 * * * *",
+            job_id=PUBLISHER_JOB_ID,
         ),
         _script_job(
             "radulator-formspree-feedback-intake",
@@ -518,6 +529,14 @@ def _script_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
             repo / "ops/hermes/radulator/release_promoter_cron.sh",
             radulator / "scripts/release_promoter_cron.sh",
         ),
+        (
+            repo / "ops/hermes/radulator/trusted_publisher.py",
+            radulator / "scripts/trusted_publisher.py",
+        ),
+        (
+            repo / "ops/hermes/radulator/trusted_publisher_cron.sh",
+            radulator / "scripts/trusted_publisher_cron.sh",
+        ),
     ]
 
 
@@ -588,6 +607,31 @@ def _run_activation_self_tests(plan: dict[str, Any], runner=None) -> None:
             raise InstallError(f"Repository activation self-test failed ({' '.join(command)}): {detail}")
 
 
+def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
+    runner = runner or subprocess.run
+    hermes_root = Path(plan["radulator_home"]).parent.parent
+    runtime_python = hermes_root / "hermes-agent/venv/bin/python"
+    command = [
+        str(runtime_python),
+        "-c",
+        (
+            "from hermes_cli.kanban_git_broker import PUBLISH_CONTRACT; "
+            "assert PUBLISH_CONTRACT == 'hermes.trusted_local_commit.v1'"
+        ),
+    ]
+    result = runner(
+        command,
+        cwd=plan["repo"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise InstallError(
+            "Installed Hermes runtime does not expose the approved trusted local commit broker contract."
+        )
+
+
 def _capture_backup(plan: dict[str, Any], targets: list[Path]) -> None:
     destination = _backup_path(plan)
     def canonical(value: str | Path) -> str:
@@ -644,6 +688,7 @@ def apply_install(
     )
     if enable:
         _verify_activation_trust(plan, expected_public_keys)
+        _verify_broker_contract(plan, activation_test_runner)
         _run_activation_self_tests(plan, activation_test_runner)
     homes = {str(Path(plan["radulator_home"])): [], str(Path(plan["default_home"])): []}
     for template in plan["jobs"]:
