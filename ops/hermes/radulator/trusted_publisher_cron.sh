@@ -13,7 +13,8 @@ if [[ ! -x "$GH_BIN" ]]; then
   echo "[trusted-publisher] FATAL: trusted GitHub CLI is unavailable" >&2
   exit 1
 fi
-unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GH_HOST GH_CONFIG_DIR XDG_CONFIG_HOME
+unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GH_HOST GH_CONFIG_DIR XDG_CONFIG_HOME \
+  PYTHONHOME PYTHONPATH PYTHONSTARTUP PYTHONINSPECT PYTHONWARNINGS
 GH_TOKEN="$($GH_BIN auth token --hostname github.com 2>/dev/null)" || {
   echo "[trusted-publisher] FATAL: host GitHub authentication is unavailable" >&2
   exit 1
@@ -25,6 +26,7 @@ fi
 export GH_TOKEN
 
 exec "$HERMES_ROOT/hermes-agent/venv/bin/python" \
+  -I \
   "$PROFILE_DIR/scripts/trusted_publisher.py" \
   --board "default" \
   --project-root "/Users/agent/Documents/Radulator" \

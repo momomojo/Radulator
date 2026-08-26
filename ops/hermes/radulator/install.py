@@ -844,30 +844,59 @@ def _run_activation_self_tests(plan: dict[str, Any], runner=None) -> None:
             raise InstallError(f"Repository activation self-test failed ({' '.join(command)}): {detail}")
 
 
+def _activation_python_env() -> dict[str, str]:
+    return {
+        "HOME": "/var/empty",
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        "PYTHONNOUSERSITE": "1",
+    }
+
+
+def _trusted_runtime_probe(
+    hermes_root: Path,
+    module_name: str,
+    predicate: str,
+) -> str:
+    return (
+        "import importlib, json; from pathlib import Path; "
+        f"root = Path({str(hermes_root)!r}).resolve(strict=True); "
+        f"module = importlib.import_module({module_name!r}); "
+        "origin = Path(module.__file__).resolve(strict=True); "
+        f"raise SystemExit(0 if root in origin.parents and ({predicate}) else 1)"
+    )
+
+
 def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
     runner = runner or subprocess.run
-    hermes_root = Path(plan["radulator_home"]).parent.parent
+    hermes_root = Path(plan["radulator_home"]).parent.parent.resolve(strict=True)
     runtime_python = hermes_root / "hermes-agent/venv/bin/python"
     checks = (
         (
             "trusted local commit broker",
-            "from hermes_cli.kanban_git_broker import PUBLISH_CONTRACT; "
-            "raise SystemExit(0 if PUBLISH_CONTRACT == 'hermes.trusted_local_commit.v1' else 1)",
+            _trusted_runtime_probe(
+                hermes_root,
+                "hermes_cli.kanban_git_broker",
+                "module.PUBLISH_CONTRACT == 'hermes.trusted_local_commit.v1'",
+            ),
         ),
         (
             "worker security boundary",
-            "from tools.kanban_worker_boundary import WORKER_GIT_SECURITY_BOUNDARY; "
-            "raise SystemExit(0 if WORKER_GIT_SECURITY_BOUNDARY == 'hermes.worker_git_isolation.v1' else 1)",
+            _trusted_runtime_probe(
+                hermes_root,
+                "tools.kanban_worker_boundary",
+                "module.WORKER_GIT_SECURITY_BOUNDARY == 'hermes.worker_git_isolation.v1'",
+            ),
         ),
     )
     for label, expression in checks:
-        command = [str(runtime_python), "-c", expression]
+        command = [str(runtime_python), "-I", "-c", expression]
         result = runner(
             command,
-            cwd=plan["repo"],
+            cwd=hermes_root,
             check=False,
             capture_output=True,
             text=True,
+            env=_activation_python_env(),
         )
         if result.returncode != 0:
             raise InstallError(f"Installed Hermes runtime does not expose the approved {label} contract.")
@@ -882,22 +911,26 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
         "replay_idempotent": True,
         "host_receipt_signature_verified": True,
     }
-    authority_expression = (
-        "import json; from hermes_cli.kanban_db import "
-        "claim_trusted_publisher_authority, complete_trusted_publisher_authority, "
-        "verify_trusted_publisher_authority_receipt, "
-        "run_trusted_publisher_authority_semantic_canary; "
-        "observed = run_trusted_publisher_authority_semantic_canary(); "
-        f"expected = json.loads({json.dumps(authority_canary)!r}); "
-        "raise SystemExit(0 if observed == expected else 1)"
+    authority_expression = _trusted_runtime_probe(
+        hermes_root,
+        "hermes_cli.kanban_db",
+        (
+            "callable(getattr(module, 'claim_trusted_publisher_authority', None)) "
+            "and callable(getattr(module, 'complete_trusted_publisher_authority', None)) "
+            "and callable(getattr(module, 'verify_trusted_publisher_authority_receipt', None)) "
+            "and callable(getattr(module, 'run_trusted_publisher_authority_semantic_canary', None)) "
+            "and module.run_trusted_publisher_authority_semantic_canary() == "
+            f"json.loads({json.dumps(authority_canary)!r})"
+        ),
     )
-    authority_command = [str(runtime_python), "-c", authority_expression]
+    authority_command = [str(runtime_python), "-I", "-c", authority_expression]
     authority = runner(
         authority_command,
-        cwd=plan["repo"],
+        cwd=hermes_root,
         check=False,
         capture_output=True,
         text=True,
+        env=_activation_python_env(),
     )
     if authority.returncode != 0:
         raise InstallError(
@@ -921,20 +954,23 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
         "workspace_edit_succeeded": True,
         "bounded_test_succeeded": True,
     }
-    canary_expression = (
-        "import json; "
-        "from tools.kanban_worker_boundary import run_worker_model_path_denial_canary; "
-        "observed = run_worker_model_path_denial_canary(); "
-        f"expected = json.loads({json.dumps(canary_contract)!r}); "
-        "raise SystemExit(0 if observed == expected else 1)"
+    canary_expression = _trusted_runtime_probe(
+        hermes_root,
+        "tools.kanban_worker_boundary",
+        (
+            "callable(getattr(module, 'run_worker_model_path_denial_canary', None)) "
+            "and module.run_worker_model_path_denial_canary() == "
+            f"json.loads({json.dumps(canary_contract)!r})"
+        ),
     )
-    canary_command = [str(runtime_python), "-c", canary_expression]
+    canary_command = [str(runtime_python), "-I", "-c", canary_expression]
     canary = runner(
         canary_command,
-        cwd=plan["repo"],
+        cwd=hermes_root,
         check=False,
         capture_output=True,
         text=True,
+        env=_activation_python_env(),
     )
     if canary.returncode != 0:
         raise InstallError(

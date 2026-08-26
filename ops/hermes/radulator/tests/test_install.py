@@ -4,6 +4,7 @@ import hmac
 import importlib.util
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -83,6 +84,64 @@ class InstallerTests(unittest.TestCase):
         publisher = next(job for job in jobs if job["name"] == "radulator-trusted-publisher")
         publisher.update({"enabled": True, "state": "scheduled", "paused_at": None, "paused_reason": None})
         path.write_text(json.dumps(payload) + "\n")
+
+    @staticmethod
+    def write_counterfeit_runtime_modules(root):
+        hermes_cli = root / "hermes_cli"
+        tools = root / "tools"
+        hermes_cli.mkdir(parents=True)
+        tools.mkdir(parents=True)
+        (hermes_cli / "__init__.py").write_text("")
+        (tools / "__init__.py").write_text("")
+        (hermes_cli / "kanban_git_broker.py").write_text(
+            "PUBLISH_CONTRACT = 'hermes.trusted_local_commit.v1'\n"
+        )
+        (hermes_cli / "kanban_db.py").write_text(
+            "def claim_trusted_publisher_authority(): pass\n"
+            "def complete_trusted_publisher_authority(): pass\n"
+            "def verify_trusted_publisher_authority_receipt(): pass\n"
+            "def run_trusted_publisher_authority_semantic_canary():\n"
+            "    return {\n"
+            "        'contract': 'hermes.trusted_publisher.authority-semantic-canary.v1',\n"
+            "        'claim_exact_identity_bound': True,\n"
+            "        'conflicting_claim_rejected': True,\n"
+            "        'stale_run_rejected': True,\n"
+            "        'stale_tracker_rejected': True,\n"
+            "        'completion_atomic': True,\n"
+            "        'replay_idempotent': True,\n"
+            "        'host_receipt_signature_verified': True,\n"
+            "    }\n"
+        )
+        (tools / "kanban_worker_boundary.py").write_text(
+            "WORKER_GIT_SECURITY_BOUNDARY = 'hermes.worker_git_isolation.v1'\n"
+            "def run_worker_model_path_denial_canary():\n"
+            "    return {\n"
+            "        'contract': 'hermes.worker_model_path_denial_canary.v1',\n"
+            "        'model_path_attempted': True,\n"
+            "        'profile_env_denied': True,\n"
+            "        'gh_config_denied': True,\n"
+            "        'gh_token_denied': True,\n"
+            "        'ssh_config_denied': True,\n"
+            "        'ssh_private_keys_denied': True,\n"
+            "        'keychain_lookup_denied': True,\n"
+            "        'loopback_network_denied': True,\n"
+            "        'public_network_denied': True,\n"
+            "        'git_metadata_write_denied': True,\n"
+            "        'workspace_edit_succeeded': True,\n"
+            "        'bounded_test_succeeded': True,\n"
+            "    }\n"
+        )
+
+    def counterfeit_runtime_plan(self, repo):
+        runtime_python = (
+            self.default_home / "hermes-agent" / "venv" / "bin" / "python"
+        )
+        runtime_python.parent.mkdir(parents=True, exist_ok=True)
+        runtime_python.symlink_to(Path(sys.executable))
+        return {
+            "radulator_home": str(self.radulator_home),
+            "repo": str(repo),
+        }
 
     def legacy_v1_entries(self, plan, *, extra_target_id=None):
         targets = install_module._backup_targets(plan)
@@ -406,6 +465,69 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(before["rad"], (self.radulator_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["default"], (self.default_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["manifest"], manifest_path.read_bytes())
+
+    def test_wrapper_isolates_python_imports_before_exporting_token(self):
+        wrapper = (
+            self.repo / "ops/hermes/radulator/trusted_publisher_cron.sh"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("PYTHONHOME PYTHONPATH", wrapper)
+        self.assertRegex(
+            wrapper,
+            r'hermes-agent/venv/bin/python"\s+\\\n\s+-I\s+\\',
+        )
+
+    def test_wrapper_import_path_cannot_observe_synthetic_github_token(self):
+        root = Path(self.temp.name)
+        fake = root / "publisher-counterfeit"
+        hermes_cli = fake / "hermes_cli"
+        hermes_cli.mkdir(parents=True)
+        marker = "COUNTERFEIT_IMPORT_SAW_TOKEN="
+        (hermes_cli / "__init__.py").write_text(
+            "import os\n"
+            f"print('{marker}' + os.environ.get('GH_TOKEN', ''))\n"
+            "from . import kanban_db\n"
+        )
+        (hermes_cli / "kanban_db.py").write_text(
+            "class Connection:\n"
+            "    def close(self): pass\n"
+            "def connect(board): return Connection()\n"
+            "def list_tasks(conn, **kwargs): return []\n"
+        )
+        project = root / "publisher-project"
+        project.mkdir()
+        controller = root / "publisher-controller.py"
+        controller.write_text("")
+        wrapper = (
+            self.repo / "ops/hermes/radulator/trusted_publisher_cron.sh"
+        ).read_text(encoding="utf-8")
+        command = [sys.executable]
+        if re.search(
+            r'hermes-agent/venv/bin/python"\s+\\\n\s+-I\s+\\', wrapper
+        ):
+            command.append("-I")
+        command.extend([
+            str(self.repo / "ops/hermes/radulator/trusted_publisher.py"),
+            "--project-root", str(project),
+            "--lifecycle-controller", str(controller),
+            "--ledger", str(root / "publisher-ledger.jsonl"),
+            "--lock-file", str(root / "publisher.lock"),
+        ])
+        environment = dict(os.environ)
+        environment["GH_TOKEN"] = "synthetic-review-token"
+        environment["PYTHONPATH"] = str(fake)
+        if re.search(r"unset .*PYTHONPATH", wrapper):
+            environment.pop("PYTHONPATH")
+        result = subprocess.run(
+            command,
+            cwd=self.repo,
+            env=environment,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertNotIn(marker, result.stdout + result.stderr)
 
     def test_clean_install_copies_executable_publisher_lifecycle_dependency(self):
         apply_install(**self.kwargs())
@@ -879,6 +1001,65 @@ class InstallerTests(unittest.TestCase):
                 expected_public_keys=public_keys,
                 activation_test_runner=runner,
             )
+
+    def test_activation_rejects_repository_controlled_counterfeit_runtime(self):
+        root = Path(self.temp.name)
+        repo = root / "counterfeit-repository"
+        repo.mkdir()
+        self.write_counterfeit_runtime_modules(repo)
+        plan = self.counterfeit_runtime_plan(repo)
+
+        with mock.patch.dict(os.environ):
+            os.environ.pop("PYTHONPATH", None)
+            os.environ.pop("PYTHONHOME", None)
+            with self.assertRaisesRegex(
+                InstallError,
+                "Installed Hermes runtime|PENDING_HERMES_RUNTIME",
+            ):
+                install_module._verify_broker_contract(plan)
+
+    def test_activation_rejects_pythonpath_counterfeit_runtime(self):
+        root = Path(self.temp.name)
+        repo = root / "empty-repository"
+        repo.mkdir()
+        counterfeit = root / "counterfeit-pythonpath"
+        self.write_counterfeit_runtime_modules(counterfeit)
+        plan = self.counterfeit_runtime_plan(repo)
+
+        with mock.patch.dict(
+            os.environ,
+            {"PYTHONPATH": str(counterfeit), "PYTHONHOME": ""},
+        ):
+            with self.assertRaisesRegex(
+                InstallError,
+                "Installed Hermes runtime|PENDING_HERMES_RUNTIME",
+            ):
+                install_module._verify_broker_contract(plan)
+
+    def test_activation_probes_use_isolated_trusted_runtime_context(self):
+        root = Path(self.temp.name)
+        repo = root / "activation-repository"
+        repo.mkdir()
+        plan = self.counterfeit_runtime_plan(repo)
+        observed = []
+
+        def runner(command, **kwargs):
+            observed.append((command, kwargs))
+            return subprocess.CompletedProcess(command, 1, "", "missing runtime")
+
+        with self.assertRaisesRegex(InstallError, "Installed Hermes runtime"):
+            install_module._verify_broker_contract(plan, runner)
+
+        command, invocation = observed[0]
+        self.assertEqual(command[1], "-I")
+        self.assertEqual(
+            Path(invocation["cwd"]).resolve(),
+            self.default_home.resolve(),
+        )
+        self.assertNotIn("PYTHONPATH", invocation["env"])
+        self.assertNotIn("PYTHONHOME", invocation["env"])
+        self.assertIn("__file__", command[-1])
+        self.assertIn(str(self.default_home.resolve()), command[-1])
 
     def test_enable_requires_a_prior_disabled_first_publisher_install(self):
         plan = build_plan(**self.kwargs())
