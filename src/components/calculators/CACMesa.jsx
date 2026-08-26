@@ -130,9 +130,6 @@ function getMaronStage(score, mesa) {
 }
 
 function getCacDrs(score, vesselCount) {
-  if (score === 300) {
-    return "Not reported at exact 300 because the primary CAC-DRS source has a boundary conflict";
-  }
   const aCategory =
     score === 0 ? "A0" : score < 100 ? "A1" : score < 300 ? "A2" : "A3";
 
@@ -257,6 +254,7 @@ function buildReportSnippet({
  * - Agatston 1990 DOI 10.1016/0735-1097(90)90282-T, PMID 2407762
  * - McClelland 2006 DOI 10.1161/CIRCULATIONAHA.105.580696, PMID 16365194
  * - Hecht 2018 CAC-DRS DOI 10.1016/j.jcct.2018.03.008, PMID 29793848
+ * - 2023 multi-society chronic coronary disease AUC DOI 10.1016/j.jacc.2023.03.410
  * - Maron 2024 proposed CAC staging DOI 10.1016/j.jacadv.2024.101287, PMID 39385944
  */
 export const CACMesa = {
@@ -264,7 +262,8 @@ export const CACMesa = {
   category: "Cardiac Imaging",
   name: "CAC/MESA Calculator",
   desc: "Agatston coronary calcium band, CAC-DRS, and MESA reference context",
-  guidelineVersion: "MESA reference values + CAC-DRS (SCCT 2018)",
+  guidelineVersion:
+    "MESA reference values + CAC-DRS (SCCT 2018; AUC 2023 boundary)",
   keywords: [
     "CAC",
     "Agatston",
@@ -280,7 +279,7 @@ export const CACMesa = {
   info: {
     text:
       "This calculator interprets a total Agatston coronary artery calcium score already produced by CT software. It does not calculate Agatston score from CT pixels, lesion area, HU bins, scanner protocol, or slice data.\n\n" +
-      "Outputs include a score-only Agatston range, the Maron et al. 2024 proposed CAC stage and burden label, an optional CAC-DRS A/N code from the original SCCT 2018 CAC-DRS publication, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. Maron stage 1 requires CAC 1-99 and a value below the 75th percentile; CAC 1-99 at or above the 75th percentile is stage 2. When the required MESA reference context is unavailable, this tool preserves the absolute range but does not assign stage 1 versus 2. It reports no treatment recommendations. The primary CAC-DRS source conflicts at exact 300: narrative text describes the traditional 300-1000 band while the formal table defines A2 as 100-299 and A3 as >300. This tool therefore does not report a CAC-DRS A category at exact 300.\n\n" +
+      "Outputs include a score-only Agatston range, the Maron et al. 2024 proposed CAC stage and burden label, an optional CAC-DRS A/N code from the original SCCT 2018 CAC-DRS publication, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. Maron stage 1 requires CAC 1-99 and a value below the 75th percentile; CAC 1-99 at or above the 75th percentile is stage 2. When the required MESA reference context is unavailable, this tool preserves the absolute range but does not assign stage 1 versus 2. It reports no treatment recommendations. The 2018 CAC-DRS publication is internally inconsistent at exact 300; the later 2023 ACC/AHA/ASE/ASNC/ASPC/HFSA/HRS/SCAI/SCCT/SCMR/STS appropriate-use criteria resolve the boundary in Table 1.2 as CAC 100-299 = CAC-DRS 2 and CAC >=300 = CAC-DRS 3. Radulator therefore reports A3 at exact 300.\n\n" +
       "The local MESA output compares the score with the official 25th, 50th, 75th, and 90th reference scores. It does not estimate an exact percentile. The reference cohort comprised participants free of clinical cardiovascular disease and treated diabetes at baseline. A relative reference position does not by itself establish that a patient is at high clinical risk. Outside the MESA limits, the absolute band and CAC-DRS remain available without extrapolation.",
     link: {
       label: "View MESA CAC Score Reference Values",
@@ -430,6 +429,10 @@ export const CACMesa = {
     {
       t: "Hecht HS et al. CAC-DRS: Coronary Artery Calcium Data and Reporting System. J Cardiovasc Comput Tomogr. 2018;12(3):185-191. PMID 29793848.",
       u: "https://doi.org/10.1016/j.jcct.2018.03.008",
+    },
+    {
+      t: "ACC/AHA/ASE/ASNC/ASPC/HFSA/HRS/SCAI/SCCT/SCMR/STS. 2023 Multimodality Appropriate Use Criteria for Detection and Risk Assessment of Chronic Coronary Disease. Table 1.2.",
+      u: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/",
     },
     {
       t: "Maron DJ et al. Coronary Artery Calcium Staging to Guide Preventive Interventions: A Proposal and Call to Action. JACC Adv. 2024;3(11):101287. PMID 39385944.",
