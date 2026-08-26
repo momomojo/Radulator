@@ -162,15 +162,16 @@
     {
       "calculator_id": "cac-mesa",
       "title": "CAC/MESA Calculator",
-      "implemented_version": "MESA reference values with CAC-DRS (SCCT 2018)",
+      "implemented_version": "MESA reference values with CAC-DRS (SCCT 2018; 2023 AUC boundary)",
       "basis_type": "reference-dataset",
       "verification_status": "verified",
       "last_verified": "2026-08-25",
-      "justification": "The official MESA tool confirms the supported ages, race and ethnicity groups, nonzero probability, and 25th, 50th, 75th, and 90th reference outputs used by Radulator.",
+      "justification": "The official MESA tool confirms the reference outputs used by Radulator; the original SCCT CAC-DRS publication supplies the score-only categories, and the 2023 multi-society appropriate-use criteria Table 1.2 supplies an accessible unambiguous 100-299 versus 300-or-greater boundary.",
       "sources": [
         { "authority": "Multi-Ethnic Study of Atherosclerosis", "title": "CAC Score Reference Values", "role": "official-authority", "url": "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values" },
         { "authority": "McClelland et al.", "title": "Distribution of coronary artery calcium by race, gender, and age: results from MESA", "role": "primary-publication", "url": "https://doi.org/10.1161/CIRCULATIONAHA.105.580696" },
         { "authority": "Society of Cardiovascular Computed Tomography", "title": "CAC-DRS: Coronary Artery Calcium Data and Reporting System", "role": "context-guideline", "url": "https://doi.org/10.1016/j.jcct.2018.03.008" },
+        { "authority": "ACC, AHA, ASE, ASNC, ASPC, HFSA, HRS, SCAI, SCCT, SCMR, and STS", "title": "2023 Multimodality Appropriate Use Criteria for the Detection and Risk Assessment of Chronic Coronary Disease", "role": "primary-publication", "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10585920/fullTextXML" },
         { "authority": "Maron et al.", "title": "Coronary artery calcium staging to guide preventive interventions", "role": "supporting-publication", "url": "https://doi.org/10.1016/j.jacadv.2024.101287" }
       ],
       "implementation_evidence": {
@@ -178,7 +179,7 @@
         "calculator_path": "src/components/calculators/CACMesa.jsx",
         "fixture_path": "tests/fixtures/compute/cac-mesa.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "MESA reference values + CAC-DRS (SCCT 2018)" },
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "MESA reference values + CAC-DRS (SCCT 2018; AUC 2023 boundary)" },
         "claims": [
           {
             "id": "mesa-reference-lookup",
@@ -200,9 +201,17 @@
             "id": "scct-cac-drs-score-bands",
             "source_url": "https://doi.org/10.1016/j.jcct.2018.03.008",
             "source_locator": "CAC-DRS table and score-only A categories",
-            "fact": "The calculator maps source-supported score bands and fails closed at exact 300 where the primary CAC-DRS narrative and table conflict.",
+            "fact": "The calculator maps the unambiguous original CAC-DRS score bands; the later multi-society AUC is used separately to resolve the original publication's exact-300 conflict.",
             "dimensions": ["classification", "threshold", "boundary", "output"],
-            "vector_ids": ["audited-white-male-zero-cac", "audited-black-female-moderate-cac", "audited-hispanic-male-severe-cac", "score-300-keeps-absolute-band-but-does-not-infer-cac-drs"]
+            "vector_ids": ["audited-white-male-zero-cac", "audited-black-female-moderate-cac", "audited-hispanic-male-severe-cac"]
+          },
+          {
+            "id": "multisociety-auc-cac-drs-bands",
+            "source_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10585920/fullTextXML",
+            "source_locator": "Table 1.2, clinical scenarios 18 through 21: CAC-DRS score bands after prior testing",
+            "fact": "The 2023 multi-society AUC defines CAC score 100 through 299 as CAC-DRS 2 and CAC score 300 or greater as CAC-DRS 3, so exact 300 is assigned A3.",
+            "dimensions": ["classification", "threshold", "boundary", "output"],
+            "vector_ids": ["cac-drs-score-299", "cac-drs-score-300", "cac-drs-score-301"]
           },
           {
             "id": "maron-percentile-adjusted-staging",
@@ -397,6 +406,9 @@
           "archive_member": "mmc1.pdf",
           "archive_member_bytes": 3696579,
           "archive_member_sha256": "d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5",
+          "license": "CC BY-NC-ND 4.0",
+          "source_audit_command": "npm run test:kbrc-source",
+          "source_bytes_committed": false,
           "source_locator": "mmc1.pdf, Item S1, PDF page 5: refit equation, units, and native coding",
           "equation_terms": [
             { "sign": "+", "coefficient": 2.0998143, "input": "constant" },
@@ -452,9 +464,12 @@
       "implemented_version": "MELD 3.0 (OPTN Policy 9.1.D)",
       "basis_type": "primary-model",
       "verification_status": "verified",
-      "last_verified": "2026-08-24",
-      "justification": "OPTN Policy 9.1.D directly specifies the adult and registered-before-18 MELD 3.0 equations, laboratory bounds, dialysis handling, and score range exercised by the bound regression vectors.",
-      "sources": [{ "authority": "Health Resources and Services Administration and OPTN", "title": "OPTN Policies, Policy 9.1.D liver allocation score", "role": "official-authority", "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf" }],
+      "last_verified": "2026-08-25",
+      "justification": "OPTN Policy 9.1.D specifies the MELD 3.0 equations, calculation bounds, dialysis handling, and score range; the official MELD and PELD Calculators User Guide separately specifies the accepted laboratory-entry domains. Both layers are bound to executable vectors.",
+      "sources": [
+        { "authority": "Health Resources and Services Administration and OPTN", "title": "OPTN Policies, Policy 9.1.D liver allocation score", "role": "official-authority", "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf" },
+        { "authority": "Health Resources and Services Administration and OPTN", "title": "MELD and PELD Calculators User Guide", "role": "official-authority", "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf" }
+      ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/MELDNa.jsx",
@@ -482,9 +497,23 @@
             "id": "optn-laboratory-bounds-and-dialysis",
             "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf",
             "source_locator": "Policy 9.1.D bilirubin, INR, creatinine, sodium, albumin bounds and dialysis rule",
-            "fact": "The calculator enforces the official laboratory domains, applies the source bounds, assigns creatinine 3.0 mg per dL for qualifying dialysis, and clamps final scores to 6 through 40.",
+            "fact": "After accepting a laboratory entry, the calculator applies the Policy 9.1.D calculation bounds, assigns creatinine 3.0 mg per dL for qualifying dialysis, and clamps final scores to 6 through 40.",
             "dimensions": ["threshold", "boundary", "unit", "output"],
             "vector_ids": ["meld3-default-low-score-male", "meld3-dialysis-creatinine-cap", "meld3-official-input-domain-clamps-laboratory-values"]
+          },
+          {
+            "id": "optn-calculator-entry-domains",
+            "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf",
+            "source_locator": "MELD Calculator, How to Use the MELD Calculator, step 3 Enter the laboratory values",
+            "fact": "The calculator accepts the official inclusive entry endpoints for creatinine, bilirubin, INR, sodium, and albumin and rejects one literal value immediately outside every endpoint before applying Policy 9.1.D calculation bounds.",
+            "dimensions": ["model-input", "threshold", "boundary", "unit"],
+            "vector_ids": [
+              "meld3-creatinine-entry-min", "meld3-creatinine-entry-below-min", "meld3-creatinine-entry-max", "meld3-creatinine-entry-above-max",
+              "meld3-bilirubin-entry-min", "meld3-bilirubin-entry-below-min", "meld3-bilirubin-entry-max", "meld3-bilirubin-entry-above-max",
+              "meld3-inr-entry-min", "meld3-inr-entry-below-min", "meld3-inr-entry-max", "meld3-inr-entry-above-max",
+              "meld3-sodium-entry-min", "meld3-sodium-entry-below-min", "meld3-sodium-entry-max", "meld3-sodium-entry-above-max",
+              "meld3-albumin-entry-min", "meld3-albumin-entry-below-min", "meld3-albumin-entry-max", "meld3-albumin-entry-above-max"
+            ]
           }
         ]
       }

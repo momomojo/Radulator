@@ -178,20 +178,41 @@
       }
     },
     {
-      "id": "score-300-keeps-absolute-band-but-does-not-infer-cac-drs",
-      "description": "Exact CAC score 300 remains in the source-supported severe absolute band, while CAC-DRS is not reported because the primary source has a boundary conflict.",
-      "inputs": {
-        "score": "300",
-        "age": "55",
-        "sex": "male",
-        "race": "white"
-      },
+      "id": "cac-drs-score-299",
+      "description": "One below the 2023 multi-society AUC Table 1.2 boundary remains CAC-DRS 2.",
+      "inputs": { "score": "299", "age": "55", "sex": "male", "race": "white" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Band", "equals": "Moderate calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": "100-299" },
+          { "key": "CAC-DRS", "equals": "A2 / N not reported" }
+        ]
+      }
+    },
+    {
+      "id": "cac-drs-score-300",
+      "description": "Exact 300 is CAC-DRS 3 under the inclusive 2023 multi-society AUC Table 1.2 boundary.",
+      "inputs": { "score": "300", "age": "55", "sex": "male", "race": "white" },
       "expect": {
         "noError": true,
         "fields": [
           { "key": "Absolute CAC Band", "equals": "Severe calcified plaque burden" },
           { "key": "CAC Score Range", "equals": "300-999" },
-          { "key": "CAC-DRS", "equals": "Not reported at exact 300 because the primary CAC-DRS source has a boundary conflict" }
+          { "key": "CAC-DRS", "equals": "A3 / N not reported" }
+        ]
+      }
+    },
+    {
+      "id": "cac-drs-score-301",
+      "description": "One above the inclusive 2023 multi-society AUC Table 1.2 boundary remains CAC-DRS 3.",
+      "inputs": { "score": "301", "age": "55", "sex": "male", "race": "white" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Absolute CAC Band", "equals": "Severe calcified plaque burden" },
+          { "key": "CAC Score Range", "equals": "300-999" },
+          { "key": "CAC-DRS", "equals": "A3 / N not reported" }
         ]
       }
     },
