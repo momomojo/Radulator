@@ -32,11 +32,30 @@ assert.equal(
 assert.equal(audit.license, "CC BY-NC-ND 4.0");
 assert.equal(audit.equation_term_count, 22);
 assert.deepEqual(audit.source_example_displays, ["2.5%", "1.0%", "7.4%", "0.4%"]);
+assert.deepEqual(audit.calibration_warning, {
+  source_locator: "full-text XML paragraph p0130",
+  threshold_probability: 0.25,
+  calibration_direction: "overpredict",
+});
+assert.equal(audit.runtime_calibration_warning_match, true);
+assert.deepEqual(audit.input_limits, {
+  provenance: "radulator-data-entry-guardrail",
+  publication_derived: false,
+  values: {
+    age: { min: 18, max: 90, unit: "years" },
+    weight: { min: 30, max: 130, unit: "kg" },
+    height: { min: 140, max: 210, unit: "cm" },
+    platelets: { min: 50, max: 700, unit: "×10⁹/L" },
+    hemoglobin: { min: 70, max: 180, unit: "g/L" },
+    kidney_size: { min: 8, max: 16, unit: "cm" },
+  },
+});
+assert.equal(audit.runtime_input_limit_claims_match, true);
 assert.equal(audit.runtime_equation_match, true);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "KBRC primary-source integration audit verified the live supplement member, 22 equation terms, and 4 source examples.",
+  "KBRC primary-source integration audit verified the live supplement member, 22 equation terms, 4 source examples, the p0130 calibration warning, and app-only input-limit provenance.",
 );

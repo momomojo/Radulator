@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import {
+  KBRC_INPUT_LIMITS,
+  KBRC_INPUT_LIMIT_PROVENANCE,
   calculateBmi,
   calculateKbrcMajorBleedingProbability,
   computeKidneyBiopsyBleedingRisk,
@@ -13,6 +15,18 @@ const NUMERIC_RANGES = {
   hemoglobin: { label: "Hemoglobin", min: 70, max: 180 },
   kidney_size: { label: "Target kidney length", min: 8, max: 16 },
 };
+
+assert.equal(KBRC_INPUT_LIMIT_PROVENANCE, "radulator-data-entry-guardrail");
+assert.deepEqual(
+  Object.fromEntries(
+    Object.entries(KBRC_INPUT_LIMITS).map(([field, { label, min, max }]) => [
+      field,
+      { label, min, max },
+    ]),
+  ),
+  NUMERIC_RANGES,
+  "runtime input limits must remain explicit app guardrails",
+);
 
 const PAPER_VECTORS = [
   {
@@ -190,6 +204,11 @@ for (const [field, range] of Object.entries(NUMERIC_RANGES)) {
     });
     assert.ok(result.Error, `${field} ${state} should fail closed`);
     assert.match(result.Error, new RegExp(range.label, "i"));
+    if (state === "below range" || state === "above range") {
+      assert.match(result.Error, /Radulator input limits/i);
+      assert.match(result.Error, /not publication-derived model-validation bounds/i);
+      assert.doesNotMatch(result.Error, /source calculator|supported entry range|not extrapolated/i);
+    }
   }
 
   for (const boundary of [range.min, range.max]) {

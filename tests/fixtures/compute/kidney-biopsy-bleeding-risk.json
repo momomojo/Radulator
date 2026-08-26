@@ -94,6 +94,32 @@
       }
     },
     {
+      "id": "calibration-above-25",
+      "description": "Executable p0130 regression for the recalibrated model's overprediction warning above 25%.",
+      "inputs": {
+        "age": 18,
+        "weight": 30,
+        "height": 210,
+        "platelets": 50,
+        "hemoglobin": 70,
+        "kidney_size": 8,
+        "kidney_type": "native"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "30.2%"
+          },
+          {
+            "key": "Calibration Warning",
+            "includes": "Estimates above 25% may overpredict major bleeding risk"
+          }
+        ]
+      }
+    },
+    {
       "id": "reject-out-of-range",
       "inputs": {
         "age": 91,
@@ -107,7 +133,7 @@
       "expect": {
         "noError": false,
         "fields": [
-          { "key": "Error", "includes": "supported entry range" }
+          { "key": "Error", "includes": "not publication-derived model-validation bounds" }
         ]
       }
     }

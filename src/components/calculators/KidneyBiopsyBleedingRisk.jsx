@@ -1,4 +1,7 @@
-const SOURCE_RANGES = {
+const KBRC_INPUT_LIMIT_PROVENANCE = "radulator-data-entry-guardrail";
+const KBRC_CALIBRATION_WARNING_THRESHOLD = 0.25;
+
+const KBRC_INPUT_LIMITS = {
   age: { label: "Age", min: 18, max: 90, unit: "years" },
   weight: { label: "Weight", min: 30, max: 130, unit: "kg" },
   height: { label: "Height", min: 140, max: 210, unit: "cm" },
@@ -26,7 +29,7 @@ function parseFiniteNumber(value) {
 }
 
 function validateNumericInput(id, value) {
-  const range = SOURCE_RANGES[id];
+  const range = KBRC_INPUT_LIMITS[id];
   if (value === null || value === undefined || String(value).trim() === "") {
     return { error: `${range.label} is required.` };
   }
@@ -40,7 +43,7 @@ function validateNumericInput(id, value) {
 
   if (parsed < range.min || parsed > range.max) {
     return {
-      error: `${range.label} must be ${range.min}–${range.max} ${range.unit}; values outside the source calculator's supported entry range are not extrapolated.`,
+      error: `${range.label} must be ${range.min}–${range.max} ${range.unit}; values outside Radulator input limits are not accepted. These data-entry guardrails are not publication-derived model-validation bounds.`,
     };
   }
 
@@ -112,7 +115,7 @@ function formatProbabilityPercent(probability) {
 
 export function computeKidneyBiopsyBleedingRisk(values) {
   const validated = {};
-  for (const id of Object.keys(SOURCE_RANGES)) {
+  for (const id of Object.keys(KBRC_INPUT_LIMITS)) {
     const result = validateNumericInput(id, values[id]);
     if (result.error) return { Error: result.error };
     validated[id] = result.value;
@@ -160,7 +163,7 @@ export function computeKidneyBiopsyBleedingRisk(values) {
       "2026 recalibrated preprocedure model for adults undergoing diagnostic percutaneous native- or transplant-kidney biopsy.",
     "Clinical Limitation":
       "Use this estimate with clinical judgment, local biopsy protocols, medication and coagulation review, blood-pressure assessment, and appropriate postprocedure monitoring. Canadian development and validation cohorts used different procedural practices and follow-up windows (one week and one month), so performance may differ elsewhere.",
-    ...(probability > 0.25
+    ...(probability > KBRC_CALIBRATION_WARNING_THRESHOLD
       ? {
           "Calibration Warning":
             "Estimates above 25% may overpredict major bleeding risk. The 2026 external-validation study reported mild overprediction in this range; do not treat 25% as a risk category or action threshold.",
@@ -202,6 +205,8 @@ The displayed estimate uses only the Thorne et al. 2026 recalibrated major-bleed
 
 Intended scope: adults undergoing an imaging-guided diagnostic percutaneous biopsy of a native or transplanted kidney. It is not validated here for pediatric, kidney-mass, intraoperative implantation, open, or nonpercutaneous biopsy.
 
+The numeric entry limits shown below are conservative Radulator data-entry guardrails, not ranges published as the model's validated domain.
+
 The model was developed and validated in adult Canadian cohorts with few major-bleeding events. Technique, needle size, medication practices, prophylaxis, case mix, and follow-up differed between cohorts and centers. The estimate complements rather than replaces patient-specific assessment and local protocols.`,
     link: {
       label: "View the 2026 external validation and recalibration study",
@@ -213,7 +218,7 @@ The model was developed and validated in adult Canadian cohorts with few major-b
       id: "age",
       label: "Age",
       type: "number",
-      subLabel: "years; supported entry range 18–90",
+      subLabel: "years; Radulator input limit 18–90",
       min: 18,
       max: 90,
       step: "any",
@@ -232,7 +237,7 @@ The model was developed and validated in adult Canadian cohorts with few major-b
       id: "weight",
       label: "Weight",
       type: "number",
-      subLabel: "kg; supported entry range 30–130",
+      subLabel: "kg; Radulator input limit 30–130",
       min: 30,
       max: 130,
       step: "any",
@@ -242,7 +247,7 @@ The model was developed and validated in adult Canadian cohorts with few major-b
       id: "height",
       label: "Height",
       type: "number",
-      subLabel: "cm; supported entry range 140–210",
+      subLabel: "cm; Radulator input limit 140–210",
       min: 140,
       max: 210,
       step: "any",
@@ -259,7 +264,7 @@ The model was developed and validated in adult Canadian cohorts with few major-b
       id: "platelets",
       label: "Platelet Count Before Biopsy",
       type: "number",
-      subLabel: "×10⁹/L; supported entry range 50–700",
+      subLabel: "×10⁹/L; Radulator input limit 50–700",
       min: 50,
       max: 700,
       step: "any",
@@ -269,7 +274,7 @@ The model was developed and validated in adult Canadian cohorts with few major-b
       id: "hemoglobin",
       label: "Hemoglobin Before Biopsy",
       type: "number",
-      subLabel: "g/L; supported entry range 70–180 (not g/dL)",
+      subLabel: "g/L; Radulator input limit 70–180 (not g/dL)",
       min: 70,
       max: 180,
       step: "any",
@@ -279,7 +284,7 @@ The model was developed and validated in adult Canadian cohorts with few major-b
       id: "kidney_size",
       label: "Target Kidney Length",
       type: "number",
-      subLabel: "cm; greatest ultrasound dimension; supported entry range 8–16",
+      subLabel: "cm; greatest ultrasound dimension; Radulator input limit 8–16",
       min: 8,
       max: 16,
       step: "any",
@@ -304,3 +309,9 @@ The model was developed and validated in adult Canadian cohorts with few major-b
 };
 
 export default KidneyBiopsyBleedingRisk;
+
+export {
+  KBRC_CALIBRATION_WARNING_THRESHOLD,
+  KBRC_INPUT_LIMITS,
+  KBRC_INPUT_LIMIT_PROVENANCE,
+};
