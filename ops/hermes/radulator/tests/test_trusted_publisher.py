@@ -1940,6 +1940,69 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
         self.assertEqual(kb.completions, [])
         self.assertEqual(kb.get_task(None, "t_example").status, "blocked")
 
+    def test_completion_commit_then_response_failure_recovers_exact_terminal_state(self):
+        class CommitThenDisconnectKanban(MutableKanban):
+            def complete_trusted_publisher_authority(self, conn, **kwargs):
+                super().complete_trusted_publisher_authority(conn, **kwargs)
+                raise ConnectionError("synthetic response lost after commit")
+
+        kb = CommitThenDisconnectKanban(
+            [task()],
+            {"t_example": exact_events(changed_paths=["src/example.js"])},
+            self.child,
+        )
+        rendered = [{
+            "kind": "create_child",
+            "task_id": "t_release",
+            "idempotency_key": "radulator-release:t_example:pr-181",
+        }]
+        seed = {
+            "idempotency_key": f"radulator-feedback:t_release:pr-181:{HEAD_SHA}",
+            "source_id": "t_example",
+            "task_id": "t_release",
+            "state": "feedback",
+            "pr": 181,
+            "head_sha": HEAD_SHA,
+        }
+        runner = QueueRunner([
+            self.labeled_pr_response(),
+            response(stdout="{}\n"),
+            response(stdout=json.dumps(rendered) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
+            self.labeled_pr_response(),
+            self.labeled_pr_response(),
+            response(stdout=json.dumps(exact_pr(labels=[])) + "\n"),
+            response(stdout="edited\n"),
+            self.labeled_pr_response(),
+        ])
+
+        tracker = publisher.complete_lifecycle_handoff(
+            self.candidate,
+            self.pr,
+            self.config,
+            kb,
+            object(),
+            runner=runner,
+        )
+
+        self.assertEqual(tracker, "t_release")
+        self.assertEqual(kb.get_task(None, "t_example").status, "done")
+        self.assertEqual(len(kb.comments), 1)
+        self.assertEqual(runner.responses, [])
+        self.assertTrue(any(
+            Path(call[0]).name == "gh"
+            and call[1:3] == ["pr", "edit"]
+            and "--add-label" in call
+            for call, _ in runner.calls
+        ))
+        self.assertFalse(any(
+            Path(call[0]).name == "gh"
+            and call[1:3] == ["pr", "edit"]
+            and "--remove-label" in call
+            for call, _ in runner.calls
+        ))
+
     def test_malformed_or_mismatched_tracker_output_rejects(self):
         cases = [
             [],
@@ -2204,6 +2267,39 @@ class TrustedPublisherRunTests(unittest.TestCase):
                     for call, _ in runner.calls
                 ))
                 self.assertEqual(runner.responses, [])
+
+    def test_terminal_completion_ambiguity_preserves_ready_label_for_recovery(self):
+        class TerminalReadbackKanban(FakeKanban):
+            def get_task(self, _conn, task_id):
+                if task_id == "t_example":
+                    return SimpleNamespace(id=task_id, status="done")
+                return None
+
+        kb = TerminalReadbackKanban(
+            [task()],
+            {"t_example": exact_events(changed_paths=["src/example.js"])},
+        )
+        runner = QueueRunner([])
+        with mock.patch.object(publisher, "validate_local_candidate"), \
+             mock.patch.object(
+                 publisher, "ensure_remote_and_pr", return_value=self.pr
+             ), \
+             mock.patch.object(
+                 publisher, "ensure_ready_label", return_value=self.labeled
+             ), \
+             mock.patch.object(
+                 publisher,
+                 "complete_lifecycle_handoff",
+                 side_effect=publisher.PublisherCompletionAmbiguous(
+                     "UNSAFE_COMPLETION_STATE: response lost after terminal commit"
+                 ),
+             ):
+            with self.assertRaisesRegex(
+                publisher.PublisherError, "UNSAFE_COMPLETION_STATE"
+            ):
+                publisher.run_once(self.config, kb, object(), runner=runner)
+
+        self.assertEqual(runner.calls, [])
 
     def test_post_label_handoff_failure_reports_unsafe_when_absence_cannot_be_proven(self):
         kb = FakeKanban(

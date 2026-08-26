@@ -26,6 +26,7 @@ SCHEMA = "radulator-hermes-install/v1"
 BACKUP_SCHEMA = "radulator-hermes-backup/v2"
 LEGACY_BACKUP_SCHEMA = "radulator-hermes-backup/v1"
 JOBS_TRANSACTION_SCHEMA = "radulator-hermes-jobs-transaction/v1"
+JOBS_PREFLIGHT_BACKUP_SCHEMA = "radulator-hermes-jobs-preflight-backup/v1"
 JOBS_LOCK_TIMEOUT_SECONDS = 10.0
 BACKUP_HMAC_KEY_BYTES = 32
 MODEL = "gpt-5.6-sol"
@@ -427,7 +428,16 @@ def build_plan(
 def _load_jobs(path: Path) -> tuple[dict[str, Any] | list[Any], list[dict[str, Any]]]:
     if not path.exists():
         return {"jobs": []}, []
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    return _decode_jobs(path.read_bytes(), path)
+
+
+def _decode_jobs(
+    content: bytes, path: Path
+) -> tuple[dict[str, Any] | list[Any], list[dict[str, Any]]]:
+    try:
+        payload = json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise InstallError(f"Hermes jobs.json is invalid: {path}") from error
     if isinstance(payload, list):
         jobs = payload
     elif isinstance(payload, dict) and isinstance(payload.get("jobs"), list):
@@ -588,6 +598,14 @@ def _backup_key_path(plan: dict[str, Any]) -> Path:
 
 def _jobs_transaction_path(plan: dict[str, Any]) -> Path:
     return Path(plan["radulator_home"]) / "state/radulator-jobs-transaction.json"
+
+
+def _jobs_transaction_key_path(plan: dict[str, Any]) -> Path:
+    return Path(plan["radulator_home"]) / "state/radulator-jobs-transaction.hmac.key"
+
+
+def _jobs_preflight_backup_path(plan: dict[str, Any]) -> Path:
+    return Path(plan["radulator_home"]) / "state/radulator-jobs-preflight-backup.json"
 
 
 def _backup_targets(plan: dict[str, Any]) -> dict[str, Path]:
@@ -780,6 +798,31 @@ def _read_or_create_backup_key(plan: dict[str, Any], *, create: bool) -> bytes:
     return key
 
 
+def _read_or_create_jobs_transaction_key(
+    plan: dict[str, Any], *, create: bool
+) -> bytes:
+    """Return the job-safety key without consulting the release backup key.
+
+    Job quiescence has to remain available when the older release-backup key or
+    manifest is malformed.  Keeping this key separate prevents those fallible
+    backup validations from running before enabled managed consumers are
+    durably disabled and read back.
+    """
+    key_path = _jobs_transaction_key_path(plan)
+    _require_safe_target(key_path, plan, may_be_missing=True)
+    try:
+        key_path.lstat()
+    except FileNotFoundError:
+        if not create:
+            raise InstallError(f"Hermes jobs transaction key is missing: {key_path}")
+        _atomic_write(key_path, os.urandom(BACKUP_HMAC_KEY_BYTES), 0o600)
+    _require_protected_file(key_path, "Hermes jobs transaction key")
+    key = key_path.read_bytes()
+    if len(key) != BACKUP_HMAC_KEY_BYTES:
+        raise InstallError("Hermes jobs transaction key has the wrong length.")
+    return key
+
+
 def _validate_backup_entry(entry: Any, *, legacy: bool) -> tuple[str, bool, int | None, bytes | None]:
     expected_fields = {"path" if legacy else "target_id", "existed", "mode", "content_base64"}
     if not isinstance(entry, dict) or set(entry) != expected_fields:
@@ -828,6 +871,88 @@ def _snapshot_backup_target(
         "mode": stat.S_IMODE(target.lstat().st_mode),
         "content_base64": base64.b64encode(target.read_bytes()).decode("ascii"),
     }
+
+
+def _jobs_preflight_unsigned(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"schema": JOBS_PREFLIGHT_BACKUP_SCHEMA, "entries": entries}
+
+
+def _capture_jobs_preflight_backup(plan: dict[str, Any]) -> None:
+    """Authenticate the original two job files without touching backup state."""
+    destination = _jobs_preflight_backup_path(plan)
+    try:
+        destination.lstat()
+    except FileNotFoundError:
+        _require_safe_target(destination, plan, may_be_missing=True)
+    else:
+        # Never parse attacker-controlled prior state while managed jobs may be
+        # active.  This intentionally does not validate even the file type or
+        # mode; a later post-quiescence load authenticates this exact path.
+        return
+    targets = _backup_targets(plan)
+    entries = [
+        _snapshot_backup_target(target_id, targets[target_id], plan)
+        for target_id in (
+            "primary:cron/jobs.json",
+            "verification:cron/jobs.json",
+        )
+    ]
+    key = _read_or_create_jobs_transaction_key(plan, create=True)
+    unsigned = _jobs_preflight_unsigned(entries)
+    payload = {
+        **unsigned,
+        "hmac_sha256": hmac.new(
+            key, _serialize(unsigned), hashlib.sha256
+        ).hexdigest(),
+    }
+    _atomic_write(destination, _serialize(payload), 0o600)
+    _require_protected_file(destination, "Hermes jobs preflight backup")
+
+
+def _load_jobs_preflight_backup(plan: dict[str, Any]) -> list[dict[str, Any]]:
+    destination = _jobs_preflight_backup_path(plan)
+    _require_safe_target(destination, plan, may_be_missing=False)
+    _require_protected_file(destination, "Hermes jobs preflight backup")
+    try:
+        payload = json.loads(destination.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise InstallError("Hermes jobs preflight backup is unreadable.") from error
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"schema", "entries", "hmac_sha256"}
+        or payload.get("schema") != JOBS_PREFLIGHT_BACKUP_SCHEMA
+        or not isinstance(payload.get("entries"), list)
+    ):
+        raise InstallError("Hermes jobs preflight backup schema is invalid.")
+    entries = list(payload["entries"])
+    validated = [_validate_backup_entry(entry, legacy=False) for entry in entries]
+    identities = [target_id for target_id, *_ in validated]
+    if identities != [
+        "primary:cron/jobs.json",
+        "verification:cron/jobs.json",
+    ]:
+        raise InstallError("Hermes jobs preflight backup identities are invalid.")
+    key = _read_or_create_jobs_transaction_key(plan, create=False)
+    unsigned = _jobs_preflight_unsigned(entries)
+    signature = payload.get("hmac_sha256")
+    expected = hmac.new(key, _serialize(unsigned), hashlib.sha256).hexdigest()
+    if not isinstance(signature, str) or not hmac.compare_digest(signature, expected):
+        raise InstallError("Hermes jobs preflight backup authentication failed.")
+    return entries
+
+
+def _finish_jobs_preflight_backup(plan: dict[str, Any]) -> None:
+    destination = _jobs_preflight_backup_path(plan)
+    _require_safe_target(destination, plan, may_be_missing=True)
+    try:
+        destination.unlink()
+    except FileNotFoundError:
+        return
+    descriptor = os.open(destination.parent, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def _load_backup(plan: dict[str, Any], *, migrate_legacy: bool) -> dict[str, Any]:
@@ -1134,8 +1259,25 @@ def _capture_backup(plan: dict[str, Any]) -> None:
         for target_id in recorded_ids:
             _require_safe_target(targets[target_id], plan, may_be_missing=True)
     else:
-        entries = []
-        recorded_ids = []
+        preflight_path = _jobs_preflight_backup_path(plan)
+        _require_safe_target(preflight_path, plan, may_be_missing=True)
+        if preflight_path.exists():
+            # This is deliberately the first point at which the pre-quiescence
+            # snapshot is parsed or authenticated.  Callers have already
+            # disabled and read back every managed job under both locks.
+            entries = _load_jobs_preflight_backup(plan)
+            recorded_ids = [entry["target_id"] for entry in entries]
+            key = _read_or_create_backup_key(plan, create=True)
+            signed_prefix = {
+                **_backup_unsigned(entries),
+                "hmac_sha256": _backup_signature(key, entries),
+            }
+            _atomic_write(destination, _serialize(signed_prefix), 0o600)
+            _require_protected_file(destination, "Backup manifest")
+            destination_present = True
+        else:
+            entries = []
+            recorded_ids = []
 
     changed = False
     for target_id, target in targets.items():
@@ -1165,35 +1307,7 @@ def _capture_backup(plan: dict[str, Any]) -> None:
         }
         _atomic_write(destination, _serialize(signed), 0o600)
     _require_protected_file(destination, "Backup manifest")
-
-
-def _capture_job_backup_prefix(plan: dict[str, Any]) -> None:
-    """Persist the original job files before a safety quiesce on a fresh install."""
-    destination = _backup_path(plan)
-    _require_safe_target(destination, plan, may_be_missing=True)
-    try:
-        destination.lstat()
-    except FileNotFoundError:
-        pass
-    else:
-        return
-
-    targets = _backup_targets(plan)
-    job_target_ids = (
-        "primary:cron/jobs.json",
-        "verification:cron/jobs.json",
-    )
-    entries = [
-        _snapshot_backup_target(target_id, targets[target_id], plan)
-        for target_id in job_target_ids
-    ]
-    key = _read_or_create_backup_key(plan, create=True)
-    signed = {
-        **_backup_unsigned(entries),
-        "hmac_sha256": _backup_signature(key, entries),
-    }
-    _atomic_write(destination, _serialize(signed), 0o600)
-    _require_protected_file(destination, "Backup manifest")
+    _finish_jobs_preflight_backup(plan)
 
 
 def _publisher_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
@@ -1492,6 +1606,28 @@ def _job_script_consumes_managed_target(
 
     scripts_root = home / "scripts"
     candidate = raw if raw.is_absolute() else scripts_root / raw
+
+    # A hard link can live outside scripts_root and use an unrelated basename.
+    # Compare the non-followed regular-file identity before the containment
+    # check so every alias of a managed executable is still quiesced.  lstat
+    # avoids opening FIFOs/devices or following an attacker-selected symlink.
+    try:
+        candidate_details = candidate.lstat()
+    except (FileNotFoundError, OSError, RuntimeError, ValueError):
+        candidate_details = None
+    if candidate_details is not None and stat.S_ISREG(candidate_details.st_mode):
+        for managed_name in managed_names:
+            try:
+                managed_details = (scripts_root / managed_name).lstat()
+            except (FileNotFoundError, OSError, RuntimeError, ValueError):
+                continue
+            if (
+                stat.S_ISREG(managed_details.st_mode)
+                and candidate_details.st_dev == managed_details.st_dev
+                and candidate_details.st_ino == managed_details.st_ino
+            ):
+                return True
+
     try:
         resolved_root = scripts_root.resolve(strict=False)
         resolved_candidate = candidate.resolve(strict=False)
@@ -1562,6 +1698,7 @@ def _reconciled_managed_job_files(
     homes: dict[str, list[dict[str, Any]]],
     *,
     enabled: bool,
+    stable_enabled_files: dict[Path, bytes] | None = None,
 ) -> tuple[dict[Path, bytes], tuple[str, ...]]:
     rendered: dict[Path, bytes] = {}
     ambiguities: list[str] = []
@@ -1571,6 +1708,9 @@ def _reconciled_managed_job_files(
         path = profile_home / "cron/jobs.json"
         _require_safe_target(path, plan, may_be_missing=True)
         payload, jobs = _load_jobs(path)
+        baseline_jobs: list[dict[str, Any]] = []
+        if enabled and stable_enabled_files is not None and path in stable_enabled_files:
+            _, baseline_jobs = _decode_jobs(stable_enabled_files[path], path)
         rewritten = list(jobs)
         claimed: set[int] = set()
         for template in templates:
@@ -1590,7 +1730,24 @@ def _reconciled_managed_job_files(
                 ambiguities.append(template["name"])
             selected = exact[0] if exact else matches[0] if matches else None
             existing = rewritten[selected] if selected is not None else None
-            updated = _job_for_write(template, existing, enabled, not enabled)
+            stable_existing = [
+                job
+                for job in baseline_jobs
+                if job.get("name") == template["name"]
+                and job.get("id") == template["id"]
+                and job.get("enabled") is True
+                and job.get("state") == "scheduled"
+            ]
+            write_existing = (
+                stable_existing[0]
+                if enabled
+                and len(stable_existing) == 1
+                and existing is not None
+                and existing.get("name") == template["name"]
+                and existing.get("id") == template["id"]
+                else existing
+            )
+            updated = _job_for_write(template, write_existing, enabled, not enabled)
             if not enabled:
                 updated = _quiesced_job(updated, "managed-target-quiesce")
             if selected is not None:
@@ -1733,8 +1890,7 @@ def _quiesce_managed_jobs_before_preflight(
 ) -> None:
     if not _managed_jobs_require_preflight_quiesce(plan, homes):
         return
-    _capture_job_backup_prefix(plan)
-    _read_or_create_backup_key(plan, create=True)
+    _capture_jobs_preflight_backup(plan)
     disabled = _disabled_managed_job_files(plan, homes)
     _execute_jobs_transaction(
         plan,
@@ -1785,7 +1941,7 @@ def _begin_jobs_transaction(
         raise InstallError("UNSAFE_JOB_STATE: an unfinished Hermes jobs transaction already exists.")
     recovery = _jobs_transaction_recovery_payload(plan, recovery_contents)
     unsigned = _jobs_transaction_unsigned(operation, recovery)
-    key = _read_or_create_backup_key(plan, create=False)
+    key = _read_or_create_jobs_transaction_key(plan, create=True)
     payload = {
         **unsigned,
         "hmac_sha256": hmac.new(
@@ -1816,7 +1972,7 @@ def _load_jobs_transaction(plan: dict[str, Any]) -> dict[Path, bytes]:
         raise InstallError("Hermes jobs transaction journal schema is invalid.")
     unsigned = _jobs_transaction_unsigned(payload["operation"], payload["recovery"])
     signature = payload.get("hmac_sha256")
-    key = _read_or_create_backup_key(plan, create=False)
+    key = _read_or_create_jobs_transaction_key(plan, create=False)
     expected_signature = hmac.new(
         key, _serialize(unsigned), hashlib.sha256
     ).hexdigest()
@@ -1978,6 +2134,13 @@ def _apply_install_under_job_locks(
     ordinary_script_copies = [pair for pair in script_copies if pair not in publisher_copies]
     control_manifest = _control_manifest_path(plan)
     _recover_jobs_transaction(plan, homes)
+    initial_job_files: dict[Path, bytes] = {}
+    for home in homes:
+        jobs_path = Path(home) / "cron/jobs.json"
+        _require_safe_target(jobs_path, plan, may_be_missing=True)
+        initial_job_files[jobs_path] = (
+            jobs_path.read_bytes() if jobs_path.exists() else _serialize({"jobs": []})
+        )
     publisher_identity_count = _publisher_exact_identity_count(plan)
     _quiesce_managed_jobs_before_preflight(
         plan, homes, operation="install-quiesce"
@@ -2070,7 +2233,10 @@ def _apply_install_under_job_locks(
         )
         if enable:
             enabled_job_files, enable_ambiguities = _reconciled_managed_job_files(
-                plan, homes, enabled=True
+                plan,
+                homes,
+                enabled=True,
+                stable_enabled_files=initial_job_files,
             )
             if enable_ambiguities:
                 raise InstallError(
@@ -2288,6 +2454,7 @@ def _restore_install_under_job_locks(plan: dict[str, Any]) -> dict[str, Any]:
             plan, homes, expected_enabled=False, require_present=False
         )
         _finish_jobs_transaction(plan)
+        _finish_jobs_preflight_backup(plan)
     except Exception:
         try:
             _recover_jobs_transaction(plan, homes)

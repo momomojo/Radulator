@@ -638,6 +638,90 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue(all(job.get("state") == "paused" for job in consumers))
         self.assertTrue(all(job.get("next_run_at") is None for job in consumers))
 
+    def test_external_hardlink_alias_is_quiesced_and_rejected_before_asset_copy(self):
+        apply_install(**self.kwargs())
+        self.set_publisher_enabled()
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        scripts = self.radulator_home / "scripts"
+        publisher_wrapper = scripts / "trusted_publisher_cron.sh"
+        drifted = b"#!/bin/sh\nexit 94\n"
+        publisher_wrapper.write_bytes(drifted)
+        publisher_wrapper.chmod(0o700)
+        external_alias = self.default_home / "external-publisher-alias.sh"
+        os.link(publisher_wrapper, external_alias)
+        payload["jobs"].append({
+            "id": "external-hardlink-publisher",
+            "name": "external-hardlink-publisher",
+            "script": str(external_alias),
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+
+        with self.assertRaisesRegex(InstallError, "ambiguous|duplicate"):
+            apply_install(**self.kwargs())
+
+        self.assertEqual(publisher_wrapper.read_bytes(), drifted)
+        consumers = [
+            job
+            for job in json.loads(jobs_path.read_text())["jobs"]
+            if job.get("id") in {"1def08dbcb74", "external-hardlink-publisher"}
+        ]
+        self.assertEqual(len(consumers), 2)
+        self.assertTrue(all(job.get("enabled") is False for job in consumers))
+        self.assertTrue(all(job.get("state") == "paused" for job in consumers))
+        self.assertTrue(all(job.get("next_run_at") is None for job in consumers))
+
+    def test_restore_quiesces_external_hardlink_alias_before_first_restore_write(self):
+        apply_install(**self.kwargs())
+        self.set_publisher_enabled()
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        publisher_wrapper = (
+            self.radulator_home / "scripts" / "trusted_publisher_cron.sh"
+        )
+        external_alias = self.default_home / "restore-publisher-alias.sh"
+        os.link(publisher_wrapper, external_alias)
+        payload["jobs"].append({
+            "id": "restore-hardlink-publisher",
+            "name": "restore-hardlink-publisher",
+            "script": str(external_alias),
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+        original_apply = install_module._apply_restored_target
+        observed = []
+
+        def observe_first_restore_write(target, existed, mode, content):
+            if not observed:
+                current = json.loads(jobs_path.read_text())["jobs"]
+                alias = next(
+                    job
+                    for job in current
+                    if job.get("id") == "restore-hardlink-publisher"
+                )
+                observed.append(
+                    (
+                        alias.get("enabled"),
+                        alias.get("state"),
+                        alias.get("next_run_at"),
+                    )
+                )
+            return original_apply(target, existed, mode, content)
+
+        with mock.patch.object(
+            install_module,
+            "_apply_restored_target",
+            side_effect=observe_first_restore_write,
+        ):
+            restore_install(**self.kwargs())
+
+        self.assertEqual(observed, [(False, "paused", None)])
+
     def test_duplicate_exact_publisher_identities_are_quiesced_before_rejection(self):
         jobs_path = self.radulator_home / "cron" / "jobs.json"
         payload = json.loads(jobs_path.read_text())
@@ -1052,6 +1136,24 @@ with lock_path.open('a+') as lock:
         self.assertEqual(publisher["state"], "paused")
         self.assertIsNone(publisher["next_run_at"])
 
+    def test_restore_unsafe_backup_key_quiesces_enabled_publisher_before_rejection(self):
+        apply_install(**self.kwargs())
+        self.set_publisher_enabled()
+        key_path = (
+            self.radulator_home
+            / "state"
+            / "radulator-release-backup.hmac.key"
+        )
+        key_path.chmod(0o644)
+
+        with self.assertRaisesRegex(InstallError, "0600"):
+            restore_install(**self.kwargs())
+
+        publisher = self.publisher_job()
+        self.assertIs(publisher["enabled"], False)
+        self.assertEqual(publisher["state"], "paused")
+        self.assertIsNone(publisher["next_run_at"])
+
     def test_restore_rejects_signed_unknown_duplicate_and_injected_targets(self):
         for mutation, message in (
             (lambda entries: entries[0].update({"target_id": "attacker.unknown"}), "unknown"),
@@ -1302,6 +1404,42 @@ with lock_path.open('a+') as lock:
         self.assertTrue(all(item["disabled"] and item["installed"] for item in observed))
         self.assertTrue(self.publisher_job()["enabled"])
 
+    def test_repeated_enable_is_an_exact_jobs_file_noop_across_timestamp_boundaries(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+        with mock.patch.object(
+            install_module, "_now", return_value="2026-08-26T12:00:00Z"
+        ):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=public_keys,
+                activation_test_runner=self.passing_activation_runner,
+            )
+        before = {
+            path: path.read_bytes()
+            for path in (
+                self.radulator_home / "cron" / "jobs.json",
+                self.default_home / "cron" / "jobs.json",
+            )
+        }
+
+        with mock.patch.object(
+            install_module, "_now", return_value="2026-08-26T12:00:02Z"
+        ):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=public_keys,
+                activation_test_runner=self.passing_activation_runner,
+            )
+
+        self.assertEqual(
+            before,
+            {path: path.read_bytes() for path in before},
+        )
+
     def test_failed_post_copy_enable_restores_prior_publisher_bytes_and_remains_disabled(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -1397,6 +1535,61 @@ with lock_path.open('a+') as lock:
             set(entries),
             {"primary:cron/jobs.json", "verification:cron/jobs.json"},
         )
+        original_primary = json.loads(
+            base64.b64decode(
+                entries["primary:cron/jobs.json"]["content_base64"]
+            )
+        )
+        original_publisher = next(
+            job
+            for job in original_primary["jobs"]
+            if job.get("id") == "1def08dbcb74"
+        )
+        self.assertIs(original_publisher["enabled"], True)
+
+    def test_unsafe_backup_key_is_checked_only_after_durable_quiescence_and_preserves_original_jobs(self):
+        plan = build_plan(**self.kwargs())
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        publisher = next(
+            job for job in plan["jobs"] if job["name"] == "radulator-trusted-publisher"
+        )
+        payload["jobs"].append({
+            key: value for key, value in publisher.items() if key != "_home"
+        })
+        payload["jobs"][-1].update({
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+        key_path = (
+            self.radulator_home
+            / "state"
+            / "radulator-release-backup.hmac.key"
+        )
+        key_path.parent.mkdir()
+        key_path.write_bytes(b"unsafe-key")
+        key_path.chmod(0o644)
+
+        with self.assertRaisesRegex(InstallError, "0600|wrong length"):
+            apply_install(**self.kwargs())
+
+        current = self.publisher_job()
+        self.assertIs(current["enabled"], False)
+        self.assertEqual(current["state"], "paused")
+        self.assertIsNone(current["next_run_at"])
+
+        key_path.unlink()
+        apply_install(**self.kwargs())
+        backup = json.loads(
+            (
+                self.radulator_home
+                / "state"
+                / "radulator-release-backup.json"
+            ).read_text()
+        )
+        entries = {entry["target_id"]: entry for entry in backup["entries"]}
         original_primary = json.loads(
             base64.b64decode(
                 entries["primary:cron/jobs.json"]["content_base64"]

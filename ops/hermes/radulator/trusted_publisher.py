@@ -91,6 +91,12 @@ class PublisherPending(PublisherError):
     pass
 
 
+class PublisherCompletionAmbiguous(PublisherError):
+    """A terminal CAS may have committed, so readiness must not be removed."""
+
+    pass
+
+
 @dataclasses.dataclass(frozen=True)
 class PublishedPullRequest:
     number: int
@@ -1618,6 +1624,97 @@ def _ensure_exact_comment(
     return readback[0].id
 
 
+def _recover_committed_lifecycle_completion(
+    *,
+    candidate: TrustedCommit,
+    pr: PublishedPullRequest,
+    config: PublisherConfig,
+    kb: Any,
+    conn: Any,
+    tracker_id: str,
+    tracker_status: str,
+    existing_tracker: bool,
+    relation_task: str,
+    expected_parents: list[str],
+    comment_id: int,
+    comment: str,
+    completion: str,
+    runner: Any,
+) -> bool:
+    """Resolve a lost CAS response from independent terminal readbacks.
+
+    The host CAS may commit immediately before its client connection fails.
+    Removing the label in that state would strand a completed task, so this
+    path accepts only the exact task/tracker/relation/comment/PR state and
+    restores the readiness label only on that exact open PR when necessary.
+    """
+    implementation = kb.get_task(conn, candidate.task_id)
+    if implementation is None or getattr(implementation, "status", None) != "done":
+        return False
+    if getattr(implementation, "result", None) != completion:
+        raise PublisherCompletionAmbiguous(
+            "UNSAFE_COMPLETION_STATE: terminal implementation result is not exact"
+        )
+    tracker = kb.get_task(conn, tracker_id)
+    if (
+        tracker is None
+        or getattr(tracker, "status", None) != tracker_status
+        or not isinstance(getattr(tracker, "body", None), str)
+        or not _has_exact_pr_reference(tracker.body, pr.number)
+        or (
+            not existing_tracker
+            and not _has_exact_sha_reference(tracker.body, candidate.head_sha)
+        )
+        or _exact_parent_ids(kb, conn, relation_task) != expected_parents
+    ):
+        raise PublisherCompletionAmbiguous(
+            "UNSAFE_COMPLETION_STATE: terminal release tracker authority is not exact"
+        )
+    comments = [
+        item
+        for item in kb.list_comments(conn, candidate.task_id)
+        if getattr(item, "id", None) == comment_id
+        and getattr(item, "task_id", None) == candidate.task_id
+        and getattr(item, "author", None) == "radulator-trusted-publisher"
+        and getattr(item, "body", None) == comment
+    ]
+    if len(comments) != 1:
+        raise PublisherCompletionAmbiguous(
+            "UNSAFE_COMPLETION_STATE: terminal audit comment is not exact"
+        )
+    current_pr = _read_pr(
+        pr.number,
+        candidate,
+        config,
+        expected_base_sha=pr.base_sha,
+        runner=runner,
+    )
+    if "ready-for-gate" not in current_pr.labels:
+        _gh(
+            "pr",
+            "edit",
+            str(pr.number),
+            "--repo",
+            config.repository,
+            "--add-label",
+            "ready-for-gate",
+            cwd=Path(candidate.workspace),
+            runner=runner,
+        )
+        current_pr = _read_pr(
+            pr.number,
+            candidate,
+            config,
+            expected_base_sha=pr.base_sha,
+            runner=runner,
+        )
+    if "ready-for-gate" not in current_pr.labels:
+        raise PublisherCompletionAmbiguous(
+            "UNSAFE_COMPLETION_STATE: terminal PR readiness could not be restored"
+        )
+    return True
+
+
 def complete_lifecycle_handoff(
     candidate: TrustedCommit,
     pr: PublishedPullRequest,
@@ -1925,35 +2022,40 @@ def complete_lifecycle_handoff(
         "head_sha": candidate.head_sha,
         "release_tracker_id": tracker_id,
     }
-    completed = complete_authority(
-        conn,
-        contract=COMPLETION_CAS_CONTRACT,
-        claim_id=authority["claim_id"],
-        host_receipt_id=authority["host_receipt_id"],
-        host_receipt_signature=authority["host_receipt_signature"],
-        expected_repository=config.repository,
-        expected_board=config.board,
-        task_id=candidate.task_id,
-        expected_status="blocked",
-        expected_block_kind="capability",
-        expected_project_id=candidate.project_id,
-        expected_workspace_path=candidate.workspace,
-        expected_branch_name=candidate.branch,
-        expected_run_id=candidate.run_id,
-        expected_base_sha=candidate.base_sha,
-        expected_head_sha=candidate.head_sha,
-        expected_changed_paths=list(candidate.changed_paths),
-        expected_tracker_id=tracker_id,
-        expected_tracker_status=tracker_status,
-        relation_task_id=relation_task,
-        expected_parent_ids=expected_parents,
-        expected_comment_id=comment_id,
-        expected_comment_author="radulator-trusted-publisher",
-        expected_comment_body=comment,
-        result=completion,
-        summary=completion,
-        metadata=completion_metadata,
-    )
+    completion_error: Exception | None = None
+    try:
+        completed = complete_authority(
+            conn,
+            contract=COMPLETION_CAS_CONTRACT,
+            claim_id=authority["claim_id"],
+            host_receipt_id=authority["host_receipt_id"],
+            host_receipt_signature=authority["host_receipt_signature"],
+            expected_repository=config.repository,
+            expected_board=config.board,
+            task_id=candidate.task_id,
+            expected_status="blocked",
+            expected_block_kind="capability",
+            expected_project_id=candidate.project_id,
+            expected_workspace_path=candidate.workspace,
+            expected_branch_name=candidate.branch,
+            expected_run_id=candidate.run_id,
+            expected_base_sha=candidate.base_sha,
+            expected_head_sha=candidate.head_sha,
+            expected_changed_paths=list(candidate.changed_paths),
+            expected_tracker_id=tracker_id,
+            expected_tracker_status=tracker_status,
+            relation_task_id=relation_task,
+            expected_parent_ids=expected_parents,
+            expected_comment_id=comment_id,
+            expected_comment_author="radulator-trusted-publisher",
+            expected_comment_body=comment,
+            result=completion,
+            summary=completion,
+            metadata=completion_metadata,
+        )
+    except Exception as error:
+        completion_error = error
+        completed = None
     expected_completion = {
         "contract": COMPLETION_CAS_CONTRACT,
         "status": "completed",
@@ -1971,14 +2073,49 @@ def complete_lifecycle_handoff(
         "changed_paths": list(candidate.changed_paths),
         "tracker_id": tracker_id,
     }
-    if (
-        not isinstance(completed, dict)
-        or set(completed) != set(expected_completion)
-        or any(
-            completed.get(key) != value
+    completion_response_exact = (
+        isinstance(completed, dict)
+        and set(completed) == set(expected_completion)
+        and all(
+            completed.get(key) == value
             for key, value in expected_completion.items()
         )
-    ):
+    )
+    if not completion_response_exact:
+        try:
+            recovered = _recover_committed_lifecycle_completion(
+                candidate=candidate,
+                pr=pr,
+                config=config,
+                kb=kb,
+                conn=conn,
+                tracker_id=tracker_id,
+                tracker_status=tracker_status,
+                existing_tracker=existing_tracker,
+                relation_task=relation_task,
+                expected_parents=expected_parents,
+                comment_id=comment_id,
+                comment=comment,
+                completion=completion,
+                runner=runner,
+            )
+        except PublisherCompletionAmbiguous:
+            raise
+        except Exception as recovery_error:
+            final_task = kb.get_task(conn, candidate.task_id)
+            if final_task is not None and getattr(final_task, "status", None) == "done":
+                raise PublisherCompletionAmbiguous(
+                    "UNSAFE_COMPLETION_STATE: committed authority could not be read back exactly"
+                ) from recovery_error
+            if completion_error is not None:
+                raise completion_error
+            raise PublisherError(
+                "implementation task authority CAS was not applied atomically"
+            ) from recovery_error
+        if recovered:
+            return tracker_id
+        if completion_error is not None:
+            raise completion_error
         raise PublisherError("implementation task authority CAS was not applied atomically")
     final_task = kb.get_task(conn, candidate.task_id)
     if (
@@ -2075,6 +2212,8 @@ def run_once(
             authority=authority,
             runner=runner,
         )
+    except PublisherCompletionAmbiguous:
+        raise
     except Exception:
         _compensate_ready_label(candidate, labeled, config, runner=runner)
         raise
