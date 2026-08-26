@@ -20,6 +20,53 @@
       }
     },
     {
+      "id": "exactly-70-hu-homogeneous-noncontrast-mass-category-ii",
+      "description": "The primary Bosniak v2019 publication includes a well-defined homogeneous mass measuring exactly 70 HU at noncontrast CT in category II.",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "hyperattenuating70",
+        "hyperattenuatingSize": "atMost3"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Likely benign Bosniak II renal mass" },
+          { "key": "Rationale", "includes": "homogeneous >=70 HU at noncontrast CT" }
+        ]
+      }
+    },
+    {
+      "id": "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv",
+      "description": "The primary Bosniak v2019 publication classifies an enhancing obtuse-margin convex protrusion measuring exactly 4 mm as a category IV nodule.",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "obtuse4",
+        "noduleEnhancement": "present",
+        "calcifications": "absent",
+        "density": "water"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "IV" },
+          { "key": "Rationale", "includes": "Enhancing >=4 mm convex protrusion with obtuse margins" }
+        ]
+      }
+    },
+    {
       "id": "noncontrast-minus9-to20-category-ii-not-simple-cyst",
       "description": "A homogeneous -9 to 20 HU mass characterized only at noncontrast CT is a Bosniak v2019 class II density-only subtype, not a fully characterized class I simple cyst.",
       "inputs": {
