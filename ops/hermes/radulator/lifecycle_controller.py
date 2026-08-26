@@ -497,6 +497,26 @@ def _reconciliation_action(event: LifecycleEvent) -> dict[str, Any]:
     }
 
 
+def _blocked_resume_event(
+    replay: ReplayState,
+    task_id: str,
+    retained_state: str,
+) -> LifecycleEvent | None:
+    current = replay.current_by_task.get(task_id)
+    if (
+        current is None
+        or current.state != "blocked"
+        or replay.blocked_resume_by_task.get(task_id) != retained_state
+    ):
+        return None
+    task_events = [event for event in replay.events if event.task_id == task_id]
+    if len(task_events) < 2 or task_events[-2].state != retained_state:
+        raise LedgerError(
+            f"Blocked lifecycle for {task_id} lost its exact retained {retained_state} event."
+        )
+    return task_events[-2]
+
+
 def reconcile_trackers(
     ledger: LifecycleLedger,
     spec: Any,
@@ -515,6 +535,7 @@ def reconcile_trackers(
         "bootstrapped": [],
         "already_reconciled": [],
         "terminal_mismatches": [],
+        "blocked_recoveries": [],
         "planned_actions": [],
         "applied_actions": [],
     }
@@ -594,20 +615,29 @@ def reconcile_trackers(
         if recorded_digest is not None and recorded_digest != entry_digest:
             raise LedgerError(f"Reconciliation spec conflicts with bootstrapped tracker {task_id}.")
 
-        if tracker_status in TERMINAL_KANBAN_STATUSES and current.state != "complete":
+        terminal_mismatch = (
+            tracker_status in TERMINAL_KANBAN_STATUSES
+            and current.state != "complete"
+        )
+        if terminal_mismatch:
             result["terminal_mismatches"].append(task_id)
-            action_event = current
-            if current.state == "blocked" and replay.blocked_resume_by_task.get(task_id) == "needs_fix":
-                action_event = next(
-                    event
-                    for event in reversed(replay.events)
-                    if event.task_id == task_id and event.state == "needs_fix"
-                )
-            actions = (
-                actions_for_event(action_event)
-                if action_event.state == "needs_fix"
-                else [_reconciliation_action(current)]
-            )
+
+        action_event = _blocked_resume_event(
+            replay,
+            task_id,
+            "needs_fix",
+        )
+        if action_event is not None:
+            result["blocked_recoveries"].append(task_id)
+            actions = actions_for_event(action_event)
+        elif terminal_mismatch and current.state == "needs_fix":
+            actions = actions_for_event(current)
+        elif terminal_mismatch:
+            actions = [_reconciliation_action(current)]
+        else:
+            actions = []
+
+        if actions:
             result["planned_actions"].extend(actions)
             if apply:
                 result["applied_actions"].extend(execute_actions(actions, adapter))

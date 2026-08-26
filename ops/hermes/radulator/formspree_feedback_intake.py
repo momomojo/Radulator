@@ -438,15 +438,83 @@ def _closure_task(received: str, digest: str, triage_task_id: str) -> Any:
     return title, body
 
 
-def _verified_feedback_task(kanban: Any, task_id: str, digest: str) -> Dict[str, Any]:
+def _feedback_task_readback(kanban: Any, task_id: str) -> Dict[str, Any]:
     try:
         readback = kanban.show(task_id)
     except Exception as error:
         raise FeedbackIntakeError("Kanban feedback task failed readback.") from error
-    if _find_task_id(readback) != task_id or not _contains_text(readback, digest):
-        raise FeedbackIntakeError("Kanban feedback task failed exact digest readback.")
+    if _find_task_id(readback) != task_id:
+        raise FeedbackIntakeError("Kanban feedback task failed exact task readback.")
     _task_status(readback, task_id)
     return readback
+
+
+def _verified_feedback_task(kanban: Any, task_id: str, digest: str) -> Dict[str, Any]:
+    readback = _feedback_task_readback(kanban, task_id)
+    if not _contains_text(readback, digest):
+        raise FeedbackIntakeError("Kanban feedback task failed exact digest readback.")
+    return readback
+
+
+def _legacy_binding_quarantine_task(
+    received: str,
+    digest: str,
+    legacy_task_id: str,
+) -> Any:
+    title = "Review unbound Radulator feedback receipt " + digest[:12]
+    body = "\n".join([
+        "Source: authenticated legacy Radulator feedback binding review",
+        "Repository: momomojo/Radulator",
+        "Received: " + received,
+        "Receipt digest: " + digest,
+        "Persisted legacy task: " + legacy_task_id,
+        "",
+        "The protected intake state maps this authenticated Gmail delivery to the persisted legacy task, but authoritative Kanban readback does not contain the receipt digest.",
+        "The task-to-receipt binding must not be inferred. Preserve the legacy task and this quarantine receipt without marking either as released.",
+        "Review the authenticated delivery, protected receipt state, and exact Kanban history; record an explicit reviewed binding or a documented replacement before resuming this receipt lifecycle.",
+    ])
+    return title, body
+
+
+def _create_verified_legacy_binding_quarantine(
+    kanban: Any,
+    *,
+    received: str,
+    digest: str,
+    legacy_task_id: str,
+) -> str:
+    title, body = _legacy_binding_quarantine_task(
+        received,
+        digest,
+        legacy_task_id,
+    )
+    try:
+        task_id = kanban.create(
+            title,
+            body,
+            (
+                "radulator-formspree-legacy-binding-quarantine:"
+                + digest
+                + ":"
+                + legacy_task_id
+            ),
+            triage=True,
+        )
+        readback = kanban.show(task_id)
+    except Exception as error:
+        raise FeedbackIntakeError(
+            "Kanban legacy feedback binding quarantine failed readback."
+        ) from error
+    if (
+        _find_task_id(readback) != task_id
+        or not _contains_text(readback, digest)
+        or not _contains_text(readback, legacy_task_id)
+    ):
+        raise FeedbackIntakeError(
+            "Kanban legacy feedback binding quarantine failed exact readback."
+        )
+    _task_status(readback, task_id)
+    return task_id
 
 
 def _create_verified_closure(
@@ -490,7 +558,7 @@ def _reconcile_feedback_receipt(
     *,
     received: str,
     digest: str,
-) -> bool:
+) -> str:
     """Migrate legacy receipts and replace premature terminal closures safely."""
     original_task_id = receipt.get("task_id")
     if not isinstance(original_task_id, str) or not original_task_id.startswith("t_"):
@@ -500,7 +568,40 @@ def _reconcile_feedback_receipt(
 
     triage_task_id = receipt.get("triage_task_id")
     if triage_task_id is None:
-        _verified_feedback_task(kanban, original_task_id, digest)
+        legacy_quarantine_id = receipt.get("legacy_binding_quarantine_task_id")
+        legacy_binding_status = receipt.get("legacy_binding_status")
+        if legacy_quarantine_id is not None or legacy_binding_status is not None:
+            if (
+                legacy_binding_status != "quarantined"
+                or not isinstance(legacy_quarantine_id, str)
+                or not legacy_quarantine_id.startswith("t_")
+            ):
+                raise FeedbackIntakeError(
+                    "Persisted legacy feedback binding quarantine is invalid."
+                )
+            _feedback_task_readback(kanban, original_task_id)
+            quarantine = _verified_feedback_task(
+                kanban,
+                legacy_quarantine_id,
+                digest,
+            )
+            if not _contains_text(quarantine, original_task_id):
+                raise FeedbackIntakeError(
+                    "Legacy feedback binding quarantine lost its task reference."
+                )
+            return "reconciled" if authenticated_changed else "unchanged"
+
+        legacy_readback = _feedback_task_readback(kanban, original_task_id)
+        if not _contains_text(legacy_readback, digest):
+            quarantine_id = _create_verified_legacy_binding_quarantine(
+                kanban,
+                received=received,
+                digest=digest,
+                legacy_task_id=original_task_id,
+            )
+            receipt["legacy_binding_status"] = "quarantined"
+            receipt["legacy_binding_quarantine_task_id"] = quarantine_id
+            return "quarantined"
         triage_task_id = original_task_id
         superseded = receipt.setdefault("superseded_task_ids", [])
         if not isinstance(superseded, list) or any(
@@ -545,7 +646,7 @@ def _reconcile_feedback_receipt(
             raise FeedbackIntakeError("Replacement feedback closure is already terminal without release proof.")
         receipt["triage_task_id"] = triage_task_id
         receipt["task_id"] = task_id
-        return True
+        return "reconciled"
 
     if not isinstance(triage_task_id, str) or not triage_task_id.startswith("t_"):
         raise FeedbackIntakeError("Persisted feedback receipt has an invalid triage task id.")
@@ -559,7 +660,7 @@ def _reconcile_feedback_receipt(
         status in TERMINAL_TASK_STATUSES
         and _has_release_closure_proof(readback, digest, original_task_id)
     ):
-        return authenticated_changed
+        return "reconciled" if authenticated_changed else "unchanged"
 
     task_id, replacement = _create_verified_closure(
         kanban,
@@ -579,7 +680,18 @@ def _reconcile_feedback_receipt(
     if original_task_id not in superseded:
         superseded.append(original_task_id)
     receipt["task_id"] = task_id
-    return True
+    return "reconciled"
+
+
+def _record_reconciliation_outcome(outcome: Dict[str, int], result: str) -> None:
+    if result == "reconciled":
+        outcome["reconciled"] = outcome.get("reconciled", 0) + 1
+    elif result == "quarantined":
+        outcome["quarantined"] += 1
+    elif result == "unchanged":
+        outcome["already_processed"] += 1
+    else:
+        raise FeedbackIntakeError("Feedback reconciliation returned an invalid outcome.")
 
 
 def _quarantine_task(received: str, digest: str) -> Any:
@@ -678,17 +790,15 @@ def _process_feedback_locked(
         )
         if existing_feedback and existing_receipt.get("authenticated_origin") is True:
             received = _received_date(summary.get("date"))
-            reconciled = _reconcile_feedback_receipt(
+            reconciliation = _reconcile_feedback_receipt(
                 kanban,
                 existing_receipt,
                 received=received,
                 digest=digest,
             )
-            if reconciled:
+            if reconciliation != "unchanged":
                 _write_state(state_path, state)
-                outcome["reconciled"] = outcome.get("reconciled", 0) + 1
-            else:
-                outcome["already_processed"] += 1
+            _record_reconciliation_outcome(outcome, reconciliation)
             continue
         if isinstance(existing_receipt, dict) and existing_receipt.get("classification") == "untrusted":
             outcome["already_processed"] += 1
@@ -735,17 +845,14 @@ def _process_feedback_locked(
             new_attempted += 1
 
         if existing_feedback:
-            reconciled = _reconcile_feedback_receipt(
+            reconciliation = _reconcile_feedback_receipt(
                 kanban,
                 existing_receipt,
                 received=received,
                 digest=digest,
             )
             _write_state(state_path, state)
-            if reconciled:
-                outcome["reconciled"] = outcome.get("reconciled", 0) + 1
-            else:
-                outcome["already_processed"] += 1
+            _record_reconciliation_outcome(outcome, reconciliation)
             continue
 
         classification = "feedback"

@@ -975,6 +975,162 @@ class LifecycleLedgerTests(unittest.TestCase):
         )
         self.assertEqual(result["terminal_mismatches"], ["t_parent"])
 
+    def test_reconciliation_repairs_only_latest_blocked_needs_fix_edge_idempotently(self):
+        self.append("feedback", 0)
+        self.append("implementing", 1)
+        self.append("testing", 2)
+        self.append("review", 3)
+        self.append(
+            "needs_fix",
+            4,
+            {"verdict_id": "old-verdict", "reason": "Old correction."},
+        )
+        self.ledger.append(
+            idempotency_key="corrected-head",
+            source_id="feedback-17",
+            task_id="t_parent",
+            state="implementing",
+            pr=42,
+            head_sha=NEXT_HEAD,
+            evidence={"prerequisite_change_id": "commit:" + NEXT_HEAD},
+            timestamp="2026-08-23T20:05:00Z",
+        )
+        for index, state in enumerate(("testing", "review"), start=6):
+            self.ledger.append(
+                idempotency_key=f"latest-{state}",
+                source_id="feedback-17",
+                task_id="t_parent",
+                state=state,
+                pr=42,
+                head_sha=NEXT_HEAD,
+                evidence={"proof": state},
+                timestamp=f"2026-08-23T20:{index:02d}:00Z",
+            )
+        latest = self.ledger.append(
+            idempotency_key="latest-needs-fix",
+            source_id="feedback-17",
+            task_id="t_parent",
+            state="needs_fix",
+            pr=42,
+            head_sha=NEXT_HEAD,
+            evidence={"verdict_id": "latest-verdict", "reason": "Latest correction."},
+            timestamp="2026-08-23T20:08:00Z",
+        )
+        self.ledger.append(
+            idempotency_key="latest-blocked",
+            source_id="feedback-17",
+            task_id="t_parent",
+            state="blocked",
+            pr=42,
+            head_sha=NEXT_HEAD,
+            evidence={"reason": "Legacy dependency inversion."},
+            timestamp="2026-08-23T20:09:00Z",
+        )
+        latest_action = actions_for_event(latest)[0]
+        tasks = {
+            "t_parent": {
+                "task": {"id": "t_parent", "status": "todo", "body": "tracker"},
+                "parents": ["t_unrelated_tracker_prerequisite"],
+                "comments": [],
+            },
+            "t_source": {
+                "task": {"id": "t_source", "status": "done", "body": "source"},
+                "parents": [],
+            },
+            "t_old_rework": {
+                "task": {
+                    "id": "t_old_rework",
+                    "status": "todo",
+                    "body": "Old correction.",
+                    "assignee": "codex-coding",
+                },
+                "parents": ["t_parent"],
+            },
+            "t_latest_rework": {
+                "task": {
+                    "id": "t_latest_rework",
+                    "status": "todo",
+                    "body": latest_action["body"],
+                    "assignee": "codex-coding",
+                },
+                "parents": ["t_parent", "t_unrelated_rework_prerequisite"],
+            },
+        }
+        commands = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "create":
+                key = args[args.index("--idempotency-key") + 1]
+                self.assertEqual(
+                    key,
+                    "radulator-rework:t_parent:latest-verdict",
+                )
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks["t_latest_rework"]), "",
+                )
+            if args[0] == "show":
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks[args[1]]), "",
+                )
+            if args[0] == "unlink":
+                parent_id, child_id = args[1:3]
+                tasks[child_id]["parents"].remove(parent_id)
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            if args[0] == "link":
+                parent_id, child_id = args[1:3]
+                tasks[child_id]["parents"].append(parent_id)
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            if args[0] == "promote":
+                tasks[args[1]]["task"]["status"] = "ready"
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps({"ok": True}), "",
+                )
+            if args[0] == "comment":
+                tasks[args[1]]["comments"].append({"body": args[2]})
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            return subprocess.CompletedProcess(command, 1, "", "unexpected")
+
+        adapter = HermesKanbanCLI(runner=runner)
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "blocked-needs-fix-audit",
+            "trackers": [{
+                "task_id": "t_parent",
+                "source_id": "feedback-17",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }
+
+        first = lifecycle_module.reconcile_trackers(
+            self.ledger, spec, adapter, apply=True,
+        )
+        second = lifecycle_module.reconcile_trackers(
+            self.ledger, spec, adapter, apply=True,
+        )
+
+        self.assertEqual(first["blocked_recoveries"], ["t_parent"])
+        self.assertEqual(second["blocked_recoveries"], ["t_parent"])
+        self.assertEqual(
+            first["planned_actions"][0]["idempotency_key"],
+            "radulator-rework:t_parent:latest-verdict",
+        )
+        self.assertEqual(
+            tasks["t_latest_rework"]["parents"],
+            ["t_unrelated_rework_prerequisite"],
+        )
+        self.assertEqual(tasks["t_latest_rework"]["task"]["status"], "ready")
+        self.assertEqual(tasks["t_old_rework"]["parents"], ["t_parent"])
+        self.assertEqual(
+            tasks["t_parent"]["parents"],
+            ["t_unrelated_tracker_prerequisite", "t_latest_rework"],
+        )
+        self.assertEqual([cmd[2] for cmd in commands].count("unlink"), 1)
+        self.assertEqual([cmd[2] for cmd in commands].count("link"), 1)
+        self.assertEqual([cmd[2] for cmd in commands].count("promote"), 1)
+        self.assertEqual([cmd[2] for cmd in commands].count("comment"), 1)
+
     def test_reconcile_cli_is_read_only_until_apply_and_then_idempotent(self):
         spec_path = Path(self.temp.name) / "reviewed-reconciliation.json"
         spec_path.write_text(json.dumps({

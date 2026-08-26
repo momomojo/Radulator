@@ -7,11 +7,11 @@ Use this runbook only after the integrity change is merged, installed on the Mac
 Read each named task with `hermes kanban show <task-id> --json` and replay the lifecycle ledger before changing anything. The 2026-08-25 audit identifiers are routing clues, not permission to reuse stale facts:
 
 - legacy KBRC feedback receipt/closure: `t_1630667d`
+- legacy feedback tasks whose current Kanban body may lack the protected receipt digest: `t_a2add0b9`, `t_ae78d46c`
 - KBRC release tracker with no lifecycle entry: `t_56c8fd34`
 - MELD release tracker with no lifecycle entry: `t_f60ac506`
 - archived CAC tracker with terminal `NEEDS_FIX` ledger state: `t_b3daef55`
 - release tracker with the legacy inverted NEEDS_FIX edge: `t_45a5323f`
-- legacy NEEDS_FIX correction: `t_f55aa2c2`
 - dependency-cycle triage card: `t_16af0162`
 
 Stop if an id, receipt digest, source mapping, PR, head SHA, base SHA, lifecycle event, or relationship differs from the reviewed audit. Do not infer a PR/head/base mapping from titles. Do not archive, complete, unlink, or recreate any card during this read-only pass.
@@ -28,7 +28,9 @@ python3 /Users/agent/Documents/Radulator/ops/hermes/radulator/formspree_feedback
   --max-messages 100
 ```
 
-The legacy delivery is re-read from Gmail and must pass aligned Formspree authentication before any migration. Intake then verifies the exact persisted digest on `t_1630667d`, preserves that task in `superseded_task_ids`, assigns it as `triage_task_id`, and creates one idempotent open replacement closure whose key is versioned by the old task id. It persists the new closure as `task_id` only after digest, parent, status, and task-id readback.
+Each legacy delivery is re-read from Gmail and must pass aligned Formspree authentication before any migration. When the exact persisted digest is present on the legacy Kanban task, intake preserves that task in `superseded_task_ids`, assigns it as `triage_task_id`, and creates one idempotent open replacement closure whose key is versioned by the old task id. It persists the new closure as `task_id` only after digest, parent, status, and task-id readback.
+
+If authoritative Kanban readback does not contain the protected receipt digest, intake must not infer that the legacy task is the triage task. It creates one idempotent privacy-safe binding-quarantine task, records its exact id and `legacy_binding_status: quarantined` in the `0600` receipt state, preserves the original task id, and continues processing later authenticated feedback. Re-running intake must read the quarantine back and create nothing else. Resolve such a quarantine only from an explicit reviewed binding or documented replacement; a title, similar body, or nearby timestamp is not authority.
 
 Read the receipt state and both Kanban cards back. The new closure must be open, must depend on `t_1630667d`, and must not be terminal until its exact completed run contains `radulator-feedback-closure-proof/v1` metadata binding the receipt digest to one immutable release-marker SHA, the same production-smoke SHA/run, and the retained-learning receipt id. A PR, audit, delegated tracker, or prose-only claim is not closure. Re-running intake must create no additional task.
 
@@ -64,6 +66,14 @@ Use one entry per tracker. MELD and KBRC must omit `pr`, `head_sha`, and `base_s
       "pr": 169,
       "head_sha": "REPLACE_WITH_EXACT_40_CHARACTER_HEAD_SHA",
       "base_sha": "REPLACE_WITH_EXACT_40_CHARACTER_BASE_SHA"
+    },
+    {
+      "task_id": "t_45a5323f",
+      "source_id": "REPLACE_WITH_EXISTING_BLOCKED_TRACKER_SOURCE_ID",
+      "source": {
+        "kind": "kanban_task",
+        "task_id": "t_REPLACE_WITH_BLOCKED_TRACKER_SOURCE_TASK"
+      }
     }
   ]
 }
@@ -82,21 +92,22 @@ python3 /Users/agent/Documents/Radulator/ops/hermes/radulator/lifecycle_controll
   --hermes /Users/agent/.local/bin/hermes
 ```
 
-The plan must show only `feedback` bootstrap for missing MELD/KBRC coverage and a corrective prerequisite for archived/nonterminal CAC. It must not show approval, merge, deploy, smoke, learning, or completion. The controller preflights every tracker, source, digest, and optional PR/head/base tuple before any apply-side mutation, so one invalid entry leaves the whole batch unapplied. Recheck the frozen spec digest, then repeat the same command with `--apply`. Repeat it once more: it must report already reconciled/idempotent results and create no duplicate events or tasks.
+The plan must show only `feedback` bootstrap for missing MELD/KBRC coverage, a corrective prerequisite for archived/nonterminal CAC, and—when the refreshed ledger still shows it—the exact retained `NEEDS_FIX` recovery for `t_45a5323f`. It must not show approval, merge, deploy, smoke, learning, or completion. The controller preflights every tracker, source, digest, and optional PR/head/base tuple before any apply-side mutation, so one invalid entry leaves the whole batch unapplied. Recheck the frozen spec digest, then repeat the same command with `--apply`. Repeat it once more: it must report idempotent action readback and create no duplicate events, tasks, comments, or dependency edges.
 
-## 5. Repair only the exact inverted NEEDS_FIX edge
+## 5. Repair only the latest exact inverted NEEDS_FIX edge
 
-Do not decompose or replay `t_45a5323f` or `t_16af0162` merely because this runbook is being applied. Their current decomposed prerequisites may be valid work and must remain intact.
+Do not decompose or replay `t_45a5323f` or `t_16af0162` merely because this runbook is being applied. Their current decomposed prerequisites may be valid work and must remain intact. Include `t_45a5323f` in the reviewed reconciliation spec only after refreshing its exact `source_id` and source-task mapping.
 
-Replay the exact `NEEDS_FIX` ledger event for `t_45a5323f` and inspect the deterministic `radulator-rework:<tracker>:<verdict>` action. Apply it only if its idempotency key, body, verdict, exact PR/head, and recovered task all identify `t_f55aa2c2`. The controller then removes only `t_45a5323f -> t_f55aa2c2`, adds only `t_f55aa2c2 -> t_45a5323f`, verifies `t_f55aa2c2` has no open-tracker parent, and promotes it if needed. It preserves every unrelated decomposed prerequisite and creates no duplicate correction on replay.
+When the current ledger event is `blocked` with retained `resume_state: needs_fix`, reconciliation selects the immediately preceding exact `NEEDS_FIX` event for that tracker—not an older verdict or a task id copied from this runbook. Inspect the planned `radulator-rework:<tracker>:<latest-verdict>` action and require its body, verdict, exact PR/head, and idempotent Kanban readback to agree with the refreshed audit. The controller removes only the tracker's parent edge from that exact recovered task, adds only the recovered-task prerequisite edge to the tracker, verifies the recovered task has no open-tracker parent, and promotes it if needed. It preserves every unrelated parent on both tasks and creates no duplicate correction, comment, link, unlink, or promotion on replay.
 
-If the recovered task is not `t_f55aa2c2`, stop for review; never choose a child or parent by title alone.
+If the current blocked event does not retain `needs_fix`, if the immediately preceding tracker event is not the expected exact `NEEDS_FIX`, or if idempotent create readback resolves a different task/verdict/body than the refreshed audit, stop for review. Never choose a correction by title, historical task id, or stale runbook example.
 
 ## 6. Final readback
 
 Verify all of the following before allowing autonomous work to continue:
 
-- the Formspree receipt maps the authenticated legacy digest to the exact old triage/history id and one new open closure id;
+- each digest-bound Formspree receipt maps the authenticated legacy digest to the exact old triage/history id and one new open closure id;
+- each digestless legacy receipt retains its old task id plus exactly one open binding-quarantine id, without an inferred `triage_task_id`, and does not prevent later feedback from being processed;
 - MELD and KBRC have exactly one initial `feedback` ledger event with no inferred later state;
 - CAC remains `NEEDS_FIX` and has a runnable corrective obligation; it is not learned or complete;
 - the exact legacy NEEDS_FIX obligation is runnable and is a prerequisite of its tracker;
