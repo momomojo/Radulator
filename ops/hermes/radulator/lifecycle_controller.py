@@ -26,6 +26,7 @@ RECONCILIATION_RESULT_SCHEMA = "radulator-lifecycle-reconciliation-result/v1"
 ZERO_HASH = "0" * 64
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+DURATION_PATTERN = re.compile(r"^(\d+)([smhd]?)$")
 KANBAN_STATUSES = frozenset({
     "triage", "todo", "scheduled", "ready", "running", "blocked",
     "review", "done", "archived",
@@ -696,11 +697,15 @@ def _kanban_authority_snapshot(
     task_id: str,
 ) -> dict[str, Any]:
     task = _exact_task_record(value, task_id)
+    idempotency_readback = (
+        value.get("idempotency_readback") if isinstance(value, dict) else None
+    )
     return {
         "task": json.loads(_canonical(task)),
         "comments": json.loads(_canonical(_exact_task_comments(value))),
         "parents": sorted(_related_task_ids(value, "parents", task_id)),
         "children": sorted(_related_task_ids(value, "children", task_id)),
+        "idempotency_readback": json.loads(_canonical(idempotency_readback)),
     }
 
 
@@ -712,20 +717,36 @@ def _read_kanban_authority_snapshot(
     return _kanban_authority_snapshot(readback, task_id)
 
 
+def _read_stable_kanban_authority_set(
+    adapter: Any,
+    task_ids: list[str],
+) -> list[dict[str, Any]]:
+    if not task_ids:
+        raise LedgerError("Kanban authority task set is required for reconciliation.")
+    first = [
+        _read_kanban_authority_snapshot(adapter, task_id)
+        for task_id in task_ids
+    ]
+    second = [
+        _read_kanban_authority_snapshot(adapter, task_id)
+        for task_id in task_ids
+    ]
+    if first != second:
+        raise LedgerError(
+            f"Kanban authority changed during reconciliation for {task_ids[0]}."
+        )
+    return second
+
+
 def _read_stable_kanban_authority_pair(
     adapter: Any,
     tracker_id: str,
     source_id: str,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    first_tracker = _read_kanban_authority_snapshot(adapter, tracker_id)
-    first_source = _read_kanban_authority_snapshot(adapter, source_id)
-    second_tracker = _read_kanban_authority_snapshot(adapter, tracker_id)
-    second_source = _read_kanban_authority_snapshot(adapter, source_id)
-    if first_tracker != second_tracker or first_source != second_source:
-        raise LedgerError(
-            f"Kanban authority changed during reconciliation for {tracker_id}."
-        )
-    return second_tracker, second_source
+    tracker, source = _read_stable_kanban_authority_set(
+        adapter, [tracker_id, source_id],
+    )
+    return tracker, source
 
 
 def _require_kanban_authority_current(
@@ -811,15 +832,30 @@ def _advance_kanban_authority_after_action(
     tracker_id = authority["tracker_task_id"]
     source_id = authority["source_task_id"]
     before = authority["tracker"]
-    after, source = _read_stable_kanban_authority_pair(
-        adapter, tracker_id, source_id,
-    )
+    kind = action.get("kind")
+    prerequisite_id = receipt.get("task_id")
+    receipt_prerequisite = receipt.get("prerequisite_authority")
+    task_ids = [tracker_id, source_id]
+    if kind == "create_prerequisite":
+        if (
+            not isinstance(prerequisite_id, str)
+            or not prerequisite_id.startswith("t_")
+            or not isinstance(receipt_prerequisite, dict)
+        ):
+            raise LedgerError(
+                f"Kanban prerequisite authority changed during reconciliation for {tracker_id}."
+            )
+        task_ids.append(prerequisite_id)
+    current = _read_stable_kanban_authority_set(adapter, task_ids)
+    after, source = current[:2]
+    if kind == "create_prerequisite" and current[2] != receipt_prerequisite:
+        raise LedgerError(
+            f"Kanban prerequisite authority changed during reconciliation for {tracker_id}."
+        )
     if source != authority["source"]:
         raise LedgerError(
             f"Kanban authority changed during reconciliation for {tracker_id}."
         )
-    kind = action.get("kind")
-    prerequisite_id = receipt.get("task_id")
     comment_body = action.get("body")
     before_status = _task_status(
         {"task": before["task"]}, tracker_id,
@@ -1245,6 +1281,7 @@ def actions_for_event(event: LifecycleEvent) -> list[dict[str, Any]]:
             "head_sha": event.head_sha,
             "workflow": "release_learning",
             "assignee": "radulator",
+            "created_by": "radulator-lifecycle",
         }]
     if event.state == "learned":
         return [{
@@ -1278,7 +1315,11 @@ def release_tracker_action(parent_task_id: str, pr: int, head_sha: str) -> dict[
 _TASK_AUTHORITY_FIELDS = frozenset({
     "status", "state", "pr", "head_sha", "base_sha", "title", "body",
     "result", "branch_name", "assignee", "receipt_digest", "digest",
-    "parents", "children", "idempotency_key", "workflow",
+    "parents", "children", "idempotency_key", "workflow", "priority",
+    "created_by", "workspace_kind", "workspace_path", "project_id",
+    "max_runtime_seconds", "model_override", "provider_override", "skills",
+    "max_retries", "readback_contract", "body_sha256", "tenant",
+    "creation_origin", "created_at", "reasoning_effort",
 })
 
 
@@ -1345,6 +1386,79 @@ def _task_instruction_present(value: Any, task_id: str, body: str) -> bool:
     if task.get("body") == body:
         return True
     return any(comment.get("body") == body for comment in _exact_task_comments(value))
+
+
+def _duration_seconds(value: Any) -> int | None:
+    if value is None:
+        return None
+    match = DURATION_PATTERN.fullmatch(str(value).strip().lower())
+    if match is None:
+        raise LedgerError("Prerequisite max_runtime must be a deterministic duration.")
+    amount = int(match.group(1))
+    multiplier = {
+        "": 1,
+        "s": 1,
+        "m": 60,
+        "h": 60 * 60,
+        "d": 24 * 60 * 60,
+    }[match.group(2)]
+    return amount * multiplier
+
+
+def _require_immutable_prerequisite_authority(
+    value: Any,
+    task_id: str,
+    action: dict[str, Any],
+    body: str,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    task = _exact_task_record(value, task_id)
+    expected = {
+        "id": task_id,
+        "readback_contract": "hermes.kanban_task_readback.v1",
+        "title": action.get("title"),
+        "body": body,
+        "body_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+        "assignee": action.get("assignee"),
+        "priority": action.get("priority", 0),
+        "tenant": action.get("tenant"),
+        "workspace_kind": "scratch",
+        "workspace_path": None,
+        "branch_name": None,
+        "project_id": None,
+        "created_by": action.get("created_by", "user"),
+        "creation_origin": "trusted_cli",
+        "idempotency_key": idempotency_key,
+        "max_runtime_seconds": _duration_seconds(action.get("max_runtime")),
+        "model_override": None,
+        "provider_override": None,
+        "reasoning_effort": None,
+    }
+    if any(field not in task or task[field] != expected_value for field, expected_value in expected.items()):
+        raise LedgerError(
+            f"Created task {task_id} failed immutable prerequisite authority readback."
+        )
+    idempotency_readback = (
+        value.get("idempotency_readback") if isinstance(value, dict) else None
+    )
+    if idempotency_readback != {
+        "key": idempotency_key,
+        "active_match_count": 1,
+        "active_task_ids": [task_id],
+    }:
+        raise LedgerError(
+            f"Created task {task_id} failed immutable prerequisite authority readback."
+        )
+    created_at = task.get("created_at")
+    if not isinstance(created_at, int) or isinstance(created_at, bool) or created_at <= 0:
+        raise LedgerError(
+            f"Created task {task_id} failed immutable prerequisite authority readback."
+        )
+    if _task_status(value, task_id) not in KANBAN_STATUSES - {"triage", "scheduled"}:
+        raise LedgerError(
+            f"Created task {task_id} failed immutable prerequisite authority readback."
+        )
+    return task
 
 
 def _exact_task_evidence(value: Any, task_id: str) -> dict[str, Any]:
@@ -1629,46 +1743,15 @@ class HermesKanbanCLI:
                         "Kanban create response did not contain a prerequisite task id."
                     )
                 readback = self.show(task_id)
-                immutable_terminal = (
-                    action.get("verdict_id")
-                    and _task_status(readback, task_id) in TERMINAL_KANBAN_STATUSES
+                _require_immutable_prerequisite_authority(
+                    readback, task_id, action, body, idempotency_key,
                 )
-                if not _task_instruction_present(readback, task_id, body):
-                    if immutable_terminal:
-                        raise LedgerError(
-                            "Terminal NEEDS_FIX prerequisite failed exact body readback."
-                        )
-                    self._run([
-                        "comment", task_id, body,
-                        "--author", "radulator-lifecycle",
-                    ])
-                    readback = self.show(task_id)
-                if (
-                    action.get("assignee")
-                    and _exact_task_record(readback, task_id).get("assignee")
-                    != action["assignee"]
-                ):
-                    if immutable_terminal:
-                        raise LedgerError(
-                            "Terminal NEEDS_FIX prerequisite failed assignee readback."
-                        )
-                    self._run(["assign", task_id, action["assignee"]])
-                    readback = self.show(task_id)
-                if not _task_instruction_present(readback, task_id, body):
-                    raise LedgerError("Created prerequisite failed exact body readback.")
-                if (
-                    action.get("assignee")
-                    and _exact_task_record(readback, task_id).get("assignee")
-                    != action["assignee"]
-                ):
-                    raise LedgerError(
-                        "Created prerequisite failed assignee Kanban readback."
-                    )
                 return task_id, readback
 
             effective_key = action["idempotency_key"]
+            effective_body = action["body"]
             prerequisite_id, prerequisite = create_verified(
-                action["body"], effective_key,
+                effective_body, effective_key,
             )
             superseded_task_ids: list[str] = []
             status = _task_status(prerequisite, prerequisite_id)
@@ -1683,8 +1766,9 @@ class HermesKanbanCLI:
                 effective_key = (
                     action["idempotency_key"] + ":repair:" + terminal_id
                 )
+                effective_body = recovery_body
                 prerequisite_id, prerequisite = create_verified(
-                    recovery_body, effective_key,
+                    effective_body, effective_key,
                 )
                 if prerequisite_id == terminal_id:
                     raise LedgerError(
@@ -1726,6 +1810,19 @@ class HermesKanbanCLI:
                 raise LedgerError(
                     f"Lifecycle prerequisite {prerequisite_id} is not runnable or complete after reconciliation."
                 )
+            prerequisite = self.show(prerequisite_id)
+            _require_immutable_prerequisite_authority(
+                prerequisite,
+                prerequisite_id,
+                action,
+                effective_body,
+                effective_key,
+            )
+            status = _task_status(prerequisite, prerequisite_id)
+            if status not in allowed_statuses:
+                raise LedgerError(
+                    f"Lifecycle prerequisite {prerequisite_id} changed status after reconciliation."
+                )
             if tracker_id in _related_task_ids(prerequisite, "parents", prerequisite_id):
                 raise LedgerError("Lifecycle prerequisite still depends on its open release tracker.")
             receipt = {
@@ -1734,6 +1831,9 @@ class HermesKanbanCLI:
                 "tracker_task_id": tracker_id,
                 "idempotency_key": effective_key,
                 "status": status,
+                "prerequisite_authority": _kanban_authority_snapshot(
+                    prerequisite, prerequisite_id,
+                ),
             }
             if superseded_task_ids:
                 receipt["superseded_task_ids"] = superseded_task_ids

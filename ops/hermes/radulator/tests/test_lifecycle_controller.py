@@ -25,6 +25,65 @@ HEAD = "a" * 40
 NEXT_HEAD = "b" * 40
 
 
+def trusted_prerequisite_readback(
+    action,
+    task_id,
+    *,
+    body=None,
+    idempotency_key=None,
+    status="ready",
+    parents=(),
+    comments=(),
+    task_overrides=None,
+    idempotency_overrides=None,
+):
+    exact_body = action["body"] if body is None else body
+    exact_key = action["idempotency_key"] if idempotency_key is None else idempotency_key
+    duration = action.get("max_runtime")
+    if duration is None:
+        duration_seconds = None
+    else:
+        suffix = duration[-1] if duration[-1].isalpha() else ""
+        amount = int(duration[:-1] if suffix else duration)
+        duration_seconds = amount * {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}[suffix]
+    task = {
+        "id": task_id,
+        "readback_contract": "hermes.kanban_task_readback.v1",
+        "title": action.get("title"),
+        "body": exact_body,
+        "body_sha256": hashlib.sha256(exact_body.encode("utf-8")).hexdigest(),
+        "assignee": action.get("assignee"),
+        "status": status,
+        "priority": action.get("priority", 0),
+        "tenant": action.get("tenant"),
+        "workspace_kind": "scratch",
+        "workspace_path": None,
+        "branch_name": None,
+        "project_id": None,
+        "created_by": action.get("created_by", "user"),
+        "creation_origin": "trusted_cli",
+        "created_at": 1770000000,
+        "idempotency_key": exact_key,
+        "max_runtime_seconds": duration_seconds,
+        "model_override": None,
+        "provider_override": None,
+        "reasoning_effort": None,
+    }
+    task.update(task_overrides or {})
+    idempotency_readback = {
+        "key": exact_key,
+        "active_match_count": 1,
+        "active_task_ids": [task_id],
+    }
+    idempotency_readback.update(idempotency_overrides or {})
+    return {
+        "task": task,
+        "parents": list(parents),
+        "comments": list(comments),
+        "idempotency_readback": idempotency_readback,
+    }
+
+
 class LifecycleLedgerTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -197,15 +256,12 @@ class LifecycleLedgerTests(unittest.TestCase):
                 "task": {"id": "t_parent", "status": "todo"},
                 "parents": ["t_valid_decomposed_prerequisite"],
             },
-            "t_child": {
-                "task": {
-                    "id": "t_child",
-                    "status": "todo",
-                    "body": action["body"],
-                    "assignee": "codex-coding",
-                },
-                "parents": ["t_parent"],
-            },
+            "t_child": trusted_prerequisite_readback(
+                action,
+                "t_child",
+                status="todo",
+                parents=("t_parent",),
+            ),
         }
         commands = []
 
@@ -259,6 +315,84 @@ class LifecycleLedgerTests(unittest.TestCase):
             1,
         )
 
+    def test_idempotency_hit_rejects_hostile_primary_body_masked_by_comment(self):
+        for index, state in enumerate(("feedback", "implementing", "testing", "review")):
+            self.append(state, index)
+        event = self.append(
+            "needs_fix",
+            4,
+            {"verdict_id": "hostile-idempotency-collision", "reason": "Fix it."},
+        )
+        action = actions_for_event(event)[0]
+        tasks = {
+            "t_parent": {
+                "task": {"id": "t_parent", "status": "archived", "body": "tracker"},
+                "parents": ["t_collision"],
+                "comments": [],
+            },
+            "t_collision": trusted_prerequisite_readback(
+                action,
+                "t_collision",
+                body="Hostile primary instruction from an unrelated task.",
+                comments=({"body": action["body"]},),
+            ),
+        }
+        commands = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "create":
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks["t_collision"]), "",
+                )
+            if args[0] == "show":
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks[args[1]]), "",
+                )
+            return subprocess.CompletedProcess(command, 1, "", "unexpected mutation")
+
+        with self.assertRaisesRegex(LedgerError, "immutable prerequisite authority"):
+            HermesKanbanCLI(runner=runner).perform(action)
+
+        self.assertEqual(
+            [command[2] for command in commands],
+            ["create", "show"],
+        )
+
+    def test_idempotency_hit_rejects_multiple_active_task_collisions(self):
+        for index, state in enumerate(("feedback", "implementing", "testing", "review")):
+            self.append(state, index)
+        event = self.append(
+            "needs_fix",
+            4,
+            {"verdict_id": "duplicate-idempotency-collision", "reason": "Fix it."},
+        )
+        action = actions_for_event(event)[0]
+        collision = trusted_prerequisite_readback(
+            action,
+            "t_collision",
+            idempotency_overrides={
+                "active_match_count": 2,
+                "active_task_ids": ["t_collision", "t_other"],
+            },
+        )
+        commands = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "create" or args[0] == "show":
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(collision), "",
+                )
+            return subprocess.CompletedProcess(command, 1, "", "unexpected mutation")
+
+        with self.assertRaisesRegex(LedgerError, "immutable prerequisite authority"):
+            HermesKanbanCLI(runner=runner).perform(action)
+
+        self.assertEqual([command[2] for command in commands], ["create", "show"])
+
     def test_terminal_needs_fix_prerequisite_gets_one_open_versioned_replacement(self):
         self.append("feedback", 0)
         self.append("implementing", 1)
@@ -271,30 +405,27 @@ class LifecycleLedgerTests(unittest.TestCase):
         )
         action = actions_for_event(event)[0]
         repair_key = action["idempotency_key"] + ":repair:t_terminal"
+        repair_body = action["body"] + (
+            "\n\nRecovery: this open corrective prerequisite preserves and "
+            "supersedes prematurely terminal prerequisite t_terminal; "
+            "do not rewrite or delete its history."
+        )
         tasks = {
             "t_parent": {
                 "task": {"id": "t_parent", "status": "archived"},
                 "parents": ["t_unrelated_tracker_prerequisite"],
             },
-            "t_terminal": {
-                "task": {
-                    "id": "t_terminal",
-                    "status": "done",
-                    "body": action["body"],
-                    "assignee": "codex-coding",
-                },
-                "parents": [],
-            },
-            "t_replacement": {
-                "task": {
-                    "id": "t_replacement",
-                    "status": "todo",
-                    "body": "replacement awaiting verified recovery instruction",
-                    "assignee": "codex-coding",
-                },
-                "comments": [],
-                "parents": ["t_unrelated_rework_prerequisite"],
-            },
+            "t_terminal": trusted_prerequisite_readback(
+                action, "t_terminal", status="done",
+            ),
+            "t_replacement": trusted_prerequisite_readback(
+                action,
+                "t_replacement",
+                body=repair_body,
+                idempotency_key=repair_key,
+                status="todo",
+                parents=("t_unrelated_rework_prerequisite",),
+            ),
         }
         commands = []
 
@@ -482,6 +613,7 @@ class LifecycleLedgerTests(unittest.TestCase):
         self.append("testing", 2)
         self.append("review", 3)
         event = self.append("needs_fix", 4, {"verdict_id": "comment-991", "reason": "Fix citation."})
+        create_action = actions_for_event(event)[0]
         tasks = {
             "t_parent": {
                 "task": {"id": "t_parent", "status": "todo"},
@@ -495,19 +627,12 @@ class LifecycleLedgerTests(unittest.TestCase):
             commands.append(command)
             args = command[2:]
             if args[0] == "create":
-                child = tasks.setdefault("t_child", {
-                    "task": {
-                        "id": "t_child",
-                        "status": "todo",
-                        "body": args[args.index("--body") + 1],
-                        "assignee": args[args.index("--assignee") + 1],
-                        "priority": int(args[args.index("--priority") + 1]),
-                        "max_runtime": args[args.index("--max-runtime") + 1],
-                        "created_by": args[args.index("--created-by") + 1],
-                    },
-                    "parents": [],
-                    "comments": [],
-                })
+                child = tasks.setdefault(
+                    "t_child",
+                    trusted_prerequisite_readback(
+                        create_action, "t_child", status="todo",
+                    ),
+                )
                 return subprocess.CompletedProcess(command, 0, json.dumps(child), "")
             if args[0] == "show":
                 return subprocess.CompletedProcess(command, 0, json.dumps(tasks[args[1]]), "")
@@ -569,16 +694,11 @@ class LifecycleLedgerTests(unittest.TestCase):
             commands.append(command)
             args = command[2:]
             if args[0] == "create":
-                tasks["t_prerequisite"] = {
-                    "task": {
-                        "id": "t_prerequisite",
-                        "status": "ready",
-                        "body": action["body"],
-                        "assignee": "radulator",
-                        "parents": [],
-                    },
-                    "parents": [],
-                }
+                tasks["t_prerequisite"] = trusted_prerequisite_readback(
+                    action,
+                    "t_prerequisite",
+                    task_overrides={"parents": []},
+                )
                 return subprocess.CompletedProcess(
                     command, 0, json.dumps(tasks["t_prerequisite"]), "",
                 )
@@ -609,17 +729,11 @@ class LifecycleLedgerTests(unittest.TestCase):
             "assignee": "radulator",
         }
         tasks = {
-            "t_created": {
-                "task": {
-                    "id": "t_created",
-                    "status": "ready",
-                    "body": action["body"],
-                    "assignee": "radulator",
-                    "parents": [],
-                },
-                "parents": [],
-                "comments": [],
-            },
+            "t_created": trusted_prerequisite_readback(
+                action,
+                "t_created",
+                task_overrides={"parents": []},
+            ),
             "t_victim": {
                 "task": {
                     "id": "t_victim",
@@ -680,16 +794,13 @@ class LifecycleLedgerTests(unittest.TestCase):
             "body": "Only the exact task root may authorize status.",
             "assignee": "radulator",
         }
-        prerequisite = {
-            "task": {
-                "id": "t_prerequisite",
-                "body": action["body"],
-                "assignee": "radulator",
-                "parents": [],
-            },
-            "parents": [],
-            "history": [{"id": "t_prerequisite", "status": "ready"}],
-        }
+        prerequisite = trusted_prerequisite_readback(
+            action,
+            "t_prerequisite",
+            task_overrides={"parents": []},
+        )
+        prerequisite["task"].pop("status")
+        prerequisite["history"] = [{"id": "t_prerequisite", "status": "ready"}]
 
         def runner(command):
             args = command[2:]
@@ -837,7 +948,7 @@ class LifecycleLedgerTests(unittest.TestCase):
         self.assertEqual(cursor.stat().st_mode & 0o777, 0o600)
         self.assertEqual((Path(str(cursor) + ".lock")).stat().st_mode & 0o777, 0o600)
 
-    def test_existing_idempotent_rework_child_is_repaired_to_codex_assignee(self):
+    def test_existing_idempotent_rework_child_with_wrong_assignee_fails_closed(self):
         self.append("feedback", 0)
         self.append("implementing", 1)
         self.append("testing", 2)
@@ -849,14 +960,9 @@ class LifecycleLedgerTests(unittest.TestCase):
                 "task": {"id": "t_parent", "status": "todo"},
                 "parents": [],
             },
-            "t_child": {
-                "task": {
-                    "id": "t_child", "status": "ready",
-                    "body": action["body"], "assignee": None,
-                },
-                "parents": [],
-                "comments": [],
-            },
+            "t_child": trusted_prerequisite_readback(
+                action, "t_child", task_overrides={"assignee": None},
+            ),
         }
         commands = []
 
@@ -867,22 +973,14 @@ class LifecycleLedgerTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, json.dumps(tasks["t_child"]), "")
             if args[0] == "show":
                 return subprocess.CompletedProcess(command, 0, json.dumps(tasks[args[1]]), "")
-            if args[0] == "assign":
-                tasks[args[1]]["task"]["assignee"] = args[2]
-                return subprocess.CompletedProcess(command, 0, "ok", "")
-            if args[0] == "link":
-                parent_id, child_id = args[1:3]
-                tasks[child_id]["parents"].append(parent_id)
-                return subprocess.CompletedProcess(command, 0, "ok", "")
             return subprocess.CompletedProcess(command, 1, "", "unexpected")
 
-        receipt = HermesKanbanCLI(runner=runner).perform(action)
+        with self.assertRaisesRegex(LedgerError, "immutable prerequisite authority"):
+            HermesKanbanCLI(runner=runner).perform(action)
 
-        self.assertEqual(receipt["task_id"], "t_child")
-        self.assertEqual(tasks["t_child"]["task"]["assignee"], "codex-coding")
-        self.assertEqual(len([command for command in commands if command[2] == "assign"]), 1)
+        self.assertEqual([command[2] for command in commands], ["create", "show"])
 
-    def test_prerequisite_readback_ignores_historical_body_and_assignee_events(self):
+    def test_prerequisite_readback_rejects_historical_body_and_assignee_substitution(self):
         action = {
             "kind": "create_prerequisite",
             "idempotency_key": "exact-task-fields",
@@ -897,14 +995,12 @@ class LifecycleLedgerTests(unittest.TestCase):
                 "parents": ["t_child"],
             },
             "t_child": {
-                "task": {
-                    "id": "t_child",
-                    "status": "ready",
-                    "body": "Stale task body that must not pass readback.",
-                    "assignee": "default",
-                },
-                "parents": [],
-                "comments": [],
+                **trusted_prerequisite_readback(
+                    action,
+                    "t_child",
+                    body="Stale task body that must not pass readback.",
+                    task_overrides={"assignee": "default"},
+                ),
                 "events": [{
                     "payload": {
                         "body": action["body"],
@@ -922,21 +1018,12 @@ class LifecycleLedgerTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, json.dumps(tasks["t_child"]), "")
             if args[0] == "show":
                 return subprocess.CompletedProcess(command, 0, json.dumps(tasks[args[1]]), "")
-            if args[0] == "comment":
-                tasks[args[1]]["comments"].append({"body": args[2]})
-                return subprocess.CompletedProcess(command, 0, "ok", "")
-            if args[0] == "assign":
-                tasks[args[1]]["task"]["assignee"] = args[2]
-                return subprocess.CompletedProcess(command, 0, "ok", "")
             return subprocess.CompletedProcess(command, 1, "", "unexpected")
 
-        receipt = HermesKanbanCLI(runner=runner).perform(action)
+        with self.assertRaisesRegex(LedgerError, "immutable prerequisite authority"):
+            HermesKanbanCLI(runner=runner).perform(action)
 
-        self.assertEqual(receipt["status"], "ready")
-        self.assertEqual(tasks["t_child"]["task"]["assignee"], "radulator")
-        self.assertEqual(tasks["t_child"]["comments"], [{"body": action["body"]}])
-        self.assertEqual([command[2] for command in commands].count("assign"), 1)
-        self.assertEqual([command[2] for command in commands].count("comment"), 1)
+        self.assertEqual([command[2] for command in commands], ["create", "show"])
 
     def test_next_candidate_state_filter_has_independent_cursor(self):
         cursor = Path(self.temp.name) / "lifecycle-cursor.json"
@@ -1768,6 +1855,15 @@ class LifecycleLedgerTests(unittest.TestCase):
                     "parents": [],
                 },
             },
+            "t_created_prerequisite": {
+                "task": {
+                    "id": "t_created_prerequisite",
+                    "status": "ready",
+                    "body": "created prerequisite",
+                },
+                "parents": [],
+                "comments": [],
+            },
         }
         performed_actions = []
 
@@ -1781,6 +1877,10 @@ class LifecycleLedgerTests(unittest.TestCase):
                 return {
                     "kind": action["kind"],
                     "task_id": "t_created_prerequisite",
+                    "prerequisite_authority": lifecycle_module._kanban_authority_snapshot(
+                        tasks["t_created_prerequisite"],
+                        "t_created_prerequisite",
+                    ),
                 }
 
         spec = {
@@ -1933,6 +2033,15 @@ class LifecycleLedgerTests(unittest.TestCase):
             "parents": [],
             "comments": [],
         }
+        prerequisite = {
+            "task": {
+                "id": "t_existing_prerequisite",
+                "status": "ready",
+                "body": "existing prerequisite",
+            },
+            "parents": [],
+            "comments": [],
+        }
         authority = {
             "tracker_task_id": "t_parent",
             "source_task_id": "t_source",
@@ -1947,6 +2056,9 @@ class LifecycleLedgerTests(unittest.TestCase):
         receipt = {
             "kind": "create_prerequisite",
             "task_id": "t_existing_prerequisite",
+            "prerequisite_authority": lifecycle_module._kanban_authority_snapshot(
+                prerequisite, "t_existing_prerequisite",
+            ),
         }
 
         class Adapter:
@@ -1954,7 +2066,12 @@ class LifecycleLedgerTests(unittest.TestCase):
                 self.tracker = tracker
 
             def show(self, task_id):
-                value = self.tracker if task_id == "t_parent" else source
+                values = {
+                    "t_parent": self.tracker,
+                    "t_source": source,
+                    "t_existing_prerequisite": prerequisite,
+                }
+                value = values[task_id]
                 return json.loads(json.dumps(value))
 
         unchanged = lifecycle_module._advance_kanban_authority_after_action(
@@ -1965,6 +2082,65 @@ class LifecycleLedgerTests(unittest.TestCase):
         with self.assertRaisesRegex(LedgerError, "Kanban authority changed"):
             lifecycle_module._advance_kanban_authority_after_action(
                 Adapter(changed_tracker), authority, action, receipt,
+            )
+
+    def test_create_prerequisite_rejects_mutation_after_final_readback(self):
+        before_tracker = {
+            "task": {"id": "t_parent", "status": "todo", "body": "tracker"},
+            "parents": [],
+            "comments": [],
+        }
+        after_tracker = json.loads(json.dumps(before_tracker))
+        after_tracker["parents"] = ["t_prerequisite"]
+        source = {
+            "task": {"id": "t_source", "status": "done", "body": "source"},
+            "parents": [],
+            "comments": [],
+        }
+        final_prerequisite = {
+            "task": {
+                "id": "t_prerequisite",
+                "status": "ready",
+                "body": "Trusted exact instruction.",
+            },
+            "parents": [],
+            "comments": [],
+        }
+        mutated_prerequisite = json.loads(json.dumps(final_prerequisite))
+        mutated_prerequisite["task"]["body"] = "Mutated after adapter readback."
+        authority = {
+            "tracker_task_id": "t_parent",
+            "source_task_id": "t_source",
+            "tracker": lifecycle_module._kanban_authority_snapshot(
+                before_tracker, "t_parent",
+            ),
+            "source": lifecycle_module._kanban_authority_snapshot(
+                source, "t_source",
+            ),
+        }
+        receipt = {
+            "kind": "create_prerequisite",
+            "task_id": "t_prerequisite",
+            "prerequisite_authority": lifecycle_module._kanban_authority_snapshot(
+                final_prerequisite, "t_prerequisite",
+            ),
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                values = {
+                    "t_parent": after_tracker,
+                    "t_source": source,
+                    "t_prerequisite": mutated_prerequisite,
+                }
+                return json.loads(json.dumps(values[task_id]))
+
+        with self.assertRaisesRegex(LedgerError, "prerequisite authority changed"):
+            lifecycle_module._advance_kanban_authority_after_action(
+                Adapter(),
+                authority,
+                {"kind": "create_prerequisite", "tracker_task_id": "t_parent"},
+                receipt,
             )
 
     def test_reconciliation_holds_authority_lease_across_external_action(self):
@@ -1994,12 +2170,26 @@ class LifecycleLedgerTests(unittest.TestCase):
             "parents": [],
             "comments": [],
         }
+        prerequisite = {
+            "task": {
+                "id": "t_lease_prerequisite",
+                "status": "ready",
+                "body": "lease prerequisite",
+            },
+            "parents": [],
+            "comments": [],
+        }
 
         class Adapter:
             concurrent_append_finished_during_action = None
 
             def show(inner_self, task_id):
-                value = tracker if task_id == "t_parent" else source
+                values = {
+                    "t_parent": tracker,
+                    "t_source": source,
+                    "t_lease_prerequisite": prerequisite,
+                }
+                value = values[task_id]
                 return json.loads(json.dumps(value))
 
             def perform(inner_self, action):
@@ -2059,6 +2249,9 @@ class LifecycleLedgerTests(unittest.TestCase):
                 return {
                     "kind": "create_prerequisite",
                     "task_id": "t_lease_prerequisite",
+                    "prerequisite_authority": lifecycle_module._kanban_authority_snapshot(
+                        prerequisite, "t_lease_prerequisite",
+                    ),
                 }
 
         adapter = Adapter()
@@ -2792,15 +2985,12 @@ class LifecycleLedgerTests(unittest.TestCase):
                 },
                 "parents": ["t_parent"],
             },
-            "t_latest_rework": {
-                "task": {
-                    "id": "t_latest_rework",
-                    "status": "todo",
-                    "body": latest_action["body"],
-                    "assignee": "codex-coding",
-                },
-                "parents": ["t_parent", "t_unrelated_rework_prerequisite"],
-            },
+            "t_latest_rework": trusted_prerequisite_readback(
+                latest_action,
+                "t_latest_rework",
+                status="todo",
+                parents=("t_parent", "t_unrelated_rework_prerequisite"),
+            ),
         }
         commands = []
 
