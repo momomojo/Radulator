@@ -492,6 +492,12 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             self.state_path,
             max_messages=1,
         )
+        third = process_feedback(
+            FakeGmail([legacy, later]),
+            kanban,
+            self.state_path,
+            max_messages=1,
+        )
 
         self.assertEqual(first, {
             "created": 1,
@@ -500,7 +506,12 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         })
         self.assertEqual(second, {
             "created": 0,
-            "already_processed": 2,
+            "already_processed": 1,
+            "quarantined": 0,
+        })
+        self.assertEqual(third, {
+            "created": 0,
+            "already_processed": 1,
             "quarantined": 0,
         })
         self.assertEqual(len(kanban.created), 3)
@@ -606,6 +617,71 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertEqual(result["already_processed"], 1)
         self.assertEqual(len(kanban.created), 2)
 
+    def test_accepts_terminal_no_action_closure_with_exact_production_proof(self):
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path)
+        digest, receipt = next(iter(
+            json.loads(self.state_path.read_text())["processed"].items()
+        ))
+        production_sha = "b" * 40
+        closure = kanban.tasks[receipt["task_id"]]
+        closure["status"] = "done"
+        closure["runs"] = [{
+            "status": "done",
+            "metadata": {
+                "schema": "radulator-feedback-no-action-proof/v1",
+                "receipt_digest": digest,
+                "production_sha": production_sha,
+                "release_marker_url": (
+                    "https://radulator.com/releases/" + production_sha + ".json"
+                ),
+                "verification_url": "https://radulator.com/#/birads",
+                "verification_run_id": "browser-proof-birads-dark-mode",
+                "verified_behavior": "The production BI-RADS route already exposes the persisted dark-mode control.",
+                "learning_receipt_id": "learning-no-action-birads",
+            },
+        }]
+
+        result = process_feedback(gmail, kanban, self.state_path)
+
+        self.assertEqual(result["already_processed"], 1)
+        self.assertEqual(len(kanban.created), 2)
+
+    def test_rejects_no_action_closure_with_untrusted_production_url(self):
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path)
+        digest, receipt = next(iter(
+            json.loads(self.state_path.read_text())["processed"].items()
+        ))
+        production_sha = "b" * 40
+        closure = kanban.tasks[receipt["task_id"]]
+        closure["status"] = "done"
+        closure["runs"] = [{
+            "status": "done",
+            "metadata": {
+                "schema": "radulator-feedback-no-action-proof/v1",
+                "receipt_digest": digest,
+                "production_sha": production_sha,
+                "release_marker_url": (
+                    "https://radulator.com/releases/" + production_sha + ".json"
+                ),
+                "verification_url": "https://attacker.example/already-live",
+                "verification_run_id": "browser-proof-birads-dark-mode",
+                "verified_behavior": "Claimed production behavior.",
+                "learning_receipt_id": "learning-no-action-birads",
+            },
+        }]
+
+        result = process_feedback(gmail, kanban, self.state_path)
+
+        self.assertEqual(result["reconciled"], 1)
+        self.assertEqual(len(kanban.created), 3)
+        replacement = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertNotEqual(replacement["task_id"], closure["id"])
+        self.assertEqual(kanban.tasks[replacement["task_id"]]["status"], "todo")
+
     def test_ignores_release_proof_nested_under_an_unrelated_task(self):
         gmail = FakeGmail([self.message])
         kanban = FakeKanban()
@@ -640,6 +716,105 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         replacement = json.loads(self.state_path.read_text())["processed"][digest]
         self.assertNotEqual(replacement["task_id"], closure["id"])
         self.assertEqual(kanban.tasks[replacement["task_id"]]["status"], "todo")
+
+    def test_terminal_legacy_binding_quarantine_gets_one_open_replacement(self):
+        digest = _receipt_digest(self.message["id"])
+        self.state_path.write_text(json.dumps({
+            "version": 1,
+            "processed": {
+                digest: {
+                    "task_id": "t_legacy_without_digest",
+                    "classification": "feedback",
+                    "parser_version": 1,
+                },
+            },
+        }))
+        self.state_path.chmod(0o600)
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+        kanban.tasks["t_legacy_without_digest"] = {
+            "id": "t_legacy_without_digest",
+            "title": "Legacy Radulator feedback review",
+            "body": "Authenticated historical feedback without a receipt binding.",
+            "status": "done",
+            "parents": [],
+        }
+
+        first = process_feedback(gmail, kanban, self.state_path)
+        first_receipt = json.loads(self.state_path.read_text())["processed"][digest]
+        original_quarantine = first_receipt["legacy_binding_quarantine_task_id"]
+        kanban.tasks[original_quarantine]["status"] = "done"
+
+        repaired = process_feedback(gmail, kanban, self.state_path)
+        replayed = process_feedback(gmail, kanban, self.state_path)
+
+        self.assertEqual(first["quarantined"], 1)
+        self.assertEqual(repaired["reconciled"], 1)
+        self.assertEqual(replayed["already_processed"], 1)
+        self.assertEqual(len(kanban.created), 2)
+        receipt = json.loads(self.state_path.read_text())["processed"][digest]
+        replacement = receipt["legacy_binding_quarantine_task_id"]
+        self.assertNotEqual(replacement, original_quarantine)
+        self.assertEqual(kanban.tasks[replacement]["status"], "triage")
+        self.assertEqual(
+            receipt["superseded_legacy_binding_quarantine_task_ids"],
+            [original_quarantine],
+        )
+        self.assertEqual(
+            kanban.created[-1][2],
+            "radulator-formspree-legacy-binding-quarantine-repair:"
+            + digest
+            + ":t_legacy_without_digest:"
+            + original_quarantine,
+        )
+
+    def test_authenticated_receipt_repair_rotates_durably_within_budget(self):
+        messages = [
+            dict(
+                self.message,
+                id=f"authenticated-{index}",
+                date=f"Fri, {10 + index:02d} Jul 2026 10:15:00 -0700",
+            )
+            for index in range(3)
+        ]
+        gmail = FakeGmail(messages)
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path, max_messages=3)
+        state = json.loads(self.state_path.read_text())
+        task_ids_by_digest = {
+            digest: (receipt["triage_task_id"], receipt["task_id"])
+            for digest, receipt in state["processed"].items()
+        }
+        shown = []
+        original_show = kanban.show
+
+        def recording_show(task_id):
+            shown.append(task_id)
+            return original_show(task_id)
+
+        kanban.show = recording_show
+
+        outcomes = [
+            process_feedback(gmail, kanban, self.state_path, max_messages=1)
+            for _ in range(3)
+        ]
+
+        self.assertEqual([outcome["already_processed"] for outcome in outcomes], [1, 1, 1])
+        self.assertEqual(len(shown), 6)
+        expected_pairs = [
+            task_ids_by_digest[_receipt_digest(message["id"])]
+            for message in messages
+        ]
+        self.assertEqual(
+            [tuple(shown[index:index + 2]) for index in range(0, 6, 2)],
+            expected_pairs,
+        )
+        persisted = json.loads(self.state_path.read_text())
+        self.assertEqual(
+            persisted["authenticated_reconciliation_cursor"],
+            _receipt_digest(messages[-1]["id"]),
+        )
+        self.assertEqual(os.stat(self.state_path).st_mode & 0o777, 0o600)
 
     def test_does_not_acknowledge_closure_until_parent_link_readback(self):
         gmail = FakeGmail([self.message])

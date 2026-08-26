@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 
 SEARCH_QUERY = (
@@ -36,6 +37,8 @@ MAX_AUTHENTICATION_RESULTS = 8
 MAX_AUTHENTICATION_BYTES = 32 * 1024
 MAX_STATE_BYTES = 8 * 1024 * 1024
 CLOSURE_PROOF_SCHEMA = "radulator-feedback-closure-proof/v1"
+NO_ACTION_PROOF_SCHEMA = "radulator-feedback-no-action-proof/v1"
+RECEIPT_DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 TERMINAL_TASK_STATUSES = frozenset({"complete", "completed", "done", "archived"})
 OPEN_TASK_STATUSES = frozenset({
     "triage", "todo", "ready", "running", "blocked", "review", "scheduled",
@@ -366,6 +369,55 @@ def _release_proof_metadata(value: Any, task_id: str) -> List[Dict[str, Any]]:
     return matches
 
 
+def _no_action_proof_metadata(value: Any, task_id: str) -> List[Dict[str, Any]]:
+    """Return no-action proof metadata bound to the exact shown task only."""
+    if not isinstance(value, dict):
+        return []
+    task = value
+    if task_id not in (task.get("task_id"), task.get("id")):
+        task = value.get("task")
+        if (
+            not isinstance(task, dict)
+            or task_id not in (task.get("task_id"), task.get("id"))
+        ):
+            return []
+    runs = value.get("runs")
+    if not isinstance(runs, list):
+        runs = task.get("runs")
+    if not isinstance(runs, list):
+        return []
+    matches: List[Dict[str, Any]] = []
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        status = str(run.get("status", run.get("state", ""))).strip().lower()
+        metadata = run.get("metadata")
+        if (
+            status in TERMINAL_TASK_STATUSES
+            and isinstance(metadata, dict)
+            and metadata.get("schema") == NO_ACTION_PROOF_SCHEMA
+        ):
+            matches.append(metadata)
+    return matches
+
+
+def _trusted_radulator_url(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        parsed = urlparse(value)
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and parsed.hostname in {"radulator.com", "www.radulator.com"}
+        and parsed.username is None
+        and parsed.password is None
+        and port in {None, 443}
+    )
+
+
 def _has_release_closure_proof(value: Any, digest: str, task_id: str) -> bool:
     for metadata in _release_proof_metadata(value, task_id):
         marker_sha = metadata.get("release_marker_sha")
@@ -385,6 +437,42 @@ def _has_release_closure_proof(value: Any, digest: str, task_id: str) -> bool:
         ):
             return True
     return False
+
+
+def _has_no_action_closure_proof(value: Any, digest: str, task_id: str) -> bool:
+    for metadata in _no_action_proof_metadata(value, task_id):
+        production_sha = metadata.get("production_sha")
+        marker_url = metadata.get("release_marker_url")
+        verification_url = metadata.get("verification_url")
+        verification_run_id = metadata.get("verification_run_id")
+        behavior = metadata.get("verified_behavior")
+        learning_receipt_id = metadata.get("learning_receipt_id")
+        try:
+            marker_path = urlparse(marker_url).path if isinstance(marker_url, str) else ""
+        except ValueError:
+            marker_path = ""
+        if (
+            metadata.get("receipt_digest") == digest
+            and isinstance(production_sha, str)
+            and re.fullmatch(r"[0-9a-f]{40}", production_sha)
+            and _trusted_radulator_url(marker_url)
+            and marker_path == f"/releases/{production_sha}.json"
+            and _trusted_radulator_url(verification_url)
+            and isinstance(verification_run_id, (int, str))
+            and str(verification_run_id).strip()
+            and isinstance(behavior, str)
+            and 1 <= len(behavior.strip()) <= 1000
+            and isinstance(learning_receipt_id, str)
+            and learning_receipt_id.strip()
+        ):
+            return True
+    return False
+
+
+def _has_feedback_closure_proof(value: Any, digest: str, task_id: str) -> bool:
+    return _has_release_closure_proof(
+        value, digest, task_id
+    ) or _has_no_action_closure_proof(value, digest, task_id)
 
 
 def _feedback_task(feedback: FormspreeFeedback, received: str, digest: str) -> Any:
@@ -432,7 +520,8 @@ def _closure_task(received: str, digest: str, triage_task_id: str) -> Any:
         "- no implementation was needed and current production behavior was directly verified; or",
         "- the exact approved commit is present in an immutable production release marker, production smoke passes, and retained learning records the feedback-to-release outcome.",
         "Clinical changes also require current primary-source citations and the exact-head independent judge quorum before merge.",
-        "Completion metadata must use radulator-feedback-closure-proof/v1 and bind this receipt digest to the immutable release-marker SHA, the matching production-smoke SHA/run, and the retained-learning receipt id.",
+        "A deployed-change completion must use radulator-feedback-closure-proof/v1 and bind this receipt digest to the immutable release-marker SHA, the matching production-smoke SHA/run, and the retained-learning receipt id.",
+        "A no-change completion must instead use radulator-feedback-no-action-proof/v1 and bind this receipt digest to the currently deployed release-marker SHA, a direct Radulator production URL/run and observed behavior, and retained learning. These proof types are not interchangeable.",
         "A hold or failed check is corrective work, not a terminal outcome: create or resume the fix, wait for a new exact head, and re-run this closure check automatically.",
     ])
     return title, body
@@ -482,17 +571,24 @@ def _create_verified_legacy_binding_quarantine(
     received: str,
     digest: str,
     legacy_task_id: str,
-) -> str:
+    idempotency_key: Optional[str] = None,
+    supersedes: Optional[str] = None,
+) -> Any:
     title, body = _legacy_binding_quarantine_task(
         received,
         digest,
         legacy_task_id,
     )
+    if supersedes:
+        body += (
+            "\n\nRecovery: this open binding review preserves and supersedes prematurely "
+            f"terminal quarantine {supersedes}; do not rewrite or delete its history."
+        )
     try:
         task_id = kanban.create(
             title,
             body,
-            (
+            idempotency_key or (
                 "radulator-formspree-legacy-binding-quarantine:"
                 + digest
                 + ":"
@@ -513,8 +609,7 @@ def _create_verified_legacy_binding_quarantine(
         raise FeedbackIntakeError(
             "Kanban legacy feedback binding quarantine failed exact readback."
         )
-    _task_status(readback, task_id)
-    return task_id
+    return task_id, readback
 
 
 def _create_verified_closure(
@@ -589,16 +684,73 @@ def _reconcile_feedback_receipt(
                 raise FeedbackIntakeError(
                     "Legacy feedback binding quarantine lost its task reference."
                 )
+            if _task_status(quarantine, legacy_quarantine_id) in TERMINAL_TASK_STATUSES:
+                superseded_quarantines = receipt.setdefault(
+                    "superseded_legacy_binding_quarantine_task_ids", []
+                )
+                if not isinstance(superseded_quarantines, list) or any(
+                    not isinstance(item, str) for item in superseded_quarantines
+                ):
+                    raise FeedbackIntakeError(
+                        "Persisted legacy feedback quarantine history is invalid."
+                    )
+                if legacy_quarantine_id not in superseded_quarantines:
+                    superseded_quarantines.append(legacy_quarantine_id)
+                replacement_id, replacement = _create_verified_legacy_binding_quarantine(
+                    kanban,
+                    received=received,
+                    digest=digest,
+                    legacy_task_id=original_task_id,
+                    idempotency_key=(
+                        "radulator-formspree-legacy-binding-quarantine-repair:"
+                        + digest
+                        + ":"
+                        + original_task_id
+                        + ":"
+                        + legacy_quarantine_id
+                    ),
+                    supersedes=legacy_quarantine_id,
+                )
+                if _task_status(replacement, replacement_id) not in OPEN_TASK_STATUSES:
+                    raise FeedbackIntakeError(
+                        "Replacement legacy feedback binding quarantine is not open."
+                    )
+                receipt["legacy_binding_quarantine_task_id"] = replacement_id
+                return "reconciled"
             return "reconciled" if authenticated_changed else "unchanged"
 
         legacy_readback = _feedback_task_readback(kanban, original_task_id)
         if not _contains_text(legacy_readback, digest):
-            quarantine_id = _create_verified_legacy_binding_quarantine(
+            quarantine_id, quarantine = _create_verified_legacy_binding_quarantine(
                 kanban,
                 received=received,
                 digest=digest,
                 legacy_task_id=original_task_id,
             )
+            if _task_status(quarantine, quarantine_id) not in OPEN_TASK_STATUSES:
+                first_quarantine_id = quarantine_id
+                quarantine_id, quarantine = _create_verified_legacy_binding_quarantine(
+                    kanban,
+                    received=received,
+                    digest=digest,
+                    legacy_task_id=original_task_id,
+                    idempotency_key=(
+                        "radulator-formspree-legacy-binding-quarantine-repair:"
+                        + digest
+                        + ":"
+                        + original_task_id
+                        + ":"
+                        + first_quarantine_id
+                    ),
+                    supersedes=first_quarantine_id,
+                )
+                if _task_status(quarantine, quarantine_id) not in OPEN_TASK_STATUSES:
+                    raise FeedbackIntakeError(
+                        "Replacement legacy feedback binding quarantine is not open."
+                    )
+                receipt["superseded_legacy_binding_quarantine_task_ids"] = [
+                    first_quarantine_id
+                ]
             receipt["legacy_binding_status"] = "quarantined"
             receipt["legacy_binding_quarantine_task_id"] = quarantine_id
             return "quarantined"
@@ -624,7 +776,7 @@ def _reconcile_feedback_receipt(
             supersedes=original_task_id,
         )
         status = _task_status(readback, task_id)
-        if status in TERMINAL_TASK_STATUSES and not _has_release_closure_proof(
+        if status in TERMINAL_TASK_STATUSES and not _has_feedback_closure_proof(
             readback, digest, task_id
         ):
             if task_id not in superseded:
@@ -640,7 +792,7 @@ def _reconcile_feedback_receipt(
                 supersedes=task_id,
             )
             status = _task_status(readback, task_id)
-        if status in TERMINAL_TASK_STATUSES and not _has_release_closure_proof(
+        if status in TERMINAL_TASK_STATUSES and not _has_feedback_closure_proof(
             readback, digest, task_id
         ):
             raise FeedbackIntakeError("Replacement feedback closure is already terminal without release proof.")
@@ -658,7 +810,7 @@ def _reconcile_feedback_receipt(
         and _has_parent(readback, triage_task_id)
     ) or (
         status in TERMINAL_TASK_STATUSES
-        and _has_release_closure_proof(readback, digest, original_task_id)
+        and _has_feedback_closure_proof(readback, digest, original_task_id)
     ):
         return "reconciled" if authenticated_changed else "unchanged"
 
@@ -728,6 +880,12 @@ def _load_state(path: Path) -> Dict[str, Any]:
         not isinstance(value, dict)
         or value.get("version") != STATE_VERSION
         or not isinstance(value.get("processed"), dict)
+        or (
+            value.get("authenticated_reconciliation_cursor") is not None
+            and not RECEIPT_DIGEST_PATTERN.fullmatch(
+                str(value.get("authenticated_reconciliation_cursor"))
+            )
+        )
     ):
         raise FeedbackIntakeError("Feedback state has an unsupported schema.")
     return value
@@ -761,6 +919,33 @@ def _write_state(path: Path, state: Dict[str, Any]) -> None:
         raise FeedbackIntakeError("Feedback receipt could not be persisted.") from error
 
 
+def _rotated_authenticated_reconciliation(
+    candidates: List[Dict[str, Any]],
+    state: Dict[str, Any],
+    limit: int,
+) -> List[Dict[str, Any]]:
+    authenticated = [
+        summary
+        for summary in candidates
+        if (
+            isinstance(state["processed"].get(_receipt_digest(summary["id"])), dict)
+            and state["processed"][_receipt_digest(summary["id"])].get("classification")
+            == "feedback"
+            and state["processed"][_receipt_digest(summary["id"])].get(
+                "authenticated_origin"
+            )
+            is True
+        )
+    ]
+    if not authenticated:
+        return []
+    digests = [_receipt_digest(summary["id"]) for summary in authenticated]
+    cursor = state.get("authenticated_reconciliation_cursor")
+    start = (digests.index(cursor) + 1) % len(digests) if cursor in digests else 0
+    count = min(limit, len(authenticated))
+    return [authenticated[(start + offset) % len(authenticated)] for offset in range(count)]
+
+
 def _process_feedback_locked(
     gmail: Any,
     kanban: Any,
@@ -778,6 +963,21 @@ def _process_feedback_locked(
 
     candidates = [item for item in summaries if _candidate_notification(item)]
     candidates.sort(key=_sort_key)
+    for summary in _rotated_authenticated_reconciliation(
+        candidates, state, max_messages
+    ):
+        digest = _receipt_digest(summary["id"])
+        receipt = state["processed"][digest]
+        reconciliation = _reconcile_feedback_receipt(
+            kanban,
+            receipt,
+            received=_received_date(summary.get("date")),
+            digest=digest,
+        )
+        state["authenticated_reconciliation_cursor"] = digest
+        _write_state(state_path, state)
+        _record_reconciliation_outcome(outcome, reconciliation)
+
     new_attempted = 0
     replay_attempted = 0
     for summary in candidates:
@@ -789,16 +989,6 @@ def _process_feedback_locked(
             and existing_receipt.get("classification") == "feedback"
         )
         if existing_feedback and existing_receipt.get("authenticated_origin") is True:
-            received = _received_date(summary.get("date"))
-            reconciliation = _reconcile_feedback_receipt(
-                kanban,
-                existing_receipt,
-                received=received,
-                digest=digest,
-            )
-            if reconciliation != "unchanged":
-                _write_state(state_path, state)
-            _record_reconciliation_outcome(outcome, reconciliation)
             continue
         if isinstance(existing_receipt, dict) and existing_receipt.get("classification") == "untrusted":
             outcome["already_processed"] += 1

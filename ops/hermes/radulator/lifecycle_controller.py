@@ -540,8 +540,9 @@ def reconcile_trackers(
         "applied_actions": [],
     }
 
-    # Complete every external readback before mutating either the ledger or
-    # Kanban. A bad later entry must not partially apply an earlier one.
+    # Freeze every external readback and every ledger/action decision before
+    # mutating either the ledger or Kanban. A bad later entry must not
+    # partially apply an earlier one.
     verified_trackers: list[tuple[dict[str, Any], str]] = []
     for tracker in normalized["trackers"]:
         task_id = tracker["task_id"]
@@ -554,14 +555,17 @@ def reconcile_trackers(
         )
         if (
             source["kind"] == "formspree_receipt"
-            and source["digest"] not in _canonical(source_readback)
+            and source["digest"]
+            not in _canonical(_exact_task_evidence(source_readback, source["task_id"]))
         ):
             raise LedgerError(
                 f"Reconciliation source receipt digest failed authoritative readback for {task_id}."
             )
         if tracker.get("pr") is not None:
-            serialized_tracker = _canonical(tracker_readback)
-            if f"#{tracker['pr']}" not in serialized_tracker:
+            serialized_tracker = _canonical(
+                _exact_task_evidence(tracker_readback, task_id)
+            )
+            if not _has_exact_pr_reference(tracker_readback, task_id, tracker["pr"]):
                 raise LedgerError(f"Reconciliation PR failed Kanban readback for {task_id}.")
             if tracker["head_sha"] not in serialized_tracker:
                 raise LedgerError(f"Reconciliation head SHA failed Kanban readback for {task_id}.")
@@ -569,6 +573,7 @@ def reconcile_trackers(
                 raise LedgerError(f"Reconciliation base SHA failed Kanban readback for {task_id}.")
         verified_trackers.append((tracker, tracker_status))
 
+    frozen_plan: list[dict[str, Any]] = []
     for tracker, tracker_status in verified_trackers:
         task_id = tracker["task_id"]
         source = tracker["source"]
@@ -580,32 +585,12 @@ def reconcile_trackers(
                     f"Cannot bootstrap terminal Kanban tracker {task_id} without lifecycle evidence."
                 )
             result["planned_bootstrap"].append(task_id)
-            if apply:
-                event = ledger.append(
-                    idempotency_key=(
-                        f"reconcile:{task_id}:feedback:{normalized['review_id']}"
-                    ),
-                    source_id=tracker["source_id"],
-                    task_id=task_id,
-                    state="feedback",
-                    pr=tracker.get("pr"),
-                    head_sha=tracker.get("head_sha"),
-                    evidence={
-                        "reconciliation_schema": RECONCILIATION_SCHEMA,
-                        "review_id": normalized["review_id"],
-                        "reconciliation_entry_sha256": entry_digest,
-                        "source": source,
-                        "kanban_status": tracker_status,
-                        **(
-                            {"base_sha": tracker["base_sha"]}
-                            if tracker.get("base_sha") is not None
-                            else {}
-                        ),
-                    },
-                )
-                replay = ledger.replay()
-                current = event
-                result["bootstrapped"].append(task_id)
+            frozen_plan.append({
+                "kind": "bootstrap",
+                "tracker": tracker,
+                "tracker_status": tracker_status,
+                "entry_digest": entry_digest,
+            })
             continue
 
         if current.source_id != tracker["source_id"]:
@@ -639,10 +624,44 @@ def reconcile_trackers(
 
         if actions:
             result["planned_actions"].extend(actions)
-            if apply:
-                result["applied_actions"].extend(execute_actions(actions, adapter))
         else:
             result["already_reconciled"].append(task_id)
+        frozen_plan.append({"kind": "actions", "actions": actions})
+
+    if not apply:
+        return result
+
+    for item in frozen_plan:
+        if item["kind"] == "bootstrap":
+            tracker = item["tracker"]
+            task_id = tracker["task_id"]
+            ledger.append(
+                idempotency_key=(
+                    f"reconcile:{task_id}:feedback:{normalized['review_id']}"
+                ),
+                source_id=tracker["source_id"],
+                task_id=task_id,
+                state="feedback",
+                pr=tracker.get("pr"),
+                head_sha=tracker.get("head_sha"),
+                evidence={
+                    "reconciliation_schema": RECONCILIATION_SCHEMA,
+                    "review_id": normalized["review_id"],
+                    "reconciliation_entry_sha256": item["entry_digest"],
+                    "source": tracker["source"],
+                    "kanban_status": item["tracker_status"],
+                    **(
+                        {"base_sha": tracker["base_sha"]}
+                        if tracker.get("base_sha") is not None
+                        else {}
+                    ),
+                },
+            )
+            result["bootstrapped"].append(task_id)
+        elif item["actions"]:
+            result["applied_actions"].extend(
+                execute_actions(item["actions"], adapter)
+            )
     return result
 
 
@@ -751,6 +770,52 @@ def _task_records(value: Any, task_id: str) -> list[dict[str, Any]]:
         for nested in value:
             records.extend(_task_records(nested, task_id))
     return records
+
+
+def _exact_task_record(value: Any, task_id: str) -> dict[str, Any]:
+    if isinstance(value, dict) and task_id in (value.get("task_id"), value.get("id")):
+        return value
+    task = value.get("task") if isinstance(value, dict) else None
+    if isinstance(task, dict) and task_id in (task.get("task_id"), task.get("id")):
+        return task
+    raise LedgerError(f"Kanban readback did not contain the exact task record for {task_id}.")
+
+
+def _exact_task_comments(value: Any) -> list[dict[str, Any]]:
+    comments = value.get("comments", []) if isinstance(value, dict) else []
+    if not isinstance(comments, list) or any(not isinstance(item, dict) for item in comments):
+        raise LedgerError("Kanban task comments readback is malformed.")
+    return comments
+
+
+def _task_instruction_present(value: Any, task_id: str, body: str) -> bool:
+    task = _exact_task_record(value, task_id)
+    if task.get("body") == body:
+        return True
+    return any(comment.get("body") == body for comment in _exact_task_comments(value))
+
+
+def _exact_task_evidence(value: Any, task_id: str) -> dict[str, Any]:
+    task = _exact_task_record(value, task_id)
+    task_fields = {
+        key: task[key]
+        for key in ("task_id", "id", "pr", "title", "body", "result", "branch_name")
+        if isinstance(task.get(key), (str, int))
+    }
+    comment_bodies = [
+        comment["body"]
+        for comment in _exact_task_comments(value)
+        if isinstance(comment.get("body"), str)
+    ]
+    return {"task": task_fields, "comment_bodies": comment_bodies}
+
+
+def _has_exact_pr_reference(value: Any, task_id: str, pr: int) -> bool:
+    task = _exact_task_record(value, task_id)
+    if task.get("pr") == pr:
+        return True
+    rendered = _canonical(_exact_task_evidence(value, task_id))
+    return re.search(rf"(?<!\d)#{pr}(?!\d)", rendered) is not None
 
 
 def _terminal_status(value: Any, task_id: str) -> str | None:
@@ -862,21 +927,30 @@ class HermesKanbanCLI:
                 raise LedgerError("Kanban create response did not contain a prerequisite task id.")
             tracker_id = action["tracker_task_id"]
             prerequisite = self.show(prerequisite_id)
-            serialized = _canonical(prerequisite)
-            if action["body"] not in serialized:
+            if not _task_instruction_present(
+                prerequisite, prerequisite_id, action["body"]
+            ):
                 self._run([
                     "comment", prerequisite_id, action["body"],
                     "--author", "radulator-lifecycle",
                 ])
                 prerequisite = self.show(prerequisite_id)
-                serialized = _canonical(prerequisite)
-            if action.get("assignee") and action["assignee"] not in serialized:
+            if (
+                action.get("assignee")
+                and _exact_task_record(prerequisite, prerequisite_id).get("assignee")
+                != action["assignee"]
+            ):
                 self._run(["assign", prerequisite_id, action["assignee"]])
                 prerequisite = self.show(prerequisite_id)
-                serialized = _canonical(prerequisite)
-            if action["body"] not in serialized:
+            if not _task_instruction_present(
+                prerequisite, prerequisite_id, action["body"]
+            ):
                 raise LedgerError("Created prerequisite failed exact body readback.")
-            if action.get("assignee") and action["assignee"] not in serialized:
+            if (
+                action.get("assignee")
+                and _exact_task_record(prerequisite, prerequisite_id).get("assignee")
+                != action["assignee"]
+            ):
                 raise LedgerError("Created prerequisite failed assignee Kanban readback.")
 
             if tracker_id in _related_task_ids(prerequisite, "parents", prerequisite_id):
@@ -939,26 +1013,40 @@ class HermesKanbanCLI:
             if not child_id:
                 raise LedgerError("Kanban create response did not contain a child task id.")
             readback = self.show(child_id)
-            serialized = _canonical(readback)
-            if action["body"] not in serialized:
+            if not _task_instruction_present(readback, child_id, action["body"]):
                 self._run(["comment", child_id, action["body"], "--author", "radulator-lifecycle"])
                 readback = self.show(child_id)
-                serialized = _canonical(readback)
-            if action.get("assignee") and action["assignee"] not in serialized:
+            if (
+                action.get("assignee")
+                and _exact_task_record(readback, child_id).get("assignee")
+                != action["assignee"]
+            ):
                 self._run(["assign", child_id, action["assignee"]])
                 readback = self.show(child_id)
-                serialized = _canonical(readback)
-            if action["parent_task_id"] not in serialized or action["head_sha"] not in serialized:
+            if (
+                action["parent_task_id"]
+                not in _related_task_ids(readback, "parents", child_id)
+                or not _task_instruction_present(readback, child_id, action["body"])
+                or action["head_sha"] not in action["body"]
+            ):
                 raise LedgerError("Created child failed exact parent/SHA Kanban readback.")
-            if action.get("assignee") and action["assignee"] not in serialized:
+            if (
+                action.get("assignee")
+                and _exact_task_record(readback, child_id).get("assignee")
+                != action["assignee"]
+            ):
                 raise LedgerError("Created child failed assignee Kanban readback.")
             return {"kind": kind, "task_id": child_id, "idempotency_key": action["idempotency_key"]}
         if kind == "comment":
             readback = self.show(action["task_id"])
-            if action["body"] not in _canonical(readback):
+            if not _task_instruction_present(
+                readback, action["task_id"], action["body"]
+            ):
                 self._run(["comment", action["task_id"], action["body"], "--author", "radulator-lifecycle"])
                 readback = self.show(action["task_id"])
-            if action["body"] not in _canonical(readback):
+            if not _task_instruction_present(
+                readback, action["task_id"], action["body"]
+            ):
                 raise LedgerError("Kanban comment failed authoritative readback.")
             return {"kind": kind, "task_id": action["task_id"], "idempotency_key": action["idempotency_key"]}
         if kind == "complete":

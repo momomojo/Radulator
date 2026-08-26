@@ -590,6 +590,62 @@ class LifecycleLedgerTests(unittest.TestCase):
         self.assertEqual(tasks["t_child"]["task"]["assignee"], "codex-coding")
         self.assertEqual(len([command for command in commands if command[2] == "assign"]), 1)
 
+    def test_prerequisite_readback_ignores_historical_body_and_assignee_events(self):
+        action = {
+            "kind": "create_prerequisite",
+            "idempotency_key": "exact-task-fields",
+            "tracker_task_id": "t_parent",
+            "title": "Retain learning",
+            "body": "Current exact prerequisite instruction.",
+            "assignee": "radulator",
+        }
+        tasks = {
+            "t_parent": {
+                "task": {"id": "t_parent", "status": "todo", "body": "tracker"},
+                "parents": ["t_child"],
+            },
+            "t_child": {
+                "task": {
+                    "id": "t_child",
+                    "status": "ready",
+                    "body": "Stale task body that must not pass readback.",
+                    "assignee": "default",
+                },
+                "parents": [],
+                "comments": [],
+                "events": [{
+                    "payload": {
+                        "body": action["body"],
+                        "assignee": action["assignee"],
+                    },
+                }],
+            },
+        }
+        commands = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "create":
+                return subprocess.CompletedProcess(command, 0, json.dumps(tasks["t_child"]), "")
+            if args[0] == "show":
+                return subprocess.CompletedProcess(command, 0, json.dumps(tasks[args[1]]), "")
+            if args[0] == "comment":
+                tasks[args[1]]["comments"].append({"body": args[2]})
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            if args[0] == "assign":
+                tasks[args[1]]["task"]["assignee"] = args[2]
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            return subprocess.CompletedProcess(command, 1, "", "unexpected")
+
+        receipt = HermesKanbanCLI(runner=runner).perform(action)
+
+        self.assertEqual(receipt["status"], "ready")
+        self.assertEqual(tasks["t_child"]["task"]["assignee"], "radulator")
+        self.assertEqual(tasks["t_child"]["comments"], [{"body": action["body"]}])
+        self.assertEqual([command[2] for command in commands].count("assign"), 1)
+        self.assertEqual([command[2] for command in commands].count("comment"), 1)
+
     def test_next_candidate_state_filter_has_independent_cursor(self):
         cursor = Path(self.temp.name) / "lifecycle-cursor.json"
         self.ledger.append(
@@ -907,6 +963,100 @@ class LifecycleLedgerTests(unittest.TestCase):
                 spec,
                 Adapter(),
                 apply=True,
+            )
+
+        self.assertEqual(self.ledger.replay().events, ())
+
+    def test_reconciliation_preflights_ledger_conflicts_before_any_apply(self):
+        self.ledger.append(
+            idempotency_key="existing-second",
+            source_id="authoritative-second-source",
+            task_id="t_second",
+            state="feedback",
+            timestamp="2026-08-23T20:00:00Z",
+        )
+        initial_events = self.ledger.replay().events
+        tasks = {
+            task_id: {
+                "task": {"id": task_id, "status": "todo", "body": "readable"},
+                "parents": [],
+            }
+            for task_id in (
+                "t_first", "t_first_source", "t_second", "t_second_source",
+            )
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("failed frozen plan must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "ledger-preflight-audit",
+            "trackers": [
+                {
+                    "task_id": "t_first",
+                    "source_id": "first-source",
+                    "source": {"kind": "kanban_task", "task_id": "t_first_source"},
+                },
+                {
+                    "task_id": "t_second",
+                    "source_id": "conflicting-second-source",
+                    "source": {"kind": "kanban_task", "task_id": "t_second_source"},
+                },
+            ],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "source_id conflicts"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(self.ledger.replay().events, initial_events)
+
+    def test_reconciliation_rejects_prefixed_pr_reference_before_bootstrap(self):
+        tasks = {
+            "t_tracker": {
+                "task": {
+                    "id": "t_tracker",
+                    "status": "todo",
+                    "body": "Track PR #169 at exact head " + HEAD + " base " + NEXT_HEAD,
+                    "events": [{"payload": {"body": "Historical PR #16 mapping"}}],
+                },
+                "parents": [],
+            },
+            "t_source": {
+                "task": {"id": "t_source", "status": "done", "body": "source"},
+                "parents": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("invalid PR binding must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "exact-pr-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 16,
+                "head_sha": HEAD,
+                "base_sha": NEXT_HEAD,
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "PR failed"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
             )
 
         self.assertEqual(self.ledger.replay().events, ())
