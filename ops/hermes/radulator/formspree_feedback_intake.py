@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -33,6 +34,12 @@ MAX_SCALAR_LENGTH = 80
 MAX_COMMAND_OUTPUT = 8 * 1024 * 1024
 MAX_AUTHENTICATION_RESULTS = 8
 MAX_AUTHENTICATION_BYTES = 32 * 1024
+MAX_STATE_BYTES = 8 * 1024 * 1024
+CLOSURE_PROOF_SCHEMA = "radulator-feedback-closure-proof/v1"
+TERMINAL_TASK_STATUSES = frozenset({"complete", "completed", "done", "archived"})
+OPEN_TASK_STATUSES = frozenset({
+    "triage", "todo", "ready", "running", "blocked", "review", "scheduled",
+})
 
 
 class FeedbackIntakeError(RuntimeError):
@@ -295,6 +302,91 @@ def _has_parent(value: Any, parent_id: str) -> bool:
     return False
 
 
+def _task_records(value: Any, task_id: str) -> List[Dict[str, Any]]:
+    records: List[Dict[str, Any]] = []
+    if isinstance(value, dict):
+        if task_id in (value.get("task_id"), value.get("id")):
+            records.append(value)
+        for nested in value.values():
+            records.extend(_task_records(nested, task_id))
+    elif isinstance(value, list):
+        for nested in value:
+            records.extend(_task_records(nested, task_id))
+    return records
+
+
+def _task_status(value: Any, task_id: str) -> str:
+    records = _task_records(value, task_id)
+    statuses = {
+        str(record.get("status", record.get("state", ""))).strip().lower()
+        for record in records
+        if str(record.get("status", record.get("state", ""))).strip()
+    }
+    if len(statuses) != 1:
+        raise FeedbackIntakeError(
+            f"Kanban readback has ambiguous status for feedback task {task_id}."
+        )
+    status = next(iter(statuses))
+    if status not in TERMINAL_TASK_STATUSES | OPEN_TASK_STATUSES:
+        raise FeedbackIntakeError(
+            f"Kanban readback has unsupported status for feedback task {task_id}."
+        )
+    return status
+
+
+def _release_proof_metadata(value: Any, task_id: str) -> List[Dict[str, Any]]:
+    """Return completed-run proof metadata bound to the exact shown task only."""
+    if not isinstance(value, dict):
+        return []
+    task = value
+    if task_id not in (task.get("task_id"), task.get("id")):
+        task = value.get("task")
+        if (
+            not isinstance(task, dict)
+            or task_id not in (task.get("task_id"), task.get("id"))
+        ):
+            return []
+    runs = value.get("runs")
+    if not isinstance(runs, list):
+        runs = task.get("runs")
+    if not isinstance(runs, list):
+        return []
+    matches: List[Dict[str, Any]] = []
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        status = str(run.get("status", run.get("state", ""))).strip().lower()
+        metadata = run.get("metadata")
+        if (
+            status in TERMINAL_TASK_STATUSES
+            and isinstance(metadata, dict)
+            and metadata.get("schema") == CLOSURE_PROOF_SCHEMA
+        ):
+            matches.append(metadata)
+    return matches
+
+
+def _has_release_closure_proof(value: Any, digest: str, task_id: str) -> bool:
+    for metadata in _release_proof_metadata(value, task_id):
+        marker_sha = metadata.get("release_marker_sha")
+        marker_url = metadata.get("release_marker_url")
+        smoke_run_id = metadata.get("smoke_run_id")
+        if (
+            metadata.get("receipt_digest") == digest
+            and isinstance(marker_sha, str)
+            and re.fullmatch(r"[0-9a-f]{40}", marker_sha)
+            and isinstance(marker_url, str)
+            and marker_url.startswith("https://")
+            and metadata.get("smoke_sha") == marker_sha
+            and isinstance(smoke_run_id, (int, str))
+            and str(smoke_run_id).strip()
+            and isinstance(metadata.get("learning_receipt_id"), str)
+            and metadata["learning_receipt_id"].strip()
+        ):
+            return True
+    return False
+
+
 def _feedback_task(feedback: FormspreeFeedback, received: str, digest: str) -> Any:
     # No submitter-controlled text is placed in the task title. The complete
     # minimized payload is serialized as one explicitly untrusted data block
@@ -340,9 +432,154 @@ def _closure_task(received: str, digest: str, triage_task_id: str) -> Any:
         "- no implementation was needed and current production behavior was directly verified; or",
         "- the exact approved commit is present in an immutable production release marker, production smoke passes, and retained learning records the feedback-to-release outcome.",
         "Clinical changes also require current primary-source citations and the exact-head independent judge quorum before merge.",
+        "Completion metadata must use radulator-feedback-closure-proof/v1 and bind this receipt digest to the immutable release-marker SHA, the matching production-smoke SHA/run, and the retained-learning receipt id.",
         "A hold or failed check is corrective work, not a terminal outcome: create or resume the fix, wait for a new exact head, and re-run this closure check automatically.",
     ])
     return title, body
+
+
+def _verified_feedback_task(kanban: Any, task_id: str, digest: str) -> Dict[str, Any]:
+    try:
+        readback = kanban.show(task_id)
+    except Exception as error:
+        raise FeedbackIntakeError("Kanban feedback task failed readback.") from error
+    if _find_task_id(readback) != task_id or not _contains_text(readback, digest):
+        raise FeedbackIntakeError("Kanban feedback task failed exact digest readback.")
+    _task_status(readback, task_id)
+    return readback
+
+
+def _create_verified_closure(
+    kanban: Any,
+    *,
+    received: str,
+    digest: str,
+    triage_task_id: str,
+    idempotency_key: str,
+    supersedes: Optional[str] = None,
+) -> Any:
+    title, body = _closure_task(received, digest, triage_task_id)
+    if supersedes:
+        body += (
+            "\n\nRecovery: this open receipt preserves and supersedes prematurely terminal "
+            f"receipt {supersedes}; do not rewrite or delete the historical task."
+        )
+    try:
+        task_id = kanban.create(
+            title,
+            body,
+            idempotency_key,
+            triage=False,
+            parents=(triage_task_id,),
+        )
+        readback = kanban.show(task_id)
+    except Exception as error:
+        raise FeedbackIntakeError("Kanban feedback closure failed readback.") from error
+    if (
+        _find_task_id(readback) != task_id
+        or not _contains_text(readback, digest)
+        or not _has_parent(readback, triage_task_id)
+    ):
+        raise FeedbackIntakeError("Kanban feedback closure failed exact readback.")
+    return task_id, readback
+
+
+def _reconcile_feedback_receipt(
+    kanban: Any,
+    receipt: Dict[str, Any],
+    *,
+    received: str,
+    digest: str,
+) -> bool:
+    """Migrate legacy receipts and replace premature terminal closures safely."""
+    original_task_id = receipt.get("task_id")
+    if not isinstance(original_task_id, str) or not original_task_id.startswith("t_"):
+        raise FeedbackIntakeError("Persisted feedback receipt is missing its task id.")
+    authenticated_changed = receipt.get("authenticated_origin") is not True
+    receipt["authenticated_origin"] = True
+
+    triage_task_id = receipt.get("triage_task_id")
+    if triage_task_id is None:
+        _verified_feedback_task(kanban, original_task_id, digest)
+        triage_task_id = original_task_id
+        superseded = receipt.setdefault("superseded_task_ids", [])
+        if not isinstance(superseded, list) or any(
+            not isinstance(item, str) for item in superseded
+        ):
+            raise FeedbackIntakeError("Persisted feedback supersession history is invalid.")
+        if original_task_id not in superseded:
+            superseded.append(original_task_id)
+        task_id, readback = _create_verified_closure(
+            kanban,
+            received=received,
+            digest=digest,
+            triage_task_id=triage_task_id,
+            idempotency_key=(
+                "radulator-formspree-closure-repair:"
+                + digest
+                + ":"
+                + original_task_id
+            ),
+            supersedes=original_task_id,
+        )
+        status = _task_status(readback, task_id)
+        if status in TERMINAL_TASK_STATUSES and not _has_release_closure_proof(
+            readback, digest, task_id
+        ):
+            if task_id not in superseded:
+                superseded.append(task_id)
+            task_id, readback = _create_verified_closure(
+                kanban,
+                received=received,
+                digest=digest,
+                triage_task_id=triage_task_id,
+                idempotency_key=(
+                    "radulator-formspree-closure-repair:" + digest + ":" + task_id
+                ),
+                supersedes=task_id,
+            )
+            status = _task_status(readback, task_id)
+        if status in TERMINAL_TASK_STATUSES and not _has_release_closure_proof(
+            readback, digest, task_id
+        ):
+            raise FeedbackIntakeError("Replacement feedback closure is already terminal without release proof.")
+        receipt["triage_task_id"] = triage_task_id
+        receipt["task_id"] = task_id
+        return True
+
+    if not isinstance(triage_task_id, str) or not triage_task_id.startswith("t_"):
+        raise FeedbackIntakeError("Persisted feedback receipt has an invalid triage task id.")
+    _verified_feedback_task(kanban, triage_task_id, digest)
+    readback = _verified_feedback_task(kanban, original_task_id, digest)
+    status = _task_status(readback, original_task_id)
+    if (
+        status in OPEN_TASK_STATUSES
+        and _has_parent(readback, triage_task_id)
+    ) or (
+        status in TERMINAL_TASK_STATUSES
+        and _has_release_closure_proof(readback, digest, original_task_id)
+    ):
+        return authenticated_changed
+
+    task_id, replacement = _create_verified_closure(
+        kanban,
+        received=received,
+        digest=digest,
+        triage_task_id=triage_task_id,
+        idempotency_key=(
+            "radulator-formspree-closure-repair:" + digest + ":" + original_task_id
+        ),
+        supersedes=original_task_id,
+    )
+    if _task_status(replacement, task_id) not in OPEN_TASK_STATUSES:
+        raise FeedbackIntakeError("Replacement feedback closure is not open.")
+    superseded = receipt.setdefault("superseded_task_ids", [])
+    if not isinstance(superseded, list) or any(not isinstance(item, str) for item in superseded):
+        raise FeedbackIntakeError("Persisted feedback supersession history is invalid.")
+    if original_task_id not in superseded:
+        superseded.append(original_task_id)
+    receipt["task_id"] = task_id
+    return True
 
 
 def _quarantine_task(received: str, digest: str) -> Any:
@@ -363,6 +600,14 @@ def _quarantine_task(received: str, digest: str) -> Any:
 def _load_state(path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {"version": STATE_VERSION, "processed": {}}
+    try:
+        metadata = path.lstat()
+    except OSError as error:
+        raise FeedbackIntakeError("Feedback state metadata is unreadable.") from error
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > MAX_STATE_BYTES:
+        raise FeedbackIntakeError("Feedback state must be a bounded regular file.")
+    if metadata.st_uid != os.geteuid() or metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        raise FeedbackIntakeError("Feedback state has unsafe ownership or permissions.")
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -427,8 +672,23 @@ def _process_feedback_locked(
         message_id = summary["id"]
         digest = _receipt_digest(message_id)
         existing_receipt = state["processed"].get(digest)
-        if isinstance(existing_receipt, dict) and existing_receipt.get("classification") == "feedback":
-            outcome["already_processed"] += 1
+        existing_feedback = (
+            isinstance(existing_receipt, dict)
+            and existing_receipt.get("classification") == "feedback"
+        )
+        if existing_feedback and existing_receipt.get("authenticated_origin") is True:
+            received = _received_date(summary.get("date"))
+            reconciled = _reconcile_feedback_receipt(
+                kanban,
+                existing_receipt,
+                received=received,
+                digest=digest,
+            )
+            if reconciled:
+                _write_state(state_path, state)
+                outcome["reconciled"] = outcome.get("reconciled", 0) + 1
+            else:
+                outcome["already_processed"] += 1
             continue
         if isinstance(existing_receipt, dict) and existing_receipt.get("classification") == "untrusted":
             outcome["already_processed"] += 1
@@ -444,7 +704,8 @@ def _process_feedback_locked(
             isinstance(existing_receipt, dict)
             and existing_receipt.get("classification") == "quarantined"
         )
-        if stale_quarantine:
+        replay_receipt = stale_quarantine or existing_feedback
+        if replay_receipt:
             if replay_attempted >= max_messages:
                 continue
             replay_attempted += 1
@@ -460,17 +721,32 @@ def _process_feedback_locked(
         if not isinstance(full, dict) or full.get("id") != message_id:
             raise FeedbackIntakeError("Gmail feedback read did not match the trusted notification.")
         if not _trusted_notification(full):
-            state["processed"][digest] = {
-                "classification": "untrusted",
-                "parser_version": PARSER_VERSION,
-            }
-            _write_state(state_path, state)
+            if not existing_feedback:
+                state["processed"][digest] = {
+                    "classification": "untrusted",
+                    "parser_version": PARSER_VERSION,
+                }
+                _write_state(state_path, state)
             outcome["rejected_untrusted"] = outcome.get("rejected_untrusted", 0) + 1
             continue
         if not isinstance(full.get("body"), str):
             raise FeedbackIntakeError("Gmail feedback read did not contain a message body.")
-        if not stale_quarantine:
+        if not replay_receipt:
             new_attempted += 1
+
+        if existing_feedback:
+            reconciled = _reconcile_feedback_receipt(
+                kanban,
+                existing_receipt,
+                received=received,
+                digest=digest,
+            )
+            _write_state(state_path, state)
+            if reconciled:
+                outcome["reconciled"] = outcome.get("reconciled", 0) + 1
+            else:
+                outcome["already_processed"] += 1
+            continue
 
         classification = "feedback"
         try:
@@ -540,6 +816,7 @@ def _process_feedback_locked(
         }
         if triage_task_id:
             state["processed"][digest]["triage_task_id"] = triage_task_id
+            state["processed"][digest]["authenticated_origin"] = True
         _write_state(state_path, state)
         if classification == "quarantined":
             outcome["quarantined"] += 1
@@ -824,7 +1101,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     except FeedbackIntakeError as error:
         print("Radulator feedback intake failed: " + str(error), file=sys.stderr)
         return 1
-    if result["created"] or result["quarantined"] or result.get("rejected_untrusted"):
+    if (
+        result["created"]
+        or result["quarantined"]
+        or result.get("reconciled")
+        or result.get("rejected_untrusted")
+    ):
         print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0
 

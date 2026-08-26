@@ -278,6 +278,7 @@ def build_plan(
 
     overlay = repo / "ops/hermes/radulator"
     ledger = radulator_home / "state/radulator-release-lifecycle.jsonl"
+    reconciliation_spec = radulator_home / "state/radulator-lifecycle-reconciliation.json"
     lifecycle_cursor = radulator_home / "state/radulator-release-lifecycle-cursor.json"
     learning_cursor = radulator_home / "state/radulator-release-learning-cursor.json"
     hindsight_config = radulator_home / "hindsight/config.json"
@@ -322,7 +323,11 @@ def build_plan(
         ),
         _job(
             "radulator-release-lifecycle", radulator_home, repo,
-            f"Run python3 {overlay / 'lifecycle_controller.py'} next --ledger {ledger} --cursor-state {lifecycle_cursor}. "
+            f"Before collecting work, if the operator-reviewed file {reconciliation_spec} exists, run exactly: "
+            f"python3 {overlay / 'lifecycle_controller.py'} reconcile --ledger {ledger} --spec {reconciliation_spec} "
+            "--hermes hermes --apply. This is the lifecycle_controller.py reconcile path. Stop on any reconciliation error; "
+            "never create or edit the reviewed reconciliation spec during a job. "
+            f"Then run python3 {overlay / 'lifecycle_controller.py'} next --ledger {ledger} --cursor-state {lifecycle_cursor}. "
             "Invoke that collector exactly once in this run. If it returns count 0, stop immediately. Process only its single returned "
             "tracker and never enumerate the full ledger, board, or session history in this run. Reconcile only that tracker's Radulator "
             "GitHub, deploy, and Kanban facts. Use radulator-release-controller. Append only authoritative exact-SHA transitions; run "

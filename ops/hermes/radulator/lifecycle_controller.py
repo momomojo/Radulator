@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import tempfile
 from pathlib import Path
@@ -20,8 +21,12 @@ from typing import Any
 SCHEMA = "radulator-lifecycle-event/v1"
 CURSOR_SCHEMA = "radulator-lifecycle-cursor/v1"
 CANDIDATE_SCHEMA = "radulator-lifecycle-candidate/v1"
+RECONCILIATION_SCHEMA = "radulator-lifecycle-reconciliation/v1"
+RECONCILIATION_RESULT_SCHEMA = "radulator-lifecycle-reconciliation-result/v1"
 ZERO_HASH = "0" * 64
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+TERMINAL_KANBAN_STATUSES = frozenset({"complete", "completed", "done", "archived"})
 
 TRANSITIONS = {
     None: {"feedback"},
@@ -351,6 +356,259 @@ def select_next_candidate(
     }
 
 
+def _validate_reconciliation_spec(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise LedgerError("Lifecycle reconciliation spec must be an object.")
+    allowed_top = {"schema", "review_id", "trackers"}
+    unknown_top = set(value) - allowed_top
+    if unknown_top:
+        raise LedgerError(
+            "Lifecycle reconciliation spec has unknown fields: "
+            + ", ".join(sorted(unknown_top))
+        )
+    if value.get("schema") != RECONCILIATION_SCHEMA:
+        raise LedgerError("Lifecycle reconciliation spec has an unsupported schema.")
+    review_id = value.get("review_id")
+    if not isinstance(review_id, str) or not review_id.strip():
+        raise LedgerError("Lifecycle reconciliation spec requires review_id.")
+    trackers = value.get("trackers")
+    if not isinstance(trackers, list) or not trackers or len(trackers) > 100:
+        raise LedgerError("Lifecycle reconciliation spec requires 1 to 100 trackers.")
+
+    normalized: list[dict[str, Any]] = []
+    task_ids: set[str] = set()
+    for index, tracker in enumerate(trackers):
+        if not isinstance(tracker, dict):
+            raise LedgerError(f"Reconciliation tracker {index} must be an object.")
+        allowed_tracker = {
+            "task_id", "source_id", "source", "pr", "head_sha", "base_sha",
+        }
+        unknown_tracker = set(tracker) - allowed_tracker
+        if unknown_tracker:
+            raise LedgerError(
+                f"Reconciliation tracker {index} has unknown fields: "
+                + ", ".join(sorted(unknown_tracker))
+            )
+        task_id = tracker.get("task_id")
+        source_id = tracker.get("source_id")
+        if not isinstance(task_id, str) or not task_id.startswith("t_"):
+            raise LedgerError(f"Reconciliation tracker {index} requires task_id.")
+        if task_id in task_ids:
+            raise LedgerError(f"Reconciliation task_id {task_id} is duplicated.")
+        task_ids.add(task_id)
+        if not isinstance(source_id, str) or not source_id.strip():
+            raise LedgerError(f"Reconciliation tracker {task_id} requires source_id.")
+
+        source = tracker.get("source")
+        if not isinstance(source, dict):
+            raise LedgerError(f"Reconciliation tracker {task_id} requires source task/receipt evidence.")
+        source_kind = source.get("kind")
+        expected_source_keys = (
+            {"kind", "task_id"}
+            if source_kind == "kanban_task"
+            else {"kind", "task_id", "digest"}
+            if source_kind == "formspree_receipt"
+            else None
+        )
+        if expected_source_keys is None or set(source) != expected_source_keys:
+            raise LedgerError(
+                f"Reconciliation tracker {task_id} has ambiguous source task/receipt evidence."
+            )
+        source_task_id = source.get("task_id")
+        if not isinstance(source_task_id, str) or not source_task_id.startswith("t_"):
+            raise LedgerError(f"Reconciliation tracker {task_id} has invalid source task_id.")
+        if source_kind == "formspree_receipt" and not DIGEST_PATTERN.fullmatch(
+            str(source.get("digest", ""))
+        ):
+            raise LedgerError(f"Reconciliation tracker {task_id} has invalid receipt digest.")
+
+        authority_fields = (tracker.get("pr"), tracker.get("head_sha"), tracker.get("base_sha"))
+        if any(field is not None for field in authority_fields) and not all(
+            field is not None for field in authority_fields
+        ):
+            missing = [
+                name for name in ("pr", "head_sha", "base_sha")
+                if tracker.get(name) is None
+            ]
+            raise LedgerError(
+                f"Reconciliation tracker {task_id} requires " + ", ".join(missing) + "."
+            )
+        if all(field is not None for field in authority_fields):
+            if not isinstance(tracker["pr"], int) or tracker["pr"] <= 0:
+                raise LedgerError(f"Reconciliation tracker {task_id} has invalid pr.")
+            if not SHA_PATTERN.fullmatch(str(tracker["head_sha"])):
+                raise LedgerError(f"Reconciliation tracker {task_id} has invalid head_sha.")
+            if not SHA_PATTERN.fullmatch(str(tracker["base_sha"])):
+                raise LedgerError(f"Reconciliation tracker {task_id} has invalid base_sha.")
+        normalized.append(json.loads(_canonical(tracker)))
+
+    return {
+        "schema": RECONCILIATION_SCHEMA,
+        "review_id": review_id.strip(),
+        "trackers": normalized,
+    }
+
+
+def _load_reconciliation_spec(path: str | Path) -> dict[str, Any]:
+    spec_path = Path(path)
+    try:
+        metadata = spec_path.stat()
+    except OSError as error:
+        raise LedgerError("Lifecycle reconciliation spec is unavailable.") from error
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 1024 * 1024:
+        raise LedgerError("Lifecycle reconciliation spec must be a bounded regular file.")
+    if metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        raise LedgerError("Lifecycle reconciliation spec must not be group/world writable.")
+    try:
+        value = json.loads(spec_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise LedgerError("Lifecycle reconciliation spec is unreadable.") from error
+    return _validate_reconciliation_spec(value)
+
+
+def _verified_kanban_reconciliation_task(
+    adapter: Any,
+    task_id: str,
+) -> tuple[dict[str, Any], str]:
+    try:
+        readback = adapter.show(task_id)
+    except Exception as error:
+        raise LedgerError(f"Kanban reconciliation readback failed for {task_id}.") from error
+    if not _task_records(readback, task_id):
+        raise LedgerError(f"Kanban reconciliation readback did not identify {task_id}.")
+    return readback, _task_status(readback, task_id)
+
+
+def _reconciliation_action(event: LifecycleEvent) -> dict[str, Any]:
+    return {
+        "kind": "create_prerequisite",
+        "idempotency_key": f"radulator-reconcile:{event.task_id}:{event.event_hash}",
+        "tracker_task_id": event.task_id,
+        "title": f"Reconcile nonterminal Radulator release tracker {event.task_id}",
+        "body": (
+            f"Release tracker {event.task_id} is terminal in Kanban while its tamper-evident "
+            f"lifecycle remains {event.state} at event {event.event_hash}. Preserve the ledger "
+            "state, restore a runnable corrective obligation, and do not infer deployment, smoke, learning, or completion."
+        ),
+        "head_sha": event.head_sha,
+        "assignee": "radulator",
+        "priority": 100,
+        "created_by": "radulator-lifecycle",
+    }
+
+
+def reconcile_trackers(
+    ledger: LifecycleLedger,
+    spec: Any,
+    adapter: Any,
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Plan or apply explicit, reviewed ledger/Kanban reconciliation only."""
+    normalized = _validate_reconciliation_spec(spec)
+    replay = ledger.replay()
+    result: dict[str, Any] = {
+        "schema": RECONCILIATION_RESULT_SCHEMA,
+        "review_id": normalized["review_id"],
+        "apply": apply,
+        "planned_bootstrap": [],
+        "bootstrapped": [],
+        "already_reconciled": [],
+        "terminal_mismatches": [],
+        "planned_actions": [],
+        "applied_actions": [],
+    }
+
+    for tracker in normalized["trackers"]:
+        task_id = tracker["task_id"]
+        tracker_readback, tracker_status = _verified_kanban_reconciliation_task(
+            adapter, task_id
+        )
+        source = tracker["source"]
+        source_readback, _source_status = _verified_kanban_reconciliation_task(
+            adapter, source["task_id"]
+        )
+        if (
+            source["kind"] == "formspree_receipt"
+            and source["digest"] not in _canonical(source_readback)
+        ):
+            raise LedgerError(
+                f"Reconciliation source receipt digest failed authoritative readback for {task_id}."
+            )
+        if tracker.get("pr") is not None:
+            serialized_tracker = _canonical(tracker_readback)
+            if f"#{tracker['pr']}" not in serialized_tracker:
+                raise LedgerError(f"Reconciliation PR failed Kanban readback for {task_id}.")
+            if tracker["head_sha"] not in serialized_tracker:
+                raise LedgerError(f"Reconciliation head SHA failed Kanban readback for {task_id}.")
+            if tracker["base_sha"] not in serialized_tracker:
+                raise LedgerError(f"Reconciliation base SHA failed Kanban readback for {task_id}.")
+
+        current = replay.current_by_task.get(task_id)
+        entry_digest = hashlib.sha256(_canonical(tracker).encode("utf-8")).hexdigest()
+        if current is None:
+            if tracker_status in TERMINAL_KANBAN_STATUSES:
+                raise LedgerError(
+                    f"Cannot bootstrap terminal Kanban tracker {task_id} without lifecycle evidence."
+                )
+            result["planned_bootstrap"].append(task_id)
+            if apply:
+                event = ledger.append(
+                    idempotency_key=(
+                        f"reconcile:{task_id}:feedback:{normalized['review_id']}"
+                    ),
+                    source_id=tracker["source_id"],
+                    task_id=task_id,
+                    state="feedback",
+                    pr=tracker.get("pr"),
+                    head_sha=tracker.get("head_sha"),
+                    evidence={
+                        "reconciliation_schema": RECONCILIATION_SCHEMA,
+                        "review_id": normalized["review_id"],
+                        "reconciliation_entry_sha256": entry_digest,
+                        "source": source,
+                        "kanban_status": tracker_status,
+                        **(
+                            {"base_sha": tracker["base_sha"]}
+                            if tracker.get("base_sha") is not None
+                            else {}
+                        ),
+                    },
+                )
+                replay = ledger.replay()
+                current = event
+                result["bootstrapped"].append(task_id)
+            continue
+
+        if current.source_id != tracker["source_id"]:
+            raise LedgerError(f"Reconciliation source_id conflicts for {task_id}.")
+        first = next(event for event in replay.events if event.task_id == task_id)
+        recorded_digest = first.evidence.get("reconciliation_entry_sha256")
+        if recorded_digest is not None and recorded_digest != entry_digest:
+            raise LedgerError(f"Reconciliation spec conflicts with bootstrapped tracker {task_id}.")
+
+        if tracker_status in TERMINAL_KANBAN_STATUSES and current.state != "complete":
+            result["terminal_mismatches"].append(task_id)
+            action_event = current
+            if current.state == "blocked" and replay.blocked_resume_by_task.get(task_id) == "needs_fix":
+                action_event = next(
+                    event
+                    for event in reversed(replay.events)
+                    if event.task_id == task_id and event.state == "needs_fix"
+                )
+            actions = (
+                actions_for_event(action_event)
+                if action_event.state == "needs_fix"
+                else [_reconciliation_action(current)]
+            )
+            result["planned_actions"].extend(actions)
+            if apply:
+                result["applied_actions"].extend(execute_actions(actions, adapter))
+        else:
+            result["already_reconciled"].append(task_id)
+    return result
+
+
 def actions_for_event(event: LifecycleEvent) -> list[dict[str, Any]]:
     """Return deterministic Kanban actions; the caller performs and reads them back."""
     if event.state == "needs_fix":
@@ -361,9 +619,9 @@ def actions_for_event(event: LifecycleEvent) -> list[dict[str, Any]]:
         action_key = f"radulator-rework:{event.task_id}:{verdict_id}"
         return [
             {
-                "kind": "create_child",
+                "kind": "create_prerequisite",
                 "idempotency_key": action_key,
-                "parent_task_id": event.task_id,
+                "tracker_task_id": event.task_id,
                 "title": f"Rework Radulator PR #{event.pr} after clinical verdict",
                 "body": (
                     f"Rework exact PR #{event.pr} at {event.head_sha}. "
@@ -386,9 +644,9 @@ def actions_for_event(event: LifecycleEvent) -> list[dict[str, Any]]:
         ]
     if event.state == "smoke_passed":
         return [{
-            "kind": "create_child",
+            "kind": "create_prerequisite",
             "idempotency_key": f"radulator-learn:{event.task_id}:{event.head_sha}",
-            "parent_task_id": event.task_id,
+            "tracker_task_id": event.task_id,
             "title": "Retain verified learning for a Radulator release",
             "body": (
                 f"Use the radulator-release-learning skill for parent task {event.task_id} "
@@ -479,6 +737,39 @@ def _has_completed_status(value: Any, task_id: str) -> bool:
     return _terminal_status(value, task_id) is not None
 
 
+def _related_task_ids(value: Any, relation: str, task_id: str) -> set[str]:
+    if relation not in {"parents", "children"}:
+        raise LedgerError(f"Unsupported Kanban relation {relation!r}.")
+    containers: list[Any] = []
+    if isinstance(value, dict) and relation in value:
+        containers.append(value[relation])
+    for record in _task_records(value, task_id):
+        if relation in record:
+            containers.append(record[relation])
+    related: set[str] = set()
+    for container in containers:
+        if not isinstance(container, list):
+            raise LedgerError(f"Kanban {relation} readback is malformed for {task_id}.")
+        for item in container:
+            candidate = item if isinstance(item, str) else _find_task_id(item)
+            if not isinstance(candidate, str) or not candidate.startswith("t_"):
+                raise LedgerError(f"Kanban {relation} readback is malformed for {task_id}.")
+            related.add(candidate)
+    return related
+
+
+def _task_status(value: Any, task_id: str) -> str:
+    records = _task_records(value, task_id)
+    statuses = {
+        str(record.get("status", record.get("state", ""))).strip().lower()
+        for record in records
+        if str(record.get("status", record.get("state", ""))).strip()
+    }
+    if len(statuses) != 1:
+        raise LedgerError(f"Kanban status readback is missing or ambiguous for {task_id}.")
+    return next(iter(statuses))
+
+
 class HermesKanbanCLI:
     """Small verified adapter over the installed `hermes kanban` interface."""
 
@@ -510,6 +801,82 @@ class HermesKanbanCLI:
 
     def perform(self, action: dict[str, Any]) -> dict[str, Any]:
         kind = action.get("kind")
+        if kind == "create_prerequisite":
+            arguments = [
+                "create",
+                action["title"],
+                "--body",
+                action["body"],
+                "--idempotency-key",
+                action["idempotency_key"],
+            ]
+            for key, option in (
+                ("assignee", "--assignee"),
+                ("priority", "--priority"),
+                ("max_runtime", "--max-runtime"),
+                ("created_by", "--created-by"),
+            ):
+                if action.get(key) is not None:
+                    arguments.extend([option, str(action[key])])
+            arguments.append("--json")
+            created = self._run(arguments, expect_json=True)
+            prerequisite_id = _find_task_id(created)
+            if not prerequisite_id:
+                raise LedgerError("Kanban create response did not contain a prerequisite task id.")
+            tracker_id = action["tracker_task_id"]
+            prerequisite = self.show(prerequisite_id)
+            serialized = _canonical(prerequisite)
+            if action["body"] not in serialized:
+                self._run([
+                    "comment", prerequisite_id, action["body"],
+                    "--author", "radulator-lifecycle",
+                ])
+                prerequisite = self.show(prerequisite_id)
+                serialized = _canonical(prerequisite)
+            if action.get("assignee") and action["assignee"] not in serialized:
+                self._run(["assign", prerequisite_id, action["assignee"]])
+                prerequisite = self.show(prerequisite_id)
+                serialized = _canonical(prerequisite)
+            if action["body"] not in serialized:
+                raise LedgerError("Created prerequisite failed exact body readback.")
+            if action.get("assignee") and action["assignee"] not in serialized:
+                raise LedgerError("Created prerequisite failed assignee Kanban readback.")
+
+            if tracker_id in _related_task_ids(prerequisite, "parents", prerequisite_id):
+                self._run(["unlink", tracker_id, prerequisite_id])
+                prerequisite = self.show(prerequisite_id)
+                if tracker_id in _related_task_ids(prerequisite, "parents", prerequisite_id):
+                    raise LedgerError("Deadlocked tracker-to-prerequisite edge survived unlink readback.")
+
+            tracker = self.show(tracker_id)
+            if prerequisite_id not in _related_task_ids(tracker, "parents", tracker_id):
+                self._run(["link", prerequisite_id, tracker_id])
+                tracker = self.show(tracker_id)
+            if prerequisite_id not in _related_task_ids(tracker, "parents", tracker_id):
+                raise LedgerError("Prerequisite-to-tracker dependency failed authoritative readback.")
+
+            status = _task_status(prerequisite, prerequisite_id)
+            if status in {"todo", "blocked"}:
+                self._run([
+                    "promote", prerequisite_id,
+                    f"release tracker {tracker_id} requires this prerequisite",
+                    "--json",
+                ])
+                prerequisite = self.show(prerequisite_id)
+                status = _task_status(prerequisite, prerequisite_id)
+            if status not in {"ready", "running", "review", "done", "archived"}:
+                raise LedgerError(
+                    f"Lifecycle prerequisite {prerequisite_id} is not runnable or complete after reconciliation."
+                )
+            if tracker_id in _related_task_ids(prerequisite, "parents", prerequisite_id):
+                raise LedgerError("Lifecycle prerequisite still depends on its open release tracker.")
+            return {
+                "kind": kind,
+                "task_id": prerequisite_id,
+                "tracker_task_id": tracker_id,
+                "idempotency_key": action["idempotency_key"],
+                "status": status,
+            }
         if kind == "create_child":
             arguments = [
                 "create",
@@ -620,6 +987,11 @@ def main() -> None:
     bootstrap.add_argument("--head-sha", required=True)
     bootstrap.add_argument("--apply", action="store_true")
     bootstrap.add_argument("--hermes", default="hermes")
+    reconcile = subparsers.add_parser("reconcile")
+    reconcile.add_argument("--ledger", required=True)
+    reconcile.add_argument("--spec", required=True)
+    reconcile.add_argument("--hermes", default="hermes")
+    reconcile.add_argument("--apply", action="store_true")
     args = parser.parse_args()
 
     if args.command == "bootstrap":
@@ -628,7 +1000,14 @@ def main() -> None:
         print(_canonical(rendered))
         return
     ledger = LifecycleLedger(args.ledger)
-    if args.command == "append":
+    if args.command == "reconcile":
+        print(_canonical(reconcile_trackers(
+            ledger,
+            _load_reconciliation_spec(args.spec),
+            HermesKanbanCLI(args.hermes),
+            apply=args.apply,
+        )))
+    elif args.command == "append":
         event = ledger.append(
             idempotency_key=args.idempotency_key,
             source_id=args.source_id,
