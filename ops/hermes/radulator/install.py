@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -632,6 +633,22 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
         )
 
 
+def _verify_publisher_secret_boundary(plan: dict[str, Any]) -> None:
+    path = Path(plan["radulator_home"]) / ".env"
+    try:
+        details = path.lstat()
+    except OSError as error:
+        raise InstallError("Trusted publisher secret file is missing.") from error
+    if (
+        not stat.S_ISREG(details.st_mode)
+        or details.st_uid != os.getuid()
+        or stat.S_IMODE(details.st_mode) != 0o600
+    ):
+        raise InstallError(
+            "Trusted publisher secret file must be an owner-controlled regular non-symlink file at mode 0600."
+        )
+
+
 def _capture_backup(plan: dict[str, Any], targets: list[Path]) -> None:
     destination = _backup_path(plan)
     def canonical(value: str | Path) -> str:
@@ -688,6 +705,7 @@ def apply_install(
     )
     if enable:
         _verify_activation_trust(plan, expected_public_keys)
+        _verify_publisher_secret_boundary(plan)
         _verify_broker_contract(plan, activation_test_runner)
         _run_activation_self_tests(plan, activation_test_runner)
     homes = {str(Path(plan["radulator_home"])): [], str(Path(plan["default_home"])): []}

@@ -8,8 +8,20 @@ export HERMES_PROFILE_DIR="$PROFILE_DIR"
 export HOME="/Users/agent"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/agent/.local/bin:${PATH:-}"
 
+ENV_FILE="$PROFILE_DIR/.env"
+if [[ ! -f "$ENV_FILE" || -L "$ENV_FILE" ]]; then
+  echo "[trusted-publisher] FATAL: profile environment is not a regular non-symlink file" >&2
+  exit 1
+fi
+ENV_UID="$(stat -f '%u' "$ENV_FILE")"
+ENV_MODE="$(stat -f '%Lp' "$ENV_FILE")"
+if [[ "$ENV_UID" != "$(id -u)" || "$ENV_MODE" != "600" ]]; then
+  echo "[trusted-publisher] FATAL: profile environment must be owner-controlled mode 0600" >&2
+  exit 1
+fi
+
 set -a
-source "$PROFILE_DIR/.env" || {
+source "$ENV_FILE" || {
   echo "[trusted-publisher] FATAL: cannot source profile environment" >&2
   exit 1
 }

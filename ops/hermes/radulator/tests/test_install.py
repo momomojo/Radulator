@@ -32,6 +32,8 @@ class InstallerTests(unittest.TestCase):
                 "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_jobs: 1\n"
             )
             (home / "cron").mkdir()
+        (self.radulator_home / ".env").write_text("# test secret boundary\n")
+        (self.radulator_home / ".env").chmod(0o600)
         self.original_radulator_jobs = (
             b'{"jobs":['
             b'{"id":"existing","name":"keep-me","enabled":true},'
@@ -484,6 +486,33 @@ class InstallerTests(unittest.TestCase):
                 enable=True,
                 expected_public_keys=public_keys,
                 activation_test_runner=runner,
+            )
+
+    def test_enable_rejects_unsafe_publisher_secret_file(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+        (self.radulator_home / ".env").chmod(0o640)
+
+        with self.assertRaisesRegex(InstallError, "publisher secret"):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=public_keys,
+                activation_test_runner=self.passing_activation_runner,
+            )
+
+        target = self.radulator_home / "real.env"
+        target.write_text("# secret\n")
+        target.chmod(0o600)
+        (self.radulator_home / ".env").unlink()
+        (self.radulator_home / ".env").symlink_to(target)
+        with self.assertRaisesRegex(InstallError, "publisher secret"):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=public_keys,
+                activation_test_runner=self.passing_activation_runner,
             )
 
     def test_enable_refuses_missing_local_judge_trust_configuration(self):

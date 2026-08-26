@@ -48,7 +48,7 @@ The publisher processes at most one oldest eligible task per invocation and fail
 
 ## Credentials and process boundary
 
-The publisher is a `no_agent` Hermes cron script. Its wrapper loads the profile secret environment only after the model turn has ended. The worker and commit broker never receive `GH_TOKEN`, `GITHUB_TOKEN`, credential helpers, or network publication capability. The publisher drops inherited proxy and askpass variables and passes a minimal explicit environment to Git and GitHub CLI subprocesses. HTTPS Git publication uses the fixed `gh auth git-credential` helper inside that no-agent process; the token is environment-only and never appears in argv, output, or a model-visible process.
+The publisher is a `no_agent` Hermes cron script. Its wrapper loads the profile secret environment only after the model turn has ended and only after proving it is an owner-controlled regular non-symlink file at exact mode `0600`; the installer enforces the same boundary before enablement. The worker and commit broker never receive `GH_TOKEN`, `GITHUB_TOKEN`, credential helpers, or network publication capability. The publisher drops inherited proxy and askpass variables and passes a minimal explicit environment to Git and GitHub CLI subprocesses. HTTPS Git publication uses the fixed `gh auth git-credential` helper inside that no-agent process; the token is environment-only and never appears in argv, output, or a model-visible process.
 
 ## Idempotency and crash recovery
 
