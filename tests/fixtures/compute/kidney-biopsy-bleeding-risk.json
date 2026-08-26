@@ -1,0 +1,141 @@
+{
+  "calculatorId": "kidney-biopsy-bleeding-risk",
+  "calculatorName": "Kidney Biopsy Major Bleeding Risk (KBRC)",
+  "cases": [
+    {
+      "id": "paper-typical-native",
+      "description": "Published 2.5% typical native-kidney example from the Thorne et al. discussion, evaluated with the Item S1 equation.",
+      "inputs": {
+        "age": 57,
+        "weight": 81.7292,
+        "height": 170,
+        "platelets": 220,
+        "hemoglobin": 107,
+        "kidney_size": 11.4,
+        "kidney_type": "native"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "2.5%"
+          },
+          { "key": "Calculated BMI", "equals": "28.28 kg/m²" },
+          { "key": "Outcome Definition", "includes": "transfusion, surgery or embolization, or resulting in death" },
+          { "key": "Model Scope", "includes": "adults undergoing diagnostic percutaneous native- or transplant-kidney biopsy" }
+        ]
+      }
+    },
+    {
+      "id": "paper-typical-allograft",
+      "description": "Published 1.0% typical allograft-kidney example from the Thorne et al. discussion, evaluated with the Item S1 equation.",
+      "inputs": {
+        "age": 57,
+        "weight": 81.7292,
+        "height": 170,
+        "platelets": 220,
+        "hemoglobin": 107,
+        "kidney_size": 11.4,
+        "kidney_type": "allograft"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "1.0%"
+          }
+        ]
+      }
+    },
+    {
+      "id": "paper-higher-risk-native",
+      "description": "Published 7.4% higher-risk native-kidney example from the Thorne et al. discussion.",
+      "inputs": {
+        "age": 65,
+        "weight": 69.36,
+        "height": 170,
+        "platelets": 150,
+        "hemoglobin": 100,
+        "kidney_size": 10,
+        "kidney_type": "native"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "7.4%"
+          }
+        ]
+      }
+    },
+    {
+      "id": "paper-lower-risk-allograft",
+      "description": "Published 0.4% lower-risk allograft-kidney example from the Thorne et al. discussion.",
+      "inputs": {
+        "age": 45,
+        "weight": 86.7,
+        "height": 170,
+        "platelets": 300,
+        "hemoglobin": 110,
+        "kidney_size": 12,
+        "kidney_type": "allograft"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "0.4%"
+          }
+        ]
+      }
+    },
+    {
+      "id": "calibration-above-25",
+      "description": "Executable p0130 regression for the recalibrated model's overprediction warning above 25%.",
+      "inputs": {
+        "age": 18,
+        "weight": 30,
+        "height": 210,
+        "platelets": 50,
+        "hemoglobin": 70,
+        "kidney_size": 8,
+        "kidney_type": "native"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          {
+            "key": "Estimated major bleeding risk after kidney biopsy",
+            "equals": "30.2%"
+          },
+          {
+            "key": "Calibration Warning",
+            "includes": "Estimates above 25% may overpredict major bleeding risk"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-out-of-range",
+      "inputs": {
+        "age": 91,
+        "weight": 70,
+        "height": 170,
+        "platelets": 220,
+        "hemoglobin": 107,
+        "kidney_size": 11.4,
+        "kidney_type": "native"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          { "key": "Error", "includes": "not publication-derived model-validation bounds" }
+        ]
+      }
+    }
+  ]
+}

@@ -354,6 +354,8 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
           return (
             <div
               key={key}
+              role="alert"
+              tabIndex={-1}
               className="p-4 rounded-lg border bg-[hsl(var(--result-danger-bg))] border-[hsl(var(--result-danger-border))]"
             >
               <div className="flex items-center text-[hsl(var(--result-danger))]">
