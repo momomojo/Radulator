@@ -1,4 +1,5 @@
 import base64
+import fcntl
 import hashlib
 import hmac
 import importlib.util
@@ -9,6 +10,8 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import types
 import unittest
 from pathlib import Path
@@ -513,6 +516,296 @@ class InstallerTests(unittest.TestCase):
         self.assertIs(matched[0]["enabled"], False)
         self.assertEqual(matched[0]["state"], "paused")
         self.assertIsNone(matched[0]["next_run_at"])
+
+    def test_plain_apply_and_restore_quiesce_renamed_publisher_script_consumer_before_asset_copy(self):
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        payload["jobs"].append({
+            "id": "operator-shadow-publisher",
+            "name": "operator-shadow-publisher",
+            "script": "trusted_publisher_cron.sh",
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+        publisher_wrapper = (
+            self.radulator_home / "scripts" / "trusted_publisher_cron.sh"
+        ).resolve()
+        original_atomic_write = install_module._atomic_write
+        observed_enabled_consumers = []
+
+        def observe_publisher_asset(path, content, mode=0o600):
+            if Path(path).resolve() == publisher_wrapper:
+                current = json.loads(jobs_path.read_text())["jobs"]
+                observed_enabled_consumers.append([
+                    job["id"]
+                    for job in current
+                    if job.get("script") == "trusted_publisher_cron.sh"
+                    and job.get("enabled") is not False
+                ])
+            return original_atomic_write(path, content, mode)
+
+        with mock.patch.object(
+            install_module, "_atomic_write", side_effect=observe_publisher_asset
+        ):
+            apply_install(**self.kwargs())
+
+        self.assertEqual(observed_enabled_consumers, [[]])
+        consumers = [
+            job
+            for job in json.loads(jobs_path.read_text())["jobs"]
+            if job.get("script") == "trusted_publisher_cron.sh"
+        ]
+        self.assertEqual(len(consumers), 1)
+        self.assertEqual(consumers[0]["id"], "1def08dbcb74")
+        self.assertIs(consumers[0]["enabled"], False)
+
+        restore_install(**self.kwargs())
+        restored = [
+            job
+            for job in json.loads(jobs_path.read_text())["jobs"]
+            if job.get("script") == "trusted_publisher_cron.sh"
+        ]
+        self.assertEqual(len(restored), 1)
+        self.assertEqual(restored[0]["id"], "operator-shadow-publisher")
+        self.assertIs(restored[0]["enabled"], False)
+        self.assertEqual(restored[0]["state"], "paused")
+        self.assertIsNone(restored[0]["next_run_at"])
+
+    def test_duplicate_managed_script_consumers_are_quiesced_and_rejected_before_asset_copy(self):
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        for suffix in ("one", "two"):
+            payload["jobs"].append({
+                "id": f"shadow-{suffix}",
+                "name": f"shadow-{suffix}",
+                "script": "trusted_publisher_cron.sh",
+                "enabled": True,
+                "state": "scheduled",
+                "next_run_at": "2026-08-26T12:00:00Z",
+            })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+
+        with self.assertRaisesRegex(InstallError, "ambiguous|duplicate"):
+            apply_install(**self.kwargs())
+
+        self.assertFalse(
+            (self.radulator_home / "scripts" / "trusted_publisher_cron.sh").exists()
+        )
+        consumers = [
+            job
+            for job in json.loads(jobs_path.read_text())["jobs"]
+            if job.get("script") == "trusted_publisher_cron.sh"
+        ]
+        self.assertGreaterEqual(len(consumers), 2)
+        self.assertTrue(all(job.get("enabled") is False for job in consumers))
+        self.assertTrue(all(job.get("state") == "paused" for job in consumers))
+        self.assertTrue(all(job.get("next_run_at") is None for job in consumers))
+
+    def test_duplicate_exact_publisher_identities_are_quiesced_before_rejection(self):
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        for suffix in ("one", "two"):
+            payload["jobs"].append({
+                "id": "1def08dbcb74",
+                "name": "radulator-trusted-publisher",
+                "script": "trusted_publisher_cron.sh",
+                "enabled": True,
+                "state": "scheduled",
+                "next_run_at": "2026-08-26T12:00:00Z",
+            })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+
+        with self.assertRaisesRegex(InstallError, "ambiguous|duplicate"):
+            apply_install(**self.kwargs())
+
+        duplicates = [
+            job
+            for job in json.loads(jobs_path.read_text())["jobs"]
+            if job.get("id") == "1def08dbcb74"
+            or job.get("name") == "radulator-trusted-publisher"
+        ]
+        self.assertEqual(len(duplicates), 2)
+        self.assertTrue(all(job.get("enabled") is False for job in duplicates))
+        self.assertTrue(all(job.get("state") == "paused" for job in duplicates))
+        self.assertTrue(all(job.get("next_run_at") is None for job in duplicates))
+        self.assertFalse(
+            (self.radulator_home / "scripts" / "trusted_publisher_cron.sh").exists()
+        )
+
+    def test_enable_holds_both_gateway_job_locks_through_render_and_journal_finish(self):
+        result = apply_install(**self.kwargs())
+        public_keys = generate_keys(build_plan(**self.kwargs()))
+        verification_jobs = self.default_home / "cron" / "jobs.json"
+        verification_lock = self.default_home / "cron" / ".jobs.lock"
+        release = self.default_home / "cron" / "release-gateway-writer"
+        writer_source = """
+import fcntl, json, os, pathlib, sys, time
+jobs_path = pathlib.Path(sys.argv[1])
+lock_path = pathlib.Path(sys.argv[2])
+release_path = pathlib.Path(sys.argv[3])
+with lock_path.open('a+') as lock:
+    fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+    stale = json.loads(jobs_path.read_text())
+    print('locked', flush=True)
+    while not release_path.exists():
+        time.sleep(0.01)
+    jobs = stale if isinstance(stale, list) else stale['jobs']
+    jobs.append({'id': 'gateway-write', 'name': 'gateway-write', 'enabled': False})
+    temporary = jobs_path.with_name('jobs.gateway.tmp')
+    temporary.write_text(json.dumps(stale) + '\\n')
+    os.replace(temporary, jobs_path)
+"""
+        writer = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                writer_source,
+                str(verification_jobs),
+                str(verification_lock),
+                str(release),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.assertEqual(writer.stdout.readline().strip(), "locked")
+        outcome = []
+
+        def enable():
+            try:
+                outcome.append(apply_install(
+                    **self.kwargs(),
+                    enable=True,
+                    expected_public_keys=public_keys,
+                    activation_test_runner=self.passing_activation_runner,
+                ))
+            except BaseException as error:
+                outcome.append(error)
+
+        worker = threading.Thread(target=enable)
+        worker.start()
+        time.sleep(0.15)
+        blocked_behind_gateway = worker.is_alive()
+        release.write_text("release\n")
+        worker.join(timeout=5)
+        stdout, stderr = writer.communicate(timeout=5)
+
+        self.assertEqual(writer.returncode, 0, stderr or stdout)
+        self.assertTrue(blocked_behind_gateway)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(len(outcome), 1)
+        if isinstance(outcome[0], BaseException):
+            raise outcome[0]
+        self.assertEqual(outcome[0]["mode"], "enabled")
+        managed_ids = set(result["job_ids"].values())
+        observed_ids = set()
+        for path in (
+            self.radulator_home / "cron" / "jobs.json",
+            self.default_home / "cron" / "jobs.json",
+        ):
+            payload = json.loads(path.read_text())
+            jobs = payload if isinstance(payload, list) else payload["jobs"]
+            for job in jobs:
+                if job.get("id") not in managed_ids:
+                    continue
+                observed_ids.add(job["id"])
+                self.assertIs(job.get("enabled"), True)
+                self.assertEqual(job.get("state"), "scheduled")
+        self.assertEqual(observed_ids, managed_ids)
+
+    def test_apply_times_out_fail_closed_when_gateway_job_lock_is_unavailable(self):
+        apply_install(**self.kwargs())
+        publisher = self.radulator_home / "scripts" / "trusted_publisher.py"
+        publisher.write_bytes(b"operator bytes must not be replaced\n")
+        publisher.chmod(0o700)
+        lock_path = self.radulator_home / "cron" / ".jobs.lock"
+        holder = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import fcntl,pathlib,sys,time; "
+                    "p=pathlib.Path(sys.argv[1]); "
+                    "f=p.open('a+'); fcntl.flock(f.fileno(),fcntl.LOCK_EX); "
+                    "print('locked',flush=True); time.sleep(0.3)"
+                ),
+                str(lock_path),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.assertEqual(holder.stdout.readline().strip(), "locked")
+        try:
+            with mock.patch.object(
+                install_module,
+                "JOBS_LOCK_TIMEOUT_SECONDS",
+                0.05,
+                create=True,
+            ):
+                with self.assertRaisesRegex(InstallError, "jobs lock"):
+                    apply_install(**self.kwargs())
+        finally:
+            stdout, stderr = holder.communicate(timeout=5)
+            self.assertEqual(holder.returncode, 0, stderr or stdout)
+
+        self.assertEqual(publisher.read_bytes(), b"operator bytes must not be replaced\n")
+
+    def test_activation_proofs_run_unlocked_while_all_managed_consumers_are_disabled(self):
+        result = apply_install(**self.kwargs())
+        public_keys = generate_keys(build_plan(**self.kwargs()))
+        managed_ids = set(result["job_ids"].values())
+        observations = []
+
+        def runner(command, **_kwargs):
+            descriptors = []
+            acquired = True
+            try:
+                for path in sorted((
+                    self.radulator_home / "cron" / ".jobs.lock",
+                    self.default_home / "cron" / ".jobs.lock",
+                ), key=str):
+                    descriptor = path.open("a+")
+                    descriptors.append(descriptor)
+                    try:
+                        fcntl.flock(
+                            descriptor.fileno(),
+                            fcntl.LOCK_EX | fcntl.LOCK_NB,
+                        )
+                    except BlockingIOError:
+                        acquired = False
+                disabled = True
+                for jobs_path in (
+                    self.radulator_home / "cron" / "jobs.json",
+                    self.default_home / "cron" / "jobs.json",
+                ):
+                    payload = json.loads(jobs_path.read_text())
+                    jobs = payload if isinstance(payload, list) else payload["jobs"]
+                    disabled = disabled and all(
+                        job.get("enabled") is False
+                        for job in jobs
+                        if job.get("id") in managed_ids
+                    )
+                observations.append((acquired, disabled))
+            finally:
+                for descriptor in reversed(descriptors):
+                    try:
+                        fcntl.flock(descriptor.fileno(), fcntl.LOCK_UN)
+                    finally:
+                        descriptor.close()
+            return subprocess.CompletedProcess(command, 0, "test-token", "")
+
+        apply_install(
+            **self.kwargs(),
+            enable=True,
+            expected_public_keys=public_keys,
+            activation_test_runner=runner,
+        )
+
+        self.assertTrue(observations)
+        self.assertTrue(all(acquired and disabled for acquired, disabled in observations))
 
     def test_crash_between_profile_enable_writes_recovers_both_profiles_disabled(self):
         result = apply_install(**self.kwargs())

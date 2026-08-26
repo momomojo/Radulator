@@ -6,7 +6,9 @@ from __future__ import annotations
 import argparse
 import base64
 import binascii
+import contextlib
 import datetime as dt
+import fcntl
 import hashlib
 import hmac
 import json
@@ -15,6 +17,7 @@ import re
 import shutil
 import stat
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +26,7 @@ SCHEMA = "radulator-hermes-install/v1"
 BACKUP_SCHEMA = "radulator-hermes-backup/v2"
 LEGACY_BACKUP_SCHEMA = "radulator-hermes-backup/v1"
 JOBS_TRANSACTION_SCHEMA = "radulator-hermes-jobs-transaction/v1"
+JOBS_LOCK_TIMEOUT_SECONDS = 10.0
 BACKUP_HMAC_KEY_BYTES = 32
 MODEL = "gpt-5.6-sol"
 PROVIDER = "openai-codex"
@@ -661,6 +665,97 @@ def _require_safe_target(target: Path, plan: dict[str, Any], *, may_be_missing: 
         raise InstallError(f"Managed target must be an owner-controlled regular non-symlink file: {target}")
 
 
+class _ProfileJobsLock:
+    def __init__(self, plan: dict[str, Any]):
+        self.plan = plan
+        self.paths = sorted({
+            Path(plan["radulator_home"]) / "cron/.jobs.lock",
+            Path(plan["default_home"]) / "cron/.jobs.lock",
+        }, key=lambda path: str(path.resolve(strict=False)))
+        self.acquired: list[tuple[Path, int]] = []
+
+    @property
+    def held(self) -> bool:
+        return len(self.acquired) == len(self.paths)
+
+    def acquire(self) -> None:
+        if self.acquired:
+            raise InstallError("Hermes jobs locks are already held.")
+        deadline = time.monotonic() + JOBS_LOCK_TIMEOUT_SECONDS
+        try:
+            for path in self.paths:
+                _require_safe_target(path, self.plan, may_be_missing=True)
+                flags = os.O_RDWR | os.O_CREAT
+                flags |= getattr(os, "O_CLOEXEC", 0)
+                flags |= getattr(os, "O_NOFOLLOW", 0)
+                try:
+                    descriptor = os.open(path, flags, 0o600)
+                except OSError as error:
+                    raise InstallError(f"Hermes jobs lock is unavailable: {path}") from error
+                try:
+                    details = os.fstat(descriptor)
+                    if not stat.S_ISREG(details.st_mode) or details.st_uid != os.getuid():
+                        raise InstallError(
+                            f"Hermes jobs lock must be an owner-controlled regular file: {path}"
+                        )
+                    while True:
+                        try:
+                            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                            break
+                        except (BlockingIOError, OSError) as error:
+                            if time.monotonic() >= deadline:
+                                raise InstallError(
+                                    f"Hermes jobs lock acquisition timed out: {path}"
+                                ) from error
+                            time.sleep(0.01)
+                    authoritative = path.lstat()
+                    if (
+                        not stat.S_ISREG(authoritative.st_mode)
+                        or authoritative.st_uid != os.getuid()
+                        or authoritative.st_dev != details.st_dev
+                        or authoritative.st_ino != details.st_ino
+                    ):
+                        raise InstallError(
+                            f"Hermes jobs lock path changed during acquisition: {path}"
+                        )
+                except Exception:
+                    os.close(descriptor)
+                    raise
+                self.acquired.append((path, descriptor))
+        except Exception:
+            self.release()
+            raise
+
+    def release(self) -> None:
+        while self.acquired:
+            _, descriptor = self.acquired.pop()
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+            finally:
+                os.close(descriptor)
+
+    @contextlib.contextmanager
+    def suspended(self):
+        if not self.held:
+            raise InstallError("Hermes jobs locks cannot be suspended while unheld.")
+        self.release()
+        try:
+            yield
+        finally:
+            self.acquire()
+
+
+@contextlib.contextmanager
+def _locked_profile_jobs(plan: dict[str, Any]):
+    """Hold both exact gateway locks, with a bounded proof-only suspension."""
+    locks = _ProfileJobsLock(plan)
+    locks.acquire()
+    try:
+        yield locks
+    finally:
+        locks.release()
+
+
 def _backup_unsigned(entries: list[dict[str, Any]]) -> dict[str, Any]:
     return {"schema": BACKUP_SCHEMA, "entries": entries}
 
@@ -1097,6 +1192,18 @@ def _publisher_job_readback(plan: dict[str, Any]) -> dict[str, Any] | None:
     return matches[0]
 
 
+def _publisher_exact_identity_count(plan: dict[str, Any]) -> int:
+    path = Path(plan["radulator_home"]) / "cron/jobs.json"
+    _require_safe_target(path, plan, may_be_missing=True)
+    _, jobs = _load_jobs(path)
+    return sum(
+        1
+        for job in jobs
+        if job.get("name") == "radulator-trusted-publisher"
+        and job.get("id") == PUBLISHER_JOB_ID
+    )
+
+
 def _quiesce_publisher(plan: dict[str, Any]) -> None:
     path = Path(plan["radulator_home"]) / "cron/jobs.json"
     payload, jobs = _load_jobs(path)
@@ -1271,79 +1378,182 @@ def _job_snapshots_contain_enabled_managed_jobs(
     return False
 
 
-def _disabled_managed_job_files(
+def _job_skill_names(job: dict[str, Any]) -> set[str]:
+    names: set[str] = set()
+    skill = job.get("skill")
+    if isinstance(skill, str) and skill:
+        names.add(skill)
+    skills = job.get("skills")
+    if isinstance(skills, list):
+        names.update(value for value in skills if isinstance(value, str) and value)
+    return names
+
+
+def _managed_provenance(
     plan: dict[str, Any], homes: dict[str, list[dict[str, Any]]]
-) -> dict[Path, bytes]:
+) -> tuple[set[str], set[str], tuple[str, ...]]:
+    templates = [template for values in homes.values() for template in values]
+    scripts = {
+        Path(value).name
+        for template in templates
+        if isinstance((value := template.get("script")), str) and value
+    }
+    scripts.update(destination.name for _, destination in _script_copies(plan))
+    skills = {
+        value
+        for template in templates
+        for value in _job_skill_names(template)
+    }
+    prompt_tokens = tuple(sorted({*scripts, *skills}, key=lambda value: (-len(value), value)))
+    return scripts, skills, prompt_tokens
+
+
+def _prompt_mentions_token(prompt: Any, token: str) -> bool:
+    return isinstance(prompt, str) and re.search(
+        rf"(?<![A-Za-z0-9_.-]){re.escape(token)}(?![A-Za-z0-9_.-])",
+        prompt,
+    ) is not None
+
+
+def _job_matches_template_provenance(
+    job: dict[str, Any], template: dict[str, Any]
+) -> bool:
+    if job.get("name") == template["name"] or job.get("id") == template["id"]:
+        return True
+    template_script = template.get("script")
+    job_script = job.get("script")
+    if (
+        isinstance(template_script, str)
+        and template_script
+        and isinstance(job_script, str)
+        and Path(job_script).name == Path(template_script).name
+    ):
+        return True
+    template_skills = _job_skill_names(template)
+    if template_skills and template_skills.intersection(_job_skill_names(job)):
+        return True
+    prompt = job.get("prompt")
+    if isinstance(prompt, str) and prompt and prompt == template.get("prompt"):
+        return True
+    return any(
+        _prompt_mentions_token(prompt, token)
+        for token in (
+            *(
+                [Path(template_script).name]
+                if isinstance(template_script, str) and template_script
+                else []
+            ),
+            *sorted(template_skills),
+        )
+    )
+
+
+def _job_consumes_managed_target(
+    job: dict[str, Any],
+    templates: list[dict[str, Any]],
+    scripts: set[str],
+    skills: set[str],
+    prompt_tokens: tuple[str, ...],
+) -> bool:
+    if any(
+        job.get("name") == template["name"] or job.get("id") == template["id"]
+        for template in templates
+    ):
+        return True
+    script = job.get("script")
+    if isinstance(script, str) and Path(script).name in scripts:
+        return True
+    if skills.intersection(_job_skill_names(job)):
+        return True
+    return any(_prompt_mentions_token(job.get("prompt"), token) for token in prompt_tokens)
+
+
+def _quiesced_job(job: dict[str, Any], reason: str) -> dict[str, Any]:
+    if (
+        job.get("enabled") is False
+        and job.get("state") == "paused"
+        and job.get("next_run_at") is None
+    ):
+        return job
+    now = _now()
+    return {
+        **job,
+        "enabled": False,
+        "state": "paused",
+        "paused_at": job.get("paused_at") or now,
+        "paused_reason": reason,
+        "updated_at": now,
+        "next_run_at": None,
+    }
+
+
+def _reconciled_managed_job_files(
+    plan: dict[str, Any],
+    homes: dict[str, list[dict[str, Any]]],
+    *,
+    enabled: bool,
+) -> tuple[dict[Path, bytes], tuple[str, ...]]:
     rendered: dict[Path, bytes] = {}
+    ambiguities: list[str] = []
+    scripts, skills, prompt_tokens = _managed_provenance(plan, homes)
     for home, templates in homes.items():
         path = Path(home) / "cron/jobs.json"
         _require_safe_target(path, plan, may_be_missing=True)
         payload, jobs = _load_jobs(path)
         rewritten = list(jobs)
+        claimed: set[int] = set()
         for template in templates:
             matches = [
                 index
                 for index, job in enumerate(rewritten)
-                if job.get("name") == template["name"] or job.get("id") == template["id"]
+                if index not in claimed and _job_matches_template_provenance(job, template)
+            ]
+            exact = [
+                index
+                for index in matches
+                if rewritten[index].get("name") == template["name"]
+                and rewritten[index].get("id") == template["id"]
             ]
             if len(matches) > 1:
-                raise InstallError(
-                    f"Managed Hermes job identity is duplicated or ambiguous: {template['name']}"
-                )
-            existing = rewritten[matches[0]] if matches else None
-            disabled = _job_for_write(template, existing, False, True)
-            if not (
-                existing
-                and existing.get("enabled") is False
-                and existing.get("state") == "paused"
-                and existing.get("next_run_at") is None
-            ):
-                disabled.update({
-                    "enabled": False,
-                    "state": "paused",
-                    "paused_at": disabled.get("paused_at") or _now(),
-                    "paused_reason": disabled.get("paused_reason") or "failed-activation-quiesce",
-                    "updated_at": _now(),
-                    "next_run_at": None,
-                })
-            if matches:
-                rewritten[matches[0]] = disabled
+                ambiguities.append(template["name"])
+            selected = exact[0] if exact else matches[0] if matches else None
+            existing = rewritten[selected] if selected is not None else None
+            updated = _job_for_write(template, existing, enabled, not enabled)
+            if not enabled:
+                updated = _quiesced_job(updated, "managed-target-quiesce")
+            if selected is not None:
+                rewritten[selected] = updated
+                claimed.add(selected)
             else:
-                rewritten.append(disabled)
+                rewritten.append(updated)
+                claimed.add(len(rewritten) - 1)
+        all_templates = [template for values in homes.values() for template in values]
+        for index, job in enumerate(rewritten):
+            if index in claimed:
+                continue
+            if _job_consumes_managed_target(
+                job, all_templates, scripts, skills, prompt_tokens
+            ):
+                rewritten[index] = _quiesced_job(
+                    job, "duplicate-managed-target-consumer"
+                )
+        if enabled:
+            rewritten = [_retire_legacy_gate(job) for job in rewritten]
         updated = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
         rendered[path] = _serialize(updated)
-    return rendered
+    return rendered, tuple(sorted(set(ambiguities)))
+
+
+def _disabled_managed_job_files(
+    plan: dict[str, Any], homes: dict[str, list[dict[str, Any]]]
+) -> dict[Path, bytes]:
+    return _reconciled_managed_job_files(plan, homes, enabled=False)[0]
 
 
 def _enabled_managed_job_files(
     plan: dict[str, Any], homes: dict[str, list[dict[str, Any]]]
 ) -> dict[Path, bytes]:
-    rendered: dict[Path, bytes] = {}
-    for home, templates in homes.items():
-        path = Path(home) / "cron/jobs.json"
-        _require_safe_target(path, plan, may_be_missing=True)
-        payload, jobs = _load_jobs(path)
-        rewritten = list(jobs)
-        for template in templates:
-            matches = [
-                index
-                for index, job in enumerate(rewritten)
-                if job.get("name") == template["name"] or job.get("id") == template["id"]
-            ]
-            if len(matches) > 1:
-                raise InstallError(
-                    f"Managed Hermes job identity is duplicated or ambiguous: {template['name']}"
-                )
-            existing = rewritten[matches[0]] if matches else None
-            enabled = _job_for_write(template, existing, True, False)
-            if matches:
-                rewritten[matches[0]] = enabled
-            else:
-                rewritten.append(enabled)
-        rewritten = [_retire_legacy_gate(job) for job in rewritten]
-        updated = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
-        rendered[path] = _serialize(updated)
-    return rendered
+    return _reconciled_managed_job_files(plan, homes, enabled=True)[0]
 
 
 def _disable_and_verify_all_managed_jobs(
@@ -1352,60 +1562,64 @@ def _disable_and_verify_all_managed_jobs(
     rendered = _disabled_managed_job_files(plan, homes)
     for path, content in rendered.items():
         _atomic_write(path, content, 0o600)
-    _verify_managed_job_state(homes, expected_enabled=False, require_present=True)
+    _verify_managed_job_state(
+        plan, homes, expected_enabled=False, require_present=True
+    )
 
 
 def _verify_managed_job_state(
+    plan: dict[str, Any],
     homes: dict[str, list[dict[str, Any]]],
     *,
     expected_enabled: bool,
     require_present: bool,
 ) -> None:
+    scripts, skills, prompt_tokens = _managed_provenance(plan, homes)
+    all_templates = [template for values in homes.values() for template in values]
     for home, templates in homes.items():
         path = Path(home) / "cron/jobs.json"
         if not path.exists() and not require_present:
             continue
         _, jobs = _load_jobs(path)
+        active_indexes: set[int] = set()
         for template in templates:
-            matches = [
-                job
-                for job in jobs
-                if job.get("name") == template["name"] or job.get("id") == template["id"]
+            exact = [
+                index
+                for index, job in enumerate(jobs)
+                if job.get("name") == template["name"]
+                and job.get("id") == template["id"]
             ]
-            if not matches and not require_present:
-                continue
-            identity_matches = len(matches) == 1 and (
-                (
-                    matches[0].get("name") == template["name"]
-                    and matches[0].get("id") == template["id"]
-                )
-                if require_present
-                else (
-                    matches[0].get("name") == template["name"]
-                    or matches[0].get("id") == template["id"]
-                )
-            )
-            if not identity_matches:
+            if require_present and not exact:
                 raise InstallError(
                     f"Managed Hermes job identity did not read back exactly: {template['name']}"
                 )
             if expected_enabled:
-                safe = (
-                    matches[0].get("name") == template["name"]
-                    and matches[0].get("id") == template["id"]
-                    and matches[0].get("enabled") is True
-                    and matches[0].get("state") == "scheduled"
-                )
-            else:
-                safe = (
-                    matches[0].get("enabled") is False
-                    and matches[0].get("state") == "paused"
-                    and matches[0].get("next_run_at") is None
-                )
-            if not safe:
+                active = [
+                    index
+                    for index in exact
+                    if jobs[index].get("enabled") is True
+                    and jobs[index].get("state") == "scheduled"
+                ]
+                if require_present and len(active) != 1:
+                    raise InstallError(
+                        f"Managed Hermes job did not read back as enabled: {template['name']}"
+                    )
+                active_indexes.update(active)
+        for index, job in enumerate(jobs):
+            if not _job_consumes_managed_target(
+                job, all_templates, scripts, skills, prompt_tokens
+            ):
+                continue
+            if expected_enabled and index in active_indexes:
+                continue
+            if not (
+                job.get("enabled") is False
+                and job.get("state") == "paused"
+                and job.get("next_run_at") is None
+            ):
                 raise InstallError(
-                    f"Managed Hermes job did not read back as "
-                    f"{'enabled' if expected_enabled else 'disabled'}: {template['name']}"
+                    "An enabled or unquiesced consumer of a managed Hermes target "
+                    f"survived readback: {job.get('name') or job.get('id')}"
                 )
 
 
@@ -1548,7 +1762,7 @@ def _recover_jobs_transaction(
         recovery = _load_jobs_transaction(plan)
         _write_and_verify_job_files(recovery)
         _verify_managed_job_state(
-            homes, expected_enabled=False, require_present=True
+            plan, homes, expected_enabled=False, require_present=True
         )
         _finish_jobs_transaction(plan)
     except Exception as error:
@@ -1572,6 +1786,7 @@ def _execute_jobs_transaction(
     try:
         _write_and_verify_job_files(desired)
         _verify_managed_job_state(
+            plan,
             homes,
             expected_enabled=expected_enabled,
             require_present=True,
@@ -1611,6 +1826,26 @@ def apply_install(
         repo=repo, radulator_home=radulator_home, default_home=default_home,
         agent_model=agent_model, agent_provider=agent_provider,
     )
+    with _locked_profile_jobs(plan) as jobs_locks:
+        return _apply_install_under_job_locks(
+            plan=plan,
+            jobs_locks=jobs_locks,
+            enable=enable,
+            disable=disable,
+            expected_public_keys=expected_public_keys,
+            activation_test_runner=activation_test_runner,
+        )
+
+
+def _apply_install_under_job_locks(
+    *,
+    plan: dict[str, Any],
+    jobs_locks: _ProfileJobsLock,
+    enable: bool,
+    disable: bool,
+    expected_public_keys: dict[str, Any] | None,
+    activation_test_runner: Any,
+) -> dict[str, Any]:
     homes = {str(Path(plan["radulator_home"])): [], str(Path(plan["default_home"])): []}
     for template in plan["jobs"]:
         homes[template["_home"]].append(template)
@@ -1620,7 +1855,7 @@ def apply_install(
     ordinary_script_copies = [pair for pair in script_copies if pair not in publisher_copies]
     control_manifest = _control_manifest_path(plan)
     _recover_jobs_transaction(plan, homes)
-    current_publisher = _publisher_job_readback(plan)
+    publisher_identity_count = _publisher_exact_identity_count(plan)
     try:
         _capture_backup(plan)
     except Exception:
@@ -1641,10 +1876,9 @@ def apply_install(
         except Exception:
             pass
         raise
-    if enable and current_publisher is None:
-        raise InstallError("Trusted publisher must complete a prior disabled-first install before enablement.")
-    disabled_job_files = _disabled_managed_job_files(plan, homes)
-    enabled_job_files = _enabled_managed_job_files(plan, homes) if enable else None
+    disabled_job_files, job_ambiguities = _reconciled_managed_job_files(
+        plan, homes, enabled=False
+    )
     publisher_snapshots: dict[Path, tuple[bool, int | None, bytes | None]] | None = None
 
     try:
@@ -1659,6 +1893,16 @@ def apply_install(
             recovery=disabled_job_files,
             expected_enabled=False,
         )
+        if job_ambiguities:
+            raise InstallError(
+                "Managed Hermes job provenance is duplicated or ambiguous: "
+                + ", ".join(job_ambiguities)
+            )
+        if enable and publisher_identity_count != 1:
+            raise InstallError(
+                "Trusted publisher must complete a prior unambiguous disabled-first "
+                "install before enablement."
+            )
         publisher_snapshots = _publisher_snapshots(plan)
         for source, destination in skill_copies:
             if not source.is_file():
@@ -1676,10 +1920,31 @@ def apply_install(
 
         _verify_installed_publisher_assets(plan)
         if enable:
-            _verify_activation_trust(plan, expected_public_keys)
-            _verify_broker_contract(plan, activation_test_runner)
-            _verify_publisher_auth(plan, activation_test_runner)
-            _run_activation_self_tests(plan, activation_test_runner)
+            # Proof commands can exceed the gateway's bounded lock wait. Run
+            # them only after every managed consumer is read back disabled,
+            # then reacquire both locks and reconcile current state again.
+            with jobs_locks.suspended():
+                _verify_activation_trust(plan, expected_public_keys)
+                _verify_broker_contract(plan, activation_test_runner)
+                _verify_publisher_auth(plan, activation_test_runner)
+                _run_activation_self_tests(plan, activation_test_runner)
+            disabled_job_files, post_proof_ambiguities = (
+                _reconciled_managed_job_files(plan, homes, enabled=False)
+            )
+            _execute_jobs_transaction(
+                plan,
+                homes,
+                operation="install-quiesce",
+                desired=disabled_job_files,
+                recovery=disabled_job_files,
+                expected_enabled=False,
+            )
+            if post_proof_ambiguities:
+                raise InstallError(
+                    "Managed Hermes job provenance changed during activation proofs: "
+                    + ", ".join(post_proof_ambiguities)
+                )
+            _verify_installed_publisher_assets(plan)
 
         manifest = {
             "schema": SCHEMA,
@@ -1694,11 +1959,17 @@ def apply_install(
         if not control_manifest.exists() or control_manifest.read_bytes() != content:
             _atomic_write(control_manifest, content, 0o600)
         _verify_managed_job_state(
-            homes, expected_enabled=False, require_present=True
+            plan, homes, expected_enabled=False, require_present=True
         )
         if enable:
-            if enabled_job_files is None:
-                raise InstallError("Enabled Hermes job transaction was not prepared.")
+            enabled_job_files, enable_ambiguities = _reconciled_managed_job_files(
+                plan, homes, enabled=True
+            )
+            if enable_ambiguities:
+                raise InstallError(
+                    "Managed Hermes job provenance became duplicated or ambiguous: "
+                    + ", ".join(enable_ambiguities)
+                )
             # Activation is the final mutation. A process death after either
             # profile write leaves the authenticated recovery journal in place;
             # the next installer invocation restores both profiles disabled.
@@ -1711,6 +1982,11 @@ def apply_install(
                 expected_enabled=True,
             )
     except Exception:
+        if not jobs_locks.held:
+            raise InstallError(
+                "UNSAFE_JOB_STATE: both Hermes jobs locks could not be reacquired "
+                "after activation proofs."
+            )
         job_recovery_error: Exception | None = None
         try:
             _recover_jobs_transaction(plan, homes)
@@ -1736,8 +2012,9 @@ def apply_install(
 
 
 def _sanitize_restored_jobs(
+    plan: dict[str, Any],
+    homes: dict[str, list[dict[str, Any]]],
     content: bytes,
-    templates: list[dict[str, Any]],
     path: Path,
 ) -> bytes:
     try:
@@ -1753,40 +2030,17 @@ def _sanitize_restored_jobs(
     if not all(isinstance(job, dict) for job in jobs):
         raise InstallError(f"Restored Hermes jobs.json contains a non-object job: {path}")
 
-    seen: set[str] = set()
+    templates = [template for values in homes.values() for template in values]
+    scripts, skills, prompt_tokens = _managed_provenance(plan, homes)
     rewritten: list[dict[str, Any]] = []
     changed = False
     for job in jobs:
-        matches = [
-            template
-            for template in templates
-            if job.get("name") == template["name"] or job.get("id") == template["id"]
-        ]
-        if len(matches) > 1:
-            raise InstallError(f"Restored Hermes job identity is ambiguous: {path}")
-        if not matches:
+        if not _job_consumes_managed_target(
+            job, templates, scripts, skills, prompt_tokens
+        ):
             rewritten.append(job)
             continue
-        template = matches[0]
-        if template["name"] in seen:
-            raise InstallError(
-                f"Restored Hermes job identity is duplicated: {template['name']}"
-            )
-        seen.add(template["name"])
-        now = _now()
-        disabled = dict(job)
-        disabled.update({
-            "enabled": False,
-            "state": "paused",
-            "paused_at": (
-                job.get("paused_at")
-                if job.get("enabled") is False and job.get("paused_at")
-                else now
-            ),
-            "paused_reason": "restore-disabled-first",
-            "updated_at": now,
-            "next_run_at": None,
-        })
+        disabled = _quiesced_job(job, "restore-disabled-first")
         changed = True
         rewritten.append(disabled)
     if not changed:
@@ -1854,6 +2108,11 @@ def restore_install(
         agent_model=agent_model,
         agent_provider=agent_provider,
     )
+    with _locked_profile_jobs(plan):
+        return _restore_install_under_job_locks(plan)
+
+
+def _restore_install_under_job_locks(plan: dict[str, Any]) -> dict[str, Any]:
     homes = {str(Path(plan["radulator_home"])): [], str(Path(plan["default_home"])): []}
     for template in plan["jobs"]:
         homes[template["_home"]].append(template)
@@ -1886,10 +2145,7 @@ def restore_install(
         }:
             if content is None:
                 raise InstallError("Validated jobs backup operation is incomplete.")
-            profile = "primary" if target_id.startswith("primary:") else "verification"
-            content = _sanitize_restored_jobs(content, homes[str(Path(
-                plan["radulator_home"] if profile == "primary" else plan["default_home"]
-            ))], target)
+            content = _sanitize_restored_jobs(plan, homes, content, target)
         operations.append((target, existed, mode, content))
 
     safe_disabled = _disabled_managed_job_files(plan, homes)
@@ -1913,14 +2169,14 @@ def restore_install(
         for operation in operations:
             _verify_restored_target(*operation)
         _verify_managed_job_state(
-            homes, expected_enabled=False, require_present=False
+            plan, homes, expected_enabled=False, require_present=False
         )
         _finish_jobs_transaction(plan)
     except Exception:
         try:
             _recover_jobs_transaction(plan, homes)
             _verify_managed_job_state(
-                homes, expected_enabled=False, require_present=True
+                plan, homes, expected_enabled=False, require_present=True
             )
         except Exception as recovery_error:
             raise InstallError(
