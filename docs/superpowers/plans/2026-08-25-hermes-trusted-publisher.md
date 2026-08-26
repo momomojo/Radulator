@@ -90,11 +90,14 @@ Expected: failures because publication is not implemented.
 - [ ] **Step 3: Implement push and exact PR readback**
 
 Use a minimal publisher environment, `git ls-remote`, and a plain non-force
-`git push origin <sealed-40-hex-sha>:refs/heads/<branch>`. Authenticate Git only
+`git push https://github.com/momomojo/Radulator.git <sealed-40-hex-sha>:refs/heads/<branch>`. Authenticate Git only
 through the fixed `gh auth git-credential` helper in the no-agent process; the
-token must never appear in argv or output. Then use `gh pr list --state open
---head` and `gh pr create --base develop --head <branch>`. Parse only bounded
-JSON and require exact repository/head/base/state fields after every write.
+token must never appear in argv or output. Enumerate the branch's complete PR
+history (`--state all`), reuse/reopen the one exact unmerged PR, and never create
+a duplicate. Read the feature ref and current `develop` ref independently before
+each mutation; keep the correction commit parent distinct from the PR target-base
+SHA. Parse only bounded JSON and require exact repository/head/base/state fields
+after every write.
 
 - [ ] **Step 4: Write failing CI and label tests**
 
@@ -102,7 +105,12 @@ Assert missing/running/failed/wrong-app/wrong-SHA checks never label; three exac
 
 - [ ] **Step 5: Implement exact-head CI and label reconciliation**
 
-Read check runs for the exact 40-hex commit, require one successful current result for `Smoke`, `Targeted Calculator Tests`, and `Hermes Release Control`, then add `ready-for-gate` and re-read the PR exact head/base/state/label.
+Resolve the E2E workflow by exact ID/path/name, select the newest exact PR-bound
+run attempt before evaluating its result, then bind its complete attempt-specific
+job list and each required job's exact Actions App/check-suite check run. Treat
+labeling as a compensating transaction: after any attempted or observed label,
+revalidate all task/run/local/remote/PR/CI authority; remove and prove absence on
+every failure, or return `UNSAFE_LABEL_STATE`.
 
 - [ ] **Step 6: Run publisher tests GREEN**
 
@@ -137,9 +145,11 @@ Call `lifecycle_controller.py bootstrap --apply --parent-task-id <task> --pr <nu
 
 - [ ] **Step 4: Write and validate the no-agent wrapper**
 
-The wrapper resolves the profile, loads `.env` only in the no-agent host process,
-sets the canonical board/repository and the project id only when the board has
-one, invokes the Hermes venv Python, and contains no model prompt. Run `bash -n
+The wrapper resolves the profile, never sources `.env`, discards inherited
+GitHub credential/config overrides, obtains the host `github.com` token from the
+fixed GitHub CLI without printing it, and invokes the Hermes venv Python with a
+fixed `default` board, null project identity, canonical repository/root, and no
+model prompt or runtime override arguments. Run `bash -n
 ops/hermes/radulator/trusted_publisher_cron.sh`.
 
 - [ ] **Step 5: Run the full publisher suite GREEN**
@@ -162,7 +172,11 @@ Expected: all tests pass.
 
 - [ ] **Step 1: Write failing installer tests**
 
-Require the eighth stable managed job, `no_agent=true`, no prompt/model/provider, one-item run, copied scripts at mode 0700, disabled-first behavior, idempotent upgrade preserving schedule/state/delivery, reversible restore, publisher test in activation matrix, and refusal to enable when `hermes.trusted_local_commit.v1` support is unavailable.
+Require the eighth stable managed job, `no_agent=true`, no prompt/model/provider,
+one-item run, copied scripts at mode 0700, disabled-first behavior, quiesced
+enabled-script upgrades, authenticated allowlisted reversible restore, publisher
+test in activation matrix, and refusal to enable unless both
+`hermes.trusted_local_commit.v1` and `hermes.worker_git_isolation.v1` are present.
 
 - [ ] **Step 2: Run installer tests and verify RED**
 
@@ -172,7 +186,12 @@ Expected: failures showing the publisher job/scripts are absent.
 
 - [ ] **Step 3: Implement installer and package wiring**
 
-Add a stable publisher job id, copy/backup/restore both publisher files, include `test:hermes-trusted-publisher`, and add the broker-contract activation probe before any job is enabled. Preserve existing unrelated job state.
+Add a stable publisher job id, copy both publisher files, authenticate a symbolic
+target-ID backup manifest with a dedicated owner-only key, prevalidate every
+restore entry before writing, and quiesce an enabled publisher before replacing
+drifted assets. Include `test:hermes-trusted-publisher` and both broker/security
+contract activation probes before any job is enabled. Preserve unrelated job
+state.
 
 - [ ] **Step 4: Document the trust boundary and recovery behavior**
 
@@ -217,7 +236,12 @@ Enable `radulator-trusted-publisher`; verify exact job id, `no_agent=true`, wrap
 
 - [ ] **Step 5: Canary one real task**
 
-Requeue one approved stalled Radulator task, prove the worker has no GitHub credentials, observe the sealed broker event and credential-free local commit, then observe the publisher's non-force push, exact PR readback, exact CI wait, label readback, release tracker bootstrap, and implementation-task completion.
+Requeue one approved stalled Radulator task. Through the exact model execution
+path, prove `gh auth token`, profile `.env`, GitHub/SSH config, Keychain lookup,
+network/loopback, and Git-metadata writes fail while ordinary workspace edits and
+tests succeed. Then observe the sealed broker event, credential-free local commit,
+non-force push, exact PR readback, newest exact CI attempt, compensated label
+readback, lifecycle seed/tracker lineage, and implementation-task completion.
 
 - [ ] **Step 6: Final live audit**
 

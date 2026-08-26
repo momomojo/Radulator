@@ -18,9 +18,19 @@ BASE_SHA = "a" * 40
 
 
 class FakeKanban:
-    def __init__(self, tasks, events):
+    def __init__(self, tasks, events, runs=None):
         self.tasks = list(tasks)
         self.events = dict(events)
+        self.runs = dict(runs or {
+            17: SimpleNamespace(
+                id=17,
+                task_id="t_example",
+                status="blocked",
+                outcome="blocked",
+                ended_at=123,
+                summary="AWAITING_TRUSTED_PUBLISHER v1",
+            )
+        })
 
     def list_tasks(self, _conn, **kwargs):
         assert kwargs == {
@@ -33,6 +43,13 @@ class FakeKanban:
     def list_events(self, _conn, task_id):
         return list(self.events.get(task_id, []))
 
+    def get_run(self, _conn, run_id):
+        return self.runs.get(run_id)
+
+    def latest_run(self, _conn, task_id):
+        rows = [run for run in self.runs.values() if getattr(run, "task_id", None) == task_id]
+        return max(rows, key=lambda run: run.id) if rows else None
+
 
 def task(**overrides):
     value = {
@@ -43,6 +60,7 @@ def task(**overrides):
         "branch_name": "radulator/t_example-feature",
         "created_at": 100,
         "current_run_id": None,
+        "block_kind": "capability",
     }
     value.update(overrides)
     return SimpleNamespace(**value)
@@ -210,9 +228,15 @@ class TrustedPublisherSelectionTests(unittest.TestCase):
         self.assertEqual(candidate.head_sha, "c" * 40)
 
     def test_accepts_bounded_recovery_run_id_only(self):
-        candidate = self.select(
-            events={"t_example": exact_events(recovered_from_run_id=12)}
+        current = SimpleNamespace(id=17, task_id="t_example", status="blocked", outcome="blocked", ended_at=123, summary="AWAITING_TRUSTED_PUBLISHER v1")
+        prior = SimpleNamespace(id=12, task_id="t_example", status="reclaimed", outcome="reclaimed", ended_at=100, summary=None)
+        request = event("trusted_git_completion_requested", {"contract": "hermes.trusted_git_completion_request.v1"}, event_id=0, run_id=12)
+        fake = FakeKanban(
+            [task()],
+            {"t_example": [request, *exact_events(recovered_from_run_id=12)]},
+            runs={12: prior, 17: current},
         )
+        candidate = publisher.select_candidate(fake, object(), "default")
         self.assertEqual(candidate.recovered_from_run_id, 12)
         for invalid in (0, -1, "12", True):
             with self.subTest(invalid=invalid):
@@ -221,6 +245,80 @@ class TrustedPublisherSelectionTests(unittest.TestCase):
                         events={"t_example": exact_events(recovered_from_run_id=invalid)}
                     )
                 )
+
+    def test_rejects_unfinished_or_mismatched_authoritative_run(self):
+        cases = (
+            SimpleNamespace(id=17, task_id="t_example", status="running", outcome=None, ended_at=None, summary=None),
+            SimpleNamespace(id=17, task_id="t_other", status="blocked", outcome="blocked", ended_at=123, summary="AWAITING_TRUSTED_PUBLISHER v1"),
+            SimpleNamespace(id=17, task_id="t_example", status="blocked", outcome="completed", ended_at=123, summary="AWAITING_TRUSTED_PUBLISHER v1"),
+            SimpleNamespace(id=17, task_id="t_example", status="blocked", outcome="blocked", ended_at=123, summary="other"),
+        )
+        for run in cases:
+            with self.subTest(run=run):
+                fake = FakeKanban(
+                    [task()],
+                    {"t_example": exact_events()},
+                    runs={17: run},
+                )
+                self.assertIsNone(publisher.select_candidate(fake, object(), "default"))
+
+    def test_rejects_superseded_latest_run_or_wrong_block_kind(self):
+        valid = SimpleNamespace(
+            id=17,
+            task_id="t_example",
+            status="blocked",
+            outcome="blocked",
+            ended_at=123,
+            summary="AWAITING_TRUSTED_PUBLISHER v1",
+        )
+        later = SimpleNamespace(
+            id=18,
+            task_id="t_example",
+            status="blocked",
+            outcome="blocked",
+            ended_at=124,
+            summary="AWAITING_TRUSTED_PUBLISHER v1",
+        )
+        fake = FakeKanban(
+            [task()],
+            {"t_example": exact_events()},
+            runs={17: valid, 18: later},
+        )
+        self.assertIsNone(publisher.select_candidate(fake, object(), "default"))
+        self.assertIsNone(self.select(tasks=[task(block_kind="medical")]))
+
+    def test_recovery_requires_exact_reclaimed_run_and_request_event(self):
+        current = SimpleNamespace(
+            id=17,
+            task_id="t_example",
+            status="blocked",
+            outcome="blocked",
+            ended_at=123,
+            summary="AWAITING_TRUSTED_PUBLISHER v1",
+        )
+        prior = SimpleNamespace(
+            id=12,
+            task_id="t_example",
+            status="reclaimed",
+            outcome="reclaimed",
+            ended_at=100,
+            summary=None,
+        )
+        request = event(
+            "trusted_git_completion_requested",
+            {"contract": "hermes.trusted_git_completion_request.v1"},
+            event_id=0,
+            run_id=12,
+        )
+        events = [request, *exact_events(recovered_from_run_id=12)]
+        fake = FakeKanban(
+            [task()],
+            {"t_example": events},
+            runs={12: prior, 17: current},
+        )
+        self.assertIsNotNone(publisher.select_candidate(fake, object(), "default"))
+        fake.events["t_example"] = exact_events(recovered_from_run_id=12)
+        self.assertIsNone(publisher.select_candidate(fake, object(), "default"))
 
 
 class TrustedPublisherGitAuthorityTests(unittest.TestCase):
@@ -389,9 +487,11 @@ def exact_pr(**overrides):
         "headRefName": "radulator/t_example-feature",
         "headRefOid": HEAD_SHA,
         "baseRefName": "develop",
+        "baseRefOid": BASE_SHA,
         "headRepositoryOwner": {"login": "momomojo"},
         "isCrossRepository": False,
         "labels": [],
+        "mergedAt": None,
     }
     value.update(overrides)
     return value
@@ -421,16 +521,33 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             changed_paths=("src/example.js",),
             run_id=17,
         )
+        self.validator_patch = mock.patch.object(
+            publisher,
+            "validate_local_candidate",
+            return_value=self.candidate,
+        )
+        self.validator = self.validator_patch.start()
+
+    def remote_feature(self, sha=HEAD_SHA):
+        return response(stdout=(f"{sha}\trefs/heads/{self.candidate.branch}\n" if sha else ""))
+
+    def remote_base(self, sha=BASE_SHA):
+        return response(stdout=f"{sha}\trefs/heads/{self.config.base_branch}\n")
 
     def tearDown(self):
+        self.validator_patch.stop()
         self.env_patch.stop()
 
     def test_absent_remote_pushes_without_force_and_opens_exact_pr(self):
         runner = QueueRunner([
-            response(stdout=""),
+            self.remote_feature(None),
+            self.remote_base(),
+            self.remote_feature(None),
+            self.remote_base(),
             response(stdout="pushed\n"),
-            response(stdout=f"{HEAD_SHA}\trefs/heads/{self.candidate.branch}\n"),
+            self.remote_feature(),
             response(stdout="[]\n"),
+            self.remote_base(),
             response(stdout=exact_pr()["url"] + "\n"),
             response(stdout=json.dumps([exact_pr()]) + "\n"),
         ])
@@ -447,12 +564,20 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             push,
         )
         self.assertFalse(any(part.startswith("HEAD:") for part in push))
-        self.assertIn("credential.helper=!gh auth git-credential", push)
+        self.assertIn(
+            "credential.helper=!/opt/homebrew/bin/gh auth git-credential",
+            push,
+        )
         self.assertNotIn("test-token", flat)
+        self.assertIn("https://github.com/momomojo/Radulator.git", push)
+        remote_read = next(call for call, _ in runner.calls if "ls-remote" in call)
+        self.assertIn("https://github.com/momomojo/Radulator.git", remote_read)
+        self.assertGreaterEqual(self.validator.call_count, 2)
 
     def test_exact_remote_and_pr_are_reused_idempotently(self):
         runner = QueueRunner([
-            response(stdout=f"{HEAD_SHA}\trefs/heads/{self.candidate.branch}\n"),
+            self.remote_feature(),
+            self.remote_base(),
             response(stdout=json.dumps([exact_pr()]) + "\n"),
         ])
 
@@ -467,7 +592,8 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             isCrossRepository=True,
         )
         runner = QueueRunner([
-            response(stdout=f"{HEAD_SHA}\trefs/heads/{self.candidate.branch}\n"),
+            self.remote_feature(),
+            self.remote_base(),
             response(stdout=json.dumps([fork_pr]) + "\n"),
         ])
 
@@ -482,13 +608,17 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
         )
         old_unlabeled = exact_pr(headRefOid=BASE_SHA, labels=[])
         runner = QueueRunner([
-            response(stdout=f"{BASE_SHA}\trefs/heads/{self.candidate.branch}\n"),
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(returncode=0),
             response(returncode=0),
             response(stdout=json.dumps([old]) + "\n"),
             response(stdout=""),
             response(stdout=json.dumps(old_unlabeled) + "\n"),
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
             response(stdout="pushed\n"),
-            response(stdout=f"{HEAD_SHA}\trefs/heads/{self.candidate.branch}\n"),
+            self.remote_feature(),
             response(stdout=json.dumps([exact_pr()]) + "\n"),
         ])
 
@@ -496,58 +626,275 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
 
         self.assertEqual(result.head_sha, HEAD_SHA)
         self.assertTrue(any(
-            call[:3] == ["gh", "pr", "edit"] and "--remove-label" in call
+            Path(call[0]).name == "gh" and call[1:3] == ["pr", "edit"] and "--remove-label" in call
             for call, _ in runner.calls
         ))
         push = next(call for call, _ in runner.calls if "push" in call)
         self.assertNotIn("--force", push)
         self.assertFalse(any(part.startswith("--force-with-lease") for part in push))
 
+    def test_correction_keeps_commit_parent_separate_from_current_target_base(self):
+        target_sha = "d" * 40
+        old = exact_pr(headRefOid=BASE_SHA, baseRefOid=target_sha)
+        updated = exact_pr(baseRefOid=target_sha)
+        runner = QueueRunner([
+            self.remote_feature(BASE_SHA),
+            self.remote_base(target_sha),
+            response(returncode=0),
+            response(returncode=0),
+            response(stdout=json.dumps([old]) + "\n"),
+            self.remote_feature(BASE_SHA),
+            self.remote_base(target_sha),
+            response(stdout="pushed\n"),
+            self.remote_feature(),
+            response(stdout=json.dumps([updated]) + "\n"),
+        ])
+
+        result = publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertEqual(result.base_sha, target_sha)
+        self.assertNotEqual(result.base_sha, self.candidate.base_sha)
+
+    def test_remote_target_change_before_push_fails_closed(self):
+        runner = QueueRunner([
+            self.remote_feature(None),
+            self.remote_base(),
+            self.remote_feature(None),
+            self.remote_base("d" * 40),
+        ])
+        with self.assertRaisesRegex(publisher.PublisherError, "snapshot changed"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+        self.assertFalse(any("push" in call for call, _ in runner.calls))
+
     def test_differing_remote_or_ambiguous_pr_rejects(self):
         runner = QueueRunner([
-            response(stdout=f"{'c' * 40}\trefs/heads/{self.candidate.branch}\n"),
-            response(returncode=1),
+            self.remote_feature("c" * 40),
+            self.remote_base(),
         ])
-        with self.assertRaisesRegex(publisher.PublisherError, "remote branch"):
+        with self.assertRaisesRegex(publisher.PublisherError, "remote feature head"):
             publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
 
         runner = QueueRunner([
-            response(stdout=f"{HEAD_SHA}\trefs/heads/{self.candidate.branch}\n"),
+            self.remote_feature(),
+            self.remote_base(),
             response(stdout=json.dumps([exact_pr(), exact_pr(number=182)]) + "\n"),
         ])
-        with self.assertRaisesRegex(publisher.PublisherError, "exactly one"):
+        with self.assertRaisesRegex(publisher.PublisherError, "more than one"):
             publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
 
     def test_create_without_exact_readback_rejects(self):
         runner = QueueRunner([
-            response(stdout=f"{HEAD_SHA}\trefs/heads/{self.candidate.branch}\n"),
+            self.remote_feature(),
+            self.remote_base(),
             response(stdout="[]\n"),
+            self.remote_base(),
             response(stdout=exact_pr()["url"] + "\n"),
             response(stdout="[]\n"),
         ])
         with self.assertRaisesRegex(publisher.PublisherError, "readback"):
             publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
 
-    def check_payload(self, **overrides):
-        runs = []
+    def test_closed_unmerged_branch_pr_is_reopened_instead_of_duplicated(self):
+        closed = exact_pr(state="CLOSED")
+        opened = exact_pr()
+        runner = QueueRunner([
+            self.remote_feature(),
+            self.remote_base(),
+            response(stdout=json.dumps([closed]) + "\n"),
+            self.remote_base(),
+            response(stdout="reopened\n"),
+            response(stdout=json.dumps([opened]) + "\n"),
+        ])
+
+        result = publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertEqual(result.number, 181)
+        self.assertTrue(any(
+            Path(call[0]).name == "gh" and call[1:3] == ["pr", "reopen"]
+            for call, _ in runner.calls
+        ))
+        self.assertFalse(any(
+            Path(call[0]).name == "gh" and call[1:3] == ["pr", "create"]
+            for call, _ in runner.calls
+        ))
+
+    def test_merged_branch_pr_is_never_reused_or_duplicated(self):
+        merged = exact_pr(state="MERGED", mergedAt="2026-08-25T00:00:00Z")
+        runner = QueueRunner([
+            self.remote_feature(),
+            self.remote_base(),
+            response(stdout=json.dumps([merged]) + "\n"),
+        ])
+        with self.assertRaisesRegex(publisher.PublisherError, "already merged"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+        self.assertFalse(any(
+            Path(call[0]).name == "gh" and call[1:3] == ["pr", "create"]
+            for call, _ in runner.calls
+        ))
+
+    def test_newer_exact_pending_run_supersedes_older_green_run(self):
+        pr = publisher.PublishedPullRequest.from_dict(exact_pr())
+        older = self.run_payload(id=9001, status="completed", conclusion="success")
+        newer = self.run_payload(
+            id=9002,
+            run_attempt=2,
+            check_suite_id=778,
+            status="in_progress",
+            conclusion=None,
+        )
+        runner = QueueRunner(self.label_snapshot_responses() + [
+            response(stdout=json.dumps(exact_pr()) + "\n"),
+            response(stdout=json.dumps(self.workflow_payload()) + "\n"),
+            response(stdout=json.dumps({"total_count": 2, "workflow_runs": [older, newer]}) + "\n"),
+        ])
+        with self.assertRaisesRegex(publisher.PublisherPending, "check"):
+            publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
+
+    def test_existing_ready_label_is_removed_when_newer_exact_ci_is_pending(self):
+        labeled = exact_pr(labels=[{"name": "ready-for-gate"}])
+        pr = publisher.PublishedPullRequest.from_dict(labeled)
+        older = self.run_payload(id=9001, status="completed", conclusion="success")
+        newer = self.run_payload(
+            id=9002,
+            run_attempt=2,
+            check_suite_id=778,
+            status="in_progress",
+            conclusion=None,
+        )
+        runner = QueueRunner(self.label_snapshot_responses() + [
+            response(stdout=json.dumps(labeled) + "\n"),
+            response(stdout=json.dumps(self.workflow_payload()) + "\n"),
+            response(stdout=json.dumps({"total_count": 2, "workflow_runs": [older, newer]}) + "\n"),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(exact_pr()) + "\n"),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherPending, "check"):
+            publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
+
+        self.assertTrue(any(
+            Path(call[0]).name == "gh" and "--remove-label" in call
+            for call, _ in runner.calls
+        ))
+
+    def test_run_suite_and_attempt_must_bind_every_required_check(self):
+        pr = publisher.PublishedPullRequest.from_dict(exact_pr())
+        wrong_jobs = self.jobs_payload(run_attempt=2)
+        runner = QueueRunner(self.label_snapshot_responses() + [
+            response(stdout=json.dumps(exact_pr()) + "\n"),
+            response(stdout=json.dumps(self.workflow_payload()) + "\n"),
+            response(stdout=json.dumps({"total_count": 1, "workflow_runs": [self.run_payload()]}) + "\n"),
+            response(stdout=json.dumps(wrong_jobs) + "\n"),
+        ])
+        with self.assertRaisesRegex(publisher.PublisherPending, "check"):
+            publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
+
+        suite_mismatch = self.check_payload(
+            1,
+            self.config.required_checks[0],
+            check_suite={"id": 999},
+        )
+        runner = QueueRunner(self.label_snapshot_responses() + [
+            response(stdout=json.dumps(exact_pr()) + "\n"),
+            *self.green_ci_responses()[:3],
+            response(stdout=json.dumps(suite_mismatch) + "\n"),
+        ])
+        with self.assertRaisesRegex(publisher.PublisherPending, "check"):
+            publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
+
+    def workflow_payload(self, **overrides):
+        value = {
+            "id": 227376261,
+            "name": "E2E Tests",
+            "path": ".github/workflows/e2e-tests.yml",
+            "state": "active",
+        }
+        value.update(overrides)
+        return value
+
+    def run_payload(self, **overrides):
+        value = {
+            "id": 9001,
+            "run_attempt": 1,
+            "check_suite_id": 777,
+            "workflow_id": 227376261,
+            "name": "E2E Tests",
+            "path": ".github/workflows/e2e-tests.yml",
+            "event": "pull_request",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": HEAD_SHA,
+            "head_branch": self.candidate.branch,
+            "pull_requests": [{
+                "number": 181,
+                "head": {
+                    "sha": HEAD_SHA,
+                    "ref": self.candidate.branch,
+                    "repo": {"url": "https://api.github.com/repos/momomojo/Radulator"},
+                },
+                "base": {
+                    "sha": BASE_SHA,
+                    "ref": "develop",
+                    "repo": {"url": "https://api.github.com/repos/momomojo/Radulator"},
+                },
+            }],
+        }
+        value.update(overrides)
+        return value
+
+    def jobs_payload(self, **overrides):
+        jobs = []
         for index, name in enumerate(self.config.required_checks, start=1):
             value = {
                 "id": index,
+                "run_id": 9001,
+                "run_attempt": 1,
                 "name": name,
+                "head_sha": HEAD_SHA,
+                "workflow_name": "E2E Tests",
                 "status": "completed",
                 "conclusion": "success",
-                "app": {"id": self.config.required_check_app_id},
+                "check_run_url": f"https://api.github.com/repos/momomojo/Radulator/check-runs/{index}",
             }
             value.update(overrides)
-            runs.append(value)
-        return {"check_runs": runs}
+            jobs.append(value)
+        return {"total_count": len(jobs), "jobs": jobs}
+
+    def check_payload(self, index, name, **overrides):
+        value = {
+            "id": index,
+            "name": name,
+            "head_sha": HEAD_SHA,
+            "status": "completed",
+            "conclusion": "success",
+            "app": {"id": self.config.required_check_app_id, "slug": "github-actions"},
+            "check_suite": {"id": 777},
+        }
+        value.update(overrides)
+        return value
+
+    def green_ci_responses(self):
+        return [
+            response(stdout=json.dumps(self.workflow_payload()) + "\n"),
+            response(stdout=json.dumps({"total_count": 1, "workflow_runs": [self.run_payload()]}) + "\n"),
+            response(stdout=json.dumps(self.jobs_payload()) + "\n"),
+            *[
+                response(stdout=json.dumps(self.check_payload(index, name)) + "\n")
+                for index, name in enumerate(self.config.required_checks, start=1)
+            ],
+        ]
+
+    def label_snapshot_responses(self):
+        return [self.remote_feature(), self.remote_base()]
 
     def test_exact_required_checks_gate_label_and_exact_readback(self):
         labeled = exact_pr(labels=[{"name": "ready-for-gate"}])
-        runner = QueueRunner([
-            response(stdout=json.dumps(self.check_payload()) + "\n"),
+        runner = QueueRunner(self.label_snapshot_responses() + [
             response(stdout=json.dumps(exact_pr()) + "\n"),
+            *self.green_ci_responses(),
             response(stdout=""),
+            *self.label_snapshot_responses(),
+            *self.green_ci_responses(),
             response(stdout=json.dumps(labeled) + "\n"),
         ])
         pr = publisher.PublishedPullRequest.from_dict(exact_pr())
@@ -555,50 +902,139 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
         result = publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
 
         self.assertEqual(result.labels, ("ready-for-gate",))
-        self.assertTrue(any(call[:3] == ["gh", "pr", "edit"] for call, _ in runner.calls))
+        self.assertTrue(any(Path(call[0]).name == "gh" and call[1:3] == ["pr", "edit"] for call, _ in runner.calls))
 
     def test_missing_failed_pending_or_wrong_app_check_never_labels(self):
-        payloads = [
-            {"check_runs": []},
-            self.check_payload(conclusion="failure"),
-            self.check_payload(status="in_progress", conclusion=None),
-            self.check_payload(app={"id": 999}),
+        response_sets = [
+            self.label_snapshot_responses() + [
+                response(stdout=json.dumps(exact_pr()) + "\n"),
+                response(stdout=json.dumps(self.workflow_payload(state="disabled_manually")) + "\n"),
+            ],
+            [
+                *self.label_snapshot_responses(),
+                response(stdout=json.dumps(exact_pr()) + "\n"),
+                response(stdout=json.dumps(self.workflow_payload()) + "\n"),
+                response(stdout=json.dumps({"total_count": 1, "workflow_runs": [self.run_payload(conclusion="failure")]}) + "\n"),
+            ],
+            self.label_snapshot_responses() + [
+                response(stdout=json.dumps(exact_pr()) + "\n"),
+                *self.green_ci_responses()[:2],
+                response(stdout=json.dumps(self.jobs_payload(conclusion="failure")) + "\n"),
+            ],
+            self.label_snapshot_responses() + [
+                response(stdout=json.dumps(exact_pr()) + "\n"),
+                *self.green_ci_responses()[:3],
+                response(stdout=json.dumps(self.check_payload(1, self.config.required_checks[0], app={"id": 999, "slug": "other"})) + "\n")
+            ],
         ]
         pr = publisher.PublishedPullRequest.from_dict(exact_pr())
-        for payload in payloads:
-            with self.subTest(payload=payload):
-                runner = QueueRunner([response(stdout=json.dumps(payload) + "\n")])
+        for responses in response_sets:
+            with self.subTest(response_count=len(responses)):
+                runner = QueueRunner(responses)
                 with self.assertRaisesRegex(publisher.PublisherPending, "check"):
                     publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
-                self.assertFalse(any(call[:3] == ["gh", "pr", "edit"] for call, _ in runner.calls))
+                self.assertFalse(any(Path(call[0]).name == "gh" and call[1:3] == ["pr", "edit"] for call, _ in runner.calls))
 
     def test_label_write_without_exact_head_readback_rejects(self):
         wrong = exact_pr(headRefOid="c" * 40, labels=[{"name": "ready-for-gate"}])
-        runner = QueueRunner([
-            response(stdout=json.dumps(self.check_payload()) + "\n"),
+        wrong_unlabeled = exact_pr(headRefOid="c" * 40, labels=[])
+        runner = QueueRunner(self.label_snapshot_responses() + [
             response(stdout=json.dumps(exact_pr()) + "\n"),
+            *self.green_ci_responses(),
             response(stdout=""),
+            *self.label_snapshot_responses(),
+            *self.green_ci_responses(),
             response(stdout=json.dumps(wrong) + "\n"),
+            response(stdout=""),
+            response(stdout=json.dumps(wrong_unlabeled) + "\n"),
         ])
         pr = publisher.PublishedPullRequest.from_dict(exact_pr())
         with self.assertRaisesRegex(publisher.PublisherError, "exact"):
             publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
+        self.assertTrue(any(
+            Path(call[0]).name == "gh" and call[1:3] == ["pr", "edit"] and "--remove-label" in call
+            for call, _ in runner.calls
+        ))
+
+    def test_label_timeout_is_compensated_and_absence_is_read_back(self):
+        def timeout_after_server_write(_args, _kwargs):
+            raise TimeoutError("simulated client timeout after label write")
+
+        runner = QueueRunner(self.label_snapshot_responses() + [
+            response(stdout=json.dumps(exact_pr()) + "\n"),
+            *self.green_ci_responses(),
+            timeout_after_server_write,
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(exact_pr()) + "\n"),
+        ])
+        pr = publisher.PublishedPullRequest.from_dict(exact_pr())
+
+        with self.assertRaisesRegex(TimeoutError, "simulated"):
+            publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
+
+        self.assertTrue(any(
+            Path(call[0]).name == "gh" and call[1:3] == ["pr", "edit"] and "--remove-label" in call
+            for call, _ in runner.calls
+        ))
+
+    def test_failed_label_compensation_is_a_distinct_unsafe_state(self):
+        def timeout_after_server_write(_args, _kwargs):
+            raise TimeoutError("simulated label write timeout")
+
+        runner = QueueRunner(self.label_snapshot_responses() + [
+            response(stdout=json.dumps(exact_pr()) + "\n"),
+            *self.green_ci_responses(),
+            timeout_after_server_write,
+            response(returncode=1, stderr="cannot remove"),
+        ])
+        pr = publisher.PublishedPullRequest.from_dict(exact_pr())
+
+        with self.assertRaisesRegex(publisher.PublisherError, "UNSAFE_LABEL_STATE"):
+            publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
+
+    def test_identityless_name_matched_checks_are_rejected(self):
+        pr = publisher.PublishedPullRequest.from_dict(exact_pr())
+        runner = QueueRunner(self.label_snapshot_responses() + [
+            response(stdout=json.dumps(exact_pr()) + "\n"),
+            *self.green_ci_responses()[:3],
+            response(stdout=json.dumps(
+                self.check_payload(1, self.config.required_checks[0], head_sha=None, check_suite=None)
+            ) + "\n"),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherPending, "check"):
+            publisher.ensure_ready_label(self.candidate, pr, self.config, runner=runner)
+
+        self.assertFalse(any(Path(call[0]).name == "gh" and call[1:3] == ["pr", "edit"] for call, _ in runner.calls))
 
 
 class MutableKanban(FakeKanban):
-    def __init__(self, tasks, events, child):
+    def __init__(self, tasks, events, child, parents=None):
         super().__init__(tasks, events)
         self.by_id = {item.id: item for item in tasks}
         self.by_id[child.id] = child
         self.comments = []
         self.completions = []
+        self.parents = dict(parents or {child.id: ["t_example"], "t_example": []})
 
     def get_task(self, _conn, task_id):
         return self.by_id.get(task_id)
 
     def add_comment(self, _conn, task_id, author, body):
-        self.comments.append((task_id, author, body))
-        return len(self.comments)
+        record = SimpleNamespace(
+            id=len(self.comments) + 1,
+            task_id=task_id,
+            author=author,
+            body=body,
+        )
+        self.comments.append(record)
+        return record.id
+
+    def list_comments(self, _conn, task_id):
+        return [item for item in self.comments if item.task_id == task_id]
+
+    def parent_ids(self, _conn, task_id):
+        return list(self.parents.get(task_id, []))
 
     def complete_task(self, _conn, task_id, **kwargs):
         self.completions.append((task_id, kwargs))
@@ -619,6 +1055,7 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
             base_branch="develop",
             expected_origin="momomojo/Radulator",
             lifecycle_controller=Path("/srv/radulator/ops/hermes/radulator/lifecycle_controller.py"),
+            ledger_path=Path("/srv/radulator/state/release.jsonl"),
         )
         self.candidate = publisher.TrustedCommit(
             task_id="t_example",
@@ -664,9 +1101,21 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
             "task_id": "t_release",
             "idempotency_key": "radulator-release:t_example:pr-181",
         }]
+        seed = {
+            "idempotency_key": f"radulator-feedback:t_release:pr-181:{HEAD_SHA}",
+            "source_id": "t_example",
+            "task_id": "t_release",
+            "state": "feedback",
+            "pr": 181,
+            "head_sha": HEAD_SHA,
+        }
         runner = QueueRunner([
             self.labeled_pr_response(),
+            response(stdout="{}\n"),
             response(stdout=json.dumps(rendered) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
+            self.labeled_pr_response(),
             self.labeled_pr_response(),
         ])
 
@@ -696,13 +1145,24 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
             "task_id": "t_release",
             "idempotency_key": "radulator-release:t_example:pr-181",
         }]
+        seed = {
+            "idempotency_key": f"radulator-feedback:t_release:pr-181:{HEAD_SHA}",
+            "source_id": "t_example",
+            "task_id": "t_release",
+            "state": "feedback",
+            "pr": 181,
+            "head_sha": HEAD_SHA,
+        }
         wrong_head = exact_pr(
             headRefOid="c" * 40,
             labels=[{"name": "ready-for-gate"}],
         )
         runner = QueueRunner([
             response(stdout=json.dumps(exact_pr(labels=[{"name": "ready-for-gate"}])) + "\n"),
+            response(stdout="{}\n"),
             response(stdout=json.dumps(rendered) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
             response(stdout=json.dumps(wrong_head) + "\n"),
         ])
 
@@ -747,6 +1207,7 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
                 kb = self.kb()
                 runner = QueueRunner([
                     self.labeled_pr_response(),
+                    response(stdout="{}\n"),
                     response(stdout=json.dumps(rendered) + "\n"),
                 ])
                 with self.assertRaisesRegex(publisher.PublisherError, "tracker"):
@@ -778,6 +1239,7 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
                 )
                 runner = QueueRunner([
                     self.labeled_pr_response(),
+                    response(stdout="{}\n"),
                     response(stdout=json.dumps(rendered) + "\n"),
                 ])
                 with self.assertRaisesRegex(publisher.PublisherError, "tracker"):
@@ -797,13 +1259,16 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
                 "pr": 181,
                 "head_sha": BASE_SHA,
                 "state": "needs_fix",
+                "source_id": "t_original",
             }
         }
         kb = self.kb()
+        kb.parents["t_example"] = ["t_release"]
         kb.by_id["t_release"].body = f"Track clinical release of Radulator PR #181 at {BASE_SHA}"
         runner = QueueRunner([
             self.labeled_pr_response(),
             response(stdout=json.dumps(existing) + "\n"),
+            self.labeled_pr_response(),
             self.labeled_pr_response(),
         ])
 
@@ -819,6 +1284,67 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
         self.assertEqual(tracker, "t_release")
         self.assertFalse(any("bootstrap" in call for call, _ in runner.calls))
         self.assertEqual(len(kb.completions), 1)
+
+    def test_bootstrap_requires_exact_parent_relation_before_ledger_seed(self):
+        kb = self.kb()
+        kb.parents["t_release"] = ["t_foreign"]
+        rendered = [{
+            "kind": "create_child",
+            "task_id": "t_release",
+            "idempotency_key": "radulator-release:t_example:pr-181",
+        }]
+        runner = QueueRunner([
+            self.labeled_pr_response(),
+            response(stdout="{}\n"),
+            response(stdout=json.dumps(rendered) + "\n"),
+        ])
+        with self.assertRaisesRegex(publisher.PublisherError, "bootstrap readback"):
+            publisher.complete_lifecycle_handoff(
+                self.candidate, self.pr, self.config, kb, object(), runner=runner
+            )
+        self.assertFalse(any("append" in call for call, _ in runner.calls))
+        self.assertEqual(kb.completions, [])
+
+    def test_exact_audit_comment_is_idempotent_on_retry(self):
+        kb = self.kb()
+        rendered = [{
+            "kind": "create_child",
+            "task_id": "t_release",
+            "idempotency_key": "radulator-release:t_example:pr-181",
+        }]
+        seed = {
+            "idempotency_key": f"radulator-feedback:t_release:pr-181:{HEAD_SHA}",
+            "source_id": "t_example",
+            "task_id": "t_release",
+            "state": "feedback",
+            "pr": 181,
+            "head_sha": HEAD_SHA,
+        }
+        body = (
+            "TRUSTED_PUBLISHER v1 publication verified. "
+            f"PR {self.pr.url}; exact head {HEAD_SHA}; release tracker t_release."
+        )
+        kb.comments.append(SimpleNamespace(
+            id=1,
+            task_id="t_example",
+            author="radulator-trusted-publisher",
+            body=body,
+        ))
+        runner = QueueRunner([
+            self.labeled_pr_response(),
+            response(stdout="{}\n"),
+            response(stdout=json.dumps(rendered) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
+            self.labeled_pr_response(),
+            self.labeled_pr_response(),
+        ])
+
+        publisher.complete_lifecycle_handoff(
+            self.candidate, self.pr, self.config, kb, object(), runner=runner
+        )
+
+        self.assertEqual(len(kb.comments), 1)
 
 
 class TrustedPublisherRunTests(unittest.TestCase):

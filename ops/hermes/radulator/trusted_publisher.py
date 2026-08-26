@@ -18,7 +18,10 @@ from typing import Any
 
 
 CONTRACT = "hermes.trusted_local_commit.v1"
+REQUEST_CONTRACT = "hermes.trusted_git_completion_request.v1"
 BLOCKED_MARKER = "AWAITING_TRUSTED_PUBLISHER v1"
+GIT_BINARY = "/usr/bin/git"
+GH_BINARY = "/opt/homebrew/bin/gh"
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 TASK_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 MAX_CHANGED_PATHS = 5000
@@ -70,6 +73,9 @@ class PublisherConfig:
         "Hermes Release Control Tests",
     )
     required_check_app_id: int = 15368
+    required_check_app_slug: str = "github-actions"
+    e2e_workflow_path: str = ".github/workflows/e2e-tests.yml"
+    e2e_workflow_name: str = "E2E Tests"
 
 
 class PublisherError(RuntimeError):
@@ -88,9 +94,11 @@ class PublishedPullRequest:
     branch: str
     head_sha: str
     base: str
+    base_sha: str
     head_repository_owner: str
     is_cross_repository: bool
     labels: tuple[str, ...]
+    merged_at: str | None
 
     @classmethod
     def from_dict(cls, value: Any) -> "PublishedPullRequest":
@@ -111,12 +119,14 @@ class PublishedPullRequest:
         owner = value.get("headRepositoryOwner")
         owner_login = owner.get("login") if isinstance(owner, dict) else None
         is_cross_repository = value.get("isCrossRepository")
+        merged_at = value.get("mergedAt")
         fields = {
             "url": value.get("url"),
             "state": value.get("state"),
             "branch": value.get("headRefName"),
             "head_sha": value.get("headRefOid"),
             "base": value.get("baseRefName"),
+            "base_sha": value.get("baseRefOid"),
         }
         if (
             not _positive_int(number)
@@ -124,6 +134,7 @@ class PublishedPullRequest:
             or not isinstance(owner_login, str)
             or not owner_login
             or type(is_cross_repository) is not bool
+            or (merged_at is not None and not isinstance(merged_at, str))
         ):
             raise PublisherError("pull request readback identity is malformed")
         return cls(
@@ -131,6 +142,7 @@ class PublishedPullRequest:
             head_repository_owner=owner_login,
             is_cross_repository=is_cross_repository,
             labels=tuple(sorted(set(labels))),
+            merged_at=merged_at,
             **fields,
         )
 
@@ -228,7 +240,10 @@ def _parse_contract(payload: Any, *, run_id: Any) -> TrustedCommit | None:
 
 
 def _candidate_for_task(kb: Any, conn: Any, task: Any, board: str) -> TrustedCommit | None:
-    if getattr(task, "status", None) != "blocked":
+    if (
+        getattr(task, "status", None) != "blocked"
+        or getattr(task, "block_kind", None) != "capability"
+    ):
         return None
     task_id = getattr(task, "id", None)
     if not isinstance(task_id, str) or not TASK_ID_PATTERN.fullmatch(task_id):
@@ -273,14 +288,46 @@ def _candidate_for_task(kb: Any, conn: Any, task: Any, board: str) -> TrustedCom
     )
     if candidate is None:
         return None
+    run = kb.get_run(conn, candidate.run_id)
+    latest_run = kb.latest_run(conn, task_id)
     if (
         candidate.task_id != task_id
         or candidate.board != board
         or candidate.project_id != getattr(task, "project_id", None)
         or candidate.workspace != getattr(task, "workspace_path", None)
         or candidate.branch != getattr(task, "branch_name", None)
+        or getattr(task, "current_run_id", None) is not None
+        or run is None
+        or getattr(run, "id", None) != candidate.run_id
+        or getattr(run, "task_id", None) != task_id
+        or getattr(run, "status", None) != "blocked"
+        or getattr(run, "outcome", None) != "blocked"
+        or not _positive_int(getattr(run, "ended_at", None))
+        or getattr(run, "summary", None) != BLOCKED_MARKER
+        or latest_run is None
+        or getattr(latest_run, "id", None) != candidate.run_id
     ):
         return None
+    if candidate.recovered_from_run_id is not None:
+        recovered = kb.get_run(conn, candidate.recovered_from_run_id)
+        requests = [
+            item
+            for item in events
+            if getattr(item, "kind", None) == "trusted_git_completion_requested"
+            and getattr(item, "run_id", None) == candidate.recovered_from_run_id
+            and isinstance(getattr(item, "payload", None), dict)
+            and item.payload.get("contract") == REQUEST_CONTRACT
+        ]
+        if (
+            candidate.recovered_from_run_id >= candidate.run_id
+            or recovered is None
+            or getattr(recovered, "task_id", None) != task_id
+            or getattr(recovered, "status", None) != "reclaimed"
+            or getattr(recovered, "outcome", None) != "reclaimed"
+            or not _positive_int(getattr(recovered, "ended_at", None))
+            or len(requests) != 1
+        ):
+            return None
     return candidate
 
 
@@ -304,7 +351,10 @@ def _minimal_env() -> dict[str, str]:
     env = {key: os.environ[key] for key in allowed if key in os.environ}
     env.update({
         "GIT_TERMINAL_PROMPT": "0",
+        "GIT_ASKPASS": "/dev/null",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
         "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_SYSTEM": "/dev/null",
     })
     return env
 
@@ -341,7 +391,7 @@ def _git(
 ) -> subprocess.CompletedProcess:
     return _run(
         [
-            "git",
+            GIT_BINARY,
             "-c",
             "core.hooksPath=/dev/null",
             "-c",
@@ -546,7 +596,7 @@ def _gh(
     check: bool = True,
 ) -> subprocess.CompletedProcess:
     return _run(
-        ["gh", *args],
+        [GH_BINARY, *args],
         cwd=cwd,
         runner=runner,
         check=check,
@@ -566,6 +616,7 @@ def _bounded_json(result: subprocess.CompletedProcess, label: str) -> Any:
 
 def _remote_head(
     candidate: TrustedCommit,
+    config: PublisherConfig,
     *,
     runner: Any,
 ) -> str | None:
@@ -574,7 +625,7 @@ def _remote_head(
         workspace,
         "ls-remote",
         "--heads",
-        "origin",
+        f"https://github.com/{config.repository}.git",
         f"refs/heads/{candidate.branch}",
         runner=runner,
         env=_publisher_env(),
@@ -590,10 +641,37 @@ def _remote_head(
     return sha
 
 
+def _remote_target_base(
+    candidate: TrustedCommit,
+    config: PublisherConfig,
+    *,
+    runner: Any,
+) -> str:
+    workspace = Path(candidate.workspace)
+    result = _git(
+        workspace,
+        "ls-remote",
+        "--heads",
+        f"https://github.com/{config.repository}.git",
+        f"refs/heads/{config.base_branch}",
+        runner=runner,
+        env=_publisher_env(),
+    )
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    if len(lines) != 1:
+        raise PublisherError("target base branch readback is missing or ambiguous")
+    sha, separator, ref = lines[0].partition("\t")
+    if separator != "\t" or ref != f"refs/heads/{config.base_branch}" or not SHA_PATTERN.fullmatch(sha):
+        raise PublisherError("target base branch readback is malformed")
+    return sha
+
+
 def _exact_pr(
     value: Any,
     candidate: TrustedCommit,
     config: PublisherConfig,
+    *,
+    target_base_sha: str,
 ) -> PublishedPullRequest:
     pr = PublishedPullRequest.from_dict(value)
     expected_owner = config.repository.split("/", 1)[0]
@@ -602,6 +680,7 @@ def _exact_pr(
         or pr.branch != candidate.branch
         or pr.head_sha != candidate.head_sha
         or pr.base != config.base_branch
+        or pr.base_sha != target_base_sha
         or pr.head_repository_owner != expected_owner
         or pr.is_cross_repository
     ):
@@ -609,7 +688,7 @@ def _exact_pr(
     return pr
 
 
-def _list_open_prs(
+def _list_branch_prs(
     candidate: TrustedCommit,
     config: PublisherConfig,
     *,
@@ -625,27 +704,52 @@ def _list_open_prs(
         "--head",
         candidate.branch,
         "--state",
-        "open",
+        "all",
+        "--limit",
+        "1000",
         "--json",
-        "number,url,state,headRefName,headRefOid,baseRefName,headRepositoryOwner,isCrossRepository,labels",
+        "number,url,state,headRefName,headRefOid,baseRefName,baseRefOid,headRepositoryOwner,isCrossRepository,labels,mergedAt",
         cwd=Path(candidate.workspace),
         runner=runner,
     )
-    value = _bounded_json(result, "pull request list")
+    value = _bounded_json(result, "pull request history")
     if not isinstance(value, list):
-        raise PublisherError("pull request list readback is malformed")
+        raise PublisherError("pull request history readback is malformed")
     return value
 
 
 def ensure_remote_and_pr(
     candidate: TrustedCommit,
     config: PublisherConfig,
+    kb: Any | None = None,
+    conn: Any | None = None,
     *,
     runner: Any = subprocess.run,
 ) -> PublishedPullRequest:
     """Non-force publish one exact sealed head and read back its PR."""
     workspace = Path(candidate.workspace)
-    remote_head = _remote_head(candidate, runner=runner)
+    validate_local_candidate(candidate, config, runner=runner)
+    if kb is not None:
+        _revalidate_candidate(candidate, config, kb, conn)
+    remote_head = _remote_head(candidate, config, runner=runner)
+    target_base_sha = _remote_target_base(candidate, config, runner=runner)
+    if remote_head is None:
+        if candidate.base_sha != target_base_sha:
+            raise PublisherError("new publication parent is not the current target base")
+    elif remote_head != candidate.head_sha:
+        if candidate.base_sha != remote_head:
+            raise PublisherError("correction commit parent is not the current remote feature head")
+        target_ancestor = _git(
+            workspace,
+            "merge-base",
+            "--is-ancestor",
+            target_base_sha,
+            candidate.head_sha,
+            runner=runner,
+            check=False,
+        )
+        if target_ancestor.returncode != 0:
+            raise PublisherError("current target base is not contained in the correction head")
     if remote_head not in {None, candidate.head_sha}:
         ancestor = _git(
             workspace,
@@ -658,20 +762,27 @@ def ensure_remote_and_pr(
         )
         if ancestor.returncode != 0:
             raise PublisherError("remote branch is not an ancestor of the sealed head; force publication is forbidden")
-        existing = _list_open_prs(candidate, config, runner=runner)
-        if len(existing) != 1:
-            raise PublisherError("fast-forward correction requires exactly one existing open PR")
-        prior = PublishedPullRequest.from_dict(existing[0])
+        existing = _list_branch_prs(candidate, config, runner=runner)
+        if len(existing) > 1:
+            raise PublisherError("feature branch has ambiguous pull request history")
+        prior = PublishedPullRequest.from_dict(existing[0]) if existing else None
         if (
-            prior.state != "OPEN"
-            or prior.branch != candidate.branch
-            or prior.head_sha != remote_head
-            or prior.base != config.base_branch
-            or prior.head_repository_owner != config.repository.split("/", 1)[0]
-            or prior.is_cross_repository
+            prior is not None
+            and (
+                prior.branch != candidate.branch
+                or prior.head_sha != remote_head
+                or prior.base != config.base_branch
+                or prior.base_sha != target_base_sha
+                or prior.head_repository_owner != config.repository.split("/", 1)[0]
+                or prior.is_cross_repository
+                or prior.merged_at is not None
+            )
         ):
             raise PublisherError("existing correction PR does not match the sealed base")
-        if "ready-for-gate" in prior.labels:
+        if prior is not None and prior.state == "OPEN" and "ready-for-gate" in prior.labels:
+            validate_local_candidate(candidate, config, runner=runner)
+            if kb is not None:
+                _revalidate_candidate(candidate, config, kb, conn)
             _gh(
                 "pr",
                 "edit",
@@ -688,28 +799,64 @@ def ensure_remote_and_pr(
                 candidate,
                 config,
                 expected_sha=remote_head,
+                expected_base_sha=target_base_sha,
                 runner=runner,
             )
             if "ready-for-gate" in prior.labels:
                 raise PublisherError("stale readiness label remained before correction push")
     if remote_head != candidate.head_sha:
+        validate_local_candidate(candidate, config, runner=runner)
+        if kb is not None:
+            _revalidate_candidate(candidate, config, kb, conn)
+        if (
+            _remote_head(candidate, config, runner=runner) != remote_head
+            or _remote_target_base(candidate, config, runner=runner) != target_base_sha
+        ):
+            raise PublisherError("remote publication snapshot changed before push")
         _git(
             workspace,
             "-c",
-            "credential.helper=!gh auth git-credential",
+            f"credential.helper=!{GH_BINARY} auth git-credential",
             "push",
-            "origin",
+            f"https://github.com/{config.repository}.git",
             f"{candidate.head_sha}:refs/heads/{candidate.branch}",
             runner=runner,
             env=_publisher_env(),
         )
-        if _remote_head(candidate, runner=runner) != candidate.head_sha:
+        if _remote_head(candidate, config, runner=runner) != candidate.head_sha:
             raise PublisherError("remote branch exact-SHA readback failed after push")
+        if kb is not None:
+            _revalidate_candidate(candidate, config, kb, conn)
 
-    open_prs = _list_open_prs(candidate, config, runner=runner)
-    if len(open_prs) > 1:
-        raise PublisherError("expected exactly one open PR for the sealed branch")
-    if not open_prs:
+    branch_prs = _list_branch_prs(candidate, config, runner=runner)
+    if len(branch_prs) > 1:
+        raise PublisherError("feature branch has more than one pull request")
+    if branch_prs:
+        prior = PublishedPullRequest.from_dict(branch_prs[0])
+        if prior.merged_at is not None:
+            raise PublisherError("feature branch was already merged and cannot be republished")
+        if prior.state == "CLOSED":
+            validate_local_candidate(candidate, config, runner=runner)
+            if kb is not None:
+                _revalidate_candidate(candidate, config, kb, conn)
+            if _remote_target_base(candidate, config, runner=runner) != target_base_sha:
+                raise PublisherError("target base changed before pull request reopen")
+            _gh(
+                "pr",
+                "reopen",
+                str(prior.number),
+                "--repo",
+                config.repository,
+                cwd=workspace,
+                runner=runner,
+            )
+            branch_prs = _list_branch_prs(candidate, config, runner=runner)
+    if not branch_prs:
+        validate_local_candidate(candidate, config, runner=runner)
+        if kb is not None:
+            _revalidate_candidate(candidate, config, kb, conn)
+        if _remote_target_base(candidate, config, runner=runner) != target_base_sha:
+            raise PublisherError("target base changed before pull request creation")
         _gh(
             "pr",
             "create",
@@ -732,10 +879,10 @@ def ensure_remote_and_pr(
             cwd=workspace,
             runner=runner,
         )
-        open_prs = _list_open_prs(candidate, config, runner=runner)
-        if len(open_prs) != 1:
+        branch_prs = _list_branch_prs(candidate, config, runner=runner)
+        if len(branch_prs) != 1:
             raise PublisherError("pull request creation lacked exact authoritative readback")
-    return _exact_pr(open_prs[0], candidate, config)
+    return _exact_pr(branch_prs[0], candidate, config, target_base_sha=target_base_sha)
 
 
 def _read_pr(
@@ -743,6 +890,7 @@ def _read_pr(
     candidate: TrustedCommit,
     config: PublisherConfig,
     *,
+    expected_base_sha: str,
     runner: Any,
 ) -> PublishedPullRequest:
     return _read_pr_at_sha(
@@ -750,6 +898,7 @@ def _read_pr(
         candidate,
         config,
         expected_sha=candidate.head_sha,
+        expected_base_sha=expected_base_sha,
         runner=runner,
     )
 
@@ -760,6 +909,28 @@ def _read_pr_at_sha(
     config: PublisherConfig,
     *,
     expected_sha: str,
+    expected_base_sha: str,
+    runner: Any,
+) -> PublishedPullRequest:
+    pr = _load_pr(number, candidate, config, runner=runner)
+    if (
+        pr.state != "OPEN"
+        or pr.branch != candidate.branch
+        or pr.head_sha != expected_sha
+        or pr.base != config.base_branch
+        or pr.base_sha != expected_base_sha
+        or pr.head_repository_owner != config.repository.split("/", 1)[0]
+        or pr.is_cross_repository
+    ):
+        raise PublisherError("pull request repository owner or exact expected state does not match")
+    return pr
+
+
+def _load_pr(
+    number: int,
+    candidate: TrustedCommit,
+    config: PublisherConfig,
+    *,
     runner: Any,
 ) -> PublishedPullRequest:
     result = _gh(
@@ -769,54 +940,149 @@ def _read_pr_at_sha(
         "--repo",
         config.repository,
         "--json",
-        "number,url,state,headRefName,headRefOid,baseRefName,headRepositoryOwner,isCrossRepository,labels",
+        "number,url,state,headRefName,headRefOid,baseRefName,baseRefOid,headRepositoryOwner,isCrossRepository,labels,mergedAt",
         cwd=Path(candidate.workspace),
         runner=runner,
     )
-    pr = PublishedPullRequest.from_dict(_bounded_json(result, "pull request"))
-    if (
-        pr.state != "OPEN"
-        or pr.branch != candidate.branch
-        or pr.head_sha != expected_sha
-        or pr.base != config.base_branch
-        or pr.head_repository_owner != config.repository.split("/", 1)[0]
-        or pr.is_cross_repository
-    ):
-        raise PublisherError("pull request repository owner or exact expected state does not match")
-    return pr
+    return PublishedPullRequest.from_dict(_bounded_json(result, "pull request"))
 
 
 def _required_checks_green(
     candidate: TrustedCommit,
+    pr: PublishedPullRequest,
     config: PublisherConfig,
     *,
     runner: Any,
 ) -> bool:
-    result = _gh(
+    workflow_result = _gh(
         "api",
-        f"repos/{config.repository}/commits/{candidate.head_sha}/check-runs?per_page=100",
+        f"repos/{config.repository}/actions/workflows/e2e-tests.yml",
         cwd=Path(candidate.workspace),
         runner=runner,
     )
-    value = _bounded_json(result, "check runs")
-    runs = value.get("check_runs") if isinstance(value, dict) else None
-    if not isinstance(runs, list):
-        raise PublisherError("check runs readback is malformed")
+    workflow = _bounded_json(workflow_result, "workflow identity")
+    if not isinstance(workflow, dict):
+        raise PublisherError("workflow identity readback is malformed")
+    workflow_id = workflow.get("id")
+    if (
+        not _positive_int(workflow_id)
+        or workflow.get("name") != config.e2e_workflow_name
+        or workflow.get("path") != config.e2e_workflow_path
+        or workflow.get("state") != "active"
+    ):
+        return False
+
+    runs_result = _gh(
+        "api",
+        (
+            f"repos/{config.repository}/actions/workflows/{workflow_id}/runs?head_sha={candidate.head_sha}"
+            "&event=pull_request&per_page=100"
+        ),
+        cwd=Path(candidate.workspace),
+        runner=runner,
+    )
+    runs_payload = _bounded_json(runs_result, "workflow runs")
+    runs = runs_payload.get("workflow_runs") if isinstance(runs_payload, dict) else None
+    total_runs = runs_payload.get("total_count") if isinstance(runs_payload, dict) else None
+    if not isinstance(runs, list) or type(total_runs) is not int or total_runs != len(runs):
+        raise PublisherError("workflow runs readback is malformed")
+    repository_url = f"https://api.github.com/repos/{config.repository}"
+
+    def exact_pull_binding(item: Any) -> bool:
+        if not isinstance(item, dict) or item.get("number") != pr.number:
+            return False
+        head = item.get("head")
+        base = item.get("base")
+        return (
+            isinstance(head, dict)
+            and isinstance(base, dict)
+            and head.get("sha") == candidate.head_sha
+            and head.get("ref") == candidate.branch
+            and isinstance(head.get("repo"), dict)
+            and head["repo"].get("url") == repository_url
+            and base.get("sha") == pr.base_sha
+            and base.get("ref") == config.base_branch
+            and isinstance(base.get("repo"), dict)
+            and base["repo"].get("url") == repository_url
+        )
+
+    matching_runs = [
+        item
+        for item in runs
+        if isinstance(item, dict)
+        and _positive_int(item.get("id"))
+        and item.get("workflow_id") == workflow_id
+        and item.get("name") == config.e2e_workflow_name
+        and item.get("path") == config.e2e_workflow_path
+        and item.get("event") == "pull_request"
+        and _positive_int(item.get("run_attempt"))
+        and _positive_int(item.get("check_suite_id"))
+        and item.get("head_sha") == candidate.head_sha
+        and item.get("head_branch") == candidate.branch
+        and isinstance(item.get("pull_requests"), list)
+        and len(item["pull_requests"]) == 1
+        and exact_pull_binding(item["pull_requests"][0])
+    ]
+    if not matching_runs:
+        return False
+    selected_run = max(matching_runs, key=lambda item: (item["id"], item["run_attempt"]))
+    if selected_run.get("status") != "completed" or selected_run.get("conclusion") != "success":
+        return False
+    run_id = selected_run["id"]
+    run_attempt = selected_run["run_attempt"]
+    check_suite_id = selected_run["check_suite_id"]
+
+    jobs_result = _gh(
+        "api",
+        f"repos/{config.repository}/actions/runs/{run_id}/attempts/{run_attempt}/jobs?per_page=100",
+        cwd=Path(candidate.workspace),
+        runner=runner,
+    )
+    jobs_payload = _bounded_json(jobs_result, "workflow jobs")
+    jobs = jobs_payload.get("jobs") if isinstance(jobs_payload, dict) else None
+    total_jobs = jobs_payload.get("total_count") if isinstance(jobs_payload, dict) else None
+    if not isinstance(jobs, list) or type(total_jobs) is not int or total_jobs != len(jobs):
+        raise PublisherError("workflow jobs readback is malformed")
     for required in config.required_checks:
-        matching = [
+        matching_jobs = [
             item
-            for item in runs
+            for item in jobs
             if isinstance(item, dict) and item.get("name") == required and _positive_int(item.get("id"))
         ]
-        if not matching:
+        if len(matching_jobs) != 1:
             return False
-        latest = max(matching, key=lambda item: item["id"])
-        app = latest.get("app")
+        job = matching_jobs[0]
         if (
-            latest.get("status") != "completed"
-            or latest.get("conclusion") != "success"
+            job.get("run_id") != run_id
+            or job.get("run_attempt") != run_attempt
+            or job.get("head_sha") != candidate.head_sha
+            or job.get("workflow_name") != config.e2e_workflow_name
+            or job.get("status") != "completed"
+            or job.get("conclusion") != "success"
+            or job.get("check_run_url")
+            != f"https://api.github.com/repos/{config.repository}/check-runs/{job['id']}"
+        ):
+            return False
+        check_result = _gh(
+            "api",
+            f"repos/{config.repository}/check-runs/{job['id']}",
+            cwd=Path(candidate.workspace),
+            runner=runner,
+        )
+        check = _bounded_json(check_result, f"{required} check run")
+        if not isinstance(check, dict) or check.get("id") != job["id"] or check.get("name") != required:
+            return False
+        app = check.get("app")
+        suite = check.get("check_suite")
+        if (
+            check.get("head_sha") != candidate.head_sha
+            or check.get("status") != "completed"
+            or check.get("conclusion") != "success"
             or not isinstance(app, dict)
             or app.get("id") != config.required_check_app_id
+            or app.get("slug") != config.required_check_app_slug
+            or not isinstance(suite, dict)
+            or suite.get("id") != check_suite_id
         ):
             return False
     return True
@@ -826,28 +1092,96 @@ def ensure_ready_label(
     candidate: TrustedCommit,
     pr: PublishedPullRequest,
     config: PublisherConfig,
+    kb: Any | None = None,
+    conn: Any | None = None,
     *,
     runner: Any = subprocess.run,
 ) -> PublishedPullRequest:
     """Apply readiness only after current exact-head CI and PR readback."""
-    if not _required_checks_green(candidate, config, runner=runner):
-        raise PublisherPending("required exact-head check suite is not green")
-    current = _read_pr(pr.number, candidate, config, runner=runner)
-    if "ready-for-gate" not in current.labels:
-        _gh(
-            "pr",
-            "edit",
-            str(pr.number),
-            "--repo",
-            config.repository,
-            "--add-label",
-            "ready-for-gate",
-            cwd=Path(candidate.workspace),
+    validate_local_candidate(candidate, config, runner=runner)
+    if (
+        _remote_head(candidate, config, runner=runner) != candidate.head_sha
+        or _remote_target_base(candidate, config, runner=runner) != pr.base_sha
+    ):
+        raise PublisherPending("remote publication snapshot is not exact")
+    if kb is not None:
+        _revalidate_candidate(candidate, config, kb, conn)
+    current = _read_pr(
+        pr.number,
+        candidate,
+        config,
+        expected_base_sha=pr.base_sha,
+        runner=runner,
+    )
+    attempted = False
+    observed_label = "ready-for-gate" in current.labels
+    try:
+        if not _required_checks_green(candidate, pr, config, runner=runner):
+            raise PublisherPending("required exact-head check suite is not green")
+        if "ready-for-gate" not in current.labels:
+            validate_local_candidate(candidate, config, runner=runner)
+            attempted = True
+        if attempted:
+            _gh(
+                "pr",
+                "edit",
+                str(pr.number),
+                "--repo",
+                config.repository,
+                "--add-label",
+                "ready-for-gate",
+                cwd=Path(candidate.workspace),
+                runner=runner,
+            )
+        validate_local_candidate(candidate, config, runner=runner)
+        if (
+            _remote_head(candidate, config, runner=runner) != candidate.head_sha
+            or _remote_target_base(candidate, config, runner=runner) != pr.base_sha
+        ):
+            raise PublisherError("remote publication snapshot changed after readiness write")
+        if kb is not None:
+            _revalidate_candidate(candidate, config, kb, conn)
+        if not _required_checks_green(candidate, pr, config, runner=runner):
+            raise PublisherError("exact CI evidence changed after readiness write")
+        readback = _read_pr(
+            pr.number,
+            candidate,
+            config,
+            expected_base_sha=pr.base_sha,
             runner=runner,
         )
-    readback = _read_pr(pr.number, candidate, config, runner=runner)
-    if "ready-for-gate" not in readback.labels:
-        raise PublisherError("ready-for-gate label lacked exact authoritative readback")
+        if "ready-for-gate" not in readback.labels:
+            raise PublisherError("ready-for-gate label lacked exact authoritative readback")
+    except Exception as error:
+        if not attempted and not observed_label:
+            raise
+        try:
+            _gh(
+                "pr",
+                "edit",
+                str(pr.number),
+                "--repo",
+                config.repository,
+                "--remove-label",
+                "ready-for-gate",
+                cwd=Path(candidate.workspace),
+                runner=runner,
+            )
+            cleanup = _load_pr(pr.number, candidate, config, runner=runner)
+            if (
+                cleanup.state != "OPEN"
+                or cleanup.branch != candidate.branch
+                or cleanup.base != config.base_branch
+                or cleanup.head_repository_owner != config.repository.split("/", 1)[0]
+                or cleanup.is_cross_repository
+                or "ready-for-gate" in cleanup.labels
+            ):
+                raise PublisherError("compensation state is not authoritative")
+        except Exception as cleanup_error:
+            raise PublisherError(
+                "UNSAFE_LABEL_STATE: ready-for-gate absence could not be proven"
+            ) from cleanup_error
+        raise
     return readback
 
 
@@ -864,6 +1198,49 @@ def _revalidate_candidate(
     if current != candidate:
         raise PublisherError("sealed publisher obligation changed during publication")
     return task
+
+
+def _exact_parent_ids(kb: Any, conn: Any, task_id: str) -> list[str]:
+    parents = kb.parent_ids(conn, task_id)
+    if not isinstance(parents, list) or not all(
+        isinstance(item, str) and TASK_ID_PATTERN.fullmatch(item) for item in parents
+    ):
+        raise PublisherError("Kanban parent relation readback is malformed")
+    return parents
+
+
+def _ensure_exact_comment(
+    kb: Any,
+    conn: Any,
+    task_id: str,
+    author: str,
+    body: str,
+) -> int:
+    matches = [
+        item
+        for item in kb.list_comments(conn, task_id)
+        if getattr(item, "task_id", None) == task_id
+        and getattr(item, "author", None) == author
+        and getattr(item, "body", None) == body
+        and _positive_int(getattr(item, "id", None))
+    ]
+    if len(matches) > 1:
+        raise PublisherError("publisher audit comment is duplicated")
+    if not matches:
+        comment_id = kb.add_comment(conn, task_id, author, body)
+        if not _positive_int(comment_id):
+            raise PublisherError("publisher audit comment failed durable write")
+    readback = [
+        item
+        for item in kb.list_comments(conn, task_id)
+        if getattr(item, "task_id", None) == task_id
+        and getattr(item, "author", None) == author
+        and getattr(item, "body", None) == body
+        and _positive_int(getattr(item, "id", None))
+    ]
+    if len(readback) != 1:
+        raise PublisherError("publisher audit comment failed exact durable readback")
+    return readback[0].id
 
 
 def complete_lifecycle_handoff(
@@ -885,7 +1262,13 @@ def complete_lifecycle_handoff(
     ):
         raise PublisherError("lifecycle handoff requires exact labeled PR readback")
     _revalidate_candidate(candidate, config, kb, conn)
-    current_pr = _read_pr(pr.number, candidate, config, runner=runner)
+    current_pr = _read_pr(
+        pr.number,
+        candidate,
+        config,
+        expected_base_sha=pr.base_sha,
+        runner=runner,
+    )
     if "ready-for-gate" not in current_pr.labels:
         raise PublisherError("lifecycle handoff lost the exact readiness label")
     lifecycle_env = _minimal_env()
@@ -913,7 +1296,8 @@ def complete_lifecycle_handoff(
             for value in replay.values()
             if isinstance(value, dict)
             and value.get("pr") == pr.number
-            and value.get("state") != "complete"
+            and value.get("state") == "needs_fix"
+            and value.get("head_sha") == candidate.base_sha
             and isinstance(value.get("task_id"), str)
             and TASK_ID_PATTERN.fullmatch(value["task_id"])
         ]
@@ -953,6 +1337,92 @@ def complete_lifecycle_handoff(
             or not TASK_ID_PATTERN.fullmatch(tracker_id)
         ):
             raise PublisherError("release tracker readback does not match the exact handoff")
+        bootstrap_tracker = kb.get_task(conn, tracker_id)
+        if (
+            bootstrap_tracker is None
+            or getattr(bootstrap_tracker, "status", None)
+            not in {"triage", "todo", "scheduled", "ready", "running", "blocked", "review"}
+            or not isinstance(getattr(bootstrap_tracker, "body", None), str)
+            or not _has_exact_pr_reference(bootstrap_tracker.body, pr.number)
+            or not _has_exact_sha_reference(bootstrap_tracker.body, candidate.head_sha)
+            or _exact_parent_ids(kb, conn, tracker_id) != [candidate.task_id]
+        ):
+            raise PublisherError("release tracker failed exact bootstrap readback")
+        if config.ledger_path is None:
+            raise PublisherError("release lifecycle ledger is required for a new tracker")
+        seed_key = f"radulator-feedback:{tracker_id}:pr-{pr.number}:{candidate.head_sha}"
+        evidence = {
+            "contract": "radulator.trusted_publisher.lifecycle-seed.v1",
+            "pr": pr.number,
+            "head_sha": candidate.head_sha,
+            "implementation_task_id": candidate.task_id,
+        }
+        appended_result = _run(
+            [
+                sys.executable,
+                str(config.lifecycle_controller),
+                "append",
+                "--ledger",
+                str(config.ledger_path),
+                "--idempotency-key",
+                seed_key,
+                "--source-id",
+                candidate.task_id,
+                "--task-id",
+                tracker_id,
+                "--state",
+                "feedback",
+                "--pr",
+                str(pr.number),
+                "--head-sha",
+                candidate.head_sha,
+                "--evidence-json",
+                json.dumps(evidence, sort_keys=True, separators=(",", ":")),
+            ],
+            cwd=config.project_root,
+            runner=runner,
+            env=lifecycle_env,
+        )
+        appended = _bounded_json(appended_result, "release lifecycle seed")
+        if not isinstance(appended, dict) or any(
+            appended.get(key) != value
+            for key, value in {
+                "idempotency_key": seed_key,
+                "source_id": candidate.task_id,
+                "task_id": tracker_id,
+                "state": "feedback",
+                "pr": pr.number,
+                "head_sha": candidate.head_sha,
+            }.items()
+        ):
+            raise PublisherError("release lifecycle seed failed exact readback")
+        replay_seed_result = _run(
+            [
+                sys.executable,
+                str(config.lifecycle_controller),
+                "replay",
+                "--ledger",
+                str(config.ledger_path),
+                "--task-id",
+                tracker_id,
+            ],
+            cwd=config.project_root,
+            runner=runner,
+            env=lifecycle_env,
+        )
+        replay_seed = _bounded_json(replay_seed_result, "release lifecycle seed replay")
+        if not isinstance(replay_seed, dict) or any(
+            replay_seed.get(key) != value
+            for key, value in {
+                "idempotency_key": seed_key,
+                "source_id": candidate.task_id,
+                "task_id": tracker_id,
+                "state": "feedback",
+                "pr": pr.number,
+                "head_sha": candidate.head_sha,
+            }.items()
+        ):
+            raise PublisherError("release lifecycle seed replay is not exact")
     tracker = kb.get_task(conn, tracker_id)
     if (
         tracker is None
@@ -962,8 +1432,30 @@ def complete_lifecycle_handoff(
         or (not existing_tracker and not _has_exact_sha_reference(tracker.body, candidate.head_sha))
     ):
         raise PublisherError("release tracker failed exact nonterminal task readback")
+    expected_parents = [tracker_id] if existing_tracker else [candidate.task_id]
+    relation_task = candidate.task_id if existing_tracker else tracker_id
+    if _exact_parent_ids(kb, conn, relation_task) != expected_parents:
+        raise PublisherError("release tracker lineage failed exact relation readback")
+    if existing_tracker:
+        _ensure_exact_comment(
+            kb,
+            conn,
+            tracker_id,
+            "radulator-trusted-publisher",
+            (
+                "TRUSTED_PUBLISHER_CORRECTION v1 "
+                f"PR #{pr.number}; prior head {candidate.base_sha}; "
+                f"corrected head {candidate.head_sha}; implementation task {candidate.task_id}."
+            ),
+        )
 
-    current_pr = _read_pr(pr.number, candidate, config, runner=runner)
+    current_pr = _read_pr(
+        pr.number,
+        candidate,
+        config,
+        expected_base_sha=pr.base_sha,
+        runner=runner,
+    )
     if "ready-for-gate" not in current_pr.labels:
         raise PublisherError("lifecycle handoff lost the exact readiness label")
 
@@ -971,10 +1463,23 @@ def complete_lifecycle_handoff(
         "TRUSTED_PUBLISHER v1 publication verified. "
         f"PR {pr.url}; exact head {candidate.head_sha}; release tracker {tracker_id}."
     )
-    comment_id = kb.add_comment(conn, candidate.task_id, "radulator-trusted-publisher", comment)
-    if not _positive_int(comment_id):
-        raise PublisherError("publisher audit comment failed durable readback")
+    _ensure_exact_comment(
+        kb,
+        conn,
+        candidate.task_id,
+        "radulator-trusted-publisher",
+        comment,
+    )
     _revalidate_candidate(candidate, config, kb, conn)
+    final_pr = _read_pr(
+        pr.number,
+        candidate,
+        config,
+        expected_base_sha=pr.base_sha,
+        runner=runner,
+    )
+    if "ready-for-gate" not in final_pr.labels:
+        raise PublisherError("implementation completion lost exact readiness authority")
     completion = (
         "TRUSTED_PUBLISHER v1\n"
         f"PR: {pr.url}\n"
@@ -1046,9 +1551,22 @@ def run_once(
     if candidate is None:
         return {"status": "idle"}
     validate_local_candidate(candidate, config, runner=runner)
-    pr = ensure_remote_and_pr(candidate, config, runner=runner)
+    pr = ensure_remote_and_pr(
+        candidate,
+        config,
+        kb,
+        conn,
+        runner=runner,
+    )
     try:
-        labeled = ensure_ready_label(candidate, pr, config, runner=runner)
+        labeled = ensure_ready_label(
+            candidate,
+            pr,
+            config,
+            kb,
+            conn,
+            runner=runner,
+        )
     except PublisherPending:
         return {
             "status": "pending_ci",

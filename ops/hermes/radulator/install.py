@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import base64
+import binascii
 import datetime as dt
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -18,7 +20,9 @@ from typing import Any
 
 
 SCHEMA = "radulator-hermes-install/v1"
-BACKUP_SCHEMA = "radulator-hermes-backup/v1"
+BACKUP_SCHEMA = "radulator-hermes-backup/v2"
+LEGACY_BACKUP_SCHEMA = "radulator-hermes-backup/v1"
+BACKUP_HMAC_KEY_BYTES = 32
 MODEL = "gpt-5.6-sol"
 PROVIDER = "openai-codex"
 CANONICAL_GITHUB_REPOSITORY = "momomojo/Radulator"
@@ -549,6 +553,183 @@ def _control_manifest_path(plan: dict[str, Any]) -> Path:
     return Path(plan["radulator_home"]) / "state/radulator-release-control.json"
 
 
+def _backup_key_path(plan: dict[str, Any]) -> Path:
+    return Path(plan["radulator_home"]) / "state/radulator-release-backup.hmac.key"
+
+
+def _backup_targets(plan: dict[str, Any]) -> dict[str, Path]:
+    """Return the only restorable targets, addressed without stored filesystem paths."""
+    homes = {
+        "primary": Path(plan["radulator_home"]),
+        "verification": Path(plan["default_home"]),
+    }
+    ordered = [
+        homes["primary"] / "cron/jobs.json",
+        homes["verification"] / "cron/jobs.json",
+        *(destination for _, destination in _skill_copies(plan)),
+        *(destination for _, destination in _script_copies(plan)),
+        _control_manifest_path(plan),
+    ]
+    targets: dict[str, Path] = {}
+    for target in ordered:
+        matches = [
+            (profile, home)
+            for profile, home in homes.items()
+            if target == home or home in target.parents
+        ]
+        if not matches:
+            raise InstallError(f"Managed backup target is outside the approved profiles: {target}")
+        profile, home = max(matches, key=lambda item: len(item[1].parts))
+        target_id = f"{profile}:{target.relative_to(home).as_posix()}"
+        if target_id in targets or target in targets.values():
+            raise InstallError(f"Managed backup target is duplicated: {target}")
+        targets[target_id] = target
+    return targets
+
+
+def _require_protected_file(path: Path, label: str) -> os.stat_result:
+    try:
+        details = path.lstat()
+    except OSError as error:
+        raise InstallError(f"{label} is missing: {path}") from error
+    if not stat.S_ISREG(details.st_mode) or details.st_uid != os.getuid():
+        raise InstallError(f"{label} must be an owner-controlled regular non-symlink file: {path}")
+    if stat.S_IMODE(details.st_mode) != 0o600:
+        raise InstallError(f"{label} must use exact mode 0600: {path}")
+    return details
+
+
+def _require_safe_target(target: Path, plan: dict[str, Any], *, may_be_missing: bool) -> None:
+    roots = (Path(plan["radulator_home"]), Path(plan["default_home"]))
+    matching = [root for root in roots if target == root or root in target.parents]
+    if not matching:
+        raise InstallError(f"Restore target is outside the approved profiles: {target}")
+    root = max(matching, key=lambda item: len(item.parts))
+    chain = [root]
+    relative = target.relative_to(root)
+    current = root
+    for part in relative.parts[:-1]:
+        current = current / part
+        chain.append(current)
+    for directory in chain:
+        try:
+            details = directory.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            raise InstallError(f"Restore target parent is unreadable: {directory}") from error
+        if not stat.S_ISDIR(details.st_mode) or details.st_uid != os.getuid():
+            raise InstallError(f"Restore target parent must be an owner-controlled non-symlink directory: {directory}")
+    try:
+        details = target.lstat()
+    except FileNotFoundError:
+        if may_be_missing:
+            return
+        raise InstallError(f"Managed target is missing: {target}")
+    except OSError as error:
+        raise InstallError(f"Managed target is unreadable: {target}") from error
+    if not stat.S_ISREG(details.st_mode) or details.st_uid != os.getuid():
+        raise InstallError(f"Managed target must be an owner-controlled regular non-symlink file: {target}")
+
+
+def _backup_unsigned(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"schema": BACKUP_SCHEMA, "entries": entries}
+
+
+def _backup_signature(key: bytes, entries: list[dict[str, Any]]) -> str:
+    return hmac.new(key, _serialize(_backup_unsigned(entries)), hashlib.sha256).hexdigest()
+
+
+def _read_or_create_backup_key(plan: dict[str, Any], *, create: bool) -> bytes:
+    key_path = _backup_key_path(plan)
+    _require_safe_target(key_path, plan, may_be_missing=True)
+    try:
+        key_path.lstat()
+    except FileNotFoundError:
+        if not create:
+            raise InstallError(f"Backup authentication key is missing: {key_path}")
+        _atomic_write(key_path, os.urandom(BACKUP_HMAC_KEY_BYTES), 0o600)
+    _require_protected_file(key_path, "Backup authentication key")
+    key = key_path.read_bytes()
+    if len(key) != BACKUP_HMAC_KEY_BYTES:
+        raise InstallError("Backup authentication key has the wrong length.")
+    return key
+
+
+def _validate_backup_entry(entry: Any, *, legacy: bool) -> tuple[str, bool, int | None, bytes | None]:
+    expected_fields = {"path" if legacy else "target_id", "existed", "mode", "content_base64"}
+    if not isinstance(entry, dict) or set(entry) != expected_fields:
+        raise InstallError("Backup manifest entry fields are invalid.")
+    identity = entry["path" if legacy else "target_id"]
+    existed = entry["existed"]
+    mode = entry["mode"]
+    encoded = entry["content_base64"]
+    if not isinstance(identity, str) or not identity or not isinstance(existed, bool):
+        raise InstallError("Backup manifest entry identity is invalid.")
+    if existed:
+        if not isinstance(mode, int) or isinstance(mode, bool) or not 0 <= mode <= 0o777:
+            raise InstallError("Backup manifest entry mode is invalid.")
+        if not isinstance(encoded, str):
+            raise InstallError("Backup manifest entry content is invalid.")
+        try:
+            content = base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error) as error:
+            raise InstallError("Backup manifest entry content is invalid.") from error
+    else:
+        if mode is not None or encoded is not None:
+            raise InstallError("Backup manifest absent entry must not contain mode or content.")
+        content = None
+    return identity, existed, mode, content
+
+
+def _load_backup(plan: dict[str, Any], *, migrate_legacy: bool) -> dict[str, Any]:
+    destination = _backup_path(plan)
+    _require_safe_target(destination, plan, may_be_missing=True)
+    _require_protected_file(destination, "Backup manifest")
+    try:
+        backup = json.loads(destination.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise InstallError(f"Backup manifest is unreadable: {destination}") from error
+    if not isinstance(backup, dict) or not isinstance(backup.get("entries"), list):
+        raise InstallError(f"Backup manifest schema is invalid: {destination}")
+    targets = _backup_targets(plan)
+    entries = list(backup["entries"])
+    if backup.get("schema") == LEGACY_BACKUP_SCHEMA:
+        if not migrate_legacy or set(backup) != {"schema", "entries"}:
+            raise InstallError("Legacy backup manifest requires a safe installer migration.")
+        validated = [_validate_backup_entry(entry, legacy=True) for entry in entries]
+        paths = [identity for identity, *_ in validated]
+        expected_paths = {str(path) for path in targets.values()}
+        if len(set(paths)) != len(paths) or set(paths) != expected_paths:
+            raise InstallError("Legacy backup paths must exactly match the current managed target allowlist.")
+        for target in targets.values():
+            _require_safe_target(target, plan, may_be_missing=True)
+        target_by_path = {str(path): target_id for target_id, path in targets.items()}
+        entries = [
+            {
+                "target_id": target_by_path[identity],
+                "existed": existed,
+                "mode": mode,
+                "content_base64": base64.b64encode(content).decode("ascii") if content is not None else None,
+            }
+            for identity, existed, mode, content in validated
+        ]
+        key = _read_or_create_backup_key(plan, create=True)
+        migrated = {
+            **_backup_unsigned(entries),
+            "hmac_sha256": _backup_signature(key, entries),
+        }
+        _atomic_write(destination, _serialize(migrated), 0o600)
+        return migrated
+    if backup.get("schema") != BACKUP_SCHEMA or set(backup) != {"schema", "entries", "hmac_sha256"}:
+        raise InstallError(f"Backup manifest schema is invalid: {destination}")
+    key = _read_or_create_backup_key(plan, create=False)
+    signature = backup.get("hmac_sha256")
+    if not isinstance(signature, str) or not hmac.compare_digest(signature, _backup_signature(key, entries)):
+        raise InstallError("Backup manifest authentication failed.")
+    return backup
+
+
 def _verify_activation_trust(plan: dict[str, Any], expected_public_keys: dict[str, Any] | None) -> None:
     keys = plan["keys"]
     signer = Path(plan["repo"]) / "ops/hermes/radulator/judge-attest.mjs"
@@ -612,82 +793,230 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
     runner = runner or subprocess.run
     hermes_root = Path(plan["radulator_home"]).parent.parent
     runtime_python = hermes_root / "hermes-agent/venv/bin/python"
-    command = [
-        str(runtime_python),
-        "-c",
+    checks = (
         (
+            "trusted local commit broker",
             "from hermes_cli.kanban_git_broker import PUBLISH_CONTRACT; "
-            "assert PUBLISH_CONTRACT == 'hermes.trusted_local_commit.v1'"
+            "raise SystemExit(0 if PUBLISH_CONTRACT == 'hermes.trusted_local_commit.v1' else 1)",
         ),
-    ]
+        (
+            "worker security boundary",
+            "from tools.kanban_worker_boundary import WORKER_GIT_SECURITY_BOUNDARY; "
+            "raise SystemExit(0 if WORKER_GIT_SECURITY_BOUNDARY == 'hermes.worker_git_isolation.v1' else 1)",
+        ),
+    )
+    for label, expression in checks:
+        command = [str(runtime_python), "-c", expression]
+        result = runner(
+            command,
+            cwd=plan["repo"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise InstallError(f"Installed Hermes runtime does not expose the approved {label} contract.")
+
+
+def _verify_publisher_auth(plan: dict[str, Any], runner=None) -> None:
+    runner = runner or subprocess.run
+    command = ["/opt/homebrew/bin/gh", "auth", "token", "--hostname", "github.com"]
     result = runner(
         command,
         cwd=plan["repo"],
         check=False,
         capture_output=True,
         text=True,
+        env={
+            "HOME": str(Path.home()),
+            "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        },
     )
-    if result.returncode != 0:
-        raise InstallError(
-            "Installed Hermes runtime does not expose the approved trusted local commit broker contract."
-        )
-
-
-def _verify_publisher_secret_boundary(plan: dict[str, Any]) -> None:
-    path = Path(plan["radulator_home"]) / ".env"
-    try:
-        details = path.lstat()
-    except OSError as error:
-        raise InstallError("Trusted publisher secret file is missing.") from error
+    token = result.stdout.strip() if isinstance(result.stdout, str) else ""
     if (
-        not stat.S_ISREG(details.st_mode)
-        or details.st_uid != os.getuid()
-        or stat.S_IMODE(details.st_mode) != 0o600
+        result.returncode != 0
+        or not token
+        or len(token) > 4096
+        or "\n" in token
+        or "\r" in token
     ):
         raise InstallError(
-            "Trusted publisher secret file must be an owner-controlled regular non-symlink file at mode 0600."
+            "Trusted publisher GitHub authentication is unavailable or malformed."
         )
 
 
-def _capture_backup(plan: dict[str, Any], targets: list[Path]) -> None:
+def _capture_backup(plan: dict[str, Any]) -> None:
     destination = _backup_path(plan)
-    def canonical(value: str | Path) -> str:
-        return str(Path(value).expanduser().resolve(strict=False))
-
-    if destination.exists():
-        try:
-            backup = json.loads(destination.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as error:
-            raise InstallError(f"Backup manifest is unreadable: {destination}") from error
-        if backup.get("schema") != BACKUP_SCHEMA or not isinstance(backup.get("entries"), list):
-            raise InstallError(f"Backup manifest schema is invalid: {destination}")
+    targets = _backup_targets(plan)
+    _require_safe_target(destination, plan, may_be_missing=True)
+    try:
+        destination.lstat()
+    except FileNotFoundError:
+        destination_present = False
+    else:
+        destination_present = True
+    if destination_present:
+        backup = _load_backup(plan, migrate_legacy=True)
         entries = list(backup["entries"])
-        raw_paths = [entry.get("path") for entry in entries if isinstance(entry, dict)]
-        if len(raw_paths) != len(entries) or not all(isinstance(path, str) for path in raw_paths):
-            raise InstallError(f"Backup manifest contains invalid or duplicate targets: {destination}")
-        recorded_paths = [canonical(path) for path in raw_paths]
-        if len(set(recorded_paths)) != len(recorded_paths):
-            raise InstallError(f"Backup manifest contains invalid or duplicate targets: {destination}")
+        validated = [_validate_backup_entry(entry, legacy=False) for entry in entries]
+        recorded_ids = [target_id for target_id, *_ in validated]
+        if len(set(recorded_ids)) != len(recorded_ids):
+            raise InstallError(f"Backup manifest contains duplicate target ids: {destination}")
+        unknown = sorted(set(recorded_ids) - set(targets))
+        if unknown:
+            raise InstallError(f"Backup manifest contains unknown target ids: {', '.join(unknown)}")
+        for target_id in recorded_ids:
+            _require_safe_target(targets[target_id], plan, may_be_missing=True)
     else:
         entries = []
-        recorded_paths = []
+        recorded_ids = []
 
     changed = False
-    for target in targets:
-        canonical_target = canonical(target)
-        if canonical_target in recorded_paths:
+    for target_id, target in targets.items():
+        if target_id in recorded_ids:
             continue
-        exists = target.is_file()
+        _require_safe_target(target, plan, may_be_missing=True)
+        try:
+            target.lstat()
+        except FileNotFoundError:
+            exists = False
+        else:
+            _require_safe_target(target, plan, may_be_missing=False)
+            exists = True
         entries.append({
-            "path": str(target),
+            "target_id": target_id,
             "existed": exists,
-            "mode": (target.stat().st_mode & 0o777) if exists else None,
+            "mode": stat.S_IMODE(target.lstat().st_mode) if exists else None,
             "content_base64": base64.b64encode(target.read_bytes()).decode("ascii") if exists else None,
         })
-        recorded_paths.append(canonical_target)
+        recorded_ids.append(target_id)
         changed = True
-    if changed or not destination.exists():
-        _atomic_write(destination, _serialize({"schema": BACKUP_SCHEMA, "entries": entries}), 0o600)
+    if changed or not destination_present:
+        key = _read_or_create_backup_key(plan, create=True)
+        signed = {
+            **_backup_unsigned(entries),
+            "hmac_sha256": _backup_signature(key, entries),
+        }
+        _atomic_write(destination, _serialize(signed), 0o600)
+    _require_protected_file(destination, "Backup manifest")
+
+
+def _publisher_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
+    return [
+        pair
+        for pair in _script_copies(plan)
+        if pair[1].name in {"trusted_publisher.py", "trusted_publisher_cron.sh"}
+    ]
+
+
+def _publisher_job_readback(plan: dict[str, Any]) -> dict[str, Any] | None:
+    path = Path(plan["radulator_home"]) / "cron/jobs.json"
+    _require_safe_target(path, plan, may_be_missing=True)
+    _, jobs = _load_jobs(path)
+    matches = [
+        job
+        for job in jobs
+        if job.get("name") == "radulator-trusted-publisher" or job.get("id") == PUBLISHER_JOB_ID
+    ]
+    if not matches:
+        return None
+    if len(matches) != 1 or matches[0].get("name") != "radulator-trusted-publisher" or matches[0].get("id") != PUBLISHER_JOB_ID:
+        raise InstallError("Trusted publisher job identity is missing, duplicated, or ambiguous.")
+    return matches[0]
+
+
+def _quiesce_publisher(plan: dict[str, Any]) -> None:
+    path = Path(plan["radulator_home"]) / "cron/jobs.json"
+    payload, jobs = _load_jobs(path)
+    current = _publisher_job_readback(plan)
+    if current is None or current.get("enabled") is False:
+        return
+    now = _now()
+    rewritten = []
+    for job in jobs:
+        if job.get("name") == "radulator-trusted-publisher" and job.get("id") == PUBLISHER_JOB_ID:
+            rewritten.append({
+                **job,
+                "enabled": False,
+                "state": "paused",
+                "paused_at": now,
+                "paused_reason": "publisher-upgrade-quiesce",
+                "updated_at": now,
+                "next_run_at": None,
+            })
+        else:
+            rewritten.append(job)
+    updated = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
+    _atomic_write(path, _serialize(updated), 0o600)
+    readback = _publisher_job_readback(plan)
+    if readback is None or readback.get("enabled") is not False or readback.get("state") != "paused":
+        raise InstallError("Trusted publisher job did not read back as quiesced.")
+
+
+def _publisher_assets_drift(plan: dict[str, Any]) -> bool:
+    drift = False
+    for source, destination in _publisher_copies(plan):
+        if not source.is_file():
+            raise InstallError(f"Required script source is missing: {source}")
+        _require_safe_target(destination, plan, may_be_missing=True)
+        try:
+            details = destination.lstat()
+        except FileNotFoundError:
+            drift = True
+            continue
+        if not stat.S_ISREG(details.st_mode) or details.st_uid != os.getuid():
+            raise InstallError(f"Installed publisher asset must be an owner-controlled regular non-symlink file: {destination}")
+        if stat.S_IMODE(details.st_mode) != 0o700 or destination.read_bytes() != source.read_bytes():
+            drift = True
+    return drift
+
+
+def _publisher_snapshots(plan: dict[str, Any]) -> dict[Path, tuple[bool, int | None, bytes | None]]:
+    snapshots = {}
+    for _, destination in _publisher_copies(plan):
+        try:
+            details = destination.lstat()
+        except FileNotFoundError:
+            snapshots[destination] = (False, None, None)
+            continue
+        if not stat.S_ISREG(details.st_mode) or details.st_uid != os.getuid():
+            raise InstallError(f"Installed publisher asset must be an owner-controlled regular non-symlink file: {destination}")
+        snapshots[destination] = (True, stat.S_IMODE(details.st_mode), destination.read_bytes())
+    return snapshots
+
+
+def _restore_publisher_snapshots(
+    plan: dict[str, Any], snapshots: dict[Path, tuple[bool, int | None, bytes | None]],
+) -> None:
+    for destination, (existed, mode, content) in snapshots.items():
+        if existed:
+            if mode is None or content is None:
+                raise InstallError("Publisher rollback snapshot is incomplete.")
+            _atomic_write(destination, content, mode)
+        else:
+            try:
+                destination.lstat()
+            except FileNotFoundError:
+                continue
+            details = destination.lstat()
+            if not stat.S_ISREG(details.st_mode) or details.st_uid != os.getuid():
+                raise InstallError(f"Refusing to remove unsafe publisher asset after failed upgrade: {destination}")
+            destination.unlink()
+
+
+def _verify_installed_publisher_assets(plan: dict[str, Any]) -> None:
+    for source, destination in _publisher_copies(plan):
+        try:
+            details = destination.lstat()
+        except OSError as error:
+            raise InstallError(f"Installed publisher asset is missing: {destination}") from error
+        if (
+            not stat.S_ISREG(details.st_mode)
+            or details.st_uid != os.getuid()
+            or stat.S_IMODE(details.st_mode) != 0o700
+            or destination.read_bytes() != source.read_bytes()
+        ):
+            raise InstallError(f"Installed publisher asset failed exact runtime readback: {destination}")
 
 
 def apply_install(
@@ -703,91 +1032,151 @@ def apply_install(
         repo=repo, radulator_home=radulator_home, default_home=default_home,
         agent_model=agent_model, agent_provider=agent_provider,
     )
-    if enable:
-        _verify_activation_trust(plan, expected_public_keys)
-        _verify_publisher_secret_boundary(plan)
-        _verify_broker_contract(plan, activation_test_runner)
-        _run_activation_self_tests(plan, activation_test_runner)
     homes = {str(Path(plan["radulator_home"])): [], str(Path(plan["default_home"])): []}
     for template in plan["jobs"]:
         homes[template["_home"]].append(template)
-    jobs_paths = [Path(home) / "cron/jobs.json" for home in homes]
     skill_copies = _skill_copies(plan)
     script_copies = _script_copies(plan)
+    publisher_copies = _publisher_copies(plan)
+    ordinary_script_copies = [pair for pair in script_copies if pair not in publisher_copies]
     control_manifest = _control_manifest_path(plan)
-    _capture_backup(plan, [
-        *jobs_paths,
-        *(destination for _, destination in skill_copies),
-        *(destination for _, destination in script_copies),
-        control_manifest,
-    ])
+    current_publisher = _publisher_job_readback(plan)
+    try:
+        _capture_backup(plan)
+    except Exception:
+        if current_publisher and current_publisher.get("enabled") is not False:
+            _quiesce_publisher(plan)
+        raise
+    if enable and current_publisher is None:
+        raise InstallError("Trusted publisher must complete a prior disabled-first install before enablement.")
+    try:
+        publisher_drift = _publisher_assets_drift(plan)
+    except Exception:
+        if current_publisher and current_publisher.get("enabled") is not False:
+            _quiesce_publisher(plan)
+        raise
+    if current_publisher and current_publisher.get("enabled") is not False and (publisher_drift or enable or disable):
+        _quiesce_publisher(plan)
+    publisher_snapshots = _publisher_snapshots(plan)
 
-    for home, templates in homes.items():
-        path = Path(home) / "cron/jobs.json"
-        payload, jobs = _load_jobs(path)
-        indexed = {job.get("name"): job for job in jobs}
-        replacements = {
-            template["name"]: _job_for_write(template, indexed.get(template["name"]), enable, disable)
-            for template in templates
-        }
-        rewritten = [replacements.pop(job.get("name"), job) for job in jobs]
-        rewritten.extend(replacements.values())
+    try:
+        for source, destination in skill_copies:
+            if not source.is_file():
+                raise InstallError(f"Required skill source is missing: {source}")
+            content = source.read_bytes()
+            if not destination.exists() or destination.read_bytes() != content:
+                _atomic_write(destination, content, 0o644)
+
+        for source, destination in [*ordinary_script_copies, *publisher_copies]:
+            if not source.is_file():
+                raise InstallError(f"Required script source is missing: {source}")
+            content = source.read_bytes()
+            if not destination.exists() or destination.read_bytes() != content or stat.S_IMODE(destination.lstat().st_mode) != 0o700:
+                _atomic_write(destination, content, 0o700)
+
+        _verify_installed_publisher_assets(plan)
         if enable:
-            rewritten = [_retire_legacy_gate(job) for job in rewritten]
-        if isinstance(payload, list):
-            payload = rewritten
+            _verify_activation_trust(plan, expected_public_keys)
+            _verify_broker_contract(plan, activation_test_runner)
+            _verify_publisher_auth(plan, activation_test_runner)
+            _run_activation_self_tests(plan, activation_test_runner)
+
+        for home, templates in homes.items():
+            path = Path(home) / "cron/jobs.json"
+            payload, jobs = _load_jobs(path)
+            indexed = {job.get("name"): job for job in jobs}
+            replacements = {
+                template["name"]: _job_for_write(template, indexed.get(template["name"]), enable, disable)
+                for template in templates
+            }
+            rewritten = [replacements.pop(job.get("name"), job) for job in jobs]
+            rewritten.extend(replacements.values())
+            if enable:
+                rewritten = [_retire_legacy_gate(job) for job in rewritten]
+            payload = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
+            content = _serialize(payload)
+            if not path.exists() or path.read_bytes() != content:
+                _atomic_write(path, content, 0o600)
+
+        publisher_readback = _publisher_job_readback(plan)
+        if publisher_readback is None:
+            raise InstallError("Trusted publisher job is missing after installation.")
+        if enable:
+            expected_enabled = True
+        elif disable or publisher_drift:
+            expected_enabled = False
         else:
-            payload = {**payload, "jobs": rewritten}
-        content = _serialize(payload)
-        if not path.exists() or path.read_bytes() != content:
-            _atomic_write(path, content, 0o600)
+            expected_enabled = bool(current_publisher and current_publisher.get("enabled"))
+        if publisher_readback.get("enabled") is not expected_enabled:
+            raise InstallError("Trusted publisher job state readback did not match the requested safe state.")
 
-    for source, destination in skill_copies:
-        if not source.is_file():
-            raise InstallError(f"Required skill source is missing: {source}")
-        content = source.read_bytes()
-        if not destination.exists() or destination.read_bytes() != content:
-            _atomic_write(destination, content, 0o644)
-
-    for source, destination in script_copies:
-        if not source.is_file():
-            raise InstallError(f"Required script source is missing: {source}")
-        content = source.read_bytes()
-        if not destination.exists() or destination.read_bytes() != content:
-            _atomic_write(destination, content, 0o700)
-
-    manifest = {
-        "schema": SCHEMA,
-        "repo": plan["repo"],
-        "profiles": {"primary": plan["radulator_home"], "verification": plan["default_home"]},
-        "job_ids": {job["name"]: job["id"] for job in plan["jobs"]},
-        "inference": plan["inference"],
-        "keys": plan["keys"],
-        "backup_manifest": str(_backup_path(plan)),
-    }
-    content = _serialize(manifest)
-    if not control_manifest.exists() or control_manifest.read_bytes() != content:
-        _atomic_write(control_manifest, content, 0o600)
+        manifest = {
+            "schema": SCHEMA,
+            "repo": plan["repo"],
+            "profiles": {"primary": plan["radulator_home"], "verification": plan["default_home"]},
+            "job_ids": {job["name"]: job["id"] for job in plan["jobs"]},
+            "inference": plan["inference"],
+            "keys": plan["keys"],
+            "backup_manifest": str(_backup_path(plan)),
+        }
+        content = _serialize(manifest)
+        if not control_manifest.exists() or control_manifest.read_bytes() != content:
+            _atomic_write(control_manifest, content, 0o600)
+    except Exception:
+        _quiesce_publisher(plan)
+        _restore_publisher_snapshots(plan, publisher_snapshots)
+        raise
     return {"manifest_path": str(control_manifest), "job_ids": manifest["job_ids"], "mode": "enabled" if enable else "disabled" if disable else "installed"}
 
 
-def restore_install(radulator_home: Path) -> dict[str, Any]:
-    radulator_home = _require_absolute(Path(radulator_home), "radulator_home")
-    backup_path = radulator_home / "state/radulator-release-backup.json"
-    if not backup_path.is_file():
+def restore_install(
+    *, repo: Path, radulator_home: Path, default_home: Path,
+    agent_model: str = MODEL, agent_provider: str = PROVIDER,
+) -> dict[str, Any]:
+    plan = build_plan(
+        repo=repo,
+        radulator_home=radulator_home,
+        default_home=default_home,
+        agent_model=agent_model,
+        agent_provider=agent_provider,
+    )
+    backup_path = _backup_path(plan)
+    try:
+        backup_path.lstat()
+    except FileNotFoundError:
         raise InstallError(f"Backup manifest is missing: {backup_path}")
-    backup = json.loads(backup_path.read_text(encoding="utf-8"))
-    if backup.get("schema") != BACKUP_SCHEMA or not isinstance(backup.get("entries"), list):
-        raise InstallError("Backup manifest schema is invalid.")
+    backup = _load_backup(plan, migrate_legacy=True)
+    targets = _backup_targets(plan)
+    entries = [_validate_backup_entry(entry, legacy=False) for entry in backup["entries"]]
+    target_ids = [target_id for target_id, *_ in entries]
+    if len(set(target_ids)) != len(target_ids):
+        raise InstallError("Backup manifest contains duplicate target ids.")
+    unknown = sorted(set(target_ids) - set(targets))
+    if unknown:
+        raise InstallError(f"Backup manifest contains unknown target ids: {', '.join(unknown)}")
+    missing = sorted(set(targets) - set(target_ids))
+    if missing:
+        raise InstallError(f"Backup manifest is missing managed target ids: {', '.join(missing)}")
+
+    operations = []
+    for target_id, existed, mode, content in entries:
+        target = targets[target_id]
+        _require_safe_target(target, plan, may_be_missing=True)
+        operations.append((target, existed, mode, content))
+
     restored = []
-    for entry in backup["entries"]:
-        target = Path(entry["path"])
-        if entry["existed"]:
-            _atomic_write(target, base64.b64decode(entry["content_base64"]), int(entry["mode"]))
-        elif target.exists():
-            if not target.is_file():
-                raise InstallError(f"Refusing to remove non-file restore target: {target}")
-            target.unlink()
+    for target, existed, mode, content in operations:
+        if existed:
+            if mode is None or content is None:
+                raise InstallError("Validated backup operation is incomplete.")
+            _atomic_write(target, content, mode)
+        else:
+            try:
+                target.lstat()
+            except FileNotFoundError:
+                pass
+            else:
+                target.unlink()
         restored.append(str(target))
     return {"restored": restored, "backup_manifest": str(backup_path)}
 
@@ -859,7 +1248,15 @@ def main() -> None:
     parser.add_argument("--agent-provider", default=PROVIDER, help="Inference provider pinned to all managed agent jobs.")
     args = parser.parse_args()
     if args.restore:
-        print(json.dumps(restore_install(args.radulator_home), indent=2, sort_keys=True))
+        if args.repo is None or args.default_home is None:
+            parser.error("--repo and --default-home are required for restore")
+        print(json.dumps(restore_install(
+            repo=args.repo,
+            radulator_home=args.radulator_home,
+            default_home=args.default_home,
+            agent_model=args.agent_model,
+            agent_provider=args.agent_provider,
+        ), indent=2, sort_keys=True))
         return
     if args.repo is None or args.default_home is None:
         parser.error("--repo and --default-home are required for dry-run/apply")

@@ -1,5 +1,8 @@
 import base64
+import hashlib
+import hmac
 import json
+import os
 import stat
 import subprocess
 import tempfile
@@ -24,16 +27,14 @@ class InstallerTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
         self.repo = Path(__file__).resolve().parents[4]
-        self.radulator_home = root / "profiles" / "radulator"
-        self.default_home = root / "default"
+        self.default_home = root / ".hermes"
+        self.radulator_home = self.default_home / "profiles" / "radulator"
         for home in (self.radulator_home, self.default_home):
-            home.mkdir(parents=True)
+            home.mkdir(parents=True, exist_ok=True)
             (home / "config.yaml").write_text(
                 "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_jobs: 1\n"
             )
             (home / "cron").mkdir()
-        (self.radulator_home / ".env").write_text("# test secret boundary\n")
-        (self.radulator_home / ".env").chmod(0o600)
         self.original_radulator_jobs = (
             b'{"jobs":['
             b'{"id":"existing","name":"keep-me","enabled":true},'
@@ -60,6 +61,26 @@ class InstallerTests(unittest.TestCase):
             "radulator_home": self.radulator_home,
             "default_home": self.default_home,
         }
+
+    def resign_backup(self, payload):
+        unsigned = {"schema": payload["schema"], "entries": payload["entries"]}
+        serialized = (json.dumps(unsigned, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        key = (self.radulator_home / "state" / "radulator-release-backup.hmac.key").read_bytes()
+        payload["hmac_sha256"] = hmac.new(key, serialized, hashlib.sha256).hexdigest()
+        return (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+    def publisher_job(self):
+        payload = json.loads((self.radulator_home / "cron" / "jobs.json").read_text())
+        jobs = payload["jobs"] if isinstance(payload, dict) else payload
+        return next(job for job in jobs if job["name"] == "radulator-trusted-publisher")
+
+    def set_publisher_enabled(self):
+        path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(path.read_text())
+        jobs = payload["jobs"] if isinstance(payload, dict) else payload
+        publisher = next(job for job in jobs if job["name"] == "radulator-trusted-publisher")
+        publisher.update({"enabled": True, "state": "scheduled", "paused_at": None, "paused_reason": None})
+        path.write_text(json.dumps(payload) + "\n")
 
     def test_timestamp_generation_uses_python39_compatible_timezone_api(self):
         sentinel = object()
@@ -325,6 +346,15 @@ class InstallerTests(unittest.TestCase):
         ).read_bytes())
         self.assertEqual(stat.S_IMODE(publisher_script.stat().st_mode), 0o700)
         self.assertEqual(stat.S_IMODE(publisher_wrapper.stat().st_mode), 0o700)
+        wrapper_text = publisher_wrapper.read_text(encoding="utf-8")
+        self.assertNotIn("RADULATOR_HERMES_PROJECT_ID", wrapper_text)
+        self.assertNotIn("RADULATOR_PROJECT_ROOT", wrapper_text)
+        self.assertNotIn('"$@"', wrapper_text)
+        self.assertNotIn('source "$PROFILE_DIR/.env"', wrapper_text)
+        self.assertIn("unset GH_TOKEN GITHUB_TOKEN", wrapper_text)
+        self.assertIn("auth token --hostname github.com", wrapper_text)
+        self.assertIn('--board "default"', wrapper_text)
+        self.assertIn('--project-root "/Users/agent/Documents/Radulator"', wrapper_text)
 
         before = {
             "rad": (self.radulator_home / "cron" / "jobs.json").read_bytes(),
@@ -348,10 +378,127 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual(destination.read_bytes(), source.read_bytes())
             self.assertEqual(stat.S_IMODE(destination.stat().st_mode), 0o644)
 
-        restore_install(self.radulator_home)
+        restore_install(**self.kwargs())
 
         for filename in ("guideline-versions.json", "guideline-versions.md"):
             self.assertFalse((destination_root / filename).exists())
+
+    def test_backup_uses_signed_symbolic_v2_with_owner_only_regular_key_and_manifest(self):
+        apply_install(**self.kwargs())
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        key_path = self.radulator_home / "state" / "radulator-release-backup.hmac.key"
+
+        backup = json.loads(backup_path.read_text())
+        self.assertEqual(backup["schema"], "radulator-hermes-backup/v2")
+        self.assertRegex(backup["hmac_sha256"], r"^[0-9a-f]{64}$")
+        self.assertTrue(all("target_id" in entry and "path" not in entry for entry in backup["entries"]))
+        self.assertEqual(len({entry["target_id"] for entry in backup["entries"]}), len(backup["entries"]))
+        for protected in (backup_path, key_path):
+            details = protected.lstat()
+            self.assertTrue(stat.S_ISREG(details.st_mode))
+            self.assertEqual(details.st_uid, os.getuid())
+            self.assertEqual(stat.S_IMODE(details.st_mode), 0o600)
+        self.assertEqual(len(key_path.read_bytes()), 32)
+
+    def test_restore_rejects_content_tamper_before_any_target_write(self):
+        apply_install(**self.kwargs())
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        installed = jobs_path.read_bytes()
+        backup = json.loads(backup_path.read_text())
+        backup["entries"][0]["content_base64"] = base64.b64encode(b"attacker").decode("ascii")
+        backup_path.write_text(json.dumps(backup) + "\n")
+        backup_path.chmod(0o600)
+
+        with self.assertRaisesRegex(InstallError, "authentication"):
+            restore_install(**self.kwargs())
+
+        self.assertEqual(jobs_path.read_bytes(), installed)
+
+    def test_restore_rejects_signed_unknown_duplicate_and_injected_targets(self):
+        for mutation, message in (
+            (lambda entries: entries[0].update({"target_id": "attacker.unknown"}), "unknown"),
+            (lambda entries: entries[1].update({"target_id": entries[0]["target_id"]}), "duplicate"),
+            (lambda entries: entries[0].update({"path": "/tmp/injected"}), "fields"),
+        ):
+            with self.subTest(message=message):
+                with tempfile.TemporaryDirectory() as nested:
+                    root = Path(nested)
+                    verification = root / ".hermes"
+                    radulator = verification / "profiles" / "radulator"
+                    for home in (radulator, verification):
+                        home.mkdir(parents=True, exist_ok=True)
+                        (home / "config.yaml").write_text(
+                            "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_jobs: 1\n"
+                        )
+                        (home / "cron").mkdir()
+                    (radulator / "cron/jobs.json").write_bytes(self.original_radulator_jobs)
+                    (verification / "cron/jobs.json").write_bytes(self.original_default_jobs)
+                    args = {"repo": self.repo, "radulator_home": radulator, "default_home": verification}
+                    apply_install(**args)
+                    backup_path = radulator / "state/radulator-release-backup.json"
+                    backup = json.loads(backup_path.read_text())
+                    mutation(backup["entries"])
+                    key = (radulator / "state/radulator-release-backup.hmac.key").read_bytes()
+                    unsigned = {"schema": backup["schema"], "entries": backup["entries"]}
+                    serialized = (json.dumps(unsigned, indent=2, sort_keys=True) + "\n").encode("utf-8")
+                    backup["hmac_sha256"] = hmac.new(key, serialized, hashlib.sha256).hexdigest()
+                    backup_path.write_text(json.dumps(backup, indent=2, sort_keys=True) + "\n")
+                    backup_path.chmod(0o600)
+                    with self.assertRaisesRegex(InstallError, message):
+                        restore_install(**args)
+
+    def test_restore_validates_invalid_later_entry_before_restoring_first(self):
+        apply_install(**self.kwargs())
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        installed = jobs_path.read_bytes()
+        backup = json.loads(backup_path.read_text())
+        backup["entries"][-1]["content_base64"] = "***not-base64***"
+        backup_path.write_bytes(self.resign_backup(backup))
+        backup_path.chmod(0o600)
+
+        with self.assertRaisesRegex(InstallError, "content"):
+            restore_install(**self.kwargs())
+
+        self.assertEqual(jobs_path.read_bytes(), installed)
+
+    def test_restore_rejects_symlink_or_non_0600_authentication_key(self):
+        for unsafe in ("mode", "symlink", "dangling-symlink"):
+            with self.subTest(unsafe=unsafe):
+                apply_install(**self.kwargs())
+                key_path = self.radulator_home / "state" / "radulator-release-backup.hmac.key"
+                if unsafe == "mode":
+                    key_path.chmod(0o640)
+                else:
+                    real_key = key_path.with_name("real-backup-key")
+                    key_path.replace(real_key)
+                    key_path.symlink_to(real_key)
+                    if unsafe == "dangling-symlink":
+                        real_key.unlink()
+                with self.assertRaisesRegex(InstallError, "regular non-symlink|0600"):
+                    restore_install(**self.kwargs())
+                if unsafe == "mode":
+                    key_path.chmod(0o600)
+                else:
+                    key_path.unlink()
+                    if real_key.exists():
+                        real_key.replace(key_path)
+
+    def test_restore_rejects_protected_files_not_owned_by_runtime_user(self):
+        apply_install(**self.kwargs())
+        actual_uid = (self.radulator_home / "state" / "radulator-release-backup.json").lstat().st_uid
+        with mock.patch.object(install_module.os, "getuid", return_value=actual_uid + 1):
+            with self.assertRaisesRegex(InstallError, "owner-controlled"):
+                restore_install(**self.kwargs())
+
+    def test_restore_rejects_backup_manifest_without_exact_0600_mode(self):
+        apply_install(**self.kwargs())
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        backup_path.chmod(0o640)
+
+        with self.assertRaisesRegex(InstallError, "exact mode 0600"):
+            restore_install(**self.kwargs())
 
     def test_upgrade_preserves_existing_seed_delivery_destination(self):
         jobs_path = self.radulator_home / "cron" / "jobs.json"
@@ -399,7 +546,111 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(promoter["script"], "release_promoter_cron.sh")
         self.assertEqual(promoter["schedule"]["expr"], "*/10 * * * *")
 
-    def test_upgrade_extends_existing_backup_for_new_managed_script(self):
+    def test_plain_apply_quiesces_enabled_drifted_publisher_before_copy_and_leaves_it_disabled(self):
+        apply_install(**self.kwargs())
+        self.set_publisher_enabled()
+        publisher = self.radulator_home / "scripts" / "trusted_publisher.py"
+        publisher.write_bytes(b"old publisher bytes\n")
+        publisher.chmod(0o700)
+        original_atomic_write = install_module._atomic_write
+        observed_disabled_at_copy = []
+
+        def recording_atomic_write(path, content, mode=0o600):
+            if Path(path).resolve() == publisher.resolve() and content == (self.repo / "ops/hermes/radulator/trusted_publisher.py").read_bytes():
+                observed_disabled_at_copy.append(self.publisher_job()["enabled"] is False)
+            return original_atomic_write(path, content, mode)
+
+        with mock.patch.object(install_module, "_atomic_write", side_effect=recording_atomic_write):
+            apply_install(**self.kwargs())
+
+        self.assertEqual(observed_disabled_at_copy, [True])
+        self.assertFalse(self.publisher_job()["enabled"])
+        self.assertEqual(publisher.read_bytes(), (self.repo / "ops/hermes/radulator/trusted_publisher.py").read_bytes())
+
+    def test_explicit_enable_copies_drift_then_preflights_while_disabled_before_reenabling(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        self.set_publisher_enabled()
+        publisher = self.radulator_home / "scripts" / "trusted_publisher.py"
+        publisher.write_bytes(b"old publisher bytes\n")
+        publisher.chmod(0o700)
+        public_keys = generate_keys(plan)
+        observed = []
+
+        def runner(command, **_kwargs):
+            observed.append({
+                "command": command,
+                "disabled": self.publisher_job()["enabled"] is False,
+                "installed": publisher.read_bytes() == (self.repo / "ops/hermes/radulator/trusted_publisher.py").read_bytes(),
+            })
+            output = "test-token" if "auth" in command and "token" in command else "passed"
+            return subprocess.CompletedProcess(command, 0, output, "")
+
+        apply_install(
+            **self.kwargs(), enable=True, expected_public_keys=public_keys,
+            activation_test_runner=runner,
+        )
+
+        self.assertTrue(observed)
+        self.assertTrue(all(item["disabled"] and item["installed"] for item in observed))
+        self.assertTrue(self.publisher_job()["enabled"])
+
+    def test_failed_post_copy_enable_restores_prior_publisher_bytes_and_remains_disabled(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        self.set_publisher_enabled()
+        publisher = self.radulator_home / "scripts" / "trusted_publisher.py"
+        wrapper = self.radulator_home / "scripts" / "trusted_publisher_cron.sh"
+        old_publisher = b"old publisher bytes\n"
+        old_wrapper = b"#!/bin/sh\nexit 77\n"
+        publisher.write_bytes(old_publisher)
+        wrapper.write_bytes(old_wrapper)
+        publisher.chmod(0o700)
+        wrapper.chmod(0o700)
+        public_keys = generate_keys(plan)
+
+        def failing_runner(command, **_kwargs):
+            if any("kanban_git_broker" in str(part) for part in command):
+                return subprocess.CompletedProcess(command, 1, "", "missing security boundary")
+            return subprocess.CompletedProcess(command, 0, "test-token", "")
+
+        with self.assertRaisesRegex(InstallError, "broker|security"):
+            apply_install(
+                **self.kwargs(), enable=True, expected_public_keys=public_keys,
+                activation_test_runner=failing_runner,
+            )
+
+        self.assertEqual(publisher.read_bytes(), old_publisher)
+        self.assertEqual(wrapper.read_bytes(), old_wrapper)
+        self.assertFalse(self.publisher_job()["enabled"])
+
+    def test_unsafe_enabled_publisher_asset_is_quiesced_before_installer_refuses_it(self):
+        apply_install(**self.kwargs())
+        self.set_publisher_enabled()
+        publisher = self.radulator_home / "scripts" / "trusted_publisher.py"
+        outside = self.radulator_home / "unsafe-publisher-target.py"
+        outside.write_bytes(b"unsafe\n")
+        publisher.unlink()
+        publisher.symlink_to(outside)
+
+        with self.assertRaisesRegex(InstallError, "non-symlink"):
+            apply_install(**self.kwargs())
+
+        self.assertFalse(self.publisher_job()["enabled"])
+        self.assertTrue(publisher.is_symlink())
+
+    def test_apply_rejects_symlinked_managed_parent_before_copying_outside_profile(self):
+        outside = self.default_home / "outside-scripts"
+        outside.mkdir()
+        scripts = self.radulator_home / "scripts"
+        scripts.symlink_to(outside, target_is_directory=True)
+
+        with self.assertRaisesRegex(InstallError, "parent.*non-symlink"):
+            apply_install(**self.kwargs())
+
+        self.assertFalse((outside / "trusted_publisher.py").exists())
+
+    def test_upgrade_rejects_partial_unsigned_v1_backup_before_writing(self):
         backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
         backup_path.parent.mkdir(parents=True)
         radulator_jobs_path = self.radulator_home / "cron" / "jobs.json"
@@ -412,19 +663,39 @@ class InstallerTests(unittest.TestCase):
                 "content_base64": base64.b64encode(radulator_jobs_path.read_bytes()).decode("ascii"),
             }],
         }))
+        backup_path.chmod(0o600)
+
+        with self.assertRaisesRegex(InstallError, "exactly match"):
+            apply_install(**self.kwargs())
+
+        feedback_script = self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py"
+        self.assertFalse(feedback_script.exists())
+        self.assertEqual((self.radulator_home / "cron" / "jobs.json").read_bytes(), self.original_radulator_jobs)
+
+    def test_upgrade_migrates_only_complete_exact_v1_backup_to_signed_symbolic_v2(self):
+        apply_install(**self.kwargs())
+        plan = build_plan(**self.kwargs())
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        current = json.loads(backup_path.read_text())
+        targets = install_module._backup_targets(plan)
+        v1_entries = []
+        for entry in current["entries"]:
+            migrated = dict(entry)
+            migrated["path"] = str(targets[migrated.pop("target_id")])
+            v1_entries.append(migrated)
+        backup_path.write_text(json.dumps({
+            "schema": "radulator-hermes-backup/v1",
+            "entries": v1_entries,
+        }) + "\n")
 
         apply_install(**self.kwargs())
 
-        feedback_script = self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py"
-        backup = json.loads(backup_path.read_text())
-        recorded = {entry["path"]: entry for entry in backup["entries"]}
-        feedback_script_key = str(feedback_script.resolve())
-        self.assertIn(feedback_script_key, recorded)
-        self.assertFalse(recorded[feedback_script_key]["existed"])
-        self.assertTrue(feedback_script.exists())
-
-        restore_install(self.radulator_home)
-        self.assertFalse(feedback_script.exists())
+        migrated = json.loads(backup_path.read_text())
+        self.assertEqual(migrated["schema"], "radulator-hermes-backup/v2")
+        self.assertRegex(migrated["hmac_sha256"], r"^[0-9a-f]{64}$")
+        self.assertTrue(all(set(entry) == {"target_id", "existed", "mode", "content_base64"} for entry in migrated["entries"]))
+        restore_install(**self.kwargs())
+        self.assertFalse((self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py").exists())
 
     def test_enable_then_restore_recovers_original_files(self):
         result = apply_install(**self.kwargs())
@@ -460,7 +731,7 @@ class InstallerTests(unittest.TestCase):
             managed = [job for job in jobs if job["id"] in result["job_ids"].values()]
             self.assertTrue(all(job["enabled"] is False for job in managed))
 
-        restore_install(self.radulator_home)
+        restore_install(**self.kwargs())
         self.assertEqual((self.radulator_home / "cron" / "jobs.json").read_bytes(), self.original_radulator_jobs)
         self.assertEqual((self.default_home / "cron" / "jobs.json").read_bytes(), self.original_default_jobs)
         self.assertFalse((self.radulator_home / "skills" / "radulator-release-learning" / "SKILL.md").exists())
@@ -488,31 +759,52 @@ class InstallerTests(unittest.TestCase):
                 activation_test_runner=runner,
             )
 
-    def test_enable_rejects_unsafe_publisher_secret_file(self):
+    def test_enable_requires_a_prior_disabled_first_publisher_install(self):
         plan = build_plan(**self.kwargs())
-        apply_install(**self.kwargs())
         public_keys = generate_keys(plan)
-        (self.radulator_home / ".env").chmod(0o640)
 
-        with self.assertRaisesRegex(InstallError, "publisher secret"):
+        with self.assertRaisesRegex(InstallError, "disabled-first"):
             apply_install(
-                **self.kwargs(),
-                enable=True,
-                expected_public_keys=public_keys,
+                **self.kwargs(), enable=True, expected_public_keys=public_keys,
                 activation_test_runner=self.passing_activation_runner,
             )
 
-        target = self.radulator_home / "real.env"
-        target.write_text("# secret\n")
-        target.chmod(0o600)
-        (self.radulator_home / ".env").unlink()
-        (self.radulator_home / ".env").symlink_to(target)
-        with self.assertRaisesRegex(InstallError, "publisher secret"):
+        self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher.py").exists())
+
+    def test_enable_requires_exact_installed_worker_security_boundary(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+
+        def runner(command, **_kwargs):
+            rendered = " ".join(str(part) for part in command)
+            if "kanban_worker_boundary" in rendered:
+                return subprocess.CompletedProcess(command, 1, "", "missing boundary")
+            output = "test-token" if "auth" in command and "token" in command else "passed"
+            return subprocess.CompletedProcess(command, 0, output, "")
+
+        with self.assertRaisesRegex(InstallError, "worker security boundary"):
+            apply_install(
+                **self.kwargs(), enable=True, expected_public_keys=public_keys,
+                activation_test_runner=runner,
+            )
+
+    def test_enable_requires_host_github_auth_without_printing_token(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+
+        def runner(command, **_kwargs):
+            if "auth" in command and "token" in command:
+                return subprocess.CompletedProcess(command, 1, "", "not logged in")
+            return subprocess.CompletedProcess(command, 0, "passed", "")
+
+        with self.assertRaisesRegex(InstallError, "publisher GitHub authentication"):
             apply_install(
                 **self.kwargs(),
                 enable=True,
                 expected_public_keys=public_keys,
-                activation_test_runner=self.passing_activation_runner,
+                activation_test_runner=runner,
             )
 
     def test_enable_refuses_missing_local_judge_trust_configuration(self):
@@ -575,8 +867,14 @@ class InstallerTests(unittest.TestCase):
         public_keys = generate_keys(plan)
 
         def failing_runner(command, **_kwargs):
-            if any("kanban_git_broker" in str(part) for part in command):
+            if any(
+                marker in str(part)
+                for part in command
+                for marker in ("kanban_git_broker", "kanban_worker_boundary")
+            ):
                 return subprocess.CompletedProcess(command, 0, "", "")
+            if "auth" in command and "token" in command:
+                return subprocess.CompletedProcess(command, 0, "test-token", "")
             return subprocess.CompletedProcess(command, 1, "", "synthetic failure")
 
         before_radulator = (self.radulator_home / "cron" / "jobs.json").read_bytes()
