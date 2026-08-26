@@ -47,6 +47,7 @@ jobs:
 
       - name: Run tooling checks
         run: |
+          npm audit --omit=dev --audit-level=high
           node --check scripts/capture-feature-proof.mjs
           node --check scripts/check-radulator-invariants.mjs
           node --check scripts/check-radulator-invariants.test.mjs
@@ -60,6 +61,7 @@ jobs:
           node --check scripts/reconcile-deployment.mjs
           node --check scripts/post-deploy-smoke.mjs
           node --check scripts/write-release-marker.mjs
+          node --check scripts/rollback-request.mjs
           node --check scripts/select-rollback-deployment.mjs
           node --check ops/hermes/radulator/judge-candidates.mjs
           node --check ops/hermes/radulator/judge-attest.mjs
@@ -68,9 +70,12 @@ jobs:
           python3 -m py_compile \
             ops/hermes/radulator/lifecycle_controller.py \
             ops/hermes/radulator/learning_context.py \
+            ops/hermes/radulator/formspree_feedback_intake.py \
+            ops/hermes/radulator/seed_convert_gate_dedupe.py \
             ops/hermes/radulator/install.py
           bash -n scripts/dev-local.sh
           npm run test:search-verification
+          npm run test:calculator-helper
           npm run test:invariants
           npm run test:release-policy
           npm run test:independent-review-gate
@@ -92,6 +97,9 @@ jobs:
           npm run test:hermes-judge-attest
           npm run test:hermes-lifecycle
           npm run test:hermes-learning
+          npm run test:hermes-feedback-intake
+          npm run test:hermes-seed-convert
+          npm run test:hermes-guideline-registry
           npm run test:hermes-install
 
       - name: Build application
@@ -114,6 +122,8 @@ jobs:
           retention-days: 3
 
   hermes-release-control-tests:
+    # Keep this context stable: the protected develop/main rules require this
+    # exact GitHub Actions check name. The job also runs the production audit.
     name: Hermes Release Control Tests
     if: github.event_name == 'pull_request'
     timeout-minutes: 10
@@ -133,17 +143,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Hermes release-control tests
+      - name: Run release-control, intake, and production dependency evidence
         run: |
+          npm audit --omit=dev --audit-level=high
           python3 -m py_compile \
             ops/hermes/radulator/lifecycle_controller.py \
             ops/hermes/radulator/learning_context.py \
+            ops/hermes/radulator/formspree_feedback_intake.py \
+            ops/hermes/radulator/seed_convert_gate_dedupe.py \
             ops/hermes/radulator/install.py
+          npm run test:search-verification
+          npm run test:calculator-helper
+          npm run test:invariants
+          npm run test:release-policy
+          npm run test:independent-review-gate
+          npm run test:auto-merge
+          npm run test:release-workflow-permissions
+          npm run test:authorize-deployment
+          npm run test:reconcile-deployment
+          npm run test:post-deploy-smoke
+          npm run test:release-marker
+          npm run test:rollback-deployment
           npm run test:hermes-judge-candidates
           npm run test:hermes-judge-attest
           npm run test:hermes-lifecycle
           npm run test:hermes-learning
+          npm run test:hermes-feedback-intake
+          npm run test:hermes-seed-convert
+          npm run test:hermes-guideline-registry
           npm run test:hermes-install
+          npm run check:invariants
 
 
   targeted-tests:

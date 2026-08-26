@@ -79,11 +79,31 @@ function FileImportField({ f, onBatch }) {
 /**
  * Generic Field Renderer
  * Renders form fields based on field type configuration
- * Supports: number, date, textarea, select, radio, checkbox, file-import
+ * Supports: number, date, textarea, select, radio, checkbox, derived, file-import
  */
-function Field({ f, val, on, onBatch }) {
+function Field({ f, val, vals, on, onBatch }) {
   if (f.type === "file-import") {
     return <FileImportField f={f} onBatch={onBatch} />;
+  }
+  if (f.type === "derived") {
+    const derivedValue = f.derive(vals || {});
+    return (
+      <div className="space-y-1">
+        <FieldLabel
+          htmlFor={f.id}
+          label={f.label}
+          subLabel={f.subLabel}
+          helpText={f.helpText}
+        />
+        <output
+          id={f.id}
+          className="flex min-h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm text-foreground"
+          aria-live="polite"
+        >
+          {derivedValue || f.emptyText || "—"}
+        </output>
+      </div>
+    );
   }
   if (f.type === "textarea") {
     return (
@@ -136,9 +156,17 @@ function Field({ f, val, on, onBatch }) {
           subLabel={f.subLabel}
           helpText={f.helpText}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+          role="radiogroup"
+          aria-label={f.label}
+          aria-required={f.required || undefined}
+        >
           {f.opts.map((opt) => (
-            <div key={opt.value} className="flex items-center space-x-2">
+            <div
+              key={opt.value}
+              className="flex min-h-11 items-center space-x-2 rounded-md border border-border px-3"
+            >
               <input
                 id={`${f.id}-${opt.value}`}
                 type="radio"
@@ -146,11 +174,12 @@ function Field({ f, val, on, onBatch }) {
                 value={opt.value}
                 checked={val === opt.value}
                 onChange={(e) => on(f.id, e.target.value)}
+                required={f.required}
                 className="text-primary focus:ring-primary accent-primary"
               />
               <Label
                 htmlFor={`${f.id}-${opt.value}`}
-                className="text-sm font-normal cursor-pointer text-foreground"
+                className="flex min-h-10 flex-1 cursor-pointer items-center text-sm font-normal text-foreground"
               >
                 {opt.label}
               </Label>
@@ -188,6 +217,11 @@ function Field({ f, val, on, onBatch }) {
         value={val ?? ""}
         onChange={(e) => on(f.id, e.target.value)}
         placeholder={f.subLabel}
+        required={f.required}
+        min={f.min}
+        max={f.max}
+        step={f.step}
+        inputMode={f.inputMode}
       />
     </div>
   );
