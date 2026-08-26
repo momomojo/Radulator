@@ -229,6 +229,26 @@ Expected:
 | 1.0 g/dL | Albumin set to lower bound of 1.5 g/dL |
 | 4.5 g/dL | Albumin set to upper bound of 3.5 g/dL |
 
+### Official Calculator Entry-Domain Endpoints
+
+The OPTN/HRSA *MELD and PELD Calculators User Guide*, MELD Calculator,
+"How to Use the MELD Calculator," step 3 supplies the laboratory-entry
+domains. These are distinct from the calculation floors and caps in Policy
+9.1.D. The canonical compute fixture accepts both inclusive endpoints and
+rejects one literal value immediately outside every endpoint:
+
+| Input | Accepted endpoints | Rejected just outside |
+|---|---:|---:|
+| Creatinine (mg/dL) | 0.01, 40 | 0, 40.01 |
+| Total bilirubin (mg/dL) | 0, 99 | -0.01, 99.01 |
+| INR | 0.5, 99 | 0.49, 99.01 |
+| Sodium (mEq/L) | 100, 200 | 99.99, 200.01 |
+| Albumin (g/dL) | 0.50, 9.90 | 0.49, 9.91 |
+
+These 20 cases are registry-bound under the
+`optn-calculator-entry-domains` claim and execute against `MELDNa.compute`;
+they do not change the existing runtime boundaries.
+
 ## Legacy MELD-Na Regression Cases
 
 The temporary legacy option must preserve existing MELD-Na behavior.

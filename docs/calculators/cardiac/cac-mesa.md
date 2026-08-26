@@ -20,9 +20,10 @@ Outputs:
   but does not assign stage 1 versus stage 2. The calculator does not reproduce
   the proposal's treatment recommendations.
 - CAC-DRS A category: A0 for 0, A1 for 1-99, A2 for 100-299, and A3 for
-  scores above 300. At exactly 300, the primary CAC-DRS table leaves a gap
-  between `100-299` and `>300`, so this tool reports the A category as
-  unassigned instead of silently choosing a side.
+  scores >=300. The original 2018 CAC-DRS publication is internally
+  inconsistent at exact 300. The later 2023 ACC/AHA/ASE/ASNC/ASPC/HFSA/HRS/
+  SCAI/SCCT/SCMR/STS appropriate-use criteria resolve the boundary in Table
+  1.2 as `100-299 (CAC-DRS 2)` and `>=300 (CAC-DRS 3)`.
 - Optional CAC-DRS N modifier for 1-4 involved coronary vessels.
 - MESA reference position against the official 25th, 50th, 75th, and 90th
   scores only for age 45-84, female/male, and the four MESA race/ethnicity
@@ -93,6 +94,10 @@ These examples are preserved in Playwright coverage:
 - MESA/NHLBI CAC Score Reference Values.
 - Hecht HS et al. J Cardiovasc Comput Tomogr. 2018;12(3):185-191. DOI
   `10.1016/j.jcct.2018.03.008`, PMID `29793848`.
+- ACC/AHA/ASE/ASNC/ASPC/HFSA/HRS/SCAI/SCCT/SCMR/STS 2023 Multimodality
+  Appropriate Use Criteria for Detection and Risk Assessment of Chronic
+  Coronary Disease, Table 1.2. DOI `10.1016/j.jacc.2023.03.410`, PMCID
+  `PMC10585920`.
 - Maron DJ et al. JACC Adv. 2024;3(11):101287. DOI
   `10.1016/j.jacadv.2024.101287`, PMID `39385944`. This is a proposal and call
   to action; Radulator uses its explicit stage criteria and burden labels but

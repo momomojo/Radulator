@@ -192,6 +192,21 @@ function assertSourceArtifactExtraction(evidence, fixture, calculatorSource, lab
     "d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5",
     `${label}.source_artifact.archive_member_sha256`,
   );
+  assert.equal(
+    artifact.license,
+    "CC BY-NC-ND 4.0",
+    `${label}.source_artifact.license`,
+  );
+  assert.equal(
+    artifact.source_audit_command,
+    "npm run test:kbrc-source",
+    `${label}.source_artifact.source_audit_command`,
+  );
+  assert.equal(
+    artifact.source_bytes_committed,
+    false,
+    `${label}.source_artifact must not vendor the no-derivatives source artifact`,
+  );
   assertBoundedString(artifact.source_locator, `${label}.source_artifact.source_locator`, 3, 240);
   assert.ok(
     Array.isArray(artifact.equation_terms) &&
