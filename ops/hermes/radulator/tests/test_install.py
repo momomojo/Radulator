@@ -224,6 +224,10 @@ class InstallerTests(unittest.TestCase):
 
     def test_judge_skill_prescribes_complete_sign_and_post_commands(self):
         skill = (self.repo / "ops/hermes/radulator/skills/radulator-clinical-judge/SKILL.md").read_text()
+        self.assertIn("reviewEvidence", skill)
+        self.assertIn("base64", skill)
+        self.assertIn("is not missing evidence", skill)
+        self.assertIn("cachedPaths[0]", skill)
         self.assertIn("judge-attest.mjs sign", skill)
         for argument in (
             "--candidate <cachedPaths[0]>", "--decision <decision-json-path>", "--private-key",
