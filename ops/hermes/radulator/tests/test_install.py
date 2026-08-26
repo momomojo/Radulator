@@ -1,10 +1,12 @@
 import base64
 import hashlib
 import hmac
+import importlib.util
 import json
 import os
 import stat
 import subprocess
+import sys
 import tempfile
 import types
 import unittest
@@ -353,6 +355,7 @@ class InstallerTests(unittest.TestCase):
         self.assertNotIn('source "$PROFILE_DIR/.env"', wrapper_text)
         self.assertIn("unset GH_TOKEN GITHUB_TOKEN", wrapper_text)
         self.assertIn("auth token --hostname github.com", wrapper_text)
+
         self.assertIn('--board "default"', wrapper_text)
         self.assertIn('--project-root "/Users/agent/Documents/Radulator"', wrapper_text)
 
@@ -366,6 +369,35 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(before["rad"], (self.radulator_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["default"], (self.default_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["manifest"], manifest_path.read_bytes())
+
+    def test_clean_install_copies_executable_publisher_lifecycle_dependency(self):
+        apply_install(**self.kwargs())
+        installed = self.radulator_home / "scripts" / "lifecycle_controller.py"
+        source = self.repo / "ops/hermes/radulator/lifecycle_controller.py"
+        self.assertEqual(installed.read_bytes(), source.read_bytes())
+        self.assertEqual(stat.S_IMODE(installed.stat().st_mode), 0o700)
+
+        spec = importlib.util.spec_from_file_location(
+            "installed_trusted_publisher",
+            self.radulator_home / "scripts" / "trusted_publisher.py",
+        )
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(spec.name, None)
+        config, _lock = module.parse_runtime_config([
+            "--project-root", str(self.repo),
+            "--lifecycle-controller", str(installed),
+            "--ledger", str(self.radulator_home / "state" / "release.jsonl"),
+            "--lock-file", str(self.radulator_home / "state" / "publisher.lock"),
+        ])
+        self.assertEqual(config.lifecycle_controller, installed.resolve())
+
+        restore_install(**self.kwargs())
+        self.assertFalse(installed.exists())
 
     def test_apply_and_restore_manage_the_operations_guideline_registry(self):
         apply_install(**self.kwargs())
@@ -817,6 +849,54 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(len(observed), 1)
         self.assertFalse(self.publisher_job()["enabled"])
 
+    def test_enable_fails_when_model_path_canary_omits_any_required_denial(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+        with tempfile.TemporaryDirectory() as module_root:
+            tools_dir = Path(module_root) / "tools"
+            tools_dir.mkdir()
+            (tools_dir / "__init__.py").write_text("")
+            (tools_dir / "kanban_worker_boundary.py").write_text(
+                "def run_worker_model_path_denial_canary():\n"
+                "    return {\n"
+                "        'contract': 'hermes.worker_model_path_denial_canary.v1',\n"
+                "        'model_path_attempted': True,\n"
+                "        'git_metadata_write_denied': True,\n"
+                "        'github_credentials_absent': True,\n"
+                "        'github_network_denied': True,\n"
+                "    }\n"
+            )
+
+            def runner(command, **_kwargs):
+                rendered = " ".join(str(part) for part in command)
+                if "run_worker_model_path_denial_canary" in rendered:
+                    env = dict(os.environ)
+                    env["PYTHONPATH"] = module_root
+                    return subprocess.run(
+                        [sys.executable, *command[1:]],
+                        cwd=self.repo,
+                        env=env,
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                    )
+                output = "test-token" if "auth" in command and "token" in command else "passed"
+                return subprocess.CompletedProcess(command, 0, output, "")
+
+            with self.assertRaisesRegex(
+                InstallError,
+                "PENDING_HERMES_RUNTIME.*model-path denial canary",
+            ):
+                apply_install(
+                    **self.kwargs(),
+                    enable=True,
+                    expected_public_keys=public_keys,
+                    activation_test_runner=runner,
+                )
+
+        self.assertFalse(self.publisher_job()["enabled"])
+
     def test_enable_requires_durable_publisher_authority_cas_runtime(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -840,6 +920,36 @@ class InstallerTests(unittest.TestCase):
                 activation_test_runner=runner,
             )
 
+        self.assertFalse(self.publisher_job()["enabled"])
+
+    def test_enable_executes_semantic_authority_cas_canary_not_callable_probe(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+        observed = []
+
+        def runner(command, **_kwargs):
+            rendered = " ".join(str(part) for part in command)
+            if "run_trusted_publisher_authority_semantic_canary" in rendered:
+                observed.append(rendered)
+                return subprocess.CompletedProcess(
+                    command, 1, "", "semantic CAS canary unavailable"
+                )
+            output = "test-token" if "auth" in command and "token" in command else "passed"
+            return subprocess.CompletedProcess(command, 0, output, "")
+
+        with self.assertRaisesRegex(
+            InstallError,
+            "PENDING_HERMES_RUNTIME.*semantic authority claim/CAS",
+        ):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=public_keys,
+                activation_test_runner=runner,
+            )
+
+        self.assertEqual(len(observed), 1)
         self.assertFalse(self.publisher_job()["enabled"])
 
     def test_enable_requires_host_github_auth_without_printing_token(self):

@@ -39,11 +39,27 @@ class FakeKanban:
             "contract": "hermes.trusted_publisher.authority-claim.v1",
             "status": "claimed",
             "claim_id": f"publisher:{kwargs['task_id']}:{kwargs['expected_run_id']}",
+            "host_receipt_id": f"receipt-{kwargs['task_id']}-{kwargs['expected_run_id']}",
+            "host_receipt_signature": "A" * 86 + "==",
+            "repository": kwargs["expected_repository"],
             "task_id": kwargs["task_id"],
             "run_id": kwargs["expected_run_id"],
+            "board": kwargs["expected_board"],
+            "project_id": kwargs["expected_project_id"],
+            "workspace": kwargs["expected_workspace_path"],
             "branch": kwargs["expected_branch_name"],
             "base_sha": kwargs["expected_base_sha"],
             "head_sha": kwargs["expected_head_sha"],
+            "changed_paths": kwargs["expected_changed_paths"],
+        }
+
+    def verify_trusted_publisher_authority_receipt(self, _conn, **kwargs):
+        receipt = kwargs["receipt"]
+        return {
+            "contract": "hermes.trusted_publisher.authority-verified.v1",
+            "status": "verified",
+            "claim_id": receipt["claim_id"],
+            "host_receipt_id": receipt["host_receipt_id"],
         }
 
     def list_tasks(self, _conn, **kwargs):
@@ -445,6 +461,64 @@ class TrustedPublisherGitAuthorityTests(unittest.TestCase):
         self.git(self.workspace, "config", "core.hooksPath", "/tmp/hooks")
         with self.assertRaisesRegex(publisher.PublisherError, "Git config"):
             publisher.validate_local_candidate(self.candidate, self.config)
+
+    def test_rejects_git_execution_surfaces_before_first_git_command(self):
+        for key, value in (
+            ("core.fsmonitor", "/tmp/attacker-fsmonitor"),
+            ("diff.external", "/tmp/attacker-diff"),
+        ):
+            with self.subTest(key=key):
+                self.git(self.workspace, "config", key, value)
+                calls = []
+
+                def forbidden_runner(args, **kwargs):
+                    calls.append((args, kwargs))
+                    raise AssertionError("Git ran before unsafe config was rejected")
+
+                try:
+                    with self.assertRaisesRegex(publisher.PublisherError, "Git config"):
+                        publisher.validate_local_candidate(
+                            self.candidate,
+                            self.config,
+                            runner=forbidden_runner,
+                        )
+                    self.assertEqual(calls, [])
+                finally:
+                    self.git(self.workspace, "config", "--unset-all", key, check=False)
+
+    def test_every_git_invocation_uses_fixed_execution_neutralizers(self):
+        observed = []
+
+        def runner(args, **kwargs):
+            observed.append(list(args))
+            return subprocess.run(args, **kwargs)
+
+        publisher.validate_local_candidate(self.candidate, self.config, runner=runner)
+
+        required = {
+            "core.hooksPath=/dev/null",
+            "core.fsmonitor=false",
+            "core.askPass=/dev/null",
+            "core.sshCommand=/usr/bin/false",
+            "credential.helper=",
+            "diff.external=",
+            "core.attributesFile=/dev/null",
+            "protocol.ext.allow=never",
+            "http.proxy=",
+            "http.sslVerify=true",
+            "http.extraHeader=",
+            "http.followRedirects=false",
+        }
+        for command in observed:
+            with self.subTest(command=command):
+                self.assertEqual(command[0], publisher.GIT_BINARY)
+                configured = {
+                    command[index + 1]
+                    for index, part in enumerate(command[:-1])
+                    if part == "-c"
+                }
+                self.assertTrue(required.issubset(configured))
+                self.assertIn("--no-optional-locks", command)
 
     def test_rejects_local_git_network_tls_proxy_and_credential_configuration(self):
         unsafe = (
@@ -889,6 +963,31 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             for call, _ in runner.calls
         ))
 
+    def test_closed_retargeted_branch_pr_fails_before_reopen_or_mutation(self):
+        retargeted = exact_pr(
+            state="CLOSED",
+            baseRefName="main",
+            baseRefOid="d" * 40,
+        )
+        runner = QueueRunner([
+            self.remote_feature(),
+            self.remote_base(),
+            response(stdout=json.dumps([retargeted]) + "\n"),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherError, "authority"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        mutations = (
+            ["pr", "reopen"],
+            ["pr", "edit"],
+            ["pr", "create"],
+        )
+        self.assertFalse(any(
+            Path(call[0]).name == "gh" and call[1:3] in mutations
+            for call, _ in runner.calls
+        ))
+
     def test_merged_branch_pr_is_never_reused_or_duplicated(self):
         merged = exact_pr(state="MERGED", mergedAt="2026-08-25T00:00:00Z")
         runner = QueueRunner([
@@ -1240,10 +1339,17 @@ class MutableKanban(FakeKanban):
             "contract": "hermes.trusted_publisher.completion-cas.v1",
             "status": "completed",
             "claim_id": kwargs["claim_id"],
+            "host_receipt_id": kwargs["host_receipt_id"],
+            "repository": kwargs["expected_repository"],
             "task_id": task_id,
             "run_id": kwargs["expected_run_id"],
+            "board": kwargs["expected_board"],
+            "project_id": kwargs["expected_project_id"],
+            "workspace": kwargs["expected_workspace_path"],
             "branch": kwargs["expected_branch_name"],
+            "base_sha": kwargs["expected_base_sha"],
             "head_sha": kwargs["expected_head_sha"],
+            "changed_paths": kwargs["expected_changed_paths"],
             "tracker_id": kwargs["expected_tracker_id"],
         }
 
@@ -1665,6 +1771,36 @@ class TrustedPublisherRunTests(unittest.TestCase):
         self.assertEqual(result["status"], "pending_ci")
         handoff.assert_not_called()
 
+    def test_sparse_unbound_authority_receipt_is_pending_before_publication(self):
+        kb = FakeKanban([task()], {"t_example": exact_events(changed_paths=["src/example.js"])})
+
+        def sparse_claim(_conn, **kwargs):
+            return {
+                "contract": "hermes.trusted_publisher.authority-claim.v1",
+                "status": "claimed",
+                "claim_id": "publisher:t_example:17",
+                "task_id": kwargs["task_id"],
+                "run_id": kwargs["expected_run_id"],
+                "branch": kwargs["expected_branch_name"],
+                "base_sha": kwargs["expected_base_sha"],
+                "head_sha": kwargs["expected_head_sha"],
+            }
+
+        kb.claim_trusted_publisher_authority = sparse_claim
+        with mock.patch.object(publisher, "validate_local_candidate") as local, \
+             mock.patch.object(publisher, "ensure_remote_and_pr", return_value=self.pr) as remote, \
+             mock.patch.object(
+                 publisher,
+                 "ensure_ready_label",
+                 side_effect=publisher.PublisherPending("checks pending"),
+             ):
+            result = publisher.run_once(self.config, kb, object())
+
+        self.assertEqual(result["status"], "pending_runtime")
+        self.assertRegex(result["reason"], "exact v1 receipt")
+        local.assert_not_called()
+        remote.assert_not_called()
+
     def test_happy_path_completes_exact_handoff(self):
         kb = FakeKanban([task()], {"t_example": exact_events(changed_paths=["src/example.js"])})
         with mock.patch.object(publisher, "validate_local_candidate") as local, \
@@ -1687,6 +1823,12 @@ class TrustedPublisherRunTests(unittest.TestCase):
         self.assertEqual(claim_request["expected_run_id"], self.candidate.run_id)
         self.assertEqual(claim_request["expected_branch_name"], self.candidate.branch)
         self.assertEqual(claim_request["expected_head_sha"], self.candidate.head_sha)
+        self.assertEqual(claim_request["expected_repository"], self.config.repository)
+        self.assertEqual(claim_request["expected_board"], self.config.board)
+        self.assertEqual(claim_request["expected_project_id"], self.candidate.project_id)
+        self.assertEqual(claim_request["expected_workspace_path"], self.candidate.workspace)
+        self.assertEqual(claim_request["expected_base_sha"], self.candidate.base_sha)
+        self.assertEqual(claim_request["expected_changed_paths"], list(self.candidate.changed_paths))
         authority = handoff.call_args.kwargs["authority"]
         self.assertEqual(authority["claim_id"], "publisher:t_example:17")
 

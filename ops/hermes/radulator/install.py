@@ -539,6 +539,10 @@ def _script_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
             radulator / "scripts/trusted_publisher.py",
         ),
         (
+            repo / "ops/hermes/radulator/lifecycle_controller.py",
+            radulator / "scripts/lifecycle_controller.py",
+        ),
+        (
             repo / "ops/hermes/radulator/trusted_publisher_cron.sh",
             radulator / "scripts/trusted_publisher_cron.sh",
         ),
@@ -817,11 +821,24 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
         if result.returncode != 0:
             raise InstallError(f"Installed Hermes runtime does not expose the approved {label} contract.")
 
+    authority_canary = {
+        "contract": "hermes.trusted_publisher.authority-semantic-canary.v1",
+        "claim_exact_identity_bound": True,
+        "conflicting_claim_rejected": True,
+        "stale_run_rejected": True,
+        "stale_tracker_rejected": True,
+        "completion_atomic": True,
+        "replay_idempotent": True,
+        "host_receipt_signature_verified": True,
+    }
     authority_expression = (
-        "from hermes_cli.kanban_db import "
-        "claim_trusted_publisher_authority, complete_trusted_publisher_authority; "
-        "raise SystemExit(0 if callable(claim_trusted_publisher_authority) and "
-        "callable(complete_trusted_publisher_authority) else 1)"
+        "import json; from hermes_cli.kanban_db import "
+        "claim_trusted_publisher_authority, complete_trusted_publisher_authority, "
+        "verify_trusted_publisher_authority_receipt, "
+        "run_trusted_publisher_authority_semantic_canary; "
+        "observed = run_trusted_publisher_authority_semantic_canary(); "
+        f"expected = json.loads({json.dumps(authority_canary)!r}); "
+        "raise SystemExit(0 if observed == expected else 1)"
     )
     authority_command = [str(runtime_python), "-c", authority_expression]
     authority = runner(
@@ -833,17 +850,25 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
     )
     if authority.returncode != 0:
         raise InstallError(
-            "PENDING_HERMES_RUNTIME: installed Hermes must expose the durable "
-            "trusted-publisher authority claim/CAS API before the trusted publisher "
-            "can be enabled."
+            "PENDING_HERMES_RUNTIME: installed Hermes must pass the semantic authority "
+            "claim/CAS and host-receipt verification canary before the trusted "
+            "publisher can be enabled."
         )
 
     canary_contract = {
         "contract": "hermes.worker_model_path_denial_canary.v1",
         "model_path_attempted": True,
+        "profile_env_denied": True,
+        "gh_config_denied": True,
+        "gh_token_denied": True,
+        "ssh_config_denied": True,
+        "ssh_private_keys_denied": True,
+        "keychain_lookup_denied": True,
+        "loopback_network_denied": True,
+        "public_network_denied": True,
         "git_metadata_write_denied": True,
-        "github_credentials_absent": True,
-        "github_network_denied": True,
+        "workspace_edit_succeeded": True,
+        "bounded_test_succeeded": True,
     }
     canary_expression = (
         "import json; "
@@ -954,7 +979,8 @@ def _publisher_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
     return [
         pair
         for pair in _script_copies(plan)
-        if pair[1].name in {"trusted_publisher.py", "trusted_publisher_cron.sh"}
+        if pair[1].name
+        in {"trusted_publisher.py", "trusted_publisher_cron.sh", "lifecycle_controller.py"}
     ]
 
 
@@ -1134,10 +1160,19 @@ def apply_install(
             path = Path(home) / "cron/jobs.json"
             payload, jobs = _load_jobs(path)
             indexed = {job.get("name"): job for job in jobs}
-            replacements = {
-                template["name"]: _job_for_write(template, indexed.get(template["name"]), enable, disable)
-                for template in templates
-            }
+            replacements = {}
+            for template in templates:
+                existing = indexed.get(template["name"])
+                if (
+                    enable
+                    and template["name"] == "radulator-trusted-publisher"
+                    and current_publisher is not None
+                    and current_publisher.get("enabled") is True
+                ):
+                    existing = current_publisher
+                replacements[template["name"]] = _job_for_write(
+                    template, existing, enable, disable
+                )
             rewritten = [replacements.pop(job.get("name"), job) for job in jobs]
             rewritten.extend(replacements.values())
             if enable:

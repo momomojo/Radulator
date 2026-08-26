@@ -21,6 +21,8 @@ CONTRACT = "hermes.trusted_local_commit.v1"
 REQUEST_CONTRACT = "hermes.trusted_git_completion_request.v1"
 AUTHORITY_REQUEST_CONTRACT = "hermes.trusted_publisher.authority-request.v1"
 AUTHORITY_CLAIM_CONTRACT = "hermes.trusted_publisher.authority-claim.v1"
+AUTHORITY_VERIFICATION_REQUEST_CONTRACT = "hermes.trusted_publisher.authority-verification-request.v1"
+AUTHORITY_VERIFICATION_CONTRACT = "hermes.trusted_publisher.authority-verified.v1"
 COMPLETION_CAS_CONTRACT = "hermes.trusted_publisher.completion-cas.v1"
 BLOCKED_MARKER = "AWAITING_TRUSTED_PUBLISHER v1"
 GIT_BINARY = "/usr/bin/git"
@@ -350,11 +352,16 @@ def select_candidate(kb: Any, conn: Any, board: str) -> TrustedCommit | None:
 
 
 def _minimal_env() -> dict[str, str]:
-    allowed = ("HOME", "LANG", "LC_ALL", "PATH", "TMPDIR")
+    allowed = ("LANG", "LC_ALL", "TMPDIR")
     env = {key: os.environ[key] for key in allowed if key in os.environ}
     env.update({
+        "HOME": "/var/empty",
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
         "GIT_TERMINAL_PROMPT": "0",
         "GIT_ASKPASS": "/dev/null",
+        "SSH_ASKPASS": "/dev/null",
+        "GIT_ATTR_NOSYSTEM": "1",
+        "GIT_CONFIG_COUNT": "0",
         "GIT_CONFIG_GLOBAL": "/dev/null",
         "GIT_CONFIG_NOSYSTEM": "1",
         "GIT_CONFIG_SYSTEM": "/dev/null",
@@ -395,10 +402,33 @@ def _git(
     return _run(
         [
             GIT_BINARY,
+            "--no-optional-locks",
             "-c",
             "core.hooksPath=/dev/null",
             "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "core.askPass=/dev/null",
+            "-c",
+            "core.sshCommand=/usr/bin/false",
+            "-c",
+            "core.gitProxy=none",
+            "-c",
             "credential.helper=",
+            "-c",
+            "diff.external=",
+            "-c",
+            "core.attributesFile=/dev/null",
+            "-c",
+            "protocol.ext.allow=never",
+            "-c",
+            "http.proxy=",
+            "-c",
+            "http.sslVerify=true",
+            "-c",
+            "http.extraHeader=",
+            "-c",
+            "http.followRedirects=false",
             *args,
         ],
         cwd=workspace,
@@ -438,45 +468,131 @@ def _worktree_records(text: str) -> list[dict[str, str]]:
     return records
 
 
-def _dangerous_local_git_config(workspace: Path, runner: Any) -> list[str]:
+def _read_regular_no_follow(path: Path, label: str, *, required: bool = True) -> str | None:
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(path, flags)
+    except FileNotFoundError:
+        if not required:
+            return None
+        raise PublisherError(f"{label} is missing")
+    except OSError as error:
+        raise PublisherError(f"{label} is not a safe regular file") from error
+    try:
+        details = os.fstat(descriptor)
+        if not stat.S_ISREG(details.st_mode) or details.st_uid != os.getuid():
+            raise PublisherError(f"{label} is not an owner-controlled regular file")
+        raw = os.read(descriptor, 1_000_001)
+        if len(raw) > 1_000_000:
+            raise PublisherError(f"{label} is too large")
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise PublisherError(f"{label} is not UTF-8") from error
+    finally:
+        os.close(descriptor)
+
+
+def _unsafe_git_config_names(text: str, label: str) -> list[str]:
+    """Parse enough Git config syntax to reject every executable/transport surface."""
     exact_keys = {
         "core.hookspath",
+        "core.fsmonitor",
         "core.askpass",
         "core.sshcommand",
         "core.gitproxy",
+        "core.attributesfile",
+        "diff.external",
     }
     unsafe_prefixes = (
         "credential.",
+        "diff.",
+        "filter.",
         "http.",
         "https.",
         "include.",
         "includeif.",
+        "merge.",
         "protocol.",
         "url.",
     )
     found: list[str] = []
-    for scope in ("--local", "--worktree"):
-        listed = _git(
-            workspace,
-            "config",
-            scope,
-            "--name-only",
-            "--list",
-            runner=runner,
-            check=False,
+    section: str | None = None
+    subsection: str | None = None
+    section_pattern = re.compile(
+        r'^\s*\[\s*([A-Za-z0-9.-]+)(?:\s+("(?:[^"\\]|\\.)*"))?\s*\]\s*(?:[#;].*)?$'
+    )
+    key_pattern = re.compile(r"^\s*([A-Za-z][A-Za-z0-9.-]*)\s*(?:=|$)")
+    for line_number, raw in enumerate(text.splitlines(), start=1):
+        stripped = raw.strip()
+        if not stripped or stripped.startswith(("#", ";")):
+            continue
+        if raw.rstrip().endswith("\\"):
+            raise PublisherError(f"{label} has ambiguous continuation at line {line_number}")
+        section_match = section_pattern.fullmatch(raw)
+        if section_match:
+            section = section_match.group(1).casefold()
+            subsection = section_match.group(2)
+            if subsection is not None:
+                try:
+                    decoded = json.loads(subsection)
+                except json.JSONDecodeError as error:
+                    raise PublisherError(
+                        f"{label} has malformed subsection at line {line_number}"
+                    ) from error
+                subsection = decoded.casefold() if isinstance(decoded, str) else None
+            continue
+        match = key_pattern.match(raw)
+        if section is None or match is None:
+            raise PublisherError(f"{label} has unparseable config at line {line_number}")
+        key_name = match.group(1).casefold()
+        key = f"{section}.{key_name}"
+        if subsection is not None:
+            key = f"{section}.{subsection}.{key_name}"
+        remote_transport_override = (
+            section == "remote"
+            and key_name
+            in {"proxy", "proxyauthmethod", "pushurl", "receivepack", "uploadpack"}
         )
-        for raw_key in listed.stdout.splitlines():
-            key = raw_key.strip().casefold()
-            if not key:
-                continue
-            remote_transport_override = (
-                key.startswith("remote.")
-                and key.rsplit(".", 1)[-1]
-                in {"proxy", "proxyauthmethod", "pushurl", "receivepack", "uploadpack"}
-            )
-            if key in exact_keys or key.startswith(unsafe_prefixes) or remote_transport_override:
-                found.append(key)
+        if key in exact_keys or key.startswith(unsafe_prefixes) or remote_transport_override:
+            found.append(key)
     return sorted(set(found))
+
+
+def _prescan_local_git_config(workspace: Path, project_root: Path) -> None:
+    """Reject dangerous repository config without invoking Git or any configured helper."""
+    dot_git = _read_regular_no_follow(workspace / ".git", "worktree Git link")
+    assert dot_git is not None
+    lines = dot_git.splitlines()
+    if len(lines) != 1 or not lines[0].startswith("gitdir: "):
+        raise PublisherError("worktree Git link is malformed")
+    raw_gitdir = Path(lines[0].removeprefix("gitdir: "))
+    if not raw_gitdir.is_absolute():
+        raise PublisherError("worktree Git link must use an absolute path")
+    expected_root = (project_root / ".git" / "worktrees").resolve(strict=True)
+    try:
+        gitdir = raw_gitdir.resolve(strict=True)
+        relative = gitdir.relative_to(expected_root)
+    except (OSError, ValueError) as error:
+        raise PublisherError("worktree Git link is outside the canonical repository") from error
+    if len(relative.parts) != 1 or gitdir != raw_gitdir.absolute():
+        raise PublisherError("worktree Git link is not canonical")
+    config_paths = (project_root / ".git" / "config", gitdir / "config.worktree")
+    found: list[str] = []
+    for index, config_path in enumerate(config_paths):
+        text = _read_regular_no_follow(
+            config_path,
+            "repository Git config" if index == 0 else "worktree Git config",
+            required=index == 0,
+        )
+        if text is not None:
+            found.extend(_unsafe_git_config_names(text, str(config_path)))
+    if found:
+        raise PublisherError(
+            f"unsafe executable Git config is present: {', '.join(sorted(set(found)))}"
+        )
 
 
 def _origin_matches(actual: str, expected: str, repository: str) -> bool:
@@ -512,6 +628,7 @@ def validate_local_candidate(
     if candidate.branch in {"main", "develop", "gh-pages"} or candidate.branch.startswith("release/"):
         raise PublisherError("protected or release branch cannot be worker-published")
 
+    _prescan_local_git_config(workspace, project_root)
     top = _git(workspace, "rev-parse", "--show-toplevel", runner=runner).stdout.strip()
     if Path(top).resolve(strict=True) != workspace:
         raise PublisherError("Git top-level does not match sealed workspace")
@@ -572,9 +689,6 @@ def validate_local_candidate(
     ).stdout.splitlines())))
     if changed != candidate.changed_paths:
         raise PublisherError("sealed changed paths do not match the exact commit")
-    dangerous = _dangerous_local_git_config(workspace, runner)
-    if dangerous:
-        raise PublisherError(f"unsafe executable Git config is present: {', '.join(dangerous)}")
     origin = _git(workspace, "remote", "get-url", "origin", runner=runner).stdout.strip()
     if not _origin_matches(origin, config.expected_origin, config.repository):
         raise PublisherError("origin does not match the canonical repository")
@@ -869,8 +983,20 @@ def ensure_remote_and_pr(
         raise PublisherError("feature branch has more than one pull request")
     if branch_prs:
         prior = PublishedPullRequest.from_dict(branch_prs[0])
-        if prior.merged_at is not None:
+        if prior.merged_at is not None or prior.state == "MERGED":
             raise PublisherError("feature branch was already merged and cannot be republished")
+        if (
+            prior.state not in {"OPEN", "CLOSED"}
+            or prior.branch != candidate.branch
+            or prior.head_sha != candidate.head_sha
+            or prior.base != config.base_branch
+            or prior.base_sha != target_base_sha
+            or prior.head_repository_owner != config.repository.split("/", 1)[0]
+            or prior.is_cross_repository
+        ):
+            raise PublisherError(
+                "same-branch pull request repository owner/base/head authority is not exact"
+            )
         if prior.state == "CLOSED":
             validate_local_candidate(candidate, config, runner=runner)
             if kb is not None:
@@ -1262,8 +1388,9 @@ def _claim_publisher_authority(
             contract=AUTHORITY_REQUEST_CONTRACT,
             publisher_contract=CONTRACT,
             blocked_marker=BLOCKED_MARKER,
+            expected_repository=config.repository,
             task_id=candidate.task_id,
-            board=config.board,
+            expected_board=config.board,
             expected_project_id=candidate.project_id,
             expected_workspace_path=candidate.workspace,
             expected_branch_name=candidate.branch,
@@ -1286,24 +1413,76 @@ def _claim_publisher_authority(
     expected = {
         "contract": AUTHORITY_CLAIM_CONTRACT,
         "status": "claimed",
+        "repository": config.repository,
         "task_id": candidate.task_id,
         "run_id": candidate.run_id,
+        "board": config.board,
+        "project_id": candidate.project_id,
+        "workspace": candidate.workspace,
         "branch": candidate.branch,
         "base_sha": candidate.base_sha,
         "head_sha": candidate.head_sha,
+        "changed_paths": list(candidate.changed_paths),
     }
     if (
         not isinstance(receipt, dict)
-        or set(receipt) != {*expected, "claim_id"}
+        or set(receipt)
+        != {*expected, "claim_id", "host_receipt_id", "host_receipt_signature"}
         or any(receipt.get(key) != value for key, value in expected.items())
         or not isinstance(receipt.get("claim_id"), str)
         or not receipt["claim_id"]
         or len(receipt["claim_id"]) > 512
         or any(character.isspace() for character in receipt["claim_id"])
+        or not isinstance(receipt.get("host_receipt_id"), str)
+        or not TASK_ID_PATTERN.fullmatch(receipt["host_receipt_id"])
+        or not isinstance(receipt.get("host_receipt_signature"), str)
+        or not re.fullmatch(r"[A-Za-z0-9+/]{86}==", receipt["host_receipt_signature"])
     ):
         raise PublisherPending(
             "PENDING_HERMES_RUNTIME: durable trusted-publisher authority claim did "
             "not return the exact v1 receipt"
+        )
+    verify = getattr(kb, "verify_trusted_publisher_authority_receipt", None)
+    if not callable(verify):
+        raise PublisherPending(
+            "PENDING_HERMES_RUNTIME: installed trusted-publisher authority API does "
+            "not expose host receipt signature verification"
+        )
+    try:
+        verified = verify(
+            conn,
+            contract=AUTHORITY_VERIFICATION_REQUEST_CONTRACT,
+            receipt=receipt,
+            expected_repository=config.repository,
+            expected_task_id=candidate.task_id,
+            expected_run_id=candidate.run_id,
+            expected_board=config.board,
+            expected_project_id=candidate.project_id,
+            expected_workspace_path=candidate.workspace,
+            expected_branch_name=candidate.branch,
+            expected_base_sha=candidate.base_sha,
+            expected_head_sha=candidate.head_sha,
+            expected_changed_paths=list(candidate.changed_paths),
+        )
+    except TypeError as error:
+        raise PublisherPending(
+            "PENDING_HERMES_RUNTIME: installed trusted-publisher authority receipt "
+            "verifier does not implement the exact v1 contract"
+        ) from error
+    expected_verification = {
+        "contract": AUTHORITY_VERIFICATION_CONTRACT,
+        "status": "verified",
+        "claim_id": receipt["claim_id"],
+        "host_receipt_id": receipt["host_receipt_id"],
+    }
+    if (
+        not isinstance(verified, dict)
+        or set(verified) != set(expected_verification)
+        or any(verified.get(key) != value for key, value in expected_verification.items())
+    ):
+        raise PublisherPending(
+            "PENDING_HERMES_RUNTIME: trusted-publisher host receipt signature was "
+            "not verified exactly"
         )
     return receipt
 
@@ -1376,20 +1555,37 @@ def complete_lifecycle_handoff(
         expected_authority = {
             "contract": AUTHORITY_CLAIM_CONTRACT,
             "status": "claimed",
+            "repository": config.repository,
             "task_id": candidate.task_id,
             "run_id": candidate.run_id,
+            "board": config.board,
+            "project_id": candidate.project_id,
+            "workspace": candidate.workspace,
             "branch": candidate.branch,
             "base_sha": candidate.base_sha,
             "head_sha": candidate.head_sha,
+            "changed_paths": list(candidate.changed_paths),
         }
         if (
-            set(authority) != {*expected_authority, "claim_id"}
+            set(authority)
+            != {
+                *expected_authority,
+                "claim_id",
+                "host_receipt_id",
+                "host_receipt_signature",
+            }
             or any(
                 authority.get(key) != value
                 for key, value in expected_authority.items()
             )
             or not isinstance(authority.get("claim_id"), str)
             or not authority["claim_id"]
+            or not isinstance(authority.get("host_receipt_id"), str)
+            or not TASK_ID_PATTERN.fullmatch(authority["host_receipt_id"])
+            or not isinstance(authority.get("host_receipt_signature"), str)
+            or not re.fullmatch(
+                r"[A-Za-z0-9+/]{86}==", authority["host_receipt_signature"]
+            )
         ):
             raise PublisherError("lifecycle handoff authority receipt is not exact")
     _revalidate_candidate(candidate, config, kb, conn)
@@ -1645,6 +1841,10 @@ def complete_lifecycle_handoff(
         conn,
         contract=COMPLETION_CAS_CONTRACT,
         claim_id=authority["claim_id"],
+        host_receipt_id=authority["host_receipt_id"],
+        host_receipt_signature=authority["host_receipt_signature"],
+        expected_repository=config.repository,
+        expected_board=config.board,
         task_id=candidate.task_id,
         expected_status="blocked",
         expected_block_kind="capability",
@@ -1670,10 +1870,17 @@ def complete_lifecycle_handoff(
         "contract": COMPLETION_CAS_CONTRACT,
         "status": "completed",
         "claim_id": authority["claim_id"],
+        "host_receipt_id": authority["host_receipt_id"],
+        "repository": config.repository,
         "task_id": candidate.task_id,
         "run_id": candidate.run_id,
+        "board": config.board,
+        "project_id": candidate.project_id,
+        "workspace": candidate.workspace,
         "branch": candidate.branch,
+        "base_sha": candidate.base_sha,
         "head_sha": candidate.head_sha,
+        "changed_paths": list(candidate.changed_paths),
         "tracker_id": tracker_id,
     }
     if (
