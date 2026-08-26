@@ -6,6 +6,7 @@
  *
  * @see https://doi.org/10.1148/radiol.2019182646 - Silverman SG Radiology 2019
  * @see https://doi.org/10.1148/radiol.2362040218 - Bosniak MA Radiology 2005
+ * @see https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/ - CUA 2023 management guideline
  */
 
 import { test, expect } from "@playwright/test";
@@ -139,7 +140,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(page.getByText("3cm or larger")).toHaveCount(0);
   });
 
-  test("should display references section with v2019 and 2005 DOI links", async ({
+  test("should display classification and management primary-source links", async ({
     page,
   }) => {
     await expect(
@@ -162,6 +163,15 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(bosniakRef).toHaveAttribute(
       "href",
       "https://doi.org/10.1148/radiol.2362040218",
+    );
+
+    const cuaManagementRef = page.getByRole("link", {
+      name: /Richard PO.*Canadian Urological Association guideline/,
+    });
+    await expect(cuaManagementRef).toBeVisible();
+    await expect(cuaManagementRef).toHaveAttribute(
+      "href",
+      "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
     );
   });
 
@@ -453,7 +463,10 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
       "Probably benign cystic mass",
     );
     await expect(results).toContainText(
-      "Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years",
+      "CUA 2023 suggests imaging every 6-12 months during the first year, then yearly if stable",
+    );
+    await expect(results).toContainText(
+      "The interval is based on expert opinion and the 5-year duration is a conditional recommendation with very low certainty",
     );
   });
 

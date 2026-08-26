@@ -12,7 +12,7 @@ const categoryDetails = {
   IIF: {
     term: "Probably benign cystic mass",
     management:
-      "Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors",
+      "CUA 2023 suggests imaging every 6-12 months during the first year, then yearly if stable; for cysts without progression, 5 years of follow-up is suggested. The interval is based on expert opinion and the 5-year duration is a conditional recommendation with very low certainty; tailor surveillance to patient factors and specialist guidance",
     severity: "warning",
   },
   III: {
@@ -117,6 +117,10 @@ export const RenalCystBosniak = {
         {
           t: "Bosniak MA Radiology 2005",
           u: "https://doi.org/10.1148/radiol.2362040218",
+        },
+        {
+          t: "Richard PO et al. Canadian Urological Association guideline 2023",
+          u: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
         },
       ],
     },
@@ -530,6 +534,10 @@ export const RenalCystBosniak = {
     {
       t: "Bosniak MA Radiology 2005",
       u: "https://doi.org/10.1148/radiol.2362040218",
+    },
+    {
+      t: "Richard PO, Violette PD, Bhindi B, et al. 2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions. Can Urol Assoc J. 2023;17(6):162-174.",
+      u: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
     },
   ],
 };

@@ -165,7 +165,13 @@
       },
       "expect": {
         "noError": true,
-        "fields": [{ "key": "Bosniak Category", "equals": "IIF" }]
+        "fields": [
+          { "key": "Bosniak Category", "equals": "IIF" },
+          {
+            "key": "Management",
+            "equals": "CUA 2023 suggests imaging every 6-12 months during the first year, then yearly if stable; for cysts without progression, 5 years of follow-up is suggested. The interval is based on expert opinion and the 5-year duration is a conditional recommendation with very low certainty; tailor surveillance to patient factors and specialist guidance"
+          }
+        ]
       }
     },
     {

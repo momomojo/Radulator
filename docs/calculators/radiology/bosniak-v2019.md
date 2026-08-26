@@ -50,7 +50,7 @@ Enhancement is either unequivocally perceived visually or quantitatively confirm
 |---|---|---|---|
 | **I** | Fully characterized well-defined homogeneous simple fluid on a renal mass protocol examination, thin smooth wall, no septa, no calcification, no nodule | Benign simple cyst | No follow-up required |
 | **II** | All are well defined with a thin smooth `<=2 mm` wall, plus few `1-3` thin septa (which may enhance), any calcification morphology when features remain assessable, or a benign homogeneous CT density subtype including a homogeneous `-9 to 20 HU` mass known only from noncontrast CT | Benign cystic mass | No follow-up required |
-| **IIF** | Smooth 3 mm enhancing wall or septa, or many `>=4` thin enhancing septa | Probably benign cystic mass | Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors |
+| **IIF** | Smooth 3 mm enhancing wall or septa, or many `>=4` thin enhancing septa | Probably benign cystic mass | CUA 2023 suggests imaging every `6-12` months during the first year, then yearly if stable; for cysts without progression, `5 years` of follow-up is suggested. The interval is expert opinion and the 5-year duration is conditional with very low certainty; tailor surveillance to patient factors and specialist guidance |
 | **III** | Enhancing thick `>=4 mm` or irregular obtuse wall/septa without enhancing nodule | Indeterminate cystic mass | Consider urology consultation |
 | **IV** | Enhancing nodule: `>=4 mm` obtuse convex protrusion or any size acute-margin convex protrusion | Cystic mass, highly suspicious for malignancy | Consider urology consultation |
 
@@ -128,7 +128,7 @@ A nonenhancing wall or septum measuring `3 mm` or more, an irregular nonenhancin
 
 Many `>=4` thin enhancing septa without thick wall, irregular septa, or nodule.
 
-**Result**: Bosniak IIF, probably benign cystic mass. Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change. Tailor surveillance to patient factors. Bosniak v2019 predicts malignancy risk and is not a substitute for patient-specific management.
+**Result**: Bosniak IIF, probably benign cystic mass. CUA 2023 suggests imaging every 6-12 months during the first year, then yearly if stable; for cysts without progression, 5 years of follow-up is suggested. The interval is based on expert opinion and the 5-year duration is a conditional recommendation with very low certainty. Tailor surveillance to patient factors and specialist guidance. Bosniak v2019 predicts malignancy risk and is not a substitute for patient-specific management.
 
 ### Bosniak III
 
@@ -161,4 +161,5 @@ Bosniak v2019 includes separate MRI criteria, including a different enhancement 
 ## References
 
 1. Silverman SG, Pedrosa I, Ellis JH, Hindman NM, Schieda N, Smith AD, et al. **Bosniak Classification of Cystic Renal Masses, Version 2019: An Update Proposal and Needs Assessment.** Radiology. 2019;292(2):475-488. DOI: [10.1148/radiol.2019182646](https://doi.org/10.1148/radiol.2019182646)
-2. Bosniak MA. **The current radiological approach to renal cysts.** Radiology. 2005;236(1):61-70. DOI: [10.1148/radiol.2362040218](https://doi.org/10.1148/radiol.2362040218)
+2. Richard PO, Violette PD, Bhindi B, et al. **2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions.** Can Urol Assoc J. 2023;17(6):162-174. [PMCID: PMC10263289](https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/). Recommendation 6 is expert opinion; recommendation 7 is conditional with very low certainty.
+3. Bosniak MA. **The current radiological approach to renal cysts.** Radiology. 2005;236(1):61-70. DOI: [10.1148/radiol.2362040218](https://doi.org/10.1148/radiol.2362040218)

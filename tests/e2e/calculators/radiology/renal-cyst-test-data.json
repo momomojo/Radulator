@@ -237,7 +237,7 @@
       "expectedOutputs": {
         "bosniakCategory": "IIF",
         "term": "Probably benign cystic mass",
-        "management": "Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors"
+        "management": "CUA 2023 suggests imaging every 6-12 months during the first year, then yearly if stable; for cysts without progression, 5 years of follow-up is suggested. The interval is based on expert opinion and the 5-year duration is a conditional recommendation with very low certainty; tailor surveillance to patient factors and specialist guidance"
       },
       "clinicalContext": "Many (>=4) thin smooth enhancing septa meet the v2019 IIF criterion."
     },
@@ -260,7 +260,7 @@
       "expectedOutputs": {
         "bosniakCategory": "IIF",
         "term": "Probably benign cystic mass",
-        "management": "Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors"
+        "management": "CUA 2023 suggests imaging every 6-12 months during the first year, then yearly if stable; for cysts without progression, 5 years of follow-up is suggested. The interval is based on expert opinion and the 5-year duration is a conditional recommendation with very low certainty; tailor surveillance to patient factors and specialist guidance"
       },
       "clinicalContext": "Smooth minimally thickened 3 mm enhancing wall meets v2019 IIF criteria."
     },
