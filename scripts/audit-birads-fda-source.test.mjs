@@ -34,8 +34,8 @@ assert.deepEqual(audit.source_claims, {
   alternative_standard_12_marker_placement: true,
   alternative_standard_25_additional_imaging: true,
   prior_comparison_follow_up_within_30_days: true,
+  provider_report_and_patient_summary_within_7_days: true,
   self_referred_referral_system: true,
-  suspicious_written_summary_within_7_days: true,
 });
 assert.deepEqual(audit.bound_vector_ids, [
   "category-3",

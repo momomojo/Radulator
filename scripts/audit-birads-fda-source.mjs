@@ -147,6 +147,11 @@ requireAll(text.faq, "MQSA FAQ seven-day rule", [
   "highly suggestive of malignancy",
   "written summary of the results to the patient within seven calendar days of the final interpretation",
 ]);
+requireAll(text.finalRule, "MQSA final-rule provider and patient communication", [
+  'final assessment category of "suspicious" or "highly suggestive of malignancy,"',
+  "mammography report is provided to the health care provider",
+  "patient lay summary is provided to the patient within 7 calendar days of the date the mammogram was interpreted",
+]);
 requireAll(text.faq, "MQSA FAQ self-referred pathway", [
   "facilities must have a system for referring such patients to a healthcare provider when clinically indicated",
   "probably benign",
@@ -244,8 +249,8 @@ const audit = {
     alternative_standard_12_marker_placement: true,
     alternative_standard_25_additional_imaging: true,
     prior_comparison_follow_up_within_30_days: true,
+    provider_report_and_patient_summary_within_7_days: true,
     self_referred_referral_system: true,
-    suspicious_written_summary_within_7_days: true,
   },
   bound_vector_ids: [...BOUND_VECTOR_IDS],
   runtime_vector_match: true,
