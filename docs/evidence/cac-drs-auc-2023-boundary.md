@@ -1,4 +1,4 @@
-# CAC-DRS exact-300 boundary audit
+# CAC-DRS and proposed CAC-stage boundary audit
 
 The original 2018 CAC-DRS publication contains conflicting wording at an
 Agatston score of exactly 300. Radulator now uses the later unambiguous
@@ -18,7 +18,14 @@ CAC-DRS 3. The executable evidence therefore binds literal scores 299, 300,
 and 301 to A2, A3, and A3 respectively.
 
 The independent audit command retrieves the primary XML, isolates Table 1.2,
-verifies both boundary rows, and executes the three calculator vectors:
+verifies both boundary rows, and executes the three calculator vectors. The
+same command also retrieves the accessible full-text XML for Maron et al.
+(PMCID `PMC11462328`), isolates its proposed staging table, verifies stages 0
+through 4 (`0`, `1-99` below the 75th percentile, `100-299` or at least the
+75th percentile, `300-999`, and `>=1000`), and executes the corresponding
+calculator boundaries. The protected `Hermes Release Control Tests` check
+installs the required PDF extraction tool and runs this command together with
+the KBRC live-supplement audit on every exact PR head:
 
 ```bash
 npm run test:cac-drs-source

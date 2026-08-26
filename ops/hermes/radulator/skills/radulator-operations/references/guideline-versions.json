@@ -172,7 +172,7 @@
         { "authority": "McClelland et al.", "title": "Distribution of coronary artery calcium by race, gender, and age: results from MESA", "role": "primary-publication", "url": "https://doi.org/10.1161/CIRCULATIONAHA.105.580696" },
         { "authority": "Society of Cardiovascular Computed Tomography", "title": "CAC-DRS: Coronary Artery Calcium Data and Reporting System", "role": "context-guideline", "url": "https://doi.org/10.1016/j.jcct.2018.03.008" },
         { "authority": "ACC, AHA, ASE, ASNC, ASPC, HFSA, HRS, SCAI, SCCT, SCMR, and STS", "title": "2023 Multimodality Appropriate Use Criteria for the Detection and Risk Assessment of Chronic Coronary Disease", "role": "primary-publication", "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10585920/fullTextXML" },
-        { "authority": "Maron et al.", "title": "Coronary artery calcium staging to guide preventive interventions", "role": "supporting-publication", "url": "https://doi.org/10.1016/j.jacadv.2024.101287" }
+        { "authority": "Maron et al.", "title": "Coronary artery calcium staging to guide preventive interventions", "role": "primary-publication", "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11462328/fullTextXML" }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
@@ -215,9 +215,9 @@
           },
           {
             "id": "maron-percentile-adjusted-staging",
-            "source_url": "https://doi.org/10.1016/j.jacadv.2024.101287",
-            "source_locator": "Proposed CAC staging table: stages 1 and 2 around the 75th-percentile criterion",
-            "fact": "CAC 1 through 99 remains stage 1 below the supported 75th reference score and enters stage 2 at an exact nonzero 75th-reference equality.",
+            "source_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11462328/fullTextXML",
+            "source_locator": "Proposed CAC staging table: stages 0 through 4, including the stage 1 versus 2 percentile boundary and the 300 and 1,000 score boundaries",
+            "fact": "The calculator binds stage 0 to CAC 0, stage 1 to CAC 1 through 99 below the supported 75th reference score, stage 2 to CAC 100 through 299 or exact nonzero 75th-reference equality, stage 3 to CAC 300 through 999, and stage 4 to CAC 1,000 or greater.",
             "dimensions": ["classification", "threshold", "boundary", "output"],
             "vector_ids": ["stage1-requires-cac-below-75th-reference", "stage2-includes-exact-nonzero-75th-reference", "stage1-versus-stage2-not-assigned-without-mesa-context"]
           }

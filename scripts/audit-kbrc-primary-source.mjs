@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import process from "node:process";
 import { inflateRawSync } from "node:zlib";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
   calculateBmi,
   calculateKbrcMajorBleedingProbability,
@@ -90,23 +88,19 @@ function findZipMember(archive, memberName) {
 }
 
 async function pdfText(pdfBytes) {
-  const tempDirectory = await mkdtemp(path.join(os.tmpdir(), "radulator-kbrc-source-"));
-  const pdfPath = path.join(tempDirectory, "mmc1.pdf");
-  try {
-    await writeFile(pdfPath, pdfBytes, { mode: 0o600 });
-    const result = spawnSync("pdftotext", ["-layout", pdfPath, "-"], {
-      encoding: "utf8",
-      maxBuffer: 16 * 1024 * 1024,
-    });
-    assert.equal(
-      result.status,
-      0,
-      `pdftotext is required for the source audit: ${result.error?.message ?? result.stderr}`,
-    );
-    return result.stdout;
-  } finally {
-    await rm(tempDirectory, { recursive: true, force: true });
+  const document = await getDocument({
+    data: new Uint8Array(pdfBytes),
+    disableWorker: true,
+    useSystemFonts: true,
+  }).promise;
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+    const page = await document.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(content.items.map(({ str }) => str).join(" "));
   }
+  await document.destroy();
+  return pages.join("\n");
 }
 
 function parseSourceEquation(text) {
