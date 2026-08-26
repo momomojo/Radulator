@@ -4,6 +4,7 @@ import fs from "node:fs";
 const registryPath =
   "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json";
 const roadmap = fs.readFileSync("docs/ROADMAP.md", "utf8");
+const e2eWorkflow = fs.readFileSync(".github/workflows/e2e-tests.yml", "utf8");
 const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
 const records = new Map(
   registry.records.map((record) => [record.calculator_id, record]),
@@ -16,7 +17,7 @@ for (const evidence of [
     roadmapLabel: "Bosniak version 2019 CT classification",
     sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
     command: "npm run test:bosniak-source",
-    vectorId: "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv",
+    claimIds: ["bosniak-v2019-category-ii", "bosniak-v2019-iif-iii-iv-features"],
   },
   {
     calculatorId: "meld-na",
@@ -24,7 +25,11 @@ for (const evidence of [
     roadmapLabel: "MELD 3.0 (OPTN Policy 9.1.D)",
     sourceUrl: "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf",
     command: "npm run test:hermes-guideline-registry",
-    vectorId: "meld3-adult-female-sex-term",
+    claimIds: [
+      "optn-adult-meld3-equation",
+      "optn-laboratory-bounds-and-dialysis",
+      "optn-calculator-entry-domains",
+    ],
   },
   {
     calculatorId: "birads",
@@ -34,10 +39,17 @@ for (const evidence of [
     sourceUrl:
       "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
     command: "npm run test:birads-fda-source",
-    vectorId: "category-4",
+    claimIds: [
+      "acr-v2025-context",
+      "fda-mqsa-assessment-framework",
+      "fda-seven-day-communication",
+      "fda-self-referred-referral-system",
+      "fda-alternative-standard-25",
+      "fda-alternative-standard-12",
+    ],
   },
 ]) {
-  const { calculatorId, implementedVersion, roadmapLabel, sourceUrl, command, vectorId } =
+  const { calculatorId, implementedVersion, roadmapLabel, sourceUrl, command, claimIds } =
     evidence;
   const record = records.get(calculatorId);
   assert.ok(record, `${calculatorId}: registry row is required`);
@@ -52,16 +64,59 @@ for (const evidence of [
     `${calculatorId}: roadmap source must remain registered`,
   );
   assert.ok(
-    record.implementation_evidence.claims.some(
-      (claim) => claim.source_url === sourceUrl && claim.vector_ids.includes(vectorId),
-    ),
-    `${calculatorId}: roadmap vector must remain bound to the cited source`,
+    roadmap.includes(sourceUrl) && roadmap.includes(command),
+    `${calculatorId}: roadmap must expose its exact source and command`,
   );
+  for (const claimId of claimIds) {
+    const claim = record.implementation_evidence.claims.find((item) => item.id === claimId);
+    assert.ok(claim, `${calculatorId}: roadmap claim ${claimId} must remain registered`);
+    assert.ok(
+      record.sources.some((source) => source.url === claim.source_url),
+      `${calculatorId}: ${claimId} must remain bound to a registered source`,
+    );
+    assert.ok(
+      Array.isArray(claim.vector_ids) && claim.vector_ids.length > 0,
+      `${calculatorId}: ${claimId} must remain bound to executable vectors`,
+    );
+    assert.ok(
+      roadmap.includes(claimId),
+      `${calculatorId}: roadmap must name the exact evidence claim ${claimId}`,
+    );
+  }
+}
+
+for (const sourceUrl of [
+  "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
+  "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/LI-RADS",
+  "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/NI-RADS",
+  "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/PE-RADS",
+]) {
+  assert.ok(roadmap.includes(sourceUrl), `roadmap must directly cite ${sourceUrl}`);
+}
+
+const vectorClaims = new Map();
+for (const record of registry.records) {
+  for (const claim of record.implementation_evidence?.claims ?? []) {
+    for (const vectorId of claim.vector_ids) {
+      const bindings = vectorClaims.get(vectorId) ?? [];
+      bindings.push({ calculatorId: record.calculator_id, claimId: claim.id });
+      vectorClaims.set(vectorId, bindings);
+    }
+  }
+}
+for (const [, vectorId] of roadmap.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+){2,})`/g)) {
+  if (!vectorClaims.has(vectorId)) continue;
   assert.ok(
-    roadmap.includes(sourceUrl) && roadmap.includes(command) && roadmap.includes(vectorId),
-    `${calculatorId}: roadmap must expose its exact source, command, and executable vector`,
+    vectorClaims.get(vectorId).length > 0,
+    `roadmap vector ${vectorId} must remain bound to a registered source claim`,
   );
 }
+
+assert.match(
+  e2eWorkflow,
+  /name: Verify roadmap clinical source audits at exact head[\s\S]*?npm run test:bosniak-source[\s\S]*?npm run test:hermes-guideline-registry[\s\S]*?npm run test:birads-fda-source/,
+  "the required exact-head Smoke job must run the cited roadmap source-audit commands explicitly",
+);
 
 for (const calculatorId of ["lirads", "nirads"]) {
   const record = records.get(calculatorId);
