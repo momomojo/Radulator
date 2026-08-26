@@ -42,6 +42,9 @@ const allowedEvidenceDimensions = new Set([
   "classification",
   "formula",
   "interpretation",
+  "interval",
+  "duration",
+  "management",
   "model-input",
   "output",
   "scope",
@@ -173,13 +176,22 @@ function assertSourceArtifactExtraction(evidence, fixture, calculatorSource, lab
     "radulator-source-artifact-extraction/v1",
     `${label}.source_artifact.schema`,
   );
-  for (const key of ["full_text_xml_url", "archive_url"]) {
+  for (const key of ["full_text_xml_url", "direct_pdf_url", "archive_url"]) {
     assertBoundedString(artifact[key], `${label}.source_artifact.${key}`, 12, 400);
     assert.equal(new URL(artifact[key]).protocol, "https:", `${label}.source_artifact.${key}`);
   }
   assert.ok(
     evidence.claims.some((claim) => claim.source_url === artifact.full_text_xml_url),
     `${label}.source_artifact must bind to a primary-source implementation claim`,
+  );
+  assert.equal(
+    artifact.direct_pdf_url,
+    "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
+    `${label}.source_artifact.direct_pdf_url`,
+  );
+  assert.ok(
+    evidence.claims.some((claim) => claim.source_url === artifact.direct_pdf_url),
+    `${label}.source_artifact must bind the directly reviewable supplement to a claim`,
   );
   assert.equal(artifact.archive_member, "mmc1.pdf", `${label}.source_artifact.archive_member`);
   assert.equal(
@@ -429,12 +441,15 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     );
     assert.equal(
       audit.authority,
-      "Silverman et al., Radiology 2019",
+      "Silverman et al., Radiology 2019 and CUA 2023",
       `${label}.source_audit.authority`,
     );
     assert.deepEqual(
       audit.source_urls,
-      ["https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/"],
+      [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
+      ],
       `${label}.source_audit.source_urls`,
     );
     assert.deepEqual(
@@ -442,6 +457,7 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       [
         "exactly-70-hu-homogeneous-noncontrast-mass-category-ii",
         "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv",
+        "minimally-thick-enhancing-wall-category-iif",
       ],
       `${label}.source_audit.vector_ids`,
     );

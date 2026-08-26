@@ -400,6 +400,7 @@
       "sources": [
         { "authority": "Thorne et al.", "title": "External Validation and Recalibration of a Risk Calculator for Major Bleeding After Diagnostic Kidney Biopsy", "role": "primary-publication", "url": "https://doi.org/10.1016/j.xkme.2026.101352" },
         { "authority": "Thorne et al. via Europe PMC", "title": "Open full-text XML with supplementary material manifest for PMCID PMC13156734", "role": "primary-publication", "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML" },
+        { "authority": "Thorne et al. via Elsevier", "title": "Direct primary supplementary PDF (Item S1) for the recalibrated KBRC equation", "role": "primary-publication", "url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf", "artifact_sha256": "d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5" },
         { "authority": "Schorr et al.", "title": "Frequency, Timing, and Prediction of Major Bleeding Complications From Percutaneous Renal Biopsy", "role": "supporting-publication", "url": "https://doi.org/10.1177/2054358120923527" }
       ],
       "implementation_evidence": {
@@ -411,8 +412,8 @@
         "claims": [
           {
             "id": "thorne-recalibrated-equation",
-            "source_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML",
-            "source_locator": "Supplementary-material xlink mmc1.pdf; archive member Item S1, PDF page 5",
+            "source_url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
+            "source_locator": "Direct primary supplementary PDF, Item S1, PDF page 5",
             "fact": "The digest-pinned mmc1.pdf member supplies the intercept, every signed linear and cubic-spline coefficient and knot, logistic transform, predictor units, and native-versus-allograft coding audited against calculator source.",
             "dimensions": ["formula", "model-input", "unit", "output"],
             "vector_ids": ["paper-typical-native", "paper-typical-allograft", "paper-higher-risk-native", "paper-lower-risk-allograft"]
@@ -437,6 +438,7 @@
         "source_artifact": {
           "schema": "radulator-source-artifact-extraction/v1",
           "full_text_xml_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML",
+          "direct_pdf_url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
           "archive_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/supplementaryFiles",
           "archive_member": "mmc1.pdf",
           "archive_member_bytes": 3696579,
@@ -677,8 +679,11 @@
       "basis_type": "classification-system",
       "verification_status": "verified",
       "last_verified": "2026-08-26",
-      "justification": "The open primary version 2019 publication directly specifies the eligibility boundary, quantitative CT feature definitions, inclusive 70 HU and 4 mm equality cases, and categories exercised by the bound regression vectors.",
-      "sources": [{ "authority": "Silverman et al.", "title": "Bosniak Classification of Cystic Renal Masses, version 2019", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/" }],
+      "justification": "The open primary version 2019 publication directly specifies the eligibility boundary, quantitative CT feature definitions, inclusive 70 HU and 4 mm equality cases, and categories exercised by the bound regression vectors. The peer-reviewed CUA 2023 guideline separately supplies the displayed Bosniak IIF follow-up interval, duration, and evidence grades.",
+      "sources": [
+        { "authority": "Silverman et al.", "title": "Bosniak Classification of Cystic Renal Masses, version 2019", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/" },
+        { "authority": "Canadian Urological Association", "title": "2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions", "role": "official-authority", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/" }
+      ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/RenalCystBosniak.jsx",
@@ -688,9 +693,9 @@
         "source_audit": {
           "schema": "radulator-live-source-audit/v1",
           "command": "npm run test:bosniak-source",
-          "authority": "Silverman et al., Radiology 2019",
-          "source_urls": ["https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/"],
-          "vector_ids": ["exactly-70-hu-homogeneous-noncontrast-mass-category-ii", "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv"],
+          "authority": "Silverman et al., Radiology 2019 and CUA 2023",
+          "source_urls": ["https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/", "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/"],
+          "vector_ids": ["exactly-70-hu-homogeneous-noncontrast-mass-category-ii", "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv", "minimally-thick-enhancing-wall-category-iif"],
           "source_bytes_committed": false
         },
         "claims": [
@@ -717,6 +722,14 @@
             "fact": "Executable cases bind the 3 mm minimally thick enhancing feature, 4 mm or thicker enhancing feature, exactly 4 mm obtuse-margin enhancing nodule, and enhancing acute-margin nodule to IIF, III, and IV outputs respectively.",
             "dimensions": ["classification", "threshold", "boundary", "unit", "output"],
             "vector_ids": ["minimally-thick-enhancing-wall-category-iif", "thick-enhancing-wall-category-iii", "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv", "acute-margin-enhancing-nodule-category-iv"]
+          },
+          {
+            "id": "cua-2023-bosniak-iif-followup",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
+            "source_locator": "Summary recommendations and Bosniak category IIF section",
+            "fact": "For Bosniak IIF cysts, CUA 2023 suggests imaging every 6-12 months in the first year, then yearly if stable, and five years of follow-up if there is no progression; the interval is expert opinion and the duration is a conditional recommendation with very low certainty.",
+            "dimensions": ["management", "interval", "duration", "interpretation", "output"],
+            "vector_ids": ["minimally-thick-enhancing-wall-category-iif"]
           }
         ]
       }
