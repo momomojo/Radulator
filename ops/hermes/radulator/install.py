@@ -817,6 +817,55 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
         if result.returncode != 0:
             raise InstallError(f"Installed Hermes runtime does not expose the approved {label} contract.")
 
+    authority_expression = (
+        "from hermes_cli.kanban_db import "
+        "claim_trusted_publisher_authority, complete_trusted_publisher_authority; "
+        "raise SystemExit(0 if callable(claim_trusted_publisher_authority) and "
+        "callable(complete_trusted_publisher_authority) else 1)"
+    )
+    authority_command = [str(runtime_python), "-c", authority_expression]
+    authority = runner(
+        authority_command,
+        cwd=plan["repo"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if authority.returncode != 0:
+        raise InstallError(
+            "PENDING_HERMES_RUNTIME: installed Hermes must expose the durable "
+            "trusted-publisher authority claim/CAS API before the trusted publisher "
+            "can be enabled."
+        )
+
+    canary_contract = {
+        "contract": "hermes.worker_model_path_denial_canary.v1",
+        "model_path_attempted": True,
+        "git_metadata_write_denied": True,
+        "github_credentials_absent": True,
+        "github_network_denied": True,
+    }
+    canary_expression = (
+        "import json; "
+        "from tools.kanban_worker_boundary import run_worker_model_path_denial_canary; "
+        "observed = run_worker_model_path_denial_canary(); "
+        f"expected = json.loads({json.dumps(canary_contract)!r}); "
+        "raise SystemExit(0 if observed == expected else 1)"
+    )
+    canary_command = [str(runtime_python), "-c", canary_expression]
+    canary = runner(
+        canary_command,
+        cwd=plan["repo"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if canary.returncode != 0:
+        raise InstallError(
+            "PENDING_HERMES_RUNTIME: installed Hermes must execute the approved "
+            "worker model-path denial canary before the trusted publisher can be enabled."
+        )
+
 
 def _verify_publisher_auth(plan: dict[str, Any], runner=None) -> None:
     runner = runner or subprocess.run

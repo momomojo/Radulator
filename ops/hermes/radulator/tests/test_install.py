@@ -789,6 +789,59 @@ class InstallerTests(unittest.TestCase):
                 activation_test_runner=runner,
             )
 
+    def test_enable_executes_worker_model_path_denial_canary(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+        observed = []
+
+        def runner(command, **_kwargs):
+            rendered = " ".join(str(part) for part in command)
+            if "run_worker_model_path_denial_canary" in rendered:
+                observed.append(rendered)
+                return subprocess.CompletedProcess(
+                    command, 1, "", "runtime canary entrypoint is unavailable"
+                )
+            output = "test-token" if "auth" in command and "token" in command else "passed"
+            return subprocess.CompletedProcess(command, 0, output, "")
+
+        with self.assertRaisesRegex(
+            InstallError,
+            "PENDING_HERMES_RUNTIME.*model-path denial canary",
+        ):
+            apply_install(
+                **self.kwargs(), enable=True, expected_public_keys=public_keys,
+                activation_test_runner=runner,
+            )
+
+        self.assertEqual(len(observed), 1)
+        self.assertFalse(self.publisher_job()["enabled"])
+
+    def test_enable_requires_durable_publisher_authority_cas_runtime(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+
+        def runner(command, **_kwargs):
+            rendered = " ".join(str(part) for part in command)
+            if "claim_trusted_publisher_authority" in rendered:
+                return subprocess.CompletedProcess(
+                    command, 1, "", "authority API unavailable"
+                )
+            output = "test-token" if "auth" in command and "token" in command else "passed"
+            return subprocess.CompletedProcess(command, 0, output, "")
+
+        with self.assertRaisesRegex(
+            InstallError,
+            "PENDING_HERMES_RUNTIME.*authority claim/CAS",
+        ):
+            apply_install(
+                **self.kwargs(), enable=True, expected_public_keys=public_keys,
+                activation_test_runner=runner,
+            )
+
+        self.assertFalse(self.publisher_job()["enabled"])
+
     def test_enable_requires_host_github_auth_without_printing_token(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -870,7 +923,11 @@ class InstallerTests(unittest.TestCase):
             if any(
                 marker in str(part)
                 for part in command
-                for marker in ("kanban_git_broker", "kanban_worker_boundary")
+                for marker in (
+                    "kanban_git_broker",
+                    "kanban_worker_boundary",
+                    "claim_trusted_publisher_authority",
+                )
             ):
                 return subprocess.CompletedProcess(command, 0, "", "")
             if "auth" in command and "token" in command:

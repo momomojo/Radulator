@@ -19,6 +19,9 @@ from typing import Any
 
 CONTRACT = "hermes.trusted_local_commit.v1"
 REQUEST_CONTRACT = "hermes.trusted_git_completion_request.v1"
+AUTHORITY_REQUEST_CONTRACT = "hermes.trusted_publisher.authority-request.v1"
+AUTHORITY_CLAIM_CONTRACT = "hermes.trusted_publisher.authority-claim.v1"
+COMPLETION_CAS_CONTRACT = "hermes.trusted_publisher.completion-cas.v1"
 BLOCKED_MARKER = "AWAITING_TRUSTED_PUBLISHER v1"
 GIT_BINARY = "/usr/bin/git"
 GH_BINARY = "/opt/homebrew/bin/gh"
@@ -436,40 +439,43 @@ def _worktree_records(text: str) -> list[dict[str, str]]:
 
 
 def _dangerous_local_git_config(workspace: Path, runner: Any) -> list[str]:
-    exact_keys = (
+    exact_keys = {
         "core.hookspath",
         "core.askpass",
         "core.sshcommand",
-        "credential.helper",
-        "remote.origin.uploadpack",
-        "remote.origin.receivepack",
-        "remote.origin.pushurl",
+        "core.gitproxy",
+    }
+    unsafe_prefixes = (
+        "credential.",
+        "http.",
+        "https.",
+        "include.",
+        "includeif.",
+        "protocol.",
+        "url.",
     )
     found: list[str] = []
     for scope in ("--local", "--worktree"):
-        for key in exact_keys:
-            result = _git(
-                workspace,
-                "config",
-                scope,
-                "--get-all",
-                key,
-                runner=runner,
-                check=False,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                found.append(key)
-        rewrite = _git(
+        listed = _git(
             workspace,
             "config",
             scope,
-            "--get-regexp",
-            r"^url\..*\.(insteadof|pushinsteadof)$",
+            "--name-only",
+            "--list",
             runner=runner,
             check=False,
         )
-        if rewrite.returncode == 0 and rewrite.stdout.strip():
-            found.append("url rewrite")
+        for raw_key in listed.stdout.splitlines():
+            key = raw_key.strip().casefold()
+            if not key:
+                continue
+            remote_transport_override = (
+                key.startswith("remote.")
+                and key.rsplit(".", 1)[-1]
+                in {"proxy", "proxyauthmethod", "pushurl", "receivepack", "uploadpack"}
+            )
+            if key in exact_keys or key.startswith(unsafe_prefixes) or remote_transport_override:
+                found.append(key)
     return sorted(set(found))
 
 
@@ -699,14 +705,12 @@ def _list_branch_prs(
         "list",
         "--repo",
         config.repository,
-        "--base",
-        config.base_branch,
         "--head",
         candidate.branch,
         "--state",
         "all",
         "--limit",
-        "1000",
+        "10000",
         "--json",
         "number,url,state,headRefName,headRefOid,baseRefName,baseRefOid,headRepositoryOwner,isCrossRepository,labels,mergedAt",
         cwd=Path(candidate.workspace),
@@ -715,6 +719,8 @@ def _list_branch_prs(
     value = _bounded_json(result, "pull request history")
     if not isinstance(value, list):
         raise PublisherError("pull request history readback is malformed")
+    if len(value) >= 10000:
+        raise PublisherError("pull request history exceeds the complete enumeration limit")
     return value
 
 
@@ -750,6 +756,32 @@ def ensure_remote_and_pr(
         )
         if target_ancestor.returncode != 0:
             raise PublisherError("current target base is not contained in the correction head")
+    elif candidate.base_sha != target_base_sha:
+        target_ancestor = _git(
+            workspace,
+            "merge-base",
+            "--is-ancestor",
+            target_base_sha,
+            candidate.head_sha,
+            runner=runner,
+            check=False,
+        )
+        if target_ancestor.returncode != 0:
+            raise PublisherError("current target base is not contained in the exact-head retry")
+        retry_history = _list_branch_prs(candidate, config, runner=runner)
+        if len(retry_history) != 1:
+            raise PublisherError("exact-head correction retry lacks one authoritative pull request")
+        retry_pr = PublishedPullRequest.from_dict(retry_history[0])
+        if (
+            retry_pr.branch != candidate.branch
+            or retry_pr.head_sha != candidate.head_sha
+            or retry_pr.base != config.base_branch
+            or retry_pr.base_sha != target_base_sha
+            or retry_pr.head_repository_owner != config.repository.split("/", 1)[0]
+            or retry_pr.is_cross_repository
+            or retry_pr.merged_at is not None
+        ):
+            raise PublisherError("exact-head correction retry pull request base authority is not exact")
     if remote_head not in {None, candidate.head_sha}:
         ancestor = _git(
             workspace,
@@ -805,14 +837,18 @@ def ensure_remote_and_pr(
             if "ready-for-gate" in prior.labels:
                 raise PublisherError("stale readiness label remained before correction push")
     if remote_head != candidate.head_sha:
-        validate_local_candidate(candidate, config, runner=runner)
-        if kb is not None:
-            _revalidate_candidate(candidate, config, kb, conn)
+        if remote_head is None and _list_branch_prs(candidate, config, runner=runner):
+            raise PublisherError(
+                "deleted feature branch has prior pull request history and cannot be republished"
+            )
         if (
             _remote_head(candidate, config, runner=runner) != remote_head
             or _remote_target_base(candidate, config, runner=runner) != target_base_sha
         ):
             raise PublisherError("remote publication snapshot changed before push")
+        if kb is not None:
+            _revalidate_candidate(candidate, config, kb, conn)
+        validate_local_candidate(candidate, config, runner=runner)
         _git(
             workspace,
             "-c",
@@ -855,33 +891,40 @@ def ensure_remote_and_pr(
         validate_local_candidate(candidate, config, runner=runner)
         if kb is not None:
             _revalidate_candidate(candidate, config, kb, conn)
-        if _remote_target_base(candidate, config, runner=runner) != target_base_sha:
-            raise PublisherError("target base changed before pull request creation")
-        _gh(
-            "pr",
-            "create",
-            "--repo",
-            config.repository,
-            "--base",
-            config.base_branch,
-            "--head",
-            candidate.branch,
-            "--title",
-            f"feat: complete {candidate.task_id} through Hermes",
-            "--body",
-            (
-                "Dispatcher-sealed Hermes implementation handoff.\n\n"
-                f"- Task: `{candidate.task_id}`\n"
-                f"- Exact head: `{candidate.head_sha}`\n"
-                f"- Exact parent: `{candidate.base_sha}`\n\n"
-                "Publication is performed by the credential-isolated trusted publisher."
-            ),
-            cwd=workspace,
-            runner=runner,
-        )
+        if (
+            _remote_head(candidate, config, runner=runner) != candidate.head_sha
+            or _remote_target_base(candidate, config, runner=runner) != target_base_sha
+        ):
+            raise PublisherError("publication snapshot changed before pull request creation")
         branch_prs = _list_branch_prs(candidate, config, runner=runner)
-        if len(branch_prs) != 1:
-            raise PublisherError("pull request creation lacked exact authoritative readback")
+        if len(branch_prs) > 1:
+            raise PublisherError("feature branch has more than one pull request")
+        if not branch_prs:
+            _gh(
+                "pr",
+                "create",
+                "--repo",
+                config.repository,
+                "--base",
+                config.base_branch,
+                "--head",
+                candidate.branch,
+                "--title",
+                f"feat: complete {candidate.task_id} through Hermes",
+                "--body",
+                (
+                    "Dispatcher-sealed Hermes implementation handoff.\n\n"
+                    f"- Task: `{candidate.task_id}`\n"
+                    f"- Exact head: `{candidate.head_sha}`\n"
+                    f"- Exact parent: `{candidate.base_sha}`\n\n"
+                    "Publication is performed by the credential-isolated trusted publisher."
+                ),
+                cwd=workspace,
+                runner=runner,
+            )
+            branch_prs = _list_branch_prs(candidate, config, runner=runner)
+            if len(branch_prs) != 1:
+                raise PublisherError("pull request creation lacked exact authoritative readback")
     return _exact_pr(branch_prs[0], candidate, config, target_base_sha=target_base_sha)
 
 
@@ -1200,6 +1243,71 @@ def _revalidate_candidate(
     return task
 
 
+def _claim_publisher_authority(
+    candidate: TrustedCommit,
+    config: PublisherConfig,
+    kb: Any,
+    conn: Any,
+) -> dict[str, Any]:
+    """Acquire/reuse the runtime's durable exact publisher authority claim."""
+    claim = getattr(kb, "claim_trusted_publisher_authority", None)
+    if not callable(claim):
+        raise PublisherPending(
+            "PENDING_HERMES_RUNTIME: durable trusted-publisher authority claim/CAS "
+            "support is not installed"
+        )
+    try:
+        receipt = claim(
+            conn,
+            contract=AUTHORITY_REQUEST_CONTRACT,
+            publisher_contract=CONTRACT,
+            blocked_marker=BLOCKED_MARKER,
+            task_id=candidate.task_id,
+            board=config.board,
+            expected_project_id=candidate.project_id,
+            expected_workspace_path=candidate.workspace,
+            expected_branch_name=candidate.branch,
+            expected_run_id=candidate.run_id,
+            expected_base_sha=candidate.base_sha,
+            expected_head_sha=candidate.head_sha,
+            expected_changed_paths=list(candidate.changed_paths),
+        )
+    except TypeError as error:
+        raise PublisherPending(
+            "PENDING_HERMES_RUNTIME: installed trusted-publisher authority API does "
+            "not implement the exact v1 claim contract"
+        ) from error
+    if (
+        isinstance(receipt, dict)
+        and receipt.get("contract") == AUTHORITY_CLAIM_CONTRACT
+        and receipt.get("status") == "conflict"
+    ):
+        raise PublisherError("durable trusted-publisher authority claim conflicted")
+    expected = {
+        "contract": AUTHORITY_CLAIM_CONTRACT,
+        "status": "claimed",
+        "task_id": candidate.task_id,
+        "run_id": candidate.run_id,
+        "branch": candidate.branch,
+        "base_sha": candidate.base_sha,
+        "head_sha": candidate.head_sha,
+    }
+    if (
+        not isinstance(receipt, dict)
+        or set(receipt) != {*expected, "claim_id"}
+        or any(receipt.get(key) != value for key, value in expected.items())
+        or not isinstance(receipt.get("claim_id"), str)
+        or not receipt["claim_id"]
+        or len(receipt["claim_id"]) > 512
+        or any(character.isspace() for character in receipt["claim_id"])
+    ):
+        raise PublisherPending(
+            "PENDING_HERMES_RUNTIME: durable trusted-publisher authority claim did "
+            "not return the exact v1 receipt"
+        )
+    return receipt
+
+
 def _exact_parent_ids(kb: Any, conn: Any, task_id: str) -> list[str]:
     parents = kb.parent_ids(conn, task_id)
     if not isinstance(parents, list) or not all(
@@ -1250,6 +1358,7 @@ def complete_lifecycle_handoff(
     kb: Any,
     conn: Any,
     *,
+    authority: dict[str, Any] | None = None,
     runner: Any = subprocess.run,
 ) -> str:
     """Create/reuse the exact release tracker, then close only the worker task."""
@@ -1261,6 +1370,28 @@ def complete_lifecycle_handoff(
         or "ready-for-gate" not in pr.labels
     ):
         raise PublisherError("lifecycle handoff requires exact labeled PR readback")
+    if authority is None:
+        authority = _claim_publisher_authority(candidate, config, kb, conn)
+    else:
+        expected_authority = {
+            "contract": AUTHORITY_CLAIM_CONTRACT,
+            "status": "claimed",
+            "task_id": candidate.task_id,
+            "run_id": candidate.run_id,
+            "branch": candidate.branch,
+            "base_sha": candidate.base_sha,
+            "head_sha": candidate.head_sha,
+        }
+        if (
+            set(authority) != {*expected_authority, "claim_id"}
+            or any(
+                authority.get(key) != value
+                for key, value in expected_authority.items()
+            )
+            or not isinstance(authority.get("claim_id"), str)
+            or not authority["claim_id"]
+        ):
+            raise PublisherError("lifecycle handoff authority receipt is not exact")
     _revalidate_candidate(candidate, config, kb, conn)
     current_pr = _read_pr(
         pr.number,
@@ -1463,7 +1594,7 @@ def complete_lifecycle_handoff(
         "TRUSTED_PUBLISHER v1 publication verified. "
         f"PR {pr.url}; exact head {candidate.head_sha}; release tracker {tracker_id}."
     )
-    _ensure_exact_comment(
+    comment_id = _ensure_exact_comment(
         kb,
         conn,
         candidate.task_id,
@@ -1486,20 +1617,74 @@ def complete_lifecycle_handoff(
         f"Exact head: {candidate.head_sha}\n"
         f"Release tracker: {tracker_id}"
     )
-    completed = kb.complete_task(
+    final_tracker = kb.get_task(conn, tracker_id)
+    tracker_status = getattr(final_tracker, "status", None)
+    if (
+        final_tracker is None
+        or tracker_status
+        not in {"triage", "todo", "scheduled", "ready", "running", "blocked", "review"}
+        or not isinstance(getattr(final_tracker, "body", None), str)
+        or not _has_exact_pr_reference(final_tracker.body, pr.number)
+        or (not existing_tracker and not _has_exact_sha_reference(final_tracker.body, candidate.head_sha))
+        or _exact_parent_ids(kb, conn, relation_task) != expected_parents
+    ):
+        raise PublisherError("final release tracker authority is not exact")
+    complete_authority = getattr(kb, "complete_trusted_publisher_authority", None)
+    if not callable(complete_authority):
+        raise PublisherPending(
+            "PENDING_HERMES_RUNTIME: durable trusted-publisher authority completion "
+            "CAS support is not installed"
+        )
+    completion_metadata = {
+        "contract": "radulator.trusted_publisher.completion.v1",
+        "pr": pr.number,
+        "head_sha": candidate.head_sha,
+        "release_tracker_id": tracker_id,
+    }
+    completed = complete_authority(
         conn,
-        candidate.task_id,
+        contract=COMPLETION_CAS_CONTRACT,
+        claim_id=authority["claim_id"],
+        task_id=candidate.task_id,
+        expected_status="blocked",
+        expected_block_kind="capability",
+        expected_project_id=candidate.project_id,
+        expected_workspace_path=candidate.workspace,
+        expected_branch_name=candidate.branch,
+        expected_run_id=candidate.run_id,
+        expected_base_sha=candidate.base_sha,
+        expected_head_sha=candidate.head_sha,
+        expected_changed_paths=list(candidate.changed_paths),
+        expected_tracker_id=tracker_id,
+        expected_tracker_status=tracker_status,
+        relation_task_id=relation_task,
+        expected_parent_ids=expected_parents,
+        expected_comment_id=comment_id,
+        expected_comment_author="radulator-trusted-publisher",
+        expected_comment_body=comment,
         result=completion,
         summary=completion,
-        metadata={
-            "contract": "radulator.trusted_publisher.completion.v1",
-            "pr": pr.number,
-            "head_sha": candidate.head_sha,
-            "release_tracker_id": tracker_id,
-        },
+        metadata=completion_metadata,
     )
-    if completed is not True:
-        raise PublisherError("implementation task completion was not applied atomically")
+    expected_completion = {
+        "contract": COMPLETION_CAS_CONTRACT,
+        "status": "completed",
+        "claim_id": authority["claim_id"],
+        "task_id": candidate.task_id,
+        "run_id": candidate.run_id,
+        "branch": candidate.branch,
+        "head_sha": candidate.head_sha,
+        "tracker_id": tracker_id,
+    }
+    if (
+        not isinstance(completed, dict)
+        or set(completed) != set(expected_completion)
+        or any(
+            completed.get(key) != value
+            for key, value in expected_completion.items()
+        )
+    ):
+        raise PublisherError("implementation task authority CAS was not applied atomically")
     final_task = kb.get_task(conn, candidate.task_id)
     if (
         final_task is None
@@ -1550,6 +1735,17 @@ def run_once(
     candidate = select_candidate(kb, conn, config.board)
     if candidate is None:
         return {"status": "idle"}
+    try:
+        authority = _claim_publisher_authority(candidate, config, kb, conn)
+    except PublisherPending as error:
+        if not str(error).startswith("PENDING_HERMES_RUNTIME:"):
+            raise
+        return {
+            "status": "pending_runtime",
+            "task_id": candidate.task_id,
+            "head_sha": candidate.head_sha,
+            "reason": str(error),
+        }
     validate_local_candidate(candidate, config, runner=runner)
     pr = ensure_remote_and_pr(
         candidate,
@@ -1580,6 +1776,7 @@ def run_once(
         config,
         kb,
         conn,
+        authority=authority,
         runner=runner,
     )
     return {

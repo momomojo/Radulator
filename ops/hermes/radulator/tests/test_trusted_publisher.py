@@ -31,6 +31,20 @@ class FakeKanban:
                 summary="AWAITING_TRUSTED_PUBLISHER v1",
             )
         })
+        self.authority_claims = []
+
+    def claim_trusted_publisher_authority(self, _conn, **kwargs):
+        self.authority_claims.append(kwargs)
+        return {
+            "contract": "hermes.trusted_publisher.authority-claim.v1",
+            "status": "claimed",
+            "claim_id": f"publisher:{kwargs['task_id']}:{kwargs['expected_run_id']}",
+            "task_id": kwargs["task_id"],
+            "run_id": kwargs["expected_run_id"],
+            "branch": kwargs["expected_branch_name"],
+            "base_sha": kwargs["expected_base_sha"],
+            "head_sha": kwargs["expected_head_sha"],
+        }
 
     def list_tasks(self, _conn, **kwargs):
         assert kwargs == {
@@ -432,6 +446,24 @@ class TrustedPublisherGitAuthorityTests(unittest.TestCase):
         with self.assertRaisesRegex(publisher.PublisherError, "Git config"):
             publisher.validate_local_candidate(self.candidate, self.config)
 
+    def test_rejects_local_git_network_tls_proxy_and_credential_configuration(self):
+        unsafe = (
+            ("http.proxy", "http://127.0.0.1:4444"),
+            ("http.sslVerify", "false"),
+            ("http.https://github.com/.extraHeader", "Authorization: attack"),
+            ("credential.useHttpPath", "true"),
+            ("protocol.ext.allow", "always"),
+            ("include.path", "/tmp/attacker-gitconfig"),
+        )
+        for key, value in unsafe:
+            with self.subTest(key=key):
+                self.git(self.workspace, "config", key, value)
+                try:
+                    with self.assertRaisesRegex(publisher.PublisherError, "Git config"):
+                        publisher.validate_local_candidate(self.candidate, self.config)
+                finally:
+                    self.git(self.workspace, "config", "--unset-all", key, check=False)
+
     def test_rejects_wrong_origin_and_sibling_registration(self):
         self.git(self.workspace, "remote", "set-url", "origin", "https://example.invalid/other.git")
         with self.assertRaisesRegex(publisher.PublisherError, "origin"):
@@ -542,12 +574,15 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
         runner = QueueRunner([
             self.remote_feature(None),
             self.remote_base(),
+            response(stdout="[]\n"),
             self.remote_feature(None),
             self.remote_base(),
             response(stdout="pushed\n"),
             self.remote_feature(),
             response(stdout="[]\n"),
+            self.remote_feature(),
             self.remote_base(),
+            response(stdout="[]\n"),
             response(stdout=exact_pr()["url"] + "\n"),
             response(stdout=json.dumps([exact_pr()]) + "\n"),
         ])
@@ -574,6 +609,38 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
         self.assertIn("https://github.com/momomojo/Radulator.git", remote_read)
         self.assertGreaterEqual(self.validator.call_count, 2)
 
+    def test_local_git_authority_is_revalidated_immediately_before_push(self):
+        timeline = []
+        queued = QueueRunner([
+            self.remote_feature(None),
+            self.remote_base(),
+            response(stdout="[]\n"),
+            self.remote_feature(None),
+            self.remote_base(),
+            response(stdout="pushed\n"),
+            self.remote_feature(),
+            response(stdout="[]\n"),
+            self.remote_feature(),
+            self.remote_base(),
+            response(stdout="[]\n"),
+            response(stdout=exact_pr()["url"] + "\n"),
+            response(stdout=json.dumps([exact_pr()]) + "\n"),
+        ])
+
+        def validating(*_args, **_kwargs):
+            timeline.append("local-authority")
+            return self.candidate
+
+        def runner(command, **kwargs):
+            if "push" in command:
+                self.assertEqual(timeline[-1], "local-authority")
+            else:
+                timeline.append(" ".join(str(item) for item in command))
+            return queued(command, **kwargs)
+
+        self.validator.side_effect = validating
+        publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
     def test_exact_remote_and_pr_are_reused_idempotently(self):
         runner = QueueRunner([
             self.remote_feature(),
@@ -585,6 +652,109 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
 
         self.assertEqual(result.head_sha, HEAD_SHA)
         self.assertFalse(any("push" in call for call, _ in runner.calls))
+
+    def test_exact_remote_retry_still_requires_current_target_base_authority(self):
+        advanced_base = "d" * 40
+        runner = QueueRunner([
+            self.remote_feature(),
+            self.remote_base(advanced_base),
+            response(returncode=1),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherError, "current target base"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertFalse(any(
+            Path(call[0]).name == "gh" and call[1:3] in (["pr", "create"], ["pr", "reopen"])
+            for call, _ in runner.calls
+        ))
+
+    def test_pr_history_enumerates_same_branch_across_all_bases(self):
+        calls = []
+        wrong_base = exact_pr(baseRefName="main", baseRefOid="d" * 40)
+
+        def runner(args, **kwargs):
+            call = list(args)
+            calls.append(call)
+            if "ls-remote" in call:
+                ref = call[-1]
+                if ref == f"refs/heads/{self.candidate.branch}":
+                    stdout = f"{HEAD_SHA}\t{ref}\n"
+                else:
+                    stdout = f"{BASE_SHA}\t{ref}\n"
+                return subprocess.CompletedProcess(args, 0, stdout, "")
+            if Path(call[0]).name == "gh" and call[1:3] == ["pr", "list"]:
+                # Match GitHub's filter semantics: the existing retargeted PR
+                # disappears only when the publisher incorrectly filters base.
+                value = [] if "--base" in call else [wrong_base]
+                return subprocess.CompletedProcess(args, 0, json.dumps(value) + "\n", "")
+            if Path(call[0]).name == "gh" and call[1:3] == ["pr", "create"]:
+                return subprocess.CompletedProcess(args, 0, exact_pr()["url"] + "\n", "")
+            raise AssertionError(f"unexpected command: {call}")
+
+        with self.assertRaises(publisher.PublisherError):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertFalse(any(
+            Path(call[0]).name == "gh" and call[1:3] == ["pr", "create"]
+            for call in calls
+        ))
+
+    def test_deleted_branch_with_prior_pr_history_rejects_before_push(self):
+        calls = []
+        prior = exact_pr(
+            state="CLOSED",
+            headRefOid="c" * 40,
+            baseRefName="main",
+            baseRefOid="d" * 40,
+        )
+
+        def runner(args, **_kwargs):
+            call = list(args)
+            calls.append(call)
+            if "ls-remote" in call:
+                ref = call[-1]
+                output = "" if ref.endswith(self.candidate.branch) else f"{BASE_SHA}\t{ref}\n"
+                return subprocess.CompletedProcess(args, 0, output, "")
+            if Path(call[0]).name == "gh" and call[1:3] == ["pr", "list"]:
+                return subprocess.CompletedProcess(args, 0, json.dumps([prior]) + "\n", "")
+            if "push" in call:
+                raise AssertionError("publisher pushed before checking complete PR history")
+            raise AssertionError(f"unexpected command: {call}")
+
+        with self.assertRaisesRegex(publisher.PublisherError, "history"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertFalse(any("push" in call for call in calls))
+
+    def test_pr_history_is_rechecked_immediately_before_create(self):
+        calls = []
+        history_reads = 0
+
+        def runner(args, **kwargs):
+            nonlocal history_reads
+            call = list(args)
+            calls.append(call)
+            if "ls-remote" in call:
+                ref = call[-1]
+                sha = HEAD_SHA if ref.endswith(self.candidate.branch) else BASE_SHA
+                return subprocess.CompletedProcess(args, 0, f"{sha}\t{ref}\n", "")
+            if Path(call[0]).name == "gh" and call[1:3] == ["pr", "list"]:
+                history_reads += 1
+                value = [] if history_reads == 1 else [exact_pr()]
+                return subprocess.CompletedProcess(args, 0, json.dumps(value) + "\n", "")
+            if Path(call[0]).name == "gh" and call[1:3] == ["pr", "create"]:
+                return subprocess.CompletedProcess(args, 0, exact_pr()["url"] + "\n", "")
+            raise AssertionError(f"unexpected command: {call}")
+
+        result = publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertEqual(result.number, 181)
+        self.assertGreaterEqual(history_reads, 2)
+        self.assertFalse(any(
+            Path(call[0]).name == "gh" and call[1:3] == ["pr", "create"]
+            for call in calls
+        ))
 
     def test_cross_repository_pr_is_never_accepted(self):
         fork_pr = exact_pr(
@@ -659,6 +829,7 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
         runner = QueueRunner([
             self.remote_feature(None),
             self.remote_base(),
+            response(stdout="[]\n"),
             self.remote_feature(None),
             self.remote_base("d" * 40),
         ])
@@ -1042,6 +1213,40 @@ class MutableKanban(FakeKanban):
         self.by_id[task_id] = SimpleNamespace(**{**vars(current), "status": "done", "result": kwargs["result"]})
         return True
 
+    def complete_trusted_publisher_authority(self, conn, **kwargs):
+        task_id = kwargs["task_id"]
+        current = self.by_id.get(task_id)
+        tracker = self.by_id.get(kwargs["expected_tracker_id"])
+        if (
+            current is None
+            or current.status != "blocked"
+            or current.block_kind != "capability"
+            or current.branch_name != kwargs["expected_branch_name"]
+            or current.workspace_path != kwargs["expected_workspace_path"]
+            or tracker is None
+            or tracker.status != kwargs["expected_tracker_status"]
+            or self.parent_ids(conn, kwargs["relation_task_id"])
+            != kwargs["expected_parent_ids"]
+        ):
+            return {"contract": "hermes.trusted_publisher.completion-cas.v1", "status": "conflict"}
+        self.complete_task(
+            conn,
+            task_id,
+            result=kwargs["result"],
+            summary=kwargs["summary"],
+            metadata=kwargs["metadata"],
+        )
+        return {
+            "contract": "hermes.trusted_publisher.completion-cas.v1",
+            "status": "completed",
+            "claim_id": kwargs["claim_id"],
+            "task_id": task_id,
+            "run_id": kwargs["expected_run_id"],
+            "branch": kwargs["expected_branch_name"],
+            "head_sha": kwargs["expected_head_sha"],
+            "tracker_id": kwargs["expected_tracker_id"],
+        }
+
 
 class TrustedPublisherLifecycleTests(unittest.TestCase):
     def setUp(self):
@@ -1191,6 +1396,54 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
             )
         self.assertEqual(kb.comments, [])
         self.assertEqual(kb.completions, [])
+
+    def test_final_authority_cas_rejects_concurrent_tracker_mutation(self):
+        class ConcurrentKanban(MutableKanban):
+            def complete_trusted_publisher_authority(self, _conn, **kwargs):
+                tracker = self.by_id[kwargs["expected_tracker_id"]]
+                self.by_id[tracker.id] = SimpleNamespace(
+                    **{**vars(tracker), "status": "done"}
+                )
+                return {
+                    "contract": "hermes.trusted_publisher.completion-cas.v1",
+                    "status": "conflict",
+                }
+
+        kb = ConcurrentKanban(
+            [task()],
+            {"t_example": exact_events(changed_paths=["src/example.js"])},
+            self.child,
+        )
+        rendered = [{
+            "kind": "create_child",
+            "task_id": "t_release",
+            "idempotency_key": "radulator-release:t_example:pr-181",
+        }]
+        seed = {
+            "idempotency_key": f"radulator-feedback:t_release:pr-181:{HEAD_SHA}",
+            "source_id": "t_example",
+            "task_id": "t_release",
+            "state": "feedback",
+            "pr": 181,
+            "head_sha": HEAD_SHA,
+        }
+        runner = QueueRunner([
+            self.labeled_pr_response(),
+            response(stdout="{}\n"),
+            response(stdout=json.dumps(rendered) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
+            response(stdout=json.dumps(seed) + "\n"),
+            self.labeled_pr_response(),
+            self.labeled_pr_response(),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherError, "authority CAS"):
+            publisher.complete_lifecycle_handoff(
+                self.candidate, self.pr, self.config, kb, object(), runner=runner
+            )
+
+        self.assertEqual(kb.completions, [])
+        self.assertEqual(kb.get_task(None, "t_example").status, "blocked")
 
     def test_malformed_or_mismatched_tracker_output_rejects(self):
         cases = [
@@ -1381,6 +1634,23 @@ class TrustedPublisherRunTests(unittest.TestCase):
         self.assertEqual(result, {"status": "idle"})
         local.assert_not_called()
 
+    def test_missing_authority_runtime_fails_closed_before_publication(self):
+        kb = FakeKanban(
+            [task()],
+            {"t_example": exact_events(changed_paths=["src/example.js"])},
+        )
+        kb.claim_trusted_publisher_authority = None
+        with mock.patch.object(publisher, "validate_local_candidate") as local, \
+             mock.patch.object(publisher, "ensure_remote_and_pr") as remote, \
+             mock.patch.object(publisher, "ensure_ready_label") as label:
+            result = publisher.run_once(self.config, kb, object())
+
+        self.assertEqual(result["status"], "pending_runtime")
+        self.assertRegex(result["reason"], "PENDING_HERMES_RUNTIME.*authority")
+        local.assert_not_called()
+        remote.assert_not_called()
+        label.assert_not_called()
+
     def test_pending_ci_preserves_blocked_task_without_lifecycle_handoff(self):
         kb = FakeKanban([task()], {"t_example": exact_events(changed_paths=["src/example.js"])})
         with mock.patch.object(publisher, "validate_local_candidate"), \
@@ -1411,6 +1681,14 @@ class TrustedPublisherRunTests(unittest.TestCase):
         })
         local.assert_called_once_with(self.candidate, self.config, runner=subprocess.run)
         handoff.assert_called_once()
+        self.assertEqual(len(kb.authority_claims), 1)
+        claim_request = kb.authority_claims[0]
+        self.assertEqual(claim_request["task_id"], self.candidate.task_id)
+        self.assertEqual(claim_request["expected_run_id"], self.candidate.run_id)
+        self.assertEqual(claim_request["expected_branch_name"], self.candidate.branch)
+        self.assertEqual(claim_request["expected_head_sha"], self.candidate.head_sha)
+        authority = handoff.call_args.kwargs["authority"]
+        self.assertEqual(authority["claim_id"], "publisher:t_example:17")
 
     def test_kernel_lock_has_single_owner_and_releases(self):
         with tempfile.TemporaryDirectory() as directory:
