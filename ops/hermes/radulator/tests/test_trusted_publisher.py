@@ -465,6 +465,7 @@ class TrustedPublisherGitAuthorityTests(unittest.TestCase):
     def test_rejects_git_execution_surfaces_before_first_git_command(self):
         for key, value in (
             ("core.fsmonitor", "/tmp/attacker-fsmonitor"),
+            ("core.alternateRefsCommand", "/tmp/attacker-alternate-refs"),
             ("diff.external", "/tmp/attacker-diff"),
         ):
             with self.subTest(key=key):
@@ -486,11 +487,58 @@ class TrustedPublisherGitAuthorityTests(unittest.TestCase):
                 finally:
                     self.git(self.workspace, "config", "--unset-all", key, check=False)
 
+    def test_replace_ref_cannot_forge_sealed_commit_parent(self):
+        base_tree = self.git(
+            self.workspace, "show", "-s", "--format=%T", self.base_sha
+        ).stdout.strip()
+        forged_base = subprocess.run(
+            ["git", "commit-tree", base_tree],
+            cwd=self.workspace,
+            input="forged base\n",
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        head_tree = self.git(
+            self.workspace, "show", "-s", "--format=%T", self.head_sha
+        ).stdout.strip()
+        forged_head = subprocess.run(
+            ["git", "commit-tree", head_tree, "-p", forged_base],
+            cwd=self.workspace,
+            input="forged head\n",
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        self.git(self.workspace, "replace", self.head_sha, forged_head)
+
+        replaced_parent = self.git(
+            self.workspace, "show", "-s", "--format=%P", self.head_sha
+        ).stdout.strip()
+        raw_parent = self.git(
+            self.workspace,
+            "--no-replace-objects",
+            "show",
+            "-s",
+            "--format=%P",
+            self.head_sha,
+        ).stdout.strip()
+        self.assertEqual(replaced_parent, forged_base)
+        self.assertEqual(raw_parent, self.base_sha)
+
+        forged_candidate = dataclasses.replace(self.candidate, base_sha=forged_base)
+        with self.assertRaisesRegex(publisher.PublisherError, "parent"):
+            publisher.validate_local_candidate(forged_candidate, self.config)
+        self.assertEqual(
+            publisher.validate_local_candidate(self.candidate, self.config),
+            self.candidate,
+        )
+
     def test_every_git_invocation_uses_fixed_execution_neutralizers(self):
         observed = []
 
         def runner(args, **kwargs):
-            observed.append(list(args))
+            observed.append((list(args), kwargs))
             return subprocess.run(args, **kwargs)
 
         publisher.validate_local_candidate(self.candidate, self.config, runner=runner)
@@ -509,9 +557,11 @@ class TrustedPublisherGitAuthorityTests(unittest.TestCase):
             "http.extraHeader=",
             "http.followRedirects=false",
         }
-        for command in observed:
+        for command, invocation in observed:
             with self.subTest(command=command):
                 self.assertEqual(command[0], publisher.GIT_BINARY)
+                self.assertIn("--no-replace-objects", command)
+                self.assertEqual(invocation["env"]["GIT_NO_REPLACE_OBJECTS"], "1")
                 configured = {
                     command[index + 1]
                     for index, part in enumerate(command[:-1])

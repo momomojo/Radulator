@@ -361,6 +361,7 @@ def _minimal_env() -> dict[str, str]:
         "GIT_ASKPASS": "/dev/null",
         "SSH_ASKPASS": "/dev/null",
         "GIT_ATTR_NOSYSTEM": "1",
+        "GIT_NO_REPLACE_OBJECTS": "1",
         "GIT_CONFIG_COUNT": "0",
         "GIT_CONFIG_GLOBAL": "/dev/null",
         "GIT_CONFIG_NOSYSTEM": "1",
@@ -403,6 +404,7 @@ def _git(
         [
             GIT_BINARY,
             "--no-optional-locks",
+            "--no-replace-objects",
             "-c",
             "core.hooksPath=/dev/null",
             "-c",
@@ -500,6 +502,7 @@ def _unsafe_git_config_names(text: str, label: str) -> list[str]:
     exact_keys = {
         "core.hookspath",
         "core.fsmonitor",
+        "core.alternaterefscommand",
         "core.askpass",
         "core.sshcommand",
         "core.gitproxy",
