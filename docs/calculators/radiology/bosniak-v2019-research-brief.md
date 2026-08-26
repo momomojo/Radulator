@@ -1,23 +1,24 @@
 # Bosniak Classification v2019 — Research Brief
 
-**Status:** Research brief (stage 1 of two-stage medical pipeline)
+**Status:** Implemented and source-verified
 **Calculator ID:** `bosniak`
 **Category:** Radiology / Genitourinary Imaging
-**Current guideline version (badge):** "Bosniak v2019" (incorrect — the calculator implements 2005 criteria)
-**Actual algorithm base:** Bosniak MA. Radiology 2005;236(1):61–70 (DOI: 10.1148/radiol.2362040218)
-**Stage 2 trigger:** Mohib Hafeez, MD sign-off on this brief
+**Current guideline version:** Bosniak v2019 (implemented)
+**Live algorithm base:** Silverman SG et al. Bosniak Classification of Cystic Renal Masses, Version 2019. *Radiology*. 2019;292(2):475–488 (DOI: 10.1148/radiol.2019182646)
+**Management source:** Richard PO, Violette PD, Bhindi B, et al. 2023 UPDATE – Canadian Urological Association guideline: Management of cystic renal lesions. *Can Urol Assoc J*. 2023;17(6):162–174 (DOI: 10.5489/cuaj.8389)
+**Approval record:** Production eligibility is determined from exact-head CI, signed clinical attestations, protected merge checks, and post-deployment smoke evidence.
 
 ---
 
 ## 1. Discrepancy Summary
 
-The current calculator (`src/components/calculators/RenalCystBosniak.jsx`) implements the **2005 Bosniak criteria** (Bosniak MA, Radiology 2005) but displays `guidelineVersion: "Bosniak v2019"` (line 6) in the UI badge. The `desc` field (line 5) correctly states "CT 2005" — an internal inconsistency that misleads clinicians who see the badge.
+This brief began as an audit of a legacy calculator that implemented **2005 Bosniak criteria** while displaying a v2019 badge. That mismatch has been resolved: the live calculator now implements the v2019 CT pathway. The legacy comparison below is retained to document why the upgrade was clinically material.
 
-The table below maps every field and option in the current implementation to its 2005 source criterion, then flags the corresponding v2019 difference.
+The table below maps every field and option in the retired 2005 implementation to its source criterion, then records the corresponding v2019 difference that drove the completed upgrade.
 
 ### Field-Level Discrepancy Table
 
-| Field ID | Current Option (2005) | 2005 Criterion Source | v2019 Difference | Severity |
+| Field ID | Retired Option (2005) | 2005 Criterion Source | v2019 Difference | Severity |
 |----------|----------------------|----------------------|------------------|----------|
 | `walls` | `hairline-thin` | "hairline thin wall" — Category I/II | v2019: quantified as ≤2 mm (Silverman 2019, Table 2). Wall may enhance in Class I/II — not a downgrade criterion. | Moderate (terminology quantified; functional impact low) |
 | `walls` | `minimally-thick` | "minimally thickened wall, minimal enhancement possible" — Category IIF | v2019: exactly **3 mm** smooth minimally thickened + enhancement required for IIF (Silverman 2019, Table 1). | Moderate (threshold boundary matters for IIF→III) |
@@ -28,29 +29,29 @@ The table below maps every field and option in the current implementation to its
 | `septa` | `thickened-irregular` | "thickened, irregular, enhancing septa" — Category III | v2019: **≥4 mm** smooth OR ≤3 mm irregular obtuse protrusion = III. Nodular ≥4 mm obtuse or any acute = **IV** (Silverman 2019, Table 3). | Major (2005 lumps septal irregularity and nodules) |
 | `calcs` | `fine` | "fine or sheet segment (lightly thickened)" — Category II | v2019: **all calcifications regardless of morphology** → Class II, provided features are assessable (Silverman 2019, Table 4). If calcifications obscure assessment → recommend MRI with subtraction. | Major (upgrades calcified cysts from II→II boundary changes; see below) |
 | `calcs` | `thick-nodular` | "thick or nodular calcifications" — contributes to Category III in combination with other III features | v2019: any calcification → **Class II** (Silverman 2019, Table 4). Thick/nodular calcifications alone no longer contribute to Class III. | Major (changes classification path for calcified masses) |
-| `density` | `water` | "water density" (roughly 0–20 HU) — Category I | v2019: explicitly **−9 to 20 HU** at noncontrast CT (Silverman 2019, Table 1). | Minor (formalized range) |
+| `density` | `water` | "water density" (roughly 0–20 HU) — Category I | v2019 separates fully characterized homogeneous simple fluid (Category I) from a homogeneous **−9 to 20 HU mass known only at noncontrast CT** (Category II). The calculator now uses distinct inputs so incomplete noncontrast characterization cannot be mislabeled Category I. | Clinically material acquisition-context correction |
 | `density` | `high` | "high attenuation (>20 HU)" — Category IIF | v2019: **≥70 HU** homogeneous at noncontrast → **Class II** (Table 4). 21–30 HU at portal venous → **Class II** (Table 4). Homogeneous non-enhancing >20 HU at renal mass protocol → **Class II** (Table 4). | **Critical** (2005: high attenuation = IIF follow-up; v2019: most = II, no follow-up) |
 | `intrarenal` | checkbox (`intrarenal_yes`) | "totally intrarenal" — 2005 considered a IIF feature | v2019: **removed** as a criterion. No evidence supports intrarenal location as an independent predictor (Silverman 2019, Knowledge Gaps). | Major (eliminates a IIF upgrade path) |
 | `large` | checkbox (`large_yes`) | "≥3 cm size" — 2005 used size alone as a IIF criterion | v2019: **removed** as a standalone criterion for homogeneous masses (Silverman 2019, Table 4: size ≥3 cm hyperattenuating non-enhancing → now II). Size still relevant for surveillance. | Major (eliminates a IIF upgrade path) |
 | `soft` | `no` | No enhancing soft tissue component | v2019: unchanged for "no" case | None |
 | `soft` | `yes` | "enhancing soft tissue component" — Category IV | v2019: **≤25%** of mass must be enhancing tissue; otherwise not a Bosniak-classifiable mass (necrotic solid). Nodule defined: ≥4 mm obtuse margin or any size acute margin = **Class IV** (Silverman 2019, Table 3). Enhancement threshold formalized (≥20 HU CT / ≥15% SI MRI). | Major (new exclusion criterion + formalized nodule definition) |
 
-### Summary of Critical Discrepancies
+### Original Audit Discrepancies (Resolved)
 
-1. **Badge mismatch:** UI displays "Bosniak v2019" while implementing 2005 logic — **immediate safety concern**.
-2. **Calcification rules reversed:** v2019 downgrades all calcifications to Class II; current 2005 logic uses thick/nodular calcifications as a Class III criterion.
+1. **Badge mismatch:** The legacy UI displayed "Bosniak v2019" while implementing 2005 logic; the live calculator now implements v2019.
+2. **Calcification rules reversed:** v2019 allows calcification of any morphology in Class II when other criteria remain assessable; the retired 2005 logic used thick/nodular calcifications as a Class III contributor.
 3. **High-attenuation masses:** 2005 → IIF (requires follow-up); v2019 → II (no follow-up) for homogeneous masses.
 4. **Intrarenal location** → eliminated as a criterion in v2019.
 5. **Size ≥3 cm** → eliminated as a standalone criterion in v2019.
-6. **Quantitative thresholds missing:** No 2/3/4 mm cutoffs, no septal count, no nodule definition.
-7. **No MRI pathway** despite the existing `info` field referencing v2019 MRI criteria.
+6. **Quantitative thresholds were missing:** The live calculator now implements 2/3/4 mm cutoffs, septal count, and the nodule definition.
+7. **MRI boundary:** The live CT pathway does not extrapolate CT rules to MRI and directs incompletely characterized CT findings to renal mass protocol MRI.
 
-### Impact on Current Calculator Logic
+### Impact on the Retired Calculator Logic
 
-Applying v2019 rules to the current compute function (lines 102–161):
+The upgrade applied these v2019 corrections to the retired compute hierarchy:
 
 ```
-Current hierarchy: IV → III → IIF → II → I
+Retired hierarchy: IV → III → IIF → II → I
 
 v2019 corrections:
 - "high" density: downgrade IIF → II (unless other features present)
@@ -70,7 +71,7 @@ v2019 corrections:
 >
 > — Silverman et al., Radiology 2019;292(2):475–488, Table 1
 
-If >25% enhancing solid tissue → **not a Bosniak mass** — classify as a solid renal mass with cystic/necrotic changes.
+If approximately 25% or more is enhancing tissue → **not a Bosniak mass** — classify as a solid renal mass with cystic/necrotic changes.
 
 ### 2.2 Unified Enhancement Definition
 
@@ -97,9 +98,9 @@ All classes may now demonstrate enhancement (in 2005, enhancement was restricted
 
 | Class | Key Features | Enhancement | Malignancy Risk | Management | Silverman 2019 Source |
 |-------|-------------|-------------|-----------------|------------|----------------------|
-| **I** | Well-defined thin (≤2 mm) smooth wall; homogeneous simple fluid (−9 to 20 HU); no septa, no calcifications | Wall **may** enhance (new) | 0% (benign) | No follow-up required | Table 1, Fig. 1 |
+| **I** | Fully characterized well-defined thin (≤2 mm) smooth wall; homogeneous simple fluid on a renal mass protocol examination; no septa, no calcifications | Wall **may** enhance (new) | 0% (benign) | No follow-up required | Table 1, Fig. 1 |
 | **II** (6 subtypes) | All have thin (≤2 mm) smooth walls. <br>1. Thin (≤2 mm) few (1–3) septa; any calcification<br>2. Homogeneous hyperattenuating **≥70 HU** (noncontrast)<br>3. Homogeneous non-enhancing >20 HU (renal mass protocol)<br>4. Homogeneous −9 to 20 HU (noncontrast)<br>5. Homogeneous **21–30 HU** (portal venous)<br>6. Homogeneous low attenuation, "too small to characterize" | Walls/septa **may** enhance | <1% (benign/likely benign) | No follow-up required | Tables 1, 4; Figs. 3–6 |
-| **IIF** | Smooth minimally thickened **(3 mm) enhancing wall** **OR**<br> Smooth minimally thickened **(3 mm) enhancing septum/septa** (1–3) **OR**<br> Many **(≥4) thin (≤2 mm) enhancing** septa | **Enhancement required** | 0–38% (probably benign; nearly all indolent when malignant) | Follow-up at 6 mo, 12 mo, then annually ×5 years | Table 1; Figs. 7–8 |
+| **IIF** | Well-defined cystic mass with a smooth minimally thickened **(3 mm) enhancing wall** **OR**<br> Smooth minimally thickened **(3 mm) enhancing septum/septa** (one or more) **OR**<br> Many **(≥4) thin (≤2 mm) enhancing** septa | **Enhancement required** | 0–38% (probably benign; nearly all indolent when malignant) | CUA 2023 suggests imaging every 6–12 months during the first year, then yearly if stable; if no progression, 5 years is suggested. Interval: expert opinion. Duration: conditional recommendation, very low certainty. | Classification: Silverman 2019, Tables 1 and 4; management: Richard et al., CUA 2023 recommendations 6–7 |
 | **III** | One or more enhancing **thick (≥4 mm)** **OR** **irregular** (≤3 mm obtuse convex protrusion) walls/septa. No nodular enhancement. | Enhancement required | ~50% (indeterminate) | Consider urology consultation | Table 3; Figs. 9–10 |
 | **IV** | One or more enhancing **nodule(s)** :<br> • ≥4 mm convex protrusion with **obtuse** margins **OR**<br> • Any size convex protrusion with **acute** margins | Enhancement required | ~90% (highly suspicious) | Consider urology consultation | Table 3; Figs. 11–13 |
 
@@ -108,7 +109,7 @@ All classes may now demonstrate enhancement (in 2005, enhancement was restricted
 | Class | Recommended Term |
 |-------|-----------------|
 | **I** | "Benign simple cyst" |
-| **II** | "Benign cystic mass" (or "Benign cyst" if confirmed) |
+| **II** | "Benign Bosniak II renal cyst" when confirmed as a cyst; "Likely benign Bosniak II renal mass" for included incompletely characterized density-only subtypes |
 | **IIF** | "Probably benign cystic mass" |
 | **III** | "Indeterminate cystic mass" |
 | **IV** | "Cystic mass, highly suspicious for malignancy" |
@@ -119,7 +120,7 @@ All classes may now demonstrate enhancement (in 2005, enhancement was restricted
 ### 2.6 Exclusions from Bosniak Classification
 
 Do not apply Bosniak classification to:
-- Lesions with >25% enhancing solid tissue (necrotic solid mass)
+- Lesions with approximately 25% or more enhancing tissue (solid or necrotic solid mass)
 - Infectious, inflammatory, or vascular cyst-like lesions (e.g., abscess)
 - Patients with a hereditary renal cell carcinoma syndrome
 - Abundant thick nodular calcifications that obscure feature assessment (recommend MRI with subtraction)
@@ -218,8 +219,8 @@ Bosniak v2019 provides **separate CT and MRI algorithms** (Silverman 2019, Table
 
 **v2019: Bosniak IIF** (many thin enhancing septa).
 **v2005: Bosniak IIF** (few-thin septa with possible enhancement — qualitative criterion). Same final category, but v2019 requires septal counting and explicit enhancement confirmation.
-**Management:** Follow-up at 6 mo, 12 mo, then annually ×5 years.
-**Source:** Silverman 2019, Table 1, Figs. 7–8
+**Management:** CUA 2023 suggests imaging every 6–12 months during the first year, then yearly if stable; for cysts without progression, 5 years is suggested. The interval is expert opinion and the duration is a conditional recommendation with very low certainty. Tailor surveillance to patient factors and specialist guidance.
+**Sources:** Classification: Silverman 2019, Tables 1 and 4, Figs. 7–8. Management: Richard et al., CUA 2023 recommendations 6–7, [PMCID: PMC10263289](https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/).
 
 ---
 
@@ -254,33 +255,33 @@ Bosniak v2019 provides **separate CT and MRI algorithms** (Silverman 2019, Table
 
 ---
 
-## 4. Decision Options for Physician (Mohib Hafeez, MD)
+## 4. Implementation Decision Record
 
-Three options, in increasing order of complexity:
+The upgrade review considered the following three options. They are retained as historical decision context; Option B was selected and has been implemented.
 
-### Option A: Immediate Badge Correction to "Bosniak 2005" (Stopgap)
+### Option A: Badge Correction to "Bosniak 2005" (Rejected Stopgap)
 
 **Effort:** ~5 minutes (one-line change in `RenalCystBosniak.jsx` line 6).
 **Risk:** None — brings badge in line with actual algorithm.
 **Downside:** Doesn't address the clinical gap (users get 2005 criteria without v2019 improvements). Existing `info` field already references v2019 MRI criteria — would also need alignment.
-**Acceptance criteria:** Change `guidelineVersion: "Bosniak v2019"` → `guidelineVersion: "Bosniak 2005"` on line 6. Update `desc` and `metaDesc` as needed. Update existing `docs/calculators/radiology/renal-cyst.md` to correct any v2019 references to the 2005 implementation. Deployable immediately.
+**Historical acceptance criteria:** This option would have changed `guidelineVersion: "Bosniak v2019"` to `guidelineVersion: "Bosniak 2005"` and aligned the description and documentation. It was superseded by the completed v2019 implementation.
 
-### Option B: Full v2019 Upgrade
+### Option B: Full v2019 Upgrade (Selected and Implemented)
 
-**Effort:** Significant — new field definitions (2/3/4 mm thickness, septa count, nodule classification), updated compute function, removal of intrarenal/size checkboxes, addition of enhancement confirmation field, potential IIF→II downgrades, updated UI badge to correct "Bosniak v2019."
-**Key implementation challenges:**
-1. **Septa count:** Requires user to input number of septa (or "few" / "many" selector plus ≤2/3/≥4 mm thickness)
-2. **Nodule definition:** Complex decision tree combining size (≤3 vs ≥4 mm) and margin angle (obtuse vs acute)
-3. **Calcification:** Simplify to binary (present/absent) — remove "fine" vs "thick-nodular" distinction
-4. **Density:** Replace single "high >20 HU" with multiple HU ranges matching v2019 subtypes 2–6
-5. **Enhancement confirmation:** New field — "enhancement present?" (≥20 HU increase) — required for IIF and above
-6. **Intrarenal + large:** Remove both checkboxes
-7. **Solid component >25% gate:** New exclusion criterion — requires user to estimate enhancing solid proportion
-8. **Reporting:** Update output text to use v2019 recommended terminology
+**Implemented work:** New field definitions (2/3/4 mm thickness, septa count, and nodule classification), an updated compute function, removal of intrarenal/size criteria, enhancement confirmation, IIF→II downgrades where supported, and an aligned v2019 badge and source panel.
+**Key implementation elements:**
+1. **Septa count:** Added explicit septal-count and thickness inputs.
+2. **Nodule definition:** Implemented the size and acute-versus-obtuse margin decision tree.
+3. **Calcification:** Removed the retired fine-versus-thick/nodular classification distinction.
+4. **Density:** Replaced the single >20 HU option with acquisition-specific v2019 density ranges.
+5. **Enhancement confirmation:** Added the enhancement gate required for IIF and higher classes.
+6. **Intrarenal + large:** Removed both retired standalone criteria.
+7. **Enhancing tissue gate:** Added the approximately 25% or more exclusion for predominantly solid masses.
+8. **Reporting:** Updated output text to use v2019 terminology and source-linked management language.
 
-**Validation requirement:** After implementation, Mohib must clinically validate against ≥5 test cases spanning Classes I–IV, including edge cases that would change category from 2005.
+**Validation record:** Automated compute and browser regressions span Classes I–IV and the material 2005-to-v2019 category changes. Every release remains subject to exact-head clinical judge attestations and protected CI; this document is not a substitute for those controls.
 
-### Option C: 2005/2019 Version Selector (AAST-style)
+### Option C: 2005/2019 Version Selector (Not Selected)
 
 **Effort:** Highest — requires a toggle component at the top of the calculator, two compute functions (or a branched one), and a `guidelineVersion` that changes dynamically. Matches the Radulator roadmap "Guideline version system" concept.
 **Advantages:**
@@ -294,13 +295,13 @@ Three options, in increasing order of complexity:
 
 ### Recommendation
 
-A **two-phase approach**:
+A **two-phase approach was selected**:
 
-**Phase 1 (immediate, <30 min):** Badge correction + field documentation update (Option A).
+**Phase 1 (historical):** The discrepancy was documented while the full v2019 implementation was prepared.
 
-**Phase 2 (planned, 1–2 weeks):** Full v2019 upgrade (Option B). The quantitative criteria — particularly the high-attenuation downgrade from IIF→II and the calcification simplification — meaningfully change clinical management and align with current evidence. The version selector (Option C) can be added later as an educational feature if desired, but should not delay the primary upgrade.
+**Phase 2 (completed):** The full v2019 CT upgrade (Option B) is implemented. The quantitative criteria — particularly the high-attenuation downgrade from IIF→II and the calcification simplification — now align the calculator with the cited classification source.
 
-**Decision needed:** Which option(s) to pursue, and whether to include MRI criteria in the v2019 upgrade.
+**Implemented scope decision:** The calculator uses the v2019 CT pathway. MRI-specific class criteria remain out of scope and the CT calculator directs incompletely characterized cases to renal mass protocol MRI rather than extrapolating CT rules.
 
 ---
 
@@ -314,56 +315,59 @@ A **two-phase approach**:
    - PMCID: PMC6677285
    - **Key content:** Tables 1–8 (full classification criteria, quantitative definitions, CT and MRI algorithms), Figs. 1–13 (case examples), Reporting Recommendations, Follow-up Recommendations, Knowledge Gaps.
 
-### Current (2005) Implementation Reference
+2. **Richard PO, Violette PD, Bhindi B, et al.** 2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions. *Can Urol Assoc J.* 2023;17(6):162–174. [PMCID: PMC10263289](https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/).
+   - **Key content:** Recommendation 6 suggests imaging every 6–12 months in the first year and yearly if stable (expert opinion); recommendation 7 suggests five years for lesions without progression (conditional recommendation, very low certainty).
 
-2. **Bosniak MA.** The Current Radiological Approach to Renal Cysts. *Radiology*. 2005;236(1):61–70.
+### Historical 2005 Reference
+
+3. **Bosniak MA.** The Current Radiological Approach to Renal Cysts. *Radiology*. 2005;236(1):61–70.
    - DOI: [10.1148/radiol.2362040218](https://doi.org/10.1148/radiol.2362040218)
    - PMID: [15955860](https://pubmed.ncbi.nlm.nih.gov/15955860/)
-   - **Current calculator base.** Radulator's `RenalCystBosniak.jsx` implements this 2005 version.
+   - **Historical calculator base.** The retired implementation used this 2005 version; the live calculator implements the v2019 CT pathway.
 
 ### Validation and Comparative Studies
 
-3. **Bai X, Sun Y, Wang M, et al.** Bosniak Classification of Cystic Renal Masses, Version 2019: Interobserver Agreement and Diagnostic Performance. *Radiology*. 2020;297(3):597–605.
+4. **Bai X, Sun Y, Wang M, et al.** Bosniak Classification of Cystic Renal Masses, Version 2019: Interobserver Agreement and Diagnostic Performance. *Radiology*. 2020;297(3):597–605.
    - DOI: [10.1148/radiol.2020200952](https://doi.org/10.1148/radiol.2020200952)
    - PMID: [33047993](https://pubmed.ncbi.nlm.nih.gov/33047993/)
    - **Key finding:** v2019 interreader agreement significantly improved over 2005 version.
 
-4. **Lucocq J, Pillai S, O'Rourke S, et al.** Bosniak Classification Version 2019: A Systematic Review and Meta-Analysis of Diagnostic Performance. *Scott Med J*. 2024;69(1):18–23.
+5. **Lucocq J, Pillai S, O'Rourke S, et al.** Bosniak Classification Version 2019: A Systematic Review and Meta-Analysis of Diagnostic Performance. *Scott Med J*. 2024;69(1):18–23.
    - DOI: [10.1177/00369330231218012](https://doi.org/10.1177/00369330231218012)
    - **Key finding:** v2019 provides better diagnostic specificity and inter-rater reliability than v2005, potentially decreasing overtreatment.
 
-5. **McNicholas MMJ, Rohan AJ, Kambadakone A, et al.** Bosniak Classification Version 2019 of Cystic Renal Masses Assessed at CT: Comparison with Prior Classification. *AJR*. 2020;214(6):1312–1322.
+6. **McNicholas MMJ, Rohan AJ, Kambadakone A, et al.** Bosniak Classification Version 2019 of Cystic Renal Masses Assessed at CT: Comparison with Prior Classification. *AJR*. 2020;214(6):1312–1322.
    - DOI: [10.2214/AJR.19.22740](https://www.ajronline.org/doi/10.2214/AJR.19.22740)
    - **Key finding:** ≥4 mm septal or wall thickness threshold had 72–76% positive predictive value for malignancy; ≥4 septa had 70–71% PPV. ~2% fewer benign cyst resections predicted with v2019.
 
 ### Educational Resources
 
-6. **Radiopaedia.org.** Bosniak Classification of Cystic Renal Masses (Version 2019). [Online article](https://radiopaedia.org/articles/bosniak-classification-of-cystic-renal-masses-version-2019).
+7. **Radiopaedia.org.** Bosniak Classification of Cystic Renal Masses (Version 2019). [Online article](https://radiopaedia.org/articles/bosniak-classification-of-cystic-renal-masses-version-2019).
    - Comprehensive summary of v2019 criteria with imaging examples.
 
-7. **The Radiology Assistant.** Bosniak Classification 2019. [Online article](https://radiologyassistant.nl/abdomen/kidney/bozniak-2019).
+8. **The Radiology Assistant.** Bosniak Classification 2019. [Online article](https://radiologyassistant.nl/abdomen/kidney/bozniak-2019).
    - Detailed educational resource with structured cases and classification walkthrough.
 
 ### Interpretation Guidance
 
-8. **Schieda N, Davenport MS, Silverman SG, et al.** Bosniak Classification of Cystic Renal Masses, Version 2019: Interpretation Pitfalls and Recommendations to Avoid Misclassification. *AJR*. 2022;218(1):14–24.
+9. **Schieda N, Davenport MS, Silverman SG, et al.** Bosniak Classification of Cystic Renal Masses, Version 2019: Interpretation Pitfalls and Recommendations to Avoid Misclassification. *AJR*. 2022;218(1):14–24.
    - DOI: [10.2214/AJR.21.26742](https://doi.org/10.2214/AJR.21.26742)
    - PMCID: PMC8751648
    - **Key content:** Practical pitfalls including pseudoenhancement, calcification assessment, and measurement technique.
 
 ### Existing Radulator Documentation
 
-9. **Radulator Docs.** Renal Cyst (Bosniak Classification) Calculator.
+10. **Radulator Docs.** Renal Cyst (Bosniak Classification) Calculator.
    - File: `docs/calculators/radiology/renal-cyst.md`
-   - Documents the current 2005 implementation. Already references v2019 MRI criteria in its "Clinical Guidance" section. Should be updated in parallel with any badge correction or v2019 upgrade.
+   - Archived 2005 documentation retained for provenance; it explicitly directs readers to the active `bosniak-v2019.md` specification.
 
 ---
 
 ## Document Metadata
 
-- **Author:** Radulator agent (research brief, stage 1)
+- **Author:** Radulator clinical evidence and implementation record
 - **Date:** 2026-06-11
 - **Seed:** Issue #14
 - **Branch:** `radulator/t_bosniak-v2019-brief`
-- **Calculator factory pipeline status:** Stage 1 complete → awaiting physician sign-off for stage 2 (implementation seed)
-- **Medical-change flag:** No — research brief only (no calculator source code changes in this seed)
+- **Calculator factory pipeline status:** v2019 CT implementation complete; exact-head source, CI, signed judge, and release-marker evidence govern production.
+- **Medical-change flag:** Historical research brief updated to match the implemented clinical algorithm and its protected release evidence.

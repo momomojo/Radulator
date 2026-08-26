@@ -156,6 +156,18 @@ export function resolveRequiredCi({ pr, workflowRuns, checkRuns, requiredCi, exp
   }
 
   const evidence = [];
+  const evidenceRecord = (check) => ({
+    name: check.name,
+    app_id: check.app.id,
+    check_run_id: check.id,
+    check_suite_id: run.check_suite_id,
+    workflow_id: run.workflow_id,
+    workflow_run_id: run.id,
+    run_attempt: run.run_attempt,
+    head_sha: check.head_sha,
+    conclusion: check.conclusion,
+    completed_at: check.completed_at,
+  });
   for (const name of requiredCi) {
     const matches = (checkRuns || []).filter((check) => check.check_suite?.id === run.check_suite_id && check.name === name);
     if (matches.length !== 1) {
@@ -172,19 +184,26 @@ export function resolveRequiredCi({ pr, workflowRuns, checkRuns, requiredCi, exp
       check.conclusion !== "success" ||
       !timestamp(check.completed_at)
     ) return { ok: false, summary: `Required CI ${name} is not an exact completed success.`, evidence: [] };
-    evidence.push({
-      name,
-      app_id: check.app.id,
-      check_run_id: check.id,
-      check_suite_id: run.check_suite_id,
-      workflow_id: run.workflow_id,
-      workflow_run_id: run.id,
-      run_attempt: run.run_attempt,
-      head_sha: check.head_sha,
-      conclusion: check.conclusion,
-      completed_at: check.completed_at,
-    });
+    evidence.push(evidenceRecord(check));
   }
+
+  // Additional jobs from the same authenticated exact E2E run are review
+  // context, not quorum inputs. Keeping them outside `evidence` preserves the
+  // base policy digest while letting judges verify focused test/audit lanes.
+  const requiredNames = new Set(requiredCi);
+  const supplementalEvidence = (checkRuns || [])
+    .filter((check) =>
+      check.check_suite?.id === run.check_suite_id &&
+      !requiredNames.has(check.name) &&
+      typeof check.name === "string" && check.name &&
+      check.app?.id === expectedCiAppId && check.app?.slug === "github-actions" &&
+      positiveInteger(check.id) &&
+      check.head_sha === pr.headSha &&
+      check.status === "completed" &&
+      check.conclusion === "success" &&
+      timestamp(check.completed_at))
+    .sort((left, right) => left.name.localeCompare(right.name) || left.id - right.id)
+    .map(evidenceRecord);
 
   return {
     ok: true,
@@ -192,6 +211,7 @@ export function resolveRequiredCi({ pr, workflowRuns, checkRuns, requiredCi, exp
     workflowRunId: run.id,
     runAttempt: run.run_attempt,
     evidence,
+    supplementalEvidence,
   };
 }
 
@@ -358,7 +378,11 @@ export async function githubRequest(token, path, options = {}) {
       ...options.headers,
     },
   });
-  if (!response.ok) throw new Error(`${options.method || "GET"} ${path} failed: ${response.status} ${await response.text()}`);
+  if (!response.ok) {
+    const error = new Error(`${options.method || "GET"} ${path} failed: ${response.status} ${await response.text()}`);
+    error.status = response.status;
+    throw error;
+  }
   return response.status === 204 ? null : response.json();
 }
 

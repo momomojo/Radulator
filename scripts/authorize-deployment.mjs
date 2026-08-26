@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { githubRequest, paged } from "./independent-review-gate.mjs";
 import { pagesDeploymentSucceeded, selectLastGoodDeployment } from "./select-rollback-deployment.mjs";
+import { DEPLOY_WORKFLOW_PATH, isTrustedDeploymentRun } from "./deployment-run-identity.mjs";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 
@@ -45,18 +46,23 @@ export async function authorizeDeployment({ eventName, event, api }) {
         !Number.isSafeInteger(failedRunId) || failedRunId <= 0 ||
         !Number.isSafeInteger(payload.sourceRunId) || payload.sourceRunId <= 0
       ) return blocked("ROLLBACK_EVIDENCE_REQUIRED", "Rollback dispatch evidence is missing or malformed.");
-      const [failedRun, failedJobs, completedRuns] = await Promise.all([
+      const [deployWorkflow, failedRun, failedJobs, completedRuns] = await Promise.all([
+        api.getDeployWorkflow(),
         api.getRun(failedRunId),
         api.getRunJobs(failedRunId),
         api.listCompletedDeployRuns(),
       ]);
-      const selected = selectLastGoodDeployment(failedRun, completedRuns, failedJobs);
+      if (
+        !Number.isSafeInteger(deployWorkflow?.id) || deployWorkflow.id <= 0 ||
+        deployWorkflow.path !== DEPLOY_WORKFLOW_PATH
+      ) return blocked("DEPLOY_WORKFLOW_IDENTITY_MISMATCH", "Trusted deployment workflow identity is unavailable.");
+      const selected = selectLastGoodDeployment(failedRun, completedRuns, failedJobs, deployWorkflow.id);
       if (
         !selected || selected.failedRunId !== failedRunId || selected.ref !== payload.ref ||
         selected.sourceRunId !== payload.sourceRunId
       ) return blocked("ROLLBACK_SELECTION_MISMATCH", "Requested rollback ref is not the independently selected last-known-good deployment.");
       const laterRuns = completedRuns.filter((run) =>
-        run?.name === "Deploy to GitHub Pages" && run.head_branch === "main" &&
+        isTrustedDeploymentRun(run, deployWorkflow.id) && run.head_branch === "main" &&
         Number.isSafeInteger(run.id) && run.id > failedRunId);
       const laterJobs = await Promise.all(laterRuns.map((run) => api.getRunJobs(run.id)));
       if (laterJobs.some((jobs) => pagesDeploymentSucceeded(jobs))) {
@@ -80,6 +86,7 @@ function defaultApi(env) {
   return {
     getMainRef: () => githubRequest(token, `/repos/${repository}/git/ref/heads/main`),
     getPr: (number) => githubRequest(token, `/repos/${repository}/pulls/${number}`),
+    getDeployWorkflow: () => githubRequest(token, `/repos/${repository}/actions/workflows/deploy.yml`),
     getRun: (id) => githubRequest(token, `/repos/${repository}/actions/runs/${id}`),
     getRunJobs: (id) => paged(token, `/repos/${repository}/actions/runs/${id}/jobs`, "jobs"),
     listCompletedDeployRuns: () => paged(
