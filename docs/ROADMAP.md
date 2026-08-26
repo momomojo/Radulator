@@ -1,6 +1,6 @@
 # Radulator Roadmap
 
-> Public, milestone-level roadmap. Last updated 2026-08-24. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
+> Public, milestone-level roadmap. Last updated 2026-08-26. Sequencing may shift; no dates are commitments. Business/legal workstreams are tracked privately by the maintainer.
 
 ## Where we are
 
@@ -17,7 +17,9 @@ An automated, risk-tiered clinical release pipeline now gates and promotes work 
 
 ## Phase 2 — Differentiate
 
-- **Guideline currency**: standing review of guideline revisions against what each calculator implements; items under clinical review: Bosniak v2019 alignment, LI-RADS CT/MRI treatment-response v2024 (new calculator candidate), MELD 3.0 (current OPTN adult liver-allocation standard since 2023; supersedes the MELD-Na the calculator implements today), NI-RADS MRI v2025 (ACR extended NI-RADS to MRI surveillance with modality-specific descriptors and management; the calculator implements the 2018 CT/PET-CT system only), BI-RADS v2025 (ACR's 6th-edition manual, released Dec. 1, 2025 and cited as 2025, updates the lexicon/descriptors and outcomes-audit standards across mammography, ultrasound, and MRI; the calculator implements the 5th edition), PE-RADS v2026 (ACR's acute-PE reporting system for CT/MR angiography, published July 2026; a new-calculator candidate and imaging-report companion to the existing Wells PE clinical score)
+- **Guideline currency**: standing review of guideline revisions against what each calculator implements. The [guideline/source registry](../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json) is the authoritative per-calculator record; a verified row is limited to its cited claims and executable evidence, while other rows remain seed-unverified.
+  - **Implemented and source-verified**: Bosniak version 2019 CT classification; MELD 3.0 (OPTN Policy 9.1.D); and FDA MQSA 2024 with ACR BI-RADS v2025 context for the mammography assessment guide. The BI-RADS entry does not claim full implementation of every 6th-edition mammography, ultrasound, and MRI descriptor or workflow.
+  - **Queued for authoritative review or future implementation**: LI-RADS CT/MRI treatment-response v2024 (new calculator candidate; the current LI-RADS v2018 row remains seed-unverified), NI-RADS MRI v2025 (the current ACR NI-RADS 2018 row remains seed-unverified), and PE-RADS v2026 (a new-calculator candidate and imaging-report companion to the existing Wells PE clinical score).
 - **Suite completeness**: finish each specialty's daily-work calculation set before scattering across specialties — a clinician who arrives for one calculation should find their whole working set here. First target: the cardiac-CT suite (CAD-RADS is live; coronary-artery-calcium / Agatston scoring with age/sex/ethnicity percentile is the missing daily-work companion)
 - **Guideline version system**: generalize the AAST-style version selector into a first-class architecture, so calculators can offer current and prior guideline versions side by side (initial targets: Fleischner, CAD-RADS, PI-RADS; then Bosniak, LI-RADS, Milan)
 - **Guided mode**: an optional "walk me through it" flow per calculator, with skill-level preferences for residents and students
