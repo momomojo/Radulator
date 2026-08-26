@@ -1167,6 +1167,35 @@ def _capture_backup(plan: dict[str, Any]) -> None:
     _require_protected_file(destination, "Backup manifest")
 
 
+def _capture_job_backup_prefix(plan: dict[str, Any]) -> None:
+    """Persist the original job files before a safety quiesce on a fresh install."""
+    destination = _backup_path(plan)
+    _require_safe_target(destination, plan, may_be_missing=True)
+    try:
+        destination.lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        return
+
+    targets = _backup_targets(plan)
+    job_target_ids = (
+        "primary:cron/jobs.json",
+        "verification:cron/jobs.json",
+    )
+    entries = [
+        _snapshot_backup_target(target_id, targets[target_id], plan)
+        for target_id in job_target_ids
+    ]
+    key = _read_or_create_backup_key(plan, create=True)
+    signed = {
+        **_backup_unsigned(entries),
+        "hmac_sha256": _backup_signature(key, entries),
+    }
+    _atomic_write(destination, _serialize(signed), 0o600)
+    _require_protected_file(destination, "Backup manifest")
+
+
 def _publisher_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
     return [
         pair
@@ -1416,7 +1445,7 @@ def _prompt_mentions_token(prompt: Any, token: str) -> bool:
 
 
 def _job_matches_template_provenance(
-    job: dict[str, Any], template: dict[str, Any]
+    job: dict[str, Any], template: dict[str, Any], home: Path
 ) -> bool:
     if job.get("name") == template["name"] or job.get("id") == template["id"]:
         return True
@@ -1425,8 +1454,9 @@ def _job_matches_template_provenance(
     if (
         isinstance(template_script, str)
         and template_script
-        and isinstance(job_script, str)
-        and Path(job_script).name == Path(template_script).name
+        and _job_script_consumes_managed_target(
+            home, job_script, {Path(template_script).name}
+        )
     ):
         return True
     template_skills = _job_skill_names(template)
@@ -1448,8 +1478,49 @@ def _job_matches_template_provenance(
     )
 
 
+def _job_script_consumes_managed_target(
+    home: Path, script: Any, managed_names: set[str]
+) -> bool:
+    if not isinstance(script, str) or not script:
+        return False
+    try:
+        raw = Path(script).expanduser()
+    except (OSError, RuntimeError, ValueError):
+        return False
+    if raw.name in managed_names:
+        return True
+
+    scripts_root = home / "scripts"
+    candidate = raw if raw.is_absolute() else scripts_root / raw
+    try:
+        resolved_root = scripts_root.resolve(strict=False)
+        resolved_candidate = candidate.resolve(strict=False)
+        resolved_candidate.relative_to(resolved_root)
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+    for managed_name in managed_names:
+        managed_target = scripts_root / managed_name
+        try:
+            if resolved_candidate == managed_target.resolve(strict=False):
+                return True
+            candidate_details = candidate.stat()
+            managed_details = managed_target.stat()
+        except (FileNotFoundError, OSError, RuntimeError, ValueError):
+            continue
+        if (
+            stat.S_ISREG(candidate_details.st_mode)
+            and stat.S_ISREG(managed_details.st_mode)
+            and candidate_details.st_dev == managed_details.st_dev
+            and candidate_details.st_ino == managed_details.st_ino
+        ):
+            return True
+    return False
+
+
 def _job_consumes_managed_target(
     job: dict[str, Any],
+    home: Path,
     templates: list[dict[str, Any]],
     scripts: set[str],
     skills: set[str],
@@ -1460,8 +1531,7 @@ def _job_consumes_managed_target(
         for template in templates
     ):
         return True
-    script = job.get("script")
-    if isinstance(script, str) and Path(script).name in scripts:
+    if _job_script_consumes_managed_target(home, job.get("script"), scripts):
         return True
     if skills.intersection(_job_skill_names(job)):
         return True
@@ -1497,7 +1567,8 @@ def _reconciled_managed_job_files(
     ambiguities: list[str] = []
     scripts, skills, prompt_tokens = _managed_provenance(plan, homes)
     for home, templates in homes.items():
-        path = Path(home) / "cron/jobs.json"
+        profile_home = Path(home)
+        path = profile_home / "cron/jobs.json"
         _require_safe_target(path, plan, may_be_missing=True)
         payload, jobs = _load_jobs(path)
         rewritten = list(jobs)
@@ -1506,7 +1577,8 @@ def _reconciled_managed_job_files(
             matches = [
                 index
                 for index, job in enumerate(rewritten)
-                if index not in claimed and _job_matches_template_provenance(job, template)
+                if index not in claimed
+                and _job_matches_template_provenance(job, template, profile_home)
             ]
             exact = [
                 index
@@ -1532,7 +1604,7 @@ def _reconciled_managed_job_files(
             if index in claimed:
                 continue
             if _job_consumes_managed_target(
-                job, all_templates, scripts, skills, prompt_tokens
+                job, profile_home, all_templates, scripts, skills, prompt_tokens
             ):
                 rewritten[index] = _quiesced_job(
                     job, "duplicate-managed-target-consumer"
@@ -1577,7 +1649,8 @@ def _verify_managed_job_state(
     scripts, skills, prompt_tokens = _managed_provenance(plan, homes)
     all_templates = [template for values in homes.values() for template in values]
     for home, templates in homes.items():
-        path = Path(home) / "cron/jobs.json"
+        profile_home = Path(home)
+        path = profile_home / "cron/jobs.json"
         if not path.exists() and not require_present:
             continue
         _, jobs = _load_jobs(path)
@@ -1607,7 +1680,7 @@ def _verify_managed_job_state(
                 active_indexes.update(active)
         for index, job in enumerate(jobs):
             if not _job_consumes_managed_target(
-                job, all_templates, scripts, skills, prompt_tokens
+                job, profile_home, all_templates, scripts, skills, prompt_tokens
             ):
                 continue
             if expected_enabled and index in active_indexes:
@@ -1621,6 +1694,56 @@ def _verify_managed_job_state(
                     "An enabled or unquiesced consumer of a managed Hermes target "
                     f"survived readback: {job.get('name') or job.get('id')}"
                 )
+
+
+def _managed_jobs_require_preflight_quiesce(
+    plan: dict[str, Any], homes: dict[str, list[dict[str, Any]]]
+) -> bool:
+    scripts, skills, prompt_tokens = _managed_provenance(plan, homes)
+    templates = [template for values in homes.values() for template in values]
+    for home in homes:
+        profile_home = Path(home)
+        path = profile_home / "cron/jobs.json"
+        _require_safe_target(path, plan, may_be_missing=True)
+        _, jobs = _load_jobs(path)
+        for job in jobs:
+            if not _job_consumes_managed_target(
+                job,
+                profile_home,
+                templates,
+                scripts,
+                skills,
+                prompt_tokens,
+            ):
+                continue
+            if not (
+                job.get("enabled") is False
+                and job.get("state") == "paused"
+                and job.get("next_run_at") is None
+            ):
+                return True
+    return False
+
+
+def _quiesce_managed_jobs_before_preflight(
+    plan: dict[str, Any],
+    homes: dict[str, list[dict[str, Any]]],
+    *,
+    operation: str,
+) -> None:
+    if not _managed_jobs_require_preflight_quiesce(plan, homes):
+        return
+    _capture_job_backup_prefix(plan)
+    _read_or_create_backup_key(plan, create=True)
+    disabled = _disabled_managed_job_files(plan, homes)
+    _execute_jobs_transaction(
+        plan,
+        homes,
+        operation=operation,
+        desired=disabled,
+        recovery=disabled,
+        expected_enabled=False,
+    )
 
 
 def _jobs_transaction_unsigned(
@@ -1856,32 +1979,16 @@ def _apply_install_under_job_locks(
     control_manifest = _control_manifest_path(plan)
     _recover_jobs_transaction(plan, homes)
     publisher_identity_count = _publisher_exact_identity_count(plan)
-    try:
-        _capture_backup(plan)
-    except Exception:
-        # A previously installed publisher may already be active when an unsafe
-        # target is discovered. If the authenticated transaction key exists,
-        # quiesce every managed job before returning the preflight failure.
-        try:
-            _read_or_create_backup_key(plan, create=False)
-            disabled = _disabled_managed_job_files(plan, homes)
-            _execute_jobs_transaction(
-                plan,
-                homes,
-                operation="install-quiesce",
-                desired=disabled,
-                recovery=disabled,
-                expected_enabled=False,
-            )
-        except Exception:
-            pass
-        raise
-    disabled_job_files, job_ambiguities = _reconciled_managed_job_files(
-        plan, homes, enabled=False
+    _quiesce_managed_jobs_before_preflight(
+        plan, homes, operation="install-quiesce"
     )
     publisher_snapshots: dict[Path, tuple[bool, int | None, bytes | None]] | None = None
 
     try:
+        _capture_backup(plan)
+        disabled_job_files, job_ambiguities = _reconciled_managed_job_files(
+            plan, homes, enabled=False
+        )
         # This two-profile transaction must precede every asset/config write.
         # It also replaces any foreign same-name managed identity with the
         # exact disabled template, so plain apply is always disabled-first.
@@ -1981,12 +2088,19 @@ def _apply_install_under_job_locks(
                 recovery=disabled_job_files,
                 expected_enabled=True,
             )
-    except Exception:
+    except Exception as original_error:
         if not jobs_locks.held:
             raise InstallError(
                 "UNSAFE_JOB_STATE: both Hermes jobs locks could not be reacquired "
                 "after activation proofs."
             )
+        try:
+            _read_or_create_backup_key(plan, create=False)
+        except Exception:
+            # No authenticated job transaction was possible or attempted. An
+            # enabled managed consumer would already have forced key creation
+            # and durable quiescence before entering this preflight.
+            raise original_error
         job_recovery_error: Exception | None = None
         try:
             _recover_jobs_transaction(plan, homes)
@@ -2034,9 +2148,10 @@ def _sanitize_restored_jobs(
     scripts, skills, prompt_tokens = _managed_provenance(plan, homes)
     rewritten: list[dict[str, Any]] = []
     changed = False
+    profile_home = path.parent.parent
     for job in jobs:
         if not _job_consumes_managed_target(
-            job, templates, scripts, skills, prompt_tokens
+            job, profile_home, templates, scripts, skills, prompt_tokens
         ):
             rewritten.append(job)
             continue
@@ -2117,6 +2232,7 @@ def _restore_install_under_job_locks(plan: dict[str, Any]) -> dict[str, Any]:
     for template in plan["jobs"]:
         homes[template["_home"]].append(template)
     _recover_jobs_transaction(plan, homes)
+    _quiesce_managed_jobs_before_preflight(plan, homes, operation="restore")
     backup_path = _backup_path(plan)
     try:
         backup_path.lstat()

@@ -603,6 +603,41 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue(all(job.get("state") == "paused" for job in consumers))
         self.assertTrue(all(job.get("next_run_at") is None for job in consumers))
 
+    def test_symlink_alias_consumer_is_quiesced_and_rejected_before_asset_copy(self):
+        apply_install(**self.kwargs())
+        self.set_publisher_enabled()
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        payload["jobs"].append({
+            "id": "operator-publisher-alias",
+            "name": "operator-publisher-alias",
+            "script": "publisher-alias.sh",
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+        scripts = self.radulator_home / "scripts"
+        (scripts / "publisher-alias.sh").symlink_to("trusted_publisher_cron.sh")
+        publisher_wrapper = scripts / "trusted_publisher_cron.sh"
+        drifted = b"#!/bin/sh\nexit 93\n"
+        publisher_wrapper.write_bytes(drifted)
+        publisher_wrapper.chmod(0o700)
+
+        with self.assertRaisesRegex(InstallError, "ambiguous|duplicate"):
+            apply_install(**self.kwargs())
+
+        self.assertEqual(publisher_wrapper.read_bytes(), drifted)
+        consumers = [
+            job
+            for job in json.loads(jobs_path.read_text())["jobs"]
+            if job.get("id") in {"1def08dbcb74", "operator-publisher-alias"}
+        ]
+        self.assertEqual(len(consumers), 2)
+        self.assertTrue(all(job.get("enabled") is False for job in consumers))
+        self.assertTrue(all(job.get("state") == "paused" for job in consumers))
+        self.assertTrue(all(job.get("next_run_at") is None for job in consumers))
+
     def test_duplicate_exact_publisher_identities_are_quiesced_before_rejection(self):
         jobs_path = self.radulator_home / "cron" / "jobs.json"
         payload = json.loads(jobs_path.read_text())
@@ -1000,6 +1035,23 @@ with lock_path.open('a+') as lock:
 
         self.assertEqual(jobs_path.read_bytes(), installed)
 
+    def test_restore_bad_hmac_quiesces_enabled_publisher_before_rejection(self):
+        apply_install(**self.kwargs())
+        self.set_publisher_enabled()
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        backup = json.loads(backup_path.read_text())
+        backup["hmac_sha256"] = "0" * 64
+        backup_path.write_text(json.dumps(backup) + "\n")
+        backup_path.chmod(0o600)
+
+        with self.assertRaisesRegex(InstallError, "authentication"):
+            restore_install(**self.kwargs())
+
+        publisher = self.publisher_job()
+        self.assertIs(publisher["enabled"], False)
+        self.assertEqual(publisher["state"], "paused")
+        self.assertIsNone(publisher["next_run_at"])
+
     def test_restore_rejects_signed_unknown_duplicate_and_injected_targets(self):
         for mutation, message in (
             (lambda entries: entries[0].update({"target_id": "attacker.unknown"}), "unknown"),
@@ -1303,6 +1355,98 @@ with lock_path.open('a+') as lock:
         with self.assertRaisesRegex(InstallError, "parent.*non-symlink"):
             apply_install(**self.kwargs())
 
+        self.assertFalse((outside / "trusted_publisher.py").exists())
+
+    def test_fresh_apply_quiesces_enabled_publisher_before_unsafe_parent_preflight_failure(self):
+        plan = build_plan(**self.kwargs())
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        publisher = next(
+            job for job in plan["jobs"] if job["name"] == "radulator-trusted-publisher"
+        )
+        payload["jobs"].append({
+            key: value for key, value in publisher.items() if key != "_home"
+        })
+        payload["jobs"][-1].update({
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+        outside = self.default_home / "outside-fresh-scripts"
+        outside.mkdir()
+        (self.radulator_home / "scripts").symlink_to(outside, target_is_directory=True)
+
+        with self.assertRaisesRegex(InstallError, "parent.*non-symlink"):
+            apply_install(**self.kwargs())
+
+        current = self.publisher_job()
+        self.assertIs(current["enabled"], False)
+        self.assertEqual(current["state"], "paused")
+        self.assertIsNone(current["next_run_at"])
+        self.assertFalse((outside / "trusted_publisher.py").exists())
+        prefix = json.loads(
+            (
+                self.radulator_home
+                / "state"
+                / "radulator-release-backup.json"
+            ).read_text()
+        )
+        entries = {entry["target_id"]: entry for entry in prefix["entries"]}
+        self.assertEqual(
+            set(entries),
+            {"primary:cron/jobs.json", "verification:cron/jobs.json"},
+        )
+        original_primary = json.loads(
+            base64.b64decode(
+                entries["primary:cron/jobs.json"]["content_base64"]
+            )
+        )
+        original_publisher = next(
+            job
+            for job in original_primary["jobs"]
+            if job.get("id") == "1def08dbcb74"
+        )
+        self.assertIs(original_publisher["enabled"], True)
+
+    def test_legacy_no_key_apply_quiesces_enabled_publisher_before_unsafe_parent_migration_failure(self):
+        plan = build_plan(**self.kwargs())
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        publisher = next(
+            job for job in plan["jobs"] if job["name"] == "radulator-trusted-publisher"
+        )
+        payload["jobs"].append({
+            key: value for key, value in publisher.items() if key != "_home"
+        })
+        payload["jobs"][-1].update({
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        backup_path.parent.mkdir()
+        backup_path.write_text(json.dumps({
+            "schema": "radulator-hermes-backup/v1",
+            "entries": self.legacy_v1_entries(plan),
+        }) + "\n")
+        backup_path.chmod(0o600)
+        outside = self.default_home / "outside-legacy-scripts"
+        outside.mkdir()
+        (self.radulator_home / "scripts").symlink_to(outside, target_is_directory=True)
+
+        with self.assertRaisesRegex(InstallError, "parent.*non-symlink"):
+            apply_install(**self.kwargs())
+
+        current = self.publisher_job()
+        self.assertIs(current["enabled"], False)
+        self.assertEqual(current["state"], "paused")
+        self.assertIsNone(current["next_run_at"])
+        self.assertEqual(
+            json.loads(backup_path.read_text())["schema"],
+            "radulator-hermes-backup/v1",
+        )
         self.assertFalse((outside / "trusted_publisher.py").exists())
 
     def test_upgrade_rejects_partial_unsigned_v1_backup_before_writing(self):
