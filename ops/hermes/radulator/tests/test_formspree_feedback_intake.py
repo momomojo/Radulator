@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 import os
 import tempfile
@@ -44,6 +46,27 @@ AUTHENTICATION_RESULTS = (
     "spf=pass smtp.mailfrom=notice@email.formspree.io; "
     "dmarc=pass header.from=formspree.io"
 )
+
+
+def _write_test_signed_state(path, state):
+    payload = dict(state)
+    payload.pop("integrity", None)
+    key_path = path.with_suffix(path.suffix + ".hmac.key")
+    key = key_path.read_bytes()
+    serialized = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    sealed = dict(payload)
+    sealed["integrity"] = {
+        "schema": "radulator-formspree-state-hmac/v1",
+        "key_id": hashlib.sha256(key).hexdigest(),
+        "hmac_sha256": hmac.new(key, serialized, hashlib.sha256).hexdigest(),
+    }
+    path.write_text(json.dumps(sealed))
+    path.chmod(0o600)
 
 
 class FakeGmail:
@@ -426,6 +449,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
                 },
             },
         }))
+        self.state_path.chmod(0o600)
         gmail = FakeGmail([self.message])
         kanban = FakeKanban()
         kanban.tasks["t_1630667d"] = {
@@ -483,6 +507,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
                 },
             },
         }))
+        self.state_path.chmod(0o600)
         forged = dict(
             self.message,
             authentication_results=[
@@ -531,6 +556,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
                 },
             },
         }))
+        self.state_path.chmod(0o600)
         kanban = FakeKanban()
         kanban.tasks["t_legacy_without_digest"] = {
             "id": "t_legacy_without_digest",
@@ -616,6 +642,9 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             with self.subTest(name=name):
                 message = dict(self.message, id="legacy-" + name)
                 digest = _receipt_digest(message["id"])
+                self.state_path.with_suffix(
+                    self.state_path.suffix + ".hmac.key"
+                ).unlink(missing_ok=True)
                 self.state_path.write_text(json.dumps({
                     "version": 1,
                     "processed": {
@@ -682,6 +711,23 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         with self.assertRaisesRegex(FeedbackIntakeError, "status"):
             _feedback_task_readback(NestedStatusKanban(), "t_requested")
 
+    def test_feedback_task_rejects_conflicting_root_and_top_level_task(self):
+        class ConflictingRootKanban:
+            def show(self, task_id):
+                return {
+                    "id": task_id,
+                    "status": "done",
+                    "body": "wrapper authority",
+                    "task": {
+                        "id": task_id,
+                        "status": "ready",
+                        "body": "top-level task authority",
+                    },
+                }
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "ambiguous exact feedback task"):
+            _feedback_task_readback(ConflictingRootKanban(), "t_requested")
+
     def test_closure_parent_readback_ignores_unrelated_nested_relations(self):
         digest = "a" * 64
 
@@ -712,6 +758,52 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
                 triage_task_id="t_triage",
                 idempotency_key="nested-parent-regression",
             )
+
+    def test_closure_parent_rejects_conflicting_relation_item_identifiers(self):
+        digest = "c" * 64
+
+        class ConflictingParentKanban:
+            def create(self, *_args, **_kwargs):
+                return "t_closure"
+
+            def show(self, task_id):
+                return {
+                    "task": {
+                        "id": task_id,
+                        "status": "todo",
+                        "body": "Receipt digest: " + digest,
+                        "parents": [{
+                            "task_id": "t_triage",
+                            "id": "t_different_parent",
+                        }],
+                    },
+                }
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "malformed"):
+            _create_verified_closure(
+                ConflictingParentKanban(),
+                received="2026-08-25",
+                digest=digest,
+                triage_task_id="t_triage",
+                idempotency_key="conflicting-parent-identifiers",
+            )
+
+    def test_hermes_create_uses_top_level_task_instead_of_nested_history_id(self):
+        runner = FakeCommandRunner([
+            json.dumps({
+                "history": [{"id": "t_victim"}],
+                "task": {"id": "t_created"},
+            }),
+        ])
+        client = HermesKanbanClient("hermes", runner=runner)
+
+        created = client.create(
+            "Feedback",
+            "Receipt digest: " + "d" * 64,
+            "exact-create-response-authority",
+        )
+
+        self.assertEqual(created, "t_created")
 
     def test_legacy_quarantine_reference_ignores_unrelated_nested_text(self):
         digest = "b" * 64
@@ -777,6 +869,152 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             process_feedback(FakeGmail([self.message]), kanban, self.state_path)
 
         self.assertEqual(len(kanban.created), 2)
+
+    def test_authenticated_state_rejects_content_tampering(self):
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path)
+        state = json.loads(self.state_path.read_text())
+        state["authenticated_reconciliation_cursor"] = "f" * 64
+        self.state_path.write_text(json.dumps(state))
+        self.state_path.chmod(0o600)
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "integrity"):
+            process_feedback(gmail, kanban, self.state_path)
+
+        self.assertEqual(len(kanban.created), 2)
+
+    def test_authenticated_state_rejects_removed_integrity_after_key_exists(self):
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path)
+        state = json.loads(self.state_path.read_text())
+        state.pop("integrity")
+        self.state_path.write_text(json.dumps(state))
+        self.state_path.chmod(0o600)
+
+        with self.assertRaisesRegex(FeedbackIntakeError, "integrity"):
+            process_feedback(gmail, kanban, self.state_path)
+
+        self.assertEqual(len(kanban.created), 2)
+
+    def test_state_read_uses_checked_descriptor_not_replaced_path(self):
+        digest = "e" * 64
+        self.state_path.write_text(json.dumps({
+            "version": 1,
+            "processed": {},
+        }))
+        self.state_path.chmod(0o600)
+        attacker_path = self.state_path.with_name("attacker-state.json")
+        attacker_path.write_text(json.dumps({
+            "version": 1,
+            "processed": {
+                digest: {
+                    "classification": "feedback",
+                    "authenticated_origin": True,
+                    "received": "2026-08-25",
+                    "triage_task_id": "t_injected_triage",
+                    "task_id": "t_injected_closure",
+                },
+            },
+        }))
+        attacker_path.chmod(0o600)
+        kanban = FakeKanban()
+        kanban.tasks["t_injected_triage"] = {
+            "id": "t_injected_triage",
+            "status": "triage",
+            "body": "Receipt digest: " + digest,
+            "parents": [],
+        }
+        kanban.tasks["t_injected_closure"] = {
+            "id": "t_injected_closure",
+            "status": "todo",
+            "body": "Receipt digest: " + digest,
+            "parents": ["t_injected_triage"],
+        }
+        original_read_text = Path.read_text
+        swapped = False
+
+        def replace_after_metadata_check(path, *args, **kwargs):
+            nonlocal swapped
+            if Path(path) == self.state_path and not swapped:
+                swapped = True
+                self.state_path.unlink()
+                self.state_path.symlink_to(attacker_path)
+            return original_read_text(path, *args, **kwargs)
+
+        with patch.object(Path, "read_text", replace_after_metadata_check):
+            result = process_feedback(
+                FakeGmail([]), kanban, self.state_path, max_messages=1,
+            )
+
+        self.assertEqual(
+            result,
+            {"created": 0, "already_processed": 0, "quarantined": 0},
+        )
+
+    def test_unsigned_legacy_authenticated_origin_is_quarantined_until_reauthentication(self):
+        legacy_message = dict(self.message, id="unsigned-legacy-authenticated-origin")
+        digest = _receipt_digest(legacy_message["id"])
+        self.state_path.write_text(json.dumps({
+            "version": 1,
+            "processed": {
+                digest: {
+                    "classification": "feedback",
+                    "authenticated_origin": True,
+                    "received": "2026-08-25",
+                    "triage_task_id": "t_legacy_triage",
+                    "task_id": "t_legacy_closure",
+                },
+            },
+        }))
+        self.state_path.chmod(0o600)
+        kanban = FakeKanban()
+        kanban.tasks["t_legacy_triage"] = {
+            "id": "t_legacy_triage",
+            "status": "triage",
+            "body": "Receipt digest: " + digest,
+            "parents": [],
+        }
+        kanban.tasks["t_legacy_closure"] = {
+            "id": "t_legacy_closure",
+            "status": "todo",
+            "body": "Receipt digest: " + digest,
+            "parents": ["t_legacy_triage"],
+        }
+
+        result = process_feedback(FakeGmail([]), kanban, self.state_path)
+
+        self.assertEqual(
+            result,
+            {"created": 0, "already_processed": 0, "quarantined": 0},
+        )
+        persisted_text = self.state_path.read_text()
+        persisted = json.loads(persisted_text)
+        self.assertNotIn(
+            "authenticated_origin", persisted["processed"][digest],
+        )
+        self.assertEqual(
+            persisted["processed"][digest]["origin_integrity_status"],
+            "legacy_unsigned_requires_reauthentication",
+        )
+        self.assertEqual(
+            persisted["integrity"]["schema"],
+            "radulator-formspree-state-hmac/v1",
+        )
+        key_path = self.state_path.with_suffix(self.state_path.suffix + ".hmac.key")
+        self.assertEqual(key_path.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(len(key_path.read_bytes()), 32)
+        self.assertNotIn(key_path.read_bytes().hex(), persisted_text)
+
+        reauthenticated = process_feedback(
+            FakeGmail([legacy_message]), kanban, self.state_path,
+        )
+
+        self.assertEqual(reauthenticated["reconciled"], 1)
+        receipt = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertTrue(receipt["authenticated_origin"])
+        self.assertNotIn("origin_integrity_status", receipt)
 
     def test_repairs_premature_terminal_closure_without_rewriting_history(self):
         gmail = FakeGmail([self.message])
@@ -1498,7 +1736,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         malformed["body"] = FORM_BODY
         state = json.loads(self.state_path.read_text())
         next(iter(state["processed"].values()))["parser_version"] = 0
-        self.state_path.write_text(json.dumps(state))
+        _write_test_signed_state(self.state_path, state)
         repaired = process_feedback(gmail, kanban, self.state_path)
         self.assertEqual(repaired, {"created": 1, "already_processed": 0, "quarantined": 0})
         self.assertEqual(len(kanban.created), 3)
@@ -1539,7 +1777,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         state = json.loads(self.state_path.read_text())
         for receipt in state["processed"].values():
             receipt["parser_version"] = 0
-        self.state_path.write_text(json.dumps(state))
+        _write_test_signed_state(self.state_path, state)
 
         valid = dict(self.message, id="new-valid", date="Mon, 20 Jul 2026 10:15:00 -0700")
         gmail.messages.append(valid)

@@ -991,43 +991,61 @@ def release_tracker_action(parent_task_id: str, pr: int, head_sha: str) -> dict[
     }
 
 
+_TASK_AUTHORITY_FIELDS = frozenset({
+    "status", "state", "pr", "head_sha", "base_sha", "title", "body",
+    "result", "branch_name", "assignee", "receipt_digest", "digest",
+    "parents", "children", "idempotency_key", "workflow",
+})
+
+
+def _direct_record_task_id(value: Any) -> str | None:
+    if not isinstance(value, dict):
+        return None
+    identifiers = [value[key] for key in ("task_id", "id") if key in value]
+    if not identifiers:
+        return None
+    if (
+        any(not isinstance(candidate, str) or not candidate.startswith("t_") for candidate in identifiers)
+        or len(set(identifiers)) != 1
+    ):
+        raise LedgerError("Kanban task record has conflicting or malformed identifiers.")
+    return identifiers[0]
+
+
 def _find_task_id(value: Any) -> str | None:
-    if isinstance(value, dict):
-        for key in ("task_id", "id"):
-            candidate = value.get(key)
-            if isinstance(candidate, str) and candidate.startswith("t_"):
-                return candidate
-        for nested in value.values():
-            found = _find_task_id(nested)
-            if found:
-                return found
-    if isinstance(value, list):
-        for nested in value:
-            found = _find_task_id(nested)
-            if found:
-                return found
-    return None
-
-
-def _task_records(value: Any, task_id: str) -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
-    if isinstance(value, dict):
-        if task_id in (value.get("task_id"), value.get("id")):
-            records.append(value)
-        for nested in value.values():
-            records.extend(_task_records(nested, task_id))
-    elif isinstance(value, list):
-        for nested in value:
-            records.extend(_task_records(nested, task_id))
-    return records
+    """Return only an unambiguous root/top-level created-task identifier."""
+    if not isinstance(value, dict):
+        return None
+    root_id = _direct_record_task_id(value)
+    task = value.get("task")
+    task_id = _direct_record_task_id(task)
+    identifiers = {candidate for candidate in (root_id, task_id) if candidate is not None}
+    if len(identifiers) > 1:
+        raise LedgerError("Kanban create response has ambiguous task identifiers.")
+    return next(iter(identifiers)) if identifiers else None
 
 
 def _exact_task_record(value: Any, task_id: str) -> dict[str, Any]:
-    if isinstance(value, dict) and task_id in (value.get("task_id"), value.get("id")):
+    if not isinstance(value, dict):
+        raise LedgerError(f"Kanban readback did not contain the exact task record for {task_id}.")
+    root_id = _direct_record_task_id(value)
+    task = value.get("task")
+    task_record = task if isinstance(task, dict) else None
+    top_level_task_id = _direct_record_task_id(task_record)
+    if root_id is not None and top_level_task_id is not None:
+        if root_id != top_level_task_id or root_id != task_id:
+            raise LedgerError(f"Kanban readback has ambiguous exact task authority for {task_id}.")
+        assert task_record is not None
+        for field in _TASK_AUTHORITY_FIELDS:
+            if (field in value) != (field in task_record) or (
+                field in value and value[field] != task_record[field]
+            ):
+                raise LedgerError(f"Kanban readback has ambiguous exact task authority for {task_id}.")
+        return task_record
+    if root_id == task_id:
         return value
-    task = value.get("task") if isinstance(value, dict) else None
-    if isinstance(task, dict) and task_id in (task.get("task_id"), task.get("id")):
-        return task
+    if top_level_task_id == task_id and task_record is not None:
+        return task_record
     raise LedgerError(f"Kanban readback did not contain the exact task record for {task_id}.")
 
 

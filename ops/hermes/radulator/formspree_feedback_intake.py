@@ -6,6 +6,7 @@ import datetime as dt
 import email.utils
 import fcntl
 import hashlib
+import hmac
 import html
 from html.parser import HTMLParser
 import json
@@ -30,6 +31,8 @@ SEARCH_QUERY = (
 EXPECTED_SUBJECT = "New submission from Radulator Feedback"
 EXPECTED_SENDER = "noreply@formspree.io"
 STATE_VERSION = 1
+STATE_INTEGRITY_SCHEMA = "radulator-formspree-state-hmac/v1"
+STATE_KEY_BYTES = 32
 PARSER_VERSION = 1
 MAX_SCAN = 100
 MAX_MESSAGE_LENGTH = 4000
@@ -274,30 +277,70 @@ def _trusted_notification(value: Dict[str, Any]) -> bool:
     return _candidate_notification(value) and _authenticated_formspree_origin(value)
 
 
+_TASK_AUTHORITY_FIELDS = frozenset({
+    "status", "state", "pr", "head_sha", "base_sha", "title", "body",
+    "result", "branch_name", "assignee", "receipt_digest", "digest",
+    "parents", "children", "idempotency_key", "workflow",
+})
+
+
+def _direct_task_id(value: Any) -> Optional[str]:
+    if not isinstance(value, dict):
+        return None
+    identifiers = [value[key] for key in ("task_id", "id") if key in value]
+    if not identifiers:
+        return None
+    if (
+        any(not isinstance(candidate, str) or not candidate.startswith("t_") for candidate in identifiers)
+        or len(set(identifiers)) != 1
+    ):
+        raise FeedbackIntakeError(
+            "Kanban feedback task identifiers are malformed or conflicting."
+        )
+    return identifiers[0]
+
+
 def _find_task_id(value: Any) -> Optional[str]:
-    if isinstance(value, dict):
-        for key in ("task_id", "id"):
-            candidate = value.get(key)
-            if isinstance(candidate, str) and candidate.startswith("t_"):
-                return candidate
-        for nested in value.values():
-            found = _find_task_id(nested)
-            if found:
-                return found
-    elif isinstance(value, list):
-        for nested in value:
-            found = _find_task_id(nested)
-            if found:
-                return found
-    return None
+    """Return only an unambiguous root/top-level created-task identifier."""
+    if not isinstance(value, dict):
+        return None
+    root_id = _direct_task_id(value)
+    task_id = _direct_task_id(value.get("task"))
+    identifiers = {candidate for candidate in (root_id, task_id) if candidate is not None}
+    if len(identifiers) > 1:
+        raise FeedbackIntakeError(
+            "Hermes Kanban create response has ambiguous task identifiers."
+        )
+    return next(iter(identifiers)) if identifiers else None
 
 
 def _exact_task_record(value: Any, task_id: str) -> Dict[str, Any]:
-    if isinstance(value, dict) and task_id in (value.get("task_id"), value.get("id")):
+    if not isinstance(value, dict):
+        raise FeedbackIntakeError(
+            f"Kanban readback did not contain exact feedback task {task_id}."
+        )
+    root_id = _direct_task_id(value)
+    task = value.get("task")
+    task_record = task if isinstance(task, dict) else None
+    top_level_task_id = _direct_task_id(task_record)
+    if root_id is not None and top_level_task_id is not None:
+        if root_id != top_level_task_id or root_id != task_id:
+            raise FeedbackIntakeError(
+                f"Kanban readback has ambiguous exact feedback task {task_id}."
+            )
+        assert task_record is not None
+        for field in _TASK_AUTHORITY_FIELDS:
+            if (field in value) != (field in task_record) or (
+                field in value and value[field] != task_record[field]
+            ):
+                raise FeedbackIntakeError(
+                    f"Kanban readback has ambiguous exact feedback task {task_id}."
+                )
+        return task_record
+    if root_id == task_id:
         return value
-    task = value.get("task") if isinstance(value, dict) else None
-    if isinstance(task, dict) and task_id in (task.get("task_id"), task.get("id")):
-        return task
+    if top_level_task_id == task_id and task_record is not None:
+        return task_record
     raise FeedbackIntakeError(
         f"Kanban readback did not contain exact feedback task {task_id}."
     )
@@ -327,16 +370,6 @@ def _exact_task_reference_present(value: Any, task_id: str, needle: str) -> bool
         isinstance(body, str) and pattern.search(body) is not None
         for body in bodies
     )
-
-
-def _direct_task_id(value: Any) -> Optional[str]:
-    if not isinstance(value, dict):
-        return None
-    for key in ("task_id", "id"):
-        candidate = value.get(key)
-        if isinstance(candidate, str) and candidate.startswith("t_"):
-            return candidate
-    return None
 
 
 def _exact_task_relation_ids(
@@ -868,6 +901,7 @@ def _reconcile_feedback_receipt(
         raise FeedbackIntakeError("Persisted feedback receipt is missing its task id.")
     authenticated_changed = receipt.get("authenticated_origin") is not True
     receipt["authenticated_origin"] = True
+    receipt.pop("origin_integrity_status", None)
 
     triage_task_id = receipt.get("triage_task_id")
     if triage_task_id is None:
@@ -1178,21 +1212,134 @@ def _create_verified_reconciliation_failure(
     return replacement_id
 
 
-def _load_state(path: Path) -> Dict[str, Any]:
-    if not path.exists():
-        return {"version": STATE_VERSION, "processed": {}}
+def _checked_file_bytes(
+    path: Path,
+    *,
+    maximum_size: int,
+    description: str,
+) -> Optional[bytes]:
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    if nofollow is None:
+        raise FeedbackIntakeError(
+            f"{description} cannot be opened safely on this platform."
+        )
+    descriptor: Optional[int] = None
     try:
-        metadata = path.lstat()
+        descriptor = os.open(str(path), os.O_RDONLY | nofollow)
+    except FileNotFoundError:
+        return None
     except OSError as error:
-        raise FeedbackIntakeError("Feedback state metadata is unreadable.") from error
-    if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > MAX_STATE_BYTES:
-        raise FeedbackIntakeError("Feedback state must be a bounded regular file.")
-    if metadata.st_uid != os.geteuid() or metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
-        raise FeedbackIntakeError("Feedback state has unsafe ownership or permissions.")
+        raise FeedbackIntakeError(f"{description} is unreadable.") from error
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise FeedbackIntakeError("Feedback state is unreadable.") from error
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.geteuid()
+            or stat.S_IMODE(before.st_mode) != 0o600
+            or before.st_size <= 0
+            or before.st_size > maximum_size
+        ):
+            raise FeedbackIntakeError(
+                f"{description} has unsafe ownership or permissions; an owned bounded regular file with mode 0600 is required."
+            )
+        chunks: List[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(descriptor, min(64 * 1024, maximum_size + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > maximum_size:
+                raise FeedbackIntakeError(f"{description} is too large.")
+        after = os.fstat(descriptor)
+        trusted_before = (
+            before.st_dev,
+            before.st_ino,
+            before.st_uid,
+            stat.S_IMODE(before.st_mode),
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        )
+        trusted_after = (
+            after.st_dev,
+            after.st_ino,
+            after.st_uid,
+            stat.S_IMODE(after.st_mode),
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+        )
+        if trusted_after != trusted_before or total != before.st_size:
+            raise FeedbackIntakeError(f"{description} changed while being read.")
+        return b"".join(chunks)
+    except OSError as error:
+        raise FeedbackIntakeError(f"{description} is unreadable.") from error
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+def _state_key_path(state_path: Path) -> Path:
+    return state_path.with_suffix(state_path.suffix + ".hmac.key")
+
+
+def _load_or_create_state_key(path: Path) -> tuple[bytes, bool]:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    created = False
+    raw = _checked_file_bytes(
+        path,
+        maximum_size=STATE_KEY_BYTES,
+        description="Feedback state integrity key",
+    )
+    if raw is None:
+        key = os.urandom(STATE_KEY_BYTES)
+        nofollow = getattr(os, "O_NOFOLLOW", 0)
+        descriptor: Optional[int] = None
+        try:
+            descriptor = os.open(
+                str(path),
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow,
+                0o600,
+            )
+            os.fchmod(descriptor, 0o600)
+            written = 0
+            while written < len(key):
+                written += os.write(descriptor, key[written:])
+            os.fsync(descriptor)
+            created = True
+        except FileExistsError:
+            pass
+        except OSError as error:
+            raise FeedbackIntakeError(
+                "Feedback state integrity key could not be created."
+            ) from error
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+        raw = _checked_file_bytes(
+            path,
+            maximum_size=STATE_KEY_BYTES,
+            description="Feedback state integrity key",
+        )
+    if raw is None or len(raw) != STATE_KEY_BYTES:
+        raise FeedbackIntakeError(
+            "Feedback state integrity key must contain exactly 32 bytes."
+        )
+    return raw, created
+
+
+def _state_payload_bytes(state: Dict[str, Any]) -> bytes:
+    return json.dumps(
+        state,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+
+
+def _validate_state_schema(value: Any) -> Dict[str, Any]:
     if (
         not isinstance(value, dict)
         or value.get("version") != STATE_VERSION
@@ -1208,9 +1355,64 @@ def _load_state(path: Path) -> Dict[str, Any]:
     return value
 
 
-def _write_state(path: Path, state: Dict[str, Any]) -> None:
+def _load_state(
+    path: Path,
+    key: bytes,
+    *,
+    allow_unsigned_migration: bool,
+) -> tuple[Dict[str, Any], bool]:
+    raw = _checked_file_bytes(
+        path,
+        maximum_size=MAX_STATE_BYTES,
+        description="Feedback state",
+    )
+    if raw is None:
+        return {"version": STATE_VERSION, "processed": {}}, False
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise FeedbackIntakeError("Feedback state is unreadable.") from error
+    value = _validate_state_schema(value)
+    integrity = value.pop("integrity", None)
+    if integrity is None:
+        if not allow_unsigned_migration:
+            raise FeedbackIntakeError(
+                "Feedback state integrity is missing after key activation."
+            )
+        for receipt in value["processed"].values():
+            if isinstance(receipt, dict) and receipt.pop("authenticated_origin", None) is True:
+                receipt["origin_integrity_status"] = (
+                    "legacy_unsigned_requires_reauthentication"
+                )
+        return value, True
+    expected_key_id = hashlib.sha256(key).hexdigest()
+    expected_digest = hmac.new(
+        key, _state_payload_bytes(value), hashlib.sha256,
+    ).hexdigest()
+    if (
+        not isinstance(integrity, dict)
+        or integrity.get("schema") != STATE_INTEGRITY_SCHEMA
+        or integrity.get("key_id") != expected_key_id
+        or not isinstance(integrity.get("hmac_sha256"), str)
+        or not hmac.compare_digest(integrity["hmac_sha256"], expected_digest)
+    ):
+        raise FeedbackIntakeError("Feedback state integrity verification failed.")
+    return value, False
+
+
+def _write_state(path: Path, state: Dict[str, Any], key: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    serialized = json.dumps(state, sort_keys=True, separators=(",", ":")) + "\n"
+    payload = _validate_state_schema(dict(state))
+    payload.pop("integrity", None)
+    sealed = dict(payload)
+    sealed["integrity"] = {
+        "schema": STATE_INTEGRITY_SCHEMA,
+        "key_id": hashlib.sha256(key).hexdigest(),
+        "hmac_sha256": hmac.new(
+            key, _state_payload_bytes(payload), hashlib.sha256,
+        ).hexdigest(),
+    }
+    serialized = json.dumps(sealed, sort_keys=True, separators=(",", ":")) + "\n"
     temporary_name: Optional[str] = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -1226,7 +1428,11 @@ def _write_state(path: Path, state: Dict[str, Any]) -> None:
             temporary.flush()
             os.fsync(temporary.fileno())
         os.replace(temporary_name, path)
-        os.chmod(path, 0o600)
+        directory = os.open(str(path.parent), os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
     except OSError as error:
         if temporary_name:
             try:
@@ -1270,8 +1476,21 @@ def _process_feedback_locked(
     max_messages: int,
     evidence_reader: Any,
 ) -> Dict[str, int]:
-    state = _load_state(state_path)
+    state_key, state_key_created = _load_or_create_state_key(
+        _state_key_path(state_path)
+    )
+    state, migrated = _load_state(
+        state_path,
+        state_key,
+        allow_unsigned_migration=state_key_created,
+    )
     outcome = {"created": 0, "already_processed": 0, "quarantined": 0}
+    if migrated:
+        _write_state(state_path, state, state_key)
+
+    def persist_state() -> None:
+        _write_state(state_path, state, state_key)
+
     try:
         summaries = gmail.search(MAX_SCAN)
     except Exception as error:
@@ -1305,11 +1524,11 @@ def _process_feedback_locked(
                 )
             )
             state["authenticated_reconciliation_cursor"] = digest
-            _write_state(state_path, state)
+            persist_state()
             outcome["repair_failed"] = outcome.get("repair_failed", 0) + 1
             continue
         state["authenticated_reconciliation_cursor"] = digest
-        _write_state(state_path, state)
+        persist_state()
         _record_reconciliation_outcome(outcome, reconciliation)
 
     new_attempted = 0
@@ -1360,7 +1579,7 @@ def _process_feedback_locked(
                     "classification": "untrusted",
                     "parser_version": PARSER_VERSION,
                 }
-                _write_state(state_path, state)
+                persist_state()
             outcome["rejected_untrusted"] = outcome.get("rejected_untrusted", 0) + 1
             continue
         if not isinstance(full.get("body"), str):
@@ -1388,10 +1607,10 @@ def _process_feedback_locked(
                     )
                 )
                 state["authenticated_reconciliation_cursor"] = digest
-                _write_state(state_path, state)
+                persist_state()
                 outcome["repair_failed"] = outcome.get("repair_failed", 0) + 1
                 continue
-            _write_state(state_path, state)
+            persist_state()
             _record_reconciliation_outcome(outcome, reconciliation)
             continue
 
@@ -1402,7 +1621,7 @@ def _process_feedback_locked(
         except FeedbackIntakeError:
             if stale_quarantine:
                 existing_receipt["parser_version"] = PARSER_VERSION
-                _write_state(state_path, state)
+                persist_state()
                 outcome["already_processed"] += 1
                 continue
             classification = "quarantined"
@@ -1472,7 +1691,7 @@ def _process_feedback_locked(
         if triage_task_id:
             state["processed"][digest]["triage_task_id"] = triage_task_id
             state["processed"][digest]["authenticated_origin"] = True
-        _write_state(state_path, state)
+        persist_state()
         if classification == "quarantined":
             outcome["quarantined"] += 1
         else:

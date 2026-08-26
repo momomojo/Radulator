@@ -599,6 +599,78 @@ class LifecycleLedgerTests(unittest.TestCase):
         self.assertEqual(tasks["t_parent"]["parents"], ["t_prerequisite"])
         self.assertEqual([command[2] for command in commands].count("link"), 1)
 
+    def test_kanban_create_uses_top_level_task_instead_of_nested_history_id(self):
+        action = {
+            "kind": "create_prerequisite",
+            "idempotency_key": "exact-create-response-authority",
+            "tracker_task_id": "t_parent",
+            "title": "Use the exact created task",
+            "body": "Bind this instruction only to the exact created task.",
+            "assignee": "radulator",
+        }
+        tasks = {
+            "t_created": {
+                "task": {
+                    "id": "t_created",
+                    "status": "ready",
+                    "body": action["body"],
+                    "assignee": "radulator",
+                    "parents": [],
+                },
+                "parents": [],
+                "comments": [],
+            },
+            "t_victim": {
+                "task": {
+                    "id": "t_victim",
+                    "status": "ready",
+                    "body": "Unrelated historical task.",
+                    "assignee": "someone-else",
+                    "parents": [],
+                },
+                "parents": [],
+                "comments": [],
+            },
+            "t_parent": {
+                "task": {
+                    "id": "t_parent",
+                    "status": "archived",
+                    "body": "release tracker",
+                    "parents": [],
+                },
+                "parents": [],
+                "comments": [],
+            },
+        }
+        mutations = []
+
+        def runner(command):
+            args = command[2:]
+            if args[0] == "create":
+                return subprocess.CompletedProcess(command, 0, json.dumps({
+                    "history": [{"id": "t_victim"}],
+                    "task": {"id": "t_created"},
+                }), "")
+            if args[0] == "show":
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks[args[1]]), "",
+                )
+            if args[0] == "link":
+                parent_id, child_id = args[1:3]
+                mutations.append(("link", parent_id, child_id))
+                tasks[child_id]["parents"].append(parent_id)
+                tasks[child_id]["task"]["parents"].append(parent_id)
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            if args[0] in {"comment", "assign"}:
+                mutations.append((args[0], args[1]))
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            return subprocess.CompletedProcess(command, 1, "", "unexpected")
+
+        receipt = HermesKanbanCLI(runner=runner).perform(action)
+
+        self.assertEqual(receipt["task_id"], "t_created")
+        self.assertEqual(mutations, [("link", "t_created", "t_parent")])
+
     def test_kanban_adapter_rejects_status_found_only_in_nested_duplicate(self):
         action = {
             "kind": "create_prerequisite",
@@ -1272,6 +1344,66 @@ class LifecycleLedgerTests(unittest.TestCase):
                 self.ledger, spec, Adapter(), apply=True,
             )
         self.assertEqual(self.ledger.replay().events, ())
+
+    def test_reconciliation_rejects_conflicting_root_and_top_level_task_authority(self):
+        for index, state in enumerate((
+            "feedback", "implementing", "testing", "review",
+        )):
+            self.append(state, index, {"base_sha": "c" * 40})
+        self.append(
+            "needs_fix",
+            4,
+            {
+                "base_sha": "c" * 40,
+                "verdict_id": "conflicting-task-authority",
+                "reason": "Correct it.",
+            },
+        )
+
+        class Adapter:
+            def show(self, task_id):
+                if task_id == "t_parent":
+                    return {
+                        "id": "t_parent",
+                        "status": "archived",
+                        "pr": 42,
+                        "head_sha": HEAD,
+                        "base_sha": "c" * 40,
+                        "parents": [],
+                        "task": {
+                            "id": "t_parent",
+                            "status": "ready",
+                            "pr": 999,
+                            "head_sha": NEXT_HEAD,
+                            "base_sha": "d" * 40,
+                            "parents": ["t_conflicting"],
+                        },
+                    }
+                return {
+                    "task": {"id": "t_source", "status": "done", "body": "source"},
+                    "parents": [],
+                }
+
+            def perform(self, _action):
+                raise AssertionError("ambiguous task authority must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "conflicting-root-task-authority",
+            "trackers": [{
+                "task_id": "t_parent",
+                "source_id": "feedback-17",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 42,
+                "head_sha": HEAD,
+                "base_sha": "c" * 40,
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "ambiguous exact task"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
 
     def test_reconciliation_rejects_unsupported_exact_task_status(self):
         tasks = {
