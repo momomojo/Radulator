@@ -601,6 +601,21 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     expectedCiAppId: CI_APP_ID,
   }).ok, false);
 
+  const supplemental = checkRun(pr, "Hermes Release Control Tests", 3);
+  const withSupplemental = resolveRequiredCi({
+    pr,
+    workflowRuns: setup.workflowRuns,
+    checkRuns: [...setup.checkRuns, supplemental],
+    requiredCi: setup.requiredCi,
+    expectedWorkflowId: WORKFLOW_ID,
+    expectedCiAppId: CI_APP_ID,
+  });
+  assert.deepEqual(withSupplemental.evidence.map((item) => item.name), setup.requiredCi);
+  assert.deepEqual(
+    withSupplemental.supplementalEvidence.map((item) => item.name),
+    ["Hermes Release Control Tests"],
+  );
+
   assert.deepEqual(requiredCiForBase("develop"), ["Smoke Tests", "Targeted Calculator Tests"]);
   const mainPr = prFixture({ baseRef: "main" });
   assert.deepEqual(requiredCiForBase(mainPr.baseRef), ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"]);

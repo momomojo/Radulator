@@ -32,8 +32,9 @@ export async function reconcileCurrentMainDeployment({ api, now = Date.now() }) 
 
   const pr = candidates[0];
   const runs = await api.listDeployRunsForHead(mainSha);
-  const relevant = (runs || []).filter((run) =>
-    run?.name === "Deploy to GitHub Pages" && deploymentSourceRef(run) === mainSha);
+  // listDeployRunsForHead is already scoped to deploy.yml. Do not require optional
+  // workflow-run display metadata that can be omitted for repository_dispatch runs.
+  const relevant = (runs || []).filter((run) => deploymentSourceRef(run) === mainSha);
   const satisfied = relevant.find((run) =>
     run.status !== "completed" || run.conclusion === "success");
   if (satisfied) return { status: "already-satisfied", mainSha, pr: pr.number, runId: satisfied.id };

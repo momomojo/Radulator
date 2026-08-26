@@ -1,0 +1,453 @@
+{
+  "schema": "radulator-mesa-cac-reference-audit-chunk/v1",
+  "auditedAt": "2026-08-24T22:01:16.168Z",
+  "officialCalculator": "https://tools.mesa-nhlbi.org/Calcium/input.aspx",
+  "tlsVerified": true,
+  "race": "chinese",
+  "sex": "female",
+  "groupCount": 40,
+  "dataSha256": "1fcabd9ab706021de7865e309e612d376908a5a1ff71d113e65bb46bbb9b2b27",
+  "chunkSha256": "551e3f667dbe0b14e786d5915950be815025e8692d7ae49894e1e583ca23b26d",
+  "groups": [
+    {
+      "key": "chinese:female:45",
+      "p": 4,
+      "r": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordSha256": "8bb88f8f240c71633cc8b77869e5b469f2d69fc43f448a9b0b004549e7804086"
+    },
+    {
+      "key": "chinese:female:46",
+      "p": 7,
+      "r": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordSha256": "eb77a08479d979ad5e254a0d39ce18d9b068177af2b41c5ed57e388918bfffb4"
+    },
+    {
+      "key": "chinese:female:47",
+      "p": 9,
+      "r": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordSha256": "3ff8cbd93c893f1de3641d315631cb867ddde1e1957c084aff81afaf08d2f318"
+    },
+    {
+      "key": "chinese:female:48",
+      "p": 11,
+      "r": [
+        0,
+        0,
+        0,
+        2
+      ],
+      "recordSha256": "d057dc6565c3baecb631c30a7463931abe6621344fcbd2673dbb8d0143e80af6"
+    },
+    {
+      "key": "chinese:female:49",
+      "p": 14,
+      "r": [
+        0,
+        0,
+        0,
+        6
+      ],
+      "recordSha256": "ce490fb0e26f57e3996b3899958f82a4907ae290828031c2d74679727cf627e9"
+    },
+    {
+      "key": "chinese:female:50",
+      "p": 16,
+      "r": [
+        0,
+        0,
+        0,
+        12
+      ],
+      "recordSha256": "6e1d016f62014d87462f502421a0ece9d1394fb2f0d313f8085ddfa8bb5ed0d6"
+    },
+    {
+      "key": "chinese:female:51",
+      "p": 18,
+      "r": [
+        0,
+        0,
+        0,
+        17
+      ],
+      "recordSha256": "5cea9870bd031179c0f3f1bd7daff6f44fc274e4bf1c2f4009c0a763a7842f86"
+    },
+    {
+      "key": "chinese:female:52",
+      "p": 20,
+      "r": [
+        0,
+        0,
+        0,
+        23
+      ],
+      "recordSha256": "fedb5ca248300cdeced8b1a3eef1acde22717dd50d05b0bd455c5dc64f39d6a2"
+    },
+    {
+      "key": "chinese:female:53",
+      "p": 23,
+      "r": [
+        0,
+        0,
+        0,
+        30
+      ],
+      "recordSha256": "76bd6ccea024d6048fa9d5a091c9cb774283b5e0ba616b5f48f7faaf0061a04f"
+    },
+    {
+      "key": "chinese:female:54",
+      "p": 25,
+      "r": [
+        0,
+        0,
+        1,
+        38
+      ],
+      "recordSha256": "2244d0b905e4cc55bff97451d8a3ddd000aec293e972becbe684884b1e26263e"
+    },
+    {
+      "key": "chinese:female:55",
+      "p": 27,
+      "r": [
+        0,
+        0,
+        2,
+        47
+      ],
+      "recordSha256": "6537244c439ee63785c89f5ad89f2efa2edd7355c08e3a74976202a5de3bafc0"
+    },
+    {
+      "key": "chinese:female:56",
+      "p": 30,
+      "r": [
+        0,
+        0,
+        5,
+        57
+      ],
+      "recordSha256": "c0dedec40d5c6324482083d1338eefd96890292d06aadf069b329ddb13c4b52a"
+    },
+    {
+      "key": "chinese:female:57",
+      "p": 32,
+      "r": [
+        0,
+        0,
+        7,
+        66
+      ],
+      "recordSha256": "29bf72648c95701e3765deacb67dbbc52166e0f58b6a5aaec6c45bb39eba8ddb"
+    },
+    {
+      "key": "chinese:female:58",
+      "p": 34,
+      "r": [
+        0,
+        0,
+        10,
+        77
+      ],
+      "recordSha256": "025725dd2f396bbdb2cb149de496209e8489511e3cd87d3078745b151d9708ee"
+    },
+    {
+      "key": "chinese:female:59",
+      "p": 36,
+      "r": [
+        0,
+        0,
+        14,
+        90
+      ],
+      "recordSha256": "5e9a5922bbec1b88bd33b88e8d0cb3c873e66cc99187210c6be38d4465a14e95"
+    },
+    {
+      "key": "chinese:female:60",
+      "p": 37,
+      "r": [
+        0,
+        0,
+        18,
+        105
+      ],
+      "recordSha256": "9ff25bbcf22fefd47136cb8d81f5ef81f9d0e7c70f1cc22d7b1474e2f33a6d62"
+    },
+    {
+      "key": "chinese:female:61",
+      "p": 39,
+      "r": [
+        0,
+        0,
+        23,
+        122
+      ],
+      "recordSha256": "a1e7dd5fc8dd5566b439c0dd0081100eb620ab3c5a0727db9ae4d4606a1373a6"
+    },
+    {
+      "key": "chinese:female:62",
+      "p": 41,
+      "r": [
+        0,
+        0,
+        28,
+        141
+      ],
+      "recordSha256": "168cc5b9c372da1014d857ed379b18ecec289f866e891131b9cbb388ff63a7d6"
+    },
+    {
+      "key": "chinese:female:63",
+      "p": 42,
+      "r": [
+        0,
+        0,
+        34,
+        160
+      ],
+      "recordSha256": "bffa59cb00ad9c036858cba5231f24e01022bb32f0b78d45d94d617f2d872989"
+    },
+    {
+      "key": "chinese:female:64",
+      "p": 44,
+      "r": [
+        0,
+        0,
+        39,
+        178
+      ],
+      "recordSha256": "291351c522b1b8dfb211e3a6aa948cf3725288b0724ebeff36bbad94b828e131"
+    },
+    {
+      "key": "chinese:female:65",
+      "p": 46,
+      "r": [
+        0,
+        0,
+        45,
+        194
+      ],
+      "recordSha256": "5df3c197ad9312c4129be51775cce914060f795038e36b8305cbe03ee0d50f7b"
+    },
+    {
+      "key": "chinese:female:66",
+      "p": 48,
+      "r": [
+        0,
+        0,
+        51,
+        211
+      ],
+      "recordSha256": "b77cc6f651e822a21d8ac5c56b83d853cdd54093ace58186b77b21c61360f4d0"
+    },
+    {
+      "key": "chinese:female:67",
+      "p": 50,
+      "r": [
+        0,
+        0,
+        55,
+        220
+      ],
+      "recordSha256": "fae39eb93f93eb3153a4dfac20c8e2351986681bc03441f655e66fb7a76e768e"
+    },
+    {
+      "key": "chinese:female:68",
+      "p": 51,
+      "r": [
+        0,
+        2,
+        59,
+        229
+      ],
+      "recordSha256": "7ae9232c90c65663a10dd5e6b59d8ba50528ca65683fd653ffec9f8f78f5fe4f"
+    },
+    {
+      "key": "chinese:female:69",
+      "p": 53,
+      "r": [
+        0,
+        3,
+        64,
+        235
+      ],
+      "recordSha256": "649ad84ecf0c7a3958c2dd0d73b12835aaf4f9d552cdd9f1b713d0e68891be9c"
+    },
+    {
+      "key": "chinese:female:70",
+      "p": 55,
+      "r": [
+        0,
+        5,
+        70,
+        246
+      ],
+      "recordSha256": "952cf3283f1c192b1f25a1fc8091c9c7481b350ee04e82993038459c342c4303"
+    },
+    {
+      "key": "chinese:female:71",
+      "p": 57,
+      "r": [
+        0,
+        7,
+        76,
+        262
+      ],
+      "recordSha256": "d0c23bd1ea616a0a7629f03da5f1d45319889bdccc24db95fd67fcbea7d42d4e"
+    },
+    {
+      "key": "chinese:female:72",
+      "p": 59,
+      "r": [
+        0,
+        9,
+        83,
+        276
+      ],
+      "recordSha256": "81eed8e5877acd4b927644af90ba28e7e2a15314be180a888c2611fcaf246b4d"
+    },
+    {
+      "key": "chinese:female:73",
+      "p": 60,
+      "r": [
+        0,
+        11,
+        89,
+        287
+      ],
+      "recordSha256": "fa3f24142f7f53b550cde75abcffea51c9af37d7d322986d465ba83bafde94aa"
+    },
+    {
+      "key": "chinese:female:74",
+      "p": 62,
+      "r": [
+        0,
+        13,
+        96,
+        300
+      ],
+      "recordSha256": "4bf1764c5a82e9120600022883f89afbf0232ceaf5fcf35e0626f11b2e48e81f"
+    },
+    {
+      "key": "chinese:female:75",
+      "p": 64,
+      "r": [
+        0,
+        16,
+        103,
+        314
+      ],
+      "recordSha256": "0aca19e8e3a6b6634a27c704a202c10d4ea198b2707dd6190245800d591ea4c0"
+    },
+    {
+      "key": "chinese:female:76",
+      "p": 66,
+      "r": [
+        0,
+        18,
+        111,
+        332
+      ],
+      "recordSha256": "f3bdb32d892e01020e6418b8480f35e11a9007130e9b467f4e7d82ef4e4e7f4c"
+    },
+    {
+      "key": "chinese:female:77",
+      "p": 68,
+      "r": [
+        0,
+        22,
+        119,
+        347
+      ],
+      "recordSha256": "c4c1bc21466d0b204c438d8836d74af8b64333ea0f1f2fdef72ccb3dfba7c5b9"
+    },
+    {
+      "key": "chinese:female:78",
+      "p": 70,
+      "r": [
+        0,
+        25,
+        128,
+        361
+      ],
+      "recordSha256": "b83d295f801f87c0183d83898d5ecd99082a2180dc035d83f3070e5d14675c69"
+    },
+    {
+      "key": "chinese:female:79",
+      "p": 72,
+      "r": [
+        0,
+        28,
+        137,
+        377
+      ],
+      "recordSha256": "fae7d01598a18e276ea33fd164db49374bc5190f074514d641f831ebc578c381"
+    },
+    {
+      "key": "chinese:female:80",
+      "p": 74,
+      "r": [
+        0,
+        32,
+        146,
+        398
+      ],
+      "recordSha256": "a6fa65df2e66a7dbf27b733fcb6945287ca59a2d5c0125e7659fa6707037b16f"
+    },
+    {
+      "key": "chinese:female:81",
+      "p": 76,
+      "r": [
+        2,
+        35,
+        158,
+        416
+      ],
+      "recordSha256": "21a7ce6e70fb16ea1a2b98d1fdc358ab285f0e5abbabf6702497312ef15e2c35"
+    },
+    {
+      "key": "chinese:female:82",
+      "p": 78,
+      "r": [
+        3,
+        40,
+        167,
+        436
+      ],
+      "recordSha256": "eb6aa0c711472e6d602cd4bead0b06a78b2390b3ddcf44294cb3b61b31c56aa4"
+    },
+    {
+      "key": "chinese:female:83",
+      "p": 79,
+      "r": [
+        5,
+        44,
+        177,
+        456
+      ],
+      "recordSha256": "ce67dd4f5af334d84a7b7d18c2e667af686d66409641640b819c85217f7279e4"
+    },
+    {
+      "key": "chinese:female:84",
+      "p": 81,
+      "r": [
+        6,
+        50,
+        190,
+        483
+      ],
+      "recordSha256": "eb912bac29569726048b5204316590fd2373c113a06026b4261f13ceb29135ce"
+    }
+  ]
+}
