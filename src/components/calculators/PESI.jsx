@@ -130,20 +130,16 @@ export function computePESI(values = {}) {
   ];
   const score = pointRows.reduce((total, [, points]) => total + points, 0);
   const classification = classifyPesi(score);
-  const lowClinicalSeverity = score <= 85;
 
   return {
     "PESI Score": `${score} points`,
     "PESI Class": `${classification.className} — ${classification.label} PESI mortality class`,
     "Observed 30-Day Mortality Range": `${classification.range} across the original derivation, internal-validation, and external-validation cohorts; this is not an individualized probability.`,
-    "2026 AHA/ACC Clinical-Severity Context": lowClinicalSeverity
-      ? "Low PESI clinical-severity score (≤85)"
-      : "Elevated PESI clinical-severity score (>85)",
     "Score Breakdown": pointRows
       .map(([label, points]) => `${label}: +${points}`)
       .join("; "),
     "Scope / Safety":
-      "PESI estimates short-term prognosis only after acute pulmonary embolism is confirmed. It does not diagnose PE or independently determine outpatient care, ICU need, reperfusion, or a 2026 AHA/ACC Acute PE Clinical Category.",
+      "PESI estimates short-term prognosis only after acute pulmonary embolism is confirmed. It does not diagnose PE or independently determine outpatient care, ICU need, reperfusion, or other management decisions.",
     "Interpretation Context":
       "Interpret alongside hemodynamic and respiratory status, right-ventricular assessment, biomarkers, bleeding risk, clinical judgment, and local protocols.",
     _severity:
@@ -156,7 +152,7 @@ export const PESI = {
   category: "Clinical Decision",
   name: "PESI Score",
   desc: "Adult acute pulmonary embolism 30-day mortality risk classification using the original PESI.",
-  guidelineVersion: "Original PESI (2005) · 2026 AHA/ACC context",
+  guidelineVersion: "Original PESI (2005)",
   keywords: [
     "PESI",
     "pulmonary embolism severity index",
@@ -166,13 +162,13 @@ export const PESI = {
   ],
   tags: ["Clinical Decision", "Pulmonary", "Emergency"],
   metaDesc:
-    "Free original PESI Score calculator for adults with confirmed acute pulmonary embolism. Calculates the five PESI mortality classes with observed cohort ranges and 2026 AHA/ACC clinical-severity context.",
+    "Free original PESI Score calculator for adults with confirmed acute pulmonary embolism. Calculates the five PESI mortality classes with observed cohort ranges.",
   info: {
     text: `Use the original Pulmonary Embolism Severity Index (PESI) to classify short-term mortality risk in adults after acute pulmonary embolism has been objectively confirmed. This is a prognostic score, not a diagnostic rule or the simplified PESI.
 
 The score starts with age in years, then adds the source-model increments for the explicitly selected demographic and clinical criteria. Vital-sign thresholds are pulse ≥110/min, systolic blood pressure <100 mm Hg, respiratory rate ≥30/min, temperature <36.0 °C, and oxygen saturation <90% (with or without supplemental oxygen).
 
-The original five classes are reported with mortality ranges observed across the original study cohorts. Those ranges are cohort observations, not a personalized calibrated probability. Current 2026 AHA/ACC context treats PESI ≤85 as a low clinical-severity score and PESI >85 as an elevated score. PESI alone does not assign an AHA/ACC Acute PE Clinical Category or establish “high-risk PE.”`,
+The original five classes are reported with mortality ranges observed across the original study cohorts. Those ranges are cohort observations, not a personalized calibrated probability. The score boundary between original class II and class III is 85/86; PESI alone is not a diagnostic or stand-alone management rule.`,
     link: {
       label: "View original PESI derivation study",
       url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/",
@@ -317,18 +313,6 @@ The original five classes are reported with mortality ranges observed across the
     {
       t: "Zhou XY, Ben SQ, Chen HL, Ni SS. The prognostic value of pulmonary embolism severity index in acute pulmonary embolism: a meta-analysis. Respir Res. 2012;13:111.",
       u: "https://pmc.ncbi.nlm.nih.gov/articles/PMC3571977/",
-    },
-    {
-      t: "2026 AHA/ACC/ACCP/ACEP/CHEST/SCAI/SHM/SIR/SVM/SVN Guideline for the Evaluation and Management of Acute Pulmonary Embolism in Adults.",
-      u: "https://doi.org/10.1161/CIR.0000000000001415",
-    },
-    {
-      t: "2026 Acute Pulmonary Embolism Guideline-at-a-Glance. J Am Coll Cardiol. 2026.",
-      u: "https://www.jacc.org/doi/10.1016/j.jacc.2025.12.023",
-    },
-    {
-      t: "Talerico R, de Wit K, Barco S, et al. Evidence-based risk stratification of patients with acute pulmonary embolism: communication from the ISTH SSC Subcommittee on Predictive and Diagnostic Variables in Thrombotic Disease. J Thromb Haemost. 2026.",
-      u: "https://pubmed.ncbi.nlm.nih.gov/41354154/",
     },
   ],
 };

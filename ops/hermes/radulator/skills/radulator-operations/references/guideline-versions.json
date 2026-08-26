@@ -571,22 +571,20 @@
     {
       "calculator_id": "pesi",
       "title": "Pulmonary Embolism Severity Index",
-      "implemented_version": "Original PESI (2005) with 2026 AHA/ACC context",
+      "implemented_version": "Original PESI (2005)",
       "basis_type": "primary-model",
       "verification_status": "verified",
       "last_verified": "2026-08-25",
-      "justification": "The primary study confirms the 11-variable original PESI model and five classes, while the official 2026 AHA/ACC guideline hub confirms its bounded current management context.",
+      "justification": "The primary study confirms the 11-variable original PESI model, all point increments, and the five source-defined risk classes.",
       "sources": [
-        { "authority": "Aujesky et al.", "title": "Derivation and validation of a prognostic model for pulmonary embolism", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/" },
-        { "authority": "American Heart Association and American College of Cardiology", "title": "2026 guideline for the evaluation and management of acute pulmonary embolism in adults", "role": "official-authority", "url": "https://professional.heart.org/en/guidelines-statements/2026-ahaaccaccpchestscaishmsirsvmsvn-guideline-for-the-evaluation-andcir0000000000001415" },
-        { "authority": "American Heart Association", "title": "Top take-home messages for the emergency physician from the 2026 acute PE guideline", "role": "context-guideline", "url": "https://professional.heart.org/en/-/media/PHD-Files-2/Science-News/t/Top-Take-Home-Messages-for-the-Emergency-Physician-Guideline-APE-in-Adults.pdf" }
+        { "authority": "Aujesky et al.", "title": "Derivation and validation of a prognostic model for pulmonary embolism", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/" }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/PESI.jsx",
         "fixture_path": "tests/fixtures/compute/pesi.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "Original PESI (2005) · 2026 AHA/ACC context" },
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "Original PESI (2005)" },
         "claims": [
           {
             "id": "aujesky-eleven-variable-score",
@@ -603,22 +601,6 @@
             "fact": "Exact boundary vectors exercise all five PESI classes and report the source cohort mortality ranges as nonindividualized observations.",
             "dimensions": ["classification", "threshold", "boundary", "interpretation", "output"],
             "vector_ids": ["class-i-upper", "class-ii-lower", "class-ii-upper", "class-iii-lower", "class-iv-lower", "class-iv-upper", "class-v-lower"]
-          },
-          {
-            "id": "aha-acc-2026-context",
-            "source_url": "https://professional.heart.org/en/guidelines-statements/2026-ahaaccaccpchestscaishmsirsvmsvn-guideline-for-the-evaluation-andcir0000000000001415",
-            "source_locator": "Linked full guideline Table 5, Figure 2, and Section 3.2.1 risk assessment using clinical scores",
-            "fact": "The current-context output preserves PESI as a prognostic aid and explicitly does not use PESI alone to assign a 2026 AHA or ACC acute PE category or management decision.",
-            "dimensions": ["version", "scope", "interpretation", "output"],
-            "vector_ids": ["class-ii-upper", "class-iii-lower"]
-          },
-          {
-            "id": "aha-acc-outpatient-tool-context",
-            "source_url": "https://professional.heart.org/en/-/media/PHD-Files-2/Science-News/t/Top-Take-Home-Messages-for-the-Emergency-Physician-Guideline-APE-in-Adults.pdf",
-            "source_locator": "Take-home message 4, suitability for outpatient management of PE",
-            "fact": "The official summary names PESI as one decision tool for outpatient suitability in selected acute PE categories; Radulator retains the limitation that the score is not a stand-alone disposition rule.",
-            "dimensions": ["scope", "interpretation", "output"],
-            "vector_ids": ["class-i-upper", "class-iii-lower"]
           }
         ]
       }
