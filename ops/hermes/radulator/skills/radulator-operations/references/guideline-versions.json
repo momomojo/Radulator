@@ -424,6 +424,14 @@
             "fact": "The output is limited to adult diagnostic native or transplant kidney biopsy and reports the major-bleeding endpoint rather than minor or any bleeding.",
             "dimensions": ["scope", "interpretation", "output"],
             "vector_ids": ["paper-typical-native", "paper-typical-allograft", "reject-out-of-range"]
+          },
+          {
+            "id": "thorne-calibration-above-25",
+            "source_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML",
+            "source_locator": "Discussion, paragraph p0130",
+            "fact": "The recalibrated model begins to overpredict risk in the probability range exceeding 25%; 25% is a calibration-warning boundary, not a risk category or action threshold.",
+            "dimensions": ["interpretation", "output"],
+            "vector_ids": ["calibration-above-25"]
           }
         ],
         "source_artifact": {

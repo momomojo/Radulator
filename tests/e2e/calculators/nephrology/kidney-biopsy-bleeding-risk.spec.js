@@ -43,14 +43,20 @@ test.describe("Kidney Biopsy Major Bleeding Risk (KBRC)", () => {
     await expect(info).toContainText("adult Canadian cohorts");
     await expect(info).toContainText("follow-up differed between cohorts");
     await expect(info).toContainText("complements rather than replaces");
+    await expect(info).toContainText(
+      "data-entry guardrails, not ranges published as the model's validated domain",
+    );
     await expect(info).not.toContainText(/low[- ]risk|moderate[- ]risk|high[- ]risk/i);
 
     await expect(page.locator("#age")).toHaveAttribute("min", "18");
     await expect(page.locator("#age")).toHaveAttribute("max", "90");
     await expect(page.locator("#platelets")).toHaveAttribute("min", "50");
     await expect(page.locator("#platelets")).toHaveAttribute("max", "700");
-    await expect(page.getByText("g/L; supported entry range 70–180 (not g/dL)")).toBeVisible();
+    await expect(page.getByText("g/L; Radulator input limit 70–180 (not g/dL)")).toBeVisible();
     await expect(page.getByText("greatest ultrasound dimension")).toBeVisible();
+    await expect(page.locator("body")).not.toContainText(
+      /supported entry range|source calculator's supported entry range|not extrapolated/i,
+    );
 
     await expect(
       page.getByRole("link", { name: /Thorne J, Lebedeva V/ }),
@@ -170,7 +176,10 @@ test.describe("Kidney Biopsy Major Bleeding Risk (KBRC)", () => {
     await page.locator("#age").fill("91");
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(resultRegion(page)).toContainText(
-      "outside the source calculator's supported entry range",
+      "outside Radulator input limits",
+    );
+    await expect(resultRegion(page)).toContainText(
+      "not publication-derived model-validation bounds",
     );
 
   });
