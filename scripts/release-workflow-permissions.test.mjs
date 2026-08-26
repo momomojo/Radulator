@@ -4,6 +4,10 @@ import { readFile } from "node:fs/promises";
 
 import { parse } from "yaml";
 
+const packageJson = JSON.parse(
+  await readFile(new URL("../package.json", import.meta.url), "utf8"),
+);
+
 async function workflow(path) {
   return parse(await readFile(new URL(path, import.meta.url), "utf8"));
 }
@@ -12,6 +16,7 @@ const gate = await workflow("../.github/workflows/independent-review-gate.yml");
 const merge = await workflow("../.github/workflows/auto-merge.yml");
 const deploy = await workflow("../.github/workflows/deploy.yml");
 const rollback = await workflow("../.github/workflows/rollback-deployment.yml");
+const e2e = await workflow("../.github/workflows/e2e-tests.yml");
 
 assert.equal(gate.jobs.evaluate.permissions.statuses, "write");
 assert.equal(
@@ -68,6 +73,30 @@ assert.match(requestRollback.if, /needs\.authorize\.outputs\.mode != 'verified-r
 assert.equal(
   requestRollback.steps.at(-1).run,
   "node scripts/select-rollback-deployment.mjs --request --failed-run-id ${{ github.run_id }}",
+);
+
+const releaseControlEvidence = e2e.jobs["hermes-release-control-tests"].steps.find(
+  (step) => step.name === "Run release-control, intake, and production dependency evidence",
+);
+assert.match(
+  releaseControlEvidence.run,
+  /npm run test:hermes-install/,
+  "the protected exact-head check must execute the installer aggregate",
+);
+assert.match(
+  packageJson.scripts["test:hermes-install"],
+  /npm run test:primary-source/,
+  "the installer aggregate must retain primary-source evidence",
+);
+assert.match(
+  packageJson.scripts["test:primary-source"],
+  /npm run test:kbrc-source/,
+  "the exact-head aggregate must execute the KBRC primary-source audit",
+);
+assert.match(
+  packageJson.scripts["test:primary-source"],
+  /npm run test:cac-drs-source/,
+  "the exact-head aggregate must execute the CAC staging primary-source audit",
 );
 
 console.log("release workflow permission contract tests passed");
