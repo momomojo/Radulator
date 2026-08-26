@@ -366,6 +366,54 @@ async function assertExecutableImplementationEvidence(record, calculator) {
   if (record.calculator_id === "kidney-biopsy-bleeding-risk") {
     assertSourceArtifactExtraction(evidence, fixture, calculatorSource, label);
   }
+  if (record.calculator_id === "birads") {
+    const audit = evidence.source_audit;
+    assert.equal(typeof audit, "object", `${label}.source_audit is required`);
+    assert.equal(
+      audit.schema,
+      "radulator-live-source-audit/v1",
+      `${label}.source_audit.schema`,
+    );
+    assert.equal(
+      audit.command,
+      "npm run test:birads-fda-source",
+      `${label}.source_audit.command`,
+    );
+    assert.equal(
+      audit.authority,
+      "U.S. Food and Drug Administration",
+      `${label}.source_audit.authority`,
+    );
+    assert.deepEqual(
+      audit.source_urls,
+      [
+        "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
+        "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
+        "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
+        "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement",
+      ],
+      `${label}.source_audit.source_urls`,
+    );
+    assert.deepEqual(
+      audit.vector_ids,
+      [
+        "category-3",
+        "category-4",
+        "category-5",
+        "incomplete-prior-comparison",
+        "post-procedure-marker",
+      ],
+      `${label}.source_audit.vector_ids`,
+    );
+    assert.equal(
+      audit.source_bytes_committed,
+      false,
+      `${label}.source_audit.source_bytes_committed`,
+    );
+    for (const vectorId of audit.vector_ids) {
+      assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
+    }
+  }
 }
 
 const calculators = calculatorMetadata();
@@ -440,7 +488,7 @@ for (const calculator of calculators) {
 for (const [calculatorId, expected] of Object.entries({
   birads: {
     basis_type: "classification-system",
-    last_verified: "2026-08-25",
+    last_verified: "2026-08-26",
     source_urls: [
       "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
       "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
