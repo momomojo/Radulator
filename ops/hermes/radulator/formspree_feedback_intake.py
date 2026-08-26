@@ -1005,14 +1005,23 @@ def _reconciliation_failure_task(received: str, digest: str) -> Any:
 def _create_verified_reconciliation_failure(
     kanban: Any,
     *,
+    receipt: Dict[str, Any],
     received: str,
     digest: str,
 ) -> str:
     title, body = _reconciliation_failure_task(received, digest)
+    existing_task_id = receipt.get("reconciliation_failure_task_id")
+    if existing_task_id is not None and (
+        not isinstance(existing_task_id, str)
+        or not existing_task_id.startswith("t_")
+    ):
+        raise FeedbackIntakeError(
+            "Persisted feedback reconciliation failure obligation is invalid."
+        )
+
     try:
-        task_id = kanban.create(
-            title,
-            body,
+        task_id = existing_task_id or kanban.create(
+            title, body,
             "radulator-formspree-reconciliation-failure:" + digest,
             triage=True,
         )
@@ -1024,12 +1033,59 @@ def _create_verified_reconciliation_failure(
     if (
         _find_task_id(readback) != task_id
         or not _contains_text(readback, digest)
-        or _task_status(readback, task_id) not in OPEN_TASK_STATUSES
     ):
         raise FeedbackIntakeError(
-            "Kanban feedback reconciliation failure obligation is not durably open."
+            "Kanban feedback reconciliation failure obligation failed exact readback."
         )
-    return task_id
+    status = _task_status(readback, task_id)
+    if status in OPEN_TASK_STATUSES:
+        return task_id
+    if status not in TERMINAL_TASK_STATUSES:
+        raise FeedbackIntakeError(
+            "Kanban feedback reconciliation failure obligation has invalid status."
+        )
+
+    superseded = receipt.setdefault(
+        "superseded_reconciliation_failure_task_ids", []
+    )
+    if not isinstance(superseded, list) or any(
+        not isinstance(item, str) for item in superseded
+    ):
+        raise FeedbackIntakeError(
+            "Persisted feedback reconciliation failure history is invalid."
+        )
+    if task_id not in superseded:
+        superseded.append(task_id)
+    replacement_body = body + (
+        "\n\nRecovery: this open corrective obligation preserves and supersedes "
+        f"prematurely terminal failure task {task_id}; do not rewrite or delete "
+        "its history."
+    )
+    try:
+        replacement_id = kanban.create(
+            title,
+            replacement_body,
+            "radulator-formspree-reconciliation-failure-repair:"
+            + digest
+            + ":"
+            + task_id,
+            triage=True,
+        )
+        replacement = kanban.show(replacement_id)
+    except Exception as error:
+        raise FeedbackIntakeError(
+            "Replacement feedback reconciliation failure obligation failed readback."
+        ) from error
+    if (
+        _find_task_id(replacement) != replacement_id
+        or not _contains_text(replacement, digest)
+        or not _contains_text(replacement, task_id)
+        or _task_status(replacement, replacement_id) not in OPEN_TASK_STATUSES
+    ):
+        raise FeedbackIntakeError(
+            "Replacement feedback reconciliation failure obligation is not durably open."
+        )
+    return replacement_id
 
 
 def _load_state(path: Path) -> Dict[str, Any]:
@@ -1153,6 +1209,7 @@ def _process_feedback_locked(
             receipt["reconciliation_failure_task_id"] = (
                 _create_verified_reconciliation_failure(
                     kanban,
+                    receipt=receipt,
                     received=received,
                     digest=digest,
                 )
@@ -1222,13 +1279,27 @@ def _process_feedback_locked(
             new_attempted += 1
 
         if existing_feedback:
-            reconciliation = _reconcile_feedback_receipt(
-                kanban,
-                existing_receipt,
-                evidence_reader,
-                received=received,
-                digest=digest,
-            )
+            try:
+                reconciliation = _reconcile_feedback_receipt(
+                    kanban,
+                    existing_receipt,
+                    evidence_reader,
+                    received=received,
+                    digest=digest,
+                )
+            except FeedbackIntakeError:
+                existing_receipt["reconciliation_failure_task_id"] = (
+                    _create_verified_reconciliation_failure(
+                        kanban,
+                        receipt=existing_receipt,
+                        received=received,
+                        digest=digest,
+                    )
+                )
+                state["authenticated_reconciliation_cursor"] = digest
+                _write_state(state_path, state)
+                outcome["repair_failed"] = outcome.get("repair_failed", 0) + 1
+                continue
             _write_state(state_path, state)
             _record_reconciliation_outcome(outcome, reconciliation)
             continue

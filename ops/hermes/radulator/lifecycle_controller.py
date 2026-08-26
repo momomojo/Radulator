@@ -921,8 +921,8 @@ def _exact_task_evidence(value: Any, task_id: str) -> dict[str, Any]:
 
 def _has_exact_pr_reference(value: Any, task_id: str, pr: int) -> bool:
     task = _exact_task_record(value, task_id)
-    if task.get("pr") == pr:
-        return True
+    if "pr" in task:
+        return task.get("pr") == pr
     rendered = _canonical(_exact_task_evidence(value, task_id))
     return re.search(rf"(?<!\d)#{pr}(?!\d)", rendered) is not None
 
@@ -934,8 +934,8 @@ def _has_exact_sha_reference(
     sha: str,
 ) -> bool:
     task = _exact_task_record(value, task_id)
-    if task.get(field) == sha:
-        return True
+    if field in task:
+        return task.get(field) == sha
     rendered = _canonical(_exact_task_evidence(value, task_id))
     return re.search(rf"(?<![0-9A-Fa-f]){sha}(?![0-9A-Fa-f])", rendered) is not None
 

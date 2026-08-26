@@ -1149,6 +1149,103 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             "radulator-formspree-reconciliation-failure:" + first_digest
         ])
 
+    def test_broken_legacy_replay_creates_failure_and_allows_later_valid_mail(self):
+        broken = dict(
+            self.message,
+            id="legacy-broken-replay",
+            date="Fri, 10 Jul 2026 10:15:00 -0700",
+        )
+        valid = dict(
+            self.message,
+            id="valid-after-legacy-broken",
+            date="Sat, 11 Jul 2026 10:15:00 -0700",
+        )
+        broken_digest = _receipt_digest(broken["id"])
+        self.state_path.write_text(json.dumps({
+            "version": 1,
+            "processed": {
+                broken_digest: {
+                    "task_id": "t_missing_legacy_task",
+                    "classification": "feedback",
+                    "parser_version": 1,
+                },
+            },
+        }))
+        self.state_path.chmod(0o600)
+        gmail = FakeGmail([broken, valid])
+        kanban = FakeKanban()
+
+        result = process_feedback(
+            gmail, kanban, self.state_path, max_messages=1,
+        )
+
+        self.assertEqual(result["repair_failed"], 1)
+        self.assertEqual(result["created"], 1)
+        self.assertNotIn("reconciled", result)
+        persisted = json.loads(self.state_path.read_text())
+        broken_receipt = persisted["processed"][broken_digest]
+        self.assertTrue(broken_receipt["authenticated_origin"])
+        self.assertEqual(
+            persisted["authenticated_reconciliation_cursor"], broken_digest,
+        )
+        failure_task_id = broken_receipt["reconciliation_failure_task_id"]
+        self.assertEqual(kanban.tasks[failure_task_id]["status"], "triage")
+        self.assertIn(broken_digest, kanban.tasks[failure_task_id]["body"])
+        valid_digest = _receipt_digest(valid["id"])
+        self.assertIn(valid_digest, persisted["processed"])
+        self.assertEqual(gmail.get_calls, [broken["id"], valid["id"]])
+
+    def test_terminal_reconciliation_failure_gets_open_replacement_without_starving(self):
+        broken = dict(
+            self.message,
+            id="repair-with-terminal-failure",
+            date="Fri, 10 Jul 2026 10:15:00 -0700",
+        )
+        valid = dict(
+            self.message,
+            id="valid-after-terminal-failure",
+            date="Sat, 11 Jul 2026 10:15:00 -0700",
+        )
+        gmail = FakeGmail([broken])
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path, max_messages=1)
+        state = json.loads(self.state_path.read_text())
+        digest = _receipt_digest(broken["id"])
+        del kanban.tasks[state["processed"][digest]["triage_task_id"]]
+
+        failed = process_feedback(gmail, kanban, self.state_path, max_messages=1)
+        state = json.loads(self.state_path.read_text())
+        original_failure = state["processed"][digest]["reconciliation_failure_task_id"]
+        kanban.tasks[original_failure]["status"] = "done"
+        gmail.messages.append(valid)
+
+        recovered = process_feedback(gmail, kanban, self.state_path, max_messages=1)
+
+        self.assertEqual(failed["repair_failed"], 1)
+        self.assertEqual(recovered["repair_failed"], 1)
+        self.assertEqual(recovered["created"], 1)
+        persisted = json.loads(self.state_path.read_text())
+        receipt = persisted["processed"][digest]
+        replacement = receipt["reconciliation_failure_task_id"]
+        self.assertNotEqual(replacement, original_failure)
+        self.assertEqual(kanban.tasks[replacement]["status"], "triage")
+        self.assertEqual(
+            receipt["superseded_reconciliation_failure_task_ids"],
+            [original_failure],
+        )
+        self.assertIn(original_failure, kanban.tasks[replacement]["body"])
+        self.assertEqual(
+            kanban.tasks[replacement]["idempotency_key"],
+            "radulator-formspree-reconciliation-failure-repair:"
+            + digest
+            + ":"
+            + original_failure,
+        )
+        self.assertIn(
+            _receipt_digest(valid["id"]),
+            persisted["processed"],
+        )
+
     def test_does_not_acknowledge_closure_until_parent_link_readback(self):
         gmail = FakeGmail([self.message])
         kanban = FakeKanban(drop_parents=True)

@@ -1157,6 +1157,67 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         self.assertEqual(self.ledger.replay().events, ())
 
+    def test_structured_pr_and_shas_override_stale_matching_prose(self):
+        requested_base = "d" * 40
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "structured-authority-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 16,
+                "head_sha": HEAD,
+                "base_sha": requested_base,
+            }],
+        }
+
+        for field, conflicting, message in (
+            ("pr", 999, "PR failed"),
+            ("head_sha", NEXT_HEAD, "head SHA failed"),
+            ("base_sha", "c" * 40, "base SHA failed"),
+        ):
+            with self.subTest(field=field):
+                task = {
+                    "id": "t_tracker",
+                    "status": "todo",
+                    "pr": 16,
+                    "head_sha": HEAD,
+                    "base_sha": requested_base,
+                    "body": (
+                        "Stale mapping PR #16 at head " + HEAD
+                        + " and base " + requested_base
+                    ),
+                }
+                task[field] = conflicting
+                tasks = {
+                    "t_tracker": {"task": task, "parents": []},
+                    "t_source": {
+                        "task": {
+                            "id": "t_source",
+                            "status": "done",
+                            "body": "source",
+                        },
+                        "parents": [],
+                    },
+                }
+
+                class Adapter:
+                    def show(self, task_id):
+                        return tasks[task_id]
+
+                    def perform(self, _action):
+                        raise AssertionError(
+                            "structured authority conflict must not mutate Kanban"
+                        )
+
+                with self.assertRaisesRegex(LedgerError, message):
+                    lifecycle_module.reconcile_trackers(
+                        self.ledger, spec, Adapter(), apply=True,
+                    )
+
+        self.assertEqual(self.ledger.replay().events, ())
+
     def test_reconciliation_spec_requires_owned_nonsymlink_exact_0600_file(self):
         payload = {
             "schema": "radulator-lifecycle-reconciliation/v1",
