@@ -1,11 +1,12 @@
 # Bosniak Classification v2019 — Research Brief
 
-**Status:** Research brief (stage 1 of two-stage medical pipeline)
+**Status:** Implemented and source-verified
 **Calculator ID:** `bosniak`
 **Category:** Radiology / Genitourinary Imaging
 **Current guideline version:** Bosniak v2019 (implemented)
-**Actual algorithm base:** Bosniak MA. Radiology 2005;236(1):61–70 (DOI: 10.1148/radiol.2362040218)
-**Stage 2 trigger:** Mohib Hafeez, MD sign-off on this brief
+**Live algorithm base:** Silverman SG et al. Bosniak Classification of Cystic Renal Masses, Version 2019. *Radiology*. 2019;292(2):475–488 (DOI: 10.1148/radiol.2019182646)
+**Management source:** Richard PO, Violette PD, Bhindi B, et al. 2023 UPDATE – Canadian Urological Association guideline: Management of cystic renal lesions. *Can Urol Assoc J*. 2023;17(6):162–174 (DOI: 10.5489/cuaj.8389)
+**Approval record:** Production eligibility is determined from exact-head CI, signed clinical attestations, protected merge checks, and post-deployment smoke evidence.
 
 ---
 
@@ -13,11 +14,11 @@
 
 This brief began as an audit of a legacy calculator that implemented **2005 Bosniak criteria** while displaying a v2019 badge. That mismatch has been resolved: the live calculator now implements the v2019 CT pathway. The legacy comparison below is retained to document why the upgrade was clinically material.
 
-The table below maps every field and option in the current implementation to its 2005 source criterion, then flags the corresponding v2019 difference.
+The table below maps every field and option in the retired 2005 implementation to its source criterion, then records the corresponding v2019 difference that drove the completed upgrade.
 
 ### Field-Level Discrepancy Table
 
-| Field ID | Current Option (2005) | 2005 Criterion Source | v2019 Difference | Severity |
+| Field ID | Retired Option (2005) | 2005 Criterion Source | v2019 Difference | Severity |
 |----------|----------------------|----------------------|------------------|----------|
 | `walls` | `hairline-thin` | "hairline thin wall" — Category I/II | v2019: quantified as ≤2 mm (Silverman 2019, Table 2). Wall may enhance in Class I/II — not a downgrade criterion. | Moderate (terminology quantified; functional impact low) |
 | `walls` | `minimally-thick` | "minimally thickened wall, minimal enhancement possible" — Category IIF | v2019: exactly **3 mm** smooth minimally thickened + enhancement required for IIF (Silverman 2019, Table 1). | Moderate (threshold boundary matters for IIF→III) |
@@ -50,7 +51,7 @@ The table below maps every field and option in the current implementation to its
 The upgrade applied these v2019 corrections to the retired compute hierarchy:
 
 ```
-Current hierarchy: IV → III → IIF → II → I
+Retired hierarchy: IV → III → IIF → II → I
 
 v2019 corrections:
 - "high" density: downgrade IIF → II (unless other features present)
@@ -254,33 +255,33 @@ Bosniak v2019 provides **separate CT and MRI algorithms** (Silverman 2019, Table
 
 ---
 
-## 4. Decision Options for Physician (Mohib Hafeez, MD)
+## 4. Implementation Decision Record
 
-Three options, in increasing order of complexity:
+The upgrade review considered the following three options. They are retained as historical decision context; Option B was selected and has been implemented.
 
-### Option A: Immediate Badge Correction to "Bosniak 2005" (Stopgap)
+### Option A: Badge Correction to "Bosniak 2005" (Rejected Stopgap)
 
 **Effort:** ~5 minutes (one-line change in `RenalCystBosniak.jsx` line 6).
 **Risk:** None — brings badge in line with actual algorithm.
 **Downside:** Doesn't address the clinical gap (users get 2005 criteria without v2019 improvements). Existing `info` field already references v2019 MRI criteria — would also need alignment.
-**Acceptance criteria:** Change `guidelineVersion: "Bosniak v2019"` → `guidelineVersion: "Bosniak 2005"` on line 6. Update `desc` and `metaDesc` as needed. Update existing `docs/calculators/radiology/renal-cyst.md` to correct any v2019 references to the 2005 implementation. Deployable immediately.
+**Historical acceptance criteria:** This option would have changed `guidelineVersion: "Bosniak v2019"` to `guidelineVersion: "Bosniak 2005"` and aligned the description and documentation. It was superseded by the completed v2019 implementation.
 
-### Option B: Full v2019 Upgrade
+### Option B: Full v2019 Upgrade (Selected and Implemented)
 
-**Effort:** Significant — new field definitions (2/3/4 mm thickness, septa count, nodule classification), updated compute function, removal of intrarenal/size checkboxes, addition of enhancement confirmation field, potential IIF→II downgrades, updated UI badge to correct "Bosniak v2019."
-**Key implementation challenges:**
-1. **Septa count:** Requires user to input number of septa (or "few" / "many" selector plus ≤2/3/≥4 mm thickness)
-2. **Nodule definition:** Complex decision tree combining size (≤3 vs ≥4 mm) and margin angle (obtuse vs acute)
-3. **Calcification:** Simplify to binary (present/absent) — remove "fine" vs "thick-nodular" distinction
-4. **Density:** Replace single "high >20 HU" with multiple HU ranges matching v2019 subtypes 2–6
-5. **Enhancement confirmation:** New field — "enhancement present?" (≥20 HU increase) — required for IIF and above
-6. **Intrarenal + large:** Remove both checkboxes
-7. **Enhancing tissue approximately 25% or more gate:** New exclusion criterion — requires user to estimate enhancing proportion
-8. **Reporting:** Update output text to use v2019 recommended terminology
+**Implemented work:** New field definitions (2/3/4 mm thickness, septa count, and nodule classification), an updated compute function, removal of intrarenal/size criteria, enhancement confirmation, IIF→II downgrades where supported, and an aligned v2019 badge and source panel.
+**Key implementation elements:**
+1. **Septa count:** Added explicit septal-count and thickness inputs.
+2. **Nodule definition:** Implemented the size and acute-versus-obtuse margin decision tree.
+3. **Calcification:** Removed the retired fine-versus-thick/nodular classification distinction.
+4. **Density:** Replaced the single >20 HU option with acquisition-specific v2019 density ranges.
+5. **Enhancement confirmation:** Added the enhancement gate required for IIF and higher classes.
+6. **Intrarenal + large:** Removed both retired standalone criteria.
+7. **Enhancing tissue gate:** Added the approximately 25% or more exclusion for predominantly solid masses.
+8. **Reporting:** Updated output text to use v2019 terminology and source-linked management language.
 
-**Validation requirement:** After implementation, Mohib must clinically validate against ≥5 test cases spanning Classes I–IV, including edge cases that would change category from 2005.
+**Validation record:** Automated compute and browser regressions span Classes I–IV and the material 2005-to-v2019 category changes. Every release remains subject to exact-head clinical judge attestations and protected CI; this document is not a substitute for those controls.
 
-### Option C: 2005/2019 Version Selector (AAST-style)
+### Option C: 2005/2019 Version Selector (Not Selected)
 
 **Effort:** Highest — requires a toggle component at the top of the calculator, two compute functions (or a branched one), and a `guidelineVersion` that changes dynamically. Matches the Radulator roadmap "Guideline version system" concept.
 **Advantages:**
@@ -294,9 +295,9 @@ Three options, in increasing order of complexity:
 
 ### Recommendation
 
-A **two-phase approach**:
+A **two-phase approach was selected**:
 
-**Phase 1 (immediate, <30 min):** Badge correction + field documentation update (Option A).
+**Phase 1 (historical):** The discrepancy was documented while the full v2019 implementation was prepared.
 
 **Phase 2 (completed):** The full v2019 CT upgrade (Option B) is implemented. The quantitative criteria — particularly the high-attenuation downgrade from IIF→II and the calcification simplification — now align the calculator with the cited classification source.
 
@@ -364,9 +365,9 @@ A **two-phase approach**:
 
 ## Document Metadata
 
-- **Author:** Radulator agent (research brief, stage 1)
+- **Author:** Radulator clinical evidence and implementation record
 - **Date:** 2026-06-11
 - **Seed:** Issue #14
 - **Branch:** `radulator/t_bosniak-v2019-brief`
-- **Calculator factory pipeline status:** Stage 1 complete → awaiting physician sign-off for stage 2 (implementation seed)
-- **Medical-change flag:** No — research brief only (no calculator source code changes in this seed)
+- **Calculator factory pipeline status:** v2019 CT implementation complete; exact-head source, CI, signed judge, and release-marker evidence govern production.
+- **Medical-change flag:** Historical research brief updated to match the implemented clinical algorithm and its protected release evidence.
