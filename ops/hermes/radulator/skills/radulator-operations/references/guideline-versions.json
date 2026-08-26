@@ -676,19 +676,27 @@
       "implemented_version": "Bosniak version 2019",
       "basis_type": "classification-system",
       "verification_status": "verified",
-      "last_verified": "2026-08-24",
-      "justification": "The primary version 2019 publication directly specifies the eligibility boundary, quantitative CT feature definitions, and categories exercised by the bound regression vectors.",
-      "sources": [{ "authority": "Silverman et al.", "title": "Bosniak Classification of Cystic Renal Masses, version 2019", "role": "primary-publication", "url": "https://doi.org/10.1148/radiol.2019182646" }],
+      "last_verified": "2026-08-26",
+      "justification": "The open primary version 2019 publication directly specifies the eligibility boundary, quantitative CT feature definitions, inclusive 70 HU and 4 mm equality cases, and categories exercised by the bound regression vectors.",
+      "sources": [{ "authority": "Silverman et al.", "title": "Bosniak Classification of Cystic Renal Masses, version 2019", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/" }],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/RenalCystBosniak.jsx",
         "fixture_path": "tests/fixtures/compute/bosniak.json",
         "test_command": "npm run test:hermes-guideline-registry",
         "metadata_expectation": { "field": "guidelineVersion", "equals": "Bosniak v2019" },
+        "source_audit": {
+          "schema": "radulator-live-source-audit/v1",
+          "command": "npm run test:bosniak-source",
+          "authority": "Silverman et al., Radiology 2019",
+          "source_urls": ["https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/"],
+          "vector_ids": ["exactly-70-hu-homogeneous-noncontrast-mass-category-ii", "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv"],
+          "source_bytes_committed": false
+        },
         "claims": [
           {
             "id": "bosniak-v2019-eligibility",
-            "source_url": "https://doi.org/10.1148/radiol.2019182646",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
             "source_locator": "Definition of a cystic renal mass and suggested-reporting general-population scope",
             "fact": "The calculator rejects masses with approximately one-quarter or more enhancing tissue, alternative etiologies, and hereditary renal cancer syndromes from the general-population pathway.",
             "dimensions": ["scope", "threshold", "boundary", "output"],
@@ -696,19 +704,19 @@
           },
           {
             "id": "bosniak-v2019-category-ii",
-            "source_url": "https://doi.org/10.1148/radiol.2019182646",
-            "source_locator": "Bosniak I and II definitions, Table 2, and additional homogeneous CT entities",
-            "fact": "Literal vectors distinguish a fully characterized class I simple cyst from version 2019 class II thin-septal and source-defined homogeneous attenuation subtypes.",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
+            "source_locator": "Bosniak II section and Table 2: benign hyperattenuating cysts are homogeneous and 70 HU or greater at noncontrast CT",
+            "fact": "Literal vectors distinguish a fully characterized class I simple cyst from version 2019 class II thin-septal and source-defined homogeneous attenuation subtypes, including equality at exactly 70 HU.",
             "dimensions": ["classification", "threshold", "boundary", "unit", "output"],
-            "vector_ids": ["simple-cyst-category-i", "noncontrast-minus9-to20-category-ii-not-simple-cyst", "few-thin-enhancing-septa-category-ii", "renal-mass-protocol-nonenhancing-over-20-hu-category-ii", "portal-venous-21-to-30-hu-category-ii", "too-small-low-attenuation-category-ii"]
+            "vector_ids": ["simple-cyst-category-i", "exactly-70-hu-homogeneous-noncontrast-mass-category-ii", "noncontrast-minus9-to20-category-ii-not-simple-cyst", "few-thin-enhancing-septa-category-ii", "renal-mass-protocol-nonenhancing-over-20-hu-category-ii", "portal-venous-21-to-30-hu-category-ii", "too-small-low-attenuation-category-ii"]
           },
           {
             "id": "bosniak-v2019-iif-iii-iv-features",
-            "source_url": "https://doi.org/10.1148/radiol.2019182646",
-            "source_locator": "Bosniak IIF, III, and IV definitions and quantitative wall, septum, and nodule criteria",
-            "fact": "Executable cases bind the 3 mm minimally thick enhancing feature, 4 mm or thicker enhancing feature, and enhancing acute-margin nodule to IIF, III, and IV outputs respectively.",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
+            "source_locator": "Bosniak IIF, III, and IV sections: an obtuse-margin enhancing convex protrusion 4 mm or larger is a nodule",
+            "fact": "Executable cases bind the 3 mm minimally thick enhancing feature, 4 mm or thicker enhancing feature, exactly 4 mm obtuse-margin enhancing nodule, and enhancing acute-margin nodule to IIF, III, and IV outputs respectively.",
             "dimensions": ["classification", "threshold", "boundary", "unit", "output"],
-            "vector_ids": ["minimally-thick-enhancing-wall-category-iif", "thick-enhancing-wall-category-iii", "acute-margin-enhancing-nodule-category-iv"]
+            "vector_ids": ["minimally-thick-enhancing-wall-category-iif", "thick-enhancing-wall-category-iii", "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv", "acute-margin-enhancing-nodule-category-iv"]
           }
         ]
       }
