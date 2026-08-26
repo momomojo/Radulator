@@ -171,8 +171,8 @@
         { "authority": "Multi-Ethnic Study of Atherosclerosis", "title": "CAC Score Reference Values", "role": "official-authority", "url": "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values" },
         { "authority": "McClelland et al.", "title": "Distribution of coronary artery calcium by race, gender, and age: results from MESA", "role": "primary-publication", "url": "https://doi.org/10.1161/CIRCULATIONAHA.105.580696" },
         { "authority": "Society of Cardiovascular Computed Tomography", "title": "CAC-DRS: Coronary Artery Calcium Data and Reporting System", "role": "context-guideline", "url": "https://doi.org/10.1016/j.jcct.2018.03.008" },
-        { "authority": "ACC, AHA, ASE, ASNC, ASPC, HFSA, HRS, SCAI, SCCT, SCMR, and STS", "title": "2023 Multimodality Appropriate Use Criteria for the Detection and Risk Assessment of Chronic Coronary Disease", "role": "primary-publication", "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10585920/fullTextXML" },
-        { "authority": "Maron et al.", "title": "Coronary artery calcium staging to guide preventive interventions", "role": "primary-publication", "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11462328/fullTextXML" }
+        { "authority": "ACC, AHA, ASE, ASNC, ASPC, HFSA, HRS, SCAI, SCCT, SCMR, and STS", "title": "2023 Multimodality Appropriate Use Criteria for the Detection and Risk Assessment of Chronic Coronary Disease", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/" },
+        { "authority": "Maron et al.", "title": "Coronary artery calcium staging to guide preventive interventions", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11462328/" }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
@@ -207,7 +207,7 @@
           },
           {
             "id": "multisociety-auc-cac-drs-bands",
-            "source_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10585920/fullTextXML",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/",
             "source_locator": "Table 1.2, clinical scenarios 18 through 21: CAC-DRS score bands after prior testing",
             "fact": "The 2023 multi-society AUC defines CAC score 100 through 299 as CAC-DRS 2 and CAC score 300 or greater as CAC-DRS 3, so exact 300 is assigned A3.",
             "dimensions": ["classification", "threshold", "boundary", "output"],
@@ -215,7 +215,7 @@
           },
           {
             "id": "maron-percentile-adjusted-staging",
-            "source_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11462328/fullTextXML",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11462328/",
             "source_locator": "Proposed CAC staging table: stages 0 through 4, including the stage 1 versus 2 percentile boundary and the 300 and 1,000 score boundaries",
             "fact": "The calculator binds stage 0 to CAC 0, stage 1 to CAC 1 through 99 below the supported 75th reference score, stage 2 to CAC 100 through 299 or exact nonzero 75th-reference equality, stage 3 to CAC 300 through 999, and stage 4 to CAC 1,000 or greater.",
             "dimensions": ["classification", "threshold", "boundary", "output"],
