@@ -519,6 +519,9 @@ def reconcile_trackers(
         "applied_actions": [],
     }
 
+    # Complete every external readback before mutating either the ledger or
+    # Kanban. A bad later entry must not partially apply an earlier one.
+    verified_trackers: list[tuple[dict[str, Any], str]] = []
     for tracker in normalized["trackers"]:
         task_id = tracker["task_id"]
         tracker_readback, tracker_status = _verified_kanban_reconciliation_task(
@@ -543,7 +546,11 @@ def reconcile_trackers(
                 raise LedgerError(f"Reconciliation head SHA failed Kanban readback for {task_id}.")
             if tracker["base_sha"] not in serialized_tracker:
                 raise LedgerError(f"Reconciliation base SHA failed Kanban readback for {task_id}.")
+        verified_trackers.append((tracker, tracker_status))
 
+    for tracker, tracker_status in verified_trackers:
+        task_id = tracker["task_id"]
+        source = tracker["source"]
         current = replay.current_by_task.get(task_id)
         entry_digest = hashlib.sha256(_canonical(tracker).encode("utf-8")).hexdigest()
         if current is None:

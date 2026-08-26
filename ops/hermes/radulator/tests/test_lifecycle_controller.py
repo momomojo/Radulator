@@ -849,6 +849,68 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         self.assertEqual(len(self.ledger.replay().events), 0)
 
+    def test_reconciliation_preflights_every_entry_before_any_apply(self):
+        tasks = {
+            "t_first": {
+                "task": {"id": "t_first", "status": "blocked", "body": "first"},
+                "parents": [],
+            },
+            "t_first_source": {
+                "task": {"id": "t_first_source", "status": "done", "body": "source"},
+                "parents": [],
+            },
+            "t_second": {
+                "task": {"id": "t_second", "status": "blocked", "body": "second"},
+                "parents": [],
+            },
+            "t_second_receipt": {
+                "task": {
+                    "id": "t_second_receipt",
+                    "status": "done",
+                    "body": "wrong receipt digest",
+                },
+                "parents": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("failed preflight must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "atomic-preflight-audit",
+            "trackers": [
+                {
+                    "task_id": "t_first",
+                    "source_id": "first-source",
+                    "source": {"kind": "kanban_task", "task_id": "t_first_source"},
+                },
+                {
+                    "task_id": "t_second",
+                    "source_id": "second-source",
+                    "source": {
+                        "kind": "formspree_receipt",
+                        "task_id": "t_second_receipt",
+                        "digest": "1" * 64,
+                    },
+                },
+            ],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "receipt digest"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger,
+                spec,
+                Adapter(),
+                apply=True,
+            )
+
+        self.assertEqual(self.ledger.replay().events, ())
+
     def test_archived_nonterminal_cac_tracker_keeps_needs_fix_and_plans_correction(self):
         self.assertTrue(
             callable(getattr(lifecycle_module, "reconcile_trackers", None)),

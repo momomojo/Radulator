@@ -82,7 +82,7 @@ python3 /Users/agent/Documents/Radulator/ops/hermes/radulator/lifecycle_controll
   --hermes /Users/agent/.local/bin/hermes
 ```
 
-The plan must show only `feedback` bootstrap for missing MELD/KBRC coverage and a corrective prerequisite for archived/nonterminal CAC. It must not show approval, merge, deploy, smoke, learning, or completion. Recheck the frozen spec digest, then repeat the same command with `--apply`. Repeat it once more: it must report already reconciled/idempotent results and create no duplicate events or tasks.
+The plan must show only `feedback` bootstrap for missing MELD/KBRC coverage and a corrective prerequisite for archived/nonterminal CAC. It must not show approval, merge, deploy, smoke, learning, or completion. The controller preflights every tracker, source, digest, and optional PR/head/base tuple before any apply-side mutation, so one invalid entry leaves the whole batch unapplied. Recheck the frozen spec digest, then repeat the same command with `--apply`. Repeat it once more: it must report already reconciled/idempotent results and create no duplicate events or tasks.
 
 ## 5. Repair only the exact inverted NEEDS_FIX edge
 
