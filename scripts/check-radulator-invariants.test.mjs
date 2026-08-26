@@ -66,7 +66,19 @@ function nestedMetadataTrapSource() {
 function makeFixtureRoot() {
   const root = mkdtempSync(path.join(tmpdir(), "radulator-invariants-"));
   mkdirSync(path.join(root, "src", "components", "calculators"), { recursive: true });
+  mkdirSync(path.join(root, "public"), { recursive: true });
   writeRegistry(root);
+  writeFixtureFile(
+    root,
+    "README.md",
+    "It features **38 specialized calculators across 1 specialty category**.\n" +
+      "│   │   ├── calculators/       # 38 calculator components (one .jsx each)\n"
+  );
+  writeFixtureFile(
+    root,
+    path.join("public", "about.html"),
+    "<p>Radulator currently offers <strong>38 calculators</strong> across multiple specialties:</p>\n"
+  );
   return root;
 }
 
@@ -128,6 +140,33 @@ withFixture((root) => {
   assert.match(result.stdout, /id is empty or not a top-level double-quoted static string/);
   assert.match(result.stdout, /name is empty or not a top-level double-quoted static string/);
   assert.match(result.stdout, /non-custom calculator missing top-level compute/);
+});
+
+withFixture((root) => {
+  writeValidCalculators(root);
+  writeFixtureFile(
+    root,
+    "README.md",
+    "It features **37 specialized calculators across 1 specialty category**.\n" +
+      "│   │   ├── calculators/       # 38 calculator components (one .jsx each)\n"
+  );
+
+  const result = runChecker(root);
+  assert.notEqual(result.status, 0, "checker should reject a stale README calculator count");
+  assert.match(result.stdout, /README\.md: advertised calculator count 37 does not match canonical count 38/);
+});
+
+withFixture((root) => {
+  writeValidCalculators(root);
+  writeFixtureFile(
+    root,
+    path.join("public", "about.html"),
+    "<p>Radulator currently offers <strong>37 calculators</strong> across multiple specialties:</p>\n"
+  );
+
+  const result = runChecker(root);
+  assert.notEqual(result.status, 0, "checker should reject a stale public/about.html calculator count");
+  assert.match(result.stdout, /public\/about\.html: advertised calculator count 37 does not match canonical count 38/);
 });
 
 console.log("check-radulator-invariants regression tests passed");

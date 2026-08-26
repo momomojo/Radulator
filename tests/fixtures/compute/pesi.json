@@ -1,0 +1,97 @@
+{
+  "calculatorId": "pesi",
+  "calculatorName": "PESI Score",
+  "version": "original-pesi-2005",
+  "cases": [
+    {
+      "id": "class-i-upper",
+      "inputs": { "age_years": "65", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "65 points" }, { "key": "PESI Class", "includes": "I — Very low" }, { "key": "Observed 30-Day Mortality Range", "includes": "0-1.6%" }, { "key": "Scope / Safety", "includes": "does not diagnose PE or independently determine outpatient care" }] }
+    },
+    {
+      "id": "class-ii-lower",
+      "inputs": { "age_years": "66", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "66 points" }, { "key": "PESI Class", "includes": "II — Low" }, { "key": "Observed 30-Day Mortality Range", "includes": "1.7-3.5%" }] }
+    },
+    {
+      "id": "class-ii-upper",
+      "inputs": { "age_years": "85", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "85 points" }, { "key": "PESI Class", "includes": "II — Low" }] }
+    },
+    {
+      "id": "class-iii-lower",
+      "inputs": { "age_years": "86", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "86 points" }, { "key": "PESI Class", "includes": "III — Intermediate" }, { "key": "Observed 30-Day Mortality Range", "includes": "3.2-7.1%" }, { "key": "Scope / Safety", "includes": "does not diagnose PE or independently determine outpatient care" }] }
+    },
+    {
+      "id": "class-iv-lower",
+      "inputs": { "age_years": "86", "male_sex_criterion": "present", "cancer": "no", "heart_failure": "yes", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "106 points" }, { "key": "PESI Class", "includes": "IV — High" }, { "key": "Observed 30-Day Mortality Range", "includes": "4.0-11.4%" }] }
+    },
+    {
+      "id": "class-iv-upper",
+      "inputs": { "age_years": "85", "male_sex_criterion": "present", "cancer": "yes", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "125 points" }, { "key": "PESI Class", "includes": "IV — High" }] }
+    },
+    {
+      "id": "class-v-lower",
+      "inputs": { "age_years": "86", "male_sex_criterion": "present", "cancer": "yes", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "126 points" }, { "key": "PESI Class", "includes": "V — Very high" }, { "key": "Observed 30-Day Mortality Range", "includes": "10.0-24.5%" }] }
+    },
+    {
+      "id": "normal-threshold-edges",
+      "inputs": { "age_years": "40", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "40 points" }, { "key": "Score Breakdown", "includes": "Pulse ≥110/min: +0" }, { "key": "Score Breakdown", "includes": "Systolic blood pressure <100 mm Hg: +0" }, { "key": "Score Breakdown", "includes": "Respiratory rate ≥30/min: +0" }, { "key": "Score Breakdown", "includes": "Temperature <36.0 °C: +0" }, { "key": "Score Breakdown", "includes": "Oxygen saturation <90%: +0" }] }
+    },
+    {
+      "id": "abnormal-threshold-edges",
+      "inputs": { "age_years": "40", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "110", "systolic_bp": "99", "respiratory_rate": "30", "temperature_c": "35.9", "altered_mental_status": "yes", "oxygen_saturation": "89" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "210 points" }, { "key": "PESI Class", "includes": "V — Very high" }, { "key": "Score Breakdown", "includes": "Pulse ≥110/min: +20" }, { "key": "Score Breakdown", "includes": "Systolic blood pressure <100 mm Hg: +30" }, { "key": "Score Breakdown", "includes": "Respiratory rate ≥30/min: +20" }, { "key": "Score Breakdown", "includes": "Temperature <36.0 °C: +20" }, { "key": "Score Breakdown", "includes": "Oxygen saturation <90%: +20" }] }
+    },
+    {
+      "id": "all-demographic-and-comorbidity-increments",
+      "inputs": { "age_years": "50", "male_sex_criterion": "present", "cancer": "yes", "heart_failure": "yes", "chronic_lung_disease": "yes", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Score", "equals": "110 points" }, { "key": "PESI Class", "includes": "IV — High" }, { "key": "Score Breakdown", "includes": "Original-model male sex criterion: +10" }, { "key": "Score Breakdown", "includes": "Cancer: +30" }, { "key": "Score Breakdown", "includes": "Heart failure: +10" }, { "key": "Score Breakdown", "includes": "Chronic lung disease: +10" }] }
+    },
+    {
+      "id": "class-iii-upper-105",
+      "inputs": { "age_years": "105", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Class", "includes": "III — Intermediate" }] }
+    },
+    {
+      "id": "class-iv-lower-106",
+      "inputs": { "age_years": "106", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": true, "fields": [{ "key": "PESI Class", "includes": "IV — High" }] }
+    },
+    {
+      "id": "missing-input-rejected",
+      "inputs": { "age_years": "65" },
+      "expect": { "noError": false, "fields": [{ "key": "Error", "includes": "Complete all 11 required PESI inputs" }] }
+    },
+    {
+      "id": "age-17-rejected",
+      "inputs": { "age_years": "17", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": false, "fields": [{ "key": "Error", "includes": "18 or older" }] }
+    },
+    {
+      "id": "fractional-age-rejected",
+      "inputs": { "age_years": "65.5", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": false, "fields": [{ "key": "Error", "includes": "whole number" }] }
+    },
+    {
+      "id": "unknown-male-criterion-value-rejected",
+      "inputs": { "age_years": "65", "male_sex_criterion": "yes", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": false, "fields": [{ "key": "Error", "includes": "original-model male sex criterion" }] }
+    },
+    {
+      "id": "zero-pulse-rejected",
+      "inputs": { "age_years": "65", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "0", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "90" },
+      "expect": { "noError": false, "fields": [{ "key": "Error", "includes": "positive pulse" }] }
+    },
+    {
+      "id": "oxygen-saturation-over-100-rejected",
+      "inputs": { "age_years": "65", "male_sex_criterion": "absent", "cancer": "no", "heart_failure": "no", "chronic_lung_disease": "no", "pulse": "109", "systolic_bp": "100", "respiratory_rate": "29", "temperature_c": "36.0", "altered_mental_status": "no", "oxygen_saturation": "101" },
+      "expect": { "noError": false, "fields": [{ "key": "Error", "includes": "0% through 100%" }] }
+    }
+  ]
+}
