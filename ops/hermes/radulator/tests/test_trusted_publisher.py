@@ -534,6 +534,65 @@ class TrustedPublisherGitAuthorityTests(unittest.TestCase):
             self.candidate,
         )
 
+    def test_legacy_graft_is_rejected_before_first_git_command(self):
+        base_tree = self.git(
+            self.workspace, "show", "-s", "--format=%T", self.base_sha
+        ).stdout.strip()
+        forged_base = subprocess.run(
+            ["git", "commit-tree", base_tree],
+            cwd=self.workspace,
+            input="forged base\n",
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        grafts = self.project / ".git" / "info" / "grafts"
+        grafts.parent.mkdir(parents=True, exist_ok=True)
+        grafts.write_text(
+            f"{self.head_sha} {forged_base}\n",
+            encoding="utf-8",
+        )
+
+        raw_parent = next(
+            line.removeprefix("parent ")
+            for line in self.git(
+                self.workspace,
+                "cat-file",
+                "-p",
+                self.head_sha,
+            ).stdout.splitlines()
+            if line.startswith("parent ")
+        )
+        grafted_parent = self.git(
+            self.workspace,
+            "--no-replace-objects",
+            "show",
+            "-s",
+            "--format=%P",
+            self.head_sha,
+        ).stdout.strip()
+        self.assertEqual(raw_parent, self.base_sha)
+        self.assertEqual(grafted_parent, forged_base)
+        self.assertNotEqual(grafted_parent, raw_parent)
+
+        calls = []
+
+        def forbidden_runner(*args, **kwargs):
+            calls.append((args, kwargs))
+            raise AssertionError("Git ran before the graft pre-scan rejected authority")
+
+        forged_candidate = dataclasses.replace(
+            self.candidate,
+            base_sha=forged_base,
+        )
+        with self.assertRaisesRegex(publisher.PublisherError, "graft"):
+            publisher.validate_local_candidate(
+                forged_candidate,
+                self.config,
+                runner=forbidden_runner,
+            )
+        self.assertEqual(calls, [])
+
     def test_every_git_invocation_uses_fixed_execution_neutralizers(self):
         observed = []
 

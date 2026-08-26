@@ -582,6 +582,15 @@ def _prescan_local_git_config(workspace: Path, project_root: Path) -> None:
         raise PublisherError("worktree Git link is outside the canonical repository") from error
     if len(relative.parts) != 1 or gitdir != raw_gitdir.absolute():
         raise PublisherError("worktree Git link is not canonical")
+    grafts = expected_root.parent / "info" / "grafts"
+    try:
+        grafts.lstat()
+    except FileNotFoundError:
+        pass
+    except OSError as error:
+        raise PublisherError("legacy Git graft authority cannot be inspected safely") from error
+    else:
+        raise PublisherError("legacy Git graft authority is forbidden")
     config_paths = (project_root / ".git" / "config", gitdir / "config.worktree")
     found: list[str] = []
     for index, config_path in enumerate(config_paths):
