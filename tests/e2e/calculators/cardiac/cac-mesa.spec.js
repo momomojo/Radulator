@@ -49,7 +49,7 @@ test.describe("CAC/MESA Calculator", () => {
       page.getByText("It does not calculate Agatston score from CT pixels"),
     ).toBeVisible();
     await expect(page.getByTestId("guideline-badge")).toHaveText(
-      "MESA reference values + CAC-DRS (SCCT 2018)",
+      "MESA reference values + CAC-DRS (SCCT 2018; AUC 2023 boundary)",
     );
     await expect(
       page.getByText("Maron et al. 2024 proposed CAC stage", {
@@ -193,7 +193,7 @@ test.describe("CAC/MESA Calculator", () => {
     }
   });
 
-  test("maps boundaries without inferring the ambiguous exact-300 CAC-DRS category", async ({
+  test("maps the inclusive exact-300 CAC-DRS 3 boundary from the 2023 multi-society AUC", async ({
     page,
   }) => {
     const cases = [
@@ -202,13 +202,7 @@ test.describe("CAC/MESA Calculator", () => {
       [99, "CAC 1-99", "A1 / N not reported", "1-99", "2"],
       [100, "Moderate calcified plaque burden", "A2 / N not reported", "100-299", "2"],
       [299, "Moderate calcified plaque burden", "A2 / N not reported", "100-299", "2"],
-      [
-        300,
-        "Severe calcified plaque burden",
-        "Not reported at exact 300 because the primary CAC-DRS source has a boundary conflict",
-        "300-999",
-        "3",
-      ],
+      [300, "Severe calcified plaque burden", "A3 / N not reported", "300-999", "3"],
       [301, "Severe calcified plaque burden", "A3 / N not reported", "300-999", "3"],
       [999, "Severe calcified plaque burden", "A3 / N not reported", "300-999", "3"],
       [1000, "Extensive calcified plaque burden", "A3 / N not reported", ">=1000", "4"],
