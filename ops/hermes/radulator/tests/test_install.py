@@ -424,6 +424,7 @@ class InstallerTests(unittest.TestCase):
         seed_script = self.radulator_home / "scripts" / "seed_convert_gate_dedupe.py"
         self.assertTrue(seed_script.exists())
         self.assertEqual(stat.S_IMODE(seed_script.stat().st_mode), 0o700)
+
         promoter_script = self.radulator_home / "scripts" / "release_promoter.py"
         promoter_wrapper = self.radulator_home / "scripts" / "release_promoter_cron.sh"
         self.assertEqual(promoter_script.read_bytes(), (
@@ -465,6 +466,106 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(before["rad"], (self.radulator_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["default"], (self.default_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["manifest"], manifest_path.read_bytes())
+
+    def test_plain_apply_quiesces_preexisting_same_name_verification_job_before_asset_copy(self):
+        jobs_path = self.default_home / "cron" / "jobs.json"
+        jobs = json.loads(jobs_path.read_text())
+        jobs.append({
+            "id": "operator-verification",
+            "name": "radulator-clinical-judge-verification",
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(jobs) + "\n")
+        verification_skill = (
+            self.default_home / "skills" / "radulator-clinical-judge" / "SKILL.md"
+        ).resolve()
+        original_atomic_write = install_module._atomic_write
+        observed_states = []
+
+        def observe_verification_asset(path, content, mode=0o600):
+            if Path(path).resolve() == verification_skill:
+                current = json.loads(jobs_path.read_text())
+                matched = [
+                    job
+                    for job in current
+                    if job.get("name") == "radulator-clinical-judge-verification"
+                ]
+                observed_states.append([
+                    (job.get("enabled"), job.get("state"), job.get("next_run_at"))
+                    for job in matched
+                ])
+            return original_atomic_write(path, content, mode)
+
+        with mock.patch.object(
+            install_module, "_atomic_write", side_effect=observe_verification_asset
+        ):
+            apply_install(**self.kwargs())
+
+        self.assertEqual(observed_states, [[(False, "paused", None)]])
+        matched = [
+            job
+            for job in json.loads(jobs_path.read_text())
+            if job.get("name") == "radulator-clinical-judge-verification"
+        ]
+        self.assertEqual(len(matched), 1)
+        self.assertIs(matched[0]["enabled"], False)
+        self.assertEqual(matched[0]["state"], "paused")
+        self.assertIsNone(matched[0]["next_run_at"])
+
+    def test_crash_between_profile_enable_writes_recovers_both_profiles_disabled(self):
+        result = apply_install(**self.kwargs())
+        plan = build_plan(**self.kwargs())
+        public_keys = generate_keys(plan)
+        primary_path = (self.radulator_home / "cron" / "jobs.json").resolve()
+        journal_path = self.radulator_home / "state" / "radulator-jobs-transaction.json"
+        managed_ids = set(result["job_ids"].values())
+        original_atomic_write = install_module._atomic_write
+        injected = False
+
+        def crash_after_primary_enable(path, content, mode=0o600):
+            nonlocal injected
+            written = original_atomic_write(path, content, mode)
+            if Path(path).resolve() == primary_path and not injected:
+                payload = json.loads(content)
+                jobs = payload["jobs"] if isinstance(payload, dict) else payload
+                managed = [job for job in jobs if job.get("id") in managed_ids]
+                if managed and any(job.get("enabled") is True for job in managed):
+                    injected = True
+                    raise SystemExit("synthetic process death between profile writes")
+            return written
+
+        with mock.patch.object(
+            install_module, "_atomic_write", side_effect=crash_after_primary_enable
+        ):
+            with self.assertRaisesRegex(SystemExit, "synthetic process death"):
+                apply_install(
+                    **self.kwargs(),
+                    enable=True,
+                    expected_public_keys=public_keys,
+                    activation_test_runner=self.passing_activation_runner,
+                )
+
+        self.assertTrue(injected)
+        self.assertTrue(journal_path.is_file())
+        apply_install(**self.kwargs())
+        self.assertFalse(journal_path.exists())
+        observed_ids = set()
+        for path in (
+            self.radulator_home / "cron" / "jobs.json",
+            self.default_home / "cron" / "jobs.json",
+        ):
+            payload = json.loads(path.read_text())
+            jobs = payload["jobs"] if isinstance(payload, dict) else payload
+            for job in jobs:
+                if job.get("id") not in managed_ids:
+                    continue
+                observed_ids.add(job["id"])
+                self.assertIs(job.get("enabled"), False)
+                self.assertEqual(job.get("state"), "paused")
+                self.assertIsNone(job.get("next_run_at"))
+        self.assertEqual(observed_ids, managed_ids)
 
     def test_wrapper_isolates_python_imports_before_exporting_token(self):
         wrapper = (
@@ -654,6 +755,73 @@ class InstallerTests(unittest.TestCase):
 
         self.assertEqual(jobs_path.read_bytes(), installed)
 
+    def test_restore_crash_after_verification_profile_write_recovers_disabled_first(self):
+        verification_jobs = self.default_home / "cron" / "jobs.json"
+        original = json.loads(verification_jobs.read_text())
+        original.append({
+            "id": "operator-verification",
+            "name": "radulator-clinical-judge-verification",
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        verification_jobs.write_text(json.dumps(original) + "\n")
+        apply_install(**self.kwargs())
+        journal_path = self.radulator_home / "state" / "radulator-jobs-transaction.json"
+        original_atomic_write = install_module._atomic_write
+        injected = False
+
+        def crash_after_sanitized_verification_restore(path, content, mode=0o600):
+            nonlocal injected
+            written = original_atomic_write(path, content, mode)
+            if Path(path).resolve() != verification_jobs.resolve() or injected:
+                return written
+            payload = json.loads(content)
+            jobs = payload["jobs"] if isinstance(payload, dict) else payload
+            matched = [
+                job
+                for job in jobs
+                if job.get("name") == "radulator-clinical-judge-verification"
+            ]
+            if len(matched) == 1 and matched[0].get("id") == "operator-verification":
+                injected = True
+                raise SystemExit("synthetic restore process death")
+            return written
+
+        with mock.patch.object(
+            install_module,
+            "_atomic_write",
+            side_effect=crash_after_sanitized_verification_restore,
+        ):
+            with self.assertRaisesRegex(SystemExit, "synthetic restore process death"):
+                restore_install(**self.kwargs())
+
+        self.assertTrue(injected)
+        self.assertTrue(journal_path.is_file())
+        current = json.loads(verification_jobs.read_text())
+        matched = [
+            job
+            for job in current
+            if job.get("name") == "radulator-clinical-judge-verification"
+        ]
+        self.assertEqual(len(matched), 1)
+        self.assertIs(matched[0].get("enabled"), False)
+        self.assertEqual(matched[0].get("state"), "paused")
+        self.assertIsNone(matched[0].get("next_run_at"))
+
+        restore_install(**self.kwargs())
+        self.assertFalse(journal_path.exists())
+        current = json.loads(verification_jobs.read_text())
+        matched = [
+            job
+            for job in current
+            if job.get("name") == "radulator-clinical-judge-verification"
+        ]
+        self.assertEqual(len(matched), 1)
+        self.assertIs(matched[0].get("enabled"), False)
+        self.assertEqual(matched[0].get("state"), "paused")
+        self.assertIsNone(matched[0].get("next_run_at"))
+
     def test_restore_rejects_symlink_or_non_0600_authentication_key(self):
         for unsafe in ("mode", "symlink", "dangling-symlink"):
             with self.subTest(unsafe=unsafe):
@@ -707,7 +875,9 @@ class InstallerTests(unittest.TestCase):
         jobs = json.loads(jobs_path.read_text())["jobs"]
         seed_job = next(job for job in jobs if job["name"] == "radulator-seed-convert")
         self.assertEqual(seed_job["id"], "c41b8448cce4")
-        self.assertTrue(seed_job["enabled"])
+        self.assertFalse(seed_job["enabled"])
+        self.assertEqual(seed_job["state"], "paused")
+        self.assertIsNone(seed_job["next_run_at"])
         self.assertEqual(seed_job["deliver"], "telegram:existing-owner")
         self.assertEqual(seed_job["script"], "seed_convert_gate_dedupe.py")
 
@@ -731,8 +901,9 @@ class InstallerTests(unittest.TestCase):
         promoter = next(job for job in jobs if job["name"] == "radulator-release-promoter")
         self.assertEqual(result["job_ids"]["radulator-release-promoter"], "f191f946d6fa")
         self.assertEqual(promoter["id"], "f191f946d6fa")
-        self.assertTrue(promoter["enabled"])
-        self.assertEqual(promoter["state"], "scheduled")
+        self.assertFalse(promoter["enabled"])
+        self.assertEqual(promoter["state"], "paused")
+        self.assertIsNone(promoter["next_run_at"])
         self.assertEqual(promoter["deliver"], "telegram")
         self.assertEqual(promoter["script"], "release_promoter_cron.sh")
         self.assertEqual(promoter["schedule"]["expr"], "*/10 * * * *")
@@ -1064,9 +1235,7 @@ class InstallerTests(unittest.TestCase):
             "_atomic_write",
             side_effect=fail_verification_then_primary_restore,
         ):
-            with self.assertRaisesRegex(
-                InstallError, "synthetic verification-profile write failure"
-            ):
+            with self.assertRaisesRegex(InstallError, "UNSAFE_JOB_STATE"):
                 apply_install(
                     **self.kwargs(),
                     enable=True,

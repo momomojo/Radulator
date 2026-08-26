@@ -22,6 +22,7 @@ from typing import Any
 SCHEMA = "radulator-hermes-install/v1"
 BACKUP_SCHEMA = "radulator-hermes-backup/v2"
 LEGACY_BACKUP_SCHEMA = "radulator-hermes-backup/v1"
+JOBS_TRANSACTION_SCHEMA = "radulator-hermes-jobs-transaction/v1"
 BACKUP_HMAC_KEY_BYTES = 32
 MODEL = "gpt-5.6-sol"
 PROVIDER = "openai-codex"
@@ -506,6 +507,11 @@ def _atomic_write(path: Path, content: bytes, mode: int = 0o600) -> None:
         os.fsync(handle.fileno())
     os.chmod(temporary, mode)
     os.replace(temporary, path)
+    descriptor = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def _skill_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
@@ -574,6 +580,10 @@ def _control_manifest_path(plan: dict[str, Any]) -> Path:
 
 def _backup_key_path(plan: dict[str, Any]) -> Path:
     return Path(plan["radulator_home"]) / "state/radulator-release-backup.hmac.key"
+
+
+def _jobs_transaction_path(plan: dict[str, Any]) -> Path:
+    return Path(plan["radulator_home"]) / "state/radulator-jobs-transaction.json"
 
 
 def _backup_targets(plan: dict[str, Any]) -> dict[str, Path]:
@@ -1282,18 +1292,55 @@ def _disabled_managed_job_files(
                 )
             existing = rewritten[matches[0]] if matches else None
             disabled = _job_for_write(template, existing, False, True)
-            disabled.update({
-                "enabled": False,
-                "state": "paused",
-                "paused_at": disabled.get("paused_at") or _now(),
-                "paused_reason": disabled.get("paused_reason") or "failed-activation-quiesce",
-                "updated_at": _now(),
-                "next_run_at": None,
-            })
+            if not (
+                existing
+                and existing.get("enabled") is False
+                and existing.get("state") == "paused"
+                and existing.get("next_run_at") is None
+            ):
+                disabled.update({
+                    "enabled": False,
+                    "state": "paused",
+                    "paused_at": disabled.get("paused_at") or _now(),
+                    "paused_reason": disabled.get("paused_reason") or "failed-activation-quiesce",
+                    "updated_at": _now(),
+                    "next_run_at": None,
+                })
             if matches:
                 rewritten[matches[0]] = disabled
             else:
                 rewritten.append(disabled)
+        updated = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
+        rendered[path] = _serialize(updated)
+    return rendered
+
+
+def _enabled_managed_job_files(
+    plan: dict[str, Any], homes: dict[str, list[dict[str, Any]]]
+) -> dict[Path, bytes]:
+    rendered: dict[Path, bytes] = {}
+    for home, templates in homes.items():
+        path = Path(home) / "cron/jobs.json"
+        _require_safe_target(path, plan, may_be_missing=True)
+        payload, jobs = _load_jobs(path)
+        rewritten = list(jobs)
+        for template in templates:
+            matches = [
+                index
+                for index, job in enumerate(rewritten)
+                if job.get("name") == template["name"] or job.get("id") == template["id"]
+            ]
+            if len(matches) > 1:
+                raise InstallError(
+                    f"Managed Hermes job identity is duplicated or ambiguous: {template['name']}"
+                )
+            existing = rewritten[matches[0]] if matches else None
+            enabled = _job_for_write(template, existing, True, False)
+            if matches:
+                rewritten[matches[0]] = enabled
+            else:
+                rewritten.append(enabled)
+        rewritten = [_retire_legacy_gate(job) for job in rewritten]
         updated = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
         rendered[path] = _serialize(updated)
     return rendered
@@ -1305,8 +1352,19 @@ def _disable_and_verify_all_managed_jobs(
     rendered = _disabled_managed_job_files(plan, homes)
     for path, content in rendered.items():
         _atomic_write(path, content, 0o600)
+    _verify_managed_job_state(homes, expected_enabled=False, require_present=True)
+
+
+def _verify_managed_job_state(
+    homes: dict[str, list[dict[str, Any]]],
+    *,
+    expected_enabled: bool,
+    require_present: bool,
+) -> None:
     for home, templates in homes.items():
         path = Path(home) / "cron/jobs.json"
+        if not path.exists() and not require_present:
+            continue
         _, jobs = _load_jobs(path)
         for template in templates:
             matches = [
@@ -1314,17 +1372,215 @@ def _disable_and_verify_all_managed_jobs(
                 for job in jobs
                 if job.get("name") == template["name"] or job.get("id") == template["id"]
             ]
-            if (
-                len(matches) != 1
-                or matches[0].get("name") != template["name"]
-                or matches[0].get("id") != template["id"]
-                or matches[0].get("enabled") is not False
-                or matches[0].get("state") != "paused"
-                or matches[0].get("next_run_at") is not None
-            ):
-                raise InstallError(
-                    f"Managed Hermes job did not read back as disabled: {template['name']}"
+            if not matches and not require_present:
+                continue
+            identity_matches = len(matches) == 1 and (
+                (
+                    matches[0].get("name") == template["name"]
+                    and matches[0].get("id") == template["id"]
                 )
+                if require_present
+                else (
+                    matches[0].get("name") == template["name"]
+                    or matches[0].get("id") == template["id"]
+                )
+            )
+            if not identity_matches:
+                raise InstallError(
+                    f"Managed Hermes job identity did not read back exactly: {template['name']}"
+                )
+            if expected_enabled:
+                safe = (
+                    matches[0].get("name") == template["name"]
+                    and matches[0].get("id") == template["id"]
+                    and matches[0].get("enabled") is True
+                    and matches[0].get("state") == "scheduled"
+                )
+            else:
+                safe = (
+                    matches[0].get("enabled") is False
+                    and matches[0].get("state") == "paused"
+                    and matches[0].get("next_run_at") is None
+                )
+            if not safe:
+                raise InstallError(
+                    f"Managed Hermes job did not read back as "
+                    f"{'enabled' if expected_enabled else 'disabled'}: {template['name']}"
+                )
+
+
+def _jobs_transaction_unsigned(
+    operation: str, recovery: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    return {
+        "schema": JOBS_TRANSACTION_SCHEMA,
+        "operation": operation,
+        "recovery": recovery,
+    }
+
+
+def _jobs_transaction_recovery_payload(
+    plan: dict[str, Any], contents: dict[Path, bytes]
+) -> dict[str, dict[str, Any]]:
+    paths = {
+        "primary": Path(plan["radulator_home"]) / "cron/jobs.json",
+        "verification": Path(plan["default_home"]) / "cron/jobs.json",
+    }
+    if set(contents) != set(paths.values()):
+        raise InstallError("Hermes jobs transaction must bind both exact profile files.")
+    return {
+        profile: {
+            "content_base64": base64.b64encode(contents[path]).decode("ascii"),
+            "sha256": hashlib.sha256(contents[path]).hexdigest(),
+        }
+        for profile, path in paths.items()
+    }
+
+
+def _begin_jobs_transaction(
+    plan: dict[str, Any], operation: str, recovery_contents: dict[Path, bytes]
+) -> None:
+    if operation not in {"install-quiesce", "install-enable", "restore"}:
+        raise InstallError("Hermes jobs transaction operation is invalid.")
+    path = _jobs_transaction_path(plan)
+    _require_safe_target(path, plan, may_be_missing=True)
+    if path.exists():
+        raise InstallError("UNSAFE_JOB_STATE: an unfinished Hermes jobs transaction already exists.")
+    recovery = _jobs_transaction_recovery_payload(plan, recovery_contents)
+    unsigned = _jobs_transaction_unsigned(operation, recovery)
+    key = _read_or_create_backup_key(plan, create=False)
+    payload = {
+        **unsigned,
+        "hmac_sha256": hmac.new(
+            key, _serialize(unsigned), hashlib.sha256
+        ).hexdigest(),
+    }
+    _atomic_write(path, _serialize(payload), 0o600)
+    _require_protected_file(path, "Hermes jobs transaction journal")
+
+
+def _load_jobs_transaction(plan: dict[str, Any]) -> dict[Path, bytes]:
+    path = _jobs_transaction_path(plan)
+    _require_safe_target(path, plan, may_be_missing=False)
+    _require_protected_file(path, "Hermes jobs transaction journal")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise InstallError("Hermes jobs transaction journal is unreadable.") from error
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"schema", "operation", "recovery", "hmac_sha256"}
+        or payload.get("schema") != JOBS_TRANSACTION_SCHEMA
+        or payload.get("operation")
+        not in {"install-quiesce", "install-enable", "restore"}
+        or not isinstance(payload.get("recovery"), dict)
+        or set(payload["recovery"]) != {"primary", "verification"}
+    ):
+        raise InstallError("Hermes jobs transaction journal schema is invalid.")
+    unsigned = _jobs_transaction_unsigned(payload["operation"], payload["recovery"])
+    signature = payload.get("hmac_sha256")
+    key = _read_or_create_backup_key(plan, create=False)
+    expected_signature = hmac.new(
+        key, _serialize(unsigned), hashlib.sha256
+    ).hexdigest()
+    if not isinstance(signature, str) or not hmac.compare_digest(
+        signature, expected_signature
+    ):
+        raise InstallError("Hermes jobs transaction journal authentication failed.")
+    paths = {
+        "primary": Path(plan["radulator_home"]) / "cron/jobs.json",
+        "verification": Path(plan["default_home"]) / "cron/jobs.json",
+    }
+    decoded: dict[Path, bytes] = {}
+    for profile, destination in paths.items():
+        entry = payload["recovery"][profile]
+        if not isinstance(entry, dict) or set(entry) != {"content_base64", "sha256"}:
+            raise InstallError("Hermes jobs transaction recovery entry is invalid.")
+        encoded = entry.get("content_base64")
+        digest = entry.get("sha256")
+        if not isinstance(encoded, str) or not isinstance(digest, str):
+            raise InstallError("Hermes jobs transaction recovery entry is invalid.")
+        try:
+            content = base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error) as error:
+            raise InstallError("Hermes jobs transaction recovery content is invalid.") from error
+        if not re.fullmatch(r"[0-9a-f]{64}", digest) or not hmac.compare_digest(
+            digest, hashlib.sha256(content).hexdigest()
+        ):
+            raise InstallError("Hermes jobs transaction recovery digest is invalid.")
+        decoded[destination] = content
+    return decoded
+
+
+def _finish_jobs_transaction(plan: dict[str, Any]) -> None:
+    path = _jobs_transaction_path(plan)
+    _require_safe_target(path, plan, may_be_missing=False)
+    path.unlink()
+    descriptor = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _write_and_verify_job_files(contents: dict[Path, bytes]) -> None:
+    for path, content in contents.items():
+        _atomic_write(path, content, 0o600)
+    for path, content in contents.items():
+        details = path.lstat()
+        if (
+            not stat.S_ISREG(details.st_mode)
+            or details.st_uid != os.getuid()
+            or stat.S_IMODE(details.st_mode) != 0o600
+            or path.read_bytes() != content
+        ):
+            raise InstallError(f"Hermes jobs transaction failed exact readback: {path}")
+
+
+def _recover_jobs_transaction(
+    plan: dict[str, Any], homes: dict[str, list[dict[str, Any]]]
+) -> bool:
+    path = _jobs_transaction_path(plan)
+    _require_safe_target(path, plan, may_be_missing=True)
+    if not path.exists():
+        return False
+    try:
+        recovery = _load_jobs_transaction(plan)
+        _write_and_verify_job_files(recovery)
+        _verify_managed_job_state(
+            homes, expected_enabled=False, require_present=True
+        )
+        _finish_jobs_transaction(plan)
+    except Exception as error:
+        raise InstallError(
+            "UNSAFE_JOB_STATE: unfinished Hermes jobs transaction could not be recovered."
+        ) from error
+    return True
+
+
+def _execute_jobs_transaction(
+    plan: dict[str, Any],
+    homes: dict[str, list[dict[str, Any]]],
+    *,
+    operation: str,
+    desired: dict[Path, bytes],
+    recovery: dict[Path, bytes],
+    expected_enabled: bool,
+    keep_journal: bool = False,
+) -> None:
+    _begin_jobs_transaction(plan, operation, recovery)
+    try:
+        _write_and_verify_job_files(desired)
+        _verify_managed_job_state(
+            homes,
+            expected_enabled=expected_enabled,
+            require_present=True,
+        )
+        if not keep_journal:
+            _finish_jobs_transaction(plan)
+    except Exception:
+        _recover_jobs_transaction(plan, homes)
+        raise
 
 
 def _verify_installed_publisher_assets(plan: dict[str, Any]) -> None:
@@ -1363,37 +1619,46 @@ def apply_install(
     publisher_copies = _publisher_copies(plan)
     ordinary_script_copies = [pair for pair in script_copies if pair not in publisher_copies]
     control_manifest = _control_manifest_path(plan)
+    _recover_jobs_transaction(plan, homes)
     current_publisher = _publisher_job_readback(plan)
     try:
         _capture_backup(plan)
     except Exception:
-        if current_publisher and current_publisher.get("enabled") is not False:
-            _quiesce_publisher(plan)
+        # A previously installed publisher may already be active when an unsafe
+        # target is discovered. If the authenticated transaction key exists,
+        # quiesce every managed job before returning the preflight failure.
+        try:
+            _read_or_create_backup_key(plan, create=False)
+            disabled = _disabled_managed_job_files(plan, homes)
+            _execute_jobs_transaction(
+                plan,
+                homes,
+                operation="install-quiesce",
+                desired=disabled,
+                recovery=disabled,
+                expected_enabled=False,
+            )
+        except Exception:
+            pass
         raise
     if enable and current_publisher is None:
         raise InstallError("Trusted publisher must complete a prior disabled-first install before enablement.")
-    try:
-        publisher_drift = _publisher_assets_drift(plan)
-    except Exception:
-        if current_publisher and current_publisher.get("enabled") is not False:
-            _quiesce_publisher(plan)
-        raise
-    job_paths = [Path(home) / "cron/jobs.json" for home in homes]
-    job_snapshots = _job_file_snapshots(plan, job_paths)
-    jobs_were_enabled = _job_snapshots_contain_enabled_managed_jobs(
-        job_snapshots, homes
-    )
+    disabled_job_files = _disabled_managed_job_files(plan, homes)
+    enabled_job_files = _enabled_managed_job_files(plan, homes) if enable else None
     publisher_snapshots: dict[Path, tuple[bool, int | None, bytes | None]] | None = None
-    job_state_mutated = False
 
     try:
-        if (
-            current_publisher
-            and current_publisher.get("enabled") is not False
-            and (publisher_drift or enable or disable)
-        ):
-            _quiesce_publisher(plan)
-            job_state_mutated = True
+        # This two-profile transaction must precede every asset/config write.
+        # It also replaces any foreign same-name managed identity with the
+        # exact disabled template, so plain apply is always disabled-first.
+        _execute_jobs_transaction(
+            plan,
+            homes,
+            operation="install-quiesce",
+            desired=disabled_job_files,
+            recovery=disabled_job_files,
+            expected_enabled=False,
+        )
         publisher_snapshots = _publisher_snapshots(plan)
         for source, destination in skill_copies:
             if not source.is_file():
@@ -1416,48 +1681,6 @@ def apply_install(
             _verify_publisher_auth(plan, activation_test_runner)
             _run_activation_self_tests(plan, activation_test_runner)
 
-        job_updates: dict[Path, bytes] = {}
-        for home, templates in homes.items():
-            path = Path(home) / "cron/jobs.json"
-            payload, jobs = _load_jobs(path)
-            indexed = {job.get("name"): job for job in jobs}
-            replacements = {}
-            for template in templates:
-                existing = indexed.get(template["name"])
-                if (
-                    enable
-                    and template["name"] == "radulator-trusted-publisher"
-                    and current_publisher is not None
-                    and current_publisher.get("enabled") is True
-                ):
-                    existing = current_publisher
-                replacements[template["name"]] = _job_for_write(
-                    template, existing, enable, disable
-                )
-            rewritten = [replacements.pop(job.get("name"), job) for job in jobs]
-            rewritten.extend(replacements.values())
-            if enable:
-                rewritten = [_retire_legacy_gate(job) for job in rewritten]
-            payload = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
-            job_updates[path] = _serialize(payload)
-
-        for path, content in job_updates.items():
-            if not path.exists() or path.read_bytes() != content:
-                job_state_mutated = True
-                _atomic_write(path, content, 0o600)
-
-        publisher_readback = _publisher_job_readback(plan)
-        if publisher_readback is None:
-            raise InstallError("Trusted publisher job is missing after installation.")
-        if enable:
-            expected_enabled = True
-        elif disable or publisher_drift:
-            expected_enabled = False
-        else:
-            expected_enabled = bool(current_publisher and current_publisher.get("enabled"))
-        if publisher_readback.get("enabled") is not expected_enabled:
-            raise InstallError("Trusted publisher job state readback did not match the requested safe state.")
-
         manifest = {
             "schema": SCHEMA,
             "repo": plan["repo"],
@@ -1470,16 +1693,36 @@ def apply_install(
         content = _serialize(manifest)
         if not control_manifest.exists() or control_manifest.read_bytes() != content:
             _atomic_write(control_manifest, content, 0o600)
+        _verify_managed_job_state(
+            homes, expected_enabled=False, require_present=True
+        )
+        if enable:
+            if enabled_job_files is None:
+                raise InstallError("Enabled Hermes job transaction was not prepared.")
+            # Activation is the final mutation. A process death after either
+            # profile write leaves the authenticated recovery journal in place;
+            # the next installer invocation restores both profiles disabled.
+            _execute_jobs_transaction(
+                plan,
+                homes,
+                operation="install-enable",
+                desired=enabled_job_files,
+                recovery=disabled_job_files,
+                expected_enabled=True,
+            )
     except Exception:
         job_recovery_error: Exception | None = None
         try:
-            if job_state_mutated and jobs_were_enabled:
-                _disable_and_verify_all_managed_jobs(plan, homes)
-            else:
-                try:
-                    _restore_job_file_snapshots(plan, job_snapshots)
-                except Exception:
-                    _disable_and_verify_all_managed_jobs(plan, homes)
+            _recover_jobs_transaction(plan, homes)
+            safe_disabled = _disabled_managed_job_files(plan, homes)
+            _execute_jobs_transaction(
+                plan,
+                homes,
+                operation="install-quiesce",
+                desired=safe_disabled,
+                recovery=safe_disabled,
+                expected_enabled=False,
+            )
         except Exception as recovery_error:
             job_recovery_error = recovery_error
         if publisher_snapshots is not None:
@@ -1490,6 +1733,114 @@ def apply_install(
             ) from job_recovery_error
         raise
     return {"manifest_path": str(control_manifest), "job_ids": manifest["job_ids"], "mode": "enabled" if enable else "disabled" if disable else "installed"}
+
+
+def _sanitize_restored_jobs(
+    content: bytes,
+    templates: list[dict[str, Any]],
+    path: Path,
+) -> bytes:
+    try:
+        payload = json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise InstallError(f"Restored Hermes jobs.json is invalid: {path}") from error
+    if isinstance(payload, list):
+        jobs = payload
+    elif isinstance(payload, dict) and isinstance(payload.get("jobs"), list):
+        jobs = payload["jobs"]
+    else:
+        raise InstallError(f"Unsupported restored Hermes jobs.json shape: {path}")
+    if not all(isinstance(job, dict) for job in jobs):
+        raise InstallError(f"Restored Hermes jobs.json contains a non-object job: {path}")
+
+    seen: set[str] = set()
+    rewritten: list[dict[str, Any]] = []
+    changed = False
+    for job in jobs:
+        matches = [
+            template
+            for template in templates
+            if job.get("name") == template["name"] or job.get("id") == template["id"]
+        ]
+        if len(matches) > 1:
+            raise InstallError(f"Restored Hermes job identity is ambiguous: {path}")
+        if not matches:
+            rewritten.append(job)
+            continue
+        template = matches[0]
+        if template["name"] in seen:
+            raise InstallError(
+                f"Restored Hermes job identity is duplicated: {template['name']}"
+            )
+        seen.add(template["name"])
+        now = _now()
+        disabled = dict(job)
+        disabled.update({
+            "enabled": False,
+            "state": "paused",
+            "paused_at": (
+                job.get("paused_at")
+                if job.get("enabled") is False and job.get("paused_at")
+                else now
+            ),
+            "paused_reason": "restore-disabled-first",
+            "updated_at": now,
+            "next_run_at": None,
+        })
+        changed = True
+        rewritten.append(disabled)
+    if not changed:
+        return content
+    updated = rewritten if isinstance(payload, list) else {**payload, "jobs": rewritten}
+    return _serialize(updated)
+
+
+def _apply_restored_target(
+    target: Path,
+    existed: bool,
+    mode: int | None,
+    content: bytes | None,
+) -> None:
+    if existed:
+        if mode is None or content is None:
+            raise InstallError("Validated backup operation is incomplete.")
+        _atomic_write(target, content, mode)
+        return
+    try:
+        target.lstat()
+    except FileNotFoundError:
+        return
+    target.unlink()
+    descriptor = os.open(target.parent, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _verify_restored_target(
+    target: Path,
+    existed: bool,
+    mode: int | None,
+    content: bytes | None,
+) -> None:
+    try:
+        details = target.lstat()
+    except FileNotFoundError:
+        if existed:
+            raise InstallError(f"Restored target is missing after readback: {target}")
+        return
+    if not existed:
+        raise InstallError(f"Restore left an unexpected managed target: {target}")
+    if (
+        mode is None
+        or content is None
+        or not stat.S_ISREG(details.st_mode)
+        or details.st_uid != os.getuid()
+        or stat.S_IMODE(details.st_mode) != mode
+        or target.read_bytes() != content
+    ):
+        raise InstallError(f"Restored target failed exact readback: {target}")
 
 
 def restore_install(
@@ -1503,6 +1854,10 @@ def restore_install(
         agent_model=agent_model,
         agent_provider=agent_provider,
     )
+    homes = {str(Path(plan["radulator_home"])): [], str(Path(plan["default_home"])): []}
+    for template in plan["jobs"]:
+        homes[template["_home"]].append(template)
+    _recover_jobs_transaction(plan, homes)
     backup_path = _backup_path(plan)
     try:
         backup_path.lstat()
@@ -1521,26 +1876,57 @@ def restore_install(
     if missing:
         raise InstallError(f"Backup manifest is missing managed target ids: {', '.join(missing)}")
 
-    operations = []
+    operations: list[tuple[Path, bool, int | None, bytes | None]] = []
     for target_id, existed, mode, content in entries:
         target = targets[target_id]
         _require_safe_target(target, plan, may_be_missing=True)
+        if existed and target_id in {
+            "primary:cron/jobs.json",
+            "verification:cron/jobs.json",
+        }:
+            if content is None:
+                raise InstallError("Validated jobs backup operation is incomplete.")
+            profile = "primary" if target_id.startswith("primary:") else "verification"
+            content = _sanitize_restored_jobs(content, homes[str(Path(
+                plan["radulator_home"] if profile == "primary" else plan["default_home"]
+            ))], target)
         operations.append((target, existed, mode, content))
 
-    restored = []
-    for target, existed, mode, content in operations:
-        if existed:
-            if mode is None or content is None:
-                raise InstallError("Validated backup operation is incomplete.")
-            _atomic_write(target, content, mode)
-        else:
-            try:
-                target.lstat()
-            except FileNotFoundError:
-                pass
-            else:
-                target.unlink()
-        restored.append(str(target))
+    safe_disabled = _disabled_managed_job_files(plan, homes)
+    restored: list[str] = []
+    try:
+        # Keep the signed journal until every restored target and both job
+        # profiles have been read back. A process death at any point is
+        # recovered to the known installed-disabled state on the next run.
+        _execute_jobs_transaction(
+            plan,
+            homes,
+            operation="restore",
+            desired=safe_disabled,
+            recovery=safe_disabled,
+            expected_enabled=False,
+            keep_journal=True,
+        )
+        for target, existed, mode, content in operations:
+            _apply_restored_target(target, existed, mode, content)
+            restored.append(str(target))
+        for operation in operations:
+            _verify_restored_target(*operation)
+        _verify_managed_job_state(
+            homes, expected_enabled=False, require_present=False
+        )
+        _finish_jobs_transaction(plan)
+    except Exception:
+        try:
+            _recover_jobs_transaction(plan, homes)
+            _verify_managed_job_state(
+                homes, expected_enabled=False, require_present=True
+            )
+        except Exception as recovery_error:
+            raise InstallError(
+                "UNSAFE_JOB_STATE: restore could not recover and prove both Hermes profiles disabled."
+            ) from recovery_error
+        raise
     return {"restored": restored, "backup_manifest": str(backup_path)}
 
 

@@ -972,6 +972,7 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             response(stdout=json.dumps(old_unlabeled) + "\n"),
             response(stdout="pushed\n"),
             self.remote_feature(),
+            response(stdout=json.dumps(exact_pr()) + "\n"),
             response(stdout=json.dumps([exact_pr()]) + "\n"),
         ])
 
@@ -1001,6 +1002,7 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             response(stdout=json.dumps(authoritative_unlabeled) + "\n"),
             response(stdout="pushed\n"),
             self.remote_feature(),
+            response(stdout=json.dumps(exact_pr()) + "\n"),
             response(stdout=json.dumps([exact_pr()]) + "\n"),
         ])
 
@@ -1041,6 +1043,85 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
         self.assertTrue(any("--remove-label" in call for call, _ in runner.calls))
         self.assertFalse(any("push" in call for call, _ in runner.calls))
 
+    def test_correction_label_readded_during_push_is_compensated_after_push(self):
+        old_unlabeled = exact_pr(headRefOid=BASE_SHA, labels=[])
+        updated_labeled = exact_pr(labels=[{"name": "ready-for-gate"}])
+        updated_unlabeled = exact_pr(labels=[])
+        runner = QueueRunner([
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(returncode=0),
+            response(returncode=0),
+            response(stdout=json.dumps([old_unlabeled]) + "\n"),
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(old_unlabeled) + "\n"),
+            response(stdout="pushed\n"),
+            self.remote_feature(),
+            response(stdout=json.dumps(updated_labeled) + "\n"),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(updated_unlabeled) + "\n"),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherError, "readiness|label"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        removals = [
+            call
+            for call, _ in runner.calls
+            if Path(call[0]).name == "gh" and "--remove-label" in call
+        ]
+        self.assertEqual(len(removals), 2)
+        self.assertEqual(runner.responses, [])
+
+    def test_correction_post_push_head_readback_failure_still_compensates_label(self):
+        old_unlabeled = exact_pr(headRefOid=BASE_SHA, labels=[])
+        updated_unlabeled = exact_pr(labels=[])
+        runner = QueueRunner([
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(returncode=0),
+            response(returncode=0),
+            response(stdout=json.dumps([old_unlabeled]) + "\n"),
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(old_unlabeled) + "\n"),
+            response(stdout="pushed\n"),
+            self.remote_feature(None),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(updated_unlabeled) + "\n"),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherError, "exact-SHA"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        removals = [
+            call
+            for call, _ in runner.calls
+            if Path(call[0]).name == "gh" and "--remove-label" in call
+        ]
+        self.assertEqual(len(removals), 2)
+        self.assertEqual(runner.responses, [])
+
+    def test_final_exact_pr_with_unexpected_gate_label_is_compensated_and_rejected(self):
+        labeled = exact_pr(labels=[{"name": "ready-for-gate"}])
+        unlabeled = exact_pr(labels=[])
+        runner = QueueRunner([
+            self.remote_feature(),
+            self.remote_base(),
+            response(stdout=json.dumps([labeled]) + "\n"),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(unlabeled) + "\n"),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherError, "readiness|label"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertTrue(any("--remove-label" in call for call, _ in runner.calls))
+        self.assertEqual(runner.responses, [])
+
     def test_closed_correction_pr_loses_stale_gate_label_before_push_and_reopen(self):
         closed_labeled = exact_pr(
             state="CLOSED",
@@ -1061,6 +1142,7 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             response(stdout=json.dumps(closed_unlabeled) + "\n"),
             response(stdout="pushed\n"),
             self.remote_feature(),
+            response(stdout=json.dumps(closed_updated) + "\n"),
             response(stdout=json.dumps([closed_updated]) + "\n"),
             response(stdout="removed\n"),
             response(stdout=json.dumps(closed_updated) + "\n"),
@@ -1166,6 +1248,7 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             response(stdout=json.dumps(old) + "\n"),
             response(stdout="pushed\n"),
             self.remote_feature(),
+            response(stdout=json.dumps(updated) + "\n"),
             response(stdout=json.dumps([updated]) + "\n"),
         ])
 

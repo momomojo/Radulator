@@ -973,7 +973,38 @@ def ensure_remote_and_pr(
             runner=runner,
             env=_publisher_env(),
         )
-        if _remote_head(candidate, config, runner=runner) != candidate.head_sha:
+        if correction_pr is not None:
+            try:
+                if _remote_head(candidate, config, runner=runner) != candidate.head_sha:
+                    raise PublisherError("remote branch exact-SHA readback failed after push")
+                post_push = _load_pr(
+                    correction_pr.number, candidate, config, runner=runner
+                )
+                if (
+                    post_push.number != correction_pr.number
+                    or post_push.state not in {"OPEN", "CLOSED"}
+                    or post_push.branch != candidate.branch
+                    or post_push.head_sha != candidate.head_sha
+                    or post_push.base != config.base_branch
+                    or post_push.base_sha != target_base_sha
+                    or post_push.head_repository_owner
+                    != config.repository.split("/", 1)[0]
+                    or post_push.is_cross_repository
+                    or post_push.merged_at is not None
+                ):
+                    raise PublisherError(
+                        "post-push correction pull request authority is not exact"
+                    )
+                if "ready-for-gate" in post_push.labels:
+                    raise PublisherError(
+                        "post-push correction acquired an unexpected readiness label"
+                    )
+            except Exception:
+                _compensate_ready_label(
+                    candidate, correction_pr, config, runner=runner
+                )
+                raise
+        elif _remote_head(candidate, config, runner=runner) != candidate.head_sha:
             raise PublisherError("remote branch exact-SHA readback failed after push")
         if kb is not None:
             _revalidate_candidate(candidate, config, kb, conn)
@@ -1060,7 +1091,15 @@ def ensure_remote_and_pr(
             branch_prs = _list_branch_prs(candidate, config, runner=runner)
             if len(branch_prs) != 1:
                 raise PublisherError("pull request creation lacked exact authoritative readback")
-    return _exact_pr(branch_prs[0], candidate, config, target_base_sha=target_base_sha)
+    final_pr = _exact_pr(
+        branch_prs[0], candidate, config, target_base_sha=target_base_sha
+    )
+    if "ready-for-gate" in final_pr.labels:
+        _compensate_ready_label(candidate, final_pr, config, runner=runner)
+        raise PublisherError(
+            "final pull request carried an unexpected readiness label before CI gating"
+        )
+    return final_pr
 
 
 def _read_pr(
