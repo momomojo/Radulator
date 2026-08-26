@@ -1178,6 +1178,63 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         self.assertEqual(self.ledger.replay().events, ())
 
+    def test_reconciliation_bootstrap_rechecks_the_entire_authority_cohort(self):
+        tasks = {
+            task_id: {
+                "task": {
+                    "id": task_id,
+                    "status": "done" if "source" in task_id else "todo",
+                    "body": task_id,
+                },
+                "parents": [],
+                "comments": [],
+            }
+            for task_id in (
+                "t_one", "t_source_one", "t_two", "t_source_two",
+            )
+        }
+
+        class Adapter:
+            source_two_reads = 0
+
+            def show(inner_self, task_id):
+                readback = json.loads(json.dumps(tasks[task_id]))
+                if task_id == "t_source_two":
+                    inner_self.source_two_reads += 1
+                    if inner_self.source_two_reads == 2:
+                        tasks["t_one"]["task"].update({
+                            "status": "done",
+                            "body": "concurrently changed after item-one validation",
+                        })
+                return readback
+
+            def perform(self, _action):
+                raise AssertionError("bootstrap cohort failure must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "bootstrap-authority-cohort-audit",
+            "trackers": [
+                {
+                    "task_id": "t_one",
+                    "source_id": "source-one",
+                    "source": {"kind": "kanban_task", "task_id": "t_source_one"},
+                },
+                {
+                    "task_id": "t_two",
+                    "source_id": "source-two",
+                    "source": {"kind": "kanban_task", "task_id": "t_source_two"},
+                },
+            ],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "Kanban authority changed"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(self.ledger.replay().events, ())
+
     def test_reconciliation_rejects_incomplete_or_unreadable_authority(self):
         self.assertTrue(
             callable(getattr(lifecycle_module, "reconcile_trackers", None)),

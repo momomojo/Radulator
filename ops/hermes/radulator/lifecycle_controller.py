@@ -743,6 +743,52 @@ def _require_kanban_authority_current(
         )
 
 
+def _read_kanban_authority_cohort(
+    adapter: Any,
+    authorities: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "tracker_task_id": authority["tracker_task_id"],
+            "source_task_id": authority["source_task_id"],
+            "tracker": _read_kanban_authority_snapshot(
+                adapter, authority["tracker_task_id"],
+            ),
+            "source": _read_kanban_authority_snapshot(
+                adapter, authority["source_task_id"],
+            ),
+        }
+        for authority in authorities
+    ]
+
+
+def _require_kanban_authority_cohort_current(
+    adapter: Any,
+    authorities: list[dict[str, Any]],
+) -> None:
+    if not authorities:
+        raise LedgerError("Kanban authority cohort is required for reconciliation.")
+    expected = [
+        {
+            "tracker_task_id": authority["tracker_task_id"],
+            "source_task_id": authority["source_task_id"],
+            "tracker": authority["tracker"],
+            "source": authority["source"],
+        }
+        for authority in authorities
+    ]
+    first = _read_kanban_authority_cohort(adapter, authorities)
+    second = _read_kanban_authority_cohort(adapter, authorities)
+    for expected_item, first_item, second_item in zip(
+        expected, first, second,
+    ):
+        if first_item != second_item or second_item != expected_item:
+            raise LedgerError(
+                "Kanban authority changed during reconciliation for "
+                f"{expected_item['tracker_task_id']}."
+            )
+
+
 def _single_added_comment(
     before: list[dict[str, Any]],
     after: list[dict[str, Any]],
@@ -1107,10 +1153,10 @@ def reconcile_trackers(
         ]
 
         def authorize_bootstrap() -> None:
-            for item in bootstrap_items:
-                _require_kanban_authority_current(
-                    adapter, item["authority"],
-                )
+            _require_kanban_authority_cohort_current(
+                adapter,
+                [item["authority"] for item in bootstrap_items],
+            )
 
         ledger.append_batch_if_authorized(
             bootstrap_proposals,
