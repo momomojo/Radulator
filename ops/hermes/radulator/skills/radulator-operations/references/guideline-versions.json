@@ -91,7 +91,7 @@
       "implemented_version": "FDA MQSA 2024 with ACR BI-RADS v2025 context",
       "basis_type": "classification-system",
       "verification_status": "verified",
-      "last_verified": "2026-08-24",
+      "last_verified": "2026-08-25",
       "justification": "The ACR source identifies BI-RADS v2025, while the FDA source confirms that amended MQSA reporting requirements, including the federal breast-density notification, became enforceable on September 10, 2024.",
       "sources": [
         { "authority": "American College of Radiology", "title": "Breast Imaging Reporting and Data System (BI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS" },

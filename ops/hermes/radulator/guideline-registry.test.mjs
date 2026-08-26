@@ -128,6 +128,7 @@ for (const calculator of calculators) {
 for (const [calculatorId, expected] of Object.entries({
   birads: {
     basis_type: "classification-system",
+    last_verified: "2026-08-25",
     source_urls: [
       "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
       "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
@@ -154,6 +155,7 @@ for (const [calculatorId, expected] of Object.entries({
   assert.ok(record, `${calculatorId}: required dedicated registry row is missing`);
   assert.equal(record.basis_type, expected.basis_type);
   assert.equal(record.verification_status, "verified");
+  if (expected.last_verified) assert.equal(record.last_verified, expected.last_verified);
   for (const sourceUrl of expected.source_urls ?? [expected.source_url]) {
     assert.ok(
       record.sources.some((source) => source.url === sourceUrl),

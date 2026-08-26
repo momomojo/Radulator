@@ -14,7 +14,7 @@ Each live calculator export has exactly one registry record. A record identifies
 
 ## Migrated and rechecked status
 
-- The prior Mini registry was audited read-only on 2026-08-25. Its BI-RADS v2025, Bosniak v2019, and MELD 3.0/OPTN rows retain their existing 2026-08-24 verification dates and exact sources.
+- The prior Mini registry was audited read-only on 2026-08-25. Bosniak v2019 and MELD 3.0/OPTN retain their existing 2026-08-24 verification dates and exact sources. BI-RADS was rechecked on 2026-08-25 against both the ACR v2025 authority and the FDA MQSA rule-enforcement source.
 - CAC/MESA, Cockcroft-Gault, PESI, and the Kidney Biopsy Major Bleeding Risk Calculator received dedicated primary-source records verified on 2026-08-25.
 - All other clinical records remain `seed-unverified`; the migration does not upgrade their evidence status.
 - The website feedback form is mapped explicitly as `non-clinical` and has no invented medical source.
