@@ -281,7 +281,7 @@ This file contains predefined test inputs and expected outputs for all 18 Radula
 
 **Expected Outputs:**
 - MELD Score: ~20 (creatinine set to 4.0 due to dialysis)
-- Clinical Notes: "Creatinine set to 4.0 mg/dL (dialysis ≥2x/week or 24hr CVVHD)"
+- Clinical Notes: "Creatinine set to 4.0 mg/dL (dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test)"
 
 ---
 

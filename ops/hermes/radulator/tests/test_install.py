@@ -1,3 +1,4 @@
+import base64
 import json
 import stat
 import subprocess
@@ -70,6 +71,10 @@ class InstallerTests(unittest.TestCase):
         with mock.patch.object(install_module, "dt", fake_datetime):
             self.assertEqual(install_module._now(), "2026-08-23T22:00:00Z")
 
+    def test_repository_lint_ignores_managed_worktree_storage(self):
+        eslint_config = (self.repo / "eslint.config.js").read_text()
+        self.assertRegex(eslint_config, r"globalIgnores\([^\n]*['\"]\.worktrees(?:/\*\*)?['\"]")
+
     def test_profiles_require_single_flight_cron(self):
         (self.radulator_home / "config.yaml").write_text(
             "model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: xhigh\ncron:\n  max_parallel_jobs: 2\n"
@@ -82,7 +87,7 @@ class InstallerTests(unittest.TestCase):
             (self.radulator_home / "config.yaml").write_text(
                 f"model: openai-codex/gpt-5.6-sol\nagent:\n  reasoning_effort: {quoted}\ncron:\n  max_parallel_jobs: 1\n"
             )
-            self.assertEqual(len(build_plan(**self.kwargs())["jobs"]), 4)
+            self.assertEqual(len(build_plan(**self.kwargs())["jobs"]), 7)
 
     def test_single_flight_setting_must_be_in_top_level_cron_mapping(self):
         (self.radulator_home / "config.yaml").write_text(
@@ -104,15 +109,44 @@ class InstallerTests(unittest.TestCase):
         plan = build_plan(**self.kwargs())
         self.assertEqual(plan["schema"], "radulator-hermes-install/v1")
         self.assertEqual(plan["github_repository"], "momomojo/Radulator")
-        self.assertEqual(len(plan["jobs"]), 4)
+        self.assertEqual(len(plan["jobs"]), 7)
         self.assertFalse((self.radulator_home / "state" / "radulator-release-control.json").exists())
-        for job in plan["jobs"]:
-            self.assertEqual(job["workdir"], str(self.repo))
+        agent_jobs = [job for job in plan["jobs"] if not job.get("no_agent")]
+        for job in agent_jobs:
             self.assertEqual(job["model"], "gpt-5.6-sol")
             self.assertEqual(job["provider"], "openai-codex")
             self.assertNotIn("effort", job)
             self.assertNotIn("reasoning_effort", job)
             self.assertFalse(job["enabled"])
+        repository_agent_jobs = [job for job in agent_jobs if job["name"] != "radulator-seed-convert"]
+        self.assertTrue(all(job["workdir"] == str(self.repo) for job in repository_agent_jobs))
+        feedback = next(job for job in plan["jobs"] if job["name"] == "radulator-formspree-feedback-intake")
+        self.assertTrue(feedback["no_agent"])
+        self.assertEqual(feedback["script"], "radulator_formspree_feedback_intake.py")
+        self.assertIsNone(feedback["model"])
+        self.assertIsNone(feedback["workdir"])
+        self.assertFalse(feedback["enabled"])
+        promoter = next(job for job in plan["jobs"] if job["name"] == "radulator-release-promoter")
+        self.assertEqual(promoter["id"], "f191f946d6fa")
+        self.assertTrue(promoter["no_agent"])
+        self.assertEqual(promoter["script"], "release_promoter_cron.sh")
+        self.assertEqual(promoter["schedule"]["expr"], "*/10 * * * *")
+        self.assertIsNone(promoter["model"])
+        self.assertFalse(promoter["enabled"])
+        seed_convert = next(job for job in plan["jobs"] if job["name"] == "radulator-seed-convert")
+        self.assertEqual(seed_convert["id"], "c41b8448cce4")
+        self.assertFalse(seed_convert["no_agent"])
+        self.assertEqual(seed_convert["script"], "seed_convert_gate_dedupe.py")
+        self.assertEqual(seed_convert["skills"], ["radulator-operations"])
+        self.assertEqual(seed_convert["schedule"]["expr"], "0 9 * * *")
+        self.assertIn("always convert-eligible", seed_convert["prompt"])
+        self.assertIn("medical-review-pending", seed_convert["prompt"])
+        self.assertIn("Process at most 2 oldest first", seed_convert["prompt"])
+        self.assertIn("authoritative readback", seed_convert["prompt"])
+        self.assertIn("NEEDS_FIX is not a terminal hold", seed_convert["prompt"])
+        self.assertEqual(seed_convert["model"], "gpt-5.6-sol")
+        self.assertEqual(seed_convert["provider"], "openai-codex")
+        self.assertFalse(seed_convert["enabled"])
         judge_jobs = [job for job in plan["jobs"] if job["name"].startswith("radulator-clinical-judge-")]
         self.assertTrue(all("--public-keys-file" in job["prompt"] for job in judge_jobs))
         self.assertTrue(all("--limit 1" in job["prompt"] for job in judge_jobs))
@@ -144,6 +178,50 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("kanban_closure", learning_skill)
         self.assertNotIn("Call `hindsight_retain`", learning_skill)
 
+    def test_plan_can_pin_a_truthful_self_hosted_inference_identity(self):
+        plan = build_plan(
+            **self.kwargs(),
+            agent_model="mtplx-qwen38-27b-optimized-quality",
+            agent_provider="mtplx-qwen38",
+        )
+
+        agent_jobs = [job for job in plan["jobs"] if not job.get("no_agent")]
+        self.assertTrue(agent_jobs)
+        self.assertTrue(all(job["model"] == "mtplx-qwen38-27b-optimized-quality" for job in agent_jobs))
+        self.assertTrue(all(job["provider"] == "mtplx-qwen38" for job in agent_jobs))
+        judges = [job for job in agent_jobs if job["name"].startswith("radulator-clinical-judge-")]
+        self.assertTrue(all("--model mtplx-qwen38-27b-optimized-quality" in job["prompt"] for job in judges))
+        self.assertTrue(all("--provider mtplx-qwen38" in job["prompt"] for job in judges))
+        self.assertEqual(plan["inference"], {
+            "model": "mtplx-qwen38-27b-optimized-quality",
+            "provider": "mtplx-qwen38",
+        })
+
+        result = apply_install(
+            **self.kwargs(),
+            agent_model="mtplx-qwen38-27b-optimized-quality",
+            agent_provider="mtplx-qwen38",
+        )
+        manifest = json.loads(Path(result["manifest_path"]).read_text())
+        self.assertEqual(manifest["inference"], plan["inference"])
+        radulator_jobs = json.loads((self.radulator_home / "cron" / "jobs.json").read_text())["jobs"]
+        default_jobs = json.loads((self.default_home / "cron" / "jobs.json").read_text())
+        managed = [job for job in [*radulator_jobs, *default_jobs] if job.get("id") in result["job_ids"].values()]
+        managed_agents = [job for job in managed if not job.get("no_agent")]
+        self.assertTrue(all(job["model"] == plan["inference"]["model"] for job in managed_agents))
+        self.assertTrue(all(job["provider"] == plan["inference"]["provider"] for job in managed_agents))
+
+    def test_inference_identity_rejects_blank_or_prompt_injection_values(self):
+        invalid = (
+            {"agent_model": ""},
+            {"agent_provider": ""},
+            {"agent_model": "safe-model\n--private-key /tmp/attacker"},
+            {"agent_provider": "provider with spaces"},
+        )
+        for override in invalid:
+            with self.subTest(override=override), self.assertRaisesRegex(InstallError, "inference"):
+                build_plan(**self.kwargs(), **override)
+
     def test_judge_skill_prescribes_complete_sign_and_post_commands(self):
         skill = (self.repo / "ops/hermes/radulator/skills/radulator-clinical-judge/SKILL.md").read_text()
         self.assertIn("judge-attest.mjs sign", skill)
@@ -164,16 +242,22 @@ class InstallerTests(unittest.TestCase):
         for command in (
             "npm run test:hermes-lifecycle",
             "npm run test:hermes-learning",
+            "npm run test:hermes-feedback-intake",
+            "npm run test:hermes-seed-convert",
             "npm run test:hermes-install",
         ):
             self.assertIn(command, smoke_job)
         self.assertIn("hermes-release-control-tests:", workflow)
         self.assertIn("name: Hermes Release Control Tests", workflow)
         for command in (
+            "npm audit --omit=dev --audit-level=high",
+            "npm run test:reconcile-deployment",
             "npm run test:hermes-judge-candidates",
             "npm run test:hermes-judge-attest",
             "npm run test:hermes-lifecycle",
             "npm run test:hermes-learning",
+            "npm run test:hermes-feedback-intake",
+            "npm run test:hermes-seed-convert",
             "npm run test:hermes-install",
         ):
             self.assertIn(command, workflow[workflow.index("hermes-release-control-tests:"):])
@@ -189,15 +273,31 @@ class InstallerTests(unittest.TestCase):
 
         radulator_jobs = json.loads((self.radulator_home / "cron" / "jobs.json").read_text())["jobs"]
         default_jobs = json.loads((self.default_home / "cron" / "jobs.json").read_text())
-        managed = [job for job in [*radulator_jobs, *default_jobs] if job["name"].startswith("radulator-clinical-") or job["name"].startswith("radulator-release-")]
-        self.assertEqual(len(managed), 4)
+        managed = [job for job in [*radulator_jobs, *default_jobs] if job.get("id") in first["job_ids"].values()]
+        self.assertEqual(len(managed), 7)
         self.assertTrue(all(job["enabled"] is False for job in managed))
         legacy = [job for job in [*radulator_jobs, *default_jobs] if job["name"] in {"pr-gate-poller", "judge-queue"}]
         self.assertEqual(len(legacy), 2)
         self.assertTrue(all(job["enabled"] is True for job in legacy))
-        self.assertEqual(len({job["id"] for job in managed}), 4)
+        self.assertEqual(len({job["id"] for job in managed}), 7)
         self.assertTrue((self.radulator_home / "skills" / "radulator-clinical-judge" / "SKILL.md").exists())
         self.assertTrue((self.default_home / "skills" / "radulator-clinical-judge" / "SKILL.md").exists())
+        feedback_script = self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py"
+        self.assertTrue(feedback_script.exists())
+        self.assertEqual(stat.S_IMODE(feedback_script.stat().st_mode), 0o700)
+        seed_script = self.radulator_home / "scripts" / "seed_convert_gate_dedupe.py"
+        self.assertTrue(seed_script.exists())
+        self.assertEqual(stat.S_IMODE(seed_script.stat().st_mode), 0o700)
+        promoter_script = self.radulator_home / "scripts" / "release_promoter.py"
+        promoter_wrapper = self.radulator_home / "scripts" / "release_promoter_cron.sh"
+        self.assertEqual(promoter_script.read_bytes(), (
+            self.repo / "ops/hermes/radulator/release_promoter.py"
+        ).read_bytes())
+        self.assertEqual(promoter_wrapper.read_bytes(), (
+            self.repo / "ops/hermes/radulator/release_promoter_cron.sh"
+        ).read_bytes())
+        self.assertEqual(stat.S_IMODE(promoter_script.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(promoter_wrapper.stat().st_mode), 0o700)
 
         before = {
             "rad": (self.radulator_home / "cron" / "jobs.json").read_bytes(),
@@ -209,6 +309,79 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(before["rad"], (self.radulator_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["default"], (self.default_home / "cron" / "jobs.json").read_bytes())
         self.assertEqual(before["manifest"], manifest_path.read_bytes())
+
+    def test_upgrade_preserves_existing_seed_delivery_destination(self):
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        payload["jobs"].append({
+            "id": "c41b8448cce4",
+            "name": "radulator-seed-convert",
+            "enabled": True,
+            "deliver": "telegram:existing-owner",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+
+        apply_install(**self.kwargs())
+
+        jobs = json.loads(jobs_path.read_text())["jobs"]
+        seed_job = next(job for job in jobs if job["name"] == "radulator-seed-convert")
+        self.assertEqual(seed_job["id"], "c41b8448cce4")
+        self.assertTrue(seed_job["enabled"])
+        self.assertEqual(seed_job["deliver"], "telegram:existing-owner")
+        self.assertEqual(seed_job["script"], "seed_convert_gate_dedupe.py")
+
+    def test_upgrade_preserves_existing_promoter_identity_state_and_delivery(self):
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        payload["jobs"].append({
+            "id": "f191f946d6fa",
+            "name": "radulator-release-promoter",
+            "enabled": True,
+            "state": "scheduled",
+            "deliver": "telegram",
+            "script": "legacy_release_promoter.sh",
+            "schedule": {"kind": "cron", "expr": "0 0 * * *", "display": "0 0 * * *"},
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+
+        result = apply_install(**self.kwargs())
+
+        jobs = json.loads(jobs_path.read_text())["jobs"]
+        promoter = next(job for job in jobs if job["name"] == "radulator-release-promoter")
+        self.assertEqual(result["job_ids"]["radulator-release-promoter"], "f191f946d6fa")
+        self.assertEqual(promoter["id"], "f191f946d6fa")
+        self.assertTrue(promoter["enabled"])
+        self.assertEqual(promoter["state"], "scheduled")
+        self.assertEqual(promoter["deliver"], "telegram")
+        self.assertEqual(promoter["script"], "release_promoter_cron.sh")
+        self.assertEqual(promoter["schedule"]["expr"], "*/10 * * * *")
+
+    def test_upgrade_extends_existing_backup_for_new_managed_script(self):
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        backup_path.parent.mkdir(parents=True)
+        radulator_jobs_path = self.radulator_home / "cron" / "jobs.json"
+        backup_path.write_text(json.dumps({
+            "schema": "radulator-hermes-backup/v1",
+            "entries": [{
+                "path": str(radulator_jobs_path),
+                "existed": True,
+                "mode": stat.S_IMODE(radulator_jobs_path.stat().st_mode),
+                "content_base64": base64.b64encode(radulator_jobs_path.read_bytes()).decode("ascii"),
+            }],
+        }))
+
+        apply_install(**self.kwargs())
+
+        feedback_script = self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py"
+        backup = json.loads(backup_path.read_text())
+        recorded = {entry["path"]: entry for entry in backup["entries"]}
+        feedback_script_key = str(feedback_script.resolve())
+        self.assertIn(feedback_script_key, recorded)
+        self.assertFalse(recorded[feedback_script_key]["existed"])
+        self.assertTrue(feedback_script.exists())
+
+        restore_install(self.radulator_home)
+        self.assertFalse(feedback_script.exists())
 
     def test_enable_then_restore_recovers_original_files(self):
         result = apply_install(**self.kwargs())
@@ -248,6 +421,9 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual((self.radulator_home / "cron" / "jobs.json").read_bytes(), self.original_radulator_jobs)
         self.assertEqual((self.default_home / "cron" / "jobs.json").read_bytes(), self.original_default_jobs)
         self.assertFalse((self.radulator_home / "skills" / "radulator-release-learning" / "SKILL.md").exists())
+        self.assertFalse((self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py").exists())
+        self.assertFalse((self.radulator_home / "scripts" / "release_promoter.py").exists())
+        self.assertFalse((self.radulator_home / "scripts" / "release_promoter_cron.sh").exists())
 
     def test_enable_refuses_missing_local_judge_trust_configuration(self):
         apply_install(**self.kwargs())
