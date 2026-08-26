@@ -217,6 +217,34 @@ class LifecycleLedger:
 
     def append_batch(self, proposals: list[dict[str, Any]]) -> list[LifecycleEvent]:
         """Validate a semantic batch under one lock before appending any record."""
+        self._validate_append_batch(proposals)
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        descriptor = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
+        os.chmod(self.path, 0o600)
+        with os.fdopen(descriptor, "r+", encoding="utf-8") as handle:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            return self._append_batch_locked(handle, proposals, self.replay(handle))
+
+    def append_batch_if_authorized(
+        self,
+        proposals: list[dict[str, Any]],
+        authorize: Any,
+    ) -> list[LifecycleEvent]:
+        """Recheck external authority and append atomically under one ledger lease."""
+        self._validate_append_batch(proposals)
+        if not callable(authorize):
+            raise LedgerError("Lifecycle append authority callback is required.")
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        descriptor = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
+        os.chmod(self.path, 0o600)
+        with os.fdopen(descriptor, "r+", encoding="utf-8") as handle:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            replay = self.replay(handle)
+            authorize()
+            return self._append_batch_locked(handle, proposals, replay)
+
+    @staticmethod
+    def _validate_append_batch(proposals: list[dict[str, Any]]) -> None:
         if not isinstance(proposals, list) or not proposals:
             raise LedgerError("Lifecycle append batch requires at least one event.")
         allowed = {
@@ -225,28 +253,29 @@ class LifecycleLedger:
         }
         if any(not isinstance(item, dict) or set(item) - allowed for item in proposals):
             raise LedgerError("Lifecycle append batch contains malformed event arguments.")
-        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        descriptor = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
-        os.chmod(self.path, 0o600)
-        with os.fdopen(descriptor, "r+", encoding="utf-8") as handle:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-            replay = self.replay(handle)
-            results: list[LifecycleEvent] = []
-            pending: list[LifecycleEvent] = []
-            for arguments in proposals:
-                proposed, is_new = _prepare_event(replay, **arguments)
-                results.append(proposed)
-                if is_new:
-                    pending.append(proposed)
-                    replay = _replay_with_event(replay, proposed)
-            if pending:
-                handle.seek(0, os.SEEK_END)
-                handle.write("".join(
-                    _canonical(event.as_dict()) + "\n" for event in pending
-                ))
-                handle.flush()
-                os.fsync(handle.fileno())
-            return results
+
+    @staticmethod
+    def _append_batch_locked(
+        handle: Any,
+        proposals: list[dict[str, Any]],
+        replay: ReplayState,
+    ) -> list[LifecycleEvent]:
+        results: list[LifecycleEvent] = []
+        pending: list[LifecycleEvent] = []
+        for arguments in proposals:
+            proposed, is_new = _prepare_event(replay, **arguments)
+            results.append(proposed)
+            if is_new:
+                pending.append(proposed)
+                replay = _replay_with_event(replay, proposed)
+        if pending:
+            handle.seek(0, os.SEEK_END)
+            handle.write("".join(
+                _canonical(event.as_dict()) + "\n" for event in pending
+            ))
+            handle.flush()
+            os.fsync(handle.fileno())
+        return results
 
     def perform_if_current(
         self,
@@ -714,6 +743,19 @@ def _require_kanban_authority_current(
         )
 
 
+def _single_added_comment(
+    before: list[dict[str, Any]],
+    after: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    remaining = list(after)
+    for expected in before:
+        try:
+            remaining.remove(expected)
+        except ValueError:
+            return None
+    return remaining[0] if len(remaining) == 1 else None
+
+
 def _advance_kanban_authority_after_action(
     adapter: Any,
     authority: dict[str, Any],
@@ -730,34 +772,59 @@ def _advance_kanban_authority_after_action(
         raise LedgerError(
             f"Kanban authority changed during reconciliation for {tracker_id}."
         )
-    if after != before:
-        kind = action.get("kind")
+    kind = action.get("kind")
+    prerequisite_id = receipt.get("task_id")
+    comment_body = action.get("body")
+    before_status = _task_status(
+        {"task": before["task"]}, tracker_id,
+    )
+    satisfied_before = (
+        kind == "create_prerequisite"
+        and isinstance(prerequisite_id, str)
+        and prerequisite_id in before["parents"]
+    ) or (
+        kind == "comment"
+        and isinstance(comment_body, str)
+        and bool(comment_body)
+        and _task_instruction_present(before, tracker_id, comment_body)
+    ) or (
+        kind == "complete"
+        and before_status in TERMINAL_KANBAN_STATUSES
+        and receipt.get("terminal_status") == before_status
+    )
+    if after == before:
+        if not satisfied_before:
+            raise LedgerError(
+                f"Kanban action produced no authoritative delta for {tracker_id}."
+            )
+    else:
         common_unchanged = (
             after["children"] == before["children"]
             and after["task"] == before["task"]
         )
         allowed = False
         if kind == "create_prerequisite":
-            prerequisite_id = receipt.get("task_id")
             allowed = (
                 isinstance(prerequisite_id, str)
                 and prerequisite_id.startswith("t_")
+                and not satisfied_before
                 and common_unchanged
                 and after["comments"] == before["comments"]
                 and set(after["parents"])
                 == set(before["parents"]) | {prerequisite_id}
             )
         elif kind == "comment":
+            added_comment = _single_added_comment(
+                before["comments"], after["comments"],
+            )
             allowed = (
-                common_unchanged
+                isinstance(comment_body, str)
+                and bool(comment_body)
+                and not satisfied_before
+                and common_unchanged
                 and after["parents"] == before["parents"]
-                and len(after["comments"]) <= len(before["comments"]) + 1
-                and all(comment in after["comments"] for comment in before["comments"])
-                and any(
-                    comment.get("body") == action.get("body")
-                    for comment in after["comments"]
-                    if isinstance(comment, dict)
-                )
+                and added_comment is not None
+                and added_comment.get("body") == comment_body
             )
         elif kind == "complete":
             before_task = {
@@ -770,13 +837,18 @@ def _advance_kanban_authority_after_action(
                 for key, value in after["task"].items()
                 if key not in {"status", "state"}
             }
+            after_status = _task_status(
+                {"task": after["task"]}, tracker_id,
+            )
             allowed = (
-                before_task == after_task
+                not satisfied_before
+                and before_status not in TERMINAL_KANBAN_STATUSES
+                and before_task == after_task
                 and after["parents"] == before["parents"]
                 and after["children"] == before["children"]
                 and after["comments"] == before["comments"]
-                and _task_status({"task": after["task"]}, tracker_id)
-                in TERMINAL_KANBAN_STATUSES
+                and after_status in TERMINAL_KANBAN_STATUSES
+                and receipt.get("terminal_status") == after_status
             )
         if not allowed:
             raise LedgerError(
@@ -1007,7 +1079,7 @@ def reconcile_trackers(
         item for item in frozen_plan if item["kind"] == "bootstrap"
     ]
     if bootstrap_items:
-        ledger.append_batch([
+        bootstrap_proposals = [
             {
                 "idempotency_key": (
                     f"reconcile:{item['tracker']['task_id']}:feedback:"
@@ -1032,7 +1104,18 @@ def reconcile_trackers(
                 },
             }
             for item in bootstrap_items
-        ])
+        ]
+
+        def authorize_bootstrap() -> None:
+            for item in bootstrap_items:
+                _require_kanban_authority_current(
+                    adapter, item["authority"],
+                )
+
+        ledger.append_batch_if_authorized(
+            bootstrap_proposals,
+            authorize_bootstrap,
+        )
 
     action_items = [
         item for item in frozen_plan

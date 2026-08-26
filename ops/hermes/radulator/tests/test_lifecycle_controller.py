@@ -1112,6 +1112,72 @@ class LifecycleLedgerTests(unittest.TestCase):
             replay.current_by_task["t_f60ac506"].evidence,
         )
 
+    def test_reconciliation_bootstrap_rechecks_exact_kanban_authority_before_append(self):
+        tasks = {
+            "t_tracker": {
+                "task": {
+                    "id": "t_tracker",
+                    "status": "todo",
+                    "pr": 42,
+                    "head_sha": HEAD,
+                    "base_sha": "c" * 40,
+                    "body": "release tracker",
+                },
+                "parents": [],
+                "comments": [],
+            },
+            "t_source": {
+                "task": {
+                    "id": "t_source",
+                    "status": "done",
+                    "body": "authoritative source",
+                },
+                "parents": [],
+                "comments": [],
+            },
+        }
+
+        class Adapter:
+            source_reads = 0
+
+            def show(inner_self, task_id):
+                readback = json.loads(json.dumps(tasks[task_id]))
+                if task_id == "t_source":
+                    inner_self.source_reads += 1
+                    if inner_self.source_reads == 1:
+                        tracker = tasks["t_tracker"]
+                        tracker["task"].update({
+                            "status": "done",
+                            "pr": 43,
+                            "head_sha": NEXT_HEAD,
+                            "base_sha": "d" * 40,
+                        })
+                        tracker["parents"] = ["t_concurrent_relation"]
+                return readback
+
+            def perform(self, _action):
+                raise AssertionError("bootstrap authority failure must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "bootstrap-kanban-cas-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "feedback-source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 42,
+                "head_sha": HEAD,
+                "base_sha": "c" * 40,
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "Kanban authority changed"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(self.ledger.replay().events, ())
+
     def test_reconciliation_rejects_incomplete_or_unreadable_authority(self):
         self.assertTrue(
             callable(getattr(lifecycle_module, "reconcile_trackers", None)),
@@ -1677,6 +1743,173 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         self.assertEqual(performed_actions, ["create_prerequisite"])
 
+    def test_comment_noop_rejects_unrelated_comment_delta(self):
+        expected_body = "The exact clinical verdict was already recorded."
+        before_tracker = {
+            "task": {
+                "id": "t_parent",
+                "status": "todo",
+                "body": "release tracker",
+            },
+            "parents": [],
+            "comments": [{"id": "c_expected", "body": expected_body}],
+        }
+        after_tracker = json.loads(json.dumps(before_tracker))
+        after_tracker["comments"].append({
+            "id": "c_unrelated",
+            "body": "Concurrent unrelated comment.",
+        })
+        source = {
+            "task": {"id": "t_source", "status": "done", "body": "source"},
+            "parents": [],
+            "comments": [],
+        }
+        authority = {
+            "tracker_task_id": "t_parent",
+            "source_task_id": "t_source",
+            "tracker": lifecycle_module._kanban_authority_snapshot(
+                before_tracker, "t_parent",
+            ),
+            "source": lifecycle_module._kanban_authority_snapshot(
+                source, "t_source",
+            ),
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                value = after_tracker if task_id == "t_parent" else source
+                return json.loads(json.dumps(value))
+
+        class NoopAdapter:
+            def show(self, task_id):
+                value = before_tracker if task_id == "t_parent" else source
+                return json.loads(json.dumps(value))
+
+        unchanged = lifecycle_module._advance_kanban_authority_after_action(
+            NoopAdapter(),
+            authority,
+            {"kind": "comment", "task_id": "t_parent", "body": expected_body},
+            {"kind": "comment", "task_id": "t_parent"},
+        )
+        self.assertEqual(unchanged, authority)
+
+        with self.assertRaisesRegex(LedgerError, "Kanban authority changed"):
+            lifecycle_module._advance_kanban_authority_after_action(
+                Adapter(),
+                authority,
+                {"kind": "comment", "task_id": "t_parent", "body": expected_body},
+                {"kind": "comment", "task_id": "t_parent"},
+            )
+
+    def test_complete_noop_rejects_concurrent_terminal_status_change(self):
+        before_tracker = {
+            "task": {
+                "id": "t_parent",
+                "status": "archived",
+                "body": "release tracker",
+            },
+            "parents": [],
+            "comments": [],
+        }
+        after_tracker = json.loads(json.dumps(before_tracker))
+        after_tracker["task"]["status"] = "done"
+        source = {
+            "task": {"id": "t_source", "status": "done", "body": "source"},
+            "parents": [],
+            "comments": [],
+        }
+        authority = {
+            "tracker_task_id": "t_parent",
+            "source_task_id": "t_source",
+            "tracker": lifecycle_module._kanban_authority_snapshot(
+                before_tracker, "t_parent",
+            ),
+            "source": lifecycle_module._kanban_authority_snapshot(
+                source, "t_source",
+            ),
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                value = after_tracker if task_id == "t_parent" else source
+                return json.loads(json.dumps(value))
+
+        class NoopAdapter:
+            def show(self, task_id):
+                value = before_tracker if task_id == "t_parent" else source
+                return json.loads(json.dumps(value))
+
+        unchanged = lifecycle_module._advance_kanban_authority_after_action(
+            NoopAdapter(),
+            authority,
+            {"kind": "complete", "task_id": "t_parent"},
+            {
+                "kind": "complete",
+                "task_id": "t_parent",
+                "terminal_status": "archived",
+            },
+        )
+        self.assertEqual(unchanged, authority)
+
+        with self.assertRaisesRegex(LedgerError, "Kanban authority changed"):
+            lifecycle_module._advance_kanban_authority_after_action(
+                Adapter(),
+                authority,
+                {"kind": "complete", "task_id": "t_parent"},
+                {
+                    "kind": "complete",
+                    "task_id": "t_parent",
+                    "terminal_status": "done",
+                },
+            )
+
+    def test_create_prerequisite_noop_requires_exact_unchanged_authority(self):
+        before_tracker = {
+            "task": {"id": "t_parent", "status": "todo", "body": "tracker"},
+            "parents": ["t_existing_prerequisite"],
+            "comments": [],
+        }
+        changed_tracker = json.loads(json.dumps(before_tracker))
+        changed_tracker["parents"].append("t_unrelated_prerequisite")
+        source = {
+            "task": {"id": "t_source", "status": "done", "body": "source"},
+            "parents": [],
+            "comments": [],
+        }
+        authority = {
+            "tracker_task_id": "t_parent",
+            "source_task_id": "t_source",
+            "tracker": lifecycle_module._kanban_authority_snapshot(
+                before_tracker, "t_parent",
+            ),
+            "source": lifecycle_module._kanban_authority_snapshot(
+                source, "t_source",
+            ),
+        }
+        action = {"kind": "create_prerequisite", "tracker_task_id": "t_parent"}
+        receipt = {
+            "kind": "create_prerequisite",
+            "task_id": "t_existing_prerequisite",
+        }
+
+        class Adapter:
+            def __init__(self, tracker):
+                self.tracker = tracker
+
+            def show(self, task_id):
+                value = self.tracker if task_id == "t_parent" else source
+                return json.loads(json.dumps(value))
+
+        unchanged = lifecycle_module._advance_kanban_authority_after_action(
+            Adapter(before_tracker), authority, action, receipt,
+        )
+        self.assertEqual(unchanged, authority)
+
+        with self.assertRaisesRegex(LedgerError, "Kanban authority changed"):
+            lifecycle_module._advance_kanban_authority_after_action(
+                Adapter(changed_tracker), authority, action, receipt,
+            )
+
     def test_reconciliation_holds_authority_lease_across_external_action(self):
         for index, state in enumerate((
             "feedback", "implementing", "testing", "review",
@@ -1690,29 +1923,36 @@ class LifecycleLedgerTests(unittest.TestCase):
         child_marker = Path(self.temp.name) / "concurrent-append-started"
         child_processes = []
         performed_actions = []
+        tracker = {
+            "task": {
+                "id": "t_parent",
+                "status": "archived",
+                "body": "release tracker",
+            },
+            "parents": [],
+            "comments": [],
+        }
+        source = {
+            "task": {"id": "t_source", "status": "done", "body": "source"},
+            "parents": [],
+            "comments": [],
+        }
 
         class Adapter:
             concurrent_append_finished_during_action = None
 
             def show(inner_self, task_id):
-                if task_id == "t_parent":
-                    return {
-                        "task": {
-                            "id": task_id,
-                            "status": "archived",
-                            "body": "release tracker",
-                        },
-                        "parents": [],
-                    }
-                return {
-                    "task": {"id": task_id, "status": "done", "body": "source"},
-                    "parents": [],
-                }
+                value = tracker if task_id == "t_parent" else source
+                return json.loads(json.dumps(value))
 
             def perform(inner_self, action):
                 performed_actions.append(action["kind"])
-                if child_processes:
-                    return {"kind": action["kind"]}
+                if action["kind"] == "comment":
+                    tracker["comments"].append({
+                        "id": "c_lease_comment",
+                        "body": action["body"],
+                    })
+                    return {"kind": "comment", "task_id": "t_parent"}
                 wrapper = (
                     "from pathlib import Path; import subprocess, sys; "
                     "Path(sys.argv[1]).write_text('started'); "
@@ -1758,7 +1998,11 @@ class LifecycleLedgerTests(unittest.TestCase):
                 inner_self.concurrent_append_finished_during_action = (
                     process.poll() is not None
                 )
-                return {"kind": action["kind"]}
+                tracker["parents"].append("t_lease_prerequisite")
+                return {
+                    "kind": "create_prerequisite",
+                    "task_id": "t_lease_prerequisite",
+                }
 
         adapter = Adapter()
         spec = {
