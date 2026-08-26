@@ -10,21 +10,21 @@ Each live calculator export has exactly one registry record. A record identifies
 - manufacturer data that must be checked against current product information; or
 - an explicit non-clinical row.
 
-`verification_status: "verified"` is a dated assertion bounded to the listed source and the wording in `justification`. `verification_status: "seed-unverified"` records the app's implemented claim and a primary-source check target only. It must never be described as current or verified, and `last_verified` must remain `null` until an authoritative review is completed.
+`verification_status: "verified"` is a dated assertion bounded to the listed source, the wording in `justification`, and `implementation_evidence`. Each verified row identifies the exact executable calculator, canonical compute fixture, bounded source locators and facts, dimensions under review, and literal vector IDs that exercise those facts. Every listed primary publication or official authority must have at least one such claim. When a primary equation is supplied as a distinct publication artifact, the evidence may pin the archive member's name, size, and SHA-256 digest. The KBRC row also records the source-extracted signed terms and checks them against the executable expression without using a separately reimplemented equation as its oracle. `verification_status: "seed-unverified"` records the app's implemented claim and a primary-source check target only. It must never be described as current or verified, must not carry `implementation_evidence`, and `last_verified` must remain `null` until an authoritative review is completed.
 
 ## Migrated and rechecked status
 
 - The prior Mini registry was audited read-only on 2026-08-25. Bosniak v2019 and MELD 3.0/OPTN retain their existing 2026-08-24 verification dates and exact sources. BI-RADS was rechecked on 2026-08-25 against both the ACR v2025 authority and the FDA MQSA rule-enforcement source.
-- CAC/MESA, Cockcroft-Gault, PESI, and the Kidney Biopsy Major Bleeding Risk Calculator received dedicated primary-source records verified on 2026-08-25.
+- CAC/MESA, Cockcroft-Gault, and PESI received dedicated primary-source records verified on 2026-08-25. The Kidney Biopsy Major Bleeding Risk Calculator is also verified from the 2026 primary paper and its digest-pinned Item S1 supplement: the registry audits every signed refit coefficient and spline knot against the live calculator source, then runs the paper's four displayed examples through that export.
 - All other clinical records remain `seed-unverified`; the migration does not upgrade their evidence status.
 - The website feedback form is mapped explicitly as `non-clinical` and has no invented medical source.
 
 ## Watcher rules
 
 1. Process only records whose source can be read from the named primary publication or official authority.
-2. A no-change review may update `last_verified` and `verification_status` only after the exact source was read and its claim was bounded in `justification`.
+2. A no-change review may update `last_verified` and `verification_status` only after the exact source was read, each source-derived claim was bounded in `justification` and `implementation_evidence`, and the referenced vectors passed against the real calculator export.
 3. A version or source delta creates or updates one deduplicated `guideline-review:` Kanban card and release tracker; the watcher never edits calculator logic.
 4. Calculator changes proceed through deterministic clinical tests, exact-head signed primary and verification review when high-risk, protected merge, promotion, deployment smoke, release-marker readback, and retained learning.
 5. `NEEDS_FIX` requires a corrected head and re-review; it is not a passive owner hold.
 
-The repository test `npm run test:hermes-guideline-registry` fails when a live calculator lacks a mapping, a record invents verification status, a source URL is unbounded or non-HTTPS, or a required field exceeds its schema bounds.
+The repository test `npm run test:hermes-guideline-registry` fails when a live calculator lacks a mapping; a row invents verification status; a source URL, locator, fact, artifact digest, path, or vector is missing or unbounded; a verified claim lacks primary/official-source coverage; a seed-unverified row carries implementation evidence; or a referenced vector does not produce its literal expected result from the real calculator code. For KBRC it parses the executable linear-predictor expression and requires its ordered signs, coefficients, inputs, and knots to match the digest-pinned Item S1 extraction exactly. The test does not browse or reinterpret publications: source-content review remains an exact-head clinical-judge responsibility, while the executable binding prevents that human-reviewed claim from drifting away from code and regression output.
