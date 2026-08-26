@@ -248,6 +248,37 @@ class LifecycleLedger:
                 os.fsync(handle.fileno())
             return results
 
+    def perform_if_current(
+        self,
+        snapshots: list[dict[str, Any]],
+        callback: Any,
+    ) -> Any:
+        """Run the complete external action plan under one reviewed ledger lease."""
+        if not snapshots:
+            raise LedgerError("Lifecycle reconciliation authority snapshots are required.")
+        try:
+            descriptor = os.open(self.path, os.O_RDWR)
+        except OSError as error:
+            raise LedgerError("Lifecycle ledger is unavailable for reconciliation.") from error
+        with os.fdopen(descriptor, "r+", encoding="utf-8") as handle:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            replay = self.replay(handle)
+            for snapshot in snapshots:
+                current = replay.current_by_task.get(snapshot["task_id"])
+                if current is None or (
+                    current.event_hash,
+                    current.state,
+                    current.head_sha,
+                ) != (
+                    snapshot["event_hash"],
+                    snapshot["state"],
+                    snapshot["head_sha"],
+                ):
+                    raise LedgerError(
+                        f"Lifecycle task {snapshot['task_id']} changed during reconciliation."
+                    )
+            return callback()
+
 
 def _prepare_event(
     replay: ReplayState,
@@ -626,16 +657,8 @@ def _verified_kanban_reconciliation_task(
         readback = adapter.show(task_id)
     except Exception as error:
         raise LedgerError(f"Kanban reconciliation readback failed for {task_id}.") from error
-    task = _exact_task_record(readback, task_id)
-    status = str(task.get("status", task.get("state", ""))).strip().lower()
-    if not status:
-        raise LedgerError(
-            f"Kanban status readback is missing for exact task {task_id}."
-        )
-    if status not in KANBAN_STATUSES:
-        raise LedgerError(
-            f"Kanban readback has unsupported status for exact task {task_id}."
-        )
+    _exact_task_record(readback, task_id)
+    status = _task_status(readback, task_id)
     return readback, status
 
 
@@ -686,25 +709,6 @@ def _event_matches_reviewed_authority(
         and event.head_sha == tracker["head_sha"]
         and event.evidence.get("base_sha") == tracker["base_sha"]
     )
-
-
-def _assert_reconciliation_snapshot_current(
-    ledger: LifecycleLedger,
-    snapshot: dict[str, Any],
-) -> None:
-    current = ledger.replay().current_by_task.get(snapshot["task_id"])
-    if current is None or (
-        current.event_hash,
-        current.state,
-        current.head_sha,
-    ) != (
-        snapshot["event_hash"],
-        snapshot["state"],
-        snapshot["head_sha"],
-    ):
-        raise LedgerError(
-            f"Lifecycle task {snapshot['task_id']} changed during reconciliation."
-        )
 
 
 def reconcile_trackers(
@@ -888,17 +892,26 @@ def reconcile_trackers(
             for item in bootstrap_items
         ])
 
+    action_items = [
+        item for item in frozen_plan
+        if item["kind"] == "actions" and item["actions"]
+    ]
+    if action_items:
+        receipts = ledger.perform_if_current(
+            [item["snapshot"] for item in action_items],
+            lambda: [
+                adapter.perform(action)
+                for item in action_items
+                for action in item["actions"]
+            ],
+        )
+        result["applied_actions"].extend(receipts)
+
     for item in frozen_plan:
         if item["kind"] == "bootstrap":
             tracker = item["tracker"]
             task_id = tracker["task_id"]
             result["bootstrapped"].append(task_id)
-        elif item["actions"]:
-            for action in item["actions"]:
-                _assert_reconciliation_snapshot_current(
-                    ledger, item["snapshot"]
-                )
-                result["applied_actions"].append(adapter.perform(action))
     return result
 
 
@@ -1201,20 +1214,8 @@ def _has_exact_receipt_digest(
 
 
 def _terminal_status(value: Any, task_id: str) -> str | None:
-    records = _task_records(value, task_id)
-    if not records:
-        return None
-    statuses: list[str] = []
-    for record in records:
-        status = next((
-            str(record.get(key, "")).lower()
-            for key in ("status", "state")
-            if str(record.get(key, "")).lower() in TERMINAL_KANBAN_STATUSES
-        ), None)
-        if status is None:
-            return None
-        statuses.append(status)
-    return statuses[0] if len(set(statuses)) == 1 else None
+    status = _task_status(value, task_id)
+    return status if status in TERMINAL_KANBAN_STATUSES else None
 
 
 def _has_completed_status(value: Any, task_id: str) -> bool:
@@ -1224,36 +1225,54 @@ def _has_completed_status(value: Any, task_id: str) -> bool:
 def _related_task_ids(value: Any, relation: str, task_id: str) -> set[str]:
     if relation not in {"parents", "children"}:
         raise LedgerError(f"Unsupported Kanban relation {relation!r}.")
+    task = _exact_task_record(value, task_id)
     containers: list[Any] = []
-    if isinstance(value, dict) and relation in value:
+    if relation in task:
+        containers.append(task[relation])
+    if isinstance(value, dict) and value is not task and relation in value:
         containers.append(value[relation])
-    for record in _task_records(value, task_id):
-        if relation in record:
-            containers.append(record[relation])
-    related: set[str] = set()
+    if not containers:
+        return set()
+    relation_sets: list[set[str]] = []
     for container in containers:
         if not isinstance(container, list):
             raise LedgerError(f"Kanban {relation} readback is malformed for {task_id}.")
+        related: set[str] = set()
         for item in container:
-            candidate = item if isinstance(item, str) else _find_task_id(item)
+            if isinstance(item, str):
+                candidate = item
+            elif isinstance(item, dict):
+                identifiers = {
+                    item[key]
+                    for key in ("task_id", "id")
+                    if isinstance(item.get(key), str)
+                }
+                candidate = next(iter(identifiers)) if len(identifiers) == 1 else None
+            else:
+                candidate = None
             if not isinstance(candidate, str) or not candidate.startswith("t_"):
                 raise LedgerError(f"Kanban {relation} readback is malformed for {task_id}.")
             related.add(candidate)
-    return related
+        relation_sets.append(related)
+    if any(related != relation_sets[0] for related in relation_sets[1:]):
+        raise LedgerError(
+            f"Kanban {relation} readback is ambiguous for exact task {task_id}."
+        )
+    return relation_sets[0]
 
 
 def _task_status(value: Any, task_id: str) -> str:
-    records = _task_records(value, task_id)
+    task = _exact_task_record(value, task_id)
     statuses = {
-        str(record.get("status", record.get("state", ""))).strip().lower()
-        for record in records
-        if str(record.get("status", record.get("state", ""))).strip()
+        str(task[key]).strip().lower()
+        for key in ("status", "state")
+        if str(task.get(key, "")).strip()
     }
     if len(statuses) != 1:
         raise LedgerError(f"Kanban status readback is missing or ambiguous for {task_id}.")
     status = next(iter(statuses))
     if status not in KANBAN_STATUSES:
-        raise LedgerError(f"Kanban status readback is unsupported for {task_id}.")
+        raise LedgerError(f"Kanban readback has unsupported status for exact task {task_id}.")
     return status
 
 
@@ -1282,8 +1301,7 @@ class HermesKanbanCLI:
 
     def show(self, task_id: str) -> dict[str, Any]:
         result = self._run(["show", task_id, "--json"], expect_json=True)
-        if not _task_records(result, task_id):
-            raise LedgerError(f"Kanban readback did not identify task {task_id}.")
+        _exact_task_record(result, task_id)
         return result
 
     def perform(self, action: dict[str, Any]) -> dict[str, Any]:

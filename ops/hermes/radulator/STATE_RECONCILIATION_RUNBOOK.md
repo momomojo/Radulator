@@ -1,5 +1,7 @@
 # Radulator state reconciliation runbook
 
+Current authority contract: authenticated Formspree repair rotates over the privacy-minimized durable receipt set rather than current Gmail search summaries, preserving recovery beyond Gmail's newest-100 window without persisting raw ids. Reconciliation apply holds one exclusive lifecycle-ledger lease across the complete external action plan after comparing every exact frozen event; prior advances reject the plan before mutation and later appends wait for lease release.
+
 Use this runbook only after the integrity change is merged, installed on the Mac mini, and its exact installed commit passes the managed self-tests. The commands below intentionally fail closed. They must not be run from an unreviewed branch or against an edited reconciliation spec.
 
 ## 1. Refresh the authoritative audit

@@ -1237,26 +1237,26 @@ def _write_state(path: Path, state: Dict[str, Any]) -> None:
 
 
 def _rotated_authenticated_reconciliation(
-    candidates: List[Dict[str, Any]],
     state: Dict[str, Any],
     limit: int,
-) -> List[Dict[str, Any]]:
+) -> List[tuple[str, Dict[str, Any]]]:
     authenticated = [
-        summary
-        for summary in candidates
+        (digest, receipt)
+        for digest, receipt in state["processed"].items()
         if (
-            isinstance(state["processed"].get(_receipt_digest(summary["id"])), dict)
-            and state["processed"][_receipt_digest(summary["id"])].get("classification")
-            == "feedback"
-            and state["processed"][_receipt_digest(summary["id"])].get(
-                "authenticated_origin"
-            )
-            is True
+            RECEIPT_DIGEST_PATTERN.fullmatch(str(digest))
+            and isinstance(receipt, dict)
+            and receipt.get("classification") == "feedback"
+            and receipt.get("authenticated_origin") is True
         )
     ]
     if not authenticated:
         return []
-    digests = [_receipt_digest(summary["id"]) for summary in authenticated]
+    authenticated.sort(key=lambda item: (
+        str(item[1].get("received", "unknown")),
+        item[0],
+    ))
+    digests = [digest for digest, _receipt in authenticated]
     cursor = state.get("authenticated_reconciliation_cursor")
     start = (digests.index(cursor) + 1) % len(digests) if cursor in digests else 0
     count = min(limit, len(authenticated))
@@ -1281,12 +1281,12 @@ def _process_feedback_locked(
 
     candidates = [item for item in summaries if _candidate_notification(item)]
     candidates.sort(key=_sort_key)
-    for summary in _rotated_authenticated_reconciliation(
-        candidates, state, max_messages
+    for digest, receipt in _rotated_authenticated_reconciliation(
+        state, max_messages
     ):
-        digest = _receipt_digest(summary["id"])
-        receipt = state["processed"][digest]
-        received = _received_date(summary.get("date"))
+        received = receipt.get("received", "unknown")
+        if not isinstance(received, str) or not received:
+            received = "unknown"
         try:
             reconciliation = _reconcile_feedback_receipt(
                 kanban,
@@ -1369,6 +1369,7 @@ def _process_feedback_locked(
             new_attempted += 1
 
         if existing_feedback:
+            existing_receipt["received"] = received
             try:
                 reconciliation = _reconcile_feedback_receipt(
                     kanban,
@@ -1466,6 +1467,7 @@ def _process_feedback_locked(
             "task_id": task_id,
             "classification": classification,
             "parser_version": PARSER_VERSION,
+            "received": received,
         }
         if triage_task_id:
             state["processed"][digest]["triage_task_id"] = triage_task_id

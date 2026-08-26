@@ -3,6 +3,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 import types
 import unittest
 from pathlib import Path
@@ -537,6 +538,128 @@ class LifecycleLedgerTests(unittest.TestCase):
         comment_commands = [command for command in commands if command[2] == "comment"]
         self.assertEqual(len(comment_commands), 1, "authoritative readback prevents duplicate comments")
 
+    def test_kanban_adapter_ignores_nested_duplicate_relation_records(self):
+        action = {
+            "kind": "create_prerequisite",
+            "idempotency_key": "nested-relation-authority",
+            "tracker_task_id": "t_parent",
+            "title": "Restore exact relation authority",
+            "body": "Link this prerequisite to the exact tracker root.",
+            "assignee": "radulator",
+        }
+        tasks = {
+            "t_parent": {
+                "task": {
+                    "id": "t_parent",
+                    "status": "archived",
+                    "body": "release tracker",
+                    "parents": [],
+                },
+                "parents": [],
+                "history": [{
+                    "id": "t_parent",
+                    "status": "archived",
+                    "parents": ["t_prerequisite"],
+                }],
+            },
+        }
+        commands = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "create":
+                tasks["t_prerequisite"] = {
+                    "task": {
+                        "id": "t_prerequisite",
+                        "status": "ready",
+                        "body": action["body"],
+                        "assignee": "radulator",
+                        "parents": [],
+                    },
+                    "parents": [],
+                }
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks["t_prerequisite"]), "",
+                )
+            if args[0] == "show":
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks[args[1]]), "",
+                )
+            if args[0] == "link":
+                parent_id, child_id = args[1:3]
+                tasks[child_id]["parents"].append(parent_id)
+                tasks[child_id]["task"]["parents"].append(parent_id)
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            return subprocess.CompletedProcess(command, 1, "", "unexpected")
+
+        receipt = HermesKanbanCLI(runner=runner).perform(action)
+
+        self.assertEqual(receipt["task_id"], "t_prerequisite")
+        self.assertEqual(tasks["t_parent"]["parents"], ["t_prerequisite"])
+        self.assertEqual([command[2] for command in commands].count("link"), 1)
+
+    def test_kanban_adapter_rejects_status_found_only_in_nested_duplicate(self):
+        action = {
+            "kind": "create_prerequisite",
+            "idempotency_key": "nested-status-authority",
+            "tracker_task_id": "t_parent",
+            "title": "Reject nested status authority",
+            "body": "Only the exact task root may authorize status.",
+            "assignee": "radulator",
+        }
+        prerequisite = {
+            "task": {
+                "id": "t_prerequisite",
+                "body": action["body"],
+                "assignee": "radulator",
+                "parents": [],
+            },
+            "parents": [],
+            "history": [{"id": "t_prerequisite", "status": "ready"}],
+        }
+
+        def runner(command):
+            args = command[2:]
+            if args[0] == "create" or (
+                args[0] == "show" and args[1] == "t_prerequisite"
+            ):
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(prerequisite), "",
+                )
+            return subprocess.CompletedProcess(command, 1, "", "unexpected mutation")
+
+        with self.assertRaisesRegex(LedgerError, "status readback is missing"):
+            HermesKanbanCLI(runner=runner).perform(action)
+
+    def test_completion_rejects_nested_terminal_status_before_mutation(self):
+        action = {
+            "kind": "complete",
+            "idempotency_key": "exact-terminal-status-only",
+            "task_id": "t_parent",
+            "result": "released",
+            "summary": "Exact authority required.",
+        }
+        readback = {
+            "task": {"id": "t_parent", "body": "release tracker"},
+            "history": [{"id": "t_parent", "status": "archived"}],
+        }
+        commands = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "show":
+                return subprocess.CompletedProcess(command, 0, json.dumps(readback), "")
+            if args[0] == "complete":
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            return subprocess.CompletedProcess(command, 1, "", "unexpected")
+
+        with self.assertRaisesRegex(LedgerError, "status readback is missing"):
+            HermesKanbanCLI(runner=runner).perform(action)
+
+        self.assertEqual([command[2] for command in commands], ["show"])
+
     def test_learning_child_is_assigned_to_radulator_profile(self):
         states = [
             "feedback", "implementing", "testing", "review", "approved",
@@ -605,10 +728,10 @@ class LifecycleLedgerTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, "ok", "")
             return subprocess.CompletedProcess(command, 1, "", "unexpected mutation")
 
-        with self.assertRaisesRegex(LedgerError, "completion failed authoritative readback"):
+        with self.assertRaisesRegex(LedgerError, "unsupported status"):
             HermesKanbanCLI(runner=runner).perform(action)
 
-        self.assertEqual([command[2] for command in commands], ["show", "complete", "show"])
+        self.assertEqual([command[2] for command in commands], ["show"])
 
     def test_next_candidate_is_bounded_round_robin_and_excludes_complete(self):
         cursor = Path(self.temp.name) / "lifecycle-cursor.json"
@@ -1263,6 +1386,116 @@ class LifecycleLedgerTests(unittest.TestCase):
         current = self.ledger.replay().current_by_task["t_parent"]
         self.assertEqual((current.state, current.head_sha), ("implementing", NEXT_HEAD))
         self.assertEqual(actions, [])
+
+    def test_reconciliation_holds_authority_lease_across_external_action(self):
+        for index, state in enumerate((
+            "feedback", "implementing", "testing", "review",
+        )):
+            self.append(state, index)
+        self.append(
+            "needs_fix",
+            4,
+            {"verdict_id": "concurrent-lease-verdict", "reason": "Correct it."},
+        )
+        child_marker = Path(self.temp.name) / "concurrent-append-started"
+        child_processes = []
+        performed_actions = []
+
+        class Adapter:
+            concurrent_append_finished_during_action = None
+
+            def show(inner_self, task_id):
+                if task_id == "t_parent":
+                    return {
+                        "task": {
+                            "id": task_id,
+                            "status": "archived",
+                            "body": "release tracker",
+                        },
+                        "parents": [],
+                    }
+                return {
+                    "task": {"id": task_id, "status": "done", "body": "source"},
+                    "parents": [],
+                }
+
+            def perform(inner_self, action):
+                performed_actions.append(action["kind"])
+                if child_processes:
+                    return {"kind": action["kind"]}
+                wrapper = (
+                    "from pathlib import Path; import subprocess, sys; "
+                    "Path(sys.argv[1]).write_text('started'); "
+                    "raise SystemExit(subprocess.run(sys.argv[2:]).returncode)"
+                )
+                command = [
+                    sys.executable,
+                    "-c",
+                    wrapper,
+                    str(child_marker),
+                    sys.executable,
+                    str(Path(lifecycle_module.__file__)),
+                    "append",
+                    "--ledger",
+                    str(self.ledger_path),
+                    "--idempotency-key",
+                    "concurrent-new-head-during-action",
+                    "--source-id",
+                    "feedback-17",
+                    "--task-id",
+                    "t_parent",
+                    "--state",
+                    "implementing",
+                    "--pr",
+                    "42",
+                    "--head-sha",
+                    NEXT_HEAD,
+                    "--evidence-json",
+                    json.dumps({"prerequisite_change_id": "correction-1"}),
+                ]
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                child_processes.append(process)
+                deadline = time.monotonic() + 5
+                while not child_marker.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(child_marker.exists(), "concurrent append did not start")
+                time.sleep(0.2)
+                inner_self.concurrent_append_finished_during_action = (
+                    process.poll() is not None
+                )
+                return {"kind": action["kind"]}
+
+        adapter = Adapter()
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "external-action-authority-lease-audit",
+            "trackers": [{
+                "task_id": "t_parent",
+                "source_id": "feedback-17",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }
+
+        result = lifecycle_module.reconcile_trackers(
+            self.ledger, spec, adapter, apply=True,
+        )
+        for process in child_processes:
+            stdout, stderr = process.communicate(timeout=5)
+            self.assertEqual(process.returncode, 0, stderr or stdout)
+
+        self.assertEqual(len(result["applied_actions"]), 2)
+        self.assertEqual(performed_actions, ["create_prerequisite", "comment"])
+        self.assertFalse(
+            adapter.concurrent_append_finished_during_action,
+            "a concurrent ledger append must block until the external action releases its authority lease",
+        )
+        current = self.ledger.replay().current_by_task["t_parent"]
+        self.assertEqual((current.state, current.head_sha), ("implementing", NEXT_HEAD))
 
     def test_reconciliation_rejects_receipt_digest_prefix_of_longer_hex_token(self):
         digest = "1" * 64

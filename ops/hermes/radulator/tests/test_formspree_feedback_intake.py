@@ -1272,6 +1272,48 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         )
         self.assertEqual(os.stat(self.state_path).st_mode & 0o777, 0o600)
 
+    def test_authenticated_receipt_beyond_newest_gmail_window_still_rotates(self):
+        old_message = dict(
+            self.message,
+            id="authenticated-beyond-newest-window",
+            date="Fri, 10 Jul 2026 10:15:00 -0700",
+        )
+        gmail = FakeGmail([old_message])
+        kanban = FakeKanban()
+        process_feedback(gmail, kanban, self.state_path, max_messages=1)
+        state = json.loads(self.state_path.read_text())
+        old_digest = _receipt_digest(old_message["id"])
+        old_receipt = state["processed"][old_digest]
+        old_pair = (old_receipt["triage_task_id"], old_receipt["task_id"])
+
+        newer_messages = [
+            dict(
+                self.message,
+                id=f"newer-window-message-{index:03d}",
+                date=f"Mon, 20 Jul 2026 10:{index % 60:02d}:00 -0700",
+            )
+            for index in range(100)
+        ]
+        gmail.messages = newer_messages + [old_message]
+        shown = []
+        original_show = kanban.show
+
+        def recording_show(task_id):
+            shown.append(task_id)
+            return original_show(task_id)
+
+        kanban.show = recording_show
+
+        result = process_feedback(gmail, kanban, self.state_path, max_messages=1)
+
+        self.assertEqual(result["already_processed"], 1)
+        self.assertEqual(tuple(shown[:2]), old_pair)
+        persisted = json.loads(self.state_path.read_text())
+        self.assertEqual(
+            persisted["authenticated_reconciliation_cursor"], old_digest,
+        )
+        self.assertNotIn(old_message["id"], self.state_path.read_text())
+
     def test_broken_authenticated_repair_creates_open_failure_and_does_not_starve(self):
         existing_messages = [
             dict(
