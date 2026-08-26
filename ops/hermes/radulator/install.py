@@ -26,7 +26,7 @@ SCHEMA = "radulator-hermes-install/v1"
 BACKUP_SCHEMA = "radulator-hermes-backup/v2"
 LEGACY_BACKUP_SCHEMA = "radulator-hermes-backup/v1"
 JOBS_TRANSACTION_SCHEMA = "radulator-hermes-jobs-transaction/v1"
-JOBS_PREFLIGHT_BACKUP_SCHEMA = "radulator-hermes-jobs-preflight-backup/v1"
+JOBS_PREFLIGHT_BACKUP_SCHEMA = "radulator-hermes-jobs-preflight-backup/v2"
 JOBS_LOCK_TIMEOUT_SECONDS = 10.0
 BACKUP_HMAC_KEY_BYTES = 32
 MODEL = "gpt-5.6-sol"
@@ -873,8 +873,43 @@ def _snapshot_backup_target(
     }
 
 
-def _jobs_preflight_unsigned(entries: list[dict[str, Any]]) -> dict[str, Any]:
-    return {"schema": JOBS_PREFLIGHT_BACKUP_SCHEMA, "entries": entries}
+def _stable_job_digest(job: dict[str, Any]) -> str:
+    return hashlib.sha256(_serialize(job)).hexdigest()
+
+
+def _preinstall_managed_consumers(plan: dict[str, Any]) -> list[dict[str, str]]:
+    homes = {
+        str(Path(plan["radulator_home"])): [],
+        str(Path(plan["default_home"])): [],
+    }
+    for template in plan["jobs"]:
+        homes[template["_home"]].append(template)
+    scripts, skills, prompt_tokens = _managed_provenance(plan, homes)
+    templates = [template for values in homes.values() for template in values]
+    records: list[dict[str, str]] = []
+    for profile, home in (
+        ("primary", Path(plan["radulator_home"])),
+        ("verification", Path(plan["default_home"])),
+    ):
+        _, jobs = _load_jobs(home / "cron/jobs.json")
+        records.extend(
+            {"profile": profile, "job_sha256": _stable_job_digest(job)}
+            for job in jobs
+            if _job_consumes_managed_target(
+                job, home, templates, scripts, skills, prompt_tokens
+            )
+        )
+    return sorted(records, key=lambda item: (item["profile"], item["job_sha256"]))
+
+
+def _jobs_preflight_unsigned(
+    entries: list[dict[str, Any]], managed_consumers: list[dict[str, str]]
+) -> dict[str, Any]:
+    return {
+        "schema": JOBS_PREFLIGHT_BACKUP_SCHEMA,
+        "entries": entries,
+        "managed_consumers": managed_consumers,
+    }
 
 
 def _capture_jobs_preflight_backup(plan: dict[str, Any]) -> None:
@@ -897,8 +932,9 @@ def _capture_jobs_preflight_backup(plan: dict[str, Any]) -> None:
             "verification:cron/jobs.json",
         )
     ]
+    managed_consumers = _preinstall_managed_consumers(plan)
     key = _read_or_create_jobs_transaction_key(plan, create=True)
-    unsigned = _jobs_preflight_unsigned(entries)
+    unsigned = _jobs_preflight_unsigned(entries, managed_consumers)
     payload = {
         **unsigned,
         "hmac_sha256": hmac.new(
@@ -909,7 +945,9 @@ def _capture_jobs_preflight_backup(plan: dict[str, Any]) -> None:
     _require_protected_file(destination, "Hermes jobs preflight backup")
 
 
-def _load_jobs_preflight_backup(plan: dict[str, Any]) -> list[dict[str, Any]]:
+def _load_jobs_preflight_backup(
+    plan: dict[str, Any],
+) -> tuple[list[dict[str, Any]], frozenset[tuple[str, str]]]:
     destination = _jobs_preflight_backup_path(plan)
     _require_safe_target(destination, plan, may_be_missing=False)
     _require_protected_file(destination, "Hermes jobs preflight backup")
@@ -919,9 +957,11 @@ def _load_jobs_preflight_backup(plan: dict[str, Any]) -> list[dict[str, Any]]:
         raise InstallError("Hermes jobs preflight backup is unreadable.") from error
     if (
         not isinstance(payload, dict)
-        or set(payload) != {"schema", "entries", "hmac_sha256"}
+        or set(payload)
+        != {"schema", "entries", "managed_consumers", "hmac_sha256"}
         or payload.get("schema") != JOBS_PREFLIGHT_BACKUP_SCHEMA
         or not isinstance(payload.get("entries"), list)
+        or not isinstance(payload.get("managed_consumers"), list)
     ):
         raise InstallError("Hermes jobs preflight backup schema is invalid.")
     entries = list(payload["entries"])
@@ -932,13 +972,26 @@ def _load_jobs_preflight_backup(plan: dict[str, Any]) -> list[dict[str, Any]]:
         "verification:cron/jobs.json",
     ]:
         raise InstallError("Hermes jobs preflight backup identities are invalid.")
+    managed_consumers: list[tuple[str, str]] = []
+    for record in payload["managed_consumers"]:
+        if (
+            not isinstance(record, dict)
+            or set(record) != {"profile", "job_sha256"}
+            or record.get("profile") not in {"primary", "verification"}
+            or not isinstance(record.get("job_sha256"), str)
+            or not re.fullmatch(r"[0-9a-f]{64}", record["job_sha256"])
+        ):
+            raise InstallError("Hermes jobs preflight managed provenance is invalid.")
+        managed_consumers.append((record["profile"], record["job_sha256"]))
+    if len(set(managed_consumers)) != len(managed_consumers):
+        raise InstallError("Hermes jobs preflight managed provenance is duplicated.")
     key = _read_or_create_jobs_transaction_key(plan, create=False)
-    unsigned = _jobs_preflight_unsigned(entries)
+    unsigned = _jobs_preflight_unsigned(entries, payload["managed_consumers"])
     signature = payload.get("hmac_sha256")
     expected = hmac.new(key, _serialize(unsigned), hashlib.sha256).hexdigest()
     if not isinstance(signature, str) or not hmac.compare_digest(signature, expected):
         raise InstallError("Hermes jobs preflight backup authentication failed.")
-    return entries
+    return entries, frozenset(managed_consumers)
 
 
 def _finish_jobs_preflight_backup(plan: dict[str, Any]) -> None:
@@ -1236,6 +1289,22 @@ def _verify_publisher_auth(plan: dict[str, Any], runner=None) -> None:
         )
 
 
+def _verify_dedicated_publisher_identity(_plan: dict[str, Any]) -> None:
+    """Hold activation until a reviewed cross-UID service contract is bound.
+
+    The previously probed Python constants and same-UID model-path canaries are
+    useful defense-in-depth evidence, but they cannot establish a credential
+    boundary against a model that can drive another process owned by that same
+    account.  No dedicated broker/publisher receipt contract is source-bound in
+    this release, so activation must remain explicitly unavailable.
+    """
+    raise InstallError(
+        "PENDING_HERMES_RUNTIME: trusted publisher activation requires a reviewed "
+        "dedicated broker/publisher service running under a separate OS identity "
+        "with exact authenticated peer and receipt readback."
+    )
+
+
 def _capture_backup(plan: dict[str, Any]) -> None:
     destination = _backup_path(plan)
     targets = _backup_targets(plan)
@@ -1265,7 +1334,7 @@ def _capture_backup(plan: dict[str, Any]) -> None:
             # This is deliberately the first point at which the pre-quiescence
             # snapshot is parsed or authenticated.  Callers have already
             # disabled and read back every managed job under both locks.
-            entries = _load_jobs_preflight_backup(plan)
+            entries, _ = _load_jobs_preflight_backup(plan)
             recorded_ids = [entry["target_id"] for entry in entries]
             key = _read_or_create_backup_key(plan, create=True)
             signed_prefix = {
@@ -1307,7 +1376,6 @@ def _capture_backup(plan: dict[str, Any]) -> None:
         }
         _atomic_write(destination, _serialize(signed), 0o600)
     _require_protected_file(destination, "Backup manifest")
-    _finish_jobs_preflight_backup(plan)
 
 
 def _publisher_copies(plan: dict[str, Any]) -> list[tuple[Path, Path]]:
@@ -2196,6 +2264,7 @@ def _apply_install_under_job_locks(
             with jobs_locks.suspended():
                 _verify_activation_trust(plan, expected_public_keys)
                 _verify_broker_contract(plan, activation_test_runner)
+                _verify_dedicated_publisher_identity(plan)
                 _verify_publisher_auth(plan, activation_test_runner)
                 _run_activation_self_tests(plan, activation_test_runner)
             disabled_job_files, post_proof_ambiguities = (
@@ -2296,6 +2365,9 @@ def _sanitize_restored_jobs(
     homes: dict[str, list[dict[str, Any]]],
     content: bytes,
     path: Path,
+    *,
+    profile: str,
+    stable_managed_consumers: frozenset[tuple[str, str]],
 ) -> bytes:
     try:
         payload = json.loads(content.decode("utf-8"))
@@ -2316,7 +2388,10 @@ def _sanitize_restored_jobs(
     changed = False
     profile_home = path.parent.parent
     for job in jobs:
-        if not _job_consumes_managed_target(
+        was_managed_before_replacement = (
+            profile, _stable_job_digest(job)
+        ) in stable_managed_consumers
+        if not was_managed_before_replacement and not _job_consumes_managed_target(
             job, profile_home, templates, scripts, skills, prompt_tokens
         ):
             rewritten.append(job)
@@ -2399,6 +2474,11 @@ def _restore_install_under_job_locks(plan: dict[str, Any]) -> dict[str, Any]:
         homes[template["_home"]].append(template)
     _recover_jobs_transaction(plan, homes)
     _quiesce_managed_jobs_before_preflight(plan, homes, operation="restore")
+    provenance_path = _jobs_preflight_backup_path(plan)
+    _require_safe_target(provenance_path, plan, may_be_missing=True)
+    stable_managed_consumers: frozenset[tuple[str, str]] = frozenset()
+    if provenance_path.exists():
+        _, stable_managed_consumers = _load_jobs_preflight_backup(plan)
     backup_path = _backup_path(plan)
     try:
         backup_path.lstat()
@@ -2427,7 +2507,14 @@ def _restore_install_under_job_locks(plan: dict[str, Any]) -> dict[str, Any]:
         }:
             if content is None:
                 raise InstallError("Validated jobs backup operation is incomplete.")
-            content = _sanitize_restored_jobs(plan, homes, content, target)
+            content = _sanitize_restored_jobs(
+                plan,
+                homes,
+                content,
+                target,
+                profile=target_id.split(":", 1)[0],
+                stable_managed_consumers=stable_managed_consumers,
+            )
         operations.append((target, existed, mode, content))
 
     safe_disabled = _disabled_managed_job_files(plan, homes)

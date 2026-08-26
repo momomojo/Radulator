@@ -722,6 +722,78 @@ class InstallerTests(unittest.TestCase):
 
         self.assertEqual(observed, [(False, "paused", None)])
 
+    def test_restore_keeps_preinstall_external_hardlink_consumer_disabled(self):
+        scripts = self.radulator_home / "scripts"
+        scripts.mkdir()
+        publisher_wrapper = scripts / "trusted_publisher_cron.sh"
+        publisher_wrapper.write_bytes(b"#!/bin/sh\nexit 0\n")
+        publisher_wrapper.chmod(0o700)
+        external_alias = self.default_home / "preinstall-publisher-alias"
+        os.link(publisher_wrapper, external_alias)
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        payload["jobs"].append({
+            "id": "preinstall-hardlink-publisher",
+            "name": "preinstall-hardlink-publisher",
+            "script": str(external_alias),
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+
+        apply_install(**self.kwargs())
+        restore_install(**self.kwargs())
+
+        restored = json.loads(jobs_path.read_text())["jobs"]
+        alias_job = next(
+            job
+            for job in restored
+            if job.get("id") == "preinstall-hardlink-publisher"
+        )
+        self.assertIs(alias_job["enabled"], False)
+        self.assertEqual(alias_job["state"], "paused")
+        self.assertIsNone(alias_job["next_run_at"])
+
+    def test_restore_rejects_tampered_preinstall_consumer_provenance(self):
+        scripts = self.radulator_home / "scripts"
+        scripts.mkdir()
+        publisher_wrapper = scripts / "trusted_publisher_cron.sh"
+        publisher_wrapper.write_bytes(b"#!/bin/sh\nexit 0\n")
+        publisher_wrapper.chmod(0o700)
+        external_alias = self.default_home / "preinstall-publisher-alias"
+        os.link(publisher_wrapper, external_alias)
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        payload["jobs"].append({
+            "id": "preinstall-hardlink-publisher",
+            "name": "preinstall-hardlink-publisher",
+            "script": str(external_alias),
+            "enabled": True,
+            "state": "scheduled",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+        apply_install(**self.kwargs())
+        provenance = (
+            self.radulator_home
+            / "state"
+            / "radulator-jobs-preflight-backup.json"
+        )
+        payload = json.loads(provenance.read_text())
+        payload["managed_consumers"].append({
+            "profile": "primary",
+            "job_sha256": "0" * 64,
+        })
+        provenance.write_text(json.dumps(payload, sort_keys=True) + "\n")
+
+        with self.assertRaisesRegex(
+            InstallError,
+            "preflight backup authentication failed",
+        ):
+            restore_install(**self.kwargs())
+
+        self.assertFalse(self.publisher_job()["enabled"])
+
     def test_duplicate_exact_publisher_identities_are_quiesced_before_rejection(self):
         jobs_path = self.radulator_home / "cron" / "jobs.json"
         payload = json.loads(jobs_path.read_text())
@@ -753,7 +825,8 @@ class InstallerTests(unittest.TestCase):
             (self.radulator_home / "scripts" / "trusted_publisher_cron.sh").exists()
         )
 
-    def test_enable_holds_both_gateway_job_locks_through_render_and_journal_finish(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_enable_holds_both_gateway_job_locks_through_render_and_journal_finish(self, _identity):
         result = apply_install(**self.kwargs())
         public_keys = generate_keys(build_plan(**self.kwargs()))
         verification_jobs = self.default_home / "cron" / "jobs.json"
@@ -872,7 +945,8 @@ with lock_path.open('a+') as lock:
 
         self.assertEqual(publisher.read_bytes(), b"operator bytes must not be replaced\n")
 
-    def test_activation_proofs_run_unlocked_while_all_managed_consumers_are_disabled(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_activation_proofs_run_unlocked_while_all_managed_consumers_are_disabled(self, _identity):
         result = apply_install(**self.kwargs())
         public_keys = generate_keys(build_plan(**self.kwargs()))
         managed_ids = set(result["job_ids"].values())
@@ -926,7 +1000,8 @@ with lock_path.open('a+') as lock:
         self.assertTrue(observations)
         self.assertTrue(all(acquired and disabled for acquired, disabled in observations))
 
-    def test_crash_between_profile_enable_writes_recovers_both_profiles_disabled(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_crash_between_profile_enable_writes_recovers_both_profiles_disabled(self, _identity):
         result = apply_install(**self.kwargs())
         plan = build_plan(**self.kwargs())
         public_keys = generate_keys(plan)
@@ -1376,7 +1451,8 @@ with lock_path.open('a+') as lock:
         self.assertFalse(self.publisher_job()["enabled"])
         self.assertEqual(publisher.read_bytes(), (self.repo / "ops/hermes/radulator/trusted_publisher.py").read_bytes())
 
-    def test_explicit_enable_copies_drift_then_preflights_while_disabled_before_reenabling(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_explicit_enable_copies_drift_then_preflights_while_disabled_before_reenabling(self, _identity):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
         self.set_publisher_enabled()
@@ -1404,7 +1480,8 @@ with lock_path.open('a+') as lock:
         self.assertTrue(all(item["disabled"] and item["installed"] for item in observed))
         self.assertTrue(self.publisher_job()["enabled"])
 
-    def test_repeated_enable_is_an_exact_jobs_file_noop_across_timestamp_boundaries(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_repeated_enable_is_an_exact_jobs_file_noop_across_timestamp_boundaries(self, _identity):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
         public_keys = generate_keys(plan)
@@ -1741,7 +1818,8 @@ with lock_path.open('a+') as lock:
             self.original_radulator_jobs,
         )
 
-    def test_enable_then_restore_recovers_original_files(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_enable_then_restore_recovers_original_files(self, _identity):
         result = apply_install(**self.kwargs())
         public_keys = generate_keys(build_plan(**self.kwargs()))
         apply_install(
@@ -1785,7 +1863,8 @@ with lock_path.open('a+') as lock:
         self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher.py").exists())
         self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher_cron.sh").exists())
 
-    def test_verification_profile_write_failure_restores_both_job_files_exactly(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_verification_profile_write_failure_restores_both_job_files_exactly(self, _identity):
         result = apply_install(**self.kwargs())
         plan = build_plan(**self.kwargs())
         public_keys = generate_keys(plan)
@@ -1828,7 +1907,8 @@ with lock_path.open('a+') as lock:
         self.assertEqual(primary_path.read_bytes(), before[primary_path])
         self.assertEqual(verification_path.read_bytes(), before[verification_path])
 
-    def test_job_snapshot_restore_failure_disables_and_reads_back_every_managed_job(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_job_snapshot_restore_failure_disables_and_reads_back_every_managed_job(self, _identity):
         result = apply_install(**self.kwargs())
         plan = build_plan(**self.kwargs())
         public_keys = generate_keys(plan)
@@ -1909,7 +1989,8 @@ with lock_path.open('a+') as lock:
         self.assertEqual(primary_path.read_bytes(), before_primary)
         self.assertEqual(verification_path.read_bytes(), before_verification)
 
-    def test_verification_failure_from_active_install_quiesces_every_managed_job(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_verification_failure_from_active_install_quiesces_every_managed_job(self, _identity):
         result = apply_install(**self.kwargs())
         plan = build_plan(**self.kwargs())
         public_keys = generate_keys(plan)
@@ -2185,7 +2266,26 @@ with lock_path.open('a+') as lock:
         self.assertEqual(len(observed), 1)
         self.assertFalse(self.publisher_job()["enabled"])
 
-    def test_enable_requires_host_github_auth_without_printing_token(self):
+    def test_same_uid_canaries_cannot_enable_without_dedicated_identity_service(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+
+        with self.assertRaisesRegex(
+            InstallError,
+            "PENDING_HERMES_RUNTIME.*separate OS identity",
+        ):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=public_keys,
+                activation_test_runner=self.passing_activation_runner,
+            )
+
+        self.assertFalse(self.publisher_job()["enabled"])
+
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_enable_requires_host_github_auth_without_printing_token(self, _identity):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
         public_keys = generate_keys(plan)
@@ -2257,7 +2357,8 @@ with lock_path.open('a+') as lock:
                 activation_test_runner=self.passing_activation_runner,
             )
 
-    def test_enable_refuses_any_failed_repository_self_test(self):
+    @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
+    def test_enable_refuses_any_failed_repository_self_test(self, _identity):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
         public_keys = generate_keys(plan)
