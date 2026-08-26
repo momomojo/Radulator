@@ -662,6 +662,133 @@ def _verified_kanban_reconciliation_task(
     return readback, status
 
 
+def _kanban_authority_snapshot(
+    value: Any,
+    task_id: str,
+) -> dict[str, Any]:
+    task = _exact_task_record(value, task_id)
+    return {
+        "task": json.loads(_canonical(task)),
+        "comments": json.loads(_canonical(_exact_task_comments(value))),
+        "parents": sorted(_related_task_ids(value, "parents", task_id)),
+        "children": sorted(_related_task_ids(value, "children", task_id)),
+    }
+
+
+def _read_kanban_authority_snapshot(
+    adapter: Any,
+    task_id: str,
+) -> dict[str, Any]:
+    readback, _status = _verified_kanban_reconciliation_task(adapter, task_id)
+    return _kanban_authority_snapshot(readback, task_id)
+
+
+def _read_stable_kanban_authority_pair(
+    adapter: Any,
+    tracker_id: str,
+    source_id: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    first_tracker = _read_kanban_authority_snapshot(adapter, tracker_id)
+    first_source = _read_kanban_authority_snapshot(adapter, source_id)
+    second_tracker = _read_kanban_authority_snapshot(adapter, tracker_id)
+    second_source = _read_kanban_authority_snapshot(adapter, source_id)
+    if first_tracker != second_tracker or first_source != second_source:
+        raise LedgerError(
+            f"Kanban authority changed during reconciliation for {tracker_id}."
+        )
+    return second_tracker, second_source
+
+
+def _require_kanban_authority_current(
+    adapter: Any,
+    authority: dict[str, Any],
+) -> None:
+    tracker_id = authority["tracker_task_id"]
+    source_id = authority["source_task_id"]
+    tracker, source = _read_stable_kanban_authority_pair(
+        adapter, tracker_id, source_id,
+    )
+    if tracker != authority["tracker"] or source != authority["source"]:
+        raise LedgerError(
+            f"Kanban authority changed during reconciliation for {tracker_id}."
+        )
+
+
+def _advance_kanban_authority_after_action(
+    adapter: Any,
+    authority: dict[str, Any],
+    action: dict[str, Any],
+    receipt: dict[str, Any],
+) -> dict[str, Any]:
+    tracker_id = authority["tracker_task_id"]
+    source_id = authority["source_task_id"]
+    before = authority["tracker"]
+    after, source = _read_stable_kanban_authority_pair(
+        adapter, tracker_id, source_id,
+    )
+    if source != authority["source"]:
+        raise LedgerError(
+            f"Kanban authority changed during reconciliation for {tracker_id}."
+        )
+    if after != before:
+        kind = action.get("kind")
+        common_unchanged = (
+            after["children"] == before["children"]
+            and after["task"] == before["task"]
+        )
+        allowed = False
+        if kind == "create_prerequisite":
+            prerequisite_id = receipt.get("task_id")
+            allowed = (
+                isinstance(prerequisite_id, str)
+                and prerequisite_id.startswith("t_")
+                and common_unchanged
+                and after["comments"] == before["comments"]
+                and set(after["parents"])
+                == set(before["parents"]) | {prerequisite_id}
+            )
+        elif kind == "comment":
+            allowed = (
+                common_unchanged
+                and after["parents"] == before["parents"]
+                and len(after["comments"]) <= len(before["comments"]) + 1
+                and all(comment in after["comments"] for comment in before["comments"])
+                and any(
+                    comment.get("body") == action.get("body")
+                    for comment in after["comments"]
+                    if isinstance(comment, dict)
+                )
+            )
+        elif kind == "complete":
+            before_task = {
+                key: value
+                for key, value in before["task"].items()
+                if key not in {"status", "state"}
+            }
+            after_task = {
+                key: value
+                for key, value in after["task"].items()
+                if key not in {"status", "state"}
+            }
+            allowed = (
+                before_task == after_task
+                and after["parents"] == before["parents"]
+                and after["children"] == before["children"]
+                and after["comments"] == before["comments"]
+                and _task_status({"task": after["task"]}, tracker_id)
+                in TERMINAL_KANBAN_STATUSES
+            )
+        if not allowed:
+            raise LedgerError(
+                f"Kanban authority changed during reconciliation for {tracker_id}."
+            )
+    return {
+        **authority,
+        "tracker": after,
+        "source": source,
+    }
+
+
 def _reconciliation_action(event: LifecycleEvent) -> dict[str, Any]:
     return {
         "kind": "create_prerequisite",
@@ -737,7 +864,7 @@ def reconcile_trackers(
     # Freeze every external readback and every ledger/action decision before
     # mutating either the ledger or Kanban. A bad later entry must not
     # partially apply an earlier one.
-    verified_trackers: list[tuple[dict[str, Any], str]] = []
+    verified_trackers: list[tuple[dict[str, Any], str, dict[str, Any]]] = []
     for tracker in normalized["trackers"]:
         task_id = tracker["task_id"]
         tracker_readback, tracker_status = _verified_kanban_reconciliation_task(
@@ -776,10 +903,23 @@ def reconcile_trackers(
                 raise LedgerError(
                     f"Reconciliation coherent PR/head/base mapping failed Kanban readback for {task_id}."
                 )
-        verified_trackers.append((tracker, tracker_status))
+        verified_trackers.append((
+            tracker,
+            tracker_status,
+            {
+                "tracker_task_id": task_id,
+                "source_task_id": source["task_id"],
+                "tracker": _kanban_authority_snapshot(
+                    tracker_readback, task_id,
+                ),
+                "source": _kanban_authority_snapshot(
+                    source_readback, source["task_id"],
+                ),
+            },
+        ))
 
     frozen_plan: list[dict[str, Any]] = []
-    for tracker, tracker_status in verified_trackers:
+    for tracker, tracker_status, authority in verified_trackers:
         task_id = tracker["task_id"]
         source = tracker["source"]
         current = replay.current_by_task.get(task_id)
@@ -795,6 +935,7 @@ def reconcile_trackers(
                 "tracker": tracker,
                 "tracker_status": tracker_status,
                 "entry_digest": entry_digest,
+                "authority": authority,
             })
             continue
 
@@ -850,6 +991,7 @@ def reconcile_trackers(
         frozen_plan.append({
             "kind": "actions",
             "actions": actions,
+            "authority": authority,
             "snapshot": {
                 "task_id": task_id,
                 "event_hash": current.event_hash,
@@ -897,13 +1039,26 @@ def reconcile_trackers(
         if item["kind"] == "actions" and item["actions"]
     ]
     if action_items:
+        def perform_guarded_actions() -> list[dict[str, Any]]:
+            receipts: list[dict[str, Any]] = []
+            for item in action_items:
+                for action in item["actions"]:
+                    _require_kanban_authority_current(
+                        adapter, item["authority"],
+                    )
+                    receipt = adapter.perform(action)
+                    item["authority"] = _advance_kanban_authority_after_action(
+                        adapter,
+                        item["authority"],
+                        action,
+                        receipt,
+                    )
+                    receipts.append(receipt)
+            return receipts
+
         receipts = ledger.perform_if_current(
             [item["snapshot"] for item in action_items],
-            lambda: [
-                adapter.perform(action)
-                for item in action_items
-                for action in item["actions"]
-            ],
+            perform_guarded_actions,
         )
         result["applied_actions"].extend(receipts)
 
@@ -1260,12 +1415,7 @@ def _related_task_ids(value: Any, relation: str, task_id: str) -> set[str]:
             if isinstance(item, str):
                 candidate = item
             elif isinstance(item, dict):
-                identifiers = {
-                    item[key]
-                    for key in ("task_id", "id")
-                    if isinstance(item.get(key), str)
-                }
-                candidate = next(iter(identifiers)) if len(identifiers) == 1 else None
+                candidate = _direct_record_task_id(item)
             else:
                 candidate = None
             if not isinstance(candidate, str) or not candidate.startswith("t_"):

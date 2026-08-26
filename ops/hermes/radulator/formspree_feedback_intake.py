@@ -41,6 +41,7 @@ MAX_COMMAND_OUTPUT = 8 * 1024 * 1024
 MAX_AUTHENTICATION_RESULTS = 8
 MAX_AUTHENTICATION_BYTES = 32 * 1024
 MAX_STATE_BYTES = 8 * 1024 * 1024
+MAX_PAGE_TOKEN_BYTES = 2048
 CLOSURE_PROOF_SCHEMA = "radulator-feedback-closure-proof/v1"
 NO_ACTION_PROOF_SCHEMA = "radulator-feedback-no-action-proof/v1"
 LEARNING_RECEIPT_SCHEMA = "radulator-feedback-learning-receipt/v1"
@@ -1339,6 +1340,14 @@ def _state_payload_bytes(state: Dict[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
+def _valid_page_token(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and 0 < len(value.encode("utf-8")) <= MAX_PAGE_TOKEN_BYTES
+        and all(0x21 <= ord(character) <= 0x7e for character in value)
+    )
+
+
 def _validate_state_schema(value: Any) -> Dict[str, Any]:
     if (
         not isinstance(value, dict)
@@ -1349,6 +1358,10 @@ def _validate_state_schema(value: Any) -> Dict[str, Any]:
             and not RECEIPT_DIGEST_PATTERN.fullmatch(
                 str(value.get("authenticated_reconciliation_cursor"))
             )
+        )
+        or (
+            value.get("gmail_search_page_token") is not None
+            and not _valid_page_token(value.get("gmail_search_page_token"))
         )
     ):
         raise FeedbackIntakeError("Feedback state has an unsupported schema.")
@@ -1379,8 +1392,11 @@ def _load_state(
             raise FeedbackIntakeError(
                 "Feedback state integrity is missing after key activation."
             )
+        value.pop("gmail_search_page_token", None)
+        value.pop("authenticated_reconciliation_cursor", None)
         for receipt in value["processed"].values():
-            if isinstance(receipt, dict) and receipt.pop("authenticated_origin", None) is True:
+            if isinstance(receipt, dict):
+                receipt.pop("authenticated_origin", None)
                 receipt["origin_integrity_status"] = (
                     "legacy_unsigned_requires_reauthentication"
                 )
@@ -1469,6 +1485,73 @@ def _rotated_authenticated_reconciliation(
     return [authenticated[(start + offset) % len(authenticated)] for offset in range(count)]
 
 
+def _search_feedback_page(
+    gmail: Any,
+    limit: int,
+    page_token: Optional[str],
+) -> tuple[List[Dict[str, Any]], Optional[str]]:
+    try:
+        if hasattr(gmail, "search_page"):
+            page = gmail.search_page(limit, page_token)
+        else:
+            if page_token is not None:
+                raise FeedbackIntakeError(
+                    "Gmail feedback pagination is unavailable for a persisted page."
+                )
+            page = {
+                "messages": gmail.search(limit),
+                "next_page_token": None,
+            }
+    except FeedbackIntakeError:
+        raise
+    except Exception as error:
+        raise FeedbackIntakeError("Gmail feedback search failed.") from error
+    if not isinstance(page, dict):
+        raise FeedbackIntakeError("Gmail feedback search returned an invalid page.")
+    messages = page.get("messages")
+    next_page_token = page.get("next_page_token")
+    message_ids = [
+        item.get("id")
+        for item in messages
+        if isinstance(item, dict)
+    ] if isinstance(messages, list) else []
+    if (
+        not isinstance(messages, list)
+        or len(messages) > limit
+        or any(not isinstance(item, dict) for item in messages)
+        or any(not isinstance(message_id, str) or not message_id for message_id in message_ids)
+        or len(set(message_ids)) != len(message_ids)
+        or (next_page_token is not None and not _valid_page_token(next_page_token))
+        or (
+            next_page_token is not None
+            and next_page_token == page_token
+        )
+    ):
+        raise FeedbackIntakeError("Gmail feedback search returned an invalid page.")
+    return messages, next_page_token
+
+
+def _candidate_is_durably_settled(
+    state: Dict[str, Any],
+    summary: Dict[str, Any],
+) -> bool:
+    message_id = summary.get("id")
+    if not isinstance(message_id, str) or not message_id:
+        return False
+    receipt = state["processed"].get(_receipt_digest(message_id))
+    if not isinstance(receipt, dict) or "origin_integrity_status" in receipt:
+        return False
+    classification = receipt.get("classification")
+    if classification == "feedback":
+        return receipt.get("authenticated_origin") is True
+    if classification == "untrusted":
+        return True
+    return (
+        classification == "quarantined"
+        and receipt.get("parser_version") == PARSER_VERSION
+    )
+
+
 def _process_feedback_locked(
     gmail: Any,
     kanban: Any,
@@ -1491,12 +1574,10 @@ def _process_feedback_locked(
     def persist_state() -> None:
         _write_state(state_path, state, state_key)
 
-    try:
-        summaries = gmail.search(MAX_SCAN)
-    except Exception as error:
-        raise FeedbackIntakeError("Gmail feedback search failed.") from error
-    if not isinstance(summaries, list):
-        raise FeedbackIntakeError("Gmail feedback search returned an invalid response.")
+    page_token = state.get("gmail_search_page_token")
+    summaries, next_page_token = _search_feedback_page(
+        gmail, MAX_SCAN, page_token,
+    )
 
     candidates = [item for item in summaries if _candidate_notification(item)]
     candidates.sort(key=_sort_key)
@@ -1543,13 +1624,18 @@ def _process_feedback_locked(
         )
         if existing_feedback and existing_receipt.get("authenticated_origin") is True:
             continue
-        if isinstance(existing_receipt, dict) and existing_receipt.get("classification") == "untrusted":
+        if (
+            isinstance(existing_receipt, dict)
+            and existing_receipt.get("classification") == "untrusted"
+            and "origin_integrity_status" not in existing_receipt
+        ):
             outcome["already_processed"] += 1
             continue
         if (
             isinstance(existing_receipt, dict)
             and existing_receipt.get("classification") == "quarantined"
             and existing_receipt.get("parser_version") == PARSER_VERSION
+            and "origin_integrity_status" not in existing_receipt
         ):
             outcome["already_processed"] += 1
             continue
@@ -1566,13 +1652,13 @@ def _process_feedback_locked(
             if new_attempted >= max_messages:
                 break
 
-        received = _received_date(summary.get("date"))
         try:
             full = gmail.get(message_id)
         except Exception as error:
             raise FeedbackIntakeError("Gmail feedback read failed.") from error
         if not isinstance(full, dict) or full.get("id") != message_id:
             raise FeedbackIntakeError("Gmail feedback read did not match the trusted notification.")
+        received = _received_date(full.get("date", summary.get("date")))
         if not _trusted_notification(full):
             if not existing_feedback:
                 state["processed"][digest] = {
@@ -1621,6 +1707,8 @@ def _process_feedback_locked(
         except FeedbackIntakeError:
             if stale_quarantine:
                 existing_receipt["parser_version"] = PARSER_VERSION
+                existing_receipt["authenticated_origin"] = True
+                existing_receipt.pop("origin_integrity_status", None)
                 persist_state()
                 outcome["already_processed"] += 1
                 continue
@@ -1696,6 +1784,14 @@ def _process_feedback_locked(
             outcome["quarantined"] += 1
         else:
             outcome["created"] += 1
+    if all(_candidate_is_durably_settled(state, summary) for summary in candidates):
+        previous_page_token = state.get("gmail_search_page_token")
+        if next_page_token is None:
+            state.pop("gmail_search_page_token", None)
+        else:
+            state["gmail_search_page_token"] = next_page_token
+        if state.get("gmail_search_page_token") != previous_page_token:
+            persist_state()
     return outcome
 
 
@@ -1868,6 +1964,36 @@ class GoogleGmailClient:
             raise FeedbackIntakeError("Google helper search response is invalid.")
         return value
 
+    def search_page(
+        self,
+        limit: int,
+        page_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        arguments = [
+            self.python,
+            str(Path(__file__).resolve()),
+            "--read-search-page",
+            "--search-limit",
+            str(limit),
+        ]
+        if page_token is not None:
+            if not _valid_page_token(page_token):
+                raise FeedbackIntakeError("Gmail search page token is invalid.")
+            arguments.extend(["--page-token", page_token])
+        arguments.extend(["--hermes-home", self.hermes_home])
+        environment = dict(os.environ)
+        environment["HERMES_HOME"] = self.hermes_home
+        output = self.runner.run(arguments, environment)
+        try:
+            value = json.loads(output)
+        except json.JSONDecodeError as error:
+            raise FeedbackIntakeError(
+                "Gmail search page response was not valid JSON."
+            ) from error
+        if not isinstance(value, dict):
+            raise FeedbackIntakeError("Gmail search page response is invalid.")
+        return value
+
     def get(self, message_id: str) -> Dict[str, Any]:
         value = self._run(["get", message_id])
         if not isinstance(value, dict):
@@ -1901,6 +2027,74 @@ class GoogleGmailClient:
         result = dict(value)
         result["authentication_results"] = authentication_results
         return result
+
+
+def _read_gmail_search_page(
+    hermes_home: Path,
+    limit: int,
+    page_token: Optional[str],
+) -> Dict[str, Any]:
+    if not 1 <= limit <= MAX_SCAN:
+        raise FeedbackIntakeError("Gmail search page limit is invalid.")
+    if page_token is not None and not _valid_page_token(page_token):
+        raise FeedbackIntakeError("Gmail search page token is invalid.")
+    token_path = Path(hermes_home) / "google_token.json"
+    if not token_path.is_file():
+        raise FeedbackIntakeError("Gmail authentication token is unavailable.")
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        credentials = Credentials.from_authorized_user_file(str(token_path))
+        service = build(
+            "gmail",
+            "v1",
+            credentials=credentials,
+            cache_discovery=False,
+        )
+        arguments: Dict[str, Any] = {
+            "userId": "me",
+            "q": SEARCH_QUERY,
+            "maxResults": limit,
+        }
+        if page_token is not None:
+            arguments["pageToken"] = page_token
+        response = service.users().messages().list(**arguments).execute()
+    except Exception as error:
+        raise FeedbackIntakeError("Gmail feedback page could not be read.") from error
+    if not isinstance(response, dict):
+        raise FeedbackIntakeError("Gmail feedback page was invalid.")
+    messages = response.get("messages", [])
+    next_page_token = response.get("nextPageToken")
+    if (
+        not isinstance(messages, list)
+        or len(messages) > limit
+        or any(
+            not isinstance(item, dict)
+            or not isinstance(item.get("id"), str)
+            or not item["id"]
+            or len(item["id"].encode("utf-8")) > 512
+            for item in messages
+        )
+        or (next_page_token is not None and not _valid_page_token(next_page_token))
+        or (
+            next_page_token is not None
+            and next_page_token == page_token
+        )
+    ):
+        raise FeedbackIntakeError("Gmail feedback page was invalid.")
+    return {
+        "messages": [
+            {
+                "id": item["id"],
+                "from": f"Formspree <{EXPECTED_SENDER}>",
+                "subject": EXPECTED_SUBJECT,
+                "date": "",
+            }
+            for item in messages
+        ],
+        "next_page_token": next_page_token,
+    }
 
 
 def _read_gmail_authentication_results(
@@ -2044,11 +2238,35 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         metavar="MESSAGE_ID",
         help=argparse.SUPPRESS,
     )
+    parser.add_argument(
+        "--read-search-page",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--search-limit",
+        type=int,
+        default=MAX_SCAN,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument("--page-token", help=argparse.SUPPRESS)
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
+    if args.read_search_page:
+        try:
+            page = _read_gmail_search_page(
+                args.hermes_home,
+                args.search_limit,
+                args.page_token,
+            )
+        except FeedbackIntakeError as error:
+            print("Radulator feedback page read failed: " + str(error), file=sys.stderr)
+            return 1
+        print(json.dumps(page, separators=(",", ":")))
+        return 0
     if args.read_authentication_results:
         try:
             results = _read_gmail_authentication_results(

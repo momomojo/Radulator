@@ -1405,6 +1405,26 @@ class LifecycleLedgerTests(unittest.TestCase):
                 self.ledger, spec, Adapter(), apply=True,
             )
 
+    def test_relation_readback_rejects_present_nonstring_conflicting_identifier(self):
+        malformed_relations = (
+            {"task_id": "t_parent", "id": 7},
+            {"task_id": 7, "id": "t_parent"},
+        )
+
+        for relation in malformed_relations:
+            with self.subTest(relation=relation):
+                readback = {
+                    "task": {
+                        "id": "t_child",
+                        "status": "ready",
+                        "parents": [relation],
+                    },
+                }
+                with self.assertRaisesRegex(LedgerError, "malformed"):
+                    lifecycle_module._related_task_ids(
+                        readback, "parents", "t_child",
+                    )
+
     def test_reconciliation_rejects_unsupported_exact_task_status(self):
         tasks = {
             "t_tracker": {
@@ -1518,6 +1538,144 @@ class LifecycleLedgerTests(unittest.TestCase):
         current = self.ledger.replay().current_by_task["t_parent"]
         self.assertEqual((current.state, current.head_sha), ("implementing", NEXT_HEAD))
         self.assertEqual(actions, [])
+
+    def test_reconciliation_rechecks_kanban_authority_after_preflight_before_first_action(self):
+        for index, state in enumerate((
+            "feedback", "implementing", "testing", "review",
+        )):
+            self.append(state, index, {"base_sha": "c" * 40})
+        self.append(
+            "needs_fix",
+            4,
+            {
+                "verdict_id": "concurrent-kanban-authority",
+                "reason": "Correct the reviewed head.",
+                "base_sha": "c" * 40,
+            },
+        )
+        tasks = {
+            "t_parent": {
+                "task": {
+                    "id": "t_parent",
+                    "status": "archived",
+                    "pr": 42,
+                    "head_sha": HEAD,
+                    "base_sha": "c" * 40,
+                    "body": "release tracker",
+                    "parents": [],
+                },
+            },
+            "t_source": {
+                "task": {
+                    "id": "t_source",
+                    "status": "done",
+                    "body": "source",
+                    "parents": [],
+                },
+            },
+        }
+        performed_actions = []
+
+        class Adapter:
+            source_reads = 0
+
+            def show(inner_self, task_id):
+                readback = json.loads(json.dumps(tasks[task_id]))
+                if task_id == "t_source":
+                    inner_self.source_reads += 1
+                if task_id == "t_source" and inner_self.source_reads == 2:
+                    tracker = tasks["t_parent"]["task"]
+                    tracker["status"] = "ready"
+                    tracker["pr"] = 43
+                    tracker["head_sha"] = NEXT_HEAD
+                    tracker["base_sha"] = "d" * 40
+                return readback
+
+            def perform(self, action):
+                performed_actions.append(action["kind"])
+                return {"kind": action["kind"]}
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "concurrent-kanban-authority-cas-audit",
+            "trackers": [{
+                "task_id": "t_parent",
+                "source_id": "feedback-17",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 42,
+                "head_sha": HEAD,
+                "base_sha": "c" * 40,
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "Kanban authority changed"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(performed_actions, [])
+
+    def test_reconciliation_rechecks_source_authority_after_each_external_action(self):
+        for index, state in enumerate((
+            "feedback", "implementing", "testing", "review",
+        )):
+            self.append(state, index)
+        self.append(
+            "needs_fix",
+            4,
+            {
+                "verdict_id": "mid-batch-source-mutation",
+                "reason": "Correct it.",
+            },
+        )
+        tasks = {
+            "t_parent": {
+                "task": {
+                    "id": "t_parent",
+                    "status": "archived",
+                    "body": "release tracker",
+                    "parents": [],
+                },
+            },
+            "t_source": {
+                "task": {
+                    "id": "t_source",
+                    "status": "done",
+                    "body": "source",
+                    "parents": [],
+                },
+            },
+        }
+        performed_actions = []
+
+        class Adapter:
+            def show(self, task_id):
+                return json.loads(json.dumps(tasks[task_id]))
+
+            def perform(self, action):
+                performed_actions.append(action["kind"])
+                tasks["t_source"]["task"]["status"] = "ready"
+                return {
+                    "kind": action["kind"],
+                    "task_id": "t_created_prerequisite",
+                }
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "mid-batch-source-authority-audit",
+            "trackers": [{
+                "task_id": "t_parent",
+                "source_id": "feedback-17",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "Kanban authority changed"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(performed_actions, ["create_prerequisite"])
 
     def test_reconciliation_holds_authority_lease_across_external_action(self):
         for index, state in enumerate((

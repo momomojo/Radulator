@@ -73,17 +73,31 @@ class FakeGmail:
     def __init__(self, messages):
         self.messages = messages
         self.get_calls = []
+        self.search_page_calls = []
+
+    def search_page(self, limit, page_token=None):
+        self.search_page_calls.append((limit, page_token))
+        start = int(page_token) if page_token is not None else 0
+        selected = self.messages[start:start + limit]
+        next_offset = start + len(selected)
+        next_page_token = (
+            str(next_offset) if next_offset < len(self.messages) else None
+        )
+        return {
+            "messages": [
+                {
+                    "id": message["id"],
+                    "from": "Formspree <noreply@formspree.io>",
+                    "subject": "New submission from Radulator Feedback",
+                    "date": message["date"],
+                }
+                for message in selected
+            ],
+            "next_page_token": next_page_token,
+        }
 
     def search(self, limit):
-        return [
-            {
-                "id": message["id"],
-                "from": "Formspree <noreply@formspree.io>",
-                "subject": "New submission from Radulator Feedback",
-                "date": message["date"],
-            }
-            for message in self.messages[:limit]
-        ]
+        return self.search_page(limit)["messages"]
 
     def get(self, message_id):
         self.get_calls.append(message_id)
@@ -441,6 +455,7 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         digest = _receipt_digest(self.message["id"])
         self.state_path.write_text(json.dumps({
             "version": 1,
+            "gmail_search_page_token": "attacker-selected-page",
             "processed": {
                 digest: {
                     "task_id": "t_1630667d",
@@ -763,6 +778,11 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         digest = "c" * 64
 
         class ConflictingParentKanban:
+            relation = {
+                "task_id": "t_triage",
+                "id": "t_different_parent",
+            }
+
             def create(self, *_args, **_kwargs):
                 return "t_closure"
 
@@ -772,21 +792,26 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
                         "id": task_id,
                         "status": "todo",
                         "body": "Receipt digest: " + digest,
-                        "parents": [{
-                            "task_id": "t_triage",
-                            "id": "t_different_parent",
-                        }],
+                        "parents": [self.relation],
                     },
                 }
 
-        with self.assertRaisesRegex(FeedbackIntakeError, "malformed"):
-            _create_verified_closure(
-                ConflictingParentKanban(),
-                received="2026-08-25",
-                digest=digest,
-                triage_task_id="t_triage",
-                idempotency_key="conflicting-parent-identifiers",
-            )
+        for relation in (
+            {"task_id": "t_triage", "id": "t_different_parent"},
+            {"task_id": "t_triage", "id": 7},
+            {"task_id": 7, "id": "t_triage"},
+        ):
+            with self.subTest(relation=relation):
+                kanban = ConflictingParentKanban()
+                kanban.relation = relation
+                with self.assertRaisesRegex(FeedbackIntakeError, "malformed"):
+                    _create_verified_closure(
+                        kanban,
+                        received="2026-08-25",
+                        digest=digest,
+                        triage_task_id="t_triage",
+                        idempotency_key="conflicting-parent-identifiers",
+                    )
 
     def test_hermes_create_uses_top_level_task_instead_of_nested_history_id(self):
         runner = FakeCommandRunner([
@@ -1013,6 +1038,57 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
 
         self.assertEqual(reauthenticated["reconciled"], 1)
         receipt = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertTrue(receipt["authenticated_origin"])
+        self.assertNotIn("origin_integrity_status", receipt)
+
+    def test_unsigned_legacy_untrusted_classification_requires_gmail_reauthentication(self):
+        digest = _receipt_digest(self.message["id"])
+        self.state_path.write_text(json.dumps({
+            "version": 1,
+            "processed": {
+                digest: {
+                    "classification": "untrusted",
+                    "parser_version": 1,
+                },
+            },
+        }))
+        self.state_path.chmod(0o600)
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+
+        result = process_feedback(gmail, kanban, self.state_path, max_messages=1)
+
+        self.assertEqual(gmail.get_calls, [self.message["id"]])
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(len(kanban.created), 2)
+        receipt = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertEqual(receipt["classification"], "feedback")
+        self.assertTrue(receipt["authenticated_origin"])
+        self.assertNotIn("origin_integrity_status", receipt)
+
+    def test_unsigned_legacy_quarantine_classification_requires_gmail_reauthentication(self):
+        digest = _receipt_digest(self.message["id"])
+        self.state_path.write_text(json.dumps({
+            "version": 1,
+            "processed": {
+                digest: {
+                    "classification": "quarantined",
+                    "parser_version": 1,
+                    "task_id": "t_unsigned_quarantine",
+                },
+            },
+        }))
+        self.state_path.chmod(0o600)
+        gmail = FakeGmail([self.message])
+        kanban = FakeKanban()
+
+        result = process_feedback(gmail, kanban, self.state_path, max_messages=1)
+
+        self.assertEqual(gmail.get_calls, [self.message["id"]])
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(len(kanban.created), 2)
+        receipt = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertEqual(receipt["classification"], "feedback")
         self.assertTrue(receipt["authenticated_origin"])
         self.assertNotIn("origin_integrity_status", receipt)
 
@@ -1552,6 +1628,41 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         )
         self.assertNotIn(old_message["id"], self.state_path.read_text())
 
+    def test_gmail_pagination_fetches_and_persists_message_101_on_later_bounded_run(self):
+        messages = [
+            dict(
+                self.message,
+                id=f"durable-page-message-{index:03d}",
+                date="Fri, 10 Jul 2026 10:15:00 -0700",
+            )
+            for index in range(101)
+        ]
+        gmail = FakeGmail(messages)
+        kanban = FakeKanban()
+
+        first = process_feedback(
+            gmail, kanban, self.state_path, max_messages=100,
+        )
+
+        self.assertEqual(first["created"], 100)
+        first_state_text = self.state_path.read_text()
+        first_state = json.loads(first_state_text)
+        self.assertEqual(first_state["gmail_search_page_token"], "100")
+        self.assertNotIn(messages[100]["id"], first_state_text)
+
+        second = process_feedback(
+            gmail, kanban, self.state_path, max_messages=1,
+        )
+
+        self.assertEqual(gmail.search_page_calls, [(100, None), (100, "100")])
+        self.assertEqual(second["created"], 1)
+        self.assertEqual(gmail.get_calls[-1], messages[100]["id"])
+        persisted_text = self.state_path.read_text()
+        persisted = json.loads(persisted_text)
+        self.assertIn(_receipt_digest(messages[100]["id"]), persisted["processed"])
+        self.assertNotIn(messages[100]["id"], persisted_text)
+        self.assertNotIn("gmail_search_page_token", persisted)
+
     def test_broken_authenticated_repair_creates_open_failure_and_does_not_starve(self):
         existing_messages = [
             dict(
@@ -1877,6 +1988,46 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
             ],
         )
         self.assertEqual(runner.calls[0][1]["HERMES_HOME"], "/profiles/radulator")
+
+    def test_google_gmail_adapter_requests_an_exact_bounded_page_token(self):
+        runner = FakeCommandRunner([
+            json.dumps({
+                "messages": [{
+                    "id": "message-101",
+                    "from": "Formspree <noreply@formspree.io>",
+                    "subject": "New submission from Radulator Feedback",
+                    "date": "Fri, 10 Jul 2026 10:15:00 -0700",
+                }],
+                "next_page_token": "next-page-token",
+            }),
+        ])
+        client = GoogleGmailClient(
+            Path("/runtime/python"),
+            Path("/runtime/google_api.py"),
+            Path("/profiles/radulator"),
+            runner,
+        )
+
+        page = client.search_page(7, "current-page-token")
+
+        self.assertEqual(page["messages"][0]["id"], "message-101")
+        self.assertEqual(page["next_page_token"], "next-page-token")
+        self.assertEqual(runner.calls[0][0][0], "/runtime/python")
+        self.assertTrue(
+            runner.calls[0][0][1].endswith("formspree_feedback_intake.py")
+        )
+        self.assertEqual(
+            runner.calls[0][0][2:],
+            [
+                "--read-search-page",
+                "--search-limit",
+                "7",
+                "--page-token",
+                "current-page-token",
+                "--hermes-home",
+                "/profiles/radulator",
+            ],
+        )
 
     def test_hermes_kanban_adapter_uses_create_and_exact_show_contracts(self):
         runner = FakeCommandRunner([
