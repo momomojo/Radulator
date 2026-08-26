@@ -2,6 +2,13 @@ const SHA_PATTERN = /^[0-9a-f]{40}$/;
 
 export const AUTO_DEPLOY_EVENT = "radulator-auto-merge-deploy";
 export const ROLLBACK_DEPLOY_EVENT = "radulator-verified-rollback-deploy";
+export const ROLLBACK_REQUEST_EVENT = "radulator-live-smoke-rollback-request";
+export const DEPLOY_WORKFLOW_PATH = ".github/workflows/deploy.yml";
+
+export function isTrustedDeploymentRun(run, workflowId) {
+  return Number.isSafeInteger(workflowId) && workflowId > 0 &&
+    run?.workflow_id === workflowId && run?.path === DEPLOY_WORKFLOW_PATH;
+}
 
 export function deploymentSourceRef(run) {
   if (!SHA_PATTERN.test(run?.head_sha || "")) return null;

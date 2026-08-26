@@ -61,6 +61,7 @@ jobs:
           node --check scripts/reconcile-deployment.mjs
           node --check scripts/post-deploy-smoke.mjs
           node --check scripts/write-release-marker.mjs
+          node --check scripts/rollback-request.mjs
           node --check scripts/select-rollback-deployment.mjs
           node --check ops/hermes/radulator/judge-candidates.mjs
           node --check ops/hermes/radulator/judge-attest.mjs

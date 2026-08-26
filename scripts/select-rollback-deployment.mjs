@@ -3,11 +3,20 @@ import { appendFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import {
+  DEPLOY_WORKFLOW_PATH,
   deploymentSourceRef,
+  isTrustedDeploymentRun,
   ROLLBACK_DEPLOY_EVENT,
+  ROLLBACK_REQUEST_EVENT,
 } from "./deployment-run-identity.mjs";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
+const DEFAULT_COMPLETION_ATTEMPTS = 20;
+const DEFAULT_COMPLETION_DELAY_MS = 3_000;
+
+function wait(delayMs) {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
 
 export function pagesDeploymentSucceeded(jobs) {
   const steps = (jobs || []).flatMap((job) => job.steps || []);
@@ -32,10 +41,10 @@ export function deploymentAuthorizationSucceeded(jobs) {
     step.name === "Authorize immutable deployment source" && step.conclusion === "success");
 }
 
-export function selectLastGoodDeployment(failedRun, runs, failedJobs = null) {
+export function selectLastGoodDeployment(failedRun, runs, failedJobs = null, deployWorkflowId = null) {
   if (
     !failedRun ||
-    failedRun.name !== "Deploy to GitHub Pages" ||
+    !isTrustedDeploymentRun(failedRun, deployWorkflowId) ||
     deploymentSourceRef(failedRun) !== failedRun.head_sha ||
     failedRun.status !== "completed" ||
     failedRun.conclusion !== "failure" ||
@@ -47,7 +56,7 @@ export function selectLastGoodDeployment(failedRun, runs, failedJobs = null) {
   const failedAt = Date.parse(failedRun.created_at);
   const candidates = (runs || []).filter((run) =>
     run.id !== failedRun.id &&
-    run.name === "Deploy to GitHub Pages" &&
+    isTrustedDeploymentRun(run, deployWorkflowId) &&
     deploymentSourceRef(run) === run.head_sha &&
     run.status === "completed" &&
     run.conclusion === "success" &&
@@ -93,6 +102,20 @@ export async function loadCompletedDeploymentRuns(token, repository, request = g
   }
 }
 
+export async function loadRunJobs(token, repository, runId, request = githubRequest) {
+  if (!Number.isSafeInteger(runId) || runId <= 0) throw new Error("A positive deployment run ID is required.");
+  const jobs = [];
+  for (let page = 1; ; page += 1) {
+    const data = await request(
+      token,
+      `/repos/${repository}/actions/runs/${runId}/jobs?per_page=100&page=${page}`,
+    );
+    if (!Array.isArray(data?.jobs)) throw new Error("Deployment job readback is malformed.");
+    jobs.push(...data.jobs);
+    if (data.jobs.length < 100) return jobs;
+  }
+}
+
 export async function dispatchRollbackDeployment(token, repository, selected, request = githubRequest) {
   if (
     !SHA_PATTERN.test(selected?.ref || "") ||
@@ -113,9 +136,88 @@ export async function dispatchRollbackDeployment(token, repository, selected, re
   return { accepted: true, eventType: ROLLBACK_DEPLOY_EVENT };
 }
 
+export async function dispatchRollbackRequest(token, repository, failedRunId, request = githubRequest) {
+  if (!token || !repository.includes("/") || !Number.isSafeInteger(failedRunId) || failedRunId <= 0) {
+    throw new Error("Token, repository, and a positive failed run ID are required for a rollback request.");
+  }
+  await request(token, `/repos/${repository}/dispatches`, {
+    method: "POST",
+    body: JSON.stringify({
+      event_type: ROLLBACK_REQUEST_EVENT,
+      client_payload: { failedRunId },
+    }),
+  });
+  return { accepted: true, eventType: ROLLBACK_REQUEST_EVENT, failedRunId };
+}
+
+export async function waitForCompletedDeploymentRun(getRun, runId, {
+  attempts = DEFAULT_COMPLETION_ATTEMPTS,
+  delayMs = DEFAULT_COMPLETION_DELAY_MS,
+  wait: waitImpl = wait,
+} = {}) {
+  if (typeof getRun !== "function" || !Number.isSafeInteger(runId) || runId <= 0) {
+    throw new Error("A deployment-run reader and positive run ID are required.");
+  }
+  if (!Number.isSafeInteger(attempts) || attempts < 1 || !Number.isFinite(delayMs) || delayMs < 0) {
+    throw new Error("Deployment completion polling bounds are malformed.");
+  }
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const run = await getRun(runId);
+    if (run?.id !== runId || typeof run.status !== "string") {
+      throw new Error(`Deployment run ${runId} readback is malformed.`);
+    }
+    if (run.status === "completed") return run;
+    if (attempt < attempts && delayMs) await waitImpl(delayMs);
+  }
+  throw new Error(`Deployment run ${runId} did not complete within the rollback polling window.`);
+}
+
+export async function handleRollbackRequest({ api, failedRunId, dispatch = false, completionOptions = {} }) {
+  if (!api || !Number.isSafeInteger(failedRunId) || failedRunId <= 0) {
+    throw new Error("A rollback API and positive failed run ID are required.");
+  }
+  const deployWorkflow = await api.getDeployWorkflow();
+  if (
+    !Number.isSafeInteger(deployWorkflow?.id) || deployWorkflow.id <= 0 ||
+    deployWorkflow.path !== DEPLOY_WORKFLOW_PATH
+  ) throw new Error("Trusted deployment workflow identity is unavailable.");
+
+  const failedRun = await waitForCompletedDeploymentRun(
+    (runId) => api.getRun(runId),
+    failedRunId,
+    completionOptions,
+  );
+  const [failedJobs, completedRuns] = await Promise.all([
+    api.getRunJobs(failedRunId),
+    api.listCompletedDeployRuns(),
+  ]);
+  const selected = selectLastGoodDeployment(
+    failedRun,
+    completedRuns,
+    failedJobs,
+    deployWorkflow.id,
+  );
+  if (!selected) throw new Error(`No prior successful main deployment can roll back failed run ${failedRunId}.`);
+  if (dispatch) {
+    const dispatched = await api.dispatchRollback(selected);
+    if (!dispatched?.accepted) throw new Error(`Rollback dispatch was not accepted for failed run ${failedRunId}.`);
+  }
+  return selected;
+}
+
 function argument(name) {
   const index = process.argv.indexOf(name);
   return index >= 0 && index + 1 < process.argv.length ? process.argv[index + 1] : null;
+}
+
+function defaultRollbackApi(token, repository) {
+  return {
+    getDeployWorkflow: () => githubRequest(token, `/repos/${repository}/actions/workflows/deploy.yml`),
+    getRun: (runId) => githubRequest(token, `/repos/${repository}/actions/runs/${runId}`),
+    getRunJobs: (runId) => loadRunJobs(token, repository, runId),
+    listCompletedDeployRuns: () => loadCompletedDeploymentRuns(token, repository),
+    dispatchRollback: (selected) => dispatchRollbackDeployment(token, repository, selected),
+  };
 }
 
 async function run() {
@@ -125,12 +227,17 @@ async function run() {
   if (!token || !repository.includes("/") || !Number.isSafeInteger(failedRunId) || failedRunId <= 0) {
     throw new Error("GITHUB_TOKEN, GITHUB_REPOSITORY, and a positive --failed-run-id are required.");
   }
-  const failedRun = await githubRequest(token, `/repos/${repository}/actions/runs/${failedRunId}`);
-  const jobs = await githubRequest(token, `/repos/${repository}/actions/runs/${failedRunId}/jobs?per_page=100`);
-  const runs = await loadCompletedDeploymentRuns(token, repository);
-  const selected = selectLastGoodDeployment(failedRun, runs, jobs.jobs);
-  if (!selected) throw new Error(`No prior successful main deployment can roll back failed run ${failedRunId}.`);
-  if (process.argv.includes("--dispatch")) await dispatchRollbackDeployment(token, repository, selected);
+  if (process.argv.includes("--request")) {
+    const requested = await dispatchRollbackRequest(token, repository, failedRunId);
+    console.log(JSON.stringify(requested));
+    return requested;
+  }
+
+  const selected = await handleRollbackRequest({
+    api: defaultRollbackApi(token, repository),
+    failedRunId,
+    dispatch: process.argv.includes("--dispatch"),
+  });
 
   const output = argument("--output");
   if (output) await writeFile(output, `${JSON.stringify(selected, null, 2)}\n`, "utf8");
