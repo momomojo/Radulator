@@ -325,6 +325,60 @@ def _task_records(value: Any, task_id: str) -> List[Dict[str, Any]]:
     return records
 
 
+def _exact_task_record(value: Any, task_id: str) -> Dict[str, Any]:
+    if isinstance(value, dict) and task_id in (value.get("task_id"), value.get("id")):
+        return value
+    task = value.get("task") if isinstance(value, dict) else None
+    if isinstance(task, dict) and task_id in (task.get("task_id"), task.get("id")):
+        return task
+    raise FeedbackIntakeError(
+        f"Kanban readback did not contain exact feedback task {task_id}."
+    )
+
+
+def _exact_task_comments(value: Any, task: Dict[str, Any]) -> List[Dict[str, Any]]:
+    comments = value.get("comments") if isinstance(value, dict) else None
+    if comments is None:
+        comments = task.get("comments", [])
+    if not isinstance(comments, list) or any(
+        not isinstance(item, dict) for item in comments
+    ):
+        raise FeedbackIntakeError("Kanban feedback task comments are malformed.")
+    return comments
+
+
+def _has_exact_task_receipt_digest(
+    value: Any,
+    task_id: str,
+    digest: str,
+) -> bool:
+    if re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        return False
+    task = _exact_task_record(value, task_id)
+    structured = [
+        task[field]
+        for field in ("receipt_digest", "digest")
+        if field in task
+    ]
+    if structured:
+        return all(
+            isinstance(item, str) and item.lower() == digest
+            for item in structured
+        )
+    bodies = [task.get("body")]
+    bodies.extend(
+        comment.get("body") for comment in _exact_task_comments(value, task)
+    )
+    pattern = re.compile(
+        rf"(?<![0-9a-f]){re.escape(digest)}(?![0-9a-f])",
+        re.IGNORECASE,
+    )
+    return any(
+        isinstance(body, str) and pattern.search(body) is not None
+        for body in bodies
+    )
+
+
 def _task_status(value: Any, task_id: str) -> str:
     records = _task_records(value, task_id)
     statuses = {
@@ -663,7 +717,7 @@ def _feedback_task_readback(kanban: Any, task_id: str) -> Dict[str, Any]:
 
 def _verified_feedback_task(kanban: Any, task_id: str, digest: str) -> Dict[str, Any]:
     readback = _feedback_task_readback(kanban, task_id)
-    if not _contains_text(readback, digest):
+    if not _has_exact_task_receipt_digest(readback, task_id, digest):
         raise FeedbackIntakeError("Kanban feedback task failed exact digest readback.")
     return readback
 
@@ -726,7 +780,7 @@ def _create_verified_legacy_binding_quarantine(
         ) from error
     if (
         _find_task_id(readback) != task_id
-        or not _contains_text(readback, digest)
+        or not _has_exact_task_receipt_digest(readback, task_id, digest)
         or not _contains_text(readback, legacy_task_id)
     ):
         raise FeedbackIntakeError(
@@ -763,7 +817,7 @@ def _create_verified_closure(
         raise FeedbackIntakeError("Kanban feedback closure failed readback.") from error
     if (
         _find_task_id(readback) != task_id
-        or not _contains_text(readback, digest)
+        or not _has_exact_task_receipt_digest(readback, task_id, digest)
         or not _has_parent(readback, triage_task_id)
     ):
         raise FeedbackIntakeError("Kanban feedback closure failed exact readback.")
@@ -844,7 +898,9 @@ def _reconcile_feedback_receipt(
             return "reconciled" if authenticated_changed else "unchanged"
 
         legacy_readback = _feedback_task_readback(kanban, original_task_id)
-        if not _contains_text(legacy_readback, digest):
+        if not _has_exact_task_receipt_digest(
+            legacy_readback, original_task_id, digest,
+        ):
             quarantine_id, quarantine = _create_verified_legacy_binding_quarantine(
                 kanban,
                 received=received,
@@ -1032,7 +1088,7 @@ def _create_verified_reconciliation_failure(
         ) from error
     if (
         _find_task_id(readback) != task_id
-        or not _contains_text(readback, digest)
+        or not _has_exact_task_receipt_digest(readback, task_id, digest)
     ):
         raise FeedbackIntakeError(
             "Kanban feedback reconciliation failure obligation failed exact readback."
@@ -1078,7 +1134,9 @@ def _create_verified_reconciliation_failure(
         ) from error
     if (
         _find_task_id(replacement) != replacement_id
-        or not _contains_text(replacement, digest)
+        or not _has_exact_task_receipt_digest(
+            replacement, replacement_id, digest,
+        )
         or not _contains_text(replacement, task_id)
         or _task_status(replacement, replacement_id) not in OPEN_TASK_STATUSES
     ):
@@ -1327,7 +1385,12 @@ def _process_feedback_locked(
                     triage=True,
                 )
                 readback = kanban.show(task_id)
-                if _find_task_id(readback) != task_id or not _contains_text(readback, digest):
+                if (
+                    _find_task_id(readback) != task_id
+                    or not _has_exact_task_receipt_digest(
+                        readback, task_id, digest,
+                    )
+                ):
                     raise FeedbackIntakeError("Kanban feedback receipt failed exact readback.")
             else:
                 triage_task_id = kanban.create(
@@ -1339,7 +1402,9 @@ def _process_feedback_locked(
                 triage_readback = kanban.show(triage_task_id)
                 if (
                     _find_task_id(triage_readback) != triage_task_id
-                    or not _contains_text(triage_readback, digest)
+                    or not _has_exact_task_receipt_digest(
+                        triage_readback, triage_task_id, digest,
+                    )
                 ):
                     raise FeedbackIntakeError("Kanban feedback triage failed exact readback.")
 
@@ -1356,7 +1421,9 @@ def _process_feedback_locked(
                 readback = kanban.show(task_id)
                 if (
                     _find_task_id(readback) != task_id
-                    or not _contains_text(readback, digest)
+                    or not _has_exact_task_receipt_digest(
+                        readback, task_id, digest,
+                    )
                     or not _has_parent(readback, triage_task_id)
                 ):
                     raise FeedbackIntakeError("Kanban feedback closure failed exact readback.")

@@ -665,6 +665,17 @@ def _blocked_resume_event(
     return task_events[-2]
 
 
+def _event_matches_reviewed_authority(
+    event: LifecycleEvent,
+    tracker: dict[str, Any],
+) -> bool:
+    return (
+        event.pr == tracker["pr"]
+        and event.head_sha == tracker["head_sha"]
+        and event.evidence.get("base_sha") == tracker["base_sha"]
+    )
+
+
 def reconcile_trackers(
     ledger: LifecycleLedger,
     spec: Any,
@@ -774,12 +785,28 @@ def reconcile_trackers(
         if action_event is not None:
             result["blocked_recoveries"].append(task_id)
             actions = actions_for_event(action_event)
+            rendered_event = action_event
         elif terminal_mismatch and current.state == "needs_fix":
             actions = actions_for_event(current)
+            rendered_event = current
         elif terminal_mismatch:
             actions = [_reconciliation_action(current)]
+            rendered_event = current
         else:
             actions = []
+            rendered_event = None
+
+        if (
+            actions
+            and tracker.get("pr") is not None
+            and (
+                rendered_event is None
+                or not _event_matches_reviewed_authority(rendered_event, tracker)
+            )
+        ):
+            raise LedgerError(
+                f"Reconciliation lifecycle event authority conflicts for {task_id}."
+            )
 
         if actions:
             result["planned_actions"].extend(actions)
@@ -1002,24 +1029,36 @@ def _prose_authority_records(
         r"(?P<head>[0-9a-f]+)(?![0-9a-f])",
         re.IGNORECASE,
     )
+    pr_marker_pattern = re.compile(
+        r"(?<!\d)\bPR\s*#[1-9]\d*(?!\d)",
+        re.IGNORECASE,
+    )
     records: list[tuple[int, str, str | None]] = []
     for body in bodies:
         if not isinstance(body, str):
             continue
         for line in body.splitlines():
-            matches = list(full_pattern.finditer(line))
-            if not matches:
-                matches = list(partial_pattern.finditer(line))
-            for match in matches:
-                records.append((
-                    int(match.group("pr")),
-                    match.group("head").lower(),
-                    (
-                        match.group("base").lower()
-                        if "base" in match.groupdict()
-                        else None
-                    ),
-                ))
+            markers = list(pr_marker_pattern.finditer(line))
+            for index, marker in enumerate(markers):
+                end = (
+                    markers[index + 1].start()
+                    if index + 1 < len(markers)
+                    else len(line)
+                )
+                clause = line[marker.start():end]
+                match = full_pattern.search(clause)
+                if match is None:
+                    match = partial_pattern.search(clause)
+                if match is not None:
+                    records.append((
+                        int(match.group("pr")),
+                        match.group("head").lower(),
+                        (
+                            match.group("base").lower()
+                            if "base" in match.groupdict()
+                            else None
+                        ),
+                    ))
     return records
 
 
@@ -1205,54 +1244,99 @@ class HermesKanbanCLI:
     def perform(self, action: dict[str, Any]) -> dict[str, Any]:
         kind = action.get("kind")
         if kind == "create_prerequisite":
-            arguments = [
-                "create",
-                action["title"],
-                "--body",
-                action["body"],
-                "--idempotency-key",
-                action["idempotency_key"],
-            ]
-            for key, option in (
-                ("assignee", "--assignee"),
-                ("priority", "--priority"),
-                ("max_runtime", "--max-runtime"),
-                ("created_by", "--created-by"),
-            ):
-                if action.get(key) is not None:
-                    arguments.extend([option, str(action[key])])
-            arguments.append("--json")
-            created = self._run(arguments, expect_json=True)
-            prerequisite_id = _find_task_id(created)
-            if not prerequisite_id:
-                raise LedgerError("Kanban create response did not contain a prerequisite task id.")
+            def create_verified(body: str, idempotency_key: str):
+                arguments = [
+                    "create",
+                    action["title"],
+                    "--body",
+                    body,
+                    "--idempotency-key",
+                    idempotency_key,
+                ]
+                for key, option in (
+                    ("assignee", "--assignee"),
+                    ("priority", "--priority"),
+                    ("max_runtime", "--max-runtime"),
+                    ("created_by", "--created-by"),
+                ):
+                    if action.get(key) is not None:
+                        arguments.extend([option, str(action[key])])
+                arguments.append("--json")
+                created = self._run(arguments, expect_json=True)
+                task_id = _find_task_id(created)
+                if not task_id:
+                    raise LedgerError(
+                        "Kanban create response did not contain a prerequisite task id."
+                    )
+                readback = self.show(task_id)
+                immutable_terminal = (
+                    action.get("verdict_id")
+                    and _task_status(readback, task_id) in TERMINAL_KANBAN_STATUSES
+                )
+                if not _task_instruction_present(readback, task_id, body):
+                    if immutable_terminal:
+                        raise LedgerError(
+                            "Terminal NEEDS_FIX prerequisite failed exact body readback."
+                        )
+                    self._run([
+                        "comment", task_id, body,
+                        "--author", "radulator-lifecycle",
+                    ])
+                    readback = self.show(task_id)
+                if (
+                    action.get("assignee")
+                    and _exact_task_record(readback, task_id).get("assignee")
+                    != action["assignee"]
+                ):
+                    if immutable_terminal:
+                        raise LedgerError(
+                            "Terminal NEEDS_FIX prerequisite failed assignee readback."
+                        )
+                    self._run(["assign", task_id, action["assignee"]])
+                    readback = self.show(task_id)
+                if not _task_instruction_present(readback, task_id, body):
+                    raise LedgerError("Created prerequisite failed exact body readback.")
+                if (
+                    action.get("assignee")
+                    and _exact_task_record(readback, task_id).get("assignee")
+                    != action["assignee"]
+                ):
+                    raise LedgerError(
+                        "Created prerequisite failed assignee Kanban readback."
+                    )
+                return task_id, readback
+
+            effective_key = action["idempotency_key"]
+            prerequisite_id, prerequisite = create_verified(
+                action["body"], effective_key,
+            )
+            superseded_task_ids: list[str] = []
+            status = _task_status(prerequisite, prerequisite_id)
+            if action.get("verdict_id") and status in TERMINAL_KANBAN_STATUSES:
+                terminal_id = prerequisite_id
+                superseded_task_ids.append(terminal_id)
+                recovery_body = action["body"] + (
+                    "\n\nRecovery: this open corrective prerequisite preserves and "
+                    f"supersedes prematurely terminal prerequisite {terminal_id}; "
+                    "do not rewrite or delete its history."
+                )
+                effective_key = (
+                    action["idempotency_key"] + ":repair:" + terminal_id
+                )
+                prerequisite_id, prerequisite = create_verified(
+                    recovery_body, effective_key,
+                )
+                if prerequisite_id == terminal_id:
+                    raise LedgerError(
+                        "Replacement NEEDS_FIX prerequisite reused its terminal task."
+                    )
+                status = _task_status(prerequisite, prerequisite_id)
+                if status in TERMINAL_KANBAN_STATUSES:
+                    raise LedgerError(
+                        "Replacement NEEDS_FIX prerequisite is already terminal."
+                    )
+
             tracker_id = action["tracker_task_id"]
-            prerequisite = self.show(prerequisite_id)
-            if not _task_instruction_present(
-                prerequisite, prerequisite_id, action["body"]
-            ):
-                self._run([
-                    "comment", prerequisite_id, action["body"],
-                    "--author", "radulator-lifecycle",
-                ])
-                prerequisite = self.show(prerequisite_id)
-            if (
-                action.get("assignee")
-                and _exact_task_record(prerequisite, prerequisite_id).get("assignee")
-                != action["assignee"]
-            ):
-                self._run(["assign", prerequisite_id, action["assignee"]])
-                prerequisite = self.show(prerequisite_id)
-            if not _task_instruction_present(
-                prerequisite, prerequisite_id, action["body"]
-            ):
-                raise LedgerError("Created prerequisite failed exact body readback.")
-            if (
-                action.get("assignee")
-                and _exact_task_record(prerequisite, prerequisite_id).get("assignee")
-                != action["assignee"]
-            ):
-                raise LedgerError("Created prerequisite failed assignee Kanban readback.")
 
             if tracker_id in _related_task_ids(prerequisite, "parents", prerequisite_id):
                 self._run(["unlink", tracker_id, prerequisite_id])
@@ -1267,7 +1351,6 @@ class HermesKanbanCLI:
             if prerequisite_id not in _related_task_ids(tracker, "parents", tracker_id):
                 raise LedgerError("Prerequisite-to-tracker dependency failed authoritative readback.")
 
-            status = _task_status(prerequisite, prerequisite_id)
             if status in {"todo", "blocked"}:
                 self._run([
                     "promote", prerequisite_id,
@@ -1276,19 +1359,25 @@ class HermesKanbanCLI:
                 ])
                 prerequisite = self.show(prerequisite_id)
                 status = _task_status(prerequisite, prerequisite_id)
-            if status not in {"ready", "running", "review", "done", "archived"}:
+            allowed_statuses = {"ready", "running", "review"}
+            if not action.get("verdict_id"):
+                allowed_statuses.update({"done", "archived"})
+            if status not in allowed_statuses:
                 raise LedgerError(
                     f"Lifecycle prerequisite {prerequisite_id} is not runnable or complete after reconciliation."
                 )
             if tracker_id in _related_task_ids(prerequisite, "parents", prerequisite_id):
                 raise LedgerError("Lifecycle prerequisite still depends on its open release tracker.")
-            return {
+            receipt = {
                 "kind": kind,
                 "task_id": prerequisite_id,
                 "tracker_task_id": tracker_id,
-                "idempotency_key": action["idempotency_key"],
+                "idempotency_key": effective_key,
                 "status": status,
             }
+            if superseded_task_ids:
+                receipt["superseded_task_ids"] = superseded_task_ids
+            return receipt
         if kind == "create_child":
             arguments = [
                 "create",

@@ -258,6 +258,102 @@ class LifecycleLedgerTests(unittest.TestCase):
             1,
         )
 
+    def test_terminal_needs_fix_prerequisite_gets_one_open_versioned_replacement(self):
+        self.append("feedback", 0)
+        self.append("implementing", 1)
+        self.append("testing", 2)
+        self.append("review", 3)
+        event = self.append(
+            "needs_fix",
+            4,
+            {"verdict_id": "comment-terminal", "reason": "Fix exact citation."},
+        )
+        action = actions_for_event(event)[0]
+        repair_key = action["idempotency_key"] + ":repair:t_terminal"
+        tasks = {
+            "t_parent": {
+                "task": {"id": "t_parent", "status": "archived"},
+                "parents": ["t_unrelated_tracker_prerequisite"],
+            },
+            "t_terminal": {
+                "task": {
+                    "id": "t_terminal",
+                    "status": "done",
+                    "body": action["body"],
+                    "assignee": "codex-coding",
+                },
+                "parents": [],
+            },
+            "t_replacement": {
+                "task": {
+                    "id": "t_replacement",
+                    "status": "todo",
+                    "body": "replacement awaiting verified recovery instruction",
+                    "assignee": "codex-coding",
+                },
+                "comments": [],
+                "parents": ["t_unrelated_rework_prerequisite"],
+            },
+        }
+        commands = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "create":
+                key = args[args.index("--idempotency-key") + 1]
+                if key == action["idempotency_key"]:
+                    task_id = "t_terminal"
+                elif key == repair_key:
+                    task_id = "t_replacement"
+                else:
+                    return subprocess.CompletedProcess(command, 1, "", "unexpected key")
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks[task_id]), "",
+                )
+            if args[0] == "show":
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks[args[1]]), "",
+                )
+            if args[0] == "comment":
+                tasks[args[1]].setdefault("comments", []).append({"body": args[2]})
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            if args[0] == "assign":
+                tasks[args[1]]["task"]["assignee"] = args[2]
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            if args[0] == "link":
+                parent_id, child_id = args[1:3]
+                tasks[child_id]["parents"].append(parent_id)
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            if args[0] == "promote":
+                tasks[args[1]]["task"]["status"] = "ready"
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps({"ok": True}), "",
+                )
+            return subprocess.CompletedProcess(command, 1, "", "unexpected")
+
+        adapter = HermesKanbanCLI(runner=runner)
+        first = adapter.perform(action)
+        replayed = adapter.perform(action)
+
+        self.assertEqual(first["task_id"], "t_replacement")
+        self.assertEqual(replayed["task_id"], "t_replacement")
+        self.assertEqual(first["status"], "ready")
+        self.assertEqual(first["superseded_task_ids"], ["t_terminal"])
+        self.assertEqual(first["idempotency_key"], repair_key)
+        self.assertIn("t_terminal", json.dumps(tasks["t_replacement"]))
+        self.assertEqual(
+            tasks["t_parent"]["parents"],
+            ["t_unrelated_tracker_prerequisite", "t_replacement"],
+        )
+        self.assertEqual(
+            tasks["t_replacement"]["parents"],
+            ["t_unrelated_rework_prerequisite"],
+        )
+        self.assertEqual(tasks["t_terminal"]["parents"], [])
+        self.assertEqual([cmd[2] for cmd in commands].count("link"), 1)
+        self.assertEqual([cmd[2] for cmd in commands].count("promote"), 1)
+
     def test_blocked_smoke_phase_resumes_exactly_and_completes_learning(self):
         states = [
             "feedback", "implementing", "testing", "review", "approved",
@@ -1319,6 +1415,54 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         self.assertEqual(self.ledger.replay().events, ())
 
+    def test_prose_authority_does_not_cross_a_second_pr_clause(self):
+        requested_base = "d" * 40
+        tasks = {
+            "t_tracker": {
+                "task": {
+                    "id": "t_tracker",
+                    "status": "todo",
+                    "body": (
+                        "Current PR #999 head " + requested_base
+                        + "; stale PR #16 head " + HEAD
+                        + " base " + requested_base
+                    ),
+                },
+                "parents": [],
+            },
+            "t_source": {
+                "task": {"id": "t_source", "status": "done", "body": "source"},
+                "parents": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("cross-PR authority must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "clause-bounded-authority-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 999,
+                "head_sha": requested_base,
+                "base_sha": requested_base,
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "PR failed|base SHA|coherent"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(self.ledger.replay().events, ())
+
     def test_reconciliation_spec_requires_owned_nonsymlink_exact_0600_file(self):
         payload = {
             "schema": "radulator-lifecycle-reconciliation/v1",
@@ -1423,11 +1567,24 @@ class LifecycleLedgerTests(unittest.TestCase):
             "feedback", "implementing", "testing", "review", "needs_fix",
         ]):
             evidence = (
-                {"verdict_id": "5413367924", "reason": "Correct clinical semantics."}
+                {
+                    "verdict_id": "5413367924",
+                    "reason": "Correct clinical semantics.",
+                    "base_sha": "e" * 40,
+                }
                 if state == "needs_fix"
                 else {"proof": str(index)}
             )
-            self.append(state, index, evidence)
+            self.ledger.append(
+                idempotency_key=f"cac-event-{index}",
+                source_id="feedback-17",
+                task_id="t_parent",
+                state=state,
+                pr=169,
+                head_sha=HEAD,
+                evidence=evidence,
+                timestamp=f"2026-08-23T20:{index:02d}:00Z",
+            )
 
         tasks = {
             "t_parent": {
@@ -1477,6 +1634,68 @@ class LifecycleLedgerTests(unittest.TestCase):
             ["create_prerequisite", "comment"],
         )
         self.assertEqual(result["terminal_mismatches"], ["t_parent"])
+
+    def test_reconciliation_action_requires_exact_existing_event_authority(self):
+        reviewed_base = "d" * 40
+        recorded_base = "c" * 40
+        for index, state in enumerate([
+            "feedback", "implementing", "testing", "review", "needs_fix",
+        ]):
+            evidence = (
+                {
+                    "verdict_id": "event-authority-verdict",
+                    "reason": "Correct the unchanged head.",
+                    "base_sha": recorded_base,
+                }
+                if state == "needs_fix"
+                else {"proof": str(index)}
+            )
+            self.append(state, index, evidence)
+        initial_ledger = self.ledger_path.read_bytes()
+        tasks = {
+            "t_parent": {
+                "task": {
+                    "id": "t_parent",
+                    "status": "archived",
+                    "pr": 42,
+                    "head_sha": HEAD,
+                    "base_sha": reviewed_base,
+                    "body": "tracker",
+                },
+                "parents": [],
+            },
+            "t_source": {
+                "task": {"id": "t_source", "status": "done", "body": "source"},
+                "parents": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("conflicting event authority must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "exact-render-event-authority-audit",
+            "trackers": [{
+                "task_id": "t_parent",
+                "source_id": "feedback-17",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 42,
+                "head_sha": HEAD,
+                "base_sha": reviewed_base,
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "lifecycle event authority"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(self.ledger_path.read_bytes(), initial_ledger)
 
     def test_reconciliation_repairs_only_latest_blocked_needs_fix_edge_idempotently(self):
         self.append("feedback", 0)

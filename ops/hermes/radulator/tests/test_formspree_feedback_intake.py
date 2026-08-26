@@ -597,6 +597,60 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertIn("triage_task_id", state[later_digest])
         self.assertEqual(os.stat(self.state_path).st_mode & 0o777, 0o600)
 
+    def test_legacy_digest_binding_ignores_nested_history_and_overlong_hex_tokens(self):
+        variants = {
+            "nested-history": lambda digest: {
+                "body": "Legacy task without an authoritative receipt binding.",
+                "events": [{
+                    "body": "Unrelated historical receipt digest: " + digest,
+                }],
+            },
+            "overlong-token": lambda digest: {
+                "body": "Receipt digest: " + digest + "f",
+            },
+        }
+        for name, evidence in variants.items():
+            with self.subTest(name=name):
+                message = dict(self.message, id="legacy-" + name)
+                digest = _receipt_digest(message["id"])
+                self.state_path.write_text(json.dumps({
+                    "version": 1,
+                    "processed": {
+                        digest: {
+                            "task_id": "t_legacy",
+                            "classification": "feedback",
+                            "parser_version": 1,
+                        },
+                    },
+                }))
+                self.state_path.chmod(0o600)
+                kanban = FakeKanban()
+                kanban.tasks["t_legacy"] = {
+                    "id": "t_legacy",
+                    "title": "Legacy Radulator feedback review",
+                    "status": "done",
+                    "parents": [],
+                    **evidence(digest),
+                }
+
+                result = process_feedback(
+                    FakeGmail([message]), kanban, self.state_path,
+                )
+
+                self.assertEqual(result["quarantined"], 1)
+                receipt = json.loads(
+                    self.state_path.read_text()
+                )["processed"][digest]
+                self.assertEqual(receipt["legacy_binding_status"], "quarantined")
+                quarantine_id = receipt["legacy_binding_quarantine_task_id"]
+                self.assertEqual(kanban.tasks[quarantine_id]["status"], "triage")
+                self.assertEqual(
+                    kanban.tasks[quarantine_id]["idempotency_key"],
+                    "radulator-formspree-legacy-binding-quarantine:"
+                    + digest
+                    + ":t_legacy",
+                )
+
     def test_authenticated_origin_flag_is_not_trusted_from_a_writable_state_file(self):
         gmail = FakeGmail([self.message])
         kanban = FakeKanban()
