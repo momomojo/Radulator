@@ -7,8 +7,12 @@ import process from "node:process";
 import { inflateRawSync } from "node:zlib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
+  KBRC_CALIBRATION_WARNING_THRESHOLD,
+  KBRC_INPUT_LIMITS,
+  KBRC_INPUT_LIMIT_PROVENANCE,
   calculateBmi,
   calculateKbrcMajorBleedingProbability,
+  computeKidneyBiopsyBleedingRisk,
 } from "../src/components/calculators/KidneyBiopsyBleedingRisk.jsx";
 
 const REGISTRY_PATH =
@@ -194,6 +198,75 @@ function decodeXmlText(fragment) {
     .trim();
 }
 
+function parseCalibrationWarning(xml) {
+  const paragraph = xml.match(/<p id="p0130">([\s\S]*?)<\/p>/)?.[1];
+  assert.ok(paragraph, "full-text XML lacks discussion paragraph p0130");
+  const text = decodeXmlText(paragraph);
+  const calibration = text.match(
+    /probability range exceeding ([\d.]+)% risk where the model begins to (overpredict) risk/i,
+  );
+  assert.ok(calibration, "p0130 lacks the calibration warning and threshold");
+  return {
+    source_locator: "full-text XML paragraph p0130",
+    threshold_probability: Number(calibration[1]) / 100,
+    calibration_direction: calibration[2].toLowerCase(),
+  };
+}
+
+function assertRuntimeClinicalClaims(calibrationWarning, calculatorSource, fixture) {
+  assert.equal(
+    KBRC_CALIBRATION_WARNING_THRESHOLD,
+    calibrationWarning.threshold_probability,
+    "runtime calibration-warning threshold drifted from p0130",
+  );
+  assert.match(
+    calculatorSource,
+    /probability > KBRC_CALIBRATION_WARNING_THRESHOLD/,
+    "runtime must apply the p0130 warning only above the source threshold",
+  );
+  assert.match(
+    calculatorSource,
+    /Estimates above 25% may overpredict major bleeding risk/,
+    "runtime calibration-warning direction drifted from p0130",
+  );
+  assert.equal(
+    KBRC_INPUT_LIMIT_PROVENANCE,
+    "radulator-data-entry-guardrail",
+    "runtime input-limit provenance must remain app-owned",
+  );
+  assert.match(
+    calculatorSource,
+    /data-entry guardrails, not ranges published as the model's validated domain/,
+    "runtime must disclose that its numeric input limits are not publication-derived domains",
+  );
+  assert.doesNotMatch(
+    calculatorSource,
+    /supported entry range|source calculator's supported entry range|not extrapolated/i,
+    "runtime must not attribute app input limits to the primary publication",
+  );
+
+  const warningVector = fixture.cases.find(({ id }) => id === "calibration-above-25");
+  assert.ok(warningVector, "canonical fixture lacks calibration-above-25");
+  const warningResult = computeKidneyBiopsyBleedingRisk(warningVector.inputs);
+  assert.ok(
+    warningResult._probability > calibrationWarning.threshold_probability,
+    "calibration-above-25 must exercise a probability above the source threshold",
+  );
+  assert.match(
+    warningResult["Calibration Warning"],
+    /Estimates above 25% may overpredict major bleeding risk/,
+    "calibration-above-25 runtime warning drifted from p0130",
+  );
+  const warningExpectation = warningVector.expect.fields.find(
+    ({ key }) => key === "Calibration Warning",
+  );
+  assert.equal(
+    warningExpectation?.includes,
+    "Estimates above 25% may overpredict major bleeding risk",
+    "calibration-above-25 fixture must bind the source-derived warning",
+  );
+}
+
 function combinedCohortMedians(xml) {
   const table = xml.match(/<table-wrap id="tbl1"[\s\S]*?<\/table-wrap>/)?.[0];
   assert.ok(table, "full-text XML lacks Table 1");
@@ -323,6 +396,18 @@ async function main() {
 
   const vectors = parsePublishedExamples(xml);
   assertRuntimeAndFixtures(vectors, fixture);
+  const calibrationWarning = parseCalibrationWarning(xml);
+  assertRuntimeClinicalClaims(
+    calibrationWarning,
+    calculatorBytes.toString("utf8"),
+    fixture,
+  );
+  const inputLimitValues = Object.fromEntries(
+    Object.entries(KBRC_INPUT_LIMITS).map(([field, { min, max, unit }]) => [
+      field,
+      { min, max, unit },
+    ]),
+  );
   const audit = {
     schema: "radulator-kbrc-primary-source-audit/v1",
     article_pmcid: "PMC13156734",
@@ -332,6 +417,14 @@ async function main() {
     license: "CC BY-NC-ND 4.0",
     equation_term_count: sourceTerms.length,
     source_example_displays: vectors.map(({ display }) => display),
+    calibration_warning: calibrationWarning,
+    runtime_calibration_warning_match: true,
+    input_limits: {
+      provenance: KBRC_INPUT_LIMIT_PROVENANCE,
+      publication_derived: false,
+      values: inputLimitValues,
+    },
+    runtime_input_limit_claims_match: true,
     runtime_equation_match: true,
     runtime_vector_match: true,
     fixture_vector_match: true,
