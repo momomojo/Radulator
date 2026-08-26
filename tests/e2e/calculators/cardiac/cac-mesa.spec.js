@@ -258,6 +258,39 @@ test.describe("CAC/MESA Calculator", () => {
     );
   });
 
+  test("keeps the nonzero MESA 75th-percentile equality boundary inclusive", async ({
+    page,
+  }) => {
+    await fillCacMesa(page, {
+      score: 68,
+      age: 55,
+      sex: "male",
+      race: "white",
+      vessels: "1",
+    });
+
+    const results = resultsRegion(page);
+    await expectResultValue(results, "Absolute CAC Band", "CAC 1-99", {
+      exact: true,
+    });
+    await expectResultValue(results, "Maron CAC Stage", "2", { exact: true });
+    await expectResultValue(
+      results,
+      "CAC Staging Burden",
+      "Moderate calcified atherosclerotic burden",
+    );
+    await expectResultValue(
+      results,
+      "CAC Stage Criterion",
+      ">=75th MESA reference score (68)",
+    );
+    await expectResultValue(
+      results,
+      "MESA Reference Position",
+      "At 75th reference score (68)",
+    );
+  });
+
   test("keeps absolute output while marking MESA unavailable outside limits", async ({
     page,
   }) => {
