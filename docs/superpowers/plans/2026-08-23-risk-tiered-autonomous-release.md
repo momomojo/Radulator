@@ -96,7 +96,7 @@
 - [ ] Run focused tests and confirm missing implementations fail.
 - [ ] Implement smoke and rollback selection.
 - [ ] Accept only verified `repository_dispatch` events: exact merged-current-main evidence for promotion or independently recomputed failed-run/last-known-good evidence for rollback; never accept a caller-supplied manual deployment ref. Run production smoke after Pages deploy and upload its evidence.
-- [ ] On a failed main deployment, emit a rollback repository dispatch for the independently selected last successful main SHA, re-authorize it inside `deploy.yml`, and record the rollback summary without modifying protected branches.
+- [ ] Only after trusted Pages success plus exact-SHA live-smoke failure, emit an explicit rollback-request repository dispatch carrying the failed run ID. Poll and re-read that run by trusted deploy workflow ID/path, independently select the last successful main SHA, re-authorize the resulting verified rollback dispatch inside `deploy.yml`, and record the rollback summary without modifying protected branches or recursing after rollback failure.
 - [ ] Run focused tests and commit `feat: verify and roll back failed deployments`.
 
 ### Task 5: Mac mini judge collection and signing overlay

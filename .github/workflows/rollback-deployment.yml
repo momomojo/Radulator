@@ -1,9 +1,8 @@
 name: Roll Back Failed Production Smoke
 
 on:
-  workflow_run:
-    workflows: [Deploy to GitHub Pages]
-    types: [completed]
+  repository_dispatch:
+    types: [radulator-live-smoke-rollback-request]
 
 permissions:
   contents: write
@@ -16,7 +15,6 @@ concurrency:
 
 jobs:
   rollback:
-    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main' && (github.event.workflow_run.event == 'push' || (github.event.workflow_run.event == 'repository_dispatch' && startsWith(github.event.workflow_run.display_title, 'Deploy radulator-auto-merge-deploy:')))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -29,7 +27,9 @@ jobs:
 
       - name: Select and dispatch last successful production SHA
         id: select
-        run: node scripts/select-rollback-deployment.mjs --failed-run-id ${{ github.event.workflow_run.id }} --output rollback-selection.json --dispatch
+        env:
+          FAILED_RUN_ID: ${{ github.event.client_payload.failedRunId }}
+        run: node scripts/select-rollback-deployment.mjs --failed-run-id "$FAILED_RUN_ID" --output rollback-selection.json --dispatch
 
       - name: Record rollback dispatch
         run: |
