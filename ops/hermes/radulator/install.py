@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,12 @@ CANONICAL_GITHUB_REPOSITORY = "momomojo/Radulator"
 LEGACY_GATE_JOB_NAMES = frozenset({"pr-gate-poller", "judge-queue"})
 SEED_CONVERT_JOB_ID = "c41b8448cce4"
 PROMOTER_JOB_ID = "f191f946d6fa"
+JUDGE_RESOURCE_BOUNDARY = (
+    " Operational resource boundary: strictly single-agent; never delegate_task, "
+    "subagents, MOA, or any delegation; never execute_code; use no more than 3 "
+    "concurrent web requests; make no more than 6 source retrieval attempts total; "
+    "fail closed rather than broaden."
+)
 SEED_CONVERT_PROMPT = """Seed conversion pass (WF-2b) with automatic clinical governance. Load radulator-operations and treat SEED_CONVERT_PREFLIGHT_JSON as control data.
 
 Owner policy:
@@ -82,6 +89,72 @@ def _require_absolute(path: Path, label: str) -> Path:
     if not resolved.exists() or not resolved.is_dir():
         raise InstallError(f"{label} does not exist as a directory: {resolved}")
     return resolved
+
+
+def _trusted_optional_file_sha256(path: Path) -> str | None:
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    if nofollow is None:
+        raise InstallError("Reviewed file binding requires no-follow file support.")
+    descriptor = None
+    maximum_bytes = 1024 * 1024
+    try:
+        descriptor = os.open(
+            path,
+            os.O_RDONLY | nofollow | getattr(os, "O_CLOEXEC", 0),
+        )
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise InstallError("Reviewed reconciliation spec is unavailable or unsafe.") from error
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode) or before.st_size > maximum_bytes:
+            raise InstallError("Reviewed reconciliation spec must be a bounded regular file.")
+        if before.st_uid != os.geteuid():
+            raise InstallError("Reviewed reconciliation spec must be agent-owned.")
+        if stat.S_IMODE(before.st_mode) != 0o600:
+            raise InstallError("Reviewed reconciliation spec must have exact mode 0600.")
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(
+                descriptor,
+                min(64 * 1024, maximum_bytes + 1 - total),
+            )
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > maximum_bytes:
+                raise InstallError(
+                    "Reviewed reconciliation spec must be a bounded regular file."
+                )
+        after = os.fstat(descriptor)
+        before_identity = (
+            before.st_dev,
+            before.st_ino,
+            before.st_uid,
+            stat.S_IFMT(before.st_mode),
+            stat.S_IMODE(before.st_mode),
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        )
+        after_identity = (
+            after.st_dev,
+            after.st_ino,
+            after.st_uid,
+            stat.S_IFMT(after.st_mode),
+            stat.S_IMODE(after.st_mode),
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+        )
+        if before_identity != after_identity or total != before.st_size:
+            raise InstallError("Reviewed reconciliation spec changed while being bound.")
+        return hashlib.sha256(b"".join(chunks)).hexdigest()
+    finally:
+        os.close(descriptor)
 
 
 def _top_level_mapping_scalar(text: str, section: str, key: str, label: str) -> str | None:
@@ -282,6 +355,7 @@ def build_plan(
     overlay = repo / "ops/hermes/radulator"
     ledger = radulator_home / "state/radulator-release-lifecycle.jsonl"
     reconciliation_spec = radulator_home / "state/radulator-lifecycle-reconciliation.json"
+    reconciliation_spec_sha256 = _trusted_optional_file_sha256(reconciliation_spec)
     lifecycle_cursor = radulator_home / "state/radulator-release-lifecycle-cursor.json"
     learning_cursor = radulator_home / "state/radulator-release-learning-cursor.json"
     hindsight_config = radulator_home / "hindsight/config.json"
@@ -292,6 +366,23 @@ def build_plan(
     verification_public = verification_private.with_name("radulator-verification-v1.public.pem")
     primary_public_keys_config = primary_private.with_name("public-keys.json")
     verification_public_keys_config = verification_private.with_name("public-keys.json")
+    if reconciliation_spec_sha256 is None:
+        reconciliation_prompt = (
+            "No operator-reviewed reconciliation spec was bound at install time. "
+            f"Never load or apply a later file at {reconciliation_spec}; re-run this "
+            "installer after placing the reviewed exact-0600 spec so its SHA-256 is "
+            "embedded in this job. "
+        )
+    else:
+        reconciliation_prompt = (
+            f"Before collecting work, require the operator-reviewed file {reconciliation_spec} "
+            "to remain present, then run exactly: "
+            f"python3 {overlay / 'lifecycle_controller.py'} reconcile --ledger {ledger} "
+            f"--spec {reconciliation_spec} --spec-sha256 {reconciliation_spec_sha256} "
+            "--hermes hermes --apply. This is the lifecycle_controller.py reconcile "
+            "path. Stop on any reconciliation error; never create or edit the reviewed "
+            "reconciliation spec during a job. "
+        )
     jobs = [
         _job(
             "radulator-clinical-judge-primary", radulator_home, repo,
@@ -305,7 +396,8 @@ def build_plan(
             f"--key-id radulator-primary-v1 --role primary --profile radulator --model {agent_model} --provider {agent_provider} "
             f"--output <attestation-json-path> && node {signer} post --repo {CANONICAL_GITHUB_REPOSITORY} "
             f"--attestation <attestation-json-path> --public-keys-file {primary_public_keys_config}. Require authoritative GitHub comment "
-            "readback. Never edit source or self-improve during judgment.",
+            "readback. Never edit source or self-improve during judgment."
+            + JUDGE_RESOURCE_BOUNDARY,
             ["radulator-clinical-judge"], "*/10 * * * *", agent_model, agent_provider,
         ),
         _job(
@@ -321,15 +413,13 @@ def build_plan(
             f"--model {agent_model} --provider {agent_provider} --output <attestation-json-path> && node {signer} post "
             f"--repo {CANONICAL_GITHUB_REPOSITORY} --attestation <attestation-json-path> "
             f"--public-keys-file {verification_public_keys_config}. Require authoritative GitHub "
-            "comment readback. Never edit source or self-improve during judgment.",
+            "comment readback. Never edit source or self-improve during judgment."
+            + JUDGE_RESOURCE_BOUNDARY,
             ["radulator-clinical-judge"], "3-59/10 * * * *", agent_model, agent_provider,
         ),
         _job(
             "radulator-release-lifecycle", radulator_home, repo,
-            f"Before collecting work, if the operator-reviewed file {reconciliation_spec} exists, run exactly: "
-            f"python3 {overlay / 'lifecycle_controller.py'} reconcile --ledger {ledger} --spec {reconciliation_spec} "
-            "--hermes hermes --apply. This is the lifecycle_controller.py reconcile path. Stop on any reconciliation error; "
-            "never create or edit the reviewed reconciliation spec during a job. "
+            reconciliation_prompt +
             f"Then run python3 {overlay / 'lifecycle_controller.py'} next --ledger {ledger} --cursor-state {lifecycle_cursor}. "
             "Invoke that collector exactly once in this run. If it returns count 0, stop immediately. Process only its single returned "
             "tracker and never enumerate the full ledger, board, or session history in this run. Reconcile only that tracker's Radulator "
@@ -380,6 +470,10 @@ def build_plan(
         "github_repository": CANONICAL_GITHUB_REPOSITORY,
         "radulator_home": str(radulator_home),
         "default_home": str(default_home),
+        "reconciliation_spec": {
+            "path": str(reconciliation_spec),
+            "sha256": reconciliation_spec_sha256,
+        },
         "inference": {"model": agent_model, "provider": agent_provider},
         "jobs": jobs,
         "keys": {

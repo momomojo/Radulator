@@ -514,47 +514,99 @@ def _validate_reconciliation_spec(value: Any) -> dict[str, Any]:
     }
 
 
-def _load_reconciliation_spec(path: str | Path) -> dict[str, Any]:
+def _load_reconciliation_spec(
+    path: str | Path,
+    expected_sha256: str,
+) -> dict[str, Any]:
     spec_path = Path(path)
-    try:
-        metadata = spec_path.lstat()
-    except OSError as error:
-        raise LedgerError("Lifecycle reconciliation spec is unavailable.") from error
-    if stat.S_ISLNK(metadata.st_mode):
-        raise LedgerError("Lifecycle reconciliation spec must not be a symlink.")
-    if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 1024 * 1024:
-        raise LedgerError("Lifecycle reconciliation spec must be a bounded regular file.")
-    if metadata.st_uid != os.geteuid():
-        raise LedgerError("Lifecycle reconciliation spec must be owned by the running agent.")
-    if stat.S_IMODE(metadata.st_mode) != 0o600:
-        raise LedgerError("Lifecycle reconciliation spec must have exact mode 0600.")
+    if not DIGEST_PATTERN.fullmatch(str(expected_sha256)):
+        raise LedgerError(
+            "Lifecycle reconciliation spec requires an exact expected SHA-256."
+        )
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    if nofollow is None:
+        raise LedgerError(
+            "Lifecycle reconciliation spec requires no-follow file support."
+        )
+    maximum_bytes = 1024 * 1024
     descriptor = None
     try:
         descriptor = os.open(
             spec_path,
-            os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
+            os.O_RDONLY | nofollow | getattr(os, "O_CLOEXEC", 0),
         )
-        opened = os.fstat(descriptor)
+        before = os.fstat(descriptor)
         if (
-            not stat.S_ISREG(opened.st_mode)
-            or opened.st_dev != metadata.st_dev
-            or opened.st_ino != metadata.st_ino
-            or opened.st_uid != os.geteuid()
-            or stat.S_IMODE(opened.st_mode) != 0o600
-            or opened.st_size > 1024 * 1024
+            not stat.S_ISREG(before.st_mode)
+            or before.st_size > maximum_bytes
         ):
-            raise LedgerError(
-                "Lifecycle reconciliation spec changed across trust validation."
-            )
-        with os.fdopen(descriptor, "r", encoding="utf-8") as reader:
-            descriptor = None
-            raw = reader.read(1024 * 1024 + 1)
-        if len(raw.encode("utf-8")) > 1024 * 1024:
             raise LedgerError(
                 "Lifecycle reconciliation spec must be a bounded regular file."
             )
-        value = json.loads(raw)
-    except (OSError, json.JSONDecodeError) as error:
+        if before.st_uid != os.geteuid():
+            raise LedgerError(
+                "Lifecycle reconciliation spec must be owned by the running agent."
+            )
+        if stat.S_IMODE(before.st_mode) != 0o600:
+            raise LedgerError(
+                "Lifecycle reconciliation spec must have exact mode 0600."
+            )
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(
+                descriptor,
+                min(64 * 1024, maximum_bytes + 1 - total),
+            )
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > maximum_bytes:
+                raise LedgerError(
+                    "Lifecycle reconciliation spec must be a bounded regular file."
+                )
+        after = os.fstat(descriptor)
+        trusted_before = (
+            before.st_dev,
+            before.st_ino,
+            before.st_uid,
+            stat.S_IFMT(before.st_mode),
+            stat.S_IMODE(before.st_mode),
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        )
+        trusted_after = (
+            after.st_dev,
+            after.st_ino,
+            after.st_uid,
+            stat.S_IFMT(after.st_mode),
+            stat.S_IMODE(after.st_mode),
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+        )
+        if trusted_after != trusted_before or total != before.st_size:
+            raise LedgerError(
+                "Lifecycle reconciliation spec changed while being read."
+            )
+        raw = b"".join(chunks)
+        if hashlib.sha256(raw).hexdigest() != expected_sha256:
+            raise LedgerError(
+                "Lifecycle reconciliation spec does not match expected SHA-256."
+            )
+        value = json.loads(raw.decode("utf-8"))
+    except OSError as error:
+        try:
+            if stat.S_ISLNK(spec_path.lstat().st_mode):
+                raise LedgerError(
+                    "Lifecycle reconciliation spec must not be a symlink."
+                ) from error
+        except OSError:
+            pass
+        raise LedgerError("Lifecycle reconciliation spec is unreadable.") from error
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise LedgerError("Lifecycle reconciliation spec is unreadable.") from error
     finally:
         if descriptor is not None:
@@ -651,23 +703,33 @@ def reconcile_trackers(
         )
         if (
             source["kind"] == "formspree_receipt"
-            and source["digest"]
-            not in _canonical(_exact_task_evidence(source_readback, source["task_id"]))
+            and not _has_exact_receipt_digest(
+                source_readback,
+                source["task_id"],
+                source["digest"],
+            )
         ):
             raise LedgerError(
                 f"Reconciliation source receipt digest failed authoritative readback for {task_id}."
             )
         if tracker.get("pr") is not None:
-            if not _has_exact_pr_reference(tracker_readback, task_id, tracker["pr"]):
+            pr_ok, head_ok, base_ok, coherent = _authority_mapping_status(
+                tracker_readback,
+                task_id,
+                tracker["pr"],
+                tracker["head_sha"],
+                tracker["base_sha"],
+            )
+            if not pr_ok:
                 raise LedgerError(f"Reconciliation PR failed Kanban readback for {task_id}.")
-            if not _has_exact_sha_reference(
-                tracker_readback, task_id, "head_sha", tracker["head_sha"]
-            ):
+            if not head_ok:
                 raise LedgerError(f"Reconciliation head SHA failed Kanban readback for {task_id}.")
-            if not _has_exact_sha_reference(
-                tracker_readback, task_id, "base_sha", tracker["base_sha"]
-            ):
+            if not base_ok:
                 raise LedgerError(f"Reconciliation base SHA failed Kanban readback for {task_id}.")
+            if not coherent:
+                raise LedgerError(
+                    f"Reconciliation coherent PR/head/base mapping failed Kanban readback for {task_id}."
+                )
         verified_trackers.append((tracker, tracker_status))
 
     frozen_plan: list[dict[str, Any]] = []
@@ -919,25 +981,142 @@ def _exact_task_evidence(value: Any, task_id: str) -> dict[str, Any]:
     return {"task": task_fields, "comment_bodies": comment_bodies}
 
 
-def _has_exact_pr_reference(value: Any, task_id: str, pr: int) -> bool:
-    task = _exact_task_record(value, task_id)
-    if "pr" in task:
-        return task.get("pr") == pr
-    rendered = _canonical(_exact_task_evidence(value, task_id))
-    return re.search(rf"(?<!\d)#{pr}(?!\d)", rendered) is not None
-
-
-def _has_exact_sha_reference(
+def _prose_authority_records(
     value: Any,
     task_id: str,
-    field: str,
-    sha: str,
+) -> list[tuple[int, str, str | None]]:
+    task = _exact_task_record(value, task_id)
+    bodies = [task.get("body")]
+    bodies.extend(comment.get("body") for comment in _exact_task_comments(value))
+    full_pattern = re.compile(
+        r"(?<!\d)\bPR\s*#(?P<pr>[1-9]\d*)(?!\d)"
+        r"[^\r\n]*?\b(?:exact\s+)?head(?:[_ -]?sha)?\b\s*[:=]?\s*"
+        r"(?P<head>[0-9a-f]+)(?![0-9a-f])"
+        r"[^\r\n]*?\bbase(?:[_ -]?sha)?\b\s*[:=]?\s*"
+        r"(?P<base>[0-9a-f]+)(?![0-9a-f])",
+        re.IGNORECASE,
+    )
+    partial_pattern = re.compile(
+        r"(?<!\d)\bPR\s*#(?P<pr>[1-9]\d*)(?!\d)"
+        r"[^\r\n]*?\b(?:exact\s+)?head(?:[_ -]?sha)?\b\s*[:=]?\s*"
+        r"(?P<head>[0-9a-f]+)(?![0-9a-f])",
+        re.IGNORECASE,
+    )
+    records: list[tuple[int, str, str | None]] = []
+    for body in bodies:
+        if not isinstance(body, str):
+            continue
+        for line in body.splitlines():
+            matches = list(full_pattern.finditer(line))
+            if not matches:
+                matches = list(partial_pattern.finditer(line))
+            for match in matches:
+                records.append((
+                    int(match.group("pr")),
+                    match.group("head").lower(),
+                    (
+                        match.group("base").lower()
+                        if "base" in match.groupdict()
+                        else None
+                    ),
+                ))
+    return records
+
+
+def _authority_mapping_status(
+    value: Any,
+    task_id: str,
+    pr: int,
+    head_sha: str,
+    base_sha: str,
+) -> tuple[bool, bool, bool, bool]:
+    task = _exact_task_record(value, task_id)
+    records = _prose_authority_records(value, task_id)
+    complete_records = {
+        (record_pr, record_head, record_base)
+        for record_pr, record_head, record_base in records
+        if (
+            len(record_head) == 40
+            and isinstance(record_base, str)
+            and len(record_base) == 40
+            and ("pr" not in task or task.get("pr") == record_pr)
+            and (
+                "head_sha" not in task or task.get("head_sha") == record_head
+            )
+            and (
+                "base_sha" not in task or task.get("base_sha") == record_base
+            )
+        )
+    }
+    fallback = next(iter(complete_records)) if len(complete_records) == 1 else None
+    all_structured = all(
+        field in task for field in ("pr", "head_sha", "base_sha")
+    )
+    coherent = all_structured or fallback is not None
+    pr_ok = (
+        task.get("pr") == pr
+        if "pr" in task
+        else (
+            fallback[0] == pr
+            if fallback is not None
+            else any(record_pr == pr for record_pr, _head, _base in records)
+        )
+    )
+    head_ok = (
+        task.get("head_sha") == head_sha
+        if "head_sha" in task
+        else (
+            fallback[0] == pr and fallback[1] == head_sha
+            if fallback is not None
+            else any(
+                record_pr == pr and record_head == head_sha
+                for record_pr, record_head, _base in records
+            )
+        )
+    )
+    base_ok = (
+        task.get("base_sha") == base_sha
+        if "base_sha" in task
+        else (
+            fallback == (pr, head_sha, base_sha)
+            if fallback is not None
+            else any(
+                record_pr == pr
+                and record_head == head_sha
+                and record_base == base_sha
+                for record_pr, record_head, record_base in records
+            )
+        )
+    )
+    return pr_ok, head_ok, base_ok, coherent
+
+
+def _has_exact_receipt_digest(
+    value: Any,
+    task_id: str,
+    digest: str,
 ) -> bool:
     task = _exact_task_record(value, task_id)
-    if field in task:
-        return task.get(field) == sha
-    rendered = _canonical(_exact_task_evidence(value, task_id))
-    return re.search(rf"(?<![0-9A-Fa-f]){sha}(?![0-9A-Fa-f])", rendered) is not None
+    structured = [
+        task[field]
+        for field in ("receipt_digest", "digest")
+        if field in task
+    ]
+    if structured:
+        return all(
+            isinstance(item, str) and item.lower() == digest
+            for item in structured
+        )
+    bodies = [task.get("body")]
+    bodies.extend(comment.get("body") for comment in _exact_task_comments(value))
+    pattern = re.compile(
+        rf"(?<![0-9a-f]){re.escape(digest)}(?![0-9a-f])",
+        re.IGNORECASE,
+    )
+    return any(
+        isinstance(body, str) and pattern.search(body) is not None
+        for body in bodies
+    )
 
 
 def _terminal_status(value: Any, task_id: str) -> str | None:
@@ -1237,6 +1416,7 @@ def main() -> None:
     reconcile = subparsers.add_parser("reconcile")
     reconcile.add_argument("--ledger", required=True)
     reconcile.add_argument("--spec", required=True)
+    reconcile.add_argument("--spec-sha256", required=True)
     reconcile.add_argument("--hermes", default="hermes")
     reconcile.add_argument("--apply", action="store_true")
     args = parser.parse_args()
@@ -1250,7 +1430,7 @@ def main() -> None:
     if args.command == "reconcile":
         print(_canonical(reconcile_trackers(
             ledger,
-            _load_reconciliation_spec(args.spec),
+            _load_reconciliation_spec(args.spec, args.spec_sha256),
             HermesKanbanCLI(args.hermes),
             apply=args.apply,
         )))

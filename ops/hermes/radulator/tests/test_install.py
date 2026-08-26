@@ -165,10 +165,9 @@ class InstallerTests(unittest.TestCase):
             self.assertIn("If it returns count 0, stop immediately", job["prompt"])
             self.assertIn("Process only its single returned tracker", job["prompt"])
         self.assertNotIn("--state smoke_passed", lifecycle["prompt"])
-        self.assertIn("lifecycle_controller.py reconcile", lifecycle["prompt"])
-        self.assertIn("radulator-lifecycle-reconciliation.json", lifecycle["prompt"])
-        self.assertIn("--apply", lifecycle["prompt"])
-        self.assertIn("never create or edit", lifecycle["prompt"].lower())
+        self.assertNotIn("lifecycle_controller.py reconcile", lifecycle["prompt"])
+        self.assertIn("No operator-reviewed reconciliation spec was bound", lifecycle["prompt"])
+        self.assertIn("re-run this installer", lifecycle["prompt"])
         self.assertIn("--state smoke_passed", learning["prompt"])
         self.assertIn("retain_learning.py", learning["prompt"])
         self.assertIn("--task-id <candidate.task_id>", learning["prompt"])
@@ -225,6 +224,53 @@ class InstallerTests(unittest.TestCase):
         for override in invalid:
             with self.subTest(override=override), self.assertRaisesRegex(InstallError, "inference"):
                 build_plan(**self.kwargs(), **override)
+
+    def test_judge_prompts_preserve_single_agent_resource_boundary(self):
+        plan = build_plan(**self.kwargs())
+        judges = [
+            job for job in plan["jobs"]
+            if job["name"].startswith("radulator-clinical-judge-")
+        ]
+
+        self.assertEqual(len(judges), 2)
+        for judge in judges:
+            prompt = judge["prompt"]
+            self.assertIn("strictly single-agent", prompt)
+            self.assertIn(
+                "never delegate_task, subagents, MOA, or any delegation",
+                prompt,
+            )
+            self.assertIn("never execute_code", prompt)
+            self.assertIn("no more than 3 concurrent web requests", prompt)
+            self.assertIn("no more than 6 source retrieval attempts total", prompt)
+            self.assertIn("fail closed rather than broaden", prompt)
+
+    def test_installer_binds_existing_reconciliation_spec_sha256(self):
+        state = self.radulator_home / "state"
+        state.mkdir()
+        spec_path = state / "radulator-lifecycle-reconciliation.json"
+        spec_path.write_text(json.dumps({
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "installer-bound-review",
+            "trackers": [{
+                "task_id": "t_missing",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }, separators=(",", ":")))
+        spec_path.chmod(0o600)
+        expected = install_module.hashlib.sha256(spec_path.read_bytes()).hexdigest()
+
+        plan = build_plan(**self.kwargs())
+
+        lifecycle = next(
+            job for job in plan["jobs"]
+            if job["name"] == "radulator-release-lifecycle"
+        )
+        self.assertIn("lifecycle_controller.py reconcile", lifecycle["prompt"])
+        self.assertIn("--spec-sha256 " + expected, lifecycle["prompt"])
+        self.assertIn("--apply", lifecycle["prompt"])
+        self.assertEqual(plan["reconciliation_spec"]["sha256"], expected)
 
     def test_judge_skill_prescribes_complete_sign_and_post_commands(self):
         skill = (self.repo / "ops/hermes/radulator/skills/radulator-clinical-judge/SKILL.md").read_text()

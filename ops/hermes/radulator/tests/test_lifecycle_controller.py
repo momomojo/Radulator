@@ -1,3 +1,4 @@
+import hashlib
 import json
 import subprocess
 import sys
@@ -967,6 +968,51 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         self.assertEqual(self.ledger.replay().events, ())
 
+    def test_reconciliation_rejects_receipt_digest_prefix_of_longer_hex_token(self):
+        digest = "1" * 64
+        tasks = {
+            "t_tracker": {
+                "task": {"id": "t_tracker", "status": "todo", "body": "tracker"},
+                "parents": [],
+            },
+            "t_receipt": {
+                "task": {
+                    "id": "t_receipt",
+                    "status": "done",
+                    "body": "Receipt digest: " + digest + "f",
+                },
+                "parents": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("ambiguous receipt digest must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "exact-receipt-digest-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "feedback-source",
+                "source": {
+                    "kind": "formspree_receipt",
+                    "task_id": "t_receipt",
+                    "digest": digest,
+                },
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "receipt digest"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(self.ledger.replay().events, ())
+
     def test_reconciliation_preflights_ledger_conflicts_before_any_apply(self):
         self.ledger.append(
             idempotency_key="existing-second",
@@ -1218,6 +1264,61 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         self.assertEqual(self.ledger.replay().events, ())
 
+    def test_prose_authority_does_not_mix_stale_pr_head_and_base_tokens(self):
+        requested_base = "d" * 40
+        tasks = {
+            "t_tracker": {
+                "task": {
+                    "id": "t_tracker",
+                    "status": "todo",
+                    "body": (
+                        "Current mapping: PR #999; head " + requested_base
+                        + "; base " + HEAD
+                    ),
+                },
+                "comments": [
+                    {
+                        "body": (
+                            "Stale mapping: PR #16; head " + HEAD
+                            + "; base " + requested_base
+                        ),
+                    },
+                ],
+                "parents": [],
+            },
+            "t_source": {
+                "task": {"id": "t_source", "status": "done", "body": "source"},
+                "parents": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("mixed stale authority must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "coherent-prose-authority-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+                "pr": 16,
+                "head_sha": HEAD,
+                "base_sha": requested_base,
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "coherent"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+
+        self.assertEqual(self.ledger.replay().events, ())
+
     def test_reconciliation_spec_requires_owned_nonsymlink_exact_0600_file(self):
         payload = {
             "schema": "radulator-lifecycle-reconciliation/v1",
@@ -1231,16 +1332,17 @@ class LifecycleLedgerTests(unittest.TestCase):
         target = Path(self.temp.name) / "target.json"
         target.write_text(json.dumps(payload))
         target.chmod(0o600)
+        expected_sha256 = hashlib.sha256(target.read_bytes()).hexdigest()
         symlink = Path(self.temp.name) / "reviewed.json"
         symlink.symlink_to(target)
         with self.assertRaisesRegex(LedgerError, "symlink"):
-            lifecycle_module._load_reconciliation_spec(symlink)
+            lifecycle_module._load_reconciliation_spec(symlink, expected_sha256)
 
         loose = Path(self.temp.name) / "loose.json"
         loose.write_text(json.dumps(payload))
         loose.chmod(0o640)
         with self.assertRaisesRegex(LedgerError, "0600"):
-            lifecycle_module._load_reconciliation_spec(loose)
+            lifecycle_module._load_reconciliation_spec(loose, expected_sha256)
 
         wrong_owner = Path(self.temp.name) / "wrong-owner.json"
         wrong_owner.write_text(json.dumps(payload))
@@ -1251,7 +1353,66 @@ class LifecycleLedgerTests(unittest.TestCase):
             return_value=wrong_owner.stat().st_uid + 1,
         ):
             with self.assertRaisesRegex(LedgerError, "owned"):
-                lifecycle_module._load_reconciliation_spec(wrong_owner)
+                lifecycle_module._load_reconciliation_spec(
+                    wrong_owner, expected_sha256,
+                )
+
+    def test_reconciliation_spec_requires_exact_reviewed_sha256(self):
+        original = json.dumps({
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "reviewed-a",
+            "trackers": [{
+                "task_id": "t_missing",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }, separators=(",", ":")).encode()
+        replacement = original.replace(b"reviewed-a", b"reviewed-b")
+        self.assertEqual(len(replacement), len(original))
+        spec_path = Path(self.temp.name) / "digest-bound.json"
+        spec_path.write_bytes(replacement)
+        spec_path.chmod(0o600)
+        reviewed_sha256 = hashlib.sha256(original).hexdigest()
+
+        with self.assertRaisesRegex(LedgerError, "SHA-256"):
+            lifecycle_module._load_reconciliation_spec(
+                spec_path, reviewed_sha256,
+            )
+
+    def test_reconciliation_spec_rejects_in_place_change_during_fd_read(self):
+        original = json.dumps({
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "reviewed-a",
+            "trackers": [{
+                "task_id": "t_missing",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }, separators=(",", ":")).encode()
+        replacement = original.replace(b"reviewed-a", b"reviewed-b")
+        spec_path = Path(self.temp.name) / "mutated-during-read.json"
+        spec_path.write_bytes(original)
+        spec_path.chmod(0o600)
+        reviewed_sha256 = hashlib.sha256(original).hexdigest()
+        real_read = lifecycle_module.os.read
+        changed = False
+
+        def tampering_read(descriptor, count):
+            nonlocal changed
+            chunk = real_read(descriptor, count)
+            if chunk and not changed:
+                changed = True
+                spec_path.write_bytes(replacement)
+                spec_path.chmod(0o600)
+            return chunk
+
+        with mock.patch.object(
+            lifecycle_module.os, "read", side_effect=tampering_read,
+        ):
+            with self.assertRaisesRegex(LedgerError, "changed"):
+                lifecycle_module._load_reconciliation_spec(
+                    spec_path, reviewed_sha256,
+                )
 
     def test_archived_nonterminal_cac_tracker_keeps_needs_fix_and_plans_correction(self):
         self.assertTrue(
@@ -1485,6 +1646,7 @@ class LifecycleLedgerTests(unittest.TestCase):
             }],
         }))
         spec_path.chmod(0o600)
+        spec_sha256 = hashlib.sha256(spec_path.read_bytes()).hexdigest()
         fake_hermes = Path(self.temp.name) / "fake-hermes"
         fake_hermes.write_text(
             "#!/usr/bin/env python3\n"
@@ -1502,6 +1664,8 @@ class LifecycleLedgerTests(unittest.TestCase):
             str(self.ledger_path),
             "--spec",
             str(spec_path),
+            "--spec-sha256",
+            spec_sha256,
             "--hermes",
             str(fake_hermes),
         ]
