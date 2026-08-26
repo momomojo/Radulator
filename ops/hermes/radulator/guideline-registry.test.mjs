@@ -126,6 +126,13 @@ for (const calculator of calculators) {
 }
 
 for (const [calculatorId, expected] of Object.entries({
+  birads: {
+    basis_type: "classification-system",
+    source_urls: [
+      "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
+      "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
+    ],
+  },
   "cac-mesa": {
     basis_type: "reference-dataset",
     source_url: "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values",
@@ -147,7 +154,12 @@ for (const [calculatorId, expected] of Object.entries({
   assert.ok(record, `${calculatorId}: required dedicated registry row is missing`);
   assert.equal(record.basis_type, expected.basis_type);
   assert.equal(record.verification_status, "verified");
-  assert.ok(record.sources.some((source) => source.url === expected.source_url), `${calculatorId}: authoritative source is missing`);
+  for (const sourceUrl of expected.source_urls ?? [expected.source_url]) {
+    assert.ok(
+      record.sources.some((source) => source.url === sourceUrl),
+      `${calculatorId}: authoritative source is missing: ${sourceUrl}`,
+    );
+  }
 }
 
 console.log(`Guideline registry coverage verified for ${calculators.length} calculator exports.`);

@@ -92,8 +92,11 @@
       "basis_type": "classification-system",
       "verification_status": "verified",
       "last_verified": "2026-08-24",
-      "justification": "The installed registry previously recorded an authoritative ACR BI-RADS v2025 verification; this row preserves that exact dated assertion and source.",
-      "sources": [{ "authority": "American College of Radiology", "title": "Breast Imaging Reporting and Data System (BI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS" }]
+      "justification": "The ACR source identifies BI-RADS v2025, while the FDA source confirms that amended MQSA reporting requirements, including the federal breast-density notification, became enforceable on September 10, 2024.",
+      "sources": [
+        { "authority": "American College of Radiology", "title": "Breast Imaging Reporting and Data System (BI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS" },
+        { "authority": "U.S. Food and Drug Administration", "title": "Important Information: Final Rule to Amend the Mammography Quality Standards Act (MQSA)", "role": "official-authority", "url": "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa" }
+      ]
     },
     {
       "calculator_id": "cac-mesa",
