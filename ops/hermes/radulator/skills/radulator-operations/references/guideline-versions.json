@@ -91,8 +91,8 @@
       "implemented_version": "FDA MQSA 2024 with ACR BI-RADS v2025 context",
       "basis_type": "classification-system",
       "verification_status": "verified",
-      "last_verified": "2026-08-25",
-      "justification": "The ACR source identifies BI-RADS v2025, while the FDA source confirms that amended MQSA reporting requirements, including the federal breast-density notification, became enforceable on September 10, 2024.",
+      "last_verified": "2026-08-26",
+      "justification": "The ACR source identifies BI-RADS v2025. A live official-FDA audit independently parses and binds the amended MQSA seven-day communication rule, self-referred referral system, 30-day prior-comparison follow-up with Alternative Standard #25, and the marker-placement assessment under Alternative Standard #12 to executable Radulator vectors.",
       "sources": [
         { "authority": "American College of Radiology", "title": "Breast Imaging Reporting and Data System (BI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS" },
         { "authority": "American College of Radiology", "title": "BI-RADS v2025 Mammography Summary Form", "role": "official-authority", "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf" },
@@ -107,6 +107,25 @@
         "fixture_path": "tests/fixtures/compute/birads.json",
         "test_command": "npm run test:hermes-guideline-registry",
         "metadata_expectation": { "field": "guidelineVersion", "equals": "FDA MQSA 2024 · ACR BI-RADS v2025 context" },
+        "source_audit": {
+          "schema": "radulator-live-source-audit/v1",
+          "command": "npm run test:birads-fda-source",
+          "authority": "U.S. Food and Drug Administration",
+          "source_urls": [
+            "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
+            "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
+            "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
+            "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement"
+          ],
+          "vector_ids": [
+            "category-3",
+            "category-4",
+            "category-5",
+            "incomplete-prior-comparison",
+            "post-procedure-marker"
+          ],
+          "source_bytes_committed": false
+        },
         "claims": [
           {
             "id": "acr-v2025-context",
@@ -139,6 +158,14 @@
             "fact": "Suspicious and highly suggestive assessments expose the federal seven-calendar-day report and lay-summary communication requirement.",
             "dimensions": ["classification", "threshold", "interpretation", "output"],
             "vector_ids": ["category-4", "category-5"]
+          },
+          {
+            "id": "fda-self-referred-referral-system",
+            "source_url": "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
+            "source_locator": "FAQ: patients without a healthcare provider and the clinically indicated referral system",
+            "fact": "Facilities accepting patients without a healthcare provider expose the required referral system for probably benign, suspicious, and highly suggestive assessments.",
+            "dimensions": ["classification", "interpretation", "output"],
+            "vector_ids": ["category-3", "category-4", "category-5"]
           },
           {
             "id": "fda-alternative-standard-25",
