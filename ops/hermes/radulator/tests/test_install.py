@@ -678,6 +678,133 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue(all(job.get("state") == "paused" for job in consumers))
         self.assertTrue(all(job.get("next_run_at") is None for job in consumers))
 
+    def test_cross_profile_hardlink_alias_restores_disabled_idempotently(self):
+        primary_scripts = self.radulator_home / "scripts"
+        primary_scripts.mkdir()
+        publisher_wrapper = primary_scripts / "trusted_publisher_cron.sh"
+        original = b"#!/bin/sh\nexit 94\n"
+        publisher_wrapper.write_bytes(original)
+        publisher_wrapper.chmod(0o700)
+        renamed_alias = primary_scripts / "operator-renamed-primary-alias"
+        os.link(publisher_wrapper, renamed_alias)
+
+        verification_jobs_path = self.default_home / "cron" / "jobs.json"
+        verification_jobs = json.loads(verification_jobs_path.read_text())
+        verification_jobs.append({
+            "id": "verification-cross-profile-hardlink",
+            "name": "verification-cross-profile-hardlink",
+            "script": str(renamed_alias),
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        verification_jobs_path.write_text(json.dumps(verification_jobs) + "\n")
+
+        original_atomic_write = install_module._atomic_write
+        observed_before_asset_write = []
+
+        def observe_asset_write(path, content, mode):
+            if path.name == "trusted_publisher_cron.sh":
+                jobs_before_write = json.loads(verification_jobs_path.read_text())
+                alias_before_write = next(
+                    job
+                    for job in jobs_before_write
+                    if job.get("id") == "verification-cross-profile-hardlink"
+                )
+                observed_before_asset_write.append({
+                    "enabled": alias_before_write.get("enabled"),
+                    "state": alias_before_write.get("state"),
+                    "next_run_at": alias_before_write.get("next_run_at"),
+                })
+            return original_atomic_write(path, content, mode)
+
+        with mock.patch.object(
+            install_module, "_atomic_write", side_effect=observe_asset_write
+        ):
+            apply_install(**self.kwargs())
+
+        installed_target = primary_scripts / "trusted_publisher_cron.sh"
+        self.assertEqual(observed_before_asset_write, [{
+            "enabled": False,
+            "state": "paused",
+            "next_run_at": None,
+        }])
+        self.assertNotEqual(installed_target.read_bytes(), original)
+        self.assertEqual(renamed_alias.read_bytes(), original)
+        self.assertNotEqual(installed_target.stat().st_ino, renamed_alias.stat().st_ino)
+        installed_jobs = json.loads(verification_jobs_path.read_text())
+        alias_job = next(
+            job
+            for job in installed_jobs
+            if job.get("id") == "verification-cross-profile-hardlink"
+        )
+        self.assertIs(alias_job["enabled"], False)
+        self.assertEqual(alias_job["state"], "paused")
+        self.assertIsNone(alias_job["next_run_at"])
+
+        for _ in range(2):
+            restore_install(**self.kwargs())
+            restored_jobs = json.loads(verification_jobs_path.read_text())
+            alias_job = next(
+                job
+                for job in restored_jobs
+                if job.get("id") == "verification-cross-profile-hardlink"
+            )
+            self.assertIs(alias_job["enabled"], False)
+            self.assertEqual(alias_job["state"], "paused")
+            self.assertIsNone(alias_job["next_run_at"])
+
+    def test_reverse_cross_profile_symlink_alias_restores_disabled_idempotently(self):
+        primary_scripts = self.radulator_home / "scripts"
+        verification_scripts = self.default_home / "scripts"
+        verification_scripts.mkdir()
+        verification_target = verification_scripts / "trusted_publisher_cron.sh"
+        original = b"#!/bin/sh\nexit 95\n"
+        verification_target.write_bytes(original)
+        verification_target.chmod(0o700)
+        renamed_alias = self.radulator_home / "operator-renamed-verification-alias"
+        renamed_alias.symlink_to(verification_target)
+
+        primary_jobs_path = self.radulator_home / "cron" / "jobs.json"
+        primary_payload = json.loads(primary_jobs_path.read_text())
+        primary_payload["jobs"].append({
+            "id": "primary-cross-profile-symlink",
+            "name": "primary-cross-profile-symlink",
+            "script": str(renamed_alias),
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        primary_jobs_path.write_text(json.dumps(primary_payload) + "\n")
+
+        apply_install(**self.kwargs())
+
+        publisher_wrapper = primary_scripts / "trusted_publisher_cron.sh"
+        self.assertTrue(publisher_wrapper.is_file())
+        self.assertEqual(verification_target.read_bytes(), original)
+        self.assertEqual(renamed_alias.resolve(), verification_target.resolve())
+        installed_jobs = json.loads(primary_jobs_path.read_text())["jobs"]
+        alias_job = next(
+            job
+            for job in installed_jobs
+            if job.get("id") == "primary-cross-profile-symlink"
+        )
+        self.assertIs(alias_job["enabled"], False)
+        self.assertEqual(alias_job["state"], "paused")
+        self.assertIsNone(alias_job["next_run_at"])
+
+        for _ in range(2):
+            restore_install(**self.kwargs())
+            restored_jobs = json.loads(primary_jobs_path.read_text())["jobs"]
+            alias_job = next(
+                job
+                for job in restored_jobs
+                if job.get("id") == "primary-cross-profile-symlink"
+            )
+            self.assertIs(alias_job["enabled"], False)
+            self.assertEqual(alias_job["state"], "paused")
+            self.assertIsNone(alias_job["next_run_at"])
+
     def test_restore_quiesces_external_hardlink_alias_before_first_restore_write(self):
         apply_install(**self.kwargs())
         self.set_publisher_enabled()

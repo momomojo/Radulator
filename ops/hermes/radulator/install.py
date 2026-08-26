@@ -1775,7 +1775,10 @@ def _job_matches_template_provenance(
 
 
 def _job_script_consumes_managed_target(
-    home: Path, script: Any, managed_names: set[str]
+    home: Path,
+    script: Any,
+    managed_names: set[str],
+    managed_homes: set[Path] | None = None,
 ) -> bool:
     if not isinstance(script, str) or not script:
         return False
@@ -1788,51 +1791,56 @@ def _job_script_consumes_managed_target(
 
     scripts_root = home / "scripts"
     candidate = raw if raw.is_absolute() else scripts_root / raw
+    managed_roots = {scripts_root}
+    managed_roots.update(
+        managed_home / "scripts" for managed_home in (managed_homes or set())
+    )
 
-    # A hard link can live outside scripts_root and use an unrelated basename.
-    # Compare the non-followed regular-file identity before the containment
-    # check so every alias of a managed executable is still quiesced.  lstat
-    # avoids opening FIFOs/devices or following an attacker-selected symlink.
+    # A hard link can live outside either profile's scripts root and use an
+    # unrelated basename. Compare the non-followed regular-file identity
+    # against both managed roots so cross-profile aliases are also quiesced.
+    # lstat avoids opening FIFOs/devices or following an attacker-selected
+    # symlink.
     try:
         candidate_details = candidate.lstat()
     except (FileNotFoundError, OSError, RuntimeError, ValueError):
         candidate_details = None
     if candidate_details is not None and stat.S_ISREG(candidate_details.st_mode):
+        for managed_root in managed_roots:
+            for managed_name in managed_names:
+                try:
+                    managed_details = (managed_root / managed_name).lstat()
+                except (FileNotFoundError, OSError, RuntimeError, ValueError):
+                    continue
+                if (
+                    stat.S_ISREG(managed_details.st_mode)
+                    and candidate_details.st_dev == managed_details.st_dev
+                    and candidate_details.st_ino == managed_details.st_ino
+                ):
+                    return True
+
+    try:
+        resolved_candidate = candidate.resolve(strict=False)
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+    for managed_root in managed_roots:
         for managed_name in managed_names:
+            managed_target = managed_root / managed_name
             try:
-                managed_details = (scripts_root / managed_name).lstat()
+                if resolved_candidate == managed_target.resolve(strict=False):
+                    return True
+                candidate_details = candidate.stat()
+                managed_details = managed_target.stat()
             except (FileNotFoundError, OSError, RuntimeError, ValueError):
                 continue
             if (
-                stat.S_ISREG(managed_details.st_mode)
+                stat.S_ISREG(candidate_details.st_mode)
+                and stat.S_ISREG(managed_details.st_mode)
                 and candidate_details.st_dev == managed_details.st_dev
                 and candidate_details.st_ino == managed_details.st_ino
             ):
                 return True
-
-    try:
-        resolved_root = scripts_root.resolve(strict=False)
-        resolved_candidate = candidate.resolve(strict=False)
-        resolved_candidate.relative_to(resolved_root)
-    except (OSError, RuntimeError, ValueError):
-        return False
-
-    for managed_name in managed_names:
-        managed_target = scripts_root / managed_name
-        try:
-            if resolved_candidate == managed_target.resolve(strict=False):
-                return True
-            candidate_details = candidate.stat()
-            managed_details = managed_target.stat()
-        except (FileNotFoundError, OSError, RuntimeError, ValueError):
-            continue
-        if (
-            stat.S_ISREG(candidate_details.st_mode)
-            and stat.S_ISREG(managed_details.st_mode)
-            and candidate_details.st_dev == managed_details.st_dev
-            and candidate_details.st_ino == managed_details.st_ino
-        ):
-            return True
     return False
 
 
@@ -1849,7 +1857,14 @@ def _job_consumes_managed_target(
         for template in templates
     ):
         return True
-    if _job_script_consumes_managed_target(home, job.get("script"), scripts):
+    managed_homes = {
+        Path(template["_home"])
+        for template in templates
+        if isinstance(template.get("_home"), str)
+    }
+    if _job_script_consumes_managed_target(
+        home, job.get("script"), scripts, managed_homes
+    ):
         return True
     if skills.intersection(_job_skill_names(job)):
         return True
