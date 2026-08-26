@@ -124,16 +124,14 @@ test.describe("PESI Score Calculator", () => {
     await expect(calculate).toBeEnabled();
   });
 
-  test("crosses the class II/III and 2026 low/elevated boundary at 85/86", async ({
+  test("crosses the original PESI class II/III boundary at 85/86", async ({
     page,
   }) => {
     await fillPesi(page, { age_years: "85" });
     await page.getByRole("button", { name: "Calculate", exact: true }).click();
     await expect(results(page)).toContainText("85 points");
     await expect(results(page)).toContainText("II — Low PESI mortality class");
-    await expect(results(page)).toContainText(
-      "Low PESI clinical-severity score (≤85)",
-    );
+    await expect(results(page)).not.toContainText("AHA/ACC");
 
     await page.locator("#age_years").fill("86");
     await page.getByRole("button", { name: "Calculate", exact: true }).click();
@@ -141,9 +139,7 @@ test.describe("PESI Score Calculator", () => {
     await expect(results(page)).toContainText(
       "III — Intermediate PESI mortality class",
     );
-    await expect(results(page)).toContainText(
-      "Elevated PESI clinical-severity score (>85)",
-    );
+    await expect(results(page)).not.toContainText("AHA/ACC");
   });
 
   test("calculates the full abnormal-threshold vector without management advice", async ({
@@ -171,7 +167,7 @@ test.describe("PESI Score Calculator", () => {
     await expect(results(page)).not.toContainText("thrombolysis recommended");
   });
 
-  test("shows all primary and current-context references", async ({ page }) => {
+  test("shows only source-relevant PESI references", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "References" })).toBeVisible();
     await expect(page.getByText(/Derivation and validation of a prognostic model/)).toBeVisible();
     await expect(
@@ -179,13 +175,12 @@ test.describe("PESI Score Calculator", () => {
         name: /Aujesky D, Perrier A, Roy PM, et al\. Validation of a clinical prognostic model to identify low-risk patients with pulmonary embolism\./,
       }),
     ).toHaveAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/17547715/");
-    await page.getByRole("button", { name: "Show 3 more references" }).click();
-    await expect(page.getByText(/2026 AHA\/ACC\/ACCP/)).toBeVisible();
     await expect(
       page.getByRole("link", {
-        name: /Talerico R, de Wit K, Barco S, et al\. Evidence-based risk stratification of patients with acute pulmonary embolism/,
+        name: /Zhou XY, Ben SQ, Chen HL, Ni SS\. The prognostic value of pulmonary embolism severity index/,
       }),
-    ).toHaveAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/41354154/");
+    ).toHaveAttribute("href", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3571977/");
+    await expect(page.getByText(/2026 AHA\/ACC\/ACCP/)).toHaveCount(0);
   });
 
   test("reset clears inputs and the calculated result", async ({ page }) => {
