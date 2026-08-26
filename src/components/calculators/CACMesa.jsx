@@ -38,33 +38,93 @@ function getAbsoluteCategory(score) {
     return {
       label: "No calcified coronary plaque",
       range: "0",
-      severity: "success",
     };
   }
   if (score < 100) {
     return {
-      label: "Mild calcified plaque burden",
+      label: "CAC 1-99",
       range: "1-99",
-      severity: "success",
     };
   }
   if (score < 300) {
     return {
       label: "Moderate calcified plaque burden",
       range: "100-299",
-      severity: "warning",
     };
   }
   if (score < 1000) {
     return {
       label: "Severe calcified plaque burden",
       range: "300-999",
-      severity: "danger",
     };
   }
   return {
     label: "Extensive calcified plaque burden",
     range: ">=1000",
+  };
+}
+
+function getMaronStage(score, mesa) {
+  if (score === 0) {
+    return {
+      stage: "0",
+      burden: "No calcified atherosclerotic burden",
+      criterion: "CAC 0",
+      severity: "success",
+    };
+  }
+
+  if (score < 100) {
+    if (!mesa.available) {
+      return {
+        stage: "Not assigned",
+        burden: "Percentile-adjusted staging not assigned",
+        criterion:
+          "CAC 1-99 requires supported age, sex, and race/ethnicity reference context to distinguish Maron stage 1 from stage 2.",
+        severity: "warning",
+      };
+    }
+
+    const seventyFifthReferenceScore = mesa.referenceScores[2];
+    if (score >= seventyFifthReferenceScore) {
+      return {
+        stage: "2",
+        burden: "Moderate calcified atherosclerotic burden",
+        criterion: `CAC 1-99 and >=75th MESA reference score (${seventyFifthReferenceScore}) for the selected age, sex, and race/ethnicity`,
+        severity: "warning",
+      };
+    }
+
+    return {
+      stage: "1",
+      burden: "Mild calcified atherosclerotic burden",
+      criterion: `CAC 1-99 and <75th MESA reference score (${seventyFifthReferenceScore}) for the selected age, sex, and race/ethnicity`,
+      severity: "success",
+    };
+  }
+
+  if (score < 300) {
+    return {
+      stage: "2",
+      burden: "Moderate calcified atherosclerotic burden",
+      criterion: "CAC 100-299",
+      severity: "warning",
+    };
+  }
+
+  if (score < 1000) {
+    return {
+      stage: "3",
+      burden: "Severe calcified atherosclerotic burden",
+      criterion: "CAC 300-999",
+      severity: "danger",
+    };
+  }
+
+  return {
+    stage: "4",
+    burden: "Extensive calcified atherosclerotic burden",
+    criterion: "CAC >=1000",
     severity: "danger",
   };
 }
@@ -165,6 +225,7 @@ function getMesaContext({ age, sex, race, score }) {
 function buildReportSnippet({
   score,
   category,
+  stage,
   cacDrs,
   mesa,
   age,
@@ -177,7 +238,8 @@ function buildReportSnippet({
 
   return [
     `Agatston CAC total: ${formatScore(score)}.`,
-    `Absolute CAC band: ${category.label} (${category.range}).`,
+    `Absolute CAC band: ${category.label}.`,
+    `Maron proposed CAC stage: ${stage.stage}; ${stage.burden}; ${stage.criterion}.`,
     `CAC-DRS: ${cacDrs}.`,
     mesaLine,
     "Educational/radiology support only; correlate clinically.",
@@ -218,7 +280,7 @@ export const CACMesa = {
   info: {
     text:
       "This calculator interprets a total Agatston coronary artery calcium score already produced by CT software. It does not calculate Agatston score from CT pixels, lesion area, HU bins, scanner protocol, or slice data.\n\n" +
-      "Outputs include an absolute CAC burden band from the Maron et al. 2024 proposed staging bands, an optional CAC-DRS A/N code from the original SCCT 2018 CAC-DRS publication, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. The proposed absolute bands are 0, 1-99, 100-299, 300-999, and >=1000; this tool reports burden labels only and does not reproduce the proposal's treatment recommendations. The primary CAC-DRS source conflicts at exact 300: narrative text describes the traditional 300-1000 band while the formal table defines A2 as 100-299 and A3 as >300. This tool therefore does not report a CAC-DRS A category at exact 300 and limits that input to the separately sourced absolute burden band.\n\n" +
+      "Outputs include a score-only Agatston range, the Maron et al. 2024 proposed CAC stage and burden label, an optional CAC-DRS A/N code from the original SCCT 2018 CAC-DRS publication, and MESA reference context for age 45-84 using only the MESA-supported race/ethnicity categories. Maron stage 1 requires CAC 1-99 and a value below the 75th percentile; CAC 1-99 at or above the 75th percentile is stage 2. When the required MESA reference context is unavailable, this tool preserves the absolute range but does not assign stage 1 versus 2. It reports no treatment recommendations. The primary CAC-DRS source conflicts at exact 300: narrative text describes the traditional 300-1000 band while the formal table defines A2 as 100-299 and A3 as >300. This tool therefore does not report a CAC-DRS A category at exact 300.\n\n" +
       "The local MESA output compares the score with the official 25th, 50th, 75th, and 90th reference scores. It does not estimate an exact percentile. The reference cohort comprised participants free of clinical cardiovascular disease and treated diabetes at baseline. A relative reference position does not by itself establish that a patient is at high clinical risk. Outside the MESA limits, the absolute band and CAC-DRS remain available without extrapolation.",
     link: {
       label: "View MESA CAC Score Reference Values",
@@ -300,21 +362,26 @@ export const CACMesa = {
       };
     }
 
-    const category = getAbsoluteCategory(parsedScore);
-    const cacDrs = getCacDrs(parsedScore, vesselCount);
     const mesa = getMesaContext({
       age: parsedAge,
       sex,
       race,
       score: parsedScore,
     });
+    const category = getAbsoluteCategory(parsedScore);
+    const stage = getMaronStage(parsedScore, mesa);
+    const cacDrs = getCacDrs(parsedScore, vesselCount);
     const referenceText = mesa.available
       ? `25th ${mesa.referenceScores[0]}, 50th ${mesa.referenceScores[1]}, 75th ${mesa.referenceScores[2]}, 90th ${mesa.referenceScores[3]}`
       : "Unavailable";
 
     const result = {
       "Absolute CAC Band": category.label,
-      "Absolute CAC Source": "Maron et al. 2024 proposed staging bands",
+      "Absolute CAC Source":
+        "Score-only Agatston range; not a percentile-adjusted burden stage",
+      "Maron CAC Stage": stage.stage,
+      "CAC Staging Burden": stage.burden,
+      "CAC Stage Criterion": stage.criterion,
       "Agatston Score": formatScore(parsedScore),
       "CAC Score Range": category.range,
       "CAC-DRS": cacDrs,
@@ -330,13 +397,14 @@ export const CACMesa = {
       "Report Snippet": buildReportSnippet({
         score: parsedScore,
         category,
+        stage,
         cacDrs,
         mesa,
         age: parsedAge,
         sex,
         race,
       }),
-      _severity: category.severity,
+      _severity: stage.severity,
     };
 
     result["MESA Limitation"] = mesa.available

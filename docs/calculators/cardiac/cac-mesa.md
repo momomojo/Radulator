@@ -9,10 +9,16 @@ protocol, or slice data.
 
 Outputs:
 
-- Absolute CAC burden band from the **Maron et al. 2024 proposal**: 0, 1-99,
-  100-299, 300-999, and >=1000. These are reported as source-specific burden
-  labels rather than numbered clinical stages, and the calculator does not
-  reproduce the proposal's treatment recommendations.
+- A score-only Agatston range: 0, 1-99, 100-299, 300-999, or >=1000.
+- The **Maron et al. 2024 proposed CAC stage and burden label**. Stage 1 requires
+  CAC 1-99 **and** a value below the 75th percentile; CAC 1-99 at or above the
+  75th percentile is stage 2, as is CAC 100-299. Stages 3 and 4 correspond to
+  CAC 300-999 and >=1000. Radulator compares the score with the official MESA
+  75th-percentile reference score for the selected age, sex, and supported
+  race/ethnicity; it does not reconstruct or claim an exact percentile. When
+  that reference context is unavailable, it preserves the absolute score range
+  but does not assign stage 1 versus stage 2. The calculator does not reproduce
+  the proposal's treatment recommendations.
 - CAC-DRS A category: A0 for 0, A1 for 1-99, A2 for 100-299, and A3 for
   scores above 300. At exactly 300, the primary CAC-DRS table leaves a gap
   between `100-299` and `>300`, so this tool reports the A category as
@@ -73,7 +79,7 @@ These examples are preserved in Playwright coverage:
 | Age | Sex | MESA group | Score | Vessels | Expected output |
 | --- | --- | --- | ---: | ---: | --- |
 | 55 | Male | White/Caucasian | 0 | 0 | At 25th reference score (0); probability nonzero 56%; refs 0/6/68/234; A0 |
-| 46 | Female | Chinese American | 35 | 1 | Above 90th reference score (0); probability nonzero 7%; refs 0/0/0/0; A1/N1 |
+| 46 | Female | Chinese American | 35 | 1 | Above 90th reference score (0); probability nonzero 7%; refs 0/0/0/0; Maron stage 2 moderate burden because CAC is at or above the 75th reference score; A1/N1 |
 | 62 | Female | Black/African American | 120 | 2 | Above 90th reference score (102); probability nonzero 32%; refs 0/0/11/102; A2/N2 |
 | 70 | Male | Hispanic | 450 | 3 | Between 75th (247) and 90th (666) reference scores; probability nonzero 75%; A3/N3 |
 | 72 | Male | White/Caucasian | 1200 | 4 | Between 75th (641) and 90th (1584) reference scores; probability nonzero 86%; A3/N4 |
@@ -89,7 +95,8 @@ These examples are preserved in Playwright coverage:
   `10.1016/j.jcct.2018.03.008`, PMID `29793848`.
 - Maron DJ et al. JACC Adv. 2024;3(11):101287. DOI
   `10.1016/j.jacadv.2024.101287`, PMID `39385944`. This is a proposal and call
-  to action; Radulator uses only its explicit absolute burden bands.
+  to action; Radulator uses its explicit stage criteria and burden labels but
+  does not reproduce its treatment recommendations.
 - Kumar P, Bhatia M. J Cardiovasc Imaging. 2023;31(1):1-17. DOI
   `10.4250/jcvi.2022.0029`, PMID `36693339`.
 - Grundy SM et al. Circulation. 2019;139(25):e1082-e1143. DOI
