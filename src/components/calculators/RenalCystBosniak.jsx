@@ -12,7 +12,7 @@ const categoryDetails = {
   IIF: {
     term: "Probably benign cystic mass",
     management:
-      "Generally follow with imaging at 6 months and 12 months, then annually for a total of 5 years to assess for morphologic change; tailor surveillance to patient factors",
+      "CUA 2023 suggests imaging every 6-12 months during the first year, then yearly if stable; for cysts without progression, 5 years of follow-up is suggested. The interval is based on expert opinion and the 5-year duration is a conditional recommendation with very low certainty; tailor surveillance to patient factors and specialist guidance",
     severity: "warning",
   },
   III: {
@@ -28,7 +28,8 @@ const categoryDetails = {
 };
 
 const densityLabels = {
-  water: "homogeneous -9 to 20 HU at noncontrast CT",
+  water: "fully characterized homogeneous simple fluid at renal mass protocol CT",
+  noncontrastMinus9To20: "homogeneous -9 to 20 HU at noncontrast CT",
   hyperattenuating70: "homogeneous >=70 HU at noncontrast CT",
   renalMassNonenhancing:
     "homogeneous non-enhancing >20 HU at renal mass protocol CT",
@@ -47,6 +48,7 @@ const densityIsBosniakII = (density) =>
     "renalMassNonenhancing",
     "portalVenous21to30",
     "tooSmallLowAttenuation",
+    "noncontrastMinus9To20",
   ].includes(density);
 
 const hasRequiredInputs = (v) =>
@@ -115,6 +117,10 @@ export const RenalCystBosniak = {
         {
           t: "Bosniak MA Radiology 2005",
           u: "https://doi.org/10.1148/radiol.2362040218",
+        },
+        {
+          t: "Richard PO et al. Canadian Urological Association guideline 2023",
+          u: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
         },
       ],
     },
@@ -284,10 +290,17 @@ export const RenalCystBosniak = {
       id: "density",
       label: "CT attenuation characterization",
       helpText:
-        "Choose a source-defined homogeneous density-only subtype when present. Heterogeneous or incompletely characterized internal attenuation requires renal mass protocol MRI before Bosniak assignment because occult enhancing elements may change the class.",
+        "Choose fully characterized simple fluid only when a renal mass protocol examination establishes the Bosniak I features. A homogeneous -9 to 20 HU mass known only from noncontrast CT is a Bosniak II density-only subtype. Heterogeneous or incompletely characterized internal attenuation requires renal mass protocol MRI before assignment because occult enhancing elements may change the class.",
       type: "radio",
       opts: [
-        { value: "water", label: "-9 to 20 HU at noncontrast CT" },
+        {
+          value: "water",
+          label: "fully characterized homogeneous simple fluid at renal mass protocol CT",
+        },
+        {
+          value: "noncontrastMinus9To20",
+          label: "-9 to 20 HU at noncontrast CT only",
+        },
         { value: "hyperattenuating70", label: ">=70 HU at noncontrast CT" },
         {
           value: "renalMassNonenhancing",
@@ -483,7 +496,7 @@ export const RenalCystBosniak = {
     if (simpleWaterMass) {
       return buildResult(
         "I",
-        "Well-defined homogeneous simple fluid (-9 to 20 HU) mass with thin wall, no septa, no calcification, and no nodule.",
+        "Fully characterized well-defined homogeneous simple-fluid mass with thin wall, no septa, no calcification, and no nodule.",
       );
     }
 
@@ -521,6 +534,10 @@ export const RenalCystBosniak = {
     {
       t: "Bosniak MA Radiology 2005",
       u: "https://doi.org/10.1148/radiol.2362040218",
+    },
+    {
+      t: "Richard PO, Violette PD, Bhindi B, et al. 2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions. Can Urol Assoc J. 2023;17(6):162-174.",
+      u: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
     },
   ],
 };
