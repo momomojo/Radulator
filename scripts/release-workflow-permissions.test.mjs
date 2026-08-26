@@ -22,5 +22,10 @@ assert.equal(
   "read",
   "the reusable merge workflow must request commit-status read permission",
 );
+assert.equal(
+  gate.jobs.evaluate.steps[0].with.ref,
+  "${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}",
+  "trusted gate checkout must follow the current protected base branch instead of a stale event SHA",
+);
 
 console.log("release workflow permission contract tests passed");

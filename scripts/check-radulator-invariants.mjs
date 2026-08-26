@@ -88,6 +88,7 @@ function extractCategoryOrder() {
 function checkCalculatorMetadata() {
   const categories = extractCategoryOrder();
   const ids = new Map();
+  const medicalIds = new Set();
   const files = readdirSync(calculatorDir)
     .filter((file) => file.endsWith(".jsx"))
     .sort();
@@ -111,6 +112,7 @@ function checkCalculatorMetadata() {
     if (id) {
       if (ids.has(id)) errors.push(`${rel}: duplicate calculator id '${id}' also in ${ids.get(id)}`);
       ids.set(id, rel);
+      if (category !== "Feedback") medicalIds.add(id);
     }
     if (category && !categories.has(category)) {
       warnings.push(`${rel}: category '${category}' is not listed in registry categoryOrder; it will sort after ordered categories`);
@@ -129,7 +131,42 @@ function checkCalculatorMetadata() {
     errors.push(`expected at least 38 calculator/feedback ids, found ${ids.size}`);
   }
 
-  return { fileCount: files.length, idCount: ids.size };
+  return { fileCount: files.length, idCount: ids.size, medicalCount: medicalIds.size };
+}
+
+function checkPublicCalculatorCounts(canonicalCount) {
+  const claims = [
+    {
+      path: "README.md",
+      pattern: /\*\*(\d+) specialized calculators across/,
+      description: "overview",
+    },
+    {
+      path: "README.md",
+      pattern: /calculators\/\s+#\s+(\d+) calculator components/,
+      description: "project structure",
+    },
+    {
+      path: path.join("public", "about.html"),
+      pattern: /Radulator currently offers <strong>(\d+) calculators<\/strong>/,
+      description: "available calculators",
+    },
+  ];
+
+  for (const claim of claims) {
+    const source = read(path.join(root, claim.path));
+    const match = source.match(claim.pattern);
+    if (!match) {
+      errors.push(`${claim.path}: missing ${claim.description} calculator count`);
+      continue;
+    }
+    const advertised = Number.parseInt(match[1], 10);
+    if (advertised !== canonicalCount) {
+      errors.push(
+        `${claim.path}: advertised calculator count ${advertised} does not match canonical count ${canonicalCount}`
+      );
+    }
+  }
 }
 
 function checkReportSnippetAllowlist() {
@@ -177,6 +214,7 @@ function checkOptionalMedicalDiffGuard() {
 }
 
 const metadata = checkCalculatorMetadata();
+checkPublicCalculatorCounts(metadata.medicalCount);
 checkReportSnippetAllowlist();
 checkOptionalMedicalDiffGuard();
 

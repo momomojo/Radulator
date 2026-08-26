@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import viteConfig from "../vite.config.js";
 
 const registrySource = readFileSync(
   new URL("../src/components/calculators/registry.js", import.meta.url),
   "utf8",
 );
+const calculatorSourceCount = readdirSync(
+  new URL("../src/components/calculators/", import.meta.url),
+).filter((file) => file.endsWith(".jsx")).length;
 
 assert.doesNotMatch(
   registrySource,
@@ -41,7 +44,7 @@ assert.match(
 );
 assert.equal(
   watchedFiles.length,
-  39,
+  calculatorSourceCount,
   "development registry metadata must watch every calculator source file",
 );
 
