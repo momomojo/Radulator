@@ -99,6 +99,7 @@ jobs:
           npm run test:hermes-learning
           npm run test:hermes-feedback-intake
           npm run test:hermes-seed-convert
+          npm run test:hermes-guideline-registry
           npm run test:hermes-install
 
       - name: Build application
@@ -169,6 +170,7 @@ jobs:
           npm run test:hermes-learning
           npm run test:hermes-feedback-intake
           npm run test:hermes-seed-convert
+          npm run test:hermes-guideline-registry
           npm run test:hermes-install
           npm run check:invariants
 

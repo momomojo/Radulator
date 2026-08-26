@@ -4,6 +4,7 @@
   "cases": [
     {
       "id": "paper-typical-native",
+      "description": "Published 2.5% typical native-kidney example from the Thorne et al. discussion, evaluated with the Item S1 equation.",
       "inputs": {
         "age": 57,
         "weight": 81.7292,
@@ -20,12 +21,15 @@
             "key": "Estimated major bleeding risk after kidney biopsy",
             "equals": "2.5%"
           },
-          { "key": "Calculated BMI", "equals": "28.28 kg/m²" }
+          { "key": "Calculated BMI", "equals": "28.28 kg/m²" },
+          { "key": "Outcome Definition", "includes": "transfusion, surgery or embolization, or resulting in death" },
+          { "key": "Model Scope", "includes": "adults undergoing diagnostic percutaneous native- or transplant-kidney biopsy" }
         ]
       }
     },
     {
       "id": "paper-typical-allograft",
+      "description": "Published 1.0% typical allograft-kidney example from the Thorne et al. discussion, evaluated with the Item S1 equation.",
       "inputs": {
         "age": 57,
         "weight": 81.7292,
@@ -47,6 +51,7 @@
     },
     {
       "id": "paper-higher-risk-native",
+      "description": "Published 7.4% higher-risk native-kidney example from the Thorne et al. discussion.",
       "inputs": {
         "age": 65,
         "weight": 69.36,
@@ -68,6 +73,7 @@
     },
     {
       "id": "paper-lower-risk-allograft",
+      "description": "Published 0.4% lower-risk allograft-kidney example from the Thorne et al. discussion.",
       "inputs": {
         "age": 45,
         "weight": 86.7,

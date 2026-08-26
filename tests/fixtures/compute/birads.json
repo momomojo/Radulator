@@ -74,6 +74,10 @@
         "fields": [
           { "key": "Assessment", "equals": "1 — Negative" },
           {
+            "key": "Source framework",
+            "equals": "FDA MQSA mammography reporting terminology with ACR BI-RADS® v2025 version context"
+          },
+          {
             "key": "Next step",
             "includes": "screening plan based on age, risk, symptoms, and local protocol"
           }
@@ -118,6 +122,7 @@
         "noError": true,
         "fields": [
           { "key": "Assessment", "equals": "4 — Suspicious" },
+          { "key": "MQSA category", "equals": "Suspicious" },
           {
             "key": "Likelihood context",
             "equals": "2% but <95% expected likelihood of malignancy"
@@ -189,6 +194,10 @@
           {
             "key": "Assessment",
             "equals": "5 — Highly suggestive of malignancy"
+          },
+          {
+            "key": "MQSA category",
+            "equals": "Highly Suggestive of Malignancy"
           },
           {
             "key": "Likelihood context",
