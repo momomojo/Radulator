@@ -14,6 +14,7 @@ const ACTIONS = {
   SELECT_CALCULATOR: "SELECT_CALCULATOR",
   UPDATE_FIELD: "UPDATE_FIELD",
   BATCH_UPDATE_FIELDS: "BATCH_UPDATE_FIELDS",
+  RESET_CALCULATOR: "RESET_CALCULATOR",
   SET_RESULTS: "SET_RESULTS",
   CLEAR_RESULTS: "CLEAR_RESULTS",
   SET_MRE_ROWS: "SET_MRE_ROWS",
@@ -69,6 +70,15 @@ function calculatorReducer(state, action) {
       return {
         ...state,
         vals: { ...state.vals, ...action.updates },
+      };
+
+    case ACTIONS.RESET_CALCULATOR:
+      return {
+        ...state,
+        vals: {},
+        out: null,
+        mreRows: [{ ...initialMreRow }],
+        ipssRows: [{ ...initialIpssRow }],
       };
 
     case ACTIONS.SET_RESULTS:
@@ -157,6 +167,10 @@ export function CalculatorProvider({ children, defaultCalculatorId }) {
     dispatch({ type: ACTIONS.SET_RESULTS, results });
   }, []);
 
+  const resetCalculator = useCallback(() => {
+    dispatch({ type: ACTIONS.RESET_CALCULATOR });
+  }, []);
+
   const clearResults = useCallback(() => {
     dispatch({ type: ACTIONS.CLEAR_RESULTS });
   }, []);
@@ -194,6 +208,7 @@ export function CalculatorProvider({ children, defaultCalculatorId }) {
     selectCalculator,
     updateField,
     batchUpdateFields,
+    resetCalculator,
     setResults,
     clearResults,
     addMreRow,
