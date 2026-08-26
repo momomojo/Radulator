@@ -84,6 +84,43 @@ class InstallerTests(unittest.TestCase):
         publisher.update({"enabled": True, "state": "scheduled", "paused_at": None, "paused_reason": None})
         path.write_text(json.dumps(payload) + "\n")
 
+    def legacy_v1_entries(self, plan, *, extra_target_id=None):
+        targets = install_module._backup_targets(plan)
+        # This fixture is deliberately independent of the current target set: it
+        # represents the exact allowlist emitted by the deployed v1 installer.
+        target_ids = [
+            "primary:cron/jobs.json",
+            "verification:cron/jobs.json",
+            "primary:skills/radulator-clinical-judge/SKILL.md",
+            "verification:skills/radulator-clinical-judge/SKILL.md",
+            "primary:skills/radulator-release-controller/SKILL.md",
+            "primary:skills/radulator-release-learning/SKILL.md",
+            "primary:skills/domain/radulator-operations/references/guideline-versions.json",
+            "primary:skills/domain/radulator-operations/references/guideline-versions.md",
+            "primary:scripts/radulator_formspree_feedback_intake.py",
+            "primary:scripts/seed_convert_gate_dedupe.py",
+            "primary:scripts/release_promoter.py",
+            "primary:scripts/release_promoter_cron.sh",
+            "primary:state/radulator-release-control.json",
+        ]
+        if extra_target_id is not None:
+            target_ids.append(extra_target_id)
+        entries = []
+        for target_id in target_ids:
+            target = targets[target_id]
+            exists = target.exists()
+            entries.append({
+                "path": str(target),
+                "existed": exists,
+                "mode": stat.S_IMODE(target.stat().st_mode) if exists else None,
+                "content_base64": (
+                    base64.b64encode(target.read_bytes()).decode("ascii")
+                    if exists
+                    else None
+                ),
+            })
+        return entries
+
     def test_timestamp_generation_uses_python39_compatible_timezone_api(self):
         sentinel = object()
         rendered = types.SimpleNamespace(
@@ -705,20 +742,15 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual((self.radulator_home / "cron" / "jobs.json").read_bytes(), self.original_radulator_jobs)
 
     def test_upgrade_migrates_only_complete_exact_v1_backup_to_signed_symbolic_v2(self):
-        apply_install(**self.kwargs())
         plan = build_plan(**self.kwargs())
         backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
-        current = json.loads(backup_path.read_text())
-        targets = install_module._backup_targets(plan)
-        v1_entries = []
-        for entry in current["entries"]:
-            migrated = dict(entry)
-            migrated["path"] = str(targets[migrated.pop("target_id")])
-            v1_entries.append(migrated)
+        backup_path.parent.mkdir()
+        v1_entries = self.legacy_v1_entries(plan)
         backup_path.write_text(json.dumps({
             "schema": "radulator-hermes-backup/v1",
             "entries": v1_entries,
         }) + "\n")
+        backup_path.chmod(0o600)
 
         apply_install(**self.kwargs())
 
@@ -728,6 +760,63 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue(all(set(entry) == {"target_id", "existed", "mode", "content_base64"} for entry in migrated["entries"]))
         restore_install(**self.kwargs())
         self.assertFalse((self.radulator_home / "scripts" / "radulator_formspree_feedback_intake.py").exists())
+
+    def test_v1_migration_captures_new_targets_before_install_and_restore(self):
+        plan = build_plan(**self.kwargs())
+        scripts = self.radulator_home / "scripts"
+        scripts.mkdir()
+        lifecycle = scripts / "lifecycle_controller.py"
+        lifecycle.write_bytes(b"operator-owned preexisting lifecycle\n")
+        lifecycle.chmod(0o640)
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        backup_path.parent.mkdir()
+        backup_path.write_text(json.dumps({
+            "schema": "radulator-hermes-backup/v1",
+            "entries": self.legacy_v1_entries(plan),
+        }) + "\n")
+        backup_path.chmod(0o600)
+
+        apply_install(**self.kwargs())
+
+        migrated = json.loads(backup_path.read_text())
+        entries = {entry["target_id"]: entry for entry in migrated["entries"]}
+        self.assertEqual(set(entries), set(install_module._backup_targets(plan)))
+        captured = entries["primary:scripts/lifecycle_controller.py"]
+        self.assertTrue(captured["existed"])
+        self.assertEqual(captured["mode"], 0o640)
+        self.assertEqual(
+            base64.b64decode(captured["content_base64"]),
+            b"operator-owned preexisting lifecycle\n",
+        )
+
+        restore_install(**self.kwargs())
+        self.assertEqual(lifecycle.read_bytes(), b"operator-owned preexisting lifecycle\n")
+        self.assertEqual(stat.S_IMODE(lifecycle.stat().st_mode), 0o640)
+        self.assertFalse((scripts / "trusted_publisher.py").exists())
+        self.assertFalse((scripts / "trusted_publisher_cron.sh").exists())
+
+    def test_v1_migration_rejects_enlarged_allowlist_before_any_write(self):
+        plan = build_plan(**self.kwargs())
+        backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
+        backup_path.parent.mkdir()
+        backup_path.write_text(json.dumps({
+            "schema": "radulator-hermes-backup/v1",
+            "entries": self.legacy_v1_entries(
+                plan,
+                extra_target_id="primary:scripts/trusted_publisher.py",
+            ),
+        }) + "\n")
+        backup_path.chmod(0o600)
+
+        with mock.patch.object(install_module, "_atomic_write") as writes:
+            with self.assertRaisesRegex(InstallError, "previous managed target allowlist"):
+                apply_install(**self.kwargs())
+
+        writes.assert_not_called()
+        self.assertEqual(
+            (self.radulator_home / "cron/jobs.json").read_bytes(),
+            self.original_radulator_jobs,
+        )
 
     def test_enable_then_restore_recovers_original_files(self):
         result = apply_install(**self.kwargs())

@@ -925,7 +925,7 @@ def ensure_remote_and_pr(
             )
         ):
             raise PublisherError("existing correction PR does not match the sealed base")
-        if prior is not None and prior.state == "OPEN" and "ready-for-gate" in prior.labels:
+        if prior is not None and "ready-for-gate" in prior.labels:
             validate_local_candidate(candidate, config, runner=runner)
             if kb is not None:
                 _revalidate_candidate(candidate, config, kb, conn)
@@ -946,6 +946,7 @@ def ensure_remote_and_pr(
                 config,
                 expected_sha=remote_head,
                 expected_base_sha=target_base_sha,
+                expected_state=prior.state,
                 runner=runner,
             )
             if "ready-for-gate" in prior.labels:
@@ -1001,6 +1002,31 @@ def ensure_remote_and_pr(
             validate_local_candidate(candidate, config, runner=runner)
             if kb is not None:
                 _revalidate_candidate(candidate, config, kb, conn)
+            if "ready-for-gate" in prior.labels:
+                _gh(
+                    "pr",
+                    "edit",
+                    str(prior.number),
+                    "--repo",
+                    config.repository,
+                    "--remove-label",
+                    "ready-for-gate",
+                    cwd=workspace,
+                    runner=runner,
+                )
+                prior = _read_pr_at_sha(
+                    prior.number,
+                    candidate,
+                    config,
+                    expected_sha=candidate.head_sha,
+                    expected_base_sha=target_base_sha,
+                    expected_state="CLOSED",
+                    runner=runner,
+                )
+                if "ready-for-gate" in prior.labels:
+                    raise PublisherError(
+                        "stale readiness label remained before pull request reopen"
+                    )
             if _remote_target_base(candidate, config, runner=runner) != target_base_sha:
                 raise PublisherError("target base changed before pull request reopen")
             _gh(
@@ -1079,11 +1105,12 @@ def _read_pr_at_sha(
     *,
     expected_sha: str,
     expected_base_sha: str,
+    expected_state: str = "OPEN",
     runner: Any,
 ) -> PublishedPullRequest:
     pr = _load_pr(number, candidate, config, runner=runner)
     if (
-        pr.state != "OPEN"
+        pr.state != expected_state
         or pr.branch != candidate.branch
         or pr.head_sha != expected_sha
         or pr.base != config.base_branch

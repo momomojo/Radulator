@@ -877,6 +877,109 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
         self.assertNotIn("--force", push)
         self.assertFalse(any(part.startswith("--force-with-lease") for part in push))
 
+    def test_closed_correction_pr_loses_stale_gate_label_before_push_and_reopen(self):
+        closed_labeled = exact_pr(
+            state="CLOSED",
+            headRefOid=BASE_SHA,
+            labels=[{"name": "ready-for-gate"}],
+        )
+        closed_unlabeled = exact_pr(state="CLOSED", headRefOid=BASE_SHA)
+        closed_updated = exact_pr(state="CLOSED")
+        runner = QueueRunner([
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(returncode=0),
+            response(returncode=0),
+            response(stdout=json.dumps([closed_labeled]) + "\n"),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(closed_unlabeled) + "\n"),
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(stdout="pushed\n"),
+            self.remote_feature(),
+            response(stdout=json.dumps([closed_updated]) + "\n"),
+            self.remote_base(),
+            response(stdout="reopened\n"),
+            response(stdout=json.dumps([exact_pr()]) + "\n"),
+        ])
+
+        result = publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertEqual(result.head_sha, HEAD_SHA)
+        mutations = [
+            call
+            for call, _ in runner.calls
+            if Path(call[0]).name in {"git", "gh"}
+            and ("push" in call or call[1:3] in (["pr", "edit"], ["pr", "reopen"]))
+        ]
+        remove_index = next(index for index, call in enumerate(mutations) if "--remove-label" in call)
+        push_index = next(index for index, call in enumerate(mutations) if "push" in call)
+        reopen_index = next(index for index, call in enumerate(mutations) if call[1:3] == ["pr", "reopen"])
+        self.assertLess(remove_index, push_index)
+        self.assertLess(push_index, reopen_index)
+
+    def test_closed_correction_label_remove_failure_blocks_push_and_reopen(self):
+        closed_labeled = exact_pr(
+            state="CLOSED",
+            headRefOid=BASE_SHA,
+            labels=[{"name": "ready-for-gate"}],
+        )
+        runner = QueueRunner([
+            self.remote_feature(BASE_SHA),
+            self.remote_base(),
+            response(returncode=0),
+            response(returncode=0),
+            response(stdout=json.dumps([closed_labeled]) + "\n"),
+            response(returncode=1, stderr="label mutation failed"),
+        ])
+
+        with self.assertRaisesRegex(publisher.PublisherError, "command failed"):
+            publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertTrue(any("--remove-label" in call for call, _ in runner.calls))
+        self.assertFalse(any("push" in call for call, _ in runner.calls))
+        self.assertFalse(any(
+            Path(call[0]).name == "gh" and call[1:3] == ["pr", "reopen"]
+            for call, _ in runner.calls
+        ))
+
+    def test_closed_correction_label_or_head_race_blocks_push_and_reopen(self):
+        closed_labeled = exact_pr(
+            state="CLOSED",
+            headRefOid=BASE_SHA,
+            labels=[{"name": "ready-for-gate"}],
+        )
+        raced = (
+            exact_pr(
+                state="CLOSED",
+                headRefOid=BASE_SHA,
+                labels=[{"name": "ready-for-gate"}],
+            ),
+            exact_pr(state="CLOSED", headRefOid="c" * 40),
+            exact_pr(state="OPEN", headRefOid=BASE_SHA),
+        )
+        for readback in raced:
+            with self.subTest(readback=readback):
+                runner = QueueRunner([
+                    self.remote_feature(BASE_SHA),
+                    self.remote_base(),
+                    response(returncode=0),
+                    response(returncode=0),
+                    response(stdout=json.dumps([closed_labeled]) + "\n"),
+                    response(stdout="removed\n"),
+                    response(stdout=json.dumps(readback) + "\n"),
+                ])
+
+                with self.assertRaises(publisher.PublisherError):
+                    publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+                self.assertTrue(any("--remove-label" in call for call, _ in runner.calls))
+                self.assertFalse(any("push" in call for call, _ in runner.calls))
+                self.assertFalse(any(
+                    Path(call[0]).name == "gh" and call[1:3] == ["pr", "reopen"]
+                    for call, _ in runner.calls
+                ))
+
     def test_correction_keeps_commit_parent_separate_from_current_target_base(self):
         target_sha = "d" * 40
         old = exact_pr(headRefOid=BASE_SHA, baseRefOid=target_sha)
@@ -962,6 +1065,31 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             Path(call[0]).name == "gh" and call[1:3] == ["pr", "create"]
             for call, _ in runner.calls
         ))
+
+    def test_exact_head_closed_pr_loses_gate_label_before_reopen(self):
+        closed_labeled = exact_pr(
+            state="CLOSED",
+            labels=[{"name": "ready-for-gate"}],
+        )
+        closed_unlabeled = exact_pr(state="CLOSED")
+        runner = QueueRunner([
+            self.remote_feature(),
+            self.remote_base(),
+            response(stdout=json.dumps([closed_labeled]) + "\n"),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(closed_unlabeled) + "\n"),
+            self.remote_base(),
+            response(stdout="reopened\n"),
+            response(stdout=json.dumps([exact_pr()]) + "\n"),
+        ])
+
+        result = publisher.ensure_remote_and_pr(self.candidate, self.config, runner=runner)
+
+        self.assertEqual(result.state, "OPEN")
+        edits = [call for call, _ in runner.calls if Path(call[0]).name == "gh"]
+        remove_index = next(index for index, call in enumerate(edits) if "--remove-label" in call)
+        reopen_index = next(index for index, call in enumerate(edits) if call[1:3] == ["pr", "reopen"])
+        self.assertLess(remove_index, reopen_index)
 
     def test_closed_retargeted_branch_pr_fails_before_reopen_or_mutation(self):
         retargeted = exact_pr(

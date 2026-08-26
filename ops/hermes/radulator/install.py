@@ -30,6 +30,21 @@ LEGACY_GATE_JOB_NAMES = frozenset({"pr-gate-poller", "judge-queue"})
 SEED_CONVERT_JOB_ID = "c41b8448cce4"
 PROMOTER_JOB_ID = "f191f946d6fa"
 PUBLISHER_JOB_ID = "1def08dbcb74"
+LEGACY_V1_TARGET_IDS = frozenset({
+    "primary:cron/jobs.json",
+    "verification:cron/jobs.json",
+    "primary:skills/radulator-clinical-judge/SKILL.md",
+    "verification:skills/radulator-clinical-judge/SKILL.md",
+    "primary:skills/radulator-release-controller/SKILL.md",
+    "primary:skills/radulator-release-learning/SKILL.md",
+    "primary:skills/domain/radulator-operations/references/guideline-versions.json",
+    "primary:skills/domain/radulator-operations/references/guideline-versions.md",
+    "primary:scripts/radulator_formspree_feedback_intake.py",
+    "primary:scripts/seed_convert_gate_dedupe.py",
+    "primary:scripts/release_promoter.py",
+    "primary:scripts/release_promoter_cron.sh",
+    "primary:state/radulator-release-control.json",
+})
 SEED_CONVERT_PROMPT = """Seed conversion pass (WF-2b) with automatic clinical governance. Load radulator-operations and treat SEED_CONVERT_PREFLIGHT_JSON as control data.
 
 Owner policy:
@@ -686,6 +701,30 @@ def _validate_backup_entry(entry: Any, *, legacy: bool) -> tuple[str, bool, int 
     return identity, existed, mode, content
 
 
+def _snapshot_backup_target(
+    target_id: str,
+    target: Path,
+    plan: dict[str, Any],
+) -> dict[str, Any]:
+    _require_safe_target(target, plan, may_be_missing=True)
+    try:
+        target.lstat()
+    except FileNotFoundError:
+        return {
+            "target_id": target_id,
+            "existed": False,
+            "mode": None,
+            "content_base64": None,
+        }
+    _require_safe_target(target, plan, may_be_missing=False)
+    return {
+        "target_id": target_id,
+        "existed": True,
+        "mode": stat.S_IMODE(target.lstat().st_mode),
+        "content_base64": base64.b64encode(target.read_bytes()).decode("ascii"),
+    }
+
+
 def _load_backup(plan: dict[str, Any], *, migrate_legacy: bool) -> dict[str, Any]:
     destination = _backup_path(plan)
     _require_safe_target(destination, plan, may_be_missing=True)
@@ -703,21 +742,33 @@ def _load_backup(plan: dict[str, Any], *, migrate_legacy: bool) -> dict[str, Any
             raise InstallError("Legacy backup manifest requires a safe installer migration.")
         validated = [_validate_backup_entry(entry, legacy=True) for entry in entries]
         paths = [identity for identity, *_ in validated]
-        expected_paths = {str(path) for path in targets.values()}
+        if not LEGACY_V1_TARGET_IDS.issubset(targets):
+            raise InstallError("Installer no longer maps the exact previous backup target allowlist.")
+        expected_paths = {str(targets[target_id]) for target_id in LEGACY_V1_TARGET_IDS}
         if len(set(paths)) != len(paths) or set(paths) != expected_paths:
-            raise InstallError("Legacy backup paths must exactly match the current managed target allowlist.")
-        for target in targets.values():
-            _require_safe_target(target, plan, may_be_missing=True)
-        target_by_path = {str(path): target_id for target_id, path in targets.items()}
-        entries = [
-            {
-                "target_id": target_by_path[identity],
-                "existed": existed,
-                "mode": mode,
-                "content_base64": base64.b64encode(content).decode("ascii") if content is not None else None,
-            }
+            raise InstallError(
+                "Legacy backup paths must exactly match the previous managed target allowlist."
+            )
+        legacy_by_path = {
+            identity: (existed, mode, content)
             for identity, existed, mode, content in validated
-        ]
+        }
+        entries = []
+        for target_id, target in targets.items():
+            if target_id in LEGACY_V1_TARGET_IDS:
+                existed, mode, content = legacy_by_path[str(target)]
+                entries.append({
+                    "target_id": target_id,
+                    "existed": existed,
+                    "mode": mode,
+                    "content_base64": (
+                        base64.b64encode(content).decode("ascii")
+                        if content is not None
+                        else None
+                    ),
+                })
+            else:
+                entries.append(_snapshot_backup_target(target_id, target, plan))
         key = _read_or_create_backup_key(plan, create=True)
         migrated = {
             **_backup_unsigned(entries),
