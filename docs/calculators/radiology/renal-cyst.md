@@ -1,12 +1,16 @@
-# Renal Cyst (Bosniak Classification) Calculator
+# Archived Bosniak 2005 Documentation — Not Current Clinical Guidance
+
+> **Historical record only.** This file preserves the superseded 2005 calculator documentation for clinical change-review provenance. It is not the active Radulator specification and must not be used for clinical decisions. See [`bosniak-v2019.md`](bosniak-v2019.md) for the current, source-verified Bosniak version 2019 documentation.
+
+# Renal Cyst (Bosniak Classification) Calculator (Archived 2005 Version)
 
 ## Overview
 
 The Renal Cyst (Bosniak Classification) Calculator classifies cystic renal lesions according to the Bosniak CT classification system published in 2005. This widely-used radiological tool stratifies renal cysts by malignancy risk and guides clinical management decisions.
 
-**Calculator ID**: `bosniak`  
-**Display Name**: Renal Cyst (Bosniak CT)  
-**Specialty**: Radiology  
+**Calculator ID**: `bosniak`
+**Display Name**: Renal Cyst (Bosniak CT)
+**Specialty**: Radiology
 **Category**: Genitourinary Imaging
 
 ---
@@ -117,7 +121,7 @@ if (soft === "yes") {
 The calculator provides:
 
 1. **Bosniak Category**: I, II, IIF, III, or IV
-2. **Management Recommendation**: 
+2. **Management Recommendation**:
    - No follow-up needed (I, II)
    - Follow-up recommended (IIF)
    - Surgical resection (III, IV)
@@ -153,7 +157,7 @@ A homogeneous mass ≥70 HU at unenhanced CT is consistent with a high-attenuati
 
 ### MRI Evaluation
 
-**Important**: This calculator implements the CT-based Bosniak classification (2005). 
+**Important**: This calculator implements the CT-based Bosniak classification (2005).
 
 For MRI evaluation, use the **Bosniak MRI criteria** as outlined in:
 - Silverman SG, Pedrosa I, Ellis JH, et al. Bosniak Classification of Cystic Renal Masses, Version 2019: An Update Proposal and Needs Assessment. Radiology. 2019 Aug;292(2):441-448. DOI: 10.1148/radiol.2019182646
@@ -164,7 +168,7 @@ For MRI evaluation, use the **Bosniak MRI criteria** as outlined in:
 
 ### Primary Reference
 
-**Bosniak MA**. The current radiological approach to renal cysts. Radiology. 2005 Jul;236(1):61-70.  
+**Bosniak MA**. The current radiological approach to renal cysts. Radiology. 2005 Jul;236(1):61-70.
 DOI: [10.1148/radiol.2362040218](https://doi.org/10.1148/radiol.2362040218)
 
 - Original description of the Bosniak classification
@@ -173,7 +177,7 @@ DOI: [10.1148/radiol.2362040218](https://doi.org/10.1148/radiol.2362040218)
 
 ### Supporting Evidence
 
-**Silverman SG**. Management of the incidental renal mass at CT: Single institution experience. From renal cell carcinoma to fat-poor angiomyolipoma to renal cyst. Radiology. 2007 Nov;245(2):331-38.  
+**Silverman SG**. Management of the incidental renal mass at CT: Single institution experience. From renal cell carcinoma to fat-poor angiomyolipoma to renal cyst. Radiology. 2007 Nov;245(2):331-38.
 DOI: [10.1148/radiol.2452061879](https://doi.org/10.1148/radiol.2452061879)
 
 - Management strategies for incidental renal masses
@@ -181,7 +185,7 @@ DOI: [10.1148/radiol.2452061879](https://doi.org/10.1148/radiol.2452061879)
 
 ### 2019 Update (MRI Criteria)
 
-**Silverman SG, Pedrosa I, Ellis JH, et al.** Bosniak Classification of Cystic Renal Masses, Version 2019: An Update Proposal and Needs Assessment. Radiology. 2019 Aug;292(2):441-448.  
+**Silverman SG, Pedrosa I, Ellis JH, et al.** Bosniak Classification of Cystic Renal Masses, Version 2019: An Update Proposal and Needs Assessment. Radiology. 2019 Aug;292(2):441-448.
 DOI: [10.1148/radiol.2019182646](https://doi.org/10.1148/radiol.2019182646)
 
 - Updated classification including MRI criteria
@@ -365,6 +369,6 @@ This calculator implements published medical criteria from peer-reviewed literat
 
 ---
 
-*Last Updated: November 17, 2025*  
-*Version: 2.0*  
+*Last Updated: November 17, 2025*
+*Version: 2.0*
 *Test Status: ✅ All tests passing (29/29)*
