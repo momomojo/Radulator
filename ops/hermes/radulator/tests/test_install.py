@@ -69,7 +69,11 @@ class InstallerTests(unittest.TestCase):
         }
 
     def resign_backup(self, payload):
-        unsigned = {"schema": payload["schema"], "entries": payload["entries"]}
+        unsigned = {
+            "schema": payload["schema"],
+            "entries": payload["entries"],
+            "jobs_preflight": payload["jobs_preflight"],
+        }
         serialized = (json.dumps(unsigned, indent=2, sort_keys=True) + "\n").encode("utf-8")
         key = (self.radulator_home / "state" / "radulator-release-backup.hmac.key").read_bytes()
         payload["hmac_sha256"] = hmac.new(key, serialized, hashlib.sha256).hexdigest()
@@ -754,6 +758,21 @@ class InstallerTests(unittest.TestCase):
         self.assertIs(alias_job["enabled"], False)
         self.assertEqual(alias_job["state"], "paused")
         self.assertIsNone(alias_job["next_run_at"])
+        provenance = (
+            self.radulator_home
+            / "state"
+            / "radulator-jobs-preflight-backup.json"
+        )
+        self.assertTrue(provenance.is_file())
+
+        restore_install(**self.kwargs())
+        restored_again = json.loads(jobs_path.read_text())["jobs"]
+        alias_job_again = next(
+            job
+            for job in restored_again
+            if job.get("id") == "preinstall-hardlink-publisher"
+        )
+        self.assertIs(alias_job_again["enabled"], False)
 
     def test_restore_rejects_tampered_preinstall_consumer_provenance(self):
         scripts = self.radulator_home / "scripts"
@@ -788,8 +807,48 @@ class InstallerTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             InstallError,
-            "preflight backup authentication failed",
+            "signed backup binding|preflight backup authentication failed",
         ):
+            restore_install(**self.kwargs())
+
+        self.assertFalse(self.publisher_job()["enabled"])
+
+    def test_restore_rejects_deleted_required_preinstall_provenance(self):
+        scripts = self.radulator_home / "scripts"
+        scripts.mkdir()
+        publisher_wrapper = scripts / "trusted_publisher_cron.sh"
+        publisher_wrapper.write_bytes(b"#!/bin/sh\nexit 0\n")
+        publisher_wrapper.chmod(0o700)
+        external_alias = self.default_home / "preinstall-publisher-alias"
+        os.link(publisher_wrapper, external_alias)
+        jobs_path = self.radulator_home / "cron" / "jobs.json"
+        payload = json.loads(jobs_path.read_text())
+        payload["jobs"].append({
+            "id": "preinstall-hardlink-publisher",
+            "name": "preinstall-hardlink-publisher",
+            "script": str(external_alias),
+            "enabled": True,
+            "state": "scheduled",
+            "next_run_at": "2026-08-26T12:00:00Z",
+        })
+        jobs_path.write_text(json.dumps(payload) + "\n")
+        apply_install(**self.kwargs())
+        provenance = (
+            self.radulator_home
+            / "state"
+            / "radulator-jobs-preflight-backup.json"
+        )
+        backup = json.loads(
+            (
+                self.radulator_home
+                / "state"
+                / "radulator-release-backup.json"
+            ).read_text()
+        )
+        self.assertTrue(backup["jobs_preflight"]["required"])
+        provenance.unlink()
+
+        with self.assertRaisesRegex(InstallError, "missing|does not exist"):
             restore_install(**self.kwargs())
 
         self.assertFalse(self.publisher_job()["enabled"])
@@ -1162,13 +1221,17 @@ with lock_path.open('a+') as lock:
         for filename in ("guideline-versions.json", "guideline-versions.md"):
             self.assertFalse((destination_root / filename).exists())
 
-    def test_backup_uses_signed_symbolic_v2_with_owner_only_regular_key_and_manifest(self):
+    def test_backup_uses_signed_symbolic_v3_with_owner_only_regular_key_and_manifest(self):
         apply_install(**self.kwargs())
         backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
         key_path = self.radulator_home / "state" / "radulator-release-backup.hmac.key"
 
         backup = json.loads(backup_path.read_text())
-        self.assertEqual(backup["schema"], "radulator-hermes-backup/v2")
+        self.assertEqual(backup["schema"], "radulator-hermes-backup/v3")
+        self.assertEqual(
+            backup["jobs_preflight"],
+            {"required": False, "sha256": None},
+        )
         self.assertRegex(backup["hmac_sha256"], r"^[0-9a-f]{64}$")
         self.assertTrue(all("target_id" in entry and "path" not in entry for entry in backup["entries"]))
         self.assertEqual(len({entry["target_id"] for entry in backup["entries"]}), len(backup["entries"]))
@@ -1254,7 +1317,11 @@ with lock_path.open('a+') as lock:
                     backup = json.loads(backup_path.read_text())
                     mutation(backup["entries"])
                     key = (radulator / "state/radulator-release-backup.hmac.key").read_bytes()
-                    unsigned = {"schema": backup["schema"], "entries": backup["entries"]}
+                    unsigned = {
+                        "schema": backup["schema"],
+                        "entries": backup["entries"],
+                        "jobs_preflight": backup["jobs_preflight"],
+                    }
                     serialized = (json.dumps(unsigned, indent=2, sort_keys=True) + "\n").encode("utf-8")
                     backup["hmac_sha256"] = hmac.new(key, serialized, hashlib.sha256).hexdigest()
                     backup_path.write_text(json.dumps(backup, indent=2, sort_keys=True) + "\n")
@@ -1741,7 +1808,7 @@ with lock_path.open('a+') as lock:
         self.assertFalse(feedback_script.exists())
         self.assertEqual((self.radulator_home / "cron" / "jobs.json").read_bytes(), self.original_radulator_jobs)
 
-    def test_upgrade_migrates_only_complete_exact_v1_backup_to_signed_symbolic_v2(self):
+    def test_upgrade_migrates_only_complete_exact_v1_backup_to_signed_symbolic_v3(self):
         plan = build_plan(**self.kwargs())
         backup_path = self.radulator_home / "state" / "radulator-release-backup.json"
         backup_path.parent.mkdir()
@@ -1755,7 +1822,7 @@ with lock_path.open('a+') as lock:
         apply_install(**self.kwargs())
 
         migrated = json.loads(backup_path.read_text())
-        self.assertEqual(migrated["schema"], "radulator-hermes-backup/v2")
+        self.assertEqual(migrated["schema"], "radulator-hermes-backup/v3")
         self.assertRegex(migrated["hmac_sha256"], r"^[0-9a-f]{64}$")
         self.assertTrue(all(set(entry) == {"target_id", "existed", "mode", "content_base64"} for entry in migrated["entries"]))
         restore_install(**self.kwargs())

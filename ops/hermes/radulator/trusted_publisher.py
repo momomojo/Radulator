@@ -251,20 +251,11 @@ def _parse_contract(payload: Any, *, run_id: Any) -> TrustedCommit | None:
 
 
 def _candidate_for_task(
-    kb: Any,
-    conn: Any,
-    task: Any,
-    board: str,
-    *,
-    expected_status: str = "blocked",
+    kb: Any, conn: Any, task: Any, board: str
 ) -> TrustedCommit | None:
     if (
-        getattr(task, "status", None) != expected_status
-        or (
-            expected_status == "blocked"
-            and getattr(task, "block_kind", None) != "capability"
-        )
-        or expected_status not in {"blocked", "done"}
+        getattr(task, "status", None) != "blocked"
+        or getattr(task, "block_kind", None) != "capability"
     ):
         return None
     task_id = getattr(task, "id", None)
@@ -1702,18 +1693,26 @@ def _recover_committed_lifecycle_completion(
             expected_base_sha=pr.base_sha,
             runner=runner,
         )
-    if "ready-for-gate" not in current_pr.labels:
-        _gh(
-            "pr",
-            "edit",
-            str(pr.number),
-            "--repo",
-            config.repository,
-            "--add-label",
-            "ready-for-gate",
-            cwd=Path(candidate.workspace),
-            runner=runner,
-        )
+    observed_label = "ready-for-gate" in current_pr.labels
+    attempted_label = False
+    try:
+        if not _required_checks_green(candidate, pr, config, runner=runner):
+            raise PublisherCompletionAmbiguous(
+                "UNSAFE_COMPLETION_STATE: terminal exact-head CI is not green"
+            )
+        if not observed_label:
+            attempted_label = True
+            _gh(
+                "pr",
+                "edit",
+                str(pr.number),
+                "--repo",
+                config.repository,
+                "--add-label",
+                "ready-for-gate",
+                cwd=Path(candidate.workspace),
+                runner=runner,
+            )
         current_pr = _read_pr(
             pr.number,
             candidate,
@@ -1721,10 +1720,27 @@ def _recover_committed_lifecycle_completion(
             expected_base_sha=pr.base_sha,
             runner=runner,
         )
-    if "ready-for-gate" not in current_pr.labels:
+        if "ready-for-gate" not in current_pr.labels:
+            raise PublisherCompletionAmbiguous(
+                "UNSAFE_COMPLETION_STATE: terminal PR readiness could not be restored"
+            )
+        if not _required_checks_green(candidate, pr, config, runner=runner):
+            raise PublisherCompletionAmbiguous(
+                "UNSAFE_COMPLETION_STATE: terminal exact-head CI changed after readiness"
+            )
+    except Exception as recovery_error:
+        if observed_label or attempted_label:
+            try:
+                _compensate_ready_label(candidate, pr, config, runner=runner)
+            except Exception as cleanup_error:
+                raise PublisherCompletionAmbiguous(
+                    "UNSAFE_LABEL_STATE: terminal readiness absence could not be proven"
+                ) from cleanup_error
+        if isinstance(recovery_error, PublisherCompletionAmbiguous):
+            raise
         raise PublisherCompletionAmbiguous(
-            "UNSAFE_COMPLETION_STATE: terminal PR readiness could not be restored"
-        )
+            "UNSAFE_COMPLETION_STATE: terminal CI/readiness proof remains pending"
+        ) from recovery_error
     _ensure_exact_comment(
         kb,
         conn,
@@ -1735,24 +1751,6 @@ def _recover_committed_lifecycle_completion(
         ),
     )
     return True
-
-
-def _terminal_completion_fields(
-    task: Any, config: PublisherConfig
-) -> tuple[int, str, str] | None:
-    result = getattr(task, "result", None)
-    if not isinstance(result, str):
-        return None
-    pattern = re.compile(
-        r"TRUSTED_PUBLISHER v1\n"
-        + rf"PR: https://github\.com/{re.escape(config.repository)}/pull/([1-9][0-9]*)\n"
-        + r"Exact head: ([0-9a-f]{40})\n"
-        + r"Release tracker: ([A-Za-z0-9][A-Za-z0-9._-]{0,127})"
-    )
-    match = pattern.fullmatch(result)
-    if match is None:
-        return None
-    return int(match.group(1)), match.group(2), match.group(3)
 
 
 def _terminal_verification_comment(
@@ -1772,151 +1770,18 @@ def recover_terminal_completion_obligation(
     *,
     runner: Any = subprocess.run,
 ) -> dict[str, Any] | None:
-    """Repair one exact done-task readiness obligation idempotently.
+    """Hold until Hermes exposes a bounded host-authenticated obligation query.
 
-    The audit comment, sealed commit event, open release tracker, and done-task
-    result survive a lost CAS response or transient GitHub failure.  Scanning
-    those durable records gives the credential-isolated publisher a future
-    retry even though ordinary publication candidates are blocked tasks only.
+    A terminal task result is model-controlled prose and therefore cannot be a
+    recovery carrier.  The reviewed dedicated broker currently has no RPC that
+    lists incomplete completion acknowledgements with an authenticated receipt,
+    so this release must not infer or scan for them.
     """
-    tasks = kb.list_tasks(
-        conn,
-        status="done",
-        include_archived=False,
-        order_by="created",
+    del config, kb, conn, runner
+    raise PublisherPending(
+        "PENDING_HERMES_RUNTIME: bounded host-authenticated trusted-publisher "
+        "completion-obligation query is not installed"
     )
-    for task in sorted(
-        tasks,
-        key=lambda item: (getattr(item, "created_at", 0), getattr(item, "id", "")),
-    ):
-        fields = _terminal_completion_fields(task, config)
-        if fields is None:
-            continue
-        pr_number, head_sha, tracker_id = fields
-        verification_comment = _terminal_verification_comment(
-            pr_number, head_sha, tracker_id
-        )
-        terminal_markers = [
-            item
-            for item in kb.list_comments(conn, getattr(task, "id", ""))
-            if getattr(item, "task_id", None) == getattr(task, "id", None)
-            and getattr(item, "author", None) == "radulator-trusted-publisher"
-            and getattr(item, "body", None) == verification_comment
-            and _positive_int(getattr(item, "id", None))
-        ]
-        if len(terminal_markers) > 1:
-            raise PublisherCompletionAmbiguous(
-                "UNSAFE_COMPLETION_STATE: terminal verification receipt is duplicated"
-            )
-        if terminal_markers:
-            continue
-        try:
-            candidate = _candidate_for_task(
-                kb,
-                conn,
-                task,
-                config.board,
-                expected_status="done",
-            )
-        except Exception as recovery_error:
-            raise PublisherCompletionAmbiguous(
-                "UNSAFE_COMPLETION_STATE: terminal commit authority is not exact"
-            ) from recovery_error
-        if candidate is None or candidate.head_sha != head_sha:
-            raise PublisherCompletionAmbiguous(
-                "UNSAFE_COMPLETION_STATE: terminal commit authority is not exact"
-            )
-        tracker = kb.get_task(conn, tracker_id)
-        tracker_status = getattr(tracker, "status", None)
-        tracker_body = getattr(tracker, "body", None)
-        if (
-            tracker is None
-            or tracker_status
-            not in {"triage", "todo", "scheduled", "ready", "running", "blocked", "review"}
-            or not isinstance(tracker_body, str)
-            or not _has_exact_pr_reference(tracker_body, pr_number)
-        ):
-            raise PublisherCompletionAmbiguous(
-                "UNSAFE_COMPLETION_STATE: terminal release tracker is not exact"
-            )
-        if _has_exact_sha_reference(tracker_body, candidate.head_sha):
-            existing_tracker = False
-            relation_task = tracker_id
-            expected_parents = [candidate.task_id]
-        else:
-            existing_tracker = True
-            relation_task = candidate.task_id
-            expected_parents = [tracker_id]
-        comment = (
-            "TRUSTED_PUBLISHER v1 publication verified. "
-            f"PR https://github.com/{config.repository}/pull/{pr_number}; "
-            f"exact head {candidate.head_sha}; release tracker {tracker_id}."
-        )
-        comments = [
-            item
-            for item in kb.list_comments(conn, candidate.task_id)
-            if getattr(item, "task_id", None) == candidate.task_id
-            and getattr(item, "author", None) == "radulator-trusted-publisher"
-            and getattr(item, "body", None) == comment
-            and _positive_int(getattr(item, "id", None))
-        ]
-        if len(comments) != 1:
-            raise PublisherCompletionAmbiguous(
-                "UNSAFE_COMPLETION_STATE: terminal audit comment is not exact"
-            )
-        pr = PublishedPullRequest(
-            number=pr_number,
-            url=f"https://github.com/{config.repository}/pull/{pr_number}",
-            state="OPEN",
-            branch=candidate.branch,
-            head_sha=candidate.head_sha,
-            base=config.base_branch,
-            base_sha=candidate.base_sha,
-            head_repository_owner=config.repository.split("/", 1)[0],
-            is_cross_repository=False,
-            labels=(),
-            merged_at=None,
-        )
-        try:
-            current_pr = _read_pr(
-                pr.number,
-                candidate,
-                config,
-                expected_base_sha=pr.base_sha,
-                runner=runner,
-            )
-            already_ready = "ready-for-gate" in current_pr.labels
-            recovered = _recover_committed_lifecycle_completion(
-                candidate=candidate,
-                pr=pr,
-                config=config,
-                kb=kb,
-                conn=conn,
-                tracker_id=tracker_id,
-                tracker_status=tracker_status,
-                existing_tracker=existing_tracker,
-                relation_task=relation_task,
-                expected_parents=expected_parents,
-                comment_id=comments[0].id,
-                comment=comment,
-                completion=task.result,
-                runner=runner,
-                current_pr=current_pr,
-            )
-        except PublisherCompletionAmbiguous:
-            raise
-        except Exception as recovery_error:
-            raise PublisherCompletionAmbiguous(
-                "UNSAFE_COMPLETION_STATE: terminal readiness recovery remains pending"
-            ) from recovery_error
-        if recovered and not already_ready:
-            return {
-                "task_id": candidate.task_id,
-                "pr": pr_number,
-                "head_sha": candidate.head_sha,
-                "release_tracker_id": tracker_id,
-            }
-    return None
 
 
 def complete_lifecycle_handoff(
@@ -2369,9 +2234,14 @@ def run_once(
     runner: Any = subprocess.run,
 ) -> dict[str, Any]:
     """Process no more than one exact oldest publisher obligation."""
-    terminal_recovery = recover_terminal_completion_obligation(
-        config, kb, conn, runner=runner
-    )
+    try:
+        terminal_recovery = recover_terminal_completion_obligation(
+            config, kb, conn, runner=runner
+        )
+    except PublisherPending as error:
+        if not str(error).startswith("PENDING_HERMES_RUNTIME:"):
+            raise
+        return {"status": "pending_runtime", "reason": str(error)}
     if terminal_recovery is not None:
         return {"status": "recovered", **terminal_recovery}
     candidate = select_candidate(kb, conn, config.board)

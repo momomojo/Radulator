@@ -63,14 +63,12 @@ class FakeKanban:
         }
 
     def list_tasks(self, _conn, **kwargs):
-        assert kwargs.get("status") in {"blocked", "done"}
-        assert kwargs.get("include_archived") is False
-        assert kwargs.get("order_by") == "created"
-        return [
-            item
-            for item in self.tasks
-            if getattr(item, "status", None) == kwargs["status"]
-        ]
+        assert kwargs == {
+            "status": "blocked",
+            "include_archived": False,
+            "order_by": "created",
+        }
+        return list(self.tasks)
 
     def list_events(self, _conn, task_id):
         return list(self.events.get(task_id, []))
@@ -1749,6 +1747,10 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
     def setUp(self):
         self.env_patch = mock.patch.dict(os.environ, {"GH_TOKEN": "test-token"})
         self.env_patch.start()
+        self.ci_patch = mock.patch.object(
+            publisher, "_required_checks_green", return_value=True
+        )
+        self.ci_proof = self.ci_patch.start()
         self.config = publisher.PublisherConfig(
             board="default",
             project_id="radulator",
@@ -1781,6 +1783,7 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
         )
 
     def tearDown(self):
+        self.ci_patch.stop()
         self.env_patch.stop()
 
     def kb(self):
@@ -1817,6 +1820,7 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
             response(stdout=json.dumps(rendered) + "\n"),
             response(stdout=json.dumps(seed) + "\n"),
             response(stdout=json.dumps(seed) + "\n"),
+            self.labeled_pr_response(),
             self.labeled_pr_response(),
             self.labeled_pr_response(),
             self.labeled_pr_response(),
@@ -2052,75 +2056,65 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
             for call, _ in runner.calls
         ))
 
-    def test_terminal_label_recovery_is_a_durable_retry_obligation(self):
-        class TerminalRecoveryKanban(MutableKanban):
-            def list_tasks(self, _conn, **kwargs):
-                self.last_list_kwargs = kwargs
-                if kwargs.get("status") == "done":
-                    return [self.by_id["t_example"]]
-                return []
-
-        kb = TerminalRecoveryKanban(
-            [task()],
-            {"t_example": exact_events(changed_paths=["src/example.js"])},
-            self.child,
-        )
+    def test_terminal_relabel_compensates_when_exact_ci_changes_after_write(self):
+        kb = self.kb()
         completion = (
             "TRUSTED_PUBLISHER v1\n"
             f"PR: {self.pr.url}\n"
             f"Exact head: {HEAD_SHA}\n"
             "Release tracker: t_release"
         )
-        current = kb.by_id["t_example"]
-        current.status = "done"
-        current.result = completion
+        implementation = kb.by_id["t_example"]
+        implementation.status = "done"
+        implementation.result = completion
+        comment = (
+            "TRUSTED_PUBLISHER v1 publication verified. "
+            f"PR {self.pr.url}; exact head {HEAD_SHA}; release tracker t_release."
+        )
         kb.comments.append(SimpleNamespace(
             id=1,
             task_id="t_example",
             author="radulator-trusted-publisher",
-            body=(
-                "TRUSTED_PUBLISHER v1 publication verified. "
-                f"PR {self.pr.url}; exact head {HEAD_SHA}; "
-                "release tracker t_release."
-            ),
+            body=comment,
         ))
-
-        first = QueueRunner([
-            response(stdout=json.dumps(exact_pr(labels=[])) + "\n"),
-            response(returncode=1, stderr="transient label write failure"),
-        ])
-        with self.assertRaisesRegex(
-            publisher.PublisherCompletionAmbiguous,
-            "UNSAFE_COMPLETION_STATE",
-        ):
-            publisher.recover_terminal_completion_obligation(
-                self.config, kb, object(), runner=first
-            )
-
-        second = QueueRunner([
-            response(stdout=json.dumps(exact_pr(labels=[])) + "\n"),
+        self.ci_proof.side_effect = [True, False]
+        runner = QueueRunner([
             response(stdout="edited\n"),
             self.labeled_pr_response(),
+            response(stdout="removed\n"),
+            response(stdout=json.dumps(exact_pr(labels=[])) + "\n"),
         ])
-        recovered = publisher.recover_terminal_completion_obligation(
-            self.config, kb, object(), runner=second
-        )
 
-        self.assertEqual(recovered, {
-            "task_id": "t_example",
-            "pr": 181,
-            "head_sha": HEAD_SHA,
-            "release_tracker_id": "t_release",
-        })
-        self.assertEqual(second.responses, [])
-        self.assertEqual(kb.last_list_kwargs, {
-            "status": "done",
-            "include_archived": False,
-            "order_by": "created",
-        })
-        self.assertEqual(len(kb.comments), 2)
+        with self.assertRaisesRegex(
+            publisher.PublisherCompletionAmbiguous,
+            "exact-head CI changed",
+        ):
+            publisher._recover_committed_lifecycle_completion(
+                candidate=self.candidate,
+                pr=self.pr,
+                config=self.config,
+                kb=kb,
+                conn=object(),
+                tracker_id="t_release",
+                tracker_status="todo",
+                existing_tracker=False,
+                relation_task="t_release",
+                expected_parents=["t_example"],
+                comment_id=1,
+                comment=comment,
+                completion=completion,
+                runner=runner,
+                current_pr=publisher.PublishedPullRequest.from_dict(
+                    exact_pr(labels=[])
+                ),
+            )
 
-    def test_terminal_verification_receipt_prevents_historical_reprocessing(self):
+        self.assertEqual(self.ci_proof.call_count, 2)
+        self.assertTrue(any("--add-label" in call for call, _ in runner.calls))
+        self.assertTrue(any("--remove-label" in call for call, _ in runner.calls))
+        self.assertEqual(runner.responses, [])
+
+    def test_terminal_relabel_never_mutates_when_current_exact_ci_is_not_green(self):
         kb = self.kb()
         completion = (
             "TRUSTED_PUBLISHER v1\n"
@@ -2128,82 +2122,66 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
             f"Exact head: {HEAD_SHA}\n"
             "Release tracker: t_release"
         )
-        current = kb.by_id["t_example"]
-        current.status = "done"
-        current.result = completion
+        implementation = kb.by_id["t_example"]
+        implementation.status = "done"
+        implementation.result = completion
+        comment = (
+            "TRUSTED_PUBLISHER v1 publication verified. "
+            f"PR {self.pr.url}; exact head {HEAD_SHA}; release tracker t_release."
+        )
         kb.comments.append(SimpleNamespace(
             id=1,
             task_id="t_example",
             author="radulator-trusted-publisher",
-            body=(
-                "TRUSTED_PUBLISHER_COMPLETION_VERIFIED v1 "
-                f"PR #181; exact head {HEAD_SHA}; release tracker t_release; "
-                "ready-for-gate read back."
-            ),
+            body=comment,
         ))
+        self.ci_proof.return_value = False
+        runner = QueueRunner([])
 
-        self.assertIsNone(
-            publisher.recover_terminal_completion_obligation(
-                self.config, kb, object(), runner=QueueRunner([])
+        with self.assertRaisesRegex(
+            publisher.PublisherCompletionAmbiguous,
+            "exact-head CI is not green",
+        ):
+            publisher._recover_committed_lifecycle_completion(
+                candidate=self.candidate,
+                pr=self.pr,
+                config=self.config,
+                kb=kb,
+                conn=object(),
+                tracker_id="t_release",
+                tracker_status="todo",
+                existing_tracker=False,
+                relation_task="t_release",
+                expected_parents=["t_example"],
+                comment_id=1,
+                comment=comment,
+                completion=completion,
+                runner=runner,
+                current_pr=publisher.PublishedPullRequest.from_dict(
+                    exact_pr(labels=[])
+                ),
             )
-        )
 
-    def test_terminal_recovery_fails_closed_on_malformed_durable_tracker(self):
+        self.assertEqual(self.ci_proof.call_count, 1)
+        self.assertEqual(runner.calls, [])
+
+    def test_terminal_recovery_requires_bounded_host_authenticated_runtime(self):
         kb = self.kb()
-        completion = (
+        current = kb.by_id["t_example"]
+        current.status = "done"
+        current.result = (
             "TRUSTED_PUBLISHER v1\n"
             f"PR: {self.pr.url}\n"
             f"Exact head: {HEAD_SHA}\n"
             "Release tracker: t_release"
         )
-        current = kb.by_id["t_example"]
-        current.status = "done"
-        current.result = completion
-        kb.by_id["t_release"] = SimpleNamespace(
-            **{**vars(kb.by_id["t_release"]), "body": "wrong release authority"}
-        )
 
         with self.assertRaisesRegex(
-            publisher.PublisherCompletionAmbiguous,
-            "terminal release tracker is not exact",
+            publisher.PublisherPending,
+            "PENDING_HERMES_RUNTIME.*host-authenticated",
         ):
             publisher.recover_terminal_completion_obligation(
                 self.config, kb, object(), runner=QueueRunner([])
-            )
-
-    def test_terminal_recovery_wraps_transient_initial_pr_read_for_retry(self):
-        kb = self.kb()
-        completion = (
-            "TRUSTED_PUBLISHER v1\n"
-            f"PR: {self.pr.url}\n"
-            f"Exact head: {HEAD_SHA}\n"
-            "Release tracker: t_release"
-        )
-        current = kb.by_id["t_example"]
-        current.status = "done"
-        current.result = completion
-        kb.comments.append(SimpleNamespace(
-            id=1,
-            task_id="t_example",
-            author="radulator-trusted-publisher",
-            body=(
-                "TRUSTED_PUBLISHER v1 publication verified. "
-                f"PR {self.pr.url}; exact head {HEAD_SHA}; "
-                "release tracker t_release."
-            ),
-        ))
-
-        with self.assertRaisesRegex(
-            publisher.PublisherCompletionAmbiguous,
-            "terminal readiness recovery remains pending",
-        ):
-            publisher.recover_terminal_completion_obligation(
-                self.config,
-                kb,
-                object(),
-                runner=QueueRunner([
-                    response(returncode=1, stderr="transient PR read failure"),
-                ]),
             )
 
     def test_malformed_or_mismatched_tracker_output_rejects(self):
@@ -2285,6 +2263,7 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
             self.labeled_pr_response(),
             self.labeled_pr_response(),
             self.labeled_pr_response(),
+            self.labeled_pr_response(),
         ])
 
         tracker = publisher.complete_lifecycle_handoff(
@@ -2354,6 +2333,7 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
             self.labeled_pr_response(),
             self.labeled_pr_response(),
             self.labeled_pr_response(),
+            self.labeled_pr_response(),
         ])
 
         publisher.complete_lifecycle_handoff(
@@ -2365,6 +2345,12 @@ class TrustedPublisherLifecycleTests(unittest.TestCase):
 
 class TrustedPublisherRunTests(unittest.TestCase):
     def setUp(self):
+        self.recovery_patch = mock.patch.object(
+            publisher,
+            "recover_terminal_completion_obligation",
+            return_value=None,
+        )
+        self.recovery_patch.start()
         self.config = publisher.PublisherConfig(
             board="default",
             project_id="radulator",
@@ -2389,6 +2375,39 @@ class TrustedPublisherRunTests(unittest.TestCase):
         self.labeled = publisher.PublishedPullRequest.from_dict(
             exact_pr(labels=[{"name": "ready-for-gate"}])
         )
+
+    def tearDown(self):
+        self.recovery_patch.stop()
+
+    def test_missing_bounded_completion_query_holds_before_any_task_or_github_scan(self):
+        self.recovery_patch.stop()
+        kb = FakeKanban(
+            [
+                task(),
+                task(
+                    id="t_spoof",
+                    status="done",
+                    result=(
+                        "TRUSTED_PUBLISHER v1\n"
+                        "PR: https://github.com/momomojo/Radulator/pull/999\n"
+                        f"Exact head: {HEAD_SHA}\n"
+                        "Release tracker: t_spoof_tracker"
+                    ),
+                ),
+            ],
+            {"t_example": exact_events(changed_paths=["src/example.js"])},
+        )
+        runner = QueueRunner([])
+        try:
+            result = publisher.run_once(
+                self.config, kb, object(), runner=runner
+            )
+        finally:
+            self.recovery_patch.start()
+
+        self.assertEqual(result["status"], "pending_runtime")
+        self.assertRegex(result["reason"], "bounded host-authenticated")
+        self.assertEqual(runner.calls, [])
 
     def test_no_candidate_is_a_silent_noop(self):
         kb = FakeKanban([], {})

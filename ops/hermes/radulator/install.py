@@ -23,7 +23,8 @@ from typing import Any
 
 
 SCHEMA = "radulator-hermes-install/v1"
-BACKUP_SCHEMA = "radulator-hermes-backup/v2"
+BACKUP_SCHEMA = "radulator-hermes-backup/v3"
+PREVIOUS_BACKUP_SCHEMA = "radulator-hermes-backup/v2"
 LEGACY_BACKUP_SCHEMA = "radulator-hermes-backup/v1"
 JOBS_TRANSACTION_SCHEMA = "radulator-hermes-jobs-transaction/v1"
 JOBS_PREFLIGHT_BACKUP_SCHEMA = "radulator-hermes-jobs-preflight-backup/v2"
@@ -774,12 +775,56 @@ def _locked_profile_jobs(plan: dict[str, Any]):
         locks.release()
 
 
-def _backup_unsigned(entries: list[dict[str, Any]]) -> dict[str, Any]:
-    return {"schema": BACKUP_SCHEMA, "entries": entries}
+def _backup_unsigned(
+    entries: list[dict[str, Any]], jobs_preflight: dict[str, Any]
+) -> dict[str, Any]:
+    return {
+        "schema": BACKUP_SCHEMA,
+        "entries": entries,
+        "jobs_preflight": jobs_preflight,
+    }
 
 
-def _backup_signature(key: bytes, entries: list[dict[str, Any]]) -> str:
-    return hmac.new(key, _serialize(_backup_unsigned(entries)), hashlib.sha256).hexdigest()
+def _backup_signature(
+    key: bytes, entries: list[dict[str, Any]], jobs_preflight: dict[str, Any]
+) -> str:
+    return hmac.new(
+        key,
+        _serialize(_backup_unsigned(entries, jobs_preflight)),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _jobs_preflight_binding(plan: dict[str, Any]) -> dict[str, Any]:
+    path = _jobs_preflight_backup_path(plan)
+    _require_safe_target(path, plan, may_be_missing=True)
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return {"required": False, "sha256": None}
+    _require_protected_file(path, "Hermes jobs preflight backup")
+    return {
+        "required": True,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+    }
+
+
+def _validate_jobs_preflight_binding(value: Any) -> dict[str, Any]:
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"required", "sha256"}
+        or not isinstance(value.get("required"), bool)
+        or (
+            value["required"]
+            and (
+                not isinstance(value.get("sha256"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", value["sha256"])
+            )
+        )
+        or (not value["required"] and value.get("sha256") is not None)
+    ):
+        raise InstallError("Backup manifest jobs preflight binding is invalid.")
+    return dict(value)
 
 
 def _read_or_create_backup_key(plan: dict[str, Any], *, create: bool) -> bytes:
@@ -994,18 +1039,23 @@ def _load_jobs_preflight_backup(
     return entries, frozenset(managed_consumers)
 
 
-def _finish_jobs_preflight_backup(plan: dict[str, Any]) -> None:
-    destination = _jobs_preflight_backup_path(plan)
-    _require_safe_target(destination, plan, may_be_missing=True)
-    try:
-        destination.unlink()
-    except FileNotFoundError:
-        return
-    descriptor = os.open(destination.parent, os.O_RDONLY)
-    try:
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
+def _load_bound_jobs_preflight(
+    plan: dict[str, Any], binding: dict[str, Any]
+) -> frozenset[tuple[str, str]]:
+    binding = _validate_jobs_preflight_binding(binding)
+    if not binding["required"]:
+        return frozenset()
+    path = _jobs_preflight_backup_path(plan)
+    _require_safe_target(path, plan, may_be_missing=False)
+    _require_protected_file(path, "Hermes jobs preflight backup")
+    if not hmac.compare_digest(
+        hashlib.sha256(path.read_bytes()).hexdigest(), binding["sha256"]
+    ):
+        raise InstallError(
+            "Hermes jobs preflight backup does not match the signed backup binding."
+        )
+    _, managed_consumers = _load_jobs_preflight_backup(plan)
+    return managed_consumers
 
 
 def _load_backup(plan: dict[str, Any], *, migrate_legacy: bool) -> dict[str, Any]:
@@ -1053,17 +1103,72 @@ def _load_backup(plan: dict[str, Any], *, migrate_legacy: bool) -> dict[str, Any
             else:
                 entries.append(_snapshot_backup_target(target_id, target, plan))
         key = _read_or_create_backup_key(plan, create=True)
+        jobs_preflight = _jobs_preflight_binding(plan)
         migrated = {
-            **_backup_unsigned(entries),
-            "hmac_sha256": _backup_signature(key, entries),
+            **_backup_unsigned(entries, jobs_preflight),
+            "hmac_sha256": _backup_signature(
+                key, entries, jobs_preflight
+            ),
         }
         _atomic_write(destination, _serialize(migrated), 0o600)
         return migrated
-    if backup.get("schema") != BACKUP_SCHEMA or set(backup) != {"schema", "entries", "hmac_sha256"}:
+    if backup.get("schema") == PREVIOUS_BACKUP_SCHEMA:
+        if (
+            not migrate_legacy
+            or set(backup) != {"schema", "entries", "hmac_sha256"}
+        ):
+            raise InstallError(
+                "Previous backup manifest requires a safe installer migration."
+            )
+        key = _read_or_create_backup_key(plan, create=False)
+        old_unsigned = {
+            "schema": PREVIOUS_BACKUP_SCHEMA,
+            "entries": entries,
+        }
+        old_signature = hmac.new(
+            key, _serialize(old_unsigned), hashlib.sha256
+        ).hexdigest()
+        if (
+            not isinstance(backup.get("hmac_sha256"), str)
+            or not hmac.compare_digest(backup["hmac_sha256"], old_signature)
+        ):
+            raise InstallError("Backup manifest authentication failed.")
+        validated = [_validate_backup_entry(entry, legacy=False) for entry in entries]
+        identities = [target_id for target_id, *_ in validated]
+        if len(set(identities)) != len(identities):
+            raise InstallError("Previous backup manifest contains duplicate target ids.")
+        if set(identities) != set(targets):
+            raise InstallError(
+                "Previous backup manifest must exactly match the managed target allowlist."
+            )
+        for target_id in identities:
+            _require_safe_target(targets[target_id], plan, may_be_missing=True)
+        jobs_preflight = _jobs_preflight_binding(plan)
+        if not jobs_preflight["required"]:
+            raise InstallError(
+                "Previous backup manifest lacks required authenticated jobs provenance."
+            )
+        _load_jobs_preflight_backup(plan)
+        migrated = {
+            **_backup_unsigned(entries, jobs_preflight),
+            "hmac_sha256": _backup_signature(
+                key, entries, jobs_preflight
+            ),
+        }
+        _atomic_write(destination, _serialize(migrated), 0o600)
+        return migrated
+    if (
+        backup.get("schema") != BACKUP_SCHEMA
+        or set(backup)
+        != {"schema", "entries", "jobs_preflight", "hmac_sha256"}
+    ):
         raise InstallError(f"Backup manifest schema is invalid: {destination}")
+    jobs_preflight = _validate_jobs_preflight_binding(backup["jobs_preflight"])
     key = _read_or_create_backup_key(plan, create=False)
     signature = backup.get("hmac_sha256")
-    if not isinstance(signature, str) or not hmac.compare_digest(signature, _backup_signature(key, entries)):
+    if not isinstance(signature, str) or not hmac.compare_digest(
+        signature, _backup_signature(key, entries, jobs_preflight)
+    ):
         raise InstallError("Backup manifest authentication failed.")
     return backup
 
@@ -1318,6 +1423,9 @@ def _capture_backup(plan: dict[str, Any]) -> None:
     if destination_present:
         backup = _load_backup(plan, migrate_legacy=True)
         entries = list(backup["entries"])
+        jobs_preflight = _validate_jobs_preflight_binding(
+            backup["jobs_preflight"]
+        )
         validated = [_validate_backup_entry(entry, legacy=False) for entry in entries]
         recorded_ids = [target_id for target_id, *_ in validated]
         if len(set(recorded_ids)) != len(recorded_ids):
@@ -1336,10 +1444,13 @@ def _capture_backup(plan: dict[str, Any]) -> None:
             # disabled and read back every managed job under both locks.
             entries, _ = _load_jobs_preflight_backup(plan)
             recorded_ids = [entry["target_id"] for entry in entries]
+            jobs_preflight = _jobs_preflight_binding(plan)
             key = _read_or_create_backup_key(plan, create=True)
             signed_prefix = {
-                **_backup_unsigned(entries),
-                "hmac_sha256": _backup_signature(key, entries),
+                **_backup_unsigned(entries, jobs_preflight),
+                "hmac_sha256": _backup_signature(
+                    key, entries, jobs_preflight
+                ),
             }
             _atomic_write(destination, _serialize(signed_prefix), 0o600)
             _require_protected_file(destination, "Backup manifest")
@@ -1347,6 +1458,7 @@ def _capture_backup(plan: dict[str, Any]) -> None:
         else:
             entries = []
             recorded_ids = []
+            jobs_preflight = {"required": False, "sha256": None}
 
     changed = False
     for target_id, target in targets.items():
@@ -1371,8 +1483,10 @@ def _capture_backup(plan: dict[str, Any]) -> None:
     if changed or not destination_present:
         key = _read_or_create_backup_key(plan, create=True)
         signed = {
-            **_backup_unsigned(entries),
-            "hmac_sha256": _backup_signature(key, entries),
+            **_backup_unsigned(entries, jobs_preflight),
+            "hmac_sha256": _backup_signature(
+                key, entries, jobs_preflight
+            ),
         }
         _atomic_write(destination, _serialize(signed), 0o600)
     _require_protected_file(destination, "Backup manifest")
@@ -2474,17 +2588,15 @@ def _restore_install_under_job_locks(plan: dict[str, Any]) -> dict[str, Any]:
         homes[template["_home"]].append(template)
     _recover_jobs_transaction(plan, homes)
     _quiesce_managed_jobs_before_preflight(plan, homes, operation="restore")
-    provenance_path = _jobs_preflight_backup_path(plan)
-    _require_safe_target(provenance_path, plan, may_be_missing=True)
-    stable_managed_consumers: frozenset[tuple[str, str]] = frozenset()
-    if provenance_path.exists():
-        _, stable_managed_consumers = _load_jobs_preflight_backup(plan)
     backup_path = _backup_path(plan)
     try:
         backup_path.lstat()
     except FileNotFoundError:
         raise InstallError(f"Backup manifest is missing: {backup_path}")
     backup = _load_backup(plan, migrate_legacy=True)
+    stable_managed_consumers = _load_bound_jobs_preflight(
+        plan, backup["jobs_preflight"]
+    )
     targets = _backup_targets(plan)
     entries = [_validate_backup_entry(entry, legacy=False) for entry in backup["entries"]]
     target_ids = [target_id for target_id, *_ in entries]
@@ -2541,7 +2653,6 @@ def _restore_install_under_job_locks(plan: dict[str, Any]) -> dict[str, Any]:
             plan, homes, expected_enabled=False, require_present=False
         )
         _finish_jobs_transaction(plan)
-        _finish_jobs_preflight_backup(plan)
     except Exception:
         try:
             _recover_jobs_transaction(plan, homes)
