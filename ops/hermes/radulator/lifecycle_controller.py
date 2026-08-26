@@ -622,9 +622,13 @@ def _verified_kanban_reconciliation_task(
         readback = adapter.show(task_id)
     except Exception as error:
         raise LedgerError(f"Kanban reconciliation readback failed for {task_id}.") from error
-    if not _task_records(readback, task_id):
-        raise LedgerError(f"Kanban reconciliation readback did not identify {task_id}.")
-    return readback, _task_status(readback, task_id)
+    task = _exact_task_record(readback, task_id)
+    status = str(task.get("status", task.get("state", ""))).strip().lower()
+    if not status:
+        raise LedgerError(
+            f"Kanban status readback is missing for exact task {task_id}."
+        )
+    return readback, status
 
 
 def _reconciliation_action(event: LifecycleEvent) -> dict[str, Any]:

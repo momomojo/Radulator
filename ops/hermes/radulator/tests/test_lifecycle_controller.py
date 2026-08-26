@@ -1064,6 +1064,92 @@ class LifecycleLedgerTests(unittest.TestCase):
 
         self.assertEqual(self.ledger.replay().events, ())
 
+    def test_reconciliation_rejects_tracker_found_only_in_nested_child(self):
+        tasks = {
+            "t_tracker": {
+                "task": {
+                    "id": "t_unrelated",
+                    "status": "todo",
+                    "body": "unrelated show result",
+                },
+                "children": [{
+                    "id": "t_tracker",
+                    "status": "todo",
+                    "body": "nested historical tracker",
+                }],
+            },
+            "t_source": {
+                "task": {"id": "t_source", "status": "done", "body": "source"},
+                "parents": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("nested-only tracker must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "nested-only-tracker-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "exact task record"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+        self.assertEqual(self.ledger.replay().events, ())
+
+    def test_reconciliation_rejects_source_found_only_in_nested_child(self):
+        tasks = {
+            "t_tracker": {
+                "task": {"id": "t_tracker", "status": "todo", "body": "tracker"},
+                "parents": [],
+            },
+            "t_source": {
+                "task": {
+                    "id": "t_unrelated",
+                    "status": "done",
+                    "body": "unrelated show result",
+                },
+                "children": [{
+                    "id": "t_source",
+                    "status": "done",
+                    "body": "nested historical source",
+                }],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return tasks[task_id]
+
+            def perform(self, _action):
+                raise AssertionError("nested-only source must not mutate Kanban")
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "nested-only-source-audit",
+            "trackers": [{
+                "task_id": "t_tracker",
+                "source_id": "source",
+                "source": {"kind": "kanban_task", "task_id": "t_source"},
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "exact task record"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+        self.assertEqual(self.ledger.replay().events, ())
+
     def test_reconciliation_rejects_receipt_digest_prefix_of_longer_hex_token(self):
         digest = "1" * 64
         tasks = {
