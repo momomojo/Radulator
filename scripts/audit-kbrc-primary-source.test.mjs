@@ -24,6 +24,15 @@ const audit = JSON.parse(run.stdout);
 assert.equal(audit.schema, "radulator-kbrc-primary-source-audit/v1");
 assert.equal(audit.article_pmcid, "PMC13156734");
 assert.equal(audit.archive_member, "mmc1.pdf");
+assert.equal(
+  audit.direct_pdf_url,
+  "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
+);
+assert.ok(
+  ["direct-publisher-pdf", "europe-pmc-archive-fallback"].includes(
+    audit.supplement_retrieval,
+  ),
+);
 assert.equal(audit.archive_member_bytes, 3696579);
 assert.equal(
   audit.archive_member_sha256,

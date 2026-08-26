@@ -55,6 +55,25 @@ async function fetchBuffer(url) {
   assert.fail(`${url}: primary-source retrieval failed after 3 attempts (${lastFailure})`);
 }
 
+async function fetchSupplement(artifact) {
+  try {
+    const direct = await fetchBuffer(artifact.direct_pdf_url);
+    assert.equal(direct.length, artifact.archive_member_bytes, "direct supplement size");
+    assert.equal(sha256(direct), artifact.archive_member_sha256, "direct supplement digest");
+    return { bytes: direct, retrieval: "direct-publisher-pdf" };
+  } catch (directError) {
+    const archive = await fetchBuffer(artifact.archive_url);
+    const member = findZipMember(archive, artifact.archive_member);
+    assert.equal(member.length, artifact.archive_member_bytes, "fallback supplement size");
+    assert.equal(sha256(member), artifact.archive_member_sha256, "fallback supplement digest");
+    return {
+      bytes: member,
+      retrieval: "europe-pmc-archive-fallback",
+      direct_error: directError instanceof Error ? directError.message : String(directError),
+    };
+  }
+}
+
 function findZipMember(archive, memberName) {
   const minimumEocdOffset = Math.max(0, archive.length - 65557);
   let eocdOffset = -1;
@@ -377,16 +396,16 @@ async function main() {
   const artifact = record?.implementation_evidence?.source_artifact;
   assert.ok(artifact, "KBRC registry lacks source_artifact metadata");
 
-  const [xmlBytes, archive] = await Promise.all([
+  const [xmlBytes, supplement] = await Promise.all([
     fetchBuffer(artifact.full_text_xml_url),
-    fetchBuffer(artifact.archive_url),
+    fetchSupplement(artifact),
   ]);
   const xml = xmlBytes.toString("utf8");
   assert.match(xml, /<article-id pub-id-type="pmcid">PMC13156734<\/article-id>/);
   assert.match(xml, /CC BY-NC-ND license/);
   assert.match(xml, /xlink:href="mmc1\.pdf"/);
 
-  const member = findZipMember(archive, artifact.archive_member);
+  const member = supplement.bytes;
   assert.equal(member.length, artifact.archive_member_bytes, "supplement member size");
   assert.equal(sha256(member), artifact.archive_member_sha256, "supplement member digest");
   const sourceTerms = parseSourceEquation(await pdfText(member));
@@ -412,6 +431,8 @@ async function main() {
     schema: "radulator-kbrc-primary-source-audit/v1",
     article_pmcid: "PMC13156734",
     archive_member: artifact.archive_member,
+    direct_pdf_url: artifact.direct_pdf_url,
+    supplement_retrieval: supplement.retrieval,
     archive_member_bytes: member.length,
     archive_member_sha256: sha256(member),
     license: "CC BY-NC-ND 4.0",
