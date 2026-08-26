@@ -20,6 +20,29 @@
       }
     },
     {
+      "id": "noncontrast-minus9-to20-category-ii-not-simple-cyst",
+      "description": "A homogeneous -9 to 20 HU mass characterized only at noncontrast CT is a Bosniak v2019 class II density-only subtype, not a fully characterized class I simple cyst.",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "noncontrastMinus9To20"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "v2019 Term", "equals": "Likely benign Bosniak II renal mass" },
+          { "key": "Rationale", "includes": "homogeneous -9 to 20 HU at noncontrast CT" }
+        ]
+      }
+    },
+    {
       "id": "few-thin-enhancing-septa-category-ii",
       "inputs": {
         "scopeEligibility": "eligible",
@@ -142,7 +165,13 @@
       },
       "expect": {
         "noError": true,
-        "fields": [{ "key": "Bosniak Category", "equals": "IIF" }]
+        "fields": [
+          { "key": "Bosniak Category", "equals": "IIF" },
+          {
+            "key": "Management",
+            "equals": "CUA 2023 suggests imaging every 6-12 months during the first year, then yearly if stable; for cysts without progression, 5 years of follow-up is suggested. The interval is based on expert opinion and the 5-year duration is a conditional recommendation with very low certainty; tailor surveillance to patient factors and specialist guidance"
+          }
+        ]
       }
     },
     {
