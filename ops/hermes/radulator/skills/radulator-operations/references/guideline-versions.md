@@ -1,0 +1,30 @@
+# Radulator guideline and source registry — WF-3
+
+The canonical machine-readable registry is [`guideline-versions.json`](guideline-versions.json). The monthly WF-3 watcher must read that JSON, not infer versions from this prose.
+
+Each live calculator export has exactly one registry record. A record identifies the basis implemented by the calculator:
+
+- a versioned clinical guideline or reporting/classification system;
+- a consensus statement;
+- a primary model, published formula, reference dataset, or measurement reference;
+- manufacturer data that must be checked against current product information; or
+- an explicit non-clinical row.
+
+`verification_status: "verified"` is a dated assertion bounded to the listed source, the wording in `justification`, and `implementation_evidence`. Each verified row identifies the exact executable calculator, canonical compute fixture, bounded source locators and facts, dimensions under review, and literal vector IDs that exercise those facts. Every listed primary publication or official authority must have at least one such claim. When a primary equation is supplied as a distinct publication artifact, the evidence may pin the archive member's name, size, and SHA-256 digest. The KBRC row also names `npm run test:kbrc-source`, which downloads the primary XML and supplement, verifies the exact member digest, derives the signed terms and published vectors from those source bytes, compares them with runtime and fixtures, and deletes the CC BY-NC-ND bytes without committing them. `verification_status: "seed-unverified"` records the app's implemented claim and a primary-source check target only. It must never be described as current or verified, must not carry `implementation_evidence`, and `last_verified` must remain `null` until an authoritative review is completed.
+
+## Migrated and rechecked status
+
+- The prior Mini registry was audited read-only on 2026-08-25. Bosniak v2019 retains its existing source record. MELD 3.0/OPTN was rechecked on 2026-08-25 against Policy 9.1.D for calculation rules and the official calculator user guide for the distinct laboratory-entry domains. BI-RADS was rechecked on the same date against both the ACR v2025 authority and the FDA MQSA rule-enforcement source.
+- CAC/MESA, Cockcroft-Gault, and PESI received dedicated primary-source records verified on 2026-08-25. CAC/MESA now binds the exact-300 CAC-DRS boundary to the accessible 2023 multi-society AUC Table 1.2. The Kidney Biopsy Major Bleeding Risk Calculator is verified from the 2026 primary paper and its digest-pinned Item S1 supplement with an independent live-source audit rather than a same-commit manifest oracle.
+- All other clinical records remain `seed-unverified`; the migration does not upgrade their evidence status.
+- The website feedback form is mapped explicitly as `non-clinical` and has no invented medical source.
+
+## Watcher rules
+
+1. Process only records whose source can be read from the named primary publication or official authority.
+2. A no-change review may update `last_verified` and `verification_status` only after the exact source was read, each source-derived claim was bounded in `justification` and `implementation_evidence`, and the referenced vectors passed against the real calculator export.
+3. A version or source delta creates or updates one deduplicated `guideline-review:` Kanban card and release tracker; the watcher never edits calculator logic.
+4. Calculator changes proceed through deterministic clinical tests, exact-head signed primary and verification review when high-risk, protected merge, promotion, deployment smoke, release-marker readback, and retained learning.
+5. `NEEDS_FIX` requires a corrected head and re-review; it is not a passive owner hold.
+
+The repository test `npm run test:hermes-guideline-registry` fails when a live calculator lacks a mapping; a row invents verification status; a source URL, locator, fact, artifact digest, path, or vector is missing or unbounded; a verified claim lacks primary/official-source coverage; a seed-unverified row carries implementation evidence; or a referenced vector does not produce its literal expected result from the real calculator code. The separate `npm run test:kbrc-source` and `npm run test:cac-drs-source` commands retrieve and parse the named primary sources, so the consequential formula and threshold checks do not rely only on same-commit assertions. Exact-head clinical judges still decide whether the bounded source interpretation is clinically sufficient.

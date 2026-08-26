@@ -2,7 +2,7 @@
  * Static content for the Radulator User Guide.
  * Each section has an id (anchor target), title, and body paragraphs.
  */
-import { medicalCalculatorCount } from "@/components/calculators";
+import { medicalCalculatorCount } from "@/components/calculators/registry";
 
 export const guideContent = [
   {
