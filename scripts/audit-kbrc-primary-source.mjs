@@ -287,7 +287,9 @@ function assertRuntimeClinicalClaims(calibrationWarning, calculatorSource, fixtu
 }
 
 function combinedCohortMedians(xml) {
-  const table = xml.match(/<table-wrap id="tbl1"[\s\S]*?<\/table-wrap>/)?.[0];
+  const table = xml.match(
+    /<table-wrap\b[^>]*\bid="tbl1"[^>]*>[\s\S]*?<\/table-wrap>/,
+  )?.[0];
   assert.ok(table, "full-text XML lacks Table 1");
   const rows = [...table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((match) =>
     [...match[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map((cell) =>
