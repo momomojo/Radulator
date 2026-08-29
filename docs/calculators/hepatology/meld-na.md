@@ -1,4 +1,8 @@
-# MELD-Na Score Calculator Documentation
+# Archived MELD-Na 2016 Documentation — Not Current Clinical Guidance
+
+> **Historical record only.** This file preserves the pre-MELD-3.0 documentation for change-review provenance. It is not the active Radulator specification, does not describe the current OPTN allocation model, and must not be used for clinical decisions. See [`meld-3.md`](meld-3.md) for the current, source-verified calculator documentation.
+
+# MELD-Na Score Calculator Documentation (Archived)
 
 ## Overview
 
@@ -344,10 +348,10 @@ MELD-Na = MELD + 1.32 × (137 - Na) - [0.033 × MELD × (137 - Na)]
    - Validation for prioritization
    - [DOI: 10.1053/jlts.2003.50040](https://doi.org/10.1053/jlts.2003.50040)
 
-3. **Kim WR et al. Gastroenterology 2008;134(4):1001-1001.e1**
+3. **Kim WR et al. N Engl J Med 2008;359(10):1018-26**
    - MELD-Na formula development
    - Improved mortality prediction with sodium
-   - [DOI: 10.1053/j.gastro.2008.01.029](https://doi.org/10.1053/j.gastro.2008.01.029)
+   - [DOI: 10.1056/NEJMoa0801209](https://doi.org/10.1056/NEJMoa0801209)
 
 4. **Biggins SW et al. Hepatology 2021;74(2):1104-15**
    - MELD-Na implementation and outcomes

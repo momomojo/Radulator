@@ -1,0 +1,818 @@
+{
+  "schema": "radulator-guideline-registry/v1",
+  "policy": {
+    "seed_unverified": "A seed-unverified row records the implemented claim and its bounded primary-source check target; it is not a current-version assertion.",
+    "verified": "A verified row may assert only what the cited primary or official source confirmed on last_verified and what its bound source-derived vectors execute against the named calculator code."
+  },
+  "records": [
+    {
+      "calculator_id": "aast-trauma-grading",
+      "title": "AAST Trauma Grading",
+      "implemented_version": "AAST OIS 2018/2025",
+      "basis_type": "classification-system",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements published AAST organ injury scales; the mixed 2018/2025 version claim still requires an official AAST version audit.",
+      "sources": [{ "authority": "American Association for the Surgery of Trauma", "title": "AAST Organ Injury Scale 2018 revision publication", "role": "primary-publication", "url": "https://doi.org/10.1097/TA.0000000000002058" }]
+    },
+    {
+      "calculator_id": "albi-score",
+      "title": "ALBI Score",
+      "implemented_version": "ALBI Grade (Johnson 2015)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the published ALBI prognostic model rather than a versioned society guideline; primary-model fidelity remains queued for audit.",
+      "sources": [{ "authority": "Johnson et al.", "title": "Assessment of liver function in patients with hepatocellular carcinoma: a new evidence-based approach", "role": "primary-publication", "url": "https://doi.org/10.1200/JCO.2014.57.9151" }]
+    },
+    {
+      "calculator_id": "aspects-score",
+      "title": "ASPECTS Score",
+      "implemented_version": "ASPECTS (Barber 2000)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the original ASPECTS instrument; guideline adjacency and current interpretation need an authoritative source audit.",
+      "sources": [{ "authority": "Barber et al.", "title": "Validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke", "role": "primary-publication", "url": "https://doi.org/10.1016/S0140-6736(00)02237-6" }]
+    },
+    {
+      "calculator_id": "adrenal-ct",
+      "title": "Adrenal CT Washout",
+      "implemented_version": "Published adrenal CT washout equations",
+      "basis_type": "measurement-reference",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses published washout measurements rather than a named versioned guideline; source thresholds remain queued for primary-literature review.",
+      "sources": [{ "authority": "Caoili et al.", "title": "Adrenal masses: characterization with combined unenhanced and delayed enhanced CT", "role": "primary-publication", "url": "https://doi.org/10.2214/ajr.175.5.1751411" }]
+    },
+    {
+      "calculator_id": "adrenal-mri",
+      "title": "Adrenal MRI Chemical Shift",
+      "implemented_version": "Published adrenal chemical-shift MRI measurements",
+      "basis_type": "measurement-reference",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses published signal-intensity measurements rather than a versioned guideline; the source basis remains queued for audit.",
+      "sources": [{ "authority": "Mayo-Smith et al.", "title": "Characterization of adrenal lesions with chemical shift MRI", "role": "primary-publication", "url": "https://doi.org/10.2214/AJR.10.4547" }]
+    },
+    {
+      "calculator_id": "avs-hyperaldo",
+      "title": "Adrenal Vein Sampling - Aldosterone",
+      "implemented_version": "Published AVS selectivity and lateralization protocols",
+      "basis_type": "consensus-statement",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Combines published AVS protocols and consensus material; no current-version claim is made until the named authorities are rechecked.",
+      "sources": [{ "authority": "Korean Endocrine Society", "title": "Consensus guidance for primary aldosteronism and adrenal venous sampling", "role": "context-guideline", "url": "https://doi.org/10.3803/EnM.2021.1192" }]
+    },
+    {
+      "calculator_id": "avs-cortisol",
+      "title": "Adrenal Vein Sampling - Cortisol",
+      "implemented_version": "Published cortisol AVS protocols",
+      "basis_type": "measurement-reference",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses published cortisol AVS ratios and protocols rather than a versioned society guideline; source fidelity remains queued for review.",
+      "sources": [{ "authority": "Acharya et al.", "title": "Adrenal venous sampling for ACTH-independent hypercortisolism", "role": "primary-publication", "url": "https://doi.org/10.1007/s00268-018-4788-2" }]
+    },
+    {
+      "calculator_id": "bclc-staging",
+      "title": "BCLC Staging",
+      "implemented_version": "BCLC 2022",
+      "basis_type": "clinical-guideline",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the BCLC 2022 strategy; a newer paper is cited in code, so the current-version relationship must be resolved before verification.",
+      "sources": [{ "authority": "BCLC Group", "title": "BCLC strategy for prognosis prediction and treatment recommendation: the 2022 update", "role": "official-authority", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8866082/" }]
+    },
+    {
+      "calculator_id": "birads",
+      "title": "Mammography Assessment Guide",
+      "implemented_version": "FDA MQSA 2024 with ACR BI-RADS v2025 context",
+      "basis_type": "classification-system",
+      "verification_status": "verified",
+      "last_verified": "2026-08-26",
+      "justification": "The ACR source identifies BI-RADS v2025. A live official-FDA audit independently parses and binds the amended MQSA seven-day communication rule, self-referred referral system, 30-day prior-comparison follow-up with Alternative Standard #25, and the marker-placement assessment under Alternative Standard #12 to executable Radulator vectors.",
+      "sources": [
+        { "authority": "American College of Radiology", "title": "Breast Imaging Reporting and Data System (BI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS" },
+        { "authority": "American College of Radiology", "title": "BI-RADS v2025 Mammography Summary Form", "role": "official-authority", "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf" },
+        { "authority": "U.S. Food and Drug Administration", "title": "Important Information: Final Rule to Amend the Mammography Quality Standards Act (MQSA)", "role": "official-authority", "url": "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa" },
+        { "authority": "U.S. Food and Drug Administration", "title": "Frequently Asked Questions About MQSA", "role": "official-authority", "url": "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa" },
+        { "authority": "U.S. Food and Drug Administration", "title": "MQSA Alternative Standard #25", "role": "official-authority", "url": "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation" },
+        { "authority": "U.S. Food and Drug Administration", "title": "MQSA Alternative Standard #12", "role": "official-authority", "url": "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement" }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/BIRADS.jsx",
+        "fixture_path": "tests/fixtures/compute/birads.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "FDA MQSA 2024 · ACR BI-RADS v2025 context" },
+        "source_audit": {
+          "schema": "radulator-live-source-audit/v1",
+          "command": "npm run test:birads-fda-source",
+          "authority": "U.S. Food and Drug Administration",
+          "source_urls": [
+            "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
+            "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
+            "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
+            "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement"
+          ],
+          "vector_ids": [
+            "category-3",
+            "category-4",
+            "category-5",
+            "incomplete-prior-comparison",
+            "post-procedure-marker"
+          ],
+          "source_bytes_committed": false
+        },
+        "claims": [
+          {
+            "id": "acr-v2025-context",
+            "source_url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
+            "source_locator": "BI-RADS overview, current manual name, citation guidance, and mammography section",
+            "fact": "The calculator identifies the ACR-owned v2025 system only as version context and does not infer an assessment from imaging features.",
+            "dimensions": ["version", "scope", "output"],
+            "vector_ids": ["category-1"]
+          },
+          {
+            "id": "acr-mammography-category-boundaries",
+            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+            "source_locator": "Mammography assessment categories 3, 4A, 4B, 4C, and 5",
+            "fact": "The selected-category guide preserves the public ACR mammography likelihood intervals, including their literal 2 percent and 50 percent overlaps.",
+            "dimensions": ["classification", "threshold", "boundary", "output"],
+            "vector_ids": ["category-3", "category-4a", "category-4b", "category-4c", "category-5"]
+          },
+          {
+            "id": "fda-mqsa-assessment-framework",
+            "source_url": "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
+            "source_locator": "Final rule overview, mammography-report assessment categories, and September 10, 2024 compliance date",
+            "fact": "The guide returns FDA MQSA mammography-report terminology while keeping the framework distinct from the ACR BI-RADS manual.",
+            "dimensions": ["classification", "version", "output"],
+            "vector_ids": ["incomplete-additional-imaging", "category-4", "category-5"]
+          },
+          {
+            "id": "fda-seven-day-communication",
+            "source_url": "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
+            "source_locator": "FAQ: suspicious or highly suggestive final assessments and written communication timing",
+            "fact": "Suspicious and highly suggestive assessments expose the federal seven-calendar-day report and lay-summary communication requirement.",
+            "dimensions": ["classification", "threshold", "interpretation", "output"],
+            "vector_ids": ["category-4", "category-5"]
+          },
+          {
+            "id": "fda-self-referred-referral-system",
+            "source_url": "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
+            "source_locator": "FAQ: patients without a healthcare provider and the clinically indicated referral system",
+            "fact": "Facilities accepting patients without a healthcare provider expose the required referral system for probably benign, suspicious, and highly suggestive assessments.",
+            "dimensions": ["classification", "interpretation", "output"],
+            "vector_ids": ["category-3", "category-4", "category-5"]
+          },
+          {
+            "id": "fda-alternative-standard-25",
+            "source_url": "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
+            "source_locator": "Alternative Standard #25: follow-up report after an incomplete assessment awaiting prior comparisons",
+            "fact": "The prior-comparison pathway reports the 30-day follow-up rule and the bounded alternative assessment when additional imaging remains necessary.",
+            "dimensions": ["classification", "interpretation", "output"],
+            "vector_ids": ["incomplete-prior-comparison"]
+          },
+          {
+            "id": "fda-alternative-standard-12",
+            "source_url": "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement",
+            "source_locator": "Alternative Standard #12: post-procedure mammograms for marker placement",
+            "fact": "A post-procedure marker-placement mammogram is exposed as an FDA assessment without assigning it a numbered BI-RADS category.",
+            "dimensions": ["classification", "scope", "output"],
+            "vector_ids": ["post-procedure-marker"]
+          }
+        ]
+      }
+    },
+    {
+      "calculator_id": "cac-mesa",
+      "title": "CAC/MESA Calculator",
+      "implemented_version": "MESA reference values with CAC-DRS (SCCT 2018; 2023 AUC boundary)",
+      "basis_type": "reference-dataset",
+      "verification_status": "verified",
+      "last_verified": "2026-08-25",
+      "justification": "The official MESA tool confirms the reference outputs used by Radulator; the original SCCT CAC-DRS publication supplies the score-only categories, and the 2023 multi-society appropriate-use criteria Table 1.2 supplies an accessible unambiguous 100-299 versus 300-or-greater boundary.",
+      "sources": [
+        { "authority": "Multi-Ethnic Study of Atherosclerosis", "title": "CAC Score Reference Values", "role": "official-authority", "url": "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values" },
+        { "authority": "McClelland et al.", "title": "Distribution of coronary artery calcium by race, gender, and age: results from MESA", "role": "primary-publication", "url": "https://doi.org/10.1161/CIRCULATIONAHA.105.580696" },
+        { "authority": "Society of Cardiovascular Computed Tomography", "title": "CAC-DRS: Coronary Artery Calcium Data and Reporting System", "role": "context-guideline", "url": "https://doi.org/10.1016/j.jcct.2018.03.008" },
+        { "authority": "ACC, AHA, ASE, ASNC, ASPC, HFSA, HRS, SCAI, SCCT, SCMR, and STS", "title": "2023 Multimodality Appropriate Use Criteria for the Detection and Risk Assessment of Chronic Coronary Disease", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/" },
+        { "authority": "Maron et al.", "title": "Coronary artery calcium staging to guide preventive interventions", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11462328/" }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/CACMesa.jsx",
+        "fixture_path": "tests/fixtures/compute/cac-mesa.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "MESA reference values + CAC-DRS (SCCT 2018; AUC 2023 boundary)" },
+        "claims": [
+          {
+            "id": "mesa-reference-lookup",
+            "source_url": "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values",
+            "source_locator": "CAC Score Reference Values: output definition, cohort scope, and supported ages and race or ethnicity groups",
+            "fact": "Audited combinations return the official probability of nonzero CAC and 25th, 50th, 75th, and 90th reference scores without extrapolating outside the MESA scope.",
+            "dimensions": ["model-input", "scope", "boundary", "output"],
+            "vector_ids": ["audited-white-male-zero-cac", "audited-chinese-female-low-cac", "audited-black-female-moderate-cac", "mesa-unavailable-under-age-range", "mesa-unavailable-over-age-range", "mesa-unavailable-non-mesa-race"]
+          },
+          {
+            "id": "mesa-race-sex-age-distribution",
+            "source_url": "https://doi.org/10.1161/CIRCULATIONAHA.105.580696",
+            "source_locator": "Methods and results: CAC distribution by age, sex, and the four MESA race or ethnicity groups",
+            "fact": "The executable reference vectors bind the local table to the primary study dimensions of age, sex, race or ethnicity, and CAC distribution.",
+            "dimensions": ["model-input", "scope", "output"],
+            "vector_ids": ["audited-white-male-zero-cac", "audited-chinese-female-low-cac", "audited-black-female-moderate-cac", "audited-hispanic-male-severe-cac"]
+          },
+          {
+            "id": "scct-cac-drs-score-bands",
+            "source_url": "https://doi.org/10.1016/j.jcct.2018.03.008",
+            "source_locator": "CAC-DRS table and score-only A categories",
+            "fact": "The calculator maps the unambiguous original CAC-DRS score bands; the later multi-society AUC is used separately to resolve the original publication's exact-300 conflict.",
+            "dimensions": ["classification", "threshold", "boundary", "output"],
+            "vector_ids": ["audited-white-male-zero-cac", "audited-black-female-moderate-cac", "audited-hispanic-male-severe-cac"]
+          },
+          {
+            "id": "multisociety-auc-cac-drs-bands",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/",
+            "source_locator": "Table 1.2, clinical scenarios 18 through 21: CAC-DRS score bands after prior testing",
+            "fact": "The 2023 multi-society AUC defines CAC score 100 through 299 as CAC-DRS 2 and CAC score 300 or greater as CAC-DRS 3, so exact 300 is assigned A3.",
+            "dimensions": ["classification", "threshold", "boundary", "output"],
+            "vector_ids": ["cac-drs-score-299", "cac-drs-score-300", "cac-drs-score-301"]
+          },
+          {
+            "id": "maron-percentile-adjusted-staging",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11462328/",
+            "source_locator": "Proposed CAC staging table: stages 0 through 4, including the stage 1 versus 2 percentile boundary and the 300 and 1,000 score boundaries",
+            "fact": "The calculator binds stage 0 to CAC 0, stage 1 to CAC 1 through 99 below the supported 75th reference score, stage 2 to CAC 100 through 299 or exact nonzero 75th-reference equality, stage 3 to CAC 300 through 999, and stage 4 to CAC 1,000 or greater.",
+            "dimensions": ["classification", "threshold", "boundary", "output"],
+            "vector_ids": ["stage1-requires-cac-below-75th-reference", "stage2-includes-exact-nonzero-75th-reference", "stage1-versus-stage2-not-assigned-without-mesa-context"]
+          }
+        ]
+      }
+    },
+    {
+      "calculator_id": "cad-rads",
+      "title": "CAD-RADS",
+      "implemented_version": "CAD-RADS 2.0 (2022)",
+      "basis_type": "classification-system",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements CAD-RADS 2.0; the source is recorded but current society-version status remains queued for authoritative review.",
+      "sources": [{ "authority": "SCCT, ACC, ACR and NASCI", "title": "CAD-RADS 2.0 expert consensus document", "role": "primary-publication", "url": "https://doi.org/10.1016/j.jcmg.2022.01.008" }]
+    },
+    {
+      "calculator_id": "ct-pancreatitis",
+      "title": "CT Severity Index",
+      "implemented_version": "Balthazar CTSI and modified CTSI",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements published CT pancreatitis severity models rather than a single current guideline; model fidelity remains queued for audit.",
+      "sources": [{ "authority": "Balthazar et al.", "title": "Acute pancreatitis: value of CT in establishing prognosis", "role": "primary-publication", "url": "https://doi.org/10.1148/radiology.174.2.2296641" }]
+    },
+    {
+      "calculator_id": "child-pugh",
+      "title": "Child-Pugh Score",
+      "implemented_version": "Child-Pugh (Pugh 1973)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the published Child-Pugh model rather than a current versioned guideline; primary-model fidelity remains queued for review.",
+      "sources": [{ "authority": "Pugh et al.", "title": "Transection of the oesophagus for bleeding oesophageal varices", "role": "primary-publication", "url": "https://doi.org/10.1002/bjs.1800600817" }]
+    },
+    {
+      "calculator_id": "cockcroft-gault",
+      "title": "Cockcroft-Gault Estimated Creatinine Clearance",
+      "implemented_version": "Cockcroft-Gault equation (1976) - Radulator V1",
+      "basis_type": "published-formula",
+      "verification_status": "verified",
+      "last_verified": "2026-08-25",
+      "justification": "The primary publication confirms the adult creatinine-clearance equation, derivation cohort, and historical 15 percent female adjustment implemented with explicit limitations.",
+      "sources": [
+        { "authority": "Cockcroft and Gault", "title": "Prediction of creatinine clearance from serum creatinine", "role": "primary-publication", "url": "https://pubmed.ncbi.nlm.nih.gov/1244564/" },
+        { "authority": "Kidney Disease: Improving Global Outcomes", "title": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease", "role": "context-guideline", "url": "https://kdigo.org/wp-content/uploads/2024/03/KDIGO-2024-CKD-Guideline.pdf" }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/CockcroftGault.jsx",
+        "fixture_path": "tests/fixtures/compute/cockcroft-gault.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "Cockcroft-Gault equation (1976) · Radulator V1" },
+        "claims": [
+          {
+            "id": "cockcroft-gault-adult-formula",
+            "source_url": "https://pubmed.ncbi.nlm.nih.gov/1244564/",
+            "source_locator": "Abstract and published equation: adult age, body weight, serum creatinine, denominator 72, and 15 percent female reduction",
+            "fact": "Literal adult male and female vectors exercise the published mg per dL equation, mL per minute output, and historical 0.85 female coefficient.",
+            "dimensions": ["formula", "model-input", "unit", "output"],
+            "vector_ids": ["male-midrange-mg-dl", "female-coefficient-mg-dl"]
+          },
+          {
+            "id": "cockcroft-gault-derivation-age-scope",
+            "source_url": "https://pubmed.ncbi.nlm.nih.gov/1244564/",
+            "source_locator": "Abstract: derivation patients aged 18 through 92 years",
+            "fact": "The adult lower boundary is accepted, age below 18 fails closed, and values above the derivation range retain an explicit caution.",
+            "dimensions": ["scope", "boundary", "interpretation", "output"],
+            "vector_ids": ["age-18-allowed", "age-17-hard-stop", "age-over-92-warning"]
+          }
+        ]
+      }
+    },
+    {
+      "calculator_id": "contrast-dosing",
+      "title": "IV Contrast Dosing",
+      "implemented_version": "Local dosing model with ACR and ESUR contrast guidance context",
+      "basis_type": "clinical-guideline",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses locally encoded dosing choices with contrast-safety guidance context; no current manual version is asserted until the ACR source is rechecked.",
+      "sources": [{ "authority": "American College of Radiology", "title": "ACR Manual on Contrast Media", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Contrast-Manual" }]
+    },
+    {
+      "calculator_id": "dlp-dose",
+      "title": "DLP to Effective Dose",
+      "implemented_version": "ICRP Publication 103 (2007) context",
+      "basis_type": "measurement-reference",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses published radiation protection and conversion references rather than a single calculator guideline; factors remain queued for source audit.",
+      "sources": [{ "authority": "International Commission on Radiological Protection", "title": "The 2007 Recommendations of the International Commission on Radiological Protection", "role": "official-authority", "url": "https://doi.org/10.1016/j.icrp.2007.10.003" }]
+    },
+    {
+      "calculator_id": "feedback-form",
+      "title": "Website Feedback Form",
+      "implemented_version": "Non-clinical website intake",
+      "basis_type": "non-clinical",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "This export collects website feedback and contains no clinical formula, classification, measurement, or guideline claim.",
+      "sources": []
+    },
+    {
+      "calculator_id": "fleischner",
+      "title": "Fleischner Pulmonary Nodule Guidance",
+      "implemented_version": "Fleischner 2017",
+      "basis_type": "clinical-guideline",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the 2017 Fleischner recommendations; current-version status remains queued for an authoritative society and publication audit.",
+      "sources": [{ "authority": "Fleischner Society", "title": "Guidelines for management of incidental pulmonary nodules detected on CT images: from the Fleischner Society 2017", "role": "primary-publication", "url": "https://doi.org/10.1148/radiol.2017161659" }]
+    },
+    {
+      "calculator_id": "hip-dysplasia",
+      "title": "Hip Dysplasia Indices",
+      "implemented_version": "Published pediatric hip measurement references",
+      "basis_type": "measurement-reference",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses published radiographic measurement references rather than a versioned guideline; age and sex reference fidelity remains queued for audit.",
+      "sources": [{ "authority": "Tonnis et al.", "title": "Normal values of the hip joint for the evaluation of X-rays in children and adults", "role": "primary-publication", "url": "https://pubmed.ncbi.nlm.nih.gov/954321/" }]
+    },
+    {
+      "calculator_id": "ipss",
+      "title": "Inferior Petrosal Sinus Sampling",
+      "implemented_version": "IPSS (Oldfield 1991)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements published IPSS diagnostic ratios and sampling interpretation; current protocol context remains queued for expert source review.",
+      "sources": [{ "authority": "Oldfield et al.", "title": "Petrosal sinus sampling with and without corticotropin-releasing hormone for the differential diagnosis of Cushing syndrome", "role": "primary-publication", "url": "https://doi.org/10.1056/NEJM199109263251301" }]
+    },
+    {
+      "calculator_id": "khoury-catheter-selector",
+      "title": "Khoury Catheter Selector",
+      "implemented_version": "Manufacturer specification reference set",
+      "basis_type": "manufacturer-reference",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Compiles manufacturer specifications and is not a clinical guideline; every device value requires periodic current IFU verification.",
+      "sources": [{ "authority": "Terumo Neuro", "title": "Neurovascular product and specification source", "role": "official-authority", "url": "https://www.terumoneuro.com/" }]
+    },
+    {
+      "calculator_id": "kidney-biopsy-bleeding-risk",
+      "title": "Kidney Biopsy Major Bleeding Risk",
+      "implemented_version": "Thorne et al. recalibrated major-bleeding model (2026)",
+      "basis_type": "primary-model",
+      "verification_status": "verified",
+      "last_verified": "2026-08-25",
+      "justification": "The open primary publication confirms the adult diagnostic kidney-biopsy population and major-bleeding outcome; its direct supplementary PDF exposes the refit equation, predictor units, coefficients, and spline knots used by the executable source-model regression vectors.",
+      "sources": [
+        { "authority": "Thorne et al.", "title": "External Validation and Recalibration of a Risk Calculator for Major Bleeding After Diagnostic Kidney Biopsy", "role": "primary-publication", "url": "https://doi.org/10.1016/j.xkme.2026.101352" },
+        { "authority": "Thorne et al. via NCBI PMC OAI-PMH", "title": "Open full-text JATS XML with supplementary material manifest for PMCID PMC13156734", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc" },
+        { "authority": "Thorne et al. via Elsevier", "title": "Direct primary supplementary PDF (Item S1) for the recalibrated KBRC equation", "role": "primary-publication", "url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf", "artifact_sha256": "d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5" },
+        { "authority": "Schorr et al.", "title": "Frequency, Timing, and Prediction of Major Bleeding Complications From Percutaneous Renal Biopsy", "role": "supporting-publication", "url": "https://doi.org/10.1177/2054358120923527" }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/KidneyBiopsyBleedingRisk.jsx",
+        "fixture_path": "tests/fixtures/compute/kidney-biopsy-bleeding-risk.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "Thorne et al. recalibrated major-bleeding model (2026)" },
+        "claims": [
+          {
+            "id": "thorne-recalibrated-equation",
+            "source_url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
+            "source_locator": "Direct primary supplementary PDF, Item S1, PDF page 5",
+            "fact": "The digest-pinned mmc1.pdf member supplies the intercept, every signed linear and cubic-spline coefficient and knot, logistic transform, predictor units, and native-versus-allograft coding audited against calculator source.",
+            "dimensions": ["formula", "model-input", "unit", "output"],
+            "vector_ids": ["paper-typical-native", "paper-typical-allograft", "paper-higher-risk-native", "paper-lower-risk-allograft"]
+          },
+          {
+            "id": "thorne-adult-diagnostic-biopsy-scope",
+            "source_url": "https://doi.org/10.1016/j.xkme.2026.101352",
+            "source_locator": "Methods, study population, outcome definition, and external-validation results",
+            "fact": "The output is limited to adult diagnostic native or transplant kidney biopsy and reports the major-bleeding endpoint rather than minor or any bleeding.",
+            "dimensions": ["scope", "interpretation", "output"],
+            "vector_ids": ["paper-typical-native", "paper-typical-allograft", "reject-out-of-range"]
+          },
+          {
+            "id": "thorne-calibration-above-25",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc",
+            "source_locator": "Discussion, paragraph p0130",
+            "fact": "The recalibrated model begins to overpredict risk in the probability range exceeding 25%; 25% is a calibration-warning boundary, not a risk category or action threshold.",
+            "dimensions": ["interpretation", "output"],
+            "vector_ids": ["calibration-above-25"]
+          }
+        ],
+        "source_artifact": {
+          "schema": "radulator-source-artifact-extraction/v1",
+          "full_text_xml_url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc",
+          "direct_pdf_url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
+          "archive_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/supplementaryFiles",
+          "archive_member": "mmc1.pdf",
+          "archive_member_bytes": 3696579,
+          "archive_member_sha256": "d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5",
+          "license": "CC BY-NC-ND 4.0",
+          "source_audit_command": "npm run test:kbrc-source",
+          "source_bytes_committed": false,
+          "source_locator": "mmc1.pdf, Item S1, PDF page 5: refit equation, units, and native coding",
+          "equation_terms": [
+            { "sign": "+", "coefficient": 2.0998143, "input": "constant" },
+            { "sign": "+", "coefficient": 0.059035592, "input": "age" },
+            { "sign": "-", "coefficient": 0.000019209284, "input": "age", "positive_part_cubic_knot": 31 },
+            { "sign": "+", "coefficient": 0.000048213766, "input": "age", "positive_part_cubic_knot": 57 },
+            { "sign": "-", "coefficient": 0.000029004482, "input": "age", "positive_part_cubic_knot": 74.219456 },
+            { "sign": "-", "coefficient": 0.16226705, "input": "kidneySize" },
+            { "sign": "+", "coefficient": 0.014154593, "input": "kidneySize", "positive_part_cubic_knot": 9.5 },
+            { "sign": "-", "coefficient": 0.027601456, "input": "kidneySize", "positive_part_cubic_knot": 11.4 },
+            { "sign": "+", "coefficient": 0.013446863, "input": "kidneySize", "positive_part_cubic_knot": 13.4 },
+            { "sign": "-", "coefficient": 0.038695221, "input": "hemoglobin" },
+            { "sign": "-", "coefficient": 0.0000084544322, "input": "hemoglobin", "positive_part_cubic_knot": 79 },
+            { "sign": "+", "coefficient": 0.000015416906, "input": "hemoglobin", "positive_part_cubic_knot": 107 },
+            { "sign": "-", "coefficient": 0.0000069624735, "input": "hemoglobin", "positive_part_cubic_knot": 141 },
+            { "sign": "-", "coefficient": 0.0033086696, "input": "platelets" },
+            { "sign": "-", "coefficient": 6.7231169e-9, "input": "platelets", "positive_part_cubic_knot": 128.1 },
+            { "sign": "+", "coefficient": 1.120357e-8, "input": "platelets", "positive_part_cubic_knot": 220 },
+            { "sign": "-", "coefficient": 4.4804528e-9, "input": "platelets", "positive_part_cubic_knot": 357.9 },
+            { "sign": "+", "coefficient": 0.90339297, "input": "native", "transform": "number" },
+            { "sign": "-", "coefficient": 0.10722806, "input": "bmi" },
+            { "sign": "+", "coefficient": 0.00051289958, "input": "bmi", "positive_part_cubic_knot": 21.67 },
+            { "sign": "-", "coefficient": 0.00088913491, "input": "bmi", "positive_part_cubic_knot": 28.291414 },
+            { "sign": "+", "coefficient": 0.00037623533, "input": "bmi", "positive_part_cubic_knot": 37.318 }
+          ],
+          "published_example_vector_ids": ["paper-typical-native", "paper-typical-allograft", "paper-higher-risk-native", "paper-lower-risk-allograft"]
+        }
+      }
+    },
+    {
+      "calculator_id": "lirads",
+      "title": "LI-RADS",
+      "implemented_version": "LI-RADS v2018",
+      "basis_type": "classification-system",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the 2018 LI-RADS classification; current ACR version status remains queued for authoritative review.",
+      "sources": [{ "authority": "American College of Radiology LI-RADS Steering Committee", "title": "LI-RADS version 2018: imaging of hepatocellular carcinoma in at-risk patients", "role": "primary-publication", "url": "https://doi.org/10.1148/radiol.2018181494" }]
+    },
+    {
+      "calculator_id": "lung-rads",
+      "title": "Lung-RADS",
+      "implemented_version": "Lung-RADS v2022",
+      "basis_type": "classification-system",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements Lung-RADS v2022; the ACR source is recorded but current-version status remains queued for authoritative review.",
+      "sources": [{ "authority": "American College of Radiology", "title": "Lung CT Screening Reporting and Data System (Lung-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Lung-RADS" }]
+    },
+    {
+      "calculator_id": "meld-na",
+      "title": "MELD Score",
+      "implemented_version": "MELD 3.0 (OPTN Policy 9.1.D)",
+      "basis_type": "primary-model",
+      "verification_status": "verified",
+      "last_verified": "2026-08-25",
+      "justification": "OPTN Policy 9.1.D specifies the MELD 3.0 equations, calculation bounds, dialysis handling, and score range; the official MELD and PELD Calculators User Guide separately specifies the accepted laboratory-entry domains. Both layers are bound to executable vectors.",
+      "sources": [
+        { "authority": "Health Resources and Services Administration and OPTN", "title": "OPTN Policies, Policy 9.1.D liver allocation score", "role": "official-authority", "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf" },
+        { "authority": "Health Resources and Services Administration and OPTN", "title": "MELD and PELD Calculators User Guide", "role": "official-authority", "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf" }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/MELDNa.jsx",
+        "fixture_path": "tests/fixtures/compute/meld-na.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "MELD 3.0 (OPTN Policy 9.1.D)" },
+        "claims": [
+          {
+            "id": "optn-adult-meld3-equation",
+            "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf",
+            "source_locator": "Policy 9.1.D adult MELD equation and female coefficient",
+            "fact": "Literal male and female vectors exercise the OPTN adult equation, including the 1.33 female term and albumin interaction.",
+            "dimensions": ["formula", "model-input", "unit", "output"],
+            "vector_ids": ["meld3-adult-female-sex-term", "meld3-adult-male-sex-comparator", "meld3-hypoalbuminemia", "meld3-high-score-female", "meld3-high-score-male-comparator"]
+          },
+          {
+            "id": "optn-registered-before-18-equation",
+            "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf",
+            "source_locator": "Policy 9.1.D registered-before-age-18 MELD equation",
+            "fact": "Candidates currently at least age 12 but registered before age 18 use the equation with the source-specified 7.33 constant for all sexes.",
+            "dimensions": ["formula", "scope", "boundary", "output"],
+            "vector_ids": ["meld3-adolescent-path", "meld3-aged-up-from-peld-path"]
+          },
+          {
+            "id": "optn-laboratory-bounds-and-dialysis",
+            "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf",
+            "source_locator": "Policy 9.1.D bilirubin, INR, creatinine, sodium, albumin bounds and dialysis rule",
+            "fact": "After accepting a laboratory entry, the calculator applies the Policy 9.1.D calculation bounds, assigns creatinine 3.0 mg per dL for qualifying dialysis, and clamps final scores to 6 through 40.",
+            "dimensions": ["threshold", "boundary", "unit", "output"],
+            "vector_ids": ["meld3-default-low-score-male", "meld3-dialysis-creatinine-cap", "meld3-official-input-domain-clamps-laboratory-values"]
+          },
+          {
+            "id": "optn-calculator-entry-domains",
+            "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf",
+            "source_locator": "MELD Calculator, How to Use the MELD Calculator, step 3 Enter the laboratory values",
+            "fact": "The calculator accepts the official inclusive entry endpoints for creatinine, bilirubin, INR, sodium, and albumin and rejects one literal value immediately outside every endpoint before applying Policy 9.1.D calculation bounds.",
+            "dimensions": ["model-input", "threshold", "boundary", "unit"],
+            "vector_ids": [
+              "meld3-creatinine-entry-min", "meld3-creatinine-entry-below-min", "meld3-creatinine-entry-max", "meld3-creatinine-entry-above-max",
+              "meld3-bilirubin-entry-min", "meld3-bilirubin-entry-below-min", "meld3-bilirubin-entry-max", "meld3-bilirubin-entry-above-max",
+              "meld3-inr-entry-min", "meld3-inr-entry-below-min", "meld3-inr-entry-max", "meld3-inr-entry-above-max",
+              "meld3-sodium-entry-min", "meld3-sodium-entry-below-min", "meld3-sodium-entry-max", "meld3-sodium-entry-above-max",
+              "meld3-albumin-entry-min", "meld3-albumin-entry-below-min", "meld3-albumin-entry-max", "meld3-albumin-entry-above-max"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "calculator_id": "mr-elastography",
+      "title": "Liver MR Elastography",
+      "implemented_version": "MRE consensus (Manduca 2020)",
+      "basis_type": "consensus-statement",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements area-weighted liver MRE measurements with consensus context; hardware and interpretation references remain queued for audit.",
+      "sources": [{ "authority": "Manduca et al.", "title": "MR elastography: principles, guidelines, and terminology", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8495610/" }]
+    },
+    {
+      "calculator_id": "mehran-cin",
+      "title": "Mehran Contrast-Associated Kidney Injury Risk Score",
+      "implemented_version": "Original Mehran score (2004)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the original 2004 score while a 2021 update exists; the implemented-versus-current relationship must be resolved before verification.",
+      "sources": [{ "authority": "Mehran et al.", "title": "A simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention", "role": "primary-publication", "url": "https://doi.org/10.1016/j.jacc.2004.06.034" }]
+    },
+    {
+      "calculator_id": "milan-criteria",
+      "title": "Milan Criteria",
+      "implemented_version": "Milan Criteria (Mazzaferro 1996)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the original transplant selection criteria rather than a current society guideline; source fidelity remains queued for review.",
+      "sources": [{ "authority": "Mazzaferro et al.", "title": "Liver transplantation for the treatment of small hepatocellular carcinomas in patients with cirrhosis", "role": "primary-publication", "url": "https://pubmed.ncbi.nlm.nih.gov/8594428/" }]
+    },
+    {
+      "calculator_id": "nirads",
+      "title": "NI-RADS",
+      "implemented_version": "ACR NI-RADS 2018",
+      "basis_type": "classification-system",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the 2018 NI-RADS classification; current ACR version and management recommendations remain queued for authoritative review.",
+      "sources": [{ "authority": "American College of Radiology", "title": "Neck Imaging Reporting and Data System (NI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/NI-RADS" }]
+    },
+    {
+      "calculator_id": "orads",
+      "title": "O-RADS",
+      "implemented_version": "ACR O-RADS 2020 implementation",
+      "basis_type": "classification-system",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "The code combines O-RADS ultrasound and MRI material under a 2020 claim; modality-specific current versions require authoritative reconciliation.",
+      "sources": [{ "authority": "American College of Radiology", "title": "O-RADS Ultrasound", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/O-RADS/Ultrasound" }]
+    },
+    {
+      "calculator_id": "pesi",
+      "title": "Pulmonary Embolism Severity Index",
+      "implemented_version": "Original PESI (2005)",
+      "basis_type": "primary-model",
+      "verification_status": "verified",
+      "last_verified": "2026-08-25",
+      "justification": "The primary study confirms the 11-variable original PESI model, all point increments, and the five source-defined risk classes.",
+      "sources": [
+        { "authority": "Aujesky et al.", "title": "Derivation and validation of a prognostic model for pulmonary embolism", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/" }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/PESI.jsx",
+        "fixture_path": "tests/fixtures/compute/pesi.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "Original PESI (2005)" },
+        "claims": [
+          {
+            "id": "aujesky-eleven-variable-score",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/",
+            "source_locator": "Table 2 prediction-rule point system and independent predictors of 30-day mortality",
+            "fact": "The executable vectors cover all 11 original variables and both sides of every vital-sign threshold with the published point increments.",
+            "dimensions": ["formula", "model-input", "threshold", "boundary", "unit", "output"],
+            "vector_ids": ["normal-threshold-edges", "abnormal-threshold-edges", "all-demographic-and-comorbidity-increments"]
+          },
+          {
+            "id": "aujesky-five-class-boundaries",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/",
+            "source_locator": "Table 4 risk classes and observed 30-day mortality across derivation and validation cohorts",
+            "fact": "Exact boundary vectors exercise all five PESI classes and report the source cohort mortality ranges as nonindividualized observations.",
+            "dimensions": ["classification", "threshold", "boundary", "interpretation", "output"],
+            "vector_ids": ["class-i-upper", "class-ii-lower", "class-ii-upper", "class-iii-lower", "class-iv-lower", "class-iv-upper", "class-v-lower"]
+          }
+        ]
+      }
+    },
+    {
+      "calculator_id": "pirads",
+      "title": "PI-RADS",
+      "implemented_version": "PI-RADS v2.1 (2019)",
+      "basis_type": "classification-system",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements PI-RADS v2.1; current ACR version status remains queued for authoritative review.",
+      "sources": [{ "authority": "PI-RADS Steering Committee", "title": "PI-RADS Prostate Imaging - Reporting and Data System: 2019, version 2.1", "role": "primary-publication", "url": "https://doi.org/10.1016/j.eururo.2019.02.033" }]
+    },
+    {
+      "calculator_id": "prostate-volume",
+      "title": "Prostate Volume and PSA Density",
+      "implemented_version": "Published ellipsoid volume and PSA-density measurements",
+      "basis_type": "measurement-reference",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses published measurement equations and PSA-density context rather than a versioned guideline; reference fidelity remains queued for audit.",
+      "sources": [{ "authority": "Paterson et al.", "title": "Prostate volume and PSA density measurement reference", "role": "primary-publication", "url": "https://doi.org/10.5489/cuaj.3236" }]
+    },
+    {
+      "calculator_id": "radiation-dose-converter",
+      "title": "Radiation Dose Converter",
+      "implemented_version": "ICRP Publications 92 and 103 with AAPM Report 96",
+      "basis_type": "measurement-reference",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses radiation unit and protection references rather than a single guideline; all conversion factors remain queued for primary-authority audit.",
+      "sources": [{ "authority": "International Commission on Radiological Protection", "title": "ICRP Publication 103", "role": "official-authority", "url": "https://www.icrp.org/publication.asp?id=ICRP+Publication+103" }]
+    },
+    {
+      "calculator_id": "bosniak",
+      "title": "Bosniak Classification",
+      "implemented_version": "Bosniak version 2019",
+      "basis_type": "classification-system",
+      "verification_status": "verified",
+      "last_verified": "2026-08-26",
+      "justification": "The open primary version 2019 publication directly specifies the eligibility boundary, quantitative CT feature definitions, inclusive 70 HU and 4 mm equality cases, and categories exercised by the bound regression vectors. The peer-reviewed CUA 2023 guideline separately supplies the displayed Bosniak IIF follow-up interval, duration, and evidence grades.",
+      "sources": [
+        { "authority": "Silverman et al.", "title": "Bosniak Classification of Cystic Renal Masses, version 2019", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/" },
+        { "authority": "Canadian Urological Association", "title": "2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions", "role": "official-authority", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/" }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/RenalCystBosniak.jsx",
+        "fixture_path": "tests/fixtures/compute/bosniak.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "Bosniak v2019" },
+        "source_audit": {
+          "schema": "radulator-live-source-audit/v1",
+          "command": "npm run test:bosniak-source",
+          "authority": "Silverman et al., Radiology 2019 and CUA 2023",
+          "source_urls": ["https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/", "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/"],
+          "vector_ids": ["exactly-70-hu-homogeneous-noncontrast-mass-category-ii", "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv", "minimally-thick-enhancing-wall-category-iif"],
+          "source_bytes_committed": false
+        },
+        "claims": [
+          {
+            "id": "bosniak-v2019-eligibility",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
+            "source_locator": "Definition of a cystic renal mass and suggested-reporting general-population scope",
+            "fact": "The calculator rejects masses with approximately one-quarter or more enhancing tissue, alternative etiologies, and hereditary renal cancer syndromes from the general-population pathway.",
+            "dimensions": ["scope", "threshold", "boundary", "output"],
+            "vector_ids": ["approximately-quarter-enhancing-tissue-out-of-scope", "alternative-etiologies-not-excluded", "hereditary-rcc-syndrome-outside-general-population-guidance"]
+          },
+          {
+            "id": "bosniak-v2019-category-ii",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
+            "source_locator": "Bosniak II section and Table 2: benign hyperattenuating cysts are homogeneous and 70 HU or greater at noncontrast CT",
+            "fact": "Literal vectors distinguish a fully characterized class I simple cyst from version 2019 class II thin-septal and source-defined homogeneous attenuation subtypes, including equality at exactly 70 HU.",
+            "dimensions": ["classification", "threshold", "boundary", "unit", "output"],
+            "vector_ids": ["simple-cyst-category-i", "exactly-70-hu-homogeneous-noncontrast-mass-category-ii", "noncontrast-minus9-to20-category-ii-not-simple-cyst", "few-thin-enhancing-septa-category-ii", "renal-mass-protocol-nonenhancing-over-20-hu-category-ii", "portal-venous-21-to-30-hu-category-ii", "too-small-low-attenuation-category-ii"]
+          },
+          {
+            "id": "bosniak-v2019-iif-iii-iv-features",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
+            "source_locator": "Bosniak IIF, III, and IV sections: an obtuse-margin enhancing convex protrusion 4 mm or larger is a nodule",
+            "fact": "Executable cases bind the 3 mm minimally thick enhancing feature, 4 mm or thicker enhancing feature, exactly 4 mm obtuse-margin enhancing nodule, and enhancing acute-margin nodule to IIF, III, and IV outputs respectively.",
+            "dimensions": ["classification", "threshold", "boundary", "unit", "output"],
+            "vector_ids": ["minimally-thick-enhancing-wall-category-iif", "thick-enhancing-wall-category-iii", "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv", "acute-margin-enhancing-nodule-category-iv"]
+          },
+          {
+            "id": "cua-2023-bosniak-iif-followup",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
+            "source_locator": "Summary recommendations and Bosniak category IIF section",
+            "fact": "For Bosniak IIF cysts, CUA 2023 suggests imaging every 6-12 months in the first year, then yearly if stable, and five years of follow-up if there is no progression; the interval is expert opinion and the duration is a conditional recommendation with very low certainty.",
+            "dimensions": ["management", "interval", "duration", "interpretation", "output"],
+            "vector_ids": ["minimally-thick-enhancing-wall-category-iif"]
+          }
+        ]
+      }
+    },
+    {
+      "calculator_id": "renal-nephrometry",
+      "title": "R.E.N.A.L. Nephrometry Score",
+      "implemented_version": "R.E.N.A.L. score (Kutikov 2009)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the published nephrometry anatomy score rather than a versioned guideline; model fidelity remains queued for source audit.",
+      "sources": [{ "authority": "Kutikov and Uzzo", "title": "The R.E.N.A.L. nephrometry score: a comprehensive standardized system for quantitating renal tumor size, location and depth", "role": "primary-publication", "url": "https://doi.org/10.1016/j.juro.2009.05.035" }]
+    },
+    {
+      "calculator_id": "shim",
+      "title": "IIEF-5 and SHIM Score",
+      "implemented_version": "IIEF-5 (Rosen 1999)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements a published patient-reported instrument rather than a current versioned guideline; scoring and licensing context remain queued for audit.",
+      "sources": [{ "authority": "Rosen et al.", "title": "Development and evaluation of an abridged, 5-item version of the International Index of Erectile Function", "role": "primary-publication", "url": "https://doi.org/10.1038/sj.ijir.3900472" }]
+    },
+    {
+      "calculator_id": "spleen-size",
+      "title": "Spleen Size Upper Limit",
+      "implemented_version": "Chow et al. 2016 measurement reference",
+      "basis_type": "measurement-reference",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses published height- and sex-adjusted spleen measurements rather than a guideline; table transcription remains queued for primary-source audit.",
+      "sources": [{ "authority": "Chow et al.", "title": "Spleen size reference data from healthy subjects", "role": "primary-publication", "url": "https://doi.org/10.1148/radiol.2015150887" }]
+    },
+    {
+      "calculator_id": "tirads",
+      "title": "ACR TI-RADS",
+      "implemented_version": "ACR TI-RADS 2017",
+      "basis_type": "classification-system",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements ACR TI-RADS 2017; current ACR version status remains queued for authoritative review.",
+      "sources": [{ "authority": "American College of Radiology", "title": "ACR Thyroid Imaging, Reporting and Data System white paper", "role": "primary-publication", "url": "https://doi.org/10.1016/j.jacr.2017.01.046" }]
+    },
+    {
+      "calculator_id": "thypro-39",
+      "title": "ThyPRO-39",
+      "implemented_version": "ThyPRO-39 (Watt 2014)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements a published patient-reported outcome instrument rather than a versioned guideline; scoring and licensing remain queued for audit.",
+      "sources": [{ "authority": "Watt et al.", "title": "Development of a short version of the thyroid-related patient-reported outcome ThyPRO", "role": "primary-publication", "url": "https://doi.org/10.1210/jc.2014-1322" }]
+    },
+    {
+      "calculator_id": "wells-dvt",
+      "title": "Wells Criteria for DVT",
+      "implemented_version": "Wells Criteria (2003)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the published DVT clinical prediction rule rather than a versioned guideline; model and current-use context remain queued for audit.",
+      "sources": [{ "authority": "Wells et al.", "title": "Evaluation of D-dimer in the diagnosis of suspected deep-vein thrombosis", "role": "primary-publication", "url": "https://doi.org/10.1056/NEJMoa023153" }]
+    },
+    {
+      "calculator_id": "wells-pe",
+      "title": "Wells Criteria for PE",
+      "implemented_version": "Wells Criteria (2000)",
+      "basis_type": "primary-model",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Implements the published PE clinical prediction rule rather than a versioned guideline; model and current-use context remain queued for audit.",
+      "sources": [{ "authority": "Wells et al.", "title": "Derivation of a simple clinical model to categorize patients probability of pulmonary embolism", "role": "primary-publication", "url": "https://pubmed.ncbi.nlm.nih.gov/10744147/" }]
+    },
+    {
+      "calculator_id": "y90-radiation-segmentectomy",
+      "title": "Y-90 Radioembolization Dosimetry",
+      "implemented_version": "MIRD dosimetry (Ho 1996) with published consensus context",
+      "basis_type": "consensus-statement",
+      "verification_status": "seed-unverified",
+      "last_verified": null,
+      "justification": "Uses published MIRD and radioembolization dosimetry models rather than a single current guideline; consensus status remains queued for review.",
+      "sources": [{ "authority": "Ho et al.", "title": "Partition model for estimating radiation doses from yttrium-90 microspheres", "role": "primary-publication", "url": "https://doi.org/10.1007/BF00949868" }]
+    }
+  ]
+}

@@ -58,7 +58,7 @@ The trusted gate publishes the fingerprint-bearing check `Radulator Clinical Rel
 - A human-token merge to `main` deploys from the normal `push` event. A trusted-controller merge made with `GITHUB_TOKEN` performs an explicit `radulator-auto-merge-deploy` repository dispatch after authoritative merge readback, because its push event cannot start another workflow.
 - Deployment authorization independently proves a real main push, the exact current-main merged PR, or the rollback selector's exact last-known-good SHA before checking out the artifact source. A scheduled reconciler retries an absent automatic-merge deployment obligation.
 - A trusted controller writes `releases/<authorized-sha>.json` into the completed artifact. Post-deploy smoke must first retrieve that exact immutable marker, then verify the production URL, a known calculator route, and sitemap content.
-- If live smoke fails, a rollback workflow redeploys the last successful production SHA and records the failed release for remediation. It does not bypass branch protection or rewrite history.
+- If Pages succeeds and exact-SHA live smoke fails, the deploy workflow emits an explicit rollback-request repository dispatch. Its trusted handler waits for the source run to complete, binds the run by deploy workflow ID/path, re-reads all job evidence, rejects pre-Pages, ancillary, and rollback-run failures, then redeploys the independently selected last successful production SHA and records the failed release for remediation. It does not depend on a recursively suppressed `workflow_run`, bypass branch protection, rewrite history, or recurse after a failed rollback.
 
 ## Lifecycle retention and learning
 
@@ -85,7 +85,7 @@ Versioned overlay files live under `ops/hermes/radulator/` in this repository. T
 
 ## Verification
 
-Repository tests cover classifier boundaries, canonical signatures, stale-head rejection, conflicting verdicts, one-vs-two-judge quorum, merge idempotency, lifecycle replay, tamper detection, deployment smoke, and rollback selection. Workflow contract tests execute the scripts rather than searching for source strings.
+Repository tests cover classifier boundaries, canonical signatures, stale-head rejection, conflicting verdicts, one-vs-two-judge quorum, merge idempotency, lifecycle replay, tamper detection, deployment smoke, rollback-request classification, source-run completion polling, workflow identity binding, job pagination, and rollback selection. Workflow contract tests parse the deployed workflow contracts and execute the controller scripts rather than searching for source strings.
 
 Staged live verification is:
 
