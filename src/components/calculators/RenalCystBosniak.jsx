@@ -503,6 +503,7 @@ export const RenalCystBosniak = {
     if (
       v.wall === "thin" &&
       v.nodule === "none" &&
+      v.density !== "otherCharacterized" &&
       (thinFewSepta || v.calcifications === "present" || benignIIByDensity)
     ) {
       const reasons = [];

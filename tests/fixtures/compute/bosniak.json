@@ -568,6 +568,75 @@
       }
     },
     {
+      "id": "other-characterized-density-with-calcification-requires-mri",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "do not match a benign homogeneous CT density subtype" }
+        ]
+      }
+    },
+    {
+      "id": "other-characterized-density-with-few-thin-septa-requires-mri",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "few",
+        "septaThickness": "thin",
+        "septaEnhancement": "absent",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "Management", "includes": "MRI" },
+          { "key": "Rationale", "includes": "do not match a benign homogeneous CT density subtype" }
+        ]
+      }
+    },
+    {
+      "id": "thin-enhancing-wall-with-calcification-and-other-characterized-density-requires-mri",
+      "description": "A thin wall that enhances is not an IIF feature, and calcification cannot make other characterized attenuation benign; Bosniak v2019 leaves the mass unassigned pending renal mass protocol MRI.",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "Not assigned" },
+          { "key": "v2019 Term", "equals": "Incomplete CT characterization" },
+          { "key": "Management", "includes": "renal mass protocol MRI" }
+        ]
+      }
+    },
+    {
       "id": "heterogeneous-density-with-enhancing-3mm-wall-still-requires-mri",
       "inputs": {
         "scopeEligibility": "eligible",

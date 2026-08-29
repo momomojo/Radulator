@@ -279,6 +279,56 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).not.toContainText("No follow-up required");
   });
 
+  for (const [feature, overrides] of [
+    ["calcification", { calcifications: "present" }],
+    [
+      "few thin septa",
+      {
+        septaCount: "few",
+        septaThickness: "thin",
+        septaEnhancement: "absent",
+      },
+    ],
+  ]) {
+    test(`should not let ${feature} make other characterized attenuation benign`, async ({
+      page,
+    }) => {
+      await fillBaseBosniakV2019(page, {
+        ...overrides,
+        density: "otherCharacterized",
+      });
+
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = resultPanel(page);
+      await expect(results).toContainText("Bosniak Category: Not assigned");
+      await expect(results).toContainText("renal mass protocol MRI");
+      await expect(results).not.toContainText("Bosniak Category: II");
+      await expect(results).not.toContainText("No follow-up required");
+    });
+  }
+
+  test("should not assign a benign category to a thin enhancing wall with calcification and other characterized attenuation", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wallEnhancement: "present",
+      calcifications: "present",
+      density: "otherCharacterized",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: Not assigned");
+    await expect(results).toContainText(
+      "v2019 Term: Incomplete CT characterization",
+    );
+    await expect(results).toContainText("renal mass protocol MRI");
+    await expect(results).not.toContainText("Bosniak Category: II");
+    await expect(results).not.toContainText("No follow-up required");
+  });
+
   for (const wall of ["minimallyThick", "thick"]) {
     test(`should require MRI for heterogeneous CT attenuation despite an enhancing ${wall} wall`, async ({
       page,
