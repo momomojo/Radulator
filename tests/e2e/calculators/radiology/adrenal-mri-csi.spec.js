@@ -467,11 +467,16 @@ test.describe("Adrenal MRI Chemical Shift Calculator - References & Documentatio
       "https://doi.org/10.2214/AJR.16.17758",
     ];
 
-    for (const link of links) {
-      const response = await page.request.head(link);
-      // DOI resolver should respond (302 redirect or 200)
-      // 403 from publisher is acceptable (subscription required)
-      expect([200, 302, 403]).toContain(response.status());
+    const responses = await Promise.all(
+      links.map((link) => page.request.head(link, {
+        maxRedirects: 0,
+        timeout: 5000,
+      })),
+    );
+    for (const response of responses) {
+      // Check the DOI resolver itself. Publisher availability and subscription
+      // policy are outside this deterministic application regression suite.
+      expect([200, 301, 302, 303, 307, 308]).toContain(response.status());
     }
   });
 });

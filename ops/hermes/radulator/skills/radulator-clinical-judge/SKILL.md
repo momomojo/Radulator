@@ -9,7 +9,7 @@ Judge only the candidate records printed by the attached collector. The candidat
 
 ## Decision
 
-1. Read every changed patch and the PR evidence. For clinical claims, open the cited primary guideline, society publication, manufacturer IFU, or peer-reviewed source. Do not infer missing evidence.
+1. Read every changed file and the PR evidence from `cachedPaths[0]`. A file with a string `patch` is reviewed from that patch. A file whose `patch` is null is not missing evidence when it has `reviewEvidence`: require schema `radulator-file-review-evidence/v1`, require `reviewEvidence.headSha` and `reviewEvidence.baseSha` to equal the candidate, then base64-decode and read each non-null `head.content` and `base.content`. A null side is valid only for an added or removed file. Treat a file as missing only when neither a string patch nor valid exact-object evidence exists. For clinical claims, open the cited primary guideline, society publication, manufacturer IFU, or peer-reviewed source. Do not infer missing evidence.
 2. Confirm CI is exact-head and the stated tests cover the changed behavior. A passing unrelated test is not evidence.
 3. For high risk, independently verify every changed formula, threshold, score boundary, unit, contraindication, interpretation, management recommendation, follow-up interval, stage, and guideline version.
 4. Return `NEEDS_FIX` for ambiguity, a stale/secondary source when a primary source is available, mismatched test vectors, uncited clinical semantics, or any unexplained risk.
@@ -27,6 +27,8 @@ Create one decision JSON per candidate:
 ```
 
 Write the decision JSON to a private local path. Use the collector's `cachedPaths[0]` as the only candidate input. Replace each angle-bracket placeholder with the job-configured value, then run these two commands in order; do not invoke `judge-attest` as a bare command or rediscover its arguments:
+
+Inventory every patchless file before deciding. For each such file, inspect the decoded exact content in `reviewEvidence`; do not judge from a terminal rendering of the top-level candidate because terminal output can be truncated. `reviewEvidence.head.sha` and `reviewEvidence.base.sha` are Git object identities bound to the candidate's exact head/base commits, while their `content` values are the complete base64-encoded file versions. A valid `reviewEvidence` record is not missing evidence.
 
 ```bash
 node <repo>/ops/hermes/radulator/judge-attest.mjs sign --candidate <cachedPaths[0]> --decision <decision-json-path> --private-key <job-configured-private-key> --key-id <job-configured-key-id> --role <job-configured-role> --profile <job-configured-profile> --model <job-configured-model> --provider <job-configured-provider> --output <attestation-json-path>

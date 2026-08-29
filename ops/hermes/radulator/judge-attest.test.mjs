@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  atomicWrite,
   formatAttestationCarrier,
   generateKeyPairFiles,
   postAttestation,
@@ -58,6 +59,12 @@ function candidateFixture(overrides = {}) {
 
 const temp = await mkdtemp(path.join(os.tmpdir(), "radulator-key-test-"));
 try {
+  const nestedOutput = path.join(temp, "fresh-profile", "state", "attestation.json");
+  await atomicWrite(nestedOutput, '{"ok":true}\n', 0o600);
+  assert.equal(await readFile(nestedOutput, "utf8"), '{"ok":true}\n');
+  assert.equal((await stat(nestedOutput)).mode & 0o777, 0o600);
+  assert.equal((await stat(path.dirname(nestedOutput))).mode & 0o777, 0o700);
+
   const generated = await generateKeyPairFiles({
     directory: temp,
     keyId: "primary-2026-08",
