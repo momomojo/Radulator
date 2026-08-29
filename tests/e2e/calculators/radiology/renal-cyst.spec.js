@@ -290,7 +290,7 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
       },
     ],
   ]) {
-    test(`should not let ${feature} make other characterized attenuation benign`, async ({
+    test(`should preserve Bosniak II for ${feature} in a fully characterized cystic mass`, async ({
       page,
     }) => {
       await fillBaseBosniakV2019(page, {
@@ -301,14 +301,13 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
       await page.getByRole("button", { name: "Calculate" }).click();
 
       const results = resultPanel(page);
-      await expect(results).toContainText("Bosniak Category: Not assigned");
-      await expect(results).toContainText("renal mass protocol MRI");
-      await expect(results).not.toContainText("Bosniak Category: II");
-      await expect(results).not.toContainText("No follow-up required");
+      await expect(results).toContainText("Bosniak Category: II");
+      await expect(results).toContainText("No follow-up required");
+      await expect(results).not.toContainText("renal mass protocol MRI");
     });
   }
 
-  test("should not assign a benign category to a thin enhancing wall with calcification and other characterized attenuation", async ({
+  test("should preserve Bosniak II for a thin enhancing wall with calcification in a fully characterized cystic mass", async ({
     page,
   }) => {
     await fillBaseBosniakV2019(page, {
@@ -320,13 +319,9 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await page.getByRole("button", { name: "Calculate" }).click();
 
     const results = resultPanel(page);
-    await expect(results).toContainText("Bosniak Category: Not assigned");
-    await expect(results).toContainText(
-      "v2019 Term: Incomplete CT characterization",
-    );
-    await expect(results).toContainText("renal mass protocol MRI");
-    await expect(results).not.toContainText("Bosniak Category: II");
-    await expect(results).not.toContainText("No follow-up required");
+    await expect(results).toContainText("Bosniak Category: II");
+    await expect(results).toContainText("No follow-up required");
+    await expect(results).not.toContainText("renal mass protocol MRI");
   });
 
   for (const wall of ["minimallyThick", "thick"]) {

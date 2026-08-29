@@ -39,7 +39,7 @@ const densityLabels = {
   heterogeneousOrIncomplete:
     "heterogeneous or otherwise incompletely characterized internal attenuation at CT",
   otherCharacterized:
-    "other characterized attenuation not in a benign Bosniak II density-only subtype",
+    "fully characterized cystic attenuation outside a benign density-only subtype",
 };
 
 const densityIsBosniakII = (density) =>
@@ -290,7 +290,7 @@ export const RenalCystBosniak = {
       id: "density",
       label: "CT attenuation characterization",
       helpText:
-        "Choose fully characterized simple fluid only when a renal mass protocol examination establishes the Bosniak I features. A homogeneous -9 to 20 HU mass known only from noncontrast CT is a Bosniak II density-only subtype. Heterogeneous or incompletely characterized internal attenuation requires renal mass protocol MRI before assignment because occult enhancing elements may change the class.",
+        "Choose fully characterized simple fluid only when a renal mass protocol examination establishes the Bosniak I features. A homogeneous -9 to 20 HU mass known only from noncontrast CT is a Bosniak II density-only subtype. Choose other fully characterized cystic attenuation only when complete renal mass protocol CT establishes a cystic mass but it does not fit a listed benign density-only subtype; the structural wall, septal, calcification, and nodule criteria still determine its class. Heterogeneous or incompletely characterized internal attenuation requires renal mass protocol MRI before assignment because occult enhancing elements may change the class.",
       type: "radio",
       opts: [
         {
@@ -318,7 +318,8 @@ export const RenalCystBosniak = {
         },
         {
           value: "otherCharacterized",
-          label: "other characterized attenuation, not a benign density-only subtype",
+          label:
+            "other fully characterized cystic attenuation on renal mass protocol CT",
         },
       ],
     },
@@ -503,7 +504,6 @@ export const RenalCystBosniak = {
     if (
       v.wall === "thin" &&
       v.nodule === "none" &&
-      v.density !== "otherCharacterized" &&
       (thinFewSepta || v.calcifications === "present" || benignIIByDensity)
     ) {
       const reasons = [];

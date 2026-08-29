@@ -568,7 +568,7 @@
       }
     },
     {
-      "id": "other-characterized-density-with-calcification-requires-mri",
+      "id": "fully-characterized-cystic-mass-with-calcification-category-ii",
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
@@ -583,14 +583,14 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Bosniak Category", "equals": "Not assigned" },
-          { "key": "Management", "includes": "MRI" },
-          { "key": "Rationale", "includes": "do not match a benign homogeneous CT density subtype" }
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "Management", "equals": "No follow-up required" },
+          { "key": "Rationale", "includes": "calcification of any morphology" }
         ]
       }
     },
     {
-      "id": "other-characterized-density-with-few-thin-septa-requires-mri",
+      "id": "fully-characterized-cystic-mass-with-few-thin-septa-category-ii",
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
@@ -607,15 +607,15 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Bosniak Category", "equals": "Not assigned" },
-          { "key": "Management", "includes": "MRI" },
-          { "key": "Rationale", "includes": "do not match a benign homogeneous CT density subtype" }
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "Management", "equals": "No follow-up required" },
+          { "key": "Rationale", "includes": "few (1-3) thin septa" }
         ]
       }
     },
     {
-      "id": "thin-enhancing-wall-with-calcification-and-other-characterized-density-requires-mri",
-      "description": "A thin wall that enhances is not an IIF feature, and calcification cannot make other characterized attenuation benign; Bosniak v2019 leaves the mass unassigned pending renal mass protocol MRI.",
+      "id": "fully-characterized-cystic-mass-with-thin-enhancing-wall-and-calcification-category-ii",
+      "description": "A smooth thin wall may enhance without upgrading the mass, and calcification of any morphology remains a Bosniak II structural feature when the cystic mass is completely characterized.",
       "inputs": {
         "scopeEligibility": "eligible",
         "solidComponent": "under25",
@@ -630,9 +630,9 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Bosniak Category", "equals": "Not assigned" },
-          { "key": "v2019 Term", "equals": "Incomplete CT characterization" },
-          { "key": "Management", "includes": "renal mass protocol MRI" }
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "Management", "equals": "No follow-up required" },
+          { "key": "Rationale", "includes": "calcification of any morphology" }
         ]
       }
     },
