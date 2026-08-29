@@ -14,7 +14,6 @@ import hmac
 import json
 import os
 import re
-import shutil
 import stat
 import subprocess
 import time
@@ -37,6 +36,10 @@ LEGACY_GATE_JOB_NAMES = frozenset({"pr-gate-poller", "judge-queue"})
 SEED_CONVERT_JOB_ID = "c41b8448cce4"
 PROMOTER_JOB_ID = "f191f946d6fa"
 PUBLISHER_JOB_ID = "1def08dbcb74"
+PUBLISHER_SERVICE_ATTESTATION = Path(
+    "/Library/Application Support/HermesKanban/"
+    "radulator-publisher/activation-attestation.json"
+)
 LEGACY_V1_TARGET_IDS = frozenset({
     "primary:cron/jobs.json",
     "verification:cron/jobs.json",
@@ -303,6 +306,7 @@ def build_plan(
         repo / "ops/hermes/radulator/release_promoter_cron.sh",
         repo / "ops/hermes/radulator/trusted_publisher.py",
         repo / "ops/hermes/radulator/trusted_publisher_cron.sh",
+        repo / "ops/hermes/radulator/publisher_service_install.py",
         repo / "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         repo / "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.md",
     ]
@@ -382,13 +386,19 @@ def build_plan(
             job_id=PROMOTER_JOB_ID,
             preserve_existing=("deliver",),
         ),
-        _script_job(
-            "radulator-trusted-publisher",
-            radulator_home,
-            "trusted_publisher_cron.sh",
-            "4-59/5 * * * *",
-            job_id=PUBLISHER_JOB_ID,
-        ),
+        {
+            **_script_job(
+                "radulator-trusted-publisher",
+                radulator_home,
+                "trusted_publisher_cron.sh",
+                "4-59/5 * * * *",
+                job_id=PUBLISHER_JOB_ID,
+            ),
+            # Retained as a disabled tombstone so an older same-UID consumer
+            # can never survive reconciliation. Publication runs only as the
+            # separately attested launchd service.
+            "_external_service": True,
+        },
         _script_job(
             "radulator-formspree-feedback-intake",
             radulator_home,
@@ -411,6 +421,7 @@ def build_plan(
         "schema": SCHEMA,
         "repo": str(repo),
         "github_repository": CANONICAL_GITHUB_REPOSITORY,
+        "publisher_service_attestation": str(PUBLISHER_SERVICE_ATTESTATION),
         "radulator_home": str(radulator_home),
         "default_home": str(default_home),
         "inference": {"model": agent_model, "provider": agent_provider},
@@ -1260,11 +1271,49 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
     runtime_python = hermes_root / "hermes-agent/venv/bin/python"
     checks = (
         (
-            "trusted local commit broker",
+            "dedicated local commit broker",
             _trusted_runtime_probe(
                 hermes_root,
-                "hermes_cli.kanban_git_broker",
-                "module.PUBLISH_CONTRACT == 'hermes.trusted_local_commit.v1'",
+                "hermes_cli.kanban_dedicated_broker",
+                (
+                    "module.PUBLISH_CONTRACT == 'hermes.trusted_local_commit.v1' "
+                    "and module.PUBLISH_OBLIGATION_QUERY_CONTRACT == "
+                    "'hermes.publisher_obligation_query.v1' "
+                    "and module.PUBLISH_CORRECTION_REQUEST_CONTRACT == "
+                    "'hermes.publisher_correction_request.v1' "
+                    "and module.PUBLISH_ACK_CONTRACT == 'hermes.publisher_ack.v1' "
+                    "and module.PUBLISH_COMPLETION_QUERY_CONTRACT == "
+                    "'hermes.publisher_completion_query.v1' "
+                    "and callable(getattr(module.DedicatedKanbanBroker, "
+                    "'list_publish_obligations', None)) "
+                    "and callable(getattr(module.DedicatedKanbanBroker, "
+                    "'request_publish_correction', None)) "
+                    "and callable(getattr(module.DedicatedKanbanBroker, "
+                    "'acknowledge_publish', None)) "
+                    "and callable(getattr(module.DedicatedKanbanBroker, "
+                    "'list_completion_obligations', None))"
+                ),
+            ),
+        ),
+        (
+            "dedicated broker publisher client",
+            _trusted_runtime_probe(
+                hermes_root,
+                "hermes_cli.kanban_broker_client",
+                "callable(getattr(module, 'load_broker_client', None))",
+            ),
+        ),
+        (
+            "dedicated broker routes",
+            _trusted_runtime_probe(
+                hermes_root,
+                "hermes_cli.kanban_broker_routing",
+                (
+                    "callable(getattr(module, 'list_publish_obligations', None)) "
+                    "and callable(getattr(module, 'request_publish_correction', None)) "
+                    "and callable(getattr(module, 'acknowledge_publish', None)) "
+                    "and callable(getattr(module, 'list_completion_obligations', None))"
+                ),
             ),
         ),
         (
@@ -1289,125 +1338,169 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
         if result.returncode != 0:
             raise InstallError(f"Installed Hermes runtime does not expose the approved {label} contract.")
 
-    authority_canary = {
-        "contract": "hermes.trusted_publisher.authority-semantic-canary.v1",
-        "claim_exact_identity_bound": True,
-        "conflicting_claim_rejected": True,
-        "stale_run_rejected": True,
-        "stale_tracker_rejected": True,
-        "completion_atomic": True,
-        "replay_idempotent": True,
-        "host_receipt_signature_verified": True,
-    }
-    authority_expression = _trusted_runtime_probe(
-        hermes_root,
-        "hermes_cli.kanban_db",
-        (
-            "callable(getattr(module, 'claim_trusted_publisher_authority', None)) "
-            "and callable(getattr(module, 'complete_trusted_publisher_authority', None)) "
-            "and callable(getattr(module, 'verify_trusted_publisher_authority_receipt', None)) "
-            "and callable(getattr(module, 'run_trusted_publisher_authority_semantic_canary', None)) "
-            "and module.run_trusted_publisher_authority_semantic_canary() == "
-            f"json.loads({json.dumps(authority_canary)!r})"
-        ),
-    )
-    authority_command = [str(runtime_python), "-I", "-c", authority_expression]
-    authority = runner(
-        authority_command,
-        cwd=hermes_root,
-        check=False,
-        capture_output=True,
-        text=True,
-        env=_activation_python_env(),
-    )
-    if authority.returncode != 0:
-        raise InstallError(
-            "PENDING_HERMES_RUNTIME: installed Hermes must pass the semantic authority "
-            "claim/CAS and host-receipt verification canary before the trusted "
-            "publisher can be enabled."
-        )
 
-    canary_contract = {
-        "contract": "hermes.worker_model_path_denial_canary.v1",
-        "model_path_attempted": True,
-        "profile_env_denied": True,
-        "gh_config_denied": True,
-        "gh_token_denied": True,
-        "ssh_config_denied": True,
-        "ssh_private_keys_denied": True,
-        "keychain_lookup_denied": True,
-        "loopback_network_denied": True,
-        "public_network_denied": True,
-        "git_metadata_write_denied": True,
-        "workspace_edit_succeeded": True,
-        "bounded_test_succeeded": True,
-    }
-    canary_expression = _trusted_runtime_probe(
-        hermes_root,
-        "tools.kanban_worker_boundary",
-        (
-            "callable(getattr(module, 'run_worker_model_path_denial_canary', None)) "
-            "and module.run_worker_model_path_denial_canary() == "
-            f"json.loads({json.dumps(canary_contract)!r})"
-        ),
-    )
-    canary_command = [str(runtime_python), "-I", "-c", canary_expression]
-    canary = runner(
-        canary_command,
-        cwd=hermes_root,
-        check=False,
-        capture_output=True,
-        text=True,
-        env=_activation_python_env(),
-    )
-    if canary.returncode != 0:
-        raise InstallError(
-            "PENDING_HERMES_RUNTIME: installed Hermes must execute the approved "
-            "worker model-path denial canary before the trusted publisher can be enabled."
-        )
+def _verify_dedicated_publisher_identity(
+    plan: dict[str, Any], runner=None
+) -> None:
+    """Require a root-owned live-service attestation for the external publisher."""
 
-
-def _verify_publisher_auth(plan: dict[str, Any], runner=None) -> None:
     runner = runner or subprocess.run
-    command = ["/opt/homebrew/bin/gh", "auth", "token", "--hostname", "github.com"]
-    result = runner(
-        command,
-        cwd=plan["repo"],
+    path = Path(plan["publisher_service_attestation"])
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise InstallError(
+            "PENDING_HERMES_RUNTIME: dedicated publisher activation attestation "
+            "is unavailable."
+        ) from error
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != 0
+            or before.st_nlink != 1
+            or stat.S_IMODE(before.st_mode) != 0o644
+        ):
+            raise InstallError(
+                "Dedicated publisher attestation is not a root-owned mode-0644 file."
+            )
+        raw = os.read(descriptor, 1_000_001)
+        if len(raw) > 1_000_000:
+            raise InstallError("Dedicated publisher attestation is too large.")
+        after = os.fstat(descriptor)
+        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+        ):
+            raise InstallError("Dedicated publisher attestation changed during read.")
+    finally:
+        os.close(descriptor)
+    try:
+        attestation = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise InstallError("Dedicated publisher attestation is malformed.") from error
+    fields = {
+        "contract",
+        "broker_boundary",
+        "service_label",
+        "active",
+        "publisher_uid",
+        "broker_uid",
+        "model_uid",
+        "repository",
+        "github_repository_id",
+        "workflow_id",
+        "workflow_path",
+        "ready_label_actor",
+        "publisher_client_config_sha256",
+        "asset_manifest_sha256",
+        "source_commit_sha",
+        "publisher_credential_model_denied",
+        "verified_at",
+    }
+    actor = attestation.get("ready_label_actor") if isinstance(attestation, dict) else None
+    if (
+        not isinstance(attestation, dict)
+        or set(attestation) != fields
+        or attestation.get("contract")
+        != "radulator.dedicated_publisher_activation.v1"
+        or attestation.get("broker_boundary")
+        != "hermes.dedicated_broker_identity.v1"
+        or attestation.get("service_label")
+        != "ai.hermes.radulator-publisher"
+        or attestation.get("active") is not True
+        or attestation.get("repository") != CANONICAL_GITHUB_REPOSITORY
+        or attestation.get("github_repository_id") != 1027532341
+        or attestation.get("workflow_id") != 227376261
+        or attestation.get("workflow_path") != ".github/workflows/e2e-tests.yml"
+        or actor != {"id": 35302851, "login": "momomojo", "type": "User"}
+        or type(attestation.get("publisher_uid")) is not int
+        or type(attestation.get("broker_uid")) is not int
+        or type(attestation.get("model_uid")) is not int
+        or len({
+            attestation.get("publisher_uid"),
+            attestation.get("broker_uid"),
+            attestation.get("model_uid"),
+        })
+        != 3
+        or any(
+            not isinstance(attestation.get(name), str)
+            or not re.fullmatch(r"[0-9a-f]{64}", attestation[name])
+            for name in (
+                "publisher_client_config_sha256",
+                "asset_manifest_sha256",
+            )
+        )
+        or not isinstance(attestation.get("source_commit_sha"), str)
+        or not re.fullmatch(r"[0-9a-f]{40}", attestation["source_commit_sha"])
+        or attestation.get("publisher_credential_model_denied") is not True
+        or type(attestation.get("verified_at")) is not int
+        or attestation["verified_at"] <= 0
+    ):
+        raise InstallError("Dedicated publisher attestation contract is not exact.")
+    git_environment = {
+        **_activation_python_env(),
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_SYSTEM": "/dev/null",
+        "GIT_OPTIONAL_LOCKS": "0",
+        "GIT_TERMINAL_PROMPT": "0",
+    }
+    repository = str(Path(plan["repo"]))
+    status = runner(
+        [
+            "git",
+            "-C",
+            repository,
+            "status",
+            "--porcelain=v1",
+            "--untracked-files=all",
+        ],
         check=False,
         capture_output=True,
         text=True,
-        env={
-            "HOME": str(Path.home()),
-            "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
-        },
+        env=git_environment,
     )
-    token = result.stdout.strip() if isinstance(result.stdout, str) else ""
+    if status.returncode != 0 or (status.stdout or "").strip():
+        raise InstallError(
+            "Dedicated publisher source checkout is unavailable or not clean."
+        )
+    head = runner(
+        ["git", "-C", repository, "rev-parse", "--verify", "HEAD^{commit}"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=git_environment,
+    )
+    source_commit = (head.stdout or "").strip()
     if (
-        result.returncode != 0
-        or not token
-        or len(token) > 4096
-        or "\n" in token
-        or "\r" in token
+        head.returncode != 0
+        or re.fullmatch(r"[0-9a-f]{40}", source_commit) is None
+        or not hmac.compare_digest(source_commit, attestation["source_commit_sha"])
     ):
         raise InstallError(
-            "Trusted publisher GitHub authentication is unavailable or malformed."
+            "Dedicated publisher source commit does not match the activation checkout."
         )
-
-
-def _verify_dedicated_publisher_identity(_plan: dict[str, Any]) -> None:
-    """Hold activation until a reviewed cross-UID service contract is bound.
-
-    The previously probed Python constants and same-UID model-path canaries are
-    useful defense-in-depth evidence, but they cannot establish a credential
-    boundary against a model that can drive another process owned by that same
-    account.  No dedicated broker/publisher receipt contract is source-bound in
-    this release, so activation must remain explicitly unavailable.
-    """
-    raise InstallError(
-        "PENDING_HERMES_RUNTIME: trusted publisher activation requires a reviewed "
-        "dedicated broker/publisher service running under a separate OS identity "
-        "with exact authenticated peer and receipt readback."
+    service = runner(
+        [
+            "/bin/launchctl",
+            "print",
+            "system/ai.hermes.radulator-publisher",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
     )
+    output = service.stdout if isinstance(service.stdout, str) else ""
+    if (
+        service.returncode != 0
+        or "ai.hermes.radulator-publisher" not in output
+        or re.search(r"\bstate\s*=\s*running\b", output) is None
+        or re.search(r"\bpid\s*=\s*[1-9][0-9]*\b", output) is None
+    ):
+        raise InstallError("Dedicated publisher launchd service is not running.")
 
 
 def _capture_backup(plan: dict[str, Any]) -> None:
@@ -1944,8 +2037,11 @@ def _reconciled_managed_job_files(
                 and existing.get("id") == template["id"]
                 else existing
             )
-            updated = _job_for_write(template, write_existing, enabled, not enabled)
-            if not enabled:
+            job_enabled = enabled and template.get("_external_service") is not True
+            updated = _job_for_write(
+                template, write_existing, job_enabled, not job_enabled
+            )
+            if not job_enabled:
                 updated = _quiesced_job(updated, "managed-target-quiesce")
             if selected is not None:
                 rewritten[selected] = updated
@@ -2021,6 +2117,18 @@ def _verify_managed_job_state(
                     f"Managed Hermes job identity did not read back exactly: {template['name']}"
                 )
             if expected_enabled:
+                if template.get("_external_service") is True:
+                    active = []
+                    if require_present and not all(
+                        jobs[index].get("enabled") is False
+                        and jobs[index].get("state") == "paused"
+                        and jobs[index].get("next_run_at") is None
+                        for index in exact
+                    ):
+                        raise InstallError(
+                            "External publisher tombstone did not remain disabled."
+                        )
+                    continue
                 active = [
                     index
                     for index in exact
@@ -2393,8 +2501,9 @@ def _apply_install_under_job_locks(
             with jobs_locks.suspended():
                 _verify_activation_trust(plan, expected_public_keys)
                 _verify_broker_contract(plan, activation_test_runner)
-                _verify_dedicated_publisher_identity(plan)
-                _verify_publisher_auth(plan, activation_test_runner)
+                _verify_dedicated_publisher_identity(
+                    plan, activation_test_runner
+                )
                 _run_activation_self_tests(plan, activation_test_runner)
             disabled_job_files, post_proof_ambiguities = (
                 _reconciled_managed_job_files(plan, homes, enabled=False)

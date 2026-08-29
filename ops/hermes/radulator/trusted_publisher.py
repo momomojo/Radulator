@@ -7,12 +7,16 @@ import argparse
 import contextlib
 import dataclasses
 import fcntl
+import hashlib
 import json
 import os
 import re
+import secrets
 import stat
 import subprocess
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -24,6 +28,9 @@ AUTHORITY_CLAIM_CONTRACT = "hermes.trusted_publisher.authority-claim.v1"
 AUTHORITY_VERIFICATION_REQUEST_CONTRACT = "hermes.trusted_publisher.authority-verification-request.v1"
 AUTHORITY_VERIFICATION_CONTRACT = "hermes.trusted_publisher.authority-verified.v1"
 COMPLETION_CAS_CONTRACT = "hermes.trusted_publisher.completion-cas.v1"
+BROKER_BOUNDARY = "hermes.dedicated_broker_identity.v1"
+BROKER_OBLIGATION_QUERY_CONTRACT = "hermes.publisher_obligation_query.v1"
+BROKER_HANDOFF_CONTRACT = "hermes.publisher_object_handoff.v1"
 BLOCKED_MARKER = "AWAITING_TRUSTED_PUBLISHER v1"
 GIT_BINARY = "/usr/bin/git"
 GH_BINARY = "/opt/homebrew/bin/gh"
@@ -46,6 +53,38 @@ REQUIRED_CONTRACT_KEYS = frozenset(
     }
 )
 OPTIONAL_CONTRACT_KEYS = frozenset({"recovered_from_run_id"})
+BROKER_CONTRACT_KEYS = frozenset(
+    {
+        "contract",
+        "broker_boundary",
+        "receipt_id",
+        "key_id",
+        "task_id",
+        "run_id",
+        "claim_generation",
+        "dispatch_authority_receipt_id",
+        "dispatch_authority_payload_sha256",
+        "project_id",
+        "board",
+        "repository_id",
+        "repository_fingerprint",
+        "remote_repository",
+        "remote_repository_sha256",
+        "workspace",
+        "workspace_id",
+        "workspace_manifest_sha256",
+        "branch",
+        "base_branch",
+        "base_sha",
+        "target_base_sha",
+        "head_sha",
+        "changed_paths",
+        "changed_entries",
+        "publisher_state",
+        "reason",
+        "payload_sha256",
+    }
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -60,6 +99,17 @@ class TrustedCommit:
     changed_paths: tuple[str, ...]
     run_id: int
     recovered_from_run_id: int | None = None
+    target_base_sha: str | None = None
+    receipt_id: str | None = None
+    receipt_payload_sha256: str | None = None
+    repository_id: str | None = None
+    broker_boundary: str | None = None
+    remote_repository: dict[str, Any] | None = None
+    changed_entries: tuple[dict[str, Any], ...] = ()
+    sealed_workspace: str | None = None
+    bundle_path: str | None = None
+    bundle_sha256: str | None = None
+    bundle_size: int | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -81,6 +131,16 @@ class PublisherConfig:
     required_check_app_slug: str = "github-actions"
     e2e_workflow_path: str = ".github/workflows/e2e-tests.yml"
     e2e_workflow_name: str = "E2E Tests"
+    repository_id: str | None = None
+    publisher_state_dir: Path | None = None
+    broker_client_config: Path | None = None
+    expected_broker_uid: int | None = None
+    publisher_gid: int | None = None
+    github_repository_id: int | None = None
+    required_workflow_id: int | None = None
+    ready_label_actor_id: int | None = None
+    ready_label_actor_login: str | None = None
+    ready_label_actor_type: str | None = None
 
 
 class PublisherError(RuntimeError):
@@ -359,6 +419,509 @@ def select_candidate(kb: Any, conn: Any, board: str) -> TrustedCommit | None:
     return None
 
 
+def _canonical_json(value: Any) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+
+
+def _exact_broker_remote_repository(
+    value: Any, config: PublisherConfig
+) -> dict[str, Any]:
+    fields = {
+        "contract",
+        "host",
+        "owner",
+        "name",
+        "full_name",
+        "repository_id",
+        "canonical_url",
+        "is_fork",
+        "publication_policy",
+    }
+    if not isinstance(value, dict) or set(value) != fields:
+        raise PublisherError("broker GitHub repository binding is not exact")
+    try:
+        owner, name = config.repository.split("/", 1)
+    except ValueError as error:
+        raise PublisherError("publisher repository identity is malformed") from error
+    if (
+        value.get("contract") != "hermes.github_repository.v1"
+        or value.get("host") != "github.com"
+        or value.get("owner") != owner
+        or value.get("name") != name
+        or value.get("full_name") != config.repository
+        or value.get("repository_id") != config.github_repository_id
+        or value.get("canonical_url") != f"https://github.com/{config.repository}"
+        or value.get("is_fork") is not False
+    ):
+        raise PublisherError("broker GitHub repository identity does not match publisher")
+    policy = value.get("publication_policy")
+    policy_fields = {
+        "pull_request_base",
+        "workflow_id",
+        "workflow_name",
+        "workflow_path",
+        "workflow_event",
+        "required_job_names",
+        "required_app",
+        "ready_label_actor",
+        "ready_label",
+    }
+    expected_actor = {
+        "id": config.ready_label_actor_id,
+        "login": config.ready_label_actor_login,
+        "type": config.ready_label_actor_type,
+    }
+    if (
+        not isinstance(policy, dict)
+        or set(policy) != policy_fields
+        or policy.get("pull_request_base") != config.base_branch
+        or policy.get("workflow_id") != config.required_workflow_id
+        or policy.get("workflow_name") != config.e2e_workflow_name
+        or policy.get("workflow_path") != config.e2e_workflow_path
+        or policy.get("workflow_event") != "pull_request"
+        or policy.get("required_job_names") != list(config.required_checks)
+        or policy.get("required_app")
+        != {
+            "id": config.required_check_app_id,
+            "slug": config.required_check_app_slug,
+        }
+        or policy.get("ready_label_actor") != expected_actor
+        or policy.get("ready_label") != "ready-for-gate"
+        or not _positive_int(config.github_repository_id)
+        or not _positive_int(config.required_workflow_id)
+        or not _positive_int(config.ready_label_actor_id)
+        or config.ready_label_actor_type not in {"User", "Bot"}
+    ):
+        raise PublisherError("broker publication policy does not match publisher")
+    return json.loads(_canonical_json(value))
+
+
+def _exact_broker_changed_entries(
+    value: Any, *, changed_paths: tuple[str, ...]
+) -> tuple[dict[str, Any], ...]:
+    if not isinstance(value, list) or len(value) != len(changed_paths):
+        raise PublisherError("broker changed-entry list is malformed")
+    normalized: list[dict[str, Any]] = []
+    for index, entry in enumerate(value):
+        if not isinstance(entry, dict) or set(entry) != {
+            "path",
+            "operation",
+            "mode",
+            "sha256",
+            "size",
+        }:
+            raise PublisherError("broker changed-entry fields are not exact")
+        operation = entry.get("operation")
+        mode = entry.get("mode")
+        sha256 = entry.get("sha256")
+        size = entry.get("size")
+        if (
+            entry.get("path") != changed_paths[index]
+            or operation not in {"add", "modify", "delete"}
+            or mode not in {"100644", "100755"}
+            or type(size) is not int
+            or size < 0
+            or (
+                operation == "delete"
+                and (sha256 is not None or size != 0)
+            )
+            or (
+                operation != "delete"
+                and (
+                    not isinstance(sha256, str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", sha256)
+                )
+            )
+        ):
+            raise PublisherError("broker changed-entry authority is invalid")
+        normalized.append(json.loads(_canonical_json(entry)))
+    return tuple(normalized)
+
+
+def _parse_broker_obligation_item(
+    item: Any, config: PublisherConfig
+) -> TrustedCommit:
+    item_fields = {
+        "contract",
+        "broker_boundary",
+        "receipt_id",
+        "key_id",
+        "payload_sha256",
+        "verified",
+        "revoked",
+        "operation_state",
+        "canonical_payload",
+        "created_at",
+    }
+    if (
+        not isinstance(item, dict)
+        or set(item) != item_fields
+        or item.get("contract") != CONTRACT
+        or item.get("broker_boundary") != BROKER_BOUNDARY
+        or item.get("verified") is not True
+        or item.get("revoked") is not False
+        or item.get("operation_state") != "EMITTED"
+        or not _positive_int(item.get("created_at"))
+    ):
+        raise PublisherError("broker publication obligation does not verify")
+    payload = item.get("canonical_payload")
+    if not isinstance(payload, dict) or set(payload) != BROKER_CONTRACT_KEYS:
+        raise PublisherError("broker publication event fields are not exact")
+    receipt_id = payload.get("receipt_id")
+    key_id = payload.get("key_id")
+    payload_sha256 = payload.get("payload_sha256")
+    project_id = payload.get("project_id")
+    changed_paths = _safe_changed_paths(payload.get("changed_paths"))
+    branch = payload.get("branch")
+    workspace = payload.get("workspace")
+    if (
+        payload.get("contract") != CONTRACT
+        or payload.get("broker_boundary") != BROKER_BOUNDARY
+        or payload.get("publisher_state") != "awaiting"
+        or payload.get("reason") != BLOCKED_MARKER
+        or payload.get("repository_id") != config.repository_id
+        or payload.get("board") != config.board
+        or project_id != config.project_id
+        or payload.get("base_branch") != config.base_branch
+        or item.get("receipt_id") != receipt_id
+        or item.get("key_id") != key_id
+        or item.get("payload_sha256") != payload_sha256
+        or not isinstance(receipt_id, str)
+        or not TASK_ID_PATTERN.fullmatch(receipt_id)
+        or not isinstance(key_id, str)
+        or not re.fullmatch(r"[0-9a-f]{24}", key_id)
+        or not isinstance(payload_sha256, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", payload_sha256)
+        or hashlib.sha256(
+            _canonical_json({
+                key: value for key, value in payload.items() if key != "payload_sha256"
+            })
+        ).hexdigest()
+        != payload_sha256
+        or not isinstance(payload.get("task_id"), str)
+        or not TASK_ID_PATTERN.fullmatch(payload["task_id"])
+        or not _positive_int(payload.get("run_id"))
+        or not isinstance(branch, str)
+        or len(branch) > 200
+        or not re.fullmatch(r"[A-Za-z0-9._/-]+", branch)
+        or branch.startswith("/")
+        or branch.endswith("/")
+        or ".." in PurePosixPath(branch).parts
+        or branch in {"main", "develop", "gh-pages"}
+        or branch.startswith("release/")
+        or not isinstance(workspace, str)
+        or not workspace.startswith("/")
+        or not isinstance(payload.get("base_sha"), str)
+        or not SHA_PATTERN.fullmatch(payload["base_sha"])
+        or not isinstance(payload.get("target_base_sha"), str)
+        or not SHA_PATTERN.fullmatch(payload["target_base_sha"])
+        or not isinstance(payload.get("head_sha"), str)
+        or not SHA_PATTERN.fullmatch(payload["head_sha"])
+        or payload["head_sha"] == payload["base_sha"]
+        or changed_paths is None
+    ):
+        raise PublisherError("broker publication event authority is invalid")
+    remote = _exact_broker_remote_repository(payload.get("remote_repository"), config)
+    if (
+        not isinstance(payload.get("remote_repository_sha256"), str)
+        or hashlib.sha256(_canonical_json(remote)).hexdigest()
+        != payload["remote_repository_sha256"]
+    ):
+        raise PublisherError("broker remote repository digest does not verify")
+    entries = _exact_broker_changed_entries(
+        payload.get("changed_entries"), changed_paths=changed_paths
+    )
+    return TrustedCommit(
+        task_id=payload["task_id"],
+        project_id=project_id,
+        board=payload["board"],
+        workspace=workspace,
+        branch=branch,
+        base_sha=payload["base_sha"],
+        target_base_sha=payload["target_base_sha"],
+        head_sha=payload["head_sha"],
+        changed_paths=changed_paths,
+        run_id=payload["run_id"],
+        receipt_id=receipt_id,
+        receipt_payload_sha256=payload_sha256,
+        repository_id=payload["repository_id"],
+        broker_boundary=BROKER_BOUNDARY,
+        remote_repository=remote,
+        changed_entries=entries,
+        sealed_workspace=workspace,
+    )
+
+
+def select_broker_obligation(
+    client: Any, config: PublisherConfig
+) -> TrustedCommit | None:
+    """Read at most one oldest receipt from the authenticated broker surface."""
+
+    if not config.repository_id or not TASK_ID_PATTERN.fullmatch(config.repository_id):
+        raise PublisherError("publisher broker repository identity is unavailable")
+    result = client.call(
+        "list_publish_obligations",
+        {
+            "contract": BROKER_OBLIGATION_QUERY_CONTRACT,
+            "repository_id": config.repository_id,
+            "after_created_at": 0,
+            "after_receipt_id": "",
+            "limit": 1,
+        },
+    )
+    if not isinstance(result, dict) or set(result) != {
+        "contract",
+        "broker_boundary",
+        "items",
+        "has_more",
+        "next_cursor",
+    }:
+        raise PublisherError("broker obligation query response is not exact")
+    items = result.get("items")
+    if (
+        result.get("contract") != BROKER_OBLIGATION_QUERY_CONTRACT
+        or result.get("broker_boundary") != BROKER_BOUNDARY
+        or not isinstance(items, list)
+        or len(items) > 1
+        or type(result.get("has_more")) is not bool
+    ):
+        raise PublisherError("broker obligation query response is invalid")
+    if not items:
+        if result.get("next_cursor") is not None or result.get("has_more") is not False:
+            raise PublisherError("empty broker obligation cursor is malformed")
+        return None
+    cursor = result.get("next_cursor")
+    if (
+        not isinstance(cursor, dict)
+        or set(cursor) != {"created_at", "receipt_id"}
+        or cursor.get("created_at") != items[0].get("created_at")
+        or cursor.get("receipt_id") != items[0].get("receipt_id")
+    ):
+        raise PublisherError("broker obligation cursor does not bind its item")
+    return _parse_broker_obligation_item(items[0], config)
+
+
+def _prescan_publisher_repository(project_root: Path) -> None:
+    root_info = project_root.lstat()
+    if (
+        not stat.S_ISDIR(root_info.st_mode)
+        or root_info.st_uid != os.geteuid()
+        or stat.S_IMODE(root_info.st_mode) & 0o077
+    ):
+        raise PublisherError("publisher repository root is not private to its identity")
+    dot_git = project_root / ".git"
+    git_info = dot_git.lstat()
+    if stat.S_ISLNK(git_info.st_mode) or not stat.S_ISDIR(git_info.st_mode):
+        raise PublisherError("publisher repository Git directory is not canonical")
+    for forbidden in (
+        dot_git / "info" / "grafts",
+        dot_git / "refs" / "replace",
+        dot_git / "objects" / "info" / "alternates",
+    ):
+        try:
+            forbidden.lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            raise PublisherError("publisher repository contains forbidden Git authority")
+    config_text = _read_regular_no_follow(
+        dot_git / "config", "publisher repository Git config"
+    )
+    assert config_text is not None
+    unsafe = _unsafe_git_config_names(config_text, str(dot_git / "config"))
+    if unsafe:
+        raise PublisherError(
+            f"unsafe executable Git config is present: {', '.join(unsafe)}"
+        )
+
+
+def _read_exact_bundle(
+    path: Path,
+    *,
+    expected_uid: int,
+    expected_gid: int,
+    expected_mode: int,
+    expected_size: int,
+    expected_sha256: str,
+) -> bytes:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise PublisherError("broker bundle is not safely readable") from error
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != expected_uid
+            or before.st_gid != expected_gid
+            or before.st_nlink != 1
+            or stat.S_IMODE(before.st_mode) != expected_mode
+            or before.st_size != expected_size
+            or before.st_size <= 0
+            or before.st_size > 512 * 1024 * 1024
+        ):
+            raise PublisherError("broker bundle ownership, mode, or size is unsafe")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        after = os.fstat(descriptor)
+        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+        ):
+            raise PublisherError("broker bundle changed during publisher read")
+        content = b"".join(chunks)
+        if hashlib.sha256(content).hexdigest() != expected_sha256:
+            raise PublisherError("broker bundle digest does not verify")
+        return content
+    finally:
+        os.close(descriptor)
+
+
+def _private_state_directory(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    info = path.lstat()
+    if (
+        not stat.S_ISDIR(info.st_mode)
+        or info.st_uid != os.geteuid()
+        or stat.S_IMODE(info.st_mode) != 0o700
+    ):
+        raise PublisherError("publisher state directory is not owner-only")
+    return path
+
+
+def stage_broker_bundle(
+    candidate: TrustedCommit,
+    handoff: Any,
+    config: PublisherConfig,
+    *,
+    runner: Any = subprocess.run,
+) -> TrustedCommit:
+    """Copy, verify, and import only the receipt-bound immutable Git bundle."""
+
+    handoff_fields = {
+        "contract",
+        "broker_boundary",
+        "receipt_id",
+        "receipt_payload_sha256",
+        "bundle_path",
+        "bundle_sha256",
+        "bundle_size",
+        "repository_id",
+        "branch",
+        "base_branch",
+        "base_sha",
+        "target_base_sha",
+        "head_sha",
+    }
+    if not isinstance(handoff, dict) or set(handoff) != handoff_fields:
+        raise PublisherError("broker object handoff fields are not exact")
+    bundle_sha256 = handoff.get("bundle_sha256")
+    bundle_size = handoff.get("bundle_size")
+    if (
+        handoff.get("contract") != BROKER_HANDOFF_CONTRACT
+        or handoff.get("broker_boundary") != BROKER_BOUNDARY
+        or handoff.get("receipt_id") != candidate.receipt_id
+        or handoff.get("receipt_payload_sha256") != candidate.receipt_payload_sha256
+        or handoff.get("repository_id") != candidate.repository_id
+        or handoff.get("branch") != candidate.branch
+        or handoff.get("base_branch") != config.base_branch
+        or handoff.get("base_sha") != candidate.base_sha
+        or handoff.get("target_base_sha") != candidate.target_base_sha
+        or handoff.get("head_sha") != candidate.head_sha
+        or not isinstance(bundle_sha256, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", bundle_sha256)
+        or type(bundle_size) is not int
+        or bundle_size <= 0
+        or config.expected_broker_uid is None
+        or config.publisher_gid is None
+        or config.publisher_state_dir is None
+        or candidate.receipt_id is None
+    ):
+        raise PublisherError("broker object handoff does not bind the obligation")
+    source_path = Path(str(handoff.get("bundle_path") or ""))
+    if not source_path.is_absolute():
+        raise PublisherError("broker bundle path must be absolute")
+    content = _read_exact_bundle(
+        source_path,
+        expected_uid=config.expected_broker_uid,
+        expected_gid=config.publisher_gid,
+        expected_mode=0o640,
+        expected_size=bundle_size,
+        expected_sha256=bundle_sha256,
+    )
+    bundles = _private_state_directory(config.publisher_state_dir / "bundles")
+    staged = bundles / f"{candidate.receipt_id}.bundle"
+    if staged.exists() or staged.is_symlink():
+        _read_exact_bundle(
+            staged,
+            expected_uid=os.geteuid(),
+            expected_gid=os.getegid(),
+            expected_mode=0o600,
+            expected_size=bundle_size,
+            expected_sha256=bundle_sha256,
+        )
+    else:
+        temporary = bundles / f".{candidate.receipt_id}.{secrets.token_hex(8)}.tmp"
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(temporary, flags, 0o600)
+        try:
+            view = memoryview(content)
+            while view:
+                written = os.write(descriptor, view)
+                view = view[written:]
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        os.replace(temporary, staged)
+        directory_fd = os.open(bundles, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    project_root = config.project_root.resolve(strict=True)
+    _prescan_publisher_repository(project_root)
+    advertised = _git(
+        project_root, "bundle", "list-heads", str(staged), runner=runner
+    ).stdout.splitlines()
+    if advertised != [f"{candidate.head_sha} refs/heads/{candidate.branch}"]:
+        raise PublisherError("publisher bundle does not advertise the exact receipt head")
+    local_ref = f"refs/hermes-publisher/{candidate.receipt_id}"
+    prior = _git(
+        project_root, "rev-parse", "--verify", local_ref, runner=runner, check=False
+    )
+    if prior.returncode == 0 and prior.stdout.strip() != candidate.head_sha:
+        raise PublisherError("publisher receipt ref already binds another object")
+    if prior.returncode != 0:
+        _git(
+            project_root,
+            "fetch",
+            "--no-tags",
+            str(staged),
+            f"refs/heads/{candidate.branch}:{local_ref}",
+            runner=runner,
+        )
+    if _git(project_root, "rev-parse", local_ref, runner=runner).stdout.strip() != candidate.head_sha:
+        raise PublisherError("publisher bundle import lacked exact object readback")
+    staged_candidate = dataclasses.replace(
+        candidate,
+        workspace=str(project_root),
+        sealed_workspace=candidate.sealed_workspace or candidate.workspace,
+        bundle_path=str(staged),
+        bundle_sha256=bundle_sha256,
+        bundle_size=bundle_size,
+    )
+    return validate_local_candidate(staged_candidate, config, runner=runner)
+
+
 def _minimal_env() -> dict[str, str]:
     allowed = ("LANG", "LC_ALL", "TMPDIR")
     env = {key: os.environ[key] for key in allowed if key in os.environ}
@@ -627,6 +1190,119 @@ def _origin_matches(actual: str, expected: str, repository: str) -> bool:
     return normalized == f"https://github.com/{repository}" and expected == repository
 
 
+def _validate_broker_candidate(
+    candidate: TrustedCommit,
+    config: PublisherConfig,
+    *,
+    runner: Any,
+) -> TrustedCommit:
+    project_root = config.project_root.resolve(strict=True)
+    if (
+        candidate.workspace != str(project_root)
+        or candidate.sealed_workspace is None
+        or not candidate.sealed_workspace.startswith("/")
+        or candidate.board != config.board
+        or candidate.project_id != config.project_id
+        or candidate.repository_id != config.repository_id
+        or candidate.broker_boundary != BROKER_BOUNDARY
+        or candidate.receipt_id is None
+        or not TASK_ID_PATTERN.fullmatch(candidate.receipt_id)
+        or candidate.receipt_payload_sha256 is None
+        or not re.fullmatch(r"[0-9a-f]{64}", candidate.receipt_payload_sha256)
+        or candidate.branch in {"main", "develop", "gh-pages"}
+        or candidate.branch.startswith("release/")
+        or candidate.bundle_path is None
+        or candidate.bundle_sha256 is None
+        or candidate.bundle_size is None
+        or candidate.target_base_sha is None
+        or not SHA_PATTERN.fullmatch(candidate.target_base_sha)
+    ):
+        raise PublisherError("staged broker candidate authority is incomplete")
+    _prescan_publisher_repository(project_root)
+    top = _git(project_root, "rev-parse", "--show-toplevel", runner=runner).stdout.strip()
+    if Path(top).resolve(strict=True) != project_root:
+        raise PublisherError("publisher repository top-level is not canonical")
+    _read_exact_bundle(
+        Path(candidate.bundle_path),
+        expected_uid=os.geteuid(),
+        expected_gid=os.getegid(),
+        expected_mode=0o600,
+        expected_size=candidate.bundle_size,
+        expected_sha256=candidate.bundle_sha256,
+    )
+    advertised = _git(
+        project_root,
+        "bundle",
+        "list-heads",
+        candidate.bundle_path,
+        runner=runner,
+    ).stdout.splitlines()
+    if advertised != [f"{candidate.head_sha} refs/heads/{candidate.branch}"]:
+        raise PublisherError("staged bundle head no longer binds the receipt")
+    local_ref = f"refs/hermes-publisher/{candidate.receipt_id}"
+    if _git(project_root, "rev-parse", local_ref, runner=runner).stdout.strip() != candidate.head_sha:
+        raise PublisherError("publisher receipt ref does not bind the sealed head")
+    parents = _git(
+        project_root,
+        "show",
+        "-s",
+        "--format=%P",
+        candidate.head_sha,
+        runner=runner,
+    ).stdout.split()
+    if parents != [candidate.base_sha]:
+        raise PublisherError("brokered commit parent does not match sealed base")
+    ancestor = _git(
+        project_root,
+        "merge-base",
+        "--is-ancestor",
+        candidate.base_sha,
+        candidate.head_sha,
+        runner=runner,
+        check=False,
+    )
+    if ancestor.returncode != 0:
+        raise PublisherError("brokered base is not an ancestor of sealed head")
+    target_ancestor = _git(
+        project_root,
+        "merge-base",
+        "--is-ancestor",
+        candidate.target_base_sha,
+        candidate.head_sha,
+        runner=runner,
+        check=False,
+    )
+    if target_ancestor.returncode != 0:
+        raise PublisherError("brokered target base is not contained in sealed head")
+    changed = tuple(sorted(filter(None, _git(
+        project_root,
+        "diff-tree",
+        "--no-commit-id",
+        "--name-only",
+        "-r",
+        candidate.head_sha,
+        runner=runner,
+    ).stdout.splitlines())))
+    if changed != candidate.changed_paths:
+        raise PublisherError("broker changed paths do not match exact commit")
+    origin = _git(
+        project_root, "remote", "get-url", "origin", runner=runner
+    ).stdout.strip()
+    push_origin = _git(
+        project_root,
+        "remote",
+        "get-url",
+        "--push",
+        "origin",
+        runner=runner,
+    ).stdout.strip()
+    if not _origin_matches(origin, config.expected_origin, config.repository) or not _origin_matches(
+        push_origin, config.expected_origin, config.repository
+    ):
+        raise PublisherError("publisher repository origin is not canonical")
+    return candidate
+
+
 def validate_local_candidate(
     candidate: TrustedCommit,
     config: PublisherConfig,
@@ -634,6 +1310,8 @@ def validate_local_candidate(
     runner: Any = subprocess.run,
 ) -> TrustedCommit:
     """Independently bind a sealed event to one clean local Git worktree."""
+    if candidate.receipt_id is not None:
+        return _validate_broker_candidate(candidate, config, runner=runner)
     project_root = config.project_root.resolve(strict=True)
     workspace = _canonical_existing_path(candidate.workspace, "workspace")
     worktree_root = project_root / ".worktrees"
@@ -874,6 +1552,13 @@ def ensure_remote_and_pr(
         _revalidate_candidate(candidate, config, kb, conn)
     remote_head = _remote_head(candidate, config, runner=runner)
     target_base_sha = _remote_target_base(candidate, config, runner=runner)
+    if (
+        candidate.receipt_id is not None
+        and candidate.target_base_sha != target_base_sha
+    ):
+        raise PublisherPending(
+            "broker-sealed pull-request base no longer matches the live target"
+        )
     if remote_head is None:
         if candidate.base_sha != target_base_sha:
             raise PublisherError("new publication parent is not the current target base")
@@ -1103,6 +1788,8 @@ def ensure_remote_and_pr(
         branch_prs[0], candidate, config, target_base_sha=target_base_sha
     )
     if "ready-for-gate" in final_pr.labels:
+        if candidate.receipt_id is not None:
+            return final_pr
         _compensate_ready_label(candidate, final_pr, config, runner=runner)
         raise PublisherError(
             "final pull request carried an unexpected readiness label before CI gating"
@@ -1237,13 +1924,28 @@ def _compensate_ready_label(
         ) from cleanup_error
 
 
-def _required_checks_green(
+def _github_timestamp(value: Any, *, label: str) -> int:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise PublisherError(f"{label} timestamp is malformed")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as error:
+        raise PublisherError(f"{label} timestamp is malformed") from error
+    if parsed.tzinfo is None:
+        raise PublisherError(f"{label} timestamp is malformed")
+    timestamp = int(parsed.astimezone(timezone.utc).timestamp())
+    if timestamp <= 0:
+        raise PublisherError(f"{label} timestamp is malformed")
+    return timestamp
+
+
+def _required_checks_evidence(
     candidate: TrustedCommit,
     pr: PublishedPullRequest,
     config: PublisherConfig,
     *,
     runner: Any,
-) -> bool:
+) -> dict[str, Any] | None:
     workflow_result = _gh(
         "api",
         f"repos/{config.repository}/actions/workflows/e2e-tests.yml",
@@ -1260,7 +1962,7 @@ def _required_checks_green(
         or workflow.get("path") != config.e2e_workflow_path
         or workflow.get("state") != "active"
     ):
-        return False
+        return None
 
     runs_result = _gh(
         "api",
@@ -1314,13 +2016,16 @@ def _required_checks_green(
         and exact_pull_binding(item["pull_requests"][0])
     ]
     if not matching_runs:
-        return False
+        return None
     selected_run = max(matching_runs, key=lambda item: (item["id"], item["run_attempt"]))
     if selected_run.get("status") != "completed" or selected_run.get("conclusion") != "success":
-        return False
+        return None
     run_id = selected_run["id"]
     run_attempt = selected_run["run_attempt"]
     check_suite_id = selected_run["check_suite_id"]
+    completed_at = _github_timestamp(
+        selected_run.get("completed_at"), label="workflow completion"
+    )
 
     jobs_result = _gh(
         "api",
@@ -1333,6 +2038,8 @@ def _required_checks_green(
     total_jobs = jobs_payload.get("total_count") if isinstance(jobs_payload, dict) else None
     if not isinstance(jobs, list) or type(total_jobs) is not int or total_jobs != len(jobs):
         raise PublisherError("workflow jobs readback is malformed")
+    required_job_ids: list[int] = []
+    required_jobs: list[dict[str, Any]] = []
     for required in config.required_checks:
         matching_jobs = [
             item
@@ -1340,7 +2047,7 @@ def _required_checks_green(
             if isinstance(item, dict) and item.get("name") == required and _positive_int(item.get("id"))
         ]
         if len(matching_jobs) != 1:
-            return False
+            return None
         job = matching_jobs[0]
         if (
             job.get("run_id") != run_id
@@ -1352,7 +2059,7 @@ def _required_checks_green(
             or job.get("check_run_url")
             != f"https://api.github.com/repos/{config.repository}/check-runs/{job['id']}"
         ):
-            return False
+            return None
         check_result = _gh(
             "api",
             f"repos/{config.repository}/check-runs/{job['id']}",
@@ -1361,7 +2068,7 @@ def _required_checks_green(
         )
         check = _bounded_json(check_result, f"{required} check run")
         if not isinstance(check, dict) or check.get("id") != job["id"] or check.get("name") != required:
-            return False
+            return None
         app = check.get("app")
         suite = check.get("check_suite")
         if (
@@ -1374,8 +2081,228 @@ def _required_checks_green(
             or not isinstance(suite, dict)
             or suite.get("id") != check_suite_id
         ):
-            return False
-    return True
+            return None
+        required_job_ids.append(job["id"])
+        required_jobs.append({
+            "job_id": job["id"],
+            "check_run_id": check["id"],
+            "workflow_id": workflow_id,
+            "workflow_run_id": run_id,
+            "run_attempt": run_attempt,
+            "check_suite_id": check_suite_id,
+            "name": required,
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": candidate.head_sha,
+            "app": {
+                "id": config.required_check_app_id,
+                "slug": config.required_check_app_slug,
+            },
+        })
+    return {
+        "workflow_id": workflow_id,
+        "workflow_name": config.e2e_workflow_name,
+        "workflow_path": config.e2e_workflow_path,
+        "run_id": run_id,
+        "newest_run_id_for_workflow_and_head": run_id,
+        "run_attempt": run_attempt,
+        "check_suite_id": check_suite_id,
+        "event": "pull_request",
+        "head_sha": candidate.head_sha,
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": completed_at,
+        "required_job_ids": required_job_ids,
+        "required_jobs": required_jobs,
+    }
+
+
+def _required_checks_green(
+    candidate: TrustedCommit,
+    pr: PublishedPullRequest,
+    config: PublisherConfig,
+    *,
+    runner: Any,
+) -> bool:
+    return _required_checks_evidence(
+        candidate, pr, config, runner=runner
+    ) is not None
+
+
+def collect_broker_remote_readback(
+    candidate: TrustedCommit,
+    pr: PublishedPullRequest,
+    config: PublisherConfig,
+    *,
+    runner: Any = subprocess.run,
+) -> dict[str, Any]:
+    """Build the exact GitHub evidence object accepted by the broker CAS."""
+
+    if (
+        candidate.remote_repository is None
+        or candidate.target_base_sha is None
+        or "ready-for-gate" not in pr.labels
+        or pr.number <= 0
+        or pr.head_sha != candidate.head_sha
+        or pr.branch != candidate.branch
+        or pr.base != config.base_branch
+        or pr.base_sha != candidate.target_base_sha
+    ):
+        raise PublisherError("labeled pull request does not bind the broker receipt")
+    repository_binding = _exact_broker_remote_repository(
+        candidate.remote_repository, config
+    )
+    workflow = _required_checks_evidence(
+        candidate, pr, config, runner=runner
+    )
+    if workflow is None or workflow["workflow_id"] != config.required_workflow_id:
+        raise PublisherError("exact-head CI evidence is no longer green")
+
+    repository_payload = _bounded_json(
+        _gh(
+            "api",
+            f"repos/{config.repository}",
+            cwd=Path(candidate.workspace),
+            runner=runner,
+        ),
+        "GitHub repository",
+    )
+    owner, name = config.repository.split("/", 1)
+    if (
+        not isinstance(repository_payload, dict)
+        or repository_payload.get("id") != config.github_repository_id
+        or repository_payload.get("name") != name
+        or repository_payload.get("full_name") != config.repository
+        or repository_payload.get("html_url")
+        != f"https://github.com/{config.repository}"
+        or repository_payload.get("fork") is not False
+        or not isinstance(repository_payload.get("owner"), dict)
+        or repository_payload["owner"].get("login") != owner
+    ):
+        raise PublisherError("live GitHub repository identity does not match policy")
+
+    pull_payload = _bounded_json(
+        _gh(
+            "api",
+            f"repos/{config.repository}/pulls/{pr.number}",
+            cwd=Path(candidate.workspace),
+            runner=runner,
+        ),
+        "GitHub pull request",
+    )
+    head = pull_payload.get("head") if isinstance(pull_payload, dict) else None
+    base = pull_payload.get("base") if isinstance(pull_payload, dict) else None
+    head_repository = head.get("repo") if isinstance(head, dict) else None
+    labels = pull_payload.get("labels") if isinstance(pull_payload, dict) else None
+    label_names = (
+        [item.get("name") for item in labels if isinstance(item, dict)]
+        if isinstance(labels, list)
+        else []
+    )
+    if (
+        not isinstance(pull_payload, dict)
+        or pull_payload.get("number") != pr.number
+        or pull_payload.get("html_url") != pr.url
+        or pull_payload.get("state") != "open"
+        or pull_payload.get("draft") is not False
+        or not isinstance(head, dict)
+        or head.get("ref") != candidate.branch
+        or head.get("sha") != candidate.head_sha
+        or not isinstance(head_repository, dict)
+        or head_repository.get("full_name") != config.repository
+        or head_repository.get("fork") is not False
+        or not isinstance(base, dict)
+        or base.get("ref") != config.base_branch
+        or base.get("sha") != candidate.target_base_sha
+        or "ready-for-gate" not in label_names
+    ):
+        raise PublisherError("live pull request does not bind exact branch/base/head")
+
+    events = _bounded_json(
+        _gh(
+            "api",
+            f"repos/{config.repository}/issues/{pr.number}/events?per_page=100",
+            cwd=Path(candidate.workspace),
+            runner=runner,
+        ),
+        "ready label events",
+    )
+    if not isinstance(events, list) or len(events) >= 100:
+        raise PublisherError("ready label event enumeration is incomplete")
+    expected_actor = {
+        "id": config.ready_label_actor_id,
+        "login": config.ready_label_actor_login,
+        "type": config.ready_label_actor_type,
+    }
+    candidates: list[tuple[int, int, str, Any]] = []
+    for item in events:
+        if not isinstance(item, dict) or item.get("event") not in (
+            "labeled",
+            "unlabeled",
+        ):
+            continue
+        label = item.get("label")
+        if not isinstance(label, dict) or label.get("name") != "ready-for-gate":
+            continue
+        if not _positive_int(item.get("id")):
+            raise PublisherError("ready label event identity is malformed")
+        actor = item.get("actor")
+        normalized_actor = (
+            {
+                "id": actor.get("id"),
+                "login": actor.get("login"),
+                "type": actor.get("type"),
+            }
+            if isinstance(actor, dict)
+            else None
+        )
+        created_at = _github_timestamp(
+            item.get("created_at"), label="ready label event"
+        )
+        candidates.append((created_at, item["id"], item["event"], normalized_actor))
+    if not candidates:
+        raise PublisherError("post-CI ready label actor event is unavailable")
+    label_created_at, label_event_id, label_event, label_actor = max(
+        candidates, key=lambda item: (item[0], item[1])
+    )
+    if label_event != "labeled":
+        raise PublisherError("latest ready-for-gate event removed readiness")
+    if label_created_at < workflow["completed_at"]:
+        raise PublisherError("ready label event predates exact-head CI completion")
+    if label_actor != expected_actor:
+        raise PublisherError("ready label event actor does not match policy")
+    readback_at = max(int(time.time()), label_created_at)
+    return {
+        "contract": "hermes.github_publish_readback.v1",
+        "repository": repository_binding,
+        "pull_request": {
+            "number": pr.number,
+            "url": pr.url,
+            "state": "open",
+            "is_draft": False,
+            "head_repository_full_name": config.repository,
+            "head_repository_is_fork": False,
+            "head_ref": candidate.branch,
+            "head_ref_full": f"refs/heads/{candidate.branch}",
+            "base_ref": config.base_branch,
+            "base_ref_full": f"refs/heads/{config.base_branch}",
+            "base_sha": candidate.target_base_sha,
+            "head_sha": candidate.head_sha,
+        },
+        "workflow": workflow,
+        "ready_label": {
+            "name": "ready-for-gate",
+            "present": True,
+            "label_event_id": label_event_id,
+            "actor": label_actor,
+            "pull_request_number": pr.number,
+            "head_sha": candidate.head_sha,
+            "workflow_run_id": workflow["run_id"],
+            "check_suite_id": workflow["check_suite_id"],
+            "event_created_at": label_created_at,
+            "readback_at": readback_at,
+        },
+    }
 
 
 def ensure_ready_label(
@@ -1442,7 +2369,7 @@ def ensure_ready_label(
         )
         if "ready-for-gate" not in readback.labels:
             raise PublisherError("ready-for-gate label lacked exact authoritative readback")
-    except Exception as error:
+    except Exception:
         if not attempted and not observed_label:
             raise
         _compensate_ready_label(candidate, pr, config, runner=runner)
@@ -2306,6 +3233,139 @@ def run_once(
     }
 
 
+def _validate_broker_acknowledgement_result(
+    result: Any,
+    *,
+    candidate: TrustedCommit,
+    expected_remote_readback_sha256: str,
+) -> dict[str, Any]:
+    fields = {
+        "contract",
+        "broker_boundary",
+        "receipt_id",
+        "task_id",
+        "run_id",
+        "repository_id",
+        "branch",
+        "base_branch",
+        "head_sha",
+        "branch_published_from",
+        "branch_published_to",
+        "repository_base_sha",
+        "publish_outcome",
+        "cleanup_state",
+        "completion_id",
+        "completion_payload_sha256",
+        "remote_readback_sha256",
+    }
+    if (
+        not isinstance(result, dict)
+        or set(result) != fields
+        or result.get("contract") != "hermes.publisher_ack.v1"
+        or result.get("broker_boundary") != BROKER_BOUNDARY
+        or result.get("receipt_id") != candidate.receipt_id
+        or result.get("task_id") != candidate.task_id
+        or result.get("run_id") != candidate.run_id
+        or result.get("repository_id") != candidate.repository_id
+        or result.get("branch") != candidate.branch
+        or result.get("base_branch") != "develop"
+        or result.get("head_sha") != candidate.head_sha
+        or result.get("branch_published_from") != candidate.base_sha
+        or result.get("branch_published_to") != candidate.head_sha
+        or result.get("repository_base_sha") != candidate.target_base_sha
+        or result.get("publish_outcome") != "fast_forwarded"
+        or result.get("cleanup_state") != "cleaned"
+        or not isinstance(result.get("completion_id"), str)
+        or not TASK_ID_PATTERN.fullmatch(result["completion_id"])
+        or not isinstance(result.get("completion_payload_sha256"), str)
+        or not re.fullmatch(r"[0-9a-f]{64}", result["completion_payload_sha256"])
+        or not isinstance(result.get("remote_readback_sha256"), str)
+        or not re.fullmatch(r"[0-9a-f]{64}", result["remote_readback_sha256"])
+        or result["remote_readback_sha256"] != expected_remote_readback_sha256
+    ):
+        raise PublisherError("broker acknowledgement result is not exact")
+    return result
+
+
+def run_broker_once(
+    config: PublisherConfig,
+    client: Any,
+    *,
+    runner: Any = subprocess.run,
+) -> dict[str, Any]:
+    """Publish at most one broker receipt without reading the Kanban database."""
+
+    candidate = select_broker_obligation(client, config)
+    if candidate is None:
+        return {"status": "idle"}
+    handoff = client.call(
+        "export_bundle",
+        {
+            "receipt_id": candidate.receipt_id,
+            "payload_sha256": candidate.receipt_payload_sha256,
+        },
+    )
+    staged = stage_broker_bundle(candidate, handoff, config, runner=runner)
+    pr = ensure_remote_and_pr(staged, config, runner=runner)
+    try:
+        labeled = ensure_ready_label(staged, pr, config, runner=runner)
+    except PublisherPending:
+        return {
+            "status": "pending_ci",
+            "task_id": staged.task_id,
+            "pr": pr.number,
+            "head_sha": staged.head_sha,
+        }
+    try:
+        remote_readback = collect_broker_remote_readback(
+            staged, labeled, config, runner=runner
+        )
+    except Exception:
+        _compensate_ready_label(staged, labeled, config, runner=runner)
+        raise
+    expected_remote_readback_sha256 = hashlib.sha256(
+        _canonical_json(remote_readback)
+    ).hexdigest()
+    acknowledgement = {
+        "contract": "hermes.publisher_ack.v1",
+        "receipt_id": staged.receipt_id,
+        "receipt_payload_sha256": staged.receipt_payload_sha256,
+        "bundle_sha256": staged.bundle_sha256,
+        "repository_id": staged.repository_id,
+        "task_id": staged.task_id,
+        "run_id": staged.run_id,
+        "branch": staged.branch,
+        "base_branch": config.base_branch,
+        "base_sha": staged.base_sha,
+        "target_base_sha": staged.target_base_sha,
+        "head_sha": staged.head_sha,
+        "published_head_sha": staged.head_sha,
+        "publish_outcome": "fast_forwarded",
+        "readback_complete": True,
+        "remote_readback": remote_readback,
+    }
+    try:
+        acknowledged = client.call("ack_publish", acknowledgement)
+    except Exception as error:
+        raise PublisherCompletionAmbiguous(
+            "UNSAFE_COMPLETION_STATE: broker acknowledgement response was not read back; "
+            "retry the exact receipt without removing readiness"
+        ) from error
+    verified = _validate_broker_acknowledgement_result(
+        acknowledged,
+        candidate=staged,
+        expected_remote_readback_sha256=expected_remote_readback_sha256,
+    )
+    return {
+        "status": "published",
+        "task_id": staged.task_id,
+        "pr": labeled.number,
+        "head_sha": staged.head_sha,
+        "completion_id": verified["completion_id"],
+        "completion_payload_sha256": verified["completion_payload_sha256"],
+    }
+
+
 def parse_runtime_config(argv: list[str] | None = None) -> tuple[PublisherConfig, Path]:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--board", default=os.environ.get("RADULATOR_HERMES_BOARD", "default"))
@@ -2317,11 +3377,27 @@ def parse_runtime_config(argv: list[str] | None = None) -> tuple[PublisherConfig
     parser.add_argument("--lifecycle-controller", required=True)
     parser.add_argument("--ledger", required=True)
     parser.add_argument("--lock-file", required=True)
+    parser.add_argument("--repository-id")
+    parser.add_argument("--publisher-state-dir")
+    parser.add_argument("--broker-client-config")
+    parser.add_argument("--expected-broker-uid", type=int)
+    parser.add_argument("--publisher-gid", type=int)
+    parser.add_argument("--github-repository-id", type=int)
+    parser.add_argument("--workflow-id", type=int)
+    parser.add_argument("--ready-label-actor-id", type=int)
+    parser.add_argument("--ready-label-actor-login")
+    parser.add_argument("--ready-label-actor-type", choices=("User", "Bot"))
     args = parser.parse_args(argv)
     project_root = Path(args.project_root)
     lifecycle_controller = Path(args.lifecycle_controller)
     lock_file = Path(args.lock_file)
     ledger_path = Path(args.ledger)
+    publisher_state_dir = (
+        Path(args.publisher_state_dir) if args.publisher_state_dir else None
+    )
+    broker_client_config = (
+        Path(args.broker_client_config) if args.broker_client_config else None
+    )
     if not project_root.is_absolute() or not project_root.is_dir():
         parser.error("--project-root must be an existing absolute directory")
     if not lifecycle_controller.is_absolute() or not lifecycle_controller.is_file():
@@ -2330,6 +3406,10 @@ def parse_runtime_config(argv: list[str] | None = None) -> tuple[PublisherConfig
         parser.error("--lock-file must be absolute")
     if not ledger_path.is_absolute():
         parser.error("--ledger must be absolute")
+    if publisher_state_dir is not None and not publisher_state_dir.is_absolute():
+        parser.error("--publisher-state-dir must be absolute")
+    if broker_client_config is not None and not broker_client_config.is_absolute():
+        parser.error("--broker-client-config must be absolute")
     if args.repository != "momomojo/Radulator" or args.base_branch != "develop":
         parser.error("publisher repository/base must be momomojo/Radulator and develop")
     if not TASK_ID_PATTERN.fullmatch(args.board or ""):
@@ -2345,23 +3425,51 @@ def parse_runtime_config(argv: list[str] | None = None) -> tuple[PublisherConfig
         expected_origin=args.expected_origin,
         lifecycle_controller=lifecycle_controller.resolve(strict=True),
         ledger_path=ledger_path,
+        repository_id=args.repository_id,
+        publisher_state_dir=publisher_state_dir,
+        broker_client_config=broker_client_config,
+        expected_broker_uid=args.expected_broker_uid,
+        publisher_gid=args.publisher_gid,
+        github_repository_id=args.github_repository_id,
+        required_workflow_id=args.workflow_id,
+        ready_label_actor_id=args.ready_label_actor_id,
+        ready_label_actor_login=args.ready_label_actor_login,
+        ready_label_actor_type=args.ready_label_actor_type,
     )
     return config, lock_file
 
 
-def main(argv: list[str] | None = None, *, kb_module: Any = None) -> int:
+def main(argv: list[str] | None = None, *, broker_client: Any = None) -> int:
     config, lock_file = parse_runtime_config(argv)
-    if kb_module is None:
-        from hermes_cli import kanban_db as kb_module  # type: ignore[import-not-found]
+    required_broker = {
+        "repository_id": config.repository_id,
+        "publisher_state_dir": config.publisher_state_dir,
+        "broker_client_config": config.broker_client_config,
+        "expected_broker_uid": config.expected_broker_uid,
+        "publisher_gid": config.publisher_gid,
+        "github_repository_id": config.github_repository_id,
+        "required_workflow_id": config.required_workflow_id,
+        "ready_label_actor_id": config.ready_label_actor_id,
+        "ready_label_actor_login": config.ready_label_actor_login,
+        "ready_label_actor_type": config.ready_label_actor_type,
+    }
+    missing = sorted(key for key, value in required_broker.items() if value is None)
+    if missing:
+        raise PublisherError(
+            "dedicated broker publisher configuration is incomplete: "
+            + ", ".join(missing)
+        )
+    if broker_client is None:
+        from hermes_cli.kanban_broker_client import load_broker_client
+
+        broker_client = load_broker_client(
+            config.broker_client_config, expected_surface="publisher"
+        )
     with publisher_lock(lock_file) as acquired:
         if not acquired:
             print(json.dumps({"status": "busy"}, sort_keys=True, separators=(",", ":")))
             return 0
-        conn = kb_module.connect(board=config.board)
-        try:
-            result = run_once(config, kb_module, conn)
-        finally:
-            conn.close()
+        result = run_broker_once(config, broker_client)
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0
 
