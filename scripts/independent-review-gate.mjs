@@ -195,6 +195,7 @@ export function resolveRequiredCi({ pr, workflowRuns, checkRuns, requiredCi, exp
     .filter((check) =>
       check.check_suite?.id === run.check_suite_id &&
       !requiredNames.has(check.name) &&
+      check.name !== REQUIRED_CONTEXT &&
       typeof check.name === "string" && check.name &&
       check.app?.id === expectedCiAppId && check.app?.slug === "github-actions" &&
       positiveInteger(check.id) &&

@@ -616,6 +616,26 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     ["Hermes Release Control Tests"],
   );
 
+  const completedGateCheck = checkRun(pr, REQUIRED_CONTEXT, 4);
+  const afterGatePublication = resolveRequiredCi({
+    pr,
+    workflowRuns: setup.workflowRuns,
+    checkRuns: [...setup.checkRuns, supplemental, completedGateCheck],
+    requiredCi: setup.requiredCi,
+    expectedWorkflowId: WORKFLOW_ID,
+    expectedCiAppId: CI_APP_ID,
+  });
+  assert.deepEqual(
+    afterGatePublication.supplementalEvidence,
+    withSupplemental.supplementalEvidence,
+    "the gate's own successful check must not contaminate exact-run CI evidence",
+  );
+  assert.equal(
+    gateStateFingerprint({ pr, ci: afterGatePublication, files: STANDARD_FILES, reviews: [] }),
+    gateStateFingerprint({ pr, ci: withSupplemental, files: STANDARD_FILES, reviews: [] }),
+    "publishing the gate check must not change the gate state fingerprint",
+  );
+
   assert.deepEqual(requiredCiForBase("develop"), ["Smoke Tests", "Targeted Calculator Tests"]);
   const mainPr = prFixture({ baseRef: "main" });
   assert.deepEqual(requiredCiForBase(mainPr.baseRef), ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"]);
