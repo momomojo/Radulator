@@ -948,6 +948,7 @@ def _run(
     runner: Any = subprocess.run,
     check: bool = True,
     env: dict[str, str] | None = None,
+    text: bool = True,
 ) -> subprocess.CompletedProcess:
     result = runner(
         args,
@@ -955,11 +956,14 @@ def _run(
         env=env or _minimal_env(),
         check=False,
         capture_output=True,
-        text=True,
+        text=text,
         timeout=30,
     )
     if check and result.returncode != 0:
-        detail = (result.stderr or result.stdout or "no output").strip()[:300]
+        detail_value = result.stderr or result.stdout or "no output"
+        if isinstance(detail_value, bytes):
+            detail_value = detail_value.decode("utf-8", errors="replace")
+        detail = detail_value.strip()[:300]
         raise PublisherError(f"command failed ({' '.join(args[:3])}): {detail}")
     return result
 
@@ -970,6 +974,7 @@ def _git(
     runner: Any = subprocess.run,
     check: bool = True,
     env: dict[str, str] | None = None,
+    text: bool = True,
 ) -> subprocess.CompletedProcess:
     return _run(
         [
@@ -1008,6 +1013,7 @@ def _git(
         runner=runner,
         check=check,
         env=env,
+        text=text,
     )
 
 
@@ -1190,6 +1196,105 @@ def _origin_matches(actual: str, expected: str, repository: str) -> bool:
     return normalized == f"https://github.com/{repository}" and expected == repository
 
 
+def _tree_blob(
+    project_root: Path,
+    treeish: str,
+    path: str,
+    *,
+    runner: Any,
+) -> tuple[str, str]:
+    raw = _git(
+        project_root,
+        "ls-tree",
+        "-z",
+        treeish,
+        "--",
+        path,
+        runner=runner,
+    ).stdout
+    if not isinstance(raw, str) or not raw.endswith("\0") or raw.count("\0") != 1:
+        raise PublisherError("broker changed entry does not bind one Git tree object")
+    record = raw[:-1]
+    if "\t" not in record:
+        raise PublisherError("broker changed entry Git tree object is malformed")
+    metadata, actual_path = record.split("\t", 1)
+    fields = metadata.split(" ")
+    if (
+        len(fields) != 3
+        or actual_path != path
+        or fields[0] not in {"100644", "100755"}
+        or fields[1] != "blob"
+        or not SHA_PATTERN.fullmatch(fields[2])
+    ):
+        raise PublisherError("broker changed entry Git tree object is invalid")
+    return fields[0], fields[2]
+
+
+def _commit_changed_entries(
+    candidate: TrustedCommit,
+    project_root: Path,
+    *,
+    runner: Any,
+) -> tuple[dict[str, Any], ...]:
+    raw = _git(
+        project_root,
+        "diff-tree",
+        "--no-commit-id",
+        "--name-status",
+        "-r",
+        "--no-renames",
+        "-z",
+        candidate.base_sha,
+        candidate.head_sha,
+        runner=runner,
+    ).stdout
+    if not isinstance(raw, str) or not raw.endswith("\0"):
+        raise PublisherError("broker changed entry commit diff is malformed")
+    parts = raw.split("\0")
+    if parts[-1] != "" or len(parts[:-1]) % 2:
+        raise PublisherError("broker changed entry commit diff is malformed")
+    operation_by_status = {"A": "add", "M": "modify", "D": "delete"}
+    entries_by_path: dict[str, dict[str, Any]] = {}
+    for index in range(0, len(parts) - 1, 2):
+        status, path = parts[index], parts[index + 1]
+        operation = operation_by_status.get(status)
+        if operation is None or path in entries_by_path:
+            raise PublisherError("broker changed entry operation is invalid")
+        treeish = candidate.base_sha if operation == "delete" else candidate.head_sha
+        mode, object_id = _tree_blob(
+            project_root,
+            treeish,
+            path,
+            runner=runner,
+        )
+        if operation == "delete":
+            content_sha256 = None
+            size = 0
+        else:
+            content = _git(
+                project_root,
+                "cat-file",
+                "blob",
+                object_id,
+                runner=runner,
+                text=False,
+            ).stdout
+            if not isinstance(content, bytes):
+                raise PublisherError("broker changed entry blob readback is malformed")
+            content_sha256 = hashlib.sha256(content).hexdigest()
+            size = len(content)
+        entries_by_path[path] = {
+            "path": path,
+            "operation": operation,
+            "mode": mode,
+            "sha256": content_sha256,
+            "size": size,
+        }
+    if tuple(sorted(entries_by_path)) != candidate.changed_paths:
+        raise PublisherError("broker changed entry paths do not match exact commit")
+    return tuple(entries_by_path[path] for path in candidate.changed_paths)
+
+
 def _validate_broker_candidate(
     candidate: TrustedCommit,
     config: PublisherConfig,
@@ -1285,6 +1390,13 @@ def _validate_broker_candidate(
     ).stdout.splitlines())))
     if changed != candidate.changed_paths:
         raise PublisherError("broker changed paths do not match exact commit")
+    if (
+        _commit_changed_entries(candidate, project_root, runner=runner)
+        != candidate.changed_entries
+    ):
+        raise PublisherError(
+            "broker changed entry authority does not match exact commit objects"
+        )
     origin = _git(
         project_root, "remote", "get-url", "origin", runner=runner
     ).stdout.strip()

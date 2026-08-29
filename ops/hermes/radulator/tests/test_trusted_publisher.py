@@ -363,14 +363,20 @@ class DedicatedBrokerPublisherTests(unittest.TestCase):
             subprocess.run(["git", "config", "user.name", "Test"], cwd=source, check=True)
             subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=source, check=True)
             (source / "README.md").write_text("base\n", encoding="utf-8")
+            deleted_content = b"delete me\n"
+            (source / "delete.txt").write_bytes(deleted_content)
             subprocess.run(["git", "add", "."], cwd=source, check=True)
             subprocess.run(["git", "commit", "-m", "base"], cwd=source, check=True, capture_output=True)
             base_sha = subprocess.run(
                 ["git", "rev-parse", "HEAD"], cwd=source, check=True, capture_output=True, text=True
             ).stdout.strip()
             subprocess.run(["git", "switch", "-c", "radulator/t_example-feature"], cwd=source, check=True, capture_output=True)
+            modified_content = b"updated\n"
+            (source / "README.md").write_bytes(modified_content)
+            (source / "delete.txt").unlink()
             (source / "src").mkdir()
-            (source / "src" / "example.js").write_text("export const value = 1;\n", encoding="utf-8")
+            source_content = b"\x00\xffbroker-binary\n"
+            (source / "src" / "example.bin").write_bytes(source_content)
             subprocess.run(["git", "add", "."], cwd=source, check=True)
             subprocess.run(["git", "commit", "-m", "feature"], cwd=source, check=True, capture_output=True)
             head_sha = subprocess.run(
@@ -395,13 +401,30 @@ class DedicatedBrokerPublisherTests(unittest.TestCase):
                 base_sha=base_sha,
                 target_base_sha=base_sha,
                 head_sha=head_sha,
-                changed_entries=[{
-                    "path": "src/example.js",
-                    "operation": "add",
-                    "mode": "100644",
-                    "sha256": "6" * 64,
-                    "size": 24,
-                }],
+                changed_paths=["README.md", "delete.txt", "src/example.bin"],
+                changed_entries=[
+                    {
+                        "path": "README.md",
+                        "operation": "modify",
+                        "mode": "100644",
+                        "sha256": hashlib.sha256(modified_content).hexdigest(),
+                        "size": len(modified_content),
+                    },
+                    {
+                        "path": "delete.txt",
+                        "operation": "delete",
+                        "mode": "100644",
+                        "sha256": None,
+                        "size": 0,
+                    },
+                    {
+                        "path": "src/example.bin",
+                        "operation": "add",
+                        "mode": "100644",
+                        "sha256": hashlib.sha256(source_content).hexdigest(),
+                        "size": len(source_content),
+                    },
+                ],
             )
             client = FakeBrokerClient(event_payload=event_payload)
             candidate = publisher.select_broker_obligation(client, config)
@@ -444,6 +467,24 @@ class DedicatedBrokerPublisherTests(unittest.TestCase):
             self.assertEqual(
                 publisher.validate_local_candidate(staged, config), staged
             )
+            for field, wrong_value in (
+                ("operation", "modify"),
+                ("mode", "100755"),
+                ("sha256", "6" * 64),
+                ("size", len(source_content) + 1),
+            ):
+                with self.subTest(field=field):
+                    changed_entries = [dict(entry) for entry in staged.changed_entries]
+                    changed_entry = changed_entries[2]
+                    changed_entry[field] = wrong_value
+                    inconsistent = dataclasses.replace(
+                        staged, changed_entries=tuple(changed_entries)
+                    )
+                    with self.assertRaisesRegex(
+                        publisher.PublisherError,
+                        "changed entry",
+                    ):
+                        publisher.validate_local_candidate(inconsistent, config)
 
     def test_broker_run_acknowledges_only_exact_labeled_ci_readback(self):
         with tempfile.TemporaryDirectory() as directory:
