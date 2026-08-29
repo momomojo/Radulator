@@ -399,7 +399,7 @@
       "justification": "The open primary publication confirms the adult diagnostic kidney-biopsy population and major-bleeding outcome; its direct supplementary PDF exposes the refit equation, predictor units, coefficients, and spline knots used by the executable source-model regression vectors.",
       "sources": [
         { "authority": "Thorne et al.", "title": "External Validation and Recalibration of a Risk Calculator for Major Bleeding After Diagnostic Kidney Biopsy", "role": "primary-publication", "url": "https://doi.org/10.1016/j.xkme.2026.101352" },
-        { "authority": "Thorne et al. via Europe PMC", "title": "Open full-text XML with supplementary material manifest for PMCID PMC13156734", "role": "primary-publication", "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML" },
+        { "authority": "Thorne et al. via NCBI PMC OAI-PMH", "title": "Open full-text JATS XML with supplementary material manifest for PMCID PMC13156734", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc" },
         { "authority": "Thorne et al. via Elsevier", "title": "Direct primary supplementary PDF (Item S1) for the recalibrated KBRC equation", "role": "primary-publication", "url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf", "artifact_sha256": "d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5" },
         { "authority": "Schorr et al.", "title": "Frequency, Timing, and Prediction of Major Bleeding Complications From Percutaneous Renal Biopsy", "role": "supporting-publication", "url": "https://doi.org/10.1177/2054358120923527" }
       ],
@@ -428,7 +428,7 @@
           },
           {
             "id": "thorne-calibration-above-25",
-            "source_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc",
             "source_locator": "Discussion, paragraph p0130",
             "fact": "The recalibrated model begins to overpredict risk in the probability range exceeding 25%; 25% is a calibration-warning boundary, not a risk category or action threshold.",
             "dimensions": ["interpretation", "output"],
@@ -437,7 +437,7 @@
         ],
         "source_artifact": {
           "schema": "radulator-source-artifact-extraction/v1",
-          "full_text_xml_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML",
+          "full_text_xml_url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc",
           "direct_pdf_url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
           "archive_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/supplementaryFiles",
           "archive_member": "mmc1.pdf",

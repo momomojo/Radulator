@@ -53,10 +53,78 @@ class InstallerTests(unittest.TestCase):
         (self.radulator_home / "cron" / "jobs.json").write_bytes(self.original_radulator_jobs)
         (self.default_home / "cron" / "jobs.json").write_bytes(self.original_default_jobs)
         self.activation_commands = []
+        self.real_fstat = os.fstat
 
     def passing_activation_runner(self, command, **_kwargs):
         self.activation_commands.append(command)
         return subprocess.CompletedProcess(command, 0, "passed", "")
+
+    def write_publisher_activation_attestation(self, plan, *, source_commit="a" * 40):
+        path = Path(self.temp.name) / "publisher-attestation.json"
+        plan["publisher_service_attestation"] = str(path)
+        path.write_text(
+            json.dumps(
+                {
+                    "contract": "radulator.dedicated_publisher_activation.v1",
+                    "broker_boundary": "hermes.dedicated_broker_identity.v1",
+                    "service_label": "ai.hermes.radulator-publisher",
+                    "active": True,
+                    "publisher_uid": 503,
+                    "broker_uid": 502,
+                    "model_uid": 501,
+                    "repository": "momomojo/Radulator",
+                    "github_repository_id": 1027532341,
+                    "workflow_id": 227376261,
+                    "workflow_path": ".github/workflows/e2e-tests.yml",
+                    "ready_label_actor": {
+                        "id": 35302851,
+                        "login": "momomojo",
+                        "type": "User",
+                    },
+                    "publisher_client_config_sha256": "1" * 64,
+                    "asset_manifest_sha256": "2" * 64,
+                    "source_commit_sha": source_commit,
+                    "publisher_credential_model_denied": True,
+                    "verified_at": 1,
+                }
+            )
+            + "\n"
+        )
+        path.chmod(0o644)
+
+    def root_owned_fstat(self, descriptor):
+        info = self.real_fstat(descriptor)
+        return types.SimpleNamespace(
+            st_mode=info.st_mode,
+            st_uid=0,
+            st_nlink=info.st_nlink,
+            st_dev=info.st_dev,
+            st_ino=info.st_ino,
+            st_size=info.st_size,
+            st_mtime_ns=info.st_mtime_ns,
+        )
+
+    def publisher_identity_runner(self, *, head="a" * 40, status=""):
+        def runner(command, **_kwargs):
+            if command[:3] == ["git", "-C", str(self.repo)]:
+                if "status" in command:
+                    return subprocess.CompletedProcess(command, 0, status, "")
+                if "rev-parse" in command:
+                    return subprocess.CompletedProcess(command, 0, head + "\n", "")
+            if command == [
+                "/bin/launchctl",
+                "print",
+                "system/ai.hermes.radulator-publisher",
+            ]:
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    "ai.hermes.radulator-publisher\nstate = running\npid = 123\n",
+                    "",
+                )
+            return subprocess.CompletedProcess(command, 1, "", "unexpected command")
+
+        return runner
 
     def tearDown(self):
         self.temp.cleanup()
@@ -202,6 +270,10 @@ class InstallerTests(unittest.TestCase):
     def test_repository_lint_ignores_managed_worktree_storage(self):
         eslint_config = (self.repo / "eslint.config.js").read_text()
         self.assertRegex(eslint_config, r"globalIgnores\([^\n]*['\"]\.worktrees(?:/\*\*)?['\"]")
+
+    def test_repository_git_ignores_managed_worktree_storage(self):
+        gitignore = (self.repo / ".gitignore").read_text()
+        self.assertRegex(gitignore, r"(?m)^\.worktrees/$")
 
     def test_profiles_require_single_flight_cron(self):
         (self.radulator_home / "config.yaml").write_text(
@@ -461,7 +533,8 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("auth token --hostname github.com", wrapper_text)
 
         self.assertIn('--board "default"', wrapper_text)
-        self.assertIn('--project-root "/Users/agent/Documents/Radulator"', wrapper_text)
+        self.assertIn('--project-root "$RADULATOR_PUBLISHER_PROJECT_ROOT"', wrapper_text)
+        self.assertIn("RADULATOR_PUBLISHER_SERVICE_LOOP", wrapper_text)
 
         before = {
             "rad": (self.radulator_home / "cron" / "jobs.json").read_bytes(),
@@ -1089,8 +1162,9 @@ with lock_path.open('a+') as lock:
                 if job.get("id") not in managed_ids:
                     continue
                 observed_ids.add(job["id"])
-                self.assertIs(job.get("enabled"), True)
-                self.assertEqual(job.get("state"), "scheduled")
+                external = job.get("name") == "radulator-trusted-publisher"
+                self.assertIs(job.get("enabled"), not external)
+                self.assertEqual(job.get("state"), "paused" if external else "scheduled")
         self.assertEqual(observed_ids, managed_ids)
 
     def test_apply_times_out_fail_closed_when_gateway_job_lock_is_unavailable(self):
@@ -1246,10 +1320,8 @@ with lock_path.open('a+') as lock:
         ).read_text(encoding="utf-8")
 
         self.assertIn("PYTHONHOME PYTHONPATH", wrapper)
-        self.assertRegex(
-            wrapper,
-            r'hermes-agent/venv/bin/python"\s+\\\n\s+-I\s+\\',
-        )
+        self.assertIn('PUBLISHER_ARGS=(\n  -I', wrapper)
+        self.assertIn('exec "$RADULATOR_PUBLISHER_PYTHON"', wrapper)
 
     def test_wrapper_import_path_cannot_observe_synthetic_github_token(self):
         root = Path(self.temp.name)
@@ -1672,7 +1744,8 @@ with lock_path.open('a+') as lock:
 
         self.assertTrue(observed)
         self.assertTrue(all(item["disabled"] and item["installed"] for item in observed))
-        self.assertTrue(self.publisher_job()["enabled"])
+        self.assertFalse(self.publisher_job()["enabled"])
+        self.assertEqual(self.publisher_job()["state"], "paused")
 
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_repeated_enable_is_an_exact_jobs_file_noop_across_timestamp_boundaries(self, _identity):
@@ -1726,7 +1799,7 @@ with lock_path.open('a+') as lock:
         public_keys = generate_keys(plan)
 
         def failing_runner(command, **_kwargs):
-            if any("kanban_git_broker" in str(part) for part in command):
+            if any("kanban_dedicated_broker" in str(part) for part in command):
                 return subprocess.CompletedProcess(command, 1, "", "missing security boundary")
             return subprocess.CompletedProcess(command, 0, "test-token", "")
 
@@ -2024,7 +2097,10 @@ with lock_path.open('a+') as lock:
             payload = json.loads(path.read_text())
             jobs = payload["jobs"] if isinstance(payload, dict) else payload
             managed = [job for job in jobs if job["id"] in result["job_ids"].values()]
-            self.assertTrue(all(job["enabled"] is True for job in managed))
+            self.assertTrue(all(
+                job["enabled"] is (job["name"] != "radulator-trusted-publisher")
+                for job in managed
+            ))
             legacy = [job for job in jobs if job["name"] in {"pr-gate-poller", "judge-queue"}]
             self.assertTrue(all(job["enabled"] is False for job in legacy))
             self.assertTrue(all(job["state"] == "paused" for job in legacy))
@@ -2228,11 +2304,11 @@ with lock_path.open('a+') as lock:
         public_keys = generate_keys(plan)
 
         def runner(command, **_kwargs):
-            if any("kanban_git_broker" in str(part) for part in command):
+            if any("kanban_dedicated_broker" in str(part) for part in command):
                 return subprocess.CompletedProcess(command, 1, "", "missing contract")
             return subprocess.CompletedProcess(command, 0, "passed", "")
 
-        with self.assertRaisesRegex(InstallError, "trusted local commit broker"):
+        with self.assertRaisesRegex(InstallError, "dedicated local commit broker"):
             apply_install(
                 **self.kwargs(),
                 enable=True,
@@ -2329,100 +2405,20 @@ with lock_path.open('a+') as lock:
                 activation_test_runner=runner,
             )
 
-    def test_enable_executes_worker_model_path_denial_canary(self):
-        plan = build_plan(**self.kwargs())
-        apply_install(**self.kwargs())
-        public_keys = generate_keys(plan)
-        observed = []
-
-        def runner(command, **_kwargs):
-            rendered = " ".join(str(part) for part in command)
-            if "run_worker_model_path_denial_canary" in rendered:
-                observed.append(rendered)
-                return subprocess.CompletedProcess(
-                    command, 1, "", "runtime canary entrypoint is unavailable"
-                )
-            output = "test-token" if "auth" in command and "token" in command else "passed"
-            return subprocess.CompletedProcess(command, 0, output, "")
-
-        with self.assertRaisesRegex(
-            InstallError,
-            "PENDING_HERMES_RUNTIME.*model-path denial canary",
-        ):
-            apply_install(
-                **self.kwargs(), enable=True, expected_public_keys=public_keys,
-                activation_test_runner=runner,
-            )
-
-        self.assertEqual(len(observed), 1)
-        self.assertFalse(self.publisher_job()["enabled"])
-
-    def test_enable_fails_when_model_path_canary_omits_any_required_denial(self):
-        plan = build_plan(**self.kwargs())
-        apply_install(**self.kwargs())
-        public_keys = generate_keys(plan)
-        with tempfile.TemporaryDirectory() as module_root:
-            tools_dir = Path(module_root) / "tools"
-            tools_dir.mkdir()
-            (tools_dir / "__init__.py").write_text("")
-            (tools_dir / "kanban_worker_boundary.py").write_text(
-                "def run_worker_model_path_denial_canary():\n"
-                "    return {\n"
-                "        'contract': 'hermes.worker_model_path_denial_canary.v1',\n"
-                "        'model_path_attempted': True,\n"
-                "        'git_metadata_write_denied': True,\n"
-                "        'github_credentials_absent': True,\n"
-                "        'github_network_denied': True,\n"
-                "    }\n"
-            )
-
-            def runner(command, **_kwargs):
-                rendered = " ".join(str(part) for part in command)
-                if "run_worker_model_path_denial_canary" in rendered:
-                    env = dict(os.environ)
-                    env["PYTHONPATH"] = module_root
-                    return subprocess.run(
-                        [sys.executable, *command[1:]],
-                        cwd=self.repo,
-                        env=env,
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                    )
-                output = "test-token" if "auth" in command and "token" in command else "passed"
-                return subprocess.CompletedProcess(command, 0, output, "")
-
-            with self.assertRaisesRegex(
-                InstallError,
-                "PENDING_HERMES_RUNTIME.*model-path denial canary",
-            ):
-                apply_install(
-                    **self.kwargs(),
-                    enable=True,
-                    expected_public_keys=public_keys,
-                    activation_test_runner=runner,
-                )
-
-        self.assertFalse(self.publisher_job()["enabled"])
-
-    def test_enable_requires_durable_publisher_authority_cas_runtime(self):
+    def test_enable_requires_dedicated_broker_publisher_client(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
         public_keys = generate_keys(plan)
 
         def runner(command, **_kwargs):
             rendered = " ".join(str(part) for part in command)
-            if "claim_trusted_publisher_authority" in rendered:
+            if "kanban_broker_client" in rendered:
                 return subprocess.CompletedProcess(
-                    command, 1, "", "authority API unavailable"
+                    command, 1, "", "publisher client unavailable"
                 )
-            output = "test-token" if "auth" in command and "token" in command else "passed"
-            return subprocess.CompletedProcess(command, 0, output, "")
+            return subprocess.CompletedProcess(command, 0, "passed", "")
 
-        with self.assertRaisesRegex(
-            InstallError,
-            "PENDING_HERMES_RUNTIME.*authority claim/CAS",
-        ):
+        with self.assertRaisesRegex(InstallError, "dedicated broker publisher client"):
             apply_install(
                 **self.kwargs(), enable=True, expected_public_keys=public_keys,
                 activation_test_runner=runner,
@@ -2430,26 +2426,18 @@ with lock_path.open('a+') as lock:
 
         self.assertFalse(self.publisher_job()["enabled"])
 
-    def test_enable_executes_semantic_authority_cas_canary_not_callable_probe(self):
+    def test_enable_requires_dedicated_broker_routes(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
         public_keys = generate_keys(plan)
-        observed = []
 
         def runner(command, **_kwargs):
             rendered = " ".join(str(part) for part in command)
-            if "run_trusted_publisher_authority_semantic_canary" in rendered:
-                observed.append(rendered)
-                return subprocess.CompletedProcess(
-                    command, 1, "", "semantic CAS canary unavailable"
-                )
-            output = "test-token" if "auth" in command and "token" in command else "passed"
-            return subprocess.CompletedProcess(command, 0, output, "")
+            if "kanban_broker_routing" in rendered:
+                return subprocess.CompletedProcess(command, 1, "", "routes unavailable")
+            return subprocess.CompletedProcess(command, 0, "passed", "")
 
-        with self.assertRaisesRegex(
-            InstallError,
-            "PENDING_HERMES_RUNTIME.*semantic authority claim/CAS",
-        ):
+        with self.assertRaisesRegex(InstallError, "dedicated broker routes"):
             apply_install(
                 **self.kwargs(),
                 enable=True,
@@ -2457,7 +2445,51 @@ with lock_path.open('a+') as lock:
                 activation_test_runner=runner,
             )
 
-        self.assertEqual(len(observed), 1)
+        self.assertFalse(self.publisher_job()["enabled"])
+
+    def test_enable_requires_publish_correction_contract(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+
+        def runner(command, **_kwargs):
+            rendered = " ".join(str(part) for part in command)
+            if "PUBLISH_CORRECTION_REQUEST_CONTRACT" in rendered:
+                return subprocess.CompletedProcess(
+                    command, 1, "", "correction contract unavailable"
+                )
+            return subprocess.CompletedProcess(command, 0, "passed", "")
+
+        with self.assertRaisesRegex(InstallError, "dedicated local commit broker"):
+            apply_install(
+                **self.kwargs(), enable=True, expected_public_keys=public_keys,
+                activation_test_runner=runner,
+            )
+
+        self.assertFalse(self.publisher_job()["enabled"])
+
+    def test_activation_probes_never_call_legacy_same_uid_authority(self):
+        plan = build_plan(**self.kwargs())
+        apply_install(**self.kwargs())
+        public_keys = generate_keys(plan)
+        observed = []
+
+        def runner(command, **_kwargs):
+            rendered = " ".join(str(part) for part in command)
+            observed.append(rendered)
+            return subprocess.CompletedProcess(command, 0, "passed", "")
+
+        with self.assertRaisesRegex(InstallError, "activation attestation"):
+            apply_install(
+                **self.kwargs(),
+                enable=True,
+                expected_public_keys=public_keys,
+                activation_test_runner=runner,
+            )
+
+        self.assertTrue(observed)
+        self.assertTrue(all("kanban_db" not in command for command in observed))
+        self.assertTrue(all("claim_trusted_publisher_authority" not in command for command in observed))
         self.assertFalse(self.publisher_job()["enabled"])
 
     def test_same_uid_canaries_cannot_enable_without_dedicated_identity_service(self):
@@ -2467,7 +2499,7 @@ with lock_path.open('a+') as lock:
 
         with self.assertRaisesRegex(
             InstallError,
-            "PENDING_HERMES_RUNTIME.*separate OS identity",
+            "PENDING_HERMES_RUNTIME.*activation attestation",
         ):
             apply_install(
                 **self.kwargs(),
@@ -2478,24 +2510,54 @@ with lock_path.open('a+') as lock:
 
         self.assertFalse(self.publisher_job()["enabled"])
 
+    def test_dedicated_publisher_attestation_must_match_activation_checkout_head(self):
+        plan = build_plan(**self.kwargs())
+        self.write_publisher_activation_attestation(plan)
+
+        with mock.patch.object(
+            install_module.os, "fstat", side_effect=self.root_owned_fstat
+        ):
+            with self.assertRaisesRegex(InstallError, "source commit"):
+                install_module._verify_dedicated_publisher_identity(
+                    plan, runner=self.publisher_identity_runner(head="b" * 40)
+                )
+
+    def test_dedicated_publisher_attestation_requires_clean_activation_checkout(self):
+        plan = build_plan(**self.kwargs())
+        self.write_publisher_activation_attestation(plan)
+
+        with mock.patch.object(
+            install_module.os, "fstat", side_effect=self.root_owned_fstat
+        ):
+            with self.assertRaisesRegex(InstallError, "not clean"):
+                install_module._verify_dedicated_publisher_identity(
+                    plan,
+                    runner=self.publisher_identity_runner(
+                        status="?? unreviewed-publisher.py\n"
+                    ),
+                )
+
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
-    def test_enable_requires_host_github_auth_without_printing_token(self, _identity):
+    def test_profile_activation_never_requests_publisher_github_token(self, _identity):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
         public_keys = generate_keys(plan)
 
+        observed = []
+
         def runner(command, **_kwargs):
-            if "auth" in command and "token" in command:
-                return subprocess.CompletedProcess(command, 1, "", "not logged in")
+            observed.append(command)
             return subprocess.CompletedProcess(command, 0, "passed", "")
 
-        with self.assertRaisesRegex(InstallError, "publisher GitHub authentication"):
-            apply_install(
-                **self.kwargs(),
-                enable=True,
-                expected_public_keys=public_keys,
-                activation_test_runner=runner,
-            )
+        apply_install(
+            **self.kwargs(),
+            enable=True,
+            expected_public_keys=public_keys,
+            activation_test_runner=runner,
+        )
+        self.assertTrue(observed)
+        self.assertTrue(all("auth" not in command or "token" not in command for command in observed))
+        self.assertFalse(self.publisher_job()["enabled"])
 
     def test_enable_refuses_missing_local_judge_trust_configuration(self):
         apply_install(**self.kwargs())
@@ -2562,9 +2624,10 @@ with lock_path.open('a+') as lock:
                 marker in str(part)
                 for part in command
                 for marker in (
-                    "kanban_git_broker",
+                    "kanban_dedicated_broker",
+                    "kanban_broker_client",
+                    "kanban_broker_routing",
                     "kanban_worker_boundary",
-                    "claim_trusted_publisher_authority",
                 )
             ):
                 return subprocess.CompletedProcess(command, 0, "", "")

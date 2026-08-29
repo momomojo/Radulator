@@ -1,5 +1,7 @@
 import dataclasses
 import contextlib
+import hashlib
+import inspect
 import io
 import json
 import os
@@ -136,6 +138,685 @@ def exact_events(**contract_overrides):
             event_id=2,
         ),
     ]
+
+
+def broker_remote_repository():
+    return {
+        "contract": "hermes.github_repository.v1",
+        "host": "github.com",
+        "owner": "momomojo",
+        "name": "Radulator",
+        "full_name": "momomojo/Radulator",
+        "repository_id": 1027532341,
+        "canonical_url": "https://github.com/momomojo/Radulator",
+        "is_fork": False,
+        "publication_policy": {
+            "pull_request_base": "develop",
+            "workflow_id": 227376261,
+            "workflow_name": "E2E Tests",
+            "workflow_path": ".github/workflows/e2e-tests.yml",
+            "workflow_event": "pull_request",
+            "required_job_names": [
+                "Smoke Tests",
+                "Targeted Calculator Tests",
+                "Hermes Release Control Tests",
+            ],
+            "required_app": {"id": 15368, "slug": "github-actions"},
+            "ready_label_actor": {
+                "id": 35302851,
+                "login": "momomojo",
+                "type": "User",
+            },
+            "ready_label": "ready-for-gate",
+        },
+    }
+
+
+def broker_event(**overrides):
+    remote = broker_remote_repository()
+    value = {
+        "contract": "hermes.trusted_local_commit.v1",
+        "broker_boundary": "hermes.dedicated_broker_identity.v1",
+        "receipt_id": "klc_1234567890abcdef1234567890abcdef",
+        "key_id": "1" * 24,
+        "task_id": "t_example",
+        "run_id": 17,
+        "claim_generation": 1,
+        "dispatch_authority_receipt_id": "kda_1234567890abcdef1234567890abcdef",
+        "dispatch_authority_payload_sha256": "2" * 64,
+        "project_id": "radulator",
+        "board": "default",
+        "repository_id": "radulator",
+        "repository_fingerprint": "3" * 64,
+        "remote_repository": remote,
+        "remote_repository_sha256": "",
+        "workspace": "/private/hermes/workspaces/t_example",
+        "workspace_id": "workspace_123",
+        "workspace_manifest_sha256": "5" * 64,
+        "branch": "radulator/t_example-feature",
+        "base_branch": "develop",
+        "base_sha": BASE_SHA,
+        "target_base_sha": BASE_SHA,
+        "head_sha": HEAD_SHA,
+        "changed_paths": ["src/example.js"],
+        "changed_entries": [
+            {
+                "path": "src/example.js",
+                "operation": "add",
+                "mode": "100644",
+                "sha256": "6" * 64,
+                "size": 24,
+            }
+        ],
+        "publisher_state": "awaiting",
+        "reason": "AWAITING_TRUSTED_PUBLISHER v1",
+        "payload_sha256": "",
+    }
+    value.update(overrides)
+    if "remote_repository_sha256" not in overrides:
+        value["remote_repository_sha256"] = hashlib.sha256(
+            json.dumps(
+                value["remote_repository"], sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        ).hexdigest()
+    if "payload_sha256" not in overrides:
+        value["payload_sha256"] = hashlib.sha256(
+            json.dumps(
+                {key: item for key, item in value.items() if key != "payload_sha256"},
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+    return value
+
+
+class FakeBrokerClient:
+    def __init__(self, *, event_payload=None, handoff=None, ack_overrides=None, ack_error=None):
+        self.event_payload = event_payload or broker_event()
+        self.handoff = handoff
+        self.ack_overrides = dict(ack_overrides or {})
+        self.ack_error = ack_error
+        self.ack_response = None
+        self.calls = []
+
+    def call(self, method, body):
+        self.calls.append((method, body))
+        if method == "list_publish_obligations":
+            payload = self.event_payload
+            return {
+                "contract": "hermes.publisher_obligation_query.v1",
+                "broker_boundary": "hermes.dedicated_broker_identity.v1",
+                "items": [{
+                    "contract": "hermes.trusted_local_commit.v1",
+                    "broker_boundary": "hermes.dedicated_broker_identity.v1",
+                    "receipt_id": payload["receipt_id"],
+                    "key_id": payload["key_id"],
+                    "payload_sha256": payload["payload_sha256"],
+                    "verified": True,
+                    "revoked": False,
+                    "operation_state": "EMITTED",
+                    "canonical_payload": payload,
+                    "created_at": 123,
+                }],
+                "has_more": False,
+                "next_cursor": {
+                    "created_at": 123,
+                    "receipt_id": payload["receipt_id"],
+                },
+            }
+        if method == "export_bundle" and self.handoff is not None:
+            return self.handoff
+        if method == "ack_publish":
+            if self.ack_error is not None:
+                raise self.ack_error
+            response = {
+                "contract": "hermes.publisher_ack.v1",
+                "broker_boundary": "hermes.dedicated_broker_identity.v1",
+                "receipt_id": body["receipt_id"],
+                "task_id": body["task_id"],
+                "run_id": body["run_id"],
+                "repository_id": body["repository_id"],
+                "branch": body["branch"],
+                "base_branch": body["base_branch"],
+                "head_sha": body["head_sha"],
+                "branch_published_from": body["base_sha"],
+                "branch_published_to": body["head_sha"],
+                "repository_base_sha": body["target_base_sha"],
+                "publish_outcome": "fast_forwarded",
+                "cleanup_state": "cleaned",
+                "completion_id": "kpc_1234567890abcdef1234567890abcdef",
+                "completion_payload_sha256": "8" * 64,
+                "remote_readback_sha256": hashlib.sha256(
+                    publisher._canonical_json(body["remote_readback"])
+                ).hexdigest(),
+            }
+            response.update(self.ack_overrides)
+            self.ack_response = response
+            return response
+        raise AssertionError(f"unexpected broker call: {method}")
+
+
+class DedicatedBrokerPublisherTests(unittest.TestCase):
+    def broker_config(self, root):
+        return publisher.PublisherConfig(
+            board="default",
+            project_id="radulator",
+            project_root=Path(root),
+            repository="momomojo/Radulator",
+            base_branch="develop",
+            expected_origin="momomojo/Radulator",
+            lifecycle_controller=Path(root) / "lifecycle_controller.py",
+            repository_id="radulator",
+            publisher_state_dir=Path(root) / ".publisher-state",
+            expected_broker_uid=os.geteuid(),
+            publisher_gid=os.getegid(),
+            github_repository_id=1027532341,
+            required_workflow_id=227376261,
+            ready_label_actor_id=35302851,
+            ready_label_actor_login="momomojo",
+            ready_label_actor_type="User",
+        )
+
+    def test_selects_only_exact_verified_broker_obligation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = self.broker_config(directory)
+            client = FakeBrokerClient()
+
+            candidate = publisher.select_broker_obligation(client, config)
+
+            self.assertEqual(candidate.task_id, "t_example")
+            self.assertEqual(candidate.repository_id, "radulator")
+            self.assertEqual(candidate.receipt_id, broker_event()["receipt_id"])
+            self.assertEqual(candidate.head_sha, HEAD_SHA)
+            self.assertEqual(client.calls, [(
+                "list_publish_obligations",
+                {
+                    "contract": "hermes.publisher_obligation_query.v1",
+                    "repository_id": "radulator",
+                    "after_created_at": 0,
+                    "after_receipt_id": "",
+                    "limit": 1,
+                },
+            )])
+
+    def test_rejects_broker_obligation_with_wrong_repository_or_extra_event_field(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = self.broker_config(directory)
+            for payload in (
+                broker_event(repository_id="other"),
+                {**broker_event(), "unsealed": True},
+                broker_event(base_branch="main"),
+            ):
+                with self.subTest(payload=payload):
+                    with self.assertRaises(publisher.PublisherError):
+                        publisher.select_broker_obligation(
+                            FakeBrokerClient(event_payload=payload), config
+                        )
+
+    def test_stages_exact_broker_bundle_into_private_publisher_repository(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            publisher_repo = root / "publisher-repo"
+            source.mkdir()
+            subprocess.run(["git", "init", "-b", "develop"], cwd=source, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=source, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=source, check=True)
+            (source / "README.md").write_text("base\n", encoding="utf-8")
+            deleted_content = b"delete me\n"
+            (source / "delete.txt").write_bytes(deleted_content)
+            subprocess.run(["git", "add", "."], cwd=source, check=True)
+            subprocess.run(["git", "commit", "-m", "base"], cwd=source, check=True, capture_output=True)
+            base_sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=source, check=True, capture_output=True, text=True
+            ).stdout.strip()
+            subprocess.run(["git", "switch", "-c", "radulator/t_example-feature"], cwd=source, check=True, capture_output=True)
+            modified_content = b"updated\n"
+            (source / "README.md").write_bytes(modified_content)
+            (source / "delete.txt").unlink()
+            (source / "src").mkdir()
+            source_content = b"\x00\xffbroker-binary\n"
+            (source / "src" / "example.bin").write_bytes(source_content)
+            subprocess.run(["git", "add", "."], cwd=source, check=True)
+            subprocess.run(["git", "commit", "-m", "feature"], cwd=source, check=True, capture_output=True)
+            head_sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=source, check=True, capture_output=True, text=True
+            ).stdout.strip()
+            bundle = root / "broker.bundle"
+            subprocess.run(
+                ["git", "bundle", "create", str(bundle), "refs/heads/radulator/t_example-feature"],
+                cwd=source,
+                check=True,
+                capture_output=True,
+            )
+            bundle.chmod(0o640)
+            subprocess.run(["git", "clone", str(source), str(publisher_repo)], check=True, capture_output=True)
+            publisher_repo.chmod(0o700)
+            config = dataclasses.replace(
+                self.broker_config(publisher_repo),
+                expected_origin=str(source.resolve()),
+                publisher_state_dir=root / "publisher-state",
+            )
+            event_payload = broker_event(
+                base_sha=base_sha,
+                target_base_sha=base_sha,
+                head_sha=head_sha,
+                changed_paths=["README.md", "delete.txt", "src/example.bin"],
+                changed_entries=[
+                    {
+                        "path": "README.md",
+                        "operation": "modify",
+                        "mode": "100644",
+                        "sha256": hashlib.sha256(modified_content).hexdigest(),
+                        "size": len(modified_content),
+                    },
+                    {
+                        "path": "delete.txt",
+                        "operation": "delete",
+                        "mode": "100644",
+                        "sha256": None,
+                        "size": 0,
+                    },
+                    {
+                        "path": "src/example.bin",
+                        "operation": "add",
+                        "mode": "100644",
+                        "sha256": hashlib.sha256(source_content).hexdigest(),
+                        "size": len(source_content),
+                    },
+                ],
+            )
+            client = FakeBrokerClient(event_payload=event_payload)
+            candidate = publisher.select_broker_obligation(client, config)
+            content = bundle.read_bytes()
+            handoff = {
+                "contract": "hermes.publisher_object_handoff.v1",
+                "broker_boundary": "hermes.dedicated_broker_identity.v1",
+                "receipt_id": event_payload["receipt_id"],
+                "receipt_payload_sha256": event_payload["payload_sha256"],
+                "bundle_path": str(bundle),
+                "bundle_sha256": hashlib.sha256(content).hexdigest(),
+                "bundle_size": len(content),
+                "repository_id": "radulator",
+                "branch": event_payload["branch"],
+                "base_branch": "develop",
+                "base_sha": base_sha,
+                "target_base_sha": base_sha,
+                "head_sha": head_sha,
+            }
+
+            staged = publisher.stage_broker_bundle(candidate, handoff, config)
+
+            self.assertEqual(staged.workspace, str(publisher_repo.resolve()))
+            self.assertEqual(staged.sealed_workspace, event_payload["workspace"])
+            self.assertEqual(staged.bundle_sha256, handoff["bundle_sha256"])
+            self.assertEqual(
+                subprocess.run(
+                    [
+                        "git",
+                        "rev-parse",
+                        f"refs/hermes-publisher/{event_payload['receipt_id']}",
+                    ],
+                    cwd=publisher_repo,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip(),
+                head_sha,
+            )
+            self.assertEqual(
+                publisher.validate_local_candidate(staged, config), staged
+            )
+            for field, wrong_value in (
+                ("operation", "modify"),
+                ("mode", "100755"),
+                ("sha256", "6" * 64),
+                ("size", len(source_content) + 1),
+            ):
+                with self.subTest(field=field):
+                    changed_entries = [dict(entry) for entry in staged.changed_entries]
+                    changed_entry = changed_entries[2]
+                    changed_entry[field] = wrong_value
+                    inconsistent = dataclasses.replace(
+                        staged, changed_entries=tuple(changed_entries)
+                    )
+                    with self.assertRaisesRegex(
+                        publisher.PublisherError,
+                        "changed entry",
+                    ):
+                        publisher.validate_local_candidate(inconsistent, config)
+
+    def test_broker_run_acknowledges_only_exact_labeled_ci_readback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = self.broker_config(root)
+            event_payload = broker_event()
+            handoff = {
+                "contract": "hermes.publisher_object_handoff.v1",
+                "broker_boundary": "hermes.dedicated_broker_identity.v1",
+                "receipt_id": event_payload["receipt_id"],
+                "receipt_payload_sha256": event_payload["payload_sha256"],
+                "bundle_path": str(root / "broker.bundle"),
+                "bundle_sha256": "a" * 64,
+                "bundle_size": 123,
+                "repository_id": "radulator",
+                "branch": event_payload["branch"],
+                "base_branch": "develop",
+                "base_sha": BASE_SHA,
+                "target_base_sha": BASE_SHA,
+                "head_sha": HEAD_SHA,
+            }
+            client = FakeBrokerClient(event_payload=event_payload, handoff=handoff)
+            candidate = publisher.select_broker_obligation(client, config)
+            staged = dataclasses.replace(
+                candidate,
+                workspace=str(root),
+                bundle_path=str(root / "staged.bundle"),
+                bundle_sha256=handoff["bundle_sha256"],
+                bundle_size=handoff["bundle_size"],
+            )
+            pr = publisher.PublishedPullRequest.from_dict(exact_pr())
+            labeled = publisher.PublishedPullRequest.from_dict(
+                exact_pr(labels=[{"name": "ready-for-gate"}])
+            )
+            readback = {"contract": "hermes.github_publish_readback.v1"}
+            client.calls.clear()
+
+            with mock.patch.object(
+                publisher, "stage_broker_bundle", return_value=staged
+            ), mock.patch.object(
+                publisher, "ensure_remote_and_pr", return_value=pr
+            ), mock.patch.object(
+                publisher, "ensure_ready_label", return_value=labeled
+            ), mock.patch.object(
+                publisher, "collect_broker_remote_readback", return_value=readback
+            ):
+                result = publisher.run_broker_once(config, client)
+
+            self.assertEqual(result["status"], "published")
+            self.assertEqual(result["completion_id"], "kpc_1234567890abcdef1234567890abcdef")
+            methods = [method for method, _body in client.calls]
+            self.assertEqual(
+                methods,
+                ["list_publish_obligations", "export_bundle", "ack_publish"],
+            )
+            acknowledgement = client.calls[-1][1]
+            self.assertEqual(
+                set(acknowledgement),
+                {
+                    "contract",
+                    "receipt_id",
+                    "receipt_payload_sha256",
+                    "bundle_sha256",
+                    "repository_id",
+                    "task_id",
+                    "run_id",
+                    "branch",
+                    "base_branch",
+                    "base_sha",
+                    "target_base_sha",
+                    "head_sha",
+                    "published_head_sha",
+                    "publish_outcome",
+                    "readback_complete",
+                    "remote_readback",
+                },
+            )
+            self.assertEqual(acknowledgement["target_base_sha"], BASE_SHA)
+            self.assertEqual(acknowledgement["published_head_sha"], HEAD_SHA)
+            self.assertIs(acknowledgement["readback_complete"], True)
+            self.assertEqual(acknowledgement["remote_readback"], readback)
+
+    def broker_ack_setup(self, root, readback, *, ack_overrides=None):
+        """Stub the publish path so run_broker_once exercises ack validation only."""
+        config = self.broker_config(root)
+        event_payload = broker_event()
+        handoff = {
+            "contract": "hermes.publisher_object_handoff.v1",
+            "broker_boundary": "hermes.dedicated_broker_identity.v1",
+            "receipt_id": event_payload["receipt_id"],
+            "receipt_payload_sha256": event_payload["payload_sha256"],
+            "bundle_path": str(root / "broker.bundle"),
+            "bundle_sha256": "a" * 64,
+            "bundle_size": 123,
+            "repository_id": "radulator",
+            "branch": event_payload["branch"],
+            "base_branch": "develop",
+            "base_sha": BASE_SHA,
+            "target_base_sha": BASE_SHA,
+            "head_sha": HEAD_SHA,
+        }
+        client = FakeBrokerClient(
+            event_payload=event_payload,
+            handoff=handoff,
+            ack_overrides=ack_overrides,
+        )
+        candidate = publisher.select_broker_obligation(client, config)
+        staged = dataclasses.replace(
+            candidate,
+            workspace=str(root),
+            bundle_path=str(root / "staged.bundle"),
+            bundle_sha256=handoff["bundle_sha256"],
+            bundle_size=handoff["bundle_size"],
+        )
+        pr = publisher.PublishedPullRequest.from_dict(exact_pr())
+        labeled = publisher.PublishedPullRequest.from_dict(
+            exact_pr(labels=[{"name": "ready-for-gate"}])
+        )
+        client.calls.clear()
+
+        def run():
+            with mock.patch.object(
+                publisher, "stage_broker_bundle", return_value=staged
+            ), mock.patch.object(
+                publisher, "ensure_remote_and_pr", return_value=pr
+            ), mock.patch.object(
+                publisher, "ensure_ready_label", return_value=labeled
+            ), mock.patch.object(
+                publisher, "collect_broker_remote_readback", return_value=readback
+            ):
+                return publisher.run_broker_once(config, client)
+
+        return run, client
+
+    def test_broker_ack_digest_binds_the_sent_remote_readback(self):
+        readback = {"contract": "hermes.github_publish_readback.v1"}
+        expected = hashlib.sha256(publisher._canonical_json(readback)).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            run, client = self.broker_ack_setup(Path(directory), readback)
+
+            result = run()
+
+            self.assertEqual(result["status"], "published")
+            self.assertEqual(client.calls[-1][1]["remote_readback"], readback)
+            self.assertEqual(client.ack_response["remote_readback_sha256"], expected)
+            self.assertNotEqual(expected, "9" * 64)
+
+    def test_broker_ack_with_mismatched_readback_digest_rejects(self):
+        readback = {"contract": "hermes.github_publish_readback.v1"}
+        with tempfile.TemporaryDirectory() as directory:
+            for digest in ("9" * 64, "0" * 64, "f" * 64):
+                with self.subTest(digest=digest):
+                    run, _client = self.broker_ack_setup(
+                        Path(directory),
+                        readback,
+                        ack_overrides={"remote_readback_sha256": digest},
+                    )
+
+                    with self.assertRaises(publisher.PublisherError):
+                        run()
+
+    def test_broker_ack_extra_field_or_wrong_binding_rejects_even_with_matching_digest(self):
+        readback = {"contract": "hermes.github_publish_readback.v1"}
+        expected = hashlib.sha256(publisher._canonical_json(readback)).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            for overrides in (
+                {"remote_readback_sha256": expected, "unsealed": True},
+                {"remote_readback_sha256": expected, "head_sha": "c" * 40},
+                {"remote_readback_sha256": expected, "cleanup_state": "pending"},
+                {
+                    "remote_readback_sha256": expected,
+                    "receipt_id": "klc_" + "0" * 48,
+                },
+            ):
+                with self.subTest(overrides=overrides):
+                    run, _client = self.broker_ack_setup(
+                        Path(directory), readback, ack_overrides=overrides
+                    )
+
+                    with self.assertRaises(publisher.PublisherError):
+                        run()
+
+    def broker_run_setup(self, root, *, ack_error=None):
+        """Real run_broker_once with the already-proved publish steps stubbed."""
+        config = self.broker_config(root)
+        event_payload = broker_event()
+        handoff = {
+            "contract": "hermes.publisher_object_handoff.v1",
+            "broker_boundary": "hermes.dedicated_broker_identity.v1",
+            "receipt_id": event_payload["receipt_id"],
+            "receipt_payload_sha256": event_payload["payload_sha256"],
+            "bundle_path": str(root / "broker.bundle"),
+            "bundle_sha256": "a" * 64,
+            "bundle_size": 123,
+            "repository_id": "radulator",
+            "branch": event_payload["branch"],
+            "base_branch": "develop",
+            "base_sha": BASE_SHA,
+            "target_base_sha": BASE_SHA,
+            "head_sha": HEAD_SHA,
+        }
+        client = FakeBrokerClient(
+            event_payload=event_payload,
+            handoff=handoff,
+            ack_error=ack_error,
+        )
+        candidate = publisher.select_broker_obligation(client, config)
+        staged = dataclasses.replace(
+            candidate,
+            workspace=str(root),
+            bundle_path=str(root / "staged.bundle"),
+            bundle_sha256=handoff["bundle_sha256"],
+            bundle_size=handoff["bundle_size"],
+        )
+        pr = publisher.PublishedPullRequest.from_dict(exact_pr())
+        labeled = publisher.PublishedPullRequest.from_dict(
+            exact_pr(labels=[{"name": "ready-for-gate"}])
+        )
+        client.calls.clear()
+        return config, client, staged, pr, labeled
+
+    def test_broker_run_pending_ci_returns_pending_without_readback_or_ack(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config, client, staged, pr, _labeled = self.broker_run_setup(Path(directory))
+            runner = object()
+
+            with mock.patch.object(
+                publisher, "stage_broker_bundle", return_value=staged
+            ), mock.patch.object(
+                publisher, "ensure_remote_and_pr", return_value=pr
+            ), mock.patch.object(
+                publisher,
+                "ensure_ready_label",
+                side_effect=publisher.PublisherPending(
+                    "required exact-head check suite is not green"
+                ),
+            ) as label, mock.patch.object(
+                publisher, "collect_broker_remote_readback"
+            ) as readback, mock.patch.object(
+                publisher, "_compensate_ready_label"
+            ) as compensate:
+                result = publisher.run_broker_once(config, client, runner=runner)
+
+            self.assertEqual(label.call_count, 1)
+            self.assertEqual(
+                result,
+                {
+                    "status": "pending_ci",
+                    "task_id": staged.task_id,
+                    "pr": pr.number,
+                    "head_sha": staged.head_sha,
+                },
+            )
+            readback.assert_not_called()
+            compensate.assert_not_called()
+            self.assertEqual(
+                [method for method, _body in client.calls],
+                ["list_publish_obligations", "export_bundle"],
+            )
+            self.assertIsNone(client.ack_response)
+
+    def test_broker_run_readback_failure_compensates_label_once_and_never_acks(self):
+        failure = publisher.PublisherError("exact-head CI evidence is no longer green")
+        with tempfile.TemporaryDirectory() as directory:
+            config, client, staged, pr, labeled = self.broker_run_setup(Path(directory))
+            runner = object()
+
+            with mock.patch.object(
+                publisher, "stage_broker_bundle", return_value=staged
+            ), mock.patch.object(
+                publisher, "ensure_remote_and_pr", return_value=pr
+            ), mock.patch.object(
+                publisher, "ensure_ready_label", return_value=labeled
+            ), mock.patch.object(
+                publisher,
+                "collect_broker_remote_readback",
+                side_effect=failure,
+            ) as collect, mock.patch.object(
+                publisher, "_compensate_ready_label"
+            ) as compensate:
+                with self.assertRaises(publisher.PublisherError) as caught:
+                    publisher.run_broker_once(config, client, runner=runner)
+
+            self.assertIs(caught.exception, failure)
+            self.assertEqual(collect.call_count, 1)
+            self.assertEqual(
+                compensate.call_args,
+                ((staged, labeled, config), {"runner": runner}),
+            )
+            self.assertEqual(
+                [method for method, _body in client.calls],
+                ["list_publish_obligations", "export_bundle"],
+            )
+            self.assertIsNone(client.ack_response)
+
+    def test_broker_run_ack_transport_failure_is_ambiguous_and_preserves_readiness(self):
+        transport_error = RuntimeError("broker transport closed after ack write")
+        readback = {"contract": "hermes.github_publish_readback.v1"}
+        with tempfile.TemporaryDirectory() as directory:
+            config, client, staged, pr, labeled = self.broker_run_setup(
+                Path(directory), ack_error=transport_error
+            )
+            runner = object()
+
+            with mock.patch.object(
+                publisher, "stage_broker_bundle", return_value=staged
+            ), mock.patch.object(
+                publisher, "ensure_remote_and_pr", return_value=pr
+            ), mock.patch.object(
+                publisher, "ensure_ready_label", return_value=labeled
+            ), mock.patch.object(
+                publisher,
+                "collect_broker_remote_readback",
+                return_value=readback,
+            ), mock.patch.object(
+                publisher, "_compensate_ready_label"
+            ) as compensate:
+                with self.assertRaisesRegex(
+                    publisher.PublisherCompletionAmbiguous, "UNSAFE_COMPLETION_STATE"
+                ) as caught:
+                    publisher.run_broker_once(config, client, runner=runner)
+
+            self.assertIs(caught.exception.__cause__, transport_error)
+            compensate.assert_not_called()
+            acks = [body for method, body in client.calls if method == "ack_publish"]
+            self.assertEqual(len(acks), 1)
+            self.assertEqual(acks[0]["receipt_id"], staged.receipt_id)
+            self.assertEqual(acks[0]["head_sha"], HEAD_SHA)
+            self.assertEqual(acks[0]["published_head_sha"], HEAD_SHA)
+            self.assertIs(acks[0]["readback_complete"], True)
+            self.assertEqual(acks[0]["remote_readback"], readback)
+            self.assertIsNone(client.ack_response)
 
 
 class TrustedPublisherSelectionTests(unittest.TestCase):
@@ -749,6 +1430,19 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
     def remote_base(self, sha=BASE_SHA):
         return response(stdout=f"{sha}\trefs/heads/{self.config.base_branch}\n")
 
+    def broker_candidate(self, **overrides):
+        """Bind the GitHub candidate to a broker receipt without re-running broker intake."""
+        event = broker_event()
+        binding = {
+            "receipt_id": event["receipt_id"],
+            "receipt_payload_sha256": event["payload_sha256"],
+            "repository_id": event["repository_id"],
+            "broker_boundary": event["broker_boundary"],
+            "target_base_sha": event["target_base_sha"],
+        }
+        binding.update(overrides)
+        return dataclasses.replace(self.candidate, **binding)
+
     def tearDown(self):
         self.validator_patch.stop()
         self.env_patch.stop()
@@ -851,6 +1545,34 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             Path(call[0]).name == "gh" and call[1:3] in (["pr", "create"], ["pr", "reopen"])
             for call, _ in runner.calls
         ))
+
+    def test_broker_receipt_sealed_base_mismatch_pends_before_any_publication(self):
+        advanced_base = "d" * 40
+        candidate = self.broker_candidate(target_base_sha=BASE_SHA)
+        runner = QueueRunner([
+            self.remote_feature(),
+            self.remote_base(advanced_base),
+        ])
+
+        with self.assertRaisesRegex(
+            publisher.PublisherPending,
+            "broker-sealed pull-request base no longer matches the live target",
+        ):
+            publisher.ensure_remote_and_pr(candidate, self.config, runner=runner)
+
+        self.assertTrue(all("ls-remote" in call for call, _ in runner.calls))
+        self.assertFalse(runner.responses)
+        flat = [part for call, _kwargs in runner.calls for part in call]
+        for forbidden in (
+            "push",
+            "create",
+            "reopen",
+            "edit",
+            "--force",
+            "--add-label",
+            "--remove-label",
+        ):
+            self.assertNotIn(forbidden, flat)
 
     def test_pr_history_enumerates_same_branch_across_all_bases(self):
         calls = []
@@ -1436,6 +2158,70 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             for call, _ in runner.calls
         ))
 
+    def test_broker_receipt_exact_retry_retains_existing_ready_label_without_removing_it(self):
+        labeled = exact_pr(labels=[{"name": "ready-for-gate"}])
+        candidate = self.broker_candidate()
+        runner = QueueRunner([
+            self.remote_feature(),
+            self.remote_base(),
+            response(stdout=json.dumps([labeled]) + "\n"),
+        ])
+
+        result = publisher.ensure_remote_and_pr(candidate, self.config, runner=runner)
+
+        self.assertEqual(result.number, 181)
+        self.assertEqual(result.labels, ("ready-for-gate",))
+        self.assertFalse(runner.responses)
+        flat = [part for call, _kwargs in runner.calls for part in call]
+        self.assertNotIn("--remove-label", flat)
+        self.assertNotIn("--add-label", flat)
+        self.assertNotIn("push", flat)
+
+    def test_broker_receipt_retained_ready_label_is_compensated_when_exact_ci_is_pending(self):
+        labeled = exact_pr(labels=[{"name": "ready-for-gate"}])
+        candidate = self.broker_candidate()
+        pr = publisher.PublishedPullRequest.from_dict(labeled)
+        older = self.run_payload(id=9001, status="completed", conclusion="success")
+        newer = self.run_payload(
+            id=9002,
+            run_attempt=2,
+            check_suite_id=778,
+            status="in_progress",
+            conclusion=None,
+        )
+        pending_ci = [
+            self.remote_feature(),
+            self.remote_base(),
+            response(stdout=json.dumps(labeled) + "\n"),
+            response(stdout=json.dumps(self.workflow_payload()) + "\n"),
+            response(
+                stdout=json.dumps({"total_count": 2, "workflow_runs": [older, newer]}) + "\n"
+            ),
+            response(stdout="removed\n"),
+        ]
+
+        runner = QueueRunner(pending_ci + [response(stdout=json.dumps(exact_pr()) + "\n")])
+        with self.assertRaisesRegex(
+            publisher.PublisherPending, "required exact-head check suite is not green"
+        ):
+            publisher.ensure_ready_label(candidate, pr, self.config, runner=runner)
+
+        removals = [call for call, _ in runner.calls if "--remove-label" in call]
+        self.assertEqual(len(removals), 1)
+        self.assertIn("ready-for-gate", removals[0])
+        self.assertFalse(any(
+            call[1:3] == ["pr", "edit"] and "--add-label" in call
+            for call, _ in runner.calls
+        ))
+        self.assertEqual(runner.calls[-1][0][1:3], ["pr", "view"])
+
+        hostile_runner = QueueRunner(pending_ci + [response(stdout=json.dumps(labeled) + "\n")])
+        with self.assertRaisesRegex(publisher.PublisherError, "UNSAFE_LABEL_STATE"):
+            publisher.ensure_ready_label(candidate, pr, self.config, runner=hostile_runner)
+        self.assertEqual(len([
+            call for call, _ in hostile_runner.calls if "--remove-label" in call
+        ]), 1)
+
     def test_run_suite_and_attempt_must_bind_every_required_check(self):
         pr = publisher.PublishedPullRequest.from_dict(exact_pr())
         wrong_jobs = self.jobs_payload(run_attempt=2)
@@ -1482,6 +2268,7 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
             "event": "pull_request",
             "status": "completed",
             "conclusion": "success",
+            "completed_at": "2026-08-27T12:34:56Z",
             "head_sha": HEAD_SHA,
             "head_branch": self.candidate.branch,
             "pull_requests": [{
@@ -1542,6 +2329,245 @@ class TrustedPublisherGitHubTests(unittest.TestCase):
                 for index, name in enumerate(self.config.required_checks, start=1)
             ],
         ]
+
+    def test_exact_required_checks_evidence_binds_one_run_suite_and_app(self):
+        pr = publisher.PublishedPullRequest.from_dict(exact_pr())
+        runner = QueueRunner(self.green_ci_responses())
+
+        evidence = publisher._required_checks_evidence(
+            self.candidate, pr, self.config, runner=runner
+        )
+
+        self.assertEqual(evidence["workflow_id"], 227376261)
+        self.assertEqual(evidence["run_id"], 9001)
+        self.assertEqual(evidence["newest_run_id_for_workflow_and_head"], 9001)
+        self.assertEqual(evidence["check_suite_id"], 777)
+        self.assertEqual(evidence["completed_at"], 1787834096)
+        self.assertEqual(
+            evidence["required_job_ids"],
+            list(range(1, len(self.config.required_checks) + 1)),
+        )
+        self.assertTrue(all(
+            item["app"] == {"id": 15368, "slug": "github-actions"}
+            and item["workflow_run_id"] == 9001
+            and item["check_suite_id"] == 777
+            for item in evidence["required_jobs"]
+        ))
+
+    def test_remote_readback_binds_repository_pr_ci_and_publisher_label_actor(self):
+        config = dataclasses.replace(
+            self.config,
+            github_repository_id=1027532341,
+            required_workflow_id=227376261,
+            ready_label_actor_id=35302851,
+            ready_label_actor_login="momomojo",
+            ready_label_actor_type="User",
+        )
+        candidate = dataclasses.replace(
+            self.candidate,
+            target_base_sha=BASE_SHA,
+            remote_repository=broker_remote_repository(),
+        )
+        labeled_pr = publisher.PublishedPullRequest.from_dict(
+            exact_pr(labels=[{"name": "ready-for-gate"}])
+        )
+        repository = {
+            "id": 1027532341,
+            "name": "Radulator",
+            "full_name": "momomojo/Radulator",
+            "html_url": "https://github.com/momomojo/Radulator",
+            "fork": False,
+            "owner": {"login": "momomojo"},
+        }
+        pull = {
+            "number": 181,
+            "html_url": "https://github.com/momomojo/Radulator/pull/181",
+            "state": "open",
+            "draft": False,
+            "labels": [{"name": "ready-for-gate"}],
+            "head": {
+                "ref": candidate.branch,
+                "sha": HEAD_SHA,
+                "repo": {"full_name": "momomojo/Radulator", "fork": False},
+            },
+            "base": {"ref": "develop", "sha": BASE_SHA},
+        }
+        label_event = {
+            "id": 66001,
+            "event": "labeled",
+            "created_at": "2026-08-27T12:35:00Z",
+            "label": {"name": "ready-for-gate"},
+            "actor": {
+                "id": 35302851,
+                "login": "momomojo",
+                "type": "User",
+            },
+        }
+        runner = QueueRunner([
+            *self.green_ci_responses(),
+            response(stdout=json.dumps(repository) + "\n"),
+            response(stdout=json.dumps(pull) + "\n"),
+            response(stdout=json.dumps([label_event]) + "\n"),
+        ])
+
+        readback = publisher.collect_broker_remote_readback(
+            candidate, labeled_pr, config, runner=runner
+        )
+
+        self.assertEqual(readback["repository"], broker_remote_repository())
+        self.assertEqual(readback["pull_request"]["head_sha"], HEAD_SHA)
+        self.assertEqual(readback["pull_request"]["base_sha"], BASE_SHA)
+        self.assertEqual(readback["workflow"]["run_id"], 9001)
+        self.assertEqual(readback["ready_label"]["label_event_id"], 66001)
+        self.assertEqual(
+            readback["ready_label"]["actor"], label_event["actor"]
+        )
+
+    def publisher_actor(self):
+        return {"id": 35302851, "login": "momomojo", "type": "User"}
+
+    def ready_label_history_setup(self):
+        config = dataclasses.replace(
+            self.config,
+            github_repository_id=1027532341,
+            required_workflow_id=227376261,
+            ready_label_actor_id=35302851,
+            ready_label_actor_login="momomojo",
+            ready_label_actor_type="User",
+        )
+        candidate = dataclasses.replace(
+            self.candidate,
+            target_base_sha=BASE_SHA,
+            remote_repository=broker_remote_repository(),
+        )
+        return config, candidate
+
+    def ready_label_history_readback(self, label_events):
+        """Run the broker readback with a scripted ready-for-gate event history."""
+
+        config, candidate = self.ready_label_history_setup()
+        labeled_pr = publisher.PublishedPullRequest.from_dict(
+            exact_pr(labels=[{"name": "ready-for-gate"}])
+        )
+        repository = {
+            "id": 1027532341,
+            "name": "Radulator",
+            "full_name": "momomojo/Radulator",
+            "html_url": "https://github.com/momomojo/Radulator",
+            "fork": False,
+            "owner": {"login": "momomojo"},
+        }
+        pull = {
+            "number": 181,
+            "html_url": "https://github.com/momomojo/Radulator/pull/181",
+            "state": "open",
+            "draft": False,
+            "labels": [{"name": "ready-for-gate"}],
+            "head": {
+                "ref": candidate.branch,
+                "sha": HEAD_SHA,
+                "repo": {"full_name": "momomojo/Radulator", "fork": False},
+            },
+            "base": {"ref": "develop", "sha": BASE_SHA},
+        }
+        runner = QueueRunner([
+            *self.green_ci_responses(),
+            response(stdout=json.dumps(repository) + "\n"),
+            response(stdout=json.dumps(pull) + "\n"),
+            response(stdout=json.dumps(label_events) + "\n"),
+        ])
+        return publisher.collect_broker_remote_readback(
+            candidate, labeled_pr, config, runner=runner
+        )
+
+    def ready_label_event(self, event_id, created_at, *, actor=None, event="labeled"):
+        return {
+            "id": event_id,
+            "event": event,
+            "created_at": created_at,
+            "label": {"name": "ready-for-gate"},
+            "actor": dict(self.publisher_actor()) if actor is None else dict(actor),
+        }
+
+    def test_later_wrong_actor_relabel_supersedes_publisher_label_event(self):
+        publisher_event = self.ready_label_event(66001, "2026-08-27T12:35:00Z")
+        other_actor = {"id": 999, "login": "someone-else", "type": "User"}
+        later = self.ready_label_event(
+            66002, "2026-08-27T12:36:00Z", actor=other_actor
+        )
+        for history in ([publisher_event, later], [later, publisher_event]):
+            with self.subTest(ids=[item["id"] for item in history]):
+                with self.assertRaisesRegex(publisher.PublisherError, "actor"):
+                    self.ready_label_history_readback(history)
+
+    def test_later_unlabeled_event_rejects_while_current_ready_label_is_present(self):
+        publisher_event = self.ready_label_event(66001, "2026-08-27T12:35:00Z")
+        removed = self.ready_label_event(
+            66002, "2026-08-27T12:36:00Z", event="unlabeled"
+        )
+        for history in ([publisher_event, removed], [removed, publisher_event]):
+            with self.subTest(events=[item["event"] for item in history]):
+                with self.assertRaisesRegex(publisher.PublisherError, "removed"):
+                    self.ready_label_history_readback(history)
+
+    def test_same_timestamp_ready_label_history_prefers_highest_event_id(self):
+        wrong_actor = self.ready_label_event(
+            66001,
+            "2026-08-27T12:35:00Z",
+            actor={"id": 999, "login": "someone-else", "type": "User"},
+        )
+        publisher_event = self.ready_label_event(66002, "2026-08-27T12:35:00Z")
+        for history in (
+            [wrong_actor, publisher_event],
+            [publisher_event, wrong_actor],
+        ):
+            with self.subTest(ids=[item["id"] for item in history]):
+                readback = self.ready_label_history_readback(history)
+                self.assertEqual(readback["ready_label"]["label_event_id"], 66002)
+                self.assertEqual(readback["ready_label"]["actor"], self.publisher_actor())
+
+    def test_malformed_relevant_ready_label_event_rejects(self):
+        publisher_event = self.ready_label_event(66001, "2026-08-27T12:35:00Z")
+        malformed = [
+            self.ready_label_event(0, "2026-08-27T12:36:00Z", event="unlabeled"),
+            self.ready_label_event(66002, "not-a-timestamp", event="unlabeled"),
+            self.ready_label_event(66002, None),
+        ]
+        for item in malformed:
+            with self.subTest(event=item):
+                with self.assertRaisesRegex(publisher.PublisherError, "ready label event"):
+                    self.ready_label_history_readback([publisher_event, item])
+
+    def test_ready_label_history_requires_post_ci_publisher_label_event(self):
+        cases = {
+            "pre_ci": [self.ready_label_event(66001, "2026-08-27T12:34:00Z")],
+            "irrelevant": [
+                {
+                    "id": 66003,
+                    "event": "review_requested",
+                    "created_at": "2026-08-27T12:36:00Z",
+                    "review_requester": {"id": 35302851, "login": "momomojo", "type": "User"},
+                }
+            ],
+            "other_label": [
+                {
+                    **self.ready_label_event(66004, "2026-08-27T12:36:00Z"),
+                    "label": {"name": "ship-it"},
+                }
+            ],
+        }
+        for name, history in cases.items():
+            with self.subTest(case=name):
+                with self.assertRaisesRegex(publisher.PublisherError, "unavailable|predates"):
+                    self.ready_label_history_readback(history)
+
+    def test_single_valid_ready_label_event_remains_accepted(self):
+        publisher_event = self.ready_label_event(66001, "2026-08-27T12:35:00Z")
+        readback = self.ready_label_history_readback([publisher_event])
+
+        self.assertEqual(readback["ready_label"]["label_event_id"], 66001)
+        self.assertEqual(readback["ready_label"]["actor"], self.publisher_actor())
+        self.assertEqual(readback["ready_label"]["present"], True)
 
     def label_snapshot_responses(self):
         return [self.remote_feature(), self.remote_base()]
@@ -2676,6 +3702,49 @@ class TrustedPublisherRunTests(unittest.TestCase):
             self.assertEqual(parsed_lock, lock)
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 publisher.parse_runtime_config(["--project-root", "relative"])
+
+    def test_main_uses_only_publisher_broker_client_and_never_kanban_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "Radulator"
+            root.mkdir()
+            controller = root / "ops/hermes/radulator/lifecycle_controller.py"
+            controller.parent.mkdir(parents=True)
+            controller.write_text("# test\n", encoding="utf-8")
+            state = Path(directory) / "publisher-state"
+            args = [
+                "--board", "default",
+                "--project-id", "radulator",
+                "--project-root", str(root),
+                "--repository", "momomojo/Radulator",
+                "--base-branch", "develop",
+                "--expected-origin", "momomojo/Radulator",
+                "--lifecycle-controller", str(controller),
+                "--ledger", str(state / "release.jsonl"),
+                "--lock-file", str(state / "publisher.lock"),
+                "--repository-id", "radulator",
+                "--publisher-state-dir", str(state),
+                "--broker-client-config", str(state / "client.json"),
+                "--expected-broker-uid", str(os.geteuid()),
+                "--publisher-gid", str(os.getegid()),
+                "--github-repository-id", "1027532341",
+                "--workflow-id", "227376261",
+                "--ready-label-actor-id", "35302851",
+                "--ready-label-actor-login", "momomojo",
+                "--ready-label-actor-type", "User",
+            ]
+            broker_client = object()
+            output = io.StringIO()
+
+            with mock.patch.object(
+                publisher, "run_broker_once", return_value={"status": "idle"}
+            ) as run, contextlib.redirect_stdout(output):
+                result = publisher.main(args, broker_client=broker_client)
+
+            self.assertEqual(result, 0)
+            run.assert_called_once()
+            self.assertIs(run.call_args.args[1], broker_client)
+            self.assertEqual(json.loads(output.getvalue()), {"status": "idle"})
+            self.assertNotIn("kanban_db", inspect.getsource(publisher.main))
 
 
 if __name__ == "__main__":
