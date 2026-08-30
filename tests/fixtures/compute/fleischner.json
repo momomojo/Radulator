@@ -656,10 +656,94 @@
       ] }
     },
     {
+      "id": "pure-ground-glass-missing-growth-basis-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6", "subsolid_temporal_state": "pure_ggo_growth" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "Confirm pure-ground-glass growth" }
+      ] }
+    },
+    {
+      "id": "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "lte3_unmeasured", "nodule_type": "ground_glass", "nodule_count": "single", "subsolid_temporal_state": "pure_ggo_growth", "pure_ggo_growth_basis": "linear_ge2" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "categorical ≤3 mm" }
+      ] }
+    },
+    {
+      "id": "categorical-lte3-pure-ggo-validated-volumetric-growth-claim-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "lte3_unmeasured", "nodule_type": "ground_glass", "nodule_count": "single", "subsolid_temporal_state": "pure_ggo_growth", "pure_ggo_growth_basis": "validated_volumetric" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot establish quantitative growth" }
+      ] }
+    },
+    {
+      "id": "categorical-lte3-solid-component-linear-growth-claim-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "lte3_unmeasured", "nodule_type": "ground_glass", "nodule_count": "single", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "linear_ge2" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "categorical ≤3 mm" }
+      ] }
+    },
+    {
+      "id": "categorical-lte3-solid-component-validated-volumetric-growth-claim-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "lte3_unmeasured", "nodule_type": "ground_glass", "nodule_count": "single", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "validated_volumetric" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot establish quantitative solid-component growth" }
+      ] }
+    },
+    {
+      "id": "categorical-lte3-solid-component-missing-basis-requires-recharacterization",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "lte3_unmeasured", "nodule_type": "ground_glass", "nodule_count": "single", "subsolid_temporal_state": "new_or_growing_solid_component" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot support an established solid-component state" }
+      ] }
+    },
+    {
+      "id": "categorical-lte3-visually-new-component-requires-recharacterization",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "lte3_unmeasured", "nodule_type": "ground_glass", "nodule_count": "single", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "new_component" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot be reliably defined when the overall nodule is <6 mm" }
+      ] }
+    },
+    {
+      "id": "sub6-ground-glass-visually-new-component-requires-recharacterization",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "new_component" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot be reliably defined when the overall nodule is <6 mm" }
+      ] }
+    },
+    {
+      "id": "sub6-ground-glass-linear-component-growth-claim-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "linear_ge2" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot establish quantitative solid-component growth" }
+      ] }
+    },
+    {
+      "id": "sub6-ground-glass-validated-volumetric-component-growth-claim-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "validated_volumetric" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot establish quantitative solid-component growth" }
+      ] }
+    },
+    {
+      "id": "sub6-ground-glass-solid-component-missing-basis-requires-recharacterization",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "new_or_growing_solid_component" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot support an established solid-component state" }
+      ] }
+    },
+    {
       "id": "solid-component-unconfirmed-change-cannot-trigger-escalation",
       "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "8", "nodule_short_axis": "8", "solid_component_size_mode": "measured_gt3", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "not_established" },
       "expect": { "noError": false, "fields": [
         { "key": "Error", "includes": "solid-component evolution is established" }
+      ] }
+    },
+    {
+      "id": "solid-component-missing-growth-basis-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "8", "nodule_short_axis": "8", "solid_component_size_mode": "measured_gt3", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "Confirm a visually established new solid component" }
       ] }
     },
     {
@@ -706,7 +790,42 @@
       "id": "part-solid-categorical-linear-growth-claim-rejected",
       "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "6", "nodule_short_axis": "6", "solid_component_size_mode": "lte3_unmeasured", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "linear_ge2" },
       "expect": { "noError": false, "fields": [
-        { "key": "Error", "includes": "cannot establish linear component growth" }
+        { "key": "Error", "includes": "cannot establish quantitative component growth" }
+      ] }
+    },
+    {
+      "id": "part-solid-categorical-validated-volumetric-growth-claim-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "6", "nodule_short_axis": "6", "solid_component_size_mode": "lte3_unmeasured", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "validated_volumetric" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot establish quantitative component growth" }
+      ] }
+    },
+    {
+      "id": "sub6-part-solid-linear-component-growth-claim-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "linear_ge2" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot establish quantitative solid-component growth" }
+      ] }
+    },
+    {
+      "id": "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "validated_volumetric" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot establish quantitative solid-component growth" }
+      ] }
+    },
+    {
+      "id": "sub6-part-solid-solid-component-missing-basis-requires-recharacterization",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "new_or_growing_solid_component" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot support an established solid-component state" }
+      ] }
+    },
+    {
+      "id": "sub6-part-solid-visually-new-component-requires-recharacterization",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "new_component" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot be reliably defined when the overall nodule is <6 mm" }
       ] }
     },
     {

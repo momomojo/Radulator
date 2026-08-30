@@ -25,12 +25,12 @@ const SUBSOLID_TABLE_URL =
   "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly";
 
 const EXPECTED_PAYLOAD_SHA256 =
-  "bbc8d5cd2c33a93a8632324482587f9689e0536994efe5f9faaf89196f96582a";
+  "ee3d4a3fb0d12fa7710fb436134f475b75758992cfc27e18c699feef04178424";
 const EXPECTED_REVIEWED_VECTORS_SHA256 =
-  "c50cc61eb5fc6626986dea76e2ac1b4cf09cca378b40349e0741774a92127061";
+  "ef3d88502b1e9e9ec10c7b345d0dc42725a4d5f1f757e6b0774d5adb7daecc9c";
 const EXPECTED_REVIEWER_REVISION =
-  "fleischner-source-review/2026-08-30-r7";
-const EXPECTED_REVIEWED_AT = "2026-08-30T21:04:45Z";
+  "fleischner-source-review/2026-08-30-r8";
+const EXPECTED_REVIEWED_AT = "2026-08-30T21:57:52Z";
 
 const EXPECTED_CLAIM_IDS = [
   "fleischner-2017-applicability",
@@ -73,7 +73,13 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
   "multiple-solid-any-ge6-dominant-5-uses-multiple-threshold",
   "multiple-solid-dominant-9-solitary-override",
   "multiple-subsolid-any-ge6-dominant-5-uses-cohort-threshold",
+  "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
+  "categorical-lte3-pure-ggo-validated-volumetric-growth-claim-rejected",
+  "categorical-lte3-solid-component-linear-growth-claim-rejected",
+  "categorical-lte3-solid-component-missing-basis-requires-recharacterization",
+  "categorical-lte3-solid-component-validated-volumetric-growth-claim-rejected",
   "categorical-lte3-solid-low-without-false-precision",
+  "categorical-lte3-visually-new-component-requires-recharacterization",
   "numeric-3-mm-requires-categorical-pathway",
   "subsolid-missing-temporal-state-fails-closed",
   "single-ground-glass-6-established-growth-uses-annual-follow-up",
@@ -86,15 +92,26 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
   "single-solid-10-valid-axes-accepted",
   "single-solid-10-axes-average-mismatch-rejected",
   "pure-ground-glass-sub2mm-change-cannot-claim-growth",
+  "pure-ground-glass-missing-growth-basis-rejected",
+  "solid-component-missing-growth-basis-rejected",
   "solid-component-unconfirmed-change-cannot-trigger-escalation",
   "single-ground-glass-validated-volumetric-growth-accepted",
   "uncertain-characterization-routes-without-table",
   "part-solid-categorical-linear-growth-claim-rejected",
   "part-solid-categorical-lte3-component-avoids-false-precision",
   "part-solid-categorical-new-component-escalates-without-false-precision",
+  "part-solid-categorical-validated-volumetric-growth-claim-rejected",
   "part-solid-measured-component-at-3-mm-rejected",
   "part-solid-missing-component-mode-rejected",
   "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
+  "sub6-ground-glass-linear-component-growth-claim-rejected",
+  "sub6-ground-glass-solid-component-missing-basis-requires-recharacterization",
+  "sub6-ground-glass-validated-volumetric-component-growth-claim-rejected",
+  "sub6-ground-glass-visually-new-component-requires-recharacterization",
+  "sub6-part-solid-linear-component-growth-claim-rejected",
+  "sub6-part-solid-solid-component-missing-basis-requires-recharacterization",
+  "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
+  "sub6-part-solid-visually-new-component-requires-recharacterization",
 ];
 
 const EXPECTED_LIMITATIONS = [
@@ -578,7 +595,7 @@ function validateManifest(manifest, fixture, registry) {
     runtime.reviewed_vector_ids,
     "the reviewed manifest must bind the exact fixture ID set",
   );
-  assert.equal(runtime.reviewed_vector_ids.length, 95, "exact vector count");
+  assert.equal(runtime.reviewed_vector_ids.length, 112, "exact vector count");
 
   const fixtureById = new Map(
     fixture.cases.map((testCase) => [testCase.id, testCase]),
@@ -655,9 +672,13 @@ function validateCalculatorSource(calculatorSource) {
     "Pure-Ground-Glass Growth Confirmation",
     "Solid-Component Evolution Confirmation",
     "average-diameter increase of ≥2 mm",
-    "Validated volumetry may be used under its reproducibility protocol",
+    "Validated volumetry may be used only for a reliably measurable nodule under its reproducibility protocol",
     "A new solid component is visually established on comparable CT",
-    "cannot establish linear component growth",
+    "cannot establish quantitative growth by linear or volumetric measurement",
+    "cannot establish quantitative solid-component growth",
+    "cannot be reliably defined when the overall nodule is <6 mm",
+    "cannot support an established solid-component state",
+    "cannot establish quantitative component growth",
     "with measurement only when the component is >3 mm",
     "Solid-component diameter increased by ≥2 mm on comparable CT",
     "overall nodule maximum long axis",

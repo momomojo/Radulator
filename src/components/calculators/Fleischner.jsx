@@ -553,7 +553,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       id: "pure_ggo_growth_basis",
       label: "Pure-Ground-Glass Growth Confirmation",
       subLabel:
-        "Linear growth requires an average-diameter increase of ≥2 mm on comparable CT; smaller changes may be spurious. Validated volumetry may be used under its reproducibility protocol.",
+        "Linear growth requires an average-diameter increase of ≥2 mm on comparable CT; smaller changes may be spurious. Validated volumetry may be used only for a reliably measurable nodule under its reproducibility protocol; a categorical ≤3 mm nodule cannot establish quantitative growth.",
       type: "radio",
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
@@ -579,7 +579,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       id: "solid_component_growth_basis",
       label: "Solid-Component Evolution Confirmation",
       subLabel:
-        "Confirm a visually established new component or established growth on comparable CT. Measure a component only when it is >3 mm; by linear measurement, a change <2 mm may be spurious.",
+        "Confirm a visually established new component or established growth on comparable CT. A discrete component cannot be reliably defined when the overall nodule is <6 mm; quantitative growth also requires a reliably measurable component.",
       type: "radio",
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
@@ -922,6 +922,12 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
               "Confirm pure-ground-glass growth by an average-diameter increase of at least 2 mm or a validated volumetric method.",
           };
         }
+        if (sizeMode === "lte3_unmeasured") {
+          return {
+            Error:
+              "A categorical ≤3 mm unmeasured nodule cannot establish quantitative growth by linear or volumetric measurement; recharacterize the nodule once it is large enough to measure reliably.",
+          };
+        }
         growthBasis =
           basis === "linear_ge2"
             ? "Average diameter increased by ≥2 mm on comparable CT"
@@ -929,6 +935,12 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       }
       if (subsolidTemporalState === "new_or_growing_solid_component") {
         const basis = vals.solid_component_growth_basis ?? "";
+        if (sizeMode === "lte3_unmeasured" || size < 6) {
+          return {
+            Error:
+              "A categorical ≤3 mm or otherwise <6 mm overall nodule cannot support an established solid-component state: a discrete solid component cannot be reliably defined when the overall nodule is <6 mm, and it cannot establish quantitative solid-component growth. Recharacterize on thin-section CT and use the equivalent pure-ground-glass pathway until a component is reliably defined.",
+          };
+        }
         if (basis === "not_established") {
           return {
             Error:
@@ -945,15 +957,16 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
               "Confirm a visually established new solid component, a component-diameter increase of at least 2 mm, or validated volumetric component growth.",
           };
         }
-        if (
-          noduleType === "part_solid" &&
-          solidComponentSizeMode === "lte3_unmeasured" &&
-          basis === "linear_ge2"
-        ) {
-          return {
-            Error:
-              "A categorical ≤3 mm / too-small-to-measure-reliably component cannot establish linear component growth; use a visually new-component state or validated volumetry.",
-          };
+        if (["linear_ge2", "validated_volumetric"].includes(basis)) {
+          if (
+            noduleType === "part_solid" &&
+            solidComponentSizeMode === "lte3_unmeasured"
+          ) {
+            return {
+              Error:
+                "A categorical ≤3 mm / too-small-to-measure-reliably component cannot establish quantitative component growth; only a visually established new solid component can be used.",
+            };
+          }
         }
         growthBasis =
           basis === "new_component"
@@ -1174,15 +1187,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
           "This is the baseline/no-adequate-comparison pathway; the surveillance horizon ends at 5 years from baseline.";
       }
     } else if (size < 6) {
-      if (subsolidTemporalState === "new_or_growing_solid_component") {
-        recommendation =
-          "Use case-specific thin-section recharacterization rather than the routine <6 mm row";
-        followUp = "Case-specific evaluation";
-        rationale =
-          "A discrete component is not reliably measured below 6 mm overall, but established solid-component evolution is not a routine baseline finding.";
-        decisionBoundary =
-          "Suspicious interval evolution is established despite the small overall size.";
-      } else if (
+      if (
         size === 5 &&
         vals.sub6_subsolid_context === "selected_suspicious_near_6"
       ) {

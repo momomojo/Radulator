@@ -640,6 +640,10 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
       "Subsolid Nodule Comparison State",
       "Interval growth while remaining pure ground-glass",
     );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "Confirm pure-ground-glass growth",
+    );
     await selectRadio(
       page,
       "Pure-Ground-Glass Growth Confirmation",
@@ -665,6 +669,10 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
       page,
       "Subsolid Nodule Comparison State",
       "New or growing solid component",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "Confirm a visually established new solid component",
     );
     await selectRadio(
       page,
@@ -710,6 +718,10 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
       page,
       "Subsolid Nodule Comparison State",
       "New or growing solid component",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "Confirm a visually established new solid component",
     );
     await selectRadio(
       page,
@@ -761,7 +773,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await expect(results).toContainText("may be unreliable");
   });
 
-  test("escalates a visually new categorical component without accepting a linear-size claim", async ({
+  test("escalates a visually new categorical component without accepting a quantitative-growth claim", async ({
     page,
   }) => {
     await fillSubsolid(page, {
@@ -792,7 +804,162 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     );
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByRole("main").getByRole("alert")).toContainText(
-      "cannot establish linear component growth",
+      "cannot establish quantitative component growth",
+    );
+  });
+
+  test("rejects quantitative growth and asserted solid components below reliable-definition thresholds", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      size: "lte3",
+      temporal: "Interval growth while remaining pure ground-glass",
+    });
+    await selectRadio(
+      page,
+      "Pure-Ground-Glass Growth Confirmation",
+      "Average diameter increased by ≥2 mm on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "categorical ≤3 mm",
+    );
+    await selectRadio(
+      page,
+      "Pure-Ground-Glass Growth Confirmation",
+      "Growth established by validated volumetry on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot establish quantitative growth",
+    );
+
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "New or growing solid component",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot support an established solid-component state",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component diameter increased by ≥2 mm on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "categorical ≤3 mm",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component growth established by validated volumetry on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot establish quantitative solid-component growth",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot be reliably defined when the overall nodule is <6 mm",
+    );
+
+    await fillSubsolid(page, {
+      size: "5",
+      context: "Ordinary 5 mm subsolid nodule",
+      temporal: "New or growing solid component",
+    });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot support an established solid-component state",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component diameter increased by ≥2 mm on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot establish quantitative solid-component growth",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component growth established by validated volumetry on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot establish quantitative solid-component growth",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot be reliably defined when the overall nodule is <6 mm",
+    );
+
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "5",
+      context: "Ordinary 5 mm subsolid nodule",
+      temporal: "New or growing solid component",
+    });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot support an established solid-component state",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component diameter increased by ≥2 mm on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot establish quantitative solid-component growth",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot be reliably defined when the overall nodule is <6 mm",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component growth established by validated volumetry on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot establish quantitative solid-component growth",
+    );
+
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "6",
+      component: "lte3",
+      temporal: "New or growing solid component",
+    });
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component growth established by validated volumetry on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot establish quantitative component growth",
     );
   });
 

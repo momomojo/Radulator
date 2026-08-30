@@ -623,8 +623,8 @@
         "reviewed_evidence": {
           "schema": "radulator-reviewed-source-evidence-link/v1",
           "manifest_path": "docs/evidence/fleischner-2017-reviewed-evidence.json",
-          "payload_sha256": "bbc8d5cd2c33a93a8632324482587f9689e0536994efe5f9faaf89196f96582a",
-          "reviewer_revision": "fleischner-source-review/2026-08-30-r7",
+          "payload_sha256": "ee3d4a3fb0d12fa7710fb436134f475b75758992cfc27e18c699feef04178424",
+          "reviewer_revision": "fleischner-source-review/2026-08-30-r8",
           "ci_primary_full_text_verified": false
         },
         "source_audit": {
@@ -682,12 +682,29 @@
             "single-solid-10-axes-average-mismatch-rejected",
             "solid-component-long-axis-may-exceed-overall-average",
             "part-solid-component-exceeding-overall-long-axis-rejected",
+            "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
+            "categorical-lte3-pure-ggo-validated-volumetric-growth-claim-rejected",
+            "categorical-lte3-solid-component-linear-growth-claim-rejected",
+            "categorical-lte3-solid-component-missing-basis-requires-recharacterization",
+            "categorical-lte3-solid-component-validated-volumetric-growth-claim-rejected",
+            "categorical-lte3-visually-new-component-requires-recharacterization",
             "part-solid-categorical-linear-growth-claim-rejected",
             "part-solid-categorical-lte3-component-avoids-false-precision",
             "part-solid-categorical-new-component-escalates-without-false-precision",
+            "part-solid-categorical-validated-volumetric-growth-claim-rejected",
             "part-solid-measured-component-at-3-mm-rejected",
             "part-solid-missing-component-mode-rejected",
+            "pure-ground-glass-missing-growth-basis-rejected",
             "pure-ground-glass-sub2mm-change-cannot-claim-growth",
+            "solid-component-missing-growth-basis-rejected",
+            "sub6-ground-glass-linear-component-growth-claim-rejected",
+            "sub6-ground-glass-solid-component-missing-basis-requires-recharacterization",
+            "sub6-ground-glass-validated-volumetric-component-growth-claim-rejected",
+            "sub6-ground-glass-visually-new-component-requires-recharacterization",
+            "sub6-part-solid-linear-component-growth-claim-rejected",
+            "sub6-part-solid-solid-component-missing-basis-requires-recharacterization",
+            "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
+            "sub6-part-solid-visually-new-component-requires-recharacterization",
             "solid-component-unconfirmed-change-cannot-trigger-escalation"
           ],
           "source_bytes_committed": false
@@ -768,7 +785,7 @@
             "id": "fleischner-2017-subsolid-table",
             "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
             "source_locator": "Table 1 subsolid section, journal page 230; Recommendations 3-5 and interval-growth examples",
-            "fact": "Subsolid management distinguishes baseline persistence checks from persistent surveillance and established interval evolution: pure-ground-glass growth is not returned to a baseline schedule, new solid transformation routes to part-solid evaluation, and multiple persistent nodules follow the applicable 2/4-year or most-suspicious-nodule pathway.",
+            "fact": "Subsolid management distinguishes baseline persistence from surveillance and established evolution. Pure-GGN growth does not return to baseline; a reliably defined new solid component routes to part-solid evaluation. Below 6 mm, a suspected component requires thin-section recharacterization and equivalent pure-GGN handling. Multiple nodules follow the 2/4-year or most-suspicious-nodule pathway.",
             "dimensions": ["classification", "threshold", "interval", "duration", "management", "output"],
             "vector_ids": [
               "single-ground-glass-5-routine-no-follow-up",
@@ -777,6 +794,12 @@
               "single-ground-glass-6-established-growth-uses-annual-follow-up",
               "single-ground-glass-new-solid-component-reroutes-to-part-solid",
               "single-ground-glass-validated-volumetric-growth-accepted",
+              "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
+              "categorical-lte3-solid-component-linear-growth-claim-rejected",
+              "pure-ground-glass-missing-growth-basis-rejected",
+              "solid-component-missing-growth-basis-rejected",
+              "sub6-part-solid-linear-component-growth-claim-rejected",
+              "sub6-ground-glass-visually-new-component-requires-recharacterization",
               "multiple-ground-glass-5-initial-and-optional-late-ct",
               "multiple-ground-glass-6-defers-to-most-suspicious-nodule",
               "multiple-ground-glass-established-growth-uses-most-suspicious-route",
@@ -794,20 +817,29 @@
           {
             "id": "fleischner-2017-selected-subsolid-escalation",
             "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-            "source_locator": "Recommendations 3-4: selected suspicious pure-ground-glass or part-solid nodules close to 6 mm",
-            "fact": "The selected close-to-6-mm option applies to both pure ground-glass and part-solid nodules and permits consideration of CT at 2 and 4 years without demanding an unreliable component measurement in a sub-6-mm part-solid nodule.",
+            "source_locator": "Recommendations 3-4: close-to-6-mm options and inability to reliably define discrete components below 6 mm overall",
+            "fact": "The close-to-6-mm option applies to pure ground-glass and part-solid nodules without demanding an unreliable component measurement. Below 6 mm overall, suspected solid-component evolution requires thin-section recharacterization and is not treated as established; missing, linear, volumetric, and visually asserted bases all fail closed.",
             "dimensions": ["classification", "threshold", "management", "output"],
             "vector_ids": [
+              "categorical-lte3-visually-new-component-requires-recharacterization",
               "single-ground-glass-5-selected-suspicious-option",
               "single-part-solid-5-selected-suspicious-option-without-component",
-              "single-sub6-ground-glass-missing-context-rejected"
+              "single-sub6-ground-glass-missing-context-rejected",
+              "sub6-ground-glass-linear-component-growth-claim-rejected",
+              "sub6-ground-glass-solid-component-missing-basis-requires-recharacterization",
+              "sub6-ground-glass-validated-volumetric-component-growth-claim-rejected",
+              "sub6-ground-glass-visually-new-component-requires-recharacterization",
+              "sub6-part-solid-linear-component-growth-claim-rejected",
+              "sub6-part-solid-solid-component-missing-basis-requires-recharacterization",
+              "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
+              "sub6-part-solid-visually-new-component-requires-recharacterization"
             ]
           },
           {
             "id": "fleischner-2017-part-solid-component-escalation",
             "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
             "source_locator": "Recommendation 4: baseline persistence assessment; persistent component thresholds; new or growing component, suspicious morphology, or component larger than 8 mm escalation",
-            "fact": "For solitary part-solid nodules ≥6 mm, baseline imaging assesses persistence. Persistent stable components <6 mm enter annual follow-up for at least 5 years; persistent components ≥6 mm are highly suspicious. A visually established new component, established growth, suspicious morphology, or component >8 mm triggers diagnostic evaluation options.",
+            "fact": "For solitary part-solid nodules ≥6 mm, baseline imaging assesses persistence. Stable components <6 mm receive annual CT for at least 5 years; persistent components ≥6 mm are highly suspicious. A visually new component, reliable established growth, suspicious morphology, or a component >8 mm triggers diagnostic options. Below 6 mm overall, a discrete component cannot be reliably defined.",
             "dimensions": ["classification", "threshold", "boundary", "management", "output"],
             "vector_ids": [
               "single-part-solid-6-component-5-baseline-persistence-check",
@@ -820,11 +852,18 @@
               "single-part-solid-12-component-8-growing-escalates",
               "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
               "single-part-solid-12-component-9-escalates-by-size",
+              "part-solid-categorical-linear-growth-claim-rejected",
               "part-solid-categorical-lte3-component-avoids-false-precision",
               "part-solid-categorical-new-component-escalates-without-false-precision",
+              "part-solid-categorical-validated-volumetric-growth-claim-rejected",
               "part-solid-component-6-to-8-missing-concern-state-rejected",
               "part-solid-uncertain-morphology-fails-closed",
-              "solid-component-unconfirmed-change-cannot-trigger-escalation"
+              "solid-component-missing-growth-basis-rejected",
+              "solid-component-unconfirmed-change-cannot-trigger-escalation",
+              "sub6-part-solid-linear-component-growth-claim-rejected",
+              "sub6-part-solid-solid-component-missing-basis-requires-recharacterization",
+              "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
+              "sub6-part-solid-visually-new-component-requires-recharacterization"
             ]
           },
           {
@@ -843,7 +882,7 @@
             "id": "fleischner-2017-measurement-contract",
             "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
             "source_locator": "Measurement recommendations and Figures 1-4 and 12-17: small-nodule average, at-least-10-mm two-axis record, >3-mm solid-component measurement and smaller-component unreliability, lung windows, and established size change",
-            "fact": "Use lung windows and whole mm; average orthogonal diameters. Record both axes for ≥10-mm and part-solid nodules. Measure a solid component only when >3 mm; otherwise use a categorical ≤3-mm path. It cannot prove linear growth, but a new component may be visually established. A component may exceed rounded average, never actual long axis. Linear growth needs ≥2 mm; validated volumetry is accepted.",
+            "fact": "Use lung windows and whole mm; average orthogonal diameters. Record both axes for nodules ≥10 mm and part-solid nodules. Measure a solid component only when >3 mm; otherwise use a categorical ≤3-mm path that cannot establish quantitative growth. A component may exceed rounded average but not actual long axis. Linear growth requires ≥2 mm; volumetry applies only to reliably measurable structures.",
             "dimensions": ["model-input", "unit", "threshold", "scope", "output"],
             "vector_ids": [
               "fractional-overall-size-rejected",
@@ -854,7 +893,7 @@
               "single-solid-10-axes-average-mismatch-rejected",
               "part-solid-categorical-linear-growth-claim-rejected",
               "part-solid-categorical-lte3-component-avoids-false-precision",
-              "part-solid-categorical-new-component-escalates-without-false-precision",
+              "part-solid-categorical-validated-volumetric-growth-claim-rejected",
               "part-solid-measured-component-at-3-mm-rejected",
               "part-solid-missing-component-mode-rejected",
               "part-solid-missing-component-rejected",
@@ -875,11 +914,17 @@
           {
             "id": "fleischner-2017-very-small-nodule-measurement",
             "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
-            "source_locator": "Measurement statement Figure 6: nodules 3 mm or smaller should not be measured",
-            "fact": "Nodules 3 mm or smaller use a categorical very-small pathway instead of a false-precision numeric diameter; an entered numeric 3-mm measurement is rejected and redirected to that pathway.",
+            "source_locator": "Measurement statement Figure 6: nodules 3 mm or smaller should not be measured because measurement and morphology classification are unreliable",
+            "fact": "Nodules 3 mm or smaller use a categorical very-small pathway rather than a false-precision numeric diameter. Linear or volumetric growth and a discrete solid component cannot be established reliably at this size; an entered numeric 3-mm measurement is rejected.",
             "dimensions": ["model-input", "unit", "threshold", "scope", "output"],
             "vector_ids": [
+              "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
+              "categorical-lte3-pure-ggo-validated-volumetric-growth-claim-rejected",
+              "categorical-lte3-solid-component-linear-growth-claim-rejected",
+              "categorical-lte3-solid-component-missing-basis-requires-recharacterization",
+              "categorical-lte3-solid-component-validated-volumetric-growth-claim-rejected",
               "categorical-lte3-solid-low-without-false-precision",
+              "categorical-lte3-visually-new-component-requires-recharacterization",
               "numeric-3-mm-requires-categorical-pathway"
             ]
           },

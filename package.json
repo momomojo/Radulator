@@ -20,7 +20,7 @@
     "test:calculator": "playwright test tests/e2e/calculators",
     "test:chromium": "playwright test --project=chromium",
     "test:firefox": "playwright test --project=firefox",
-    "test:webkit": "playwright test --project=webkit",
+    "test:webkit": "playwright test --config=playwright.nightly.config.js --project=webkit",
     "test:mobile": "playwright test --project='Mobile Chrome' --project='Mobile Safari'",
     "test:compute": "node scripts/generate-mesa-cac-reference.test.mjs && node tests/meld-na-fixture-policy.test.mjs && node --import ./scripts/register-jsx-loader.mjs ops/hermes/radulator/meld-entry-domain-evidence.test.mjs && node tests/bosniak-doc-status.test.mjs && node tests/roadmap-guideline-status.test.mjs && node --import ./scripts/register-jsx-loader.mjs scripts/run-compute-tests.mjs && npm run test:kbrc",
     "test:kbrc": "node --import ./scripts/register-jsx-loader.mjs tests/kbrc-math.test.mjs",
