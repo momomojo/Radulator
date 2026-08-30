@@ -36,11 +36,30 @@ assert.deepEqual(audit.source_sha256, {
 });
 assert.equal(Object.values(audit.source_claims).every(Boolean), true);
 assert.equal(Object.keys(audit.source_claims).length, 10);
+assert.deepEqual(audit.source_text_verification, {
+  engine: "pdfjs-dist@4.10.38",
+  manual_pdf_pages: [35, 43, 44, 45, 46, 47],
+  manual_printed_pages: [32, 40, 41, 42, 43, 44],
+  verified_claim_ids: [
+    "stable-egfr-45-not-independent-risk",
+    "stable-egfr-30-44-not-or-rarely-nephrotoxic",
+    "aki-or-egfr-under-30-relative-not-absolute",
+    "standard-diagnostic-dose-not-reduced",
+    "isotonic-normal-saline-preferred-regimen-unknown",
+    "aki-or-egfr-under-30-prophylaxis-with-volume-risk-check",
+    "stable-egfr-30-general-prophylaxis-not-indicated",
+    "stable-egfr-30-44-individual-high-risk-only",
+    "anuric-dialysis-no-further-renal-damage",
+    "residual-dialysis-urine-treated-higher-risk",
+    "lower-viscosity-routine-warming-unsupported",
+    "higher-viscosity-warming-selective-not-routine",
+  ],
+});
 assert.equal(audit.bound_vector_ids.length, 10);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "ACR Contrast 2026 source audit verified the exact manual, reaction cards, and 10 executable renal/warming vectors.",
+  "ACR Contrast 2026 source audit verified exact manual/card bytes, 12 page-extracted source statements, and 10 executable renal/warming vectors.",
 );
