@@ -30,7 +30,11 @@ const HOLD_LABELS = new Set([
   "cancelled",
   "canceled",
 ]);
-const RELEVANT_LABELS = new Set(["ready-for-gate", ...HOLD_LABELS]);
+const RELEVANT_LABELS = new Set([
+  "ready-for-gate",
+  "release-remediation",
+  ...HOLD_LABELS,
+]);
 const RELEVANT_TIMELINE_EVENTS = new Set([
   "closed",
   "reopened",
