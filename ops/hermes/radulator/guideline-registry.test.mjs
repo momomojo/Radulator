@@ -393,27 +393,50 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     );
     assert.equal(
       audit.authority,
-      "U.S. Food and Drug Administration",
+      "American College of Radiology",
       `${label}.source_audit.authority`,
     );
     assert.deepEqual(
       audit.source_urls,
       [
-        "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
-        "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
-        "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
-        "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement",
+        "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
+        "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+        "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf",
+        "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf",
       ],
       `${label}.source_audit.source_urls`,
     );
     assert.deepEqual(
       audit.vector_ids,
       [
-        "category-3",
-        "category-4",
-        "category-5",
-        "incomplete-prior-comparison",
-        "post-procedure-marker",
+        "missing-modality-fails-closed",
+        "invalid-finding-type-fails-closed",
+        "mammography-incomplete",
+        "ultrasound-incomplete",
+        "mri-incomplete",
+        "known-biopsy-proven-malignancy",
+        "negative-finding-requires-radiologist-assessment",
+        "negative-screening",
+        "benign-finding-requires-radiologist-assessment",
+        "benign-finding",
+        "typically-benign-calcifications-require-radiologist-assessment",
+        "probably-benign-mass",
+        "invalid-active-descriptor-fails-closed",
+        "low-suspicion-mass",
+        "moderate-suspicion-calcifications",
+        "high-suspicion-spiculated-mass",
+        "highly-suggestive-linear-calcifications",
+        "category-5-inclusive-95-boundary",
+        "probably-benign-selection-does-not-infer-from-descriptors",
+        "screening-mammography-probably-benign-no-uncited-warning",
+        "hidden-calcification-distribution-does-not-leak",
+        "developing-asymmetry",
+        "associated-features",
+        "ultrasound-associated-features-source-exact",
+        "mri-rejects-category-4-subdivision",
+        "ultrasound-calcifications-use-unsplit-category-4",
+        "ultrasound-mass-ignores-stale-mammography-density",
+        "ultrasound-suspicious-category-4",
       ],
       `${label}.source_audit.vector_ids`,
     );
@@ -544,10 +567,13 @@ for (const calculator of calculators) {
 for (const [calculatorId, expected] of Object.entries({
   birads: {
     basis_type: "classification-system",
-    last_verified: "2026-08-26",
+    last_verified: "2026-08-29",
     source_urls: [
       "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
-      "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf",
     ],
   },
   "cac-mesa": {
