@@ -29,6 +29,12 @@ const WORKFLOW_ID = 227376261;
 const CI_APP_ID = 15368;
 const CHECK_SUITE_ID = 700;
 
+assert.deepEqual(
+  relevantLabelsDigest(["ready-for-gate", "release-remediation", "unrelated"]).labels,
+  ["ready-for-gate", "release-remediation"],
+  "the single-flight remediation exception must be bound into the gate fingerprint",
+);
+
 assert.equal(
   typeof independentGate.authorizationStatusPayload,
   "function",

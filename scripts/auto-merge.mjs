@@ -2,6 +2,11 @@
 import { fileURLToPath } from "node:url";
 
 import {
+  DEPLOY_WORKFLOW_PATH,
+  deploymentSourceRef,
+  isTrustedDeploymentRun,
+} from "./deployment-run-identity.mjs";
+import {
   checkRunsPath,
   configuredPublicKeys,
   ENFORCEMENT_CONTEXT,
@@ -13,9 +18,16 @@ import {
   paged,
   REQUIRED_CONTEXT,
 } from "./independent-review-gate.mjs";
+import {
+  deploymentAuthorizationSucceeded,
+  liveSmokePassed,
+} from "./select-rollback-deployment.mjs";
 
 const ALLOWED_BASE_REFS = new Set(["develop", "main"]);
 const ACTIONS_BOT_ID = 41898282;
+const SHA_PATTERN = /^[0-9a-f]{40}$/;
+const RELEASE_MARKER_SCHEMA = "radulator-release/v1";
+const PRODUCTION_BASE_URL = "https://radulator.com";
 
 function blocked(reasonCode, summary) {
   return { ok: false, reasonCode, summary };
@@ -29,6 +41,117 @@ function checkSort(left, right) {
 function statusSort(left, right) {
   const time = Date.parse(right.created_at || 0) - Date.parse(left.created_at || 0);
   return time || (right.id || 0) - (left.id || 0);
+}
+
+function deploymentRunSort(left, right) {
+  const time = Date.parse(right.created_at || 0) - Date.parse(left.created_at || 0);
+  return time || (right.id || 0) - (left.id || 0);
+}
+
+export function evaluateProductionSingleFlight({
+  pr,
+  mainRef,
+  developRef,
+  comparison,
+  deployWorkflow,
+  deployRun,
+  deployJobs,
+  marker,
+}) {
+  const mainSha = mainRef?.object?.sha;
+  const developSha = developRef?.object?.sha;
+  if (!SHA_PATTERN.test(mainSha || "") || !SHA_PATTERN.test(developSha || "")) {
+    return blocked("PRODUCTION_REF_MALFORMED", "Current main/develop refs are unavailable or malformed.");
+  }
+  if (pr?.baseRef !== "develop" || pr.baseSha !== developSha) {
+    return blocked("DEVELOP_BASE_DRIFT", "Feature PR is not based on the exact current develop head.");
+  }
+  const developReleased = !(
+    comparison?.status !== "ahead" && comparison?.status !== "identical" ||
+    comparison?.behind_by !== 0 ||
+    comparison?.merge_base_commit?.sha !== developSha
+  );
+  const releaseRemediation = (pr.labels || []).includes("release-remediation");
+  if (!developReleased && !releaseRemediation) {
+    return blocked(
+      "UNRELEASED_DEVELOP_HEAD",
+      "Current develop is not contained in current main; finish the active production release first.",
+    );
+  }
+  if (
+    !Number.isSafeInteger(deployWorkflow?.id) || deployWorkflow.id <= 0 ||
+    deployWorkflow.path !== DEPLOY_WORKFLOW_PATH ||
+    deployWorkflow.state !== "active"
+  ) {
+    return blocked("DEPLOY_WORKFLOW_IDENTITY_MISMATCH", "Trusted deployment workflow identity is unavailable.");
+  }
+  if (
+    !deployRun ||
+    !isTrustedDeploymentRun(deployRun, deployWorkflow.id) ||
+    deploymentSourceRef(deployRun) !== mainSha
+  ) {
+    return blocked("CURRENT_MAIN_DEPLOYMENT_MISSING", "No trusted deployment attempt binds the exact current main SHA.");
+  }
+  if (deployRun.status !== "completed") {
+    return blocked("CURRENT_MAIN_DEPLOYMENT_NOT_COMPLETE", "The newest exact-main deployment attempt is not complete.");
+  }
+  if (!deploymentAuthorizationSucceeded(deployJobs)) {
+    return blocked("CURRENT_MAIN_DEPLOYMENT_NOT_AUTHORIZED", "The newest exact-main deployment lacks successful authorization.");
+  }
+  if (!liveSmokePassed(deployJobs)) {
+    return blocked("CURRENT_MAIN_LIVE_SMOKE_NOT_PASSING", "The newest exact-main deployment lacks successful Pages and live smoke proof.");
+  }
+  if (
+    marker?.ok !== true || marker.status !== 200 ||
+    marker.data?.schema !== RELEASE_MARKER_SCHEMA || marker.data?.sha !== mainSha
+  ) {
+    return blocked("CURRENT_MAIN_MARKER_MISMATCH", "Production does not serve the exact current-main release marker.");
+  }
+  return {
+    ok: true,
+    reasonCode: developReleased
+      ? "PRODUCTION_LANE_OPEN"
+      : "PRODUCTION_REMEDIATION_LANE_OPEN",
+    mainSha,
+    developSha,
+    deployRunId: deployRun.id,
+  };
+}
+
+export async function loadProductionSingleFlightEvidence(api, pr) {
+  const [mainRef, developRef, deployWorkflow] = await Promise.all([
+    api.getRef("main"),
+    api.getRef("develop"),
+    api.getDeployWorkflow(),
+  ]);
+  const mainSha = mainRef?.object?.sha;
+  const developSha = developRef?.object?.sha;
+  if (!SHA_PATTERN.test(mainSha || "") || !SHA_PATTERN.test(developSha || "")) {
+    return {
+      pr, mainRef, developRef, deployWorkflow,
+      comparison: null, deployRun: null, deployJobs: [], marker: null,
+    };
+  }
+  const [comparison, deployRuns, marker] = await Promise.all([
+    api.compare(developSha, mainSha),
+    api.listDeployRuns(mainSha),
+    api.getReleaseMarker(mainSha),
+  ]);
+  const trustedRuns = (deployRuns || []).filter((run) =>
+    isTrustedDeploymentRun(run, deployWorkflow?.id) &&
+    deploymentSourceRef(run) === mainSha).sort(deploymentRunSort);
+  const deployRun = trustedRuns[0] || null;
+  const deployJobs = deployRun ? await api.getRunJobs(deployRun.id) : [];
+  return {
+    pr,
+    mainRef,
+    developRef,
+    comparison,
+    deployWorkflow,
+    deployRun,
+    deployJobs,
+    marker,
+  };
 }
 
 async function requestBaseRefresh(client, prNumber, headSha, extras = {}) {
@@ -126,7 +249,7 @@ function defaultApi(env) {
     expectedCiAppId: Number(env.RADULATOR_CI_APP_ID || 0),
     publicKeys: configuredPublicKeys(env),
   };
-  return {
+  const api = {
     findPullNumbers: () => findPullNumbers(token, owner, repo, env),
     loadGateState: (prNumber) => loadGateState(token, owner, repo, prNumber, config),
     listCheckRuns: (headSha) => paged(token, checkRunsPath(owner, repo, headSha), "check_runs"),
@@ -145,6 +268,36 @@ function defaultApi(env) {
       return { accepted: true, response };
     },
     getPr: (prNumber) => githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}`),
+    getRef: (branch) => githubRequest(token, `/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`),
+    compare: (baseSha, headSha) => githubRequest(token, `/repos/${owner}/${repo}/compare/${baseSha}...${headSha}`),
+    getDeployWorkflow: () => githubRequest(token, `/repos/${owner}/${repo}/actions/workflows/deploy.yml`),
+    listDeployRuns: (headSha) => paged(
+      token,
+      `/repos/${owner}/${repo}/actions/workflows/deploy.yml/runs?head_sha=${headSha}`,
+      "workflow_runs",
+    ),
+    getRunJobs: (runId) => paged(token, `/repos/${owner}/${repo}/actions/runs/${runId}/jobs`, "jobs"),
+    getReleaseMarker: async (sha) => {
+      try {
+        const response = await fetch(new URL(`/releases/${sha}.json`, `${PRODUCTION_BASE_URL}/`), {
+          redirect: "follow",
+          headers: {
+            "cache-control": "no-cache",
+            "user-agent": "radulator-production-single-flight/v1",
+          },
+        });
+        const body = await response.text();
+        let data = null;
+        try {
+          data = JSON.parse(body);
+        } catch {
+          data = null;
+        }
+        return { ok: response.ok, status: response.status, data };
+      } catch (error) {
+        return { ok: false, status: null, data: null, error: error.message };
+      }
+    },
     dispatchDeployment: async (payload) => {
       await githubRequest(token, `/repos/${owner}/${repo}/dispatches`, {
         method: "POST",
@@ -153,6 +306,8 @@ function defaultApi(env) {
       return { accepted: true, eventType: "radulator-auto-merge-deploy" };
     },
   };
+  api.loadProductionSingleFlightEvidence = (pr) => loadProductionSingleFlightEvidence(api, pr);
+  return api;
 }
 
 export async function runAutoMerge({
@@ -193,6 +348,15 @@ export async function runAutoMerge({
       results.push(decision);
       continue;
     }
+    if (current.pr.baseRef === "develop") {
+      const lane = evaluateProductionSingleFlight(
+        await client.loadProductionSingleFlightEvidence(current.pr),
+      );
+      if (!lane.ok) {
+        results.push(lane);
+        continue;
+      }
+    }
     if (env.RADULATOR_AUTO_MERGE_ENABLED !== "true") {
       results.push({ ...decision, dryRun: true });
       continue;
@@ -221,7 +385,6 @@ export async function runAutoMerge({
       results.push(decision);
       continue;
     }
-
     const mergeability = await client.getMergeability(prNumber);
     if (mergeability?.head?.sha !== finalState.pr.headSha) {
       results.push(blocked("CONCURRENT_GATE_STATE_CHANGE", "Pull request head changed during mergeability preflight."));
@@ -230,6 +393,15 @@ export async function runAutoMerge({
     if (mergeability.mergeable_state === "behind") {
       results.push(await requestBaseRefresh(client, prNumber, finalState.pr.headSha));
       continue;
+    }
+    if (finalState.pr.baseRef === "develop") {
+      const lane = evaluateProductionSingleFlight(
+        await client.loadProductionSingleFlightEvidence(finalState.pr),
+      );
+      if (!lane.ok) {
+        results.push(lane);
+        continue;
+      }
     }
 
     let merged;
