@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import process from "node:process";
+
+const run = spawnSync(
+  process.execPath,
+  [
+    "--import",
+    "./scripts/register-jsx-loader.mjs",
+    "scripts/audit-acr-contrast-2026-source.mjs",
+    "--json",
+  ],
+  { cwd: process.cwd(), encoding: "utf8", timeout: 180_000 },
+);
+
+assert.equal(
+  run.status,
+  0,
+  `ACR Contrast 2026 source audit failed\nstdout:\n${run.stdout}\nstderr:\n${run.stderr}`,
+);
+
+const audit = JSON.parse(run.stdout);
+assert.equal(audit.schema, "radulator-acr-contrast-2026-source-audit/v1");
+assert.equal(audit.source_authority, "American College of Radiology");
+assert.deepEqual(audit.source_bytes, {
+  manual: 1765419,
+  adult_card: 50299,
+  pediatric_card: 54773,
+});
+assert.deepEqual(audit.source_sha256, {
+  manual: "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
+  adult_card: "8e01c557097de36dd38706f1ce9bc540797bdee5e43534db3f6123bfabb963fb",
+  pediatric_card: "4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f",
+});
+assert.equal(Object.values(audit.source_claims).every(Boolean), true);
+assert.equal(Object.keys(audit.source_claims).length, 10);
+assert.equal(audit.bound_vector_ids.length, 10);
+assert.equal(audit.runtime_vector_match, true);
+assert.equal(audit.fixture_vector_match, true);
+assert.equal(audit.source_bytes_committed, false);
+
+console.log(
+  "ACR Contrast 2026 source audit verified the exact manual, reaction cards, and 10 executable renal/warming vectors.",
+);

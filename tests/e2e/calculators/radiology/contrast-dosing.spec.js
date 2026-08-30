@@ -9,7 +9,7 @@
  * - BMI calculation and LBW adjustment for BMI >= 30
  * - Iodine Delivery Rate (IDR) calculations
  * - Flow rate recommendations by IV access type
- * - eGFR-based renal risk stratification (ACR/NKF 2020)
+ * - eGFR/AKI renal-safety pathways (ACR Manual 2026)
  * - Unit conversions (kg/lbs, cm/in)
  * - Study type protocol variations
  * - Maximum volume capping
@@ -40,7 +40,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
     }) => {
       await expect(page.getByTestId('calculator-title').first()).toContainText("IV Contrast Dosing");
       await expect(
-        page.getByText("iodinated contrast dosing calculator").first(),
+        page.getByText("Iodinated contrast protocol-planning aid").first(),
       ).toBeVisible();
     });
 
@@ -49,7 +49,10 @@ test.describe("IV Contrast Dosing Calculator", () => {
     }) => {
       await expect(page.getByText("Weight-based dosing").first()).toBeVisible();
       await expect(page.getByText("Iodine Delivery Rate").first()).toBeVisible();
-      await expect(page.getByText("eGFR-based").first()).toBeVisible();
+      await expect(page.getByText("ACR Manual on Contrast Media 2026").first()).toBeVisible();
+      await expect(
+        page.getByText("encoded planning defaults").first(),
+      ).toBeVisible();
     });
 
     test("should have all required input fields", async ({ page }) => {
@@ -62,6 +65,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       // Renal function
       await expect(page.getByText("eGFR").first()).toBeVisible();
+      await expect(page.getByText("Renal Function Status").first()).toBeVisible();
 
       // Contrast selection
       await expect(page.getByText("Contrast Agent").first()).toBeVisible();
@@ -303,53 +307,36 @@ test.describe("IV Contrast Dosing Calculator", () => {
     });
   });
 
-  test.describe("Renal Risk Assessment (eGFR)", () => {
-    test("should show very low risk for eGFR >= 45", async ({ page }) => {
-      await page.getByText("Kilograms (kg)").click();
-      await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
-      await page.fill('input[id="height"]', "175");
-      await page.getByRole("radio", { name: /^Male$/ }).check();
-      await page.fill('input[id="egfr"]', "60");
-
-      await page.locator('select[id="contrast_agent"]').selectOption("300");
-      await page.locator('select[id="study_type"]').selectOption("routine");
-      await page.locator('select[id="iv_access"]').selectOption("20g");
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=Very Low Risk").first()).toBeVisible();
-      await expect(
-        page.locator("text=No special precautions needed").first(),
-      ).toBeVisible();
-    });
-
-    test("should show low-moderate risk for eGFR 30-44", async ({ page }) => {
-      await page.getByText("Kilograms (kg)").click();
-      await page.fill('input[id="weight"]', "70");
-      await page.getByText("Centimeters (cm)").click();
-      await page.fill('input[id="height"]', "175");
-      await page.getByRole("radio", { name: /^Male$/ }).check();
-      await page.fill('input[id="egfr"]', "38");
-
-      await page.locator('select[id="contrast_agent"]').selectOption("300");
-      await page.locator('select[id="study_type"]').selectOption("routine");
-      await page.locator('select[id="iv_access"]').selectOption("20g");
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=Low-Moderate Risk").first()).toBeVisible();
-      await expect(page.locator("text=IV hydration").first()).toBeVisible();
-      await expect(page.locator("text=eGFR 30-44").first()).toBeVisible();
-    });
-
-    test("should show high risk for eGFR < 30", async ({ page }) => {
+  test.describe("Renal Safety Context (eGFR and AKI)", () => {
+    test("should fail closed when eGFR is entered without renal stability status", async ({ page }) => {
       await page.getByText("Kilograms (kg)").click();
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
       await page.fill('input[id="height"]', "175");
       await page.getByRole("radio", { name: /^Male$/ }).check();
       await page.fill('input[id="egfr"]', "25");
+      await page.locator('select[id="contrast_agent"]').selectOption("300");
+      await page.locator('select[id="study_type"]').selectOption("routine");
+      await page.locator('select[id="iv_access"]').selectOption("20g");
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("stability and AKI status are unknown");
+      await expect(results).toContainText("Assess for AKI");
+      await expect(results).not.toContainText("IV isotonic volume expansion is indicated");
+    });
+
+    test("should not recommend prophylaxis for stable eGFR >= 45", async ({ page }) => {
+      await page.getByText("Kilograms (kg)").click();
+      await page.fill('input[id="weight"]', "70");
+      await page.getByText("Centimeters (cm)").click();
+      await page.fill('input[id="height"]', "175");
+      await page.getByRole("radio", { name: /^Male$/ }).check();
+      await page.fill('input[id="egfr"]', "60");
+      await page
+        .getByRole("radio", { name: "Stable renal function / no known AKI" })
+        .check();
 
       await page.locator('select[id="contrast_agent"]').selectOption("300");
       await page.locator('select[id="study_type"]').selectOption("routine");
@@ -357,11 +344,123 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=HIGH RISK").first()).toBeVisible();
       await expect(
-        page.locator("text=IV saline prophylaxis strongly recommended").first(),
+        page.locator("text=Prophylaxis is not indicated").first(),
       ).toBeVisible();
-      await expect(page.locator("text=contrast-associated AKI").first()).toBeVisible();
+      await expect(
+        page.locator("text=not an independent nephrotoxic risk factor").first(),
+      ).toBeVisible();
+    });
+
+    test("should reserve prophylaxis at stable eGFR 30-44 for individual high-risk circumstances", async ({ page }) => {
+      await page.getByText("Kilograms (kg)").click();
+      await page.fill('input[id="weight"]', "70");
+      await page.getByText("Centimeters (cm)").click();
+      await page.fill('input[id="height"]', "175");
+      await page.getByRole("radio", { name: /^Male$/ }).check();
+      await page.fill('input[id="egfr"]', "38");
+      await page
+        .getByRole("radio", { name: "Stable renal function / no known AKI" })
+        .check();
+
+      await page.locator('select[id="contrast_agent"]').selectOption("300");
+      await page.locator('select[id="study_type"]').selectOption("routine");
+      await page.locator('select[id="iv_access"]').selectOption("20g");
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(
+        page.locator("text=not indicated for the general population").first(),
+      ).toBeVisible();
+      await expect(
+        page.locator("text=individual high-risk circumstances").first(),
+      ).toBeVisible();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).not.toContainText("ensure adequate hydration");
+      await expect(results).not.toContainText("strongly recommended");
+    });
+
+    test("should indicate individualized isotonic prophylaxis for stable eGFR < 30", async ({ page }) => {
+      await page.getByText("Kilograms (kg)").click();
+      await page.fill('input[id="weight"]', "70");
+      await page.getByText("Centimeters (cm)").click();
+      await page.fill('input[id="height"]', "175");
+      await page.getByRole("radio", { name: /^Male$/ }).check();
+      await page.fill('input[id="egfr"]', "25");
+      await page
+        .getByRole("radio", { name: "Stable renal function / no known AKI" })
+        .check();
+      await page
+        .getByRole("radio", {
+          name: "No known heart failure or hypervolemic condition",
+        })
+        .check();
+
+      await page.locator('select[id="contrast_agent"]').selectOption("300");
+      await page.locator('select[id="study_type"]').selectOption("routine");
+      await page.locator('select[id="iv_access"]').selectOption("20g");
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(
+        page.locator("text=IV isotonic volume expansion is indicated").first(),
+      ).toBeVisible();
+      await expect(page.locator("text=0.9% normal saline is preferred").first()).toBeVisible();
+      await expect(page.locator("text=ideal infusion rate and volume are unknown").first()).toBeVisible();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).not.toContainText("1 mL/kg/hr for 12h pre and post");
+      await expect(results).toContainText("Do not reduce the diagnostic contrast dose");
+    });
+
+    test("should treat AKI as a higher-risk pathway even when eGFR is 45", async ({ page }) => {
+      await page.getByText("Kilograms (kg)").click();
+      await page.fill('input[id="weight"]', "70");
+      await page.getByText("Centimeters (cm)").click();
+      await page.fill('input[id="height"]', "175");
+      await page.getByRole("radio", { name: /^Male$/ }).check();
+      await page.fill('input[id="egfr"]', "45");
+      await page
+        .getByRole("radio", { name: "Known or suspected AKI" })
+        .check();
+      await page
+        .getByRole("radio", {
+          name: "Heart failure, hypervolemia, or uncertain volume tolerance",
+        })
+        .check();
+      await page.locator('select[id="contrast_agent"]').selectOption("300");
+      await page.locator('select[id="study_type"]').selectOption("routine");
+      await page.locator('select[id="iv_access"]').selectOption("20g");
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("eGFR is unreliable for AKI risk stratification");
+      await expect(results).toContainText("IV isotonic volume expansion is indicated");
+      await expect(results).toContainText("Heart failure or hypervolemia");
+    });
+
+    test("should not recommend CI-AKI prophylaxis for anuric maintenance dialysis", async ({ page }) => {
+      await page.getByText("Kilograms (kg)").click();
+      await page.fill('input[id="weight"]', "70");
+      await page.getByText("Centimeters (cm)").click();
+      await page.fill('input[id="height"]', "175");
+      await page.getByRole("radio", { name: /^Male$/ }).check();
+      await page
+        .getByRole("radio", {
+          name: "Anuric maintenance dialysis without a functioning transplant",
+        })
+        .check();
+      await page.locator('select[id="contrast_agent"]').selectOption("300");
+      await page.locator('select[id="study_type"]').selectOption("routine");
+      await page.locator('select[id="iv_access"]').selectOption("20g");
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("not at risk for further renal injury from iodinated contrast");
+      await expect(results).toContainText(
+        "Prophylaxis is not indicated for contrast-induced acute kidney injury (CI-AKI) prevention",
+      );
     });
   });
 
@@ -438,7 +537,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should show warming recommendation", async ({ page }) => {
+    test("should not recommend routine warming for a lower-viscosity 300 mg I/mL agent", async ({ page }) => {
       await page.getByText("Kilograms (kg)").click();
       await page.fill('input[id="weight"]', "70");
       await page.getByText("Centimeters (cm)").click();
@@ -451,7 +550,47 @@ test.describe("IV Contrast Dosing Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=Warm contrast to 37").first()).toBeVisible();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText(
+        "Routine warming is not supported for lower-viscosity 300 mg I/mL agents",
+      );
+      await expect(results).not.toContainText("Warm contrast to 37");
+    });
+
+    test("should make higher-viscosity warming selective rather than routine", async ({ page }) => {
+      await page.getByText("Kilograms (kg)").click();
+      await page.fill('input[id="weight"]', "70");
+      await page.getByText("Centimeters (cm)").click();
+      await page.fill('input[id="height"]', "175");
+      await page.getByRole("radio", { name: /^Male$/ }).check();
+      await page.locator('select[id="contrast_agent"]').selectOption("370");
+      await page.locator('select[id="study_type"]').selectOption("cta");
+      await page.locator('select[id="iv_access"]').selectOption("18g");
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText(
+        "Warming may be considered selectively to reduce viscosity and injection pressure",
+      );
+      await expect(results).toContainText("not established as a routine requirement");
+    });
+
+    test("should not render a duplicate injection-rate range", async ({ page }) => {
+      await page.getByText("Kilograms (kg)").click();
+      await page.fill('input[id="weight"]', "70");
+      await page.getByText("Centimeters (cm)").click();
+      await page.fill('input[id="height"]', "175");
+      await page.getByRole("radio", { name: /^Male$/ }).check();
+      await page.locator('select[id="contrast_agent"]').selectOption("300");
+      await page.locator('select[id="study_type"]').selectOption("routine");
+      await page.locator('select[id="iv_access"]').selectOption("20g");
+
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Injection Rate: 3 mL/s");
+      await expect(results).not.toContainText("3-3 mL/s");
     });
 
     test("should show injection duration and saline flush", async ({
@@ -487,11 +626,25 @@ test.describe("IV Contrast Dosing Calculator", () => {
     test("should have link to ACR Manual on Contrast Media", async ({
       page,
     }) => {
-      const acrLink = page.locator('a[href*="acr.org"]');
+      const acrLink = page.locator(
+        'a[href*="ACR-Manual-on-Contrast-Media.pdf"]',
+      );
       await expect(acrLink.first()).toBeVisible();
     });
 
+    test("should link the official adult and pediatric reaction cards", async ({ page }) => {
+      const results = page.locator('a[href*="Contrast-Reaction-Card-"]');
+      await expect(results).toHaveCount(2);
+      await expect(
+        page.getByText("ACR Adult Contrast Reaction Card").first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("ACR Pediatric Contrast Reaction Card").first(),
+      ).toBeVisible();
+    });
+
     test("should have reference to ACR/NKF consensus", async ({ page }) => {
+      await page.getByRole("button", { name: /Show \d+ more references/ }).click();
       await expect(page.getByText("Davenport MS").first()).toBeVisible();
       await expect(page.getByText("National Kidney Foundation").first()).toBeVisible();
     });
