@@ -12,9 +12,9 @@ const MEASUREMENT_URL =
 const MANIFEST_PATH =
   "docs/evidence/fleischner-2017-reviewed-evidence.json";
 const PAYLOAD_SHA256 =
-  "79de3bae7c63934b444c4d147d9e86c41bf7ceffd3b572fce82cb206810c3c4b";
+  "bbc8d5cd2c33a93a8632324482587f9689e0536994efe5f9faaf89196f96582a";
 const REVIEWED_VECTORS_SHA256 =
-  "c5601d60b76951af5abd097d24681dd29d174c4d162555e5d4cd227ab0ef7a47";
+  "c50cc61eb5fc6626986dea76e2ac1b4cf09cca378b40349e0741774a92127061";
 
 const EXPECTED_CLAIM_IDS = [
   "fleischner-2017-applicability",
@@ -72,6 +72,13 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
   "pure-ground-glass-sub2mm-change-cannot-claim-growth",
   "solid-component-unconfirmed-change-cannot-trigger-escalation",
   "single-ground-glass-validated-volumetric-growth-accepted",
+  "uncertain-characterization-routes-without-table",
+  "part-solid-categorical-linear-growth-claim-rejected",
+  "part-solid-categorical-lte3-component-avoids-false-precision",
+  "part-solid-categorical-new-component-escalates-without-false-precision",
+  "part-solid-measured-component-at-3-mm-rejected",
+  "part-solid-missing-component-mode-rejected",
+  "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
 ];
 
 const EXPECTED_LIMITATIONS = [
@@ -259,8 +266,8 @@ assert.deepEqual(audit.reviewed_source_evidence, {
   payload_sha256: PAYLOAD_SHA256,
   reviewer_schema: "radulator-independent-source-review/v1",
   reviewer_role: "independent-clinical-source-reviewer",
-  reviewer_revision: "fleischner-source-review/2026-08-30-r6",
-  reviewed_at: "2026-08-30T20:19:37Z",
+  reviewer_revision: "fleischner-source-review/2026-08-30-r7",
+  reviewed_at: "2026-08-30T21:04:45Z",
   disposition: "SOURCE_INTERPRETATION_APPROVED",
   release_authority: "none",
   scope: "source-interpretation-only",
@@ -319,7 +326,7 @@ assert.equal(
   audit.fixture_version,
   "fleischner-2017-primary-guideline-and-measurement-statement",
 );
-assert.equal(audit.executed_vector_count, 88);
+assert.equal(audit.executed_vector_count, 95);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.registry_claim_match, true);
 assert.equal(audit.reviewed_vectors_sha256, REVIEWED_VECTORS_SHA256);
@@ -333,5 +340,5 @@ assert.equal(audit.calculator_content_invariants_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "Fleischner source audit verified the reviewed-source manifest, 12 claims, 88 executable vectors, primary DOI identities, and live NLM fragments.",
+  "Fleischner source audit verified the reviewed-source manifest, 12 claims, 95 executable vectors, primary DOI identities, and live NLM fragments.",
 );

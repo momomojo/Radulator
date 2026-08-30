@@ -25,12 +25,12 @@ const SUBSOLID_TABLE_URL =
   "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly";
 
 const EXPECTED_PAYLOAD_SHA256 =
-  "79de3bae7c63934b444c4d147d9e86c41bf7ceffd3b572fce82cb206810c3c4b";
+  "bbc8d5cd2c33a93a8632324482587f9689e0536994efe5f9faaf89196f96582a";
 const EXPECTED_REVIEWED_VECTORS_SHA256 =
-  "c5601d60b76951af5abd097d24681dd29d174c4d162555e5d4cd227ab0ef7a47";
+  "c50cc61eb5fc6626986dea76e2ac1b4cf09cca378b40349e0741774a92127061";
 const EXPECTED_REVIEWER_REVISION =
-  "fleischner-source-review/2026-08-30-r6";
-const EXPECTED_REVIEWED_AT = "2026-08-30T20:19:37Z";
+  "fleischner-source-review/2026-08-30-r7";
+const EXPECTED_REVIEWED_AT = "2026-08-30T21:04:45Z";
 
 const EXPECTED_CLAIM_IDS = [
   "fleischner-2017-applicability",
@@ -88,6 +88,13 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
   "pure-ground-glass-sub2mm-change-cannot-claim-growth",
   "solid-component-unconfirmed-change-cannot-trigger-escalation",
   "single-ground-glass-validated-volumetric-growth-accepted",
+  "uncertain-characterization-routes-without-table",
+  "part-solid-categorical-linear-growth-claim-rejected",
+  "part-solid-categorical-lte3-component-avoids-false-precision",
+  "part-solid-categorical-new-component-escalates-without-false-precision",
+  "part-solid-measured-component-at-3-mm-rejected",
+  "part-solid-missing-component-mode-rejected",
+  "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
 ];
 
 const EXPECTED_LIMITATIONS = [
@@ -571,7 +578,7 @@ function validateManifest(manifest, fixture, registry) {
     runtime.reviewed_vector_ids,
     "the reviewed manifest must bind the exact fixture ID set",
   );
-  assert.equal(runtime.reviewed_vector_ids.length, 88, "exact vector count");
+  assert.equal(runtime.reviewed_vector_ids.length, 95, "exact vector count");
 
   const fixtureById = new Map(
     fixture.cases.map((testCase) => [testCase.id, testCase]),
@@ -640,12 +647,18 @@ function validateCalculatorSource(calculatorSource) {
     "For nodules >3 and <10 mm, enter the average of maximal long-axis and perpendicular maximal short-axis diameters",
     "For nodules ≥10 mm, enter both overall axes",
     "maximum long-axis diameter of the largest solid component",
+    "Largest Solid Component Measurement",
+    "≤3 mm / too small to measure reliably",
+    "component >3 mm",
+    "smaller solid-component measurements may be unreliable",
     "Subsolid Nodule Comparison State",
     "Pure-Ground-Glass Growth Confirmation",
     "Solid-Component Evolution Confirmation",
     "average-diameter increase of ≥2 mm",
     "Validated volumetry may be used under its reproducibility protocol",
-    "A new measurable solid component developed",
+    "A new solid component is visually established on comparable CT",
+    "cannot establish linear component growth",
+    "with measurement only when the component is >3 mm",
     "Solid-component diameter increased by ≥2 mm on comparable CT",
     "overall nodule maximum long axis",
   ]) {

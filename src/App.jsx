@@ -385,6 +385,7 @@ function AppContent() {
     () => canBuildReportSnippet(def?.id, out),
     [def?.id, out],
   );
+  const hasResultActions = Boolean(out && !Object.hasOwn(out, "Error"));
 
   // Format results as plain text for clipboard
   const formatResultsForClipboard = (results, calculatorName) => {
@@ -1478,6 +1479,7 @@ function AppContent() {
                       </div>
                     )}
                   {/* Copy & Print Results Buttons */}
+                  {hasResultActions && (
                   <div className="mt-4 flex flex-wrap justify-end gap-2 no-print">
                     {hasReportSnippet && (
                       <button
@@ -1569,6 +1571,7 @@ function AppContent() {
                       Print Results
                     </button>
                   </div>
+                  )}
                 </>
               )}
 

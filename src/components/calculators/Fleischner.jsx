@@ -81,6 +81,83 @@ function wholeMillimeter(value) {
   return /^-?\d+$/.test(String(value ?? "").trim());
 }
 
+const RESET_AFTER_APPLICABILITY = [
+  "nodule_characterization",
+  "nodule_type",
+  "nodule_count",
+  "multiple_size_threshold",
+  "dominant_solid_management",
+  "size_mode",
+  "nodule_size",
+  "nodule_long_axis",
+  "nodule_short_axis",
+  "solid_component_size_mode",
+  "solid_component",
+  "subsolid_temporal_state",
+  "pure_ggo_growth_basis",
+  "solid_component_growth_basis",
+  "risk_level",
+  "sub6_subsolid_context",
+  "component_concern",
+];
+
+const RESET_AFTER_CHARACTERIZATION = RESET_AFTER_APPLICABILITY.filter(
+  (fieldId) => fieldId !== "nodule_characterization",
+);
+
+const RESET_AFTER_TYPE = [
+  "multiple_size_threshold",
+  "dominant_solid_management",
+  "nodule_long_axis",
+  "nodule_short_axis",
+  "solid_component_size_mode",
+  "solid_component",
+  "subsolid_temporal_state",
+  "pure_ggo_growth_basis",
+  "solid_component_growth_basis",
+  "risk_level",
+  "sub6_subsolid_context",
+  "component_concern",
+];
+
+const RESET_AFTER_COUNT = [
+  "multiple_size_threshold",
+  "dominant_solid_management",
+  "nodule_long_axis",
+  "nodule_short_axis",
+  "solid_component_size_mode",
+  "solid_component",
+  "subsolid_temporal_state",
+  "pure_ggo_growth_basis",
+  "solid_component_growth_basis",
+  "sub6_subsolid_context",
+  "component_concern",
+];
+
+const RESET_AFTER_SIZE_PATH = [
+  "nodule_size",
+  "nodule_long_axis",
+  "nodule_short_axis",
+  "solid_component_size_mode",
+  "solid_component",
+  "subsolid_temporal_state",
+  "pure_ggo_growth_basis",
+  "solid_component_growth_basis",
+  "sub6_subsolid_context",
+  "component_concern",
+];
+
+const RESET_AFTER_SIZE = [
+  "nodule_long_axis",
+  "nodule_short_axis",
+  "solid_component_size_mode",
+  "solid_component",
+  "pure_ggo_growth_basis",
+  "solid_component_growth_basis",
+  "sub6_subsolid_context",
+  "component_concern",
+];
+
 function lookupOwn(map, value) {
   return Object.hasOwn(map, value) ? map[value] : null;
 }
@@ -99,6 +176,7 @@ function measurementBasis({
   type,
   overallLongAxis,
   overallShortAxis,
+  solidComponentSizeMode,
 }) {
   const parts = [
     "Characterization is based on contiguous thin-section CT (≤1.5 mm) and measurements are performed on lung-window images.",
@@ -129,9 +207,13 @@ function measurementBasis({
       parts.push(
         "A discrete solid component is not required below 6 mm overall because it cannot be defined reliably at this size.",
       );
+    } else if (solidComponentSizeMode === "lte3_unmeasured") {
+      parts.push(
+        "The largest solid component is recorded categorically as ≤3 mm / too small to measure reliably; an exact component size is not assigned because smaller solid-component measurements may be unreliable.",
+      );
     } else {
       parts.push(
-        "The solid component is the maximum long-axis diameter of the largest solid component, measured separately to the nearest whole millimeter.",
+        "For a solid component >3 mm, the maximum long-axis diameter of the largest solid component is measured separately to the nearest whole millimeter.",
       );
       parts.push(
         `The component is checked against the recorded ${overallLongAxis} mm overall maximum long axis, not against the ${size} mm rounded overall average.`,
@@ -215,7 +297,7 @@ Measurement gate:
 • Do not assign a false-precision measurement to nodules ≤3 mm
 • For nodules >3 and <10 mm, enter the average of maximal long-axis and perpendicular maximal short-axis diameters in the plane showing the greatest dimensions
 • For nodules ≥10 mm, enter both overall axes; this tool verifies their rounded average
-• For part-solid nodules ≥6 mm, enter both overall axes and separately enter the maximum long-axis diameter of the largest solid component
+• For part-solid nodules ≥6 mm, enter both overall axes. If the largest solid component is >3 mm, enter its maximum long-axis diameter; otherwise select the categorical ≤3 mm / too-small-to-measure-reliably path because smaller component measurements may be unreliable
 
 Comparison gate:
 • For a single subsolid nodule, describe that nodule. For multiple subsolid nodules, baseline/persistent describes the cohort; interval evolution describes the selected most suspicious management-driving nodule(s)
@@ -236,6 +318,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       label: "Fleischner 2017 Applicability",
       subLabel: "Choose the single statement that matches the patient and examination.",
       type: "radio",
+      clearOnChange: RESET_AFTER_APPLICABILITY,
       opts: [
         {
           value: "eligible",
@@ -261,6 +344,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       subLabel:
         "Characterize on contiguous sections ≤1.5 mm with multiplanar reconstructions before applying the table.",
       type: "radio",
+      clearOnChange: RESET_AFTER_CHARACTERIZATION,
       showIf: (vals) => vals.guideline_applicability === "eligible",
       opts: [
         {
@@ -288,6 +372,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       subLabel:
         "For multiple nodules, select the morphology of the most suspicious nodule.",
       type: "radio",
+      clearOnChange: RESET_AFTER_TYPE,
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
         vals.nodule_characterization === "indeterminate_thin_section",
@@ -301,6 +386,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       id: "nodule_count",
       label: "Number of Nodules",
       type: "radio",
+      clearOnChange: RESET_AFTER_COUNT,
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
         vals.nodule_characterization === "indeterminate_thin_section",
@@ -315,6 +401,12 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       subLabel:
         "This cohort threshold is separate from the size of the most suspicious nodule.",
       type: "radio",
+      clearOnChange: [
+        "dominant_solid_management",
+        "subsolid_temporal_state",
+        "pure_ggo_growth_basis",
+        "solid_component_growth_basis",
+      ],
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
         vals.nodule_characterization === "indeterminate_thin_section" &&
@@ -330,6 +422,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       subLabel:
         "Do not enter a false-precision measurement for a nodule ≤3 mm.",
       type: "radio",
+      clearOnChange: RESET_AFTER_SIZE_PATH,
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
         vals.nodule_characterization === "indeterminate_thin_section",
@@ -344,6 +437,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       subLabel:
         "For multiple nodules, enter the most suspicious nodule; measure on lung windows.",
       type: "number",
+      clearOnChange: RESET_AFTER_SIZE,
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
         vals.nodule_characterization === "indeterminate_thin_section" &&
@@ -355,6 +449,11 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       subLabel:
         "Required for every nodule ≥10 mm and every part-solid nodule ≥6 mm.",
       type: "number",
+      clearOnChange: [
+        "solid_component_size_mode",
+        "solid_component",
+        "solid_component_growth_basis",
+      ],
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
         vals.nodule_characterization === "indeterminate_thin_section" &&
@@ -378,17 +477,44 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
             Number(vals.nodule_size) >= 6)),
     },
     {
-      id: "solid_component",
-      label: "Largest Solid Component (whole mm)",
+      id: "solid_component_size_mode",
+      label: "Largest Solid Component Measurement",
       subLabel:
-        "Maximum long-axis diameter of the largest solid component on lung-window images.",
-      type: "number",
+        "Small solid-component measurements may be unreliable; do not force an exact number at or below 3 mm.",
+      type: "radio",
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
         vals.nodule_characterization === "indeterminate_thin_section" &&
         vals.nodule_type === "part_solid" &&
         vals.size_mode === "measured" &&
         Number(vals.nodule_size) >= 6,
+      clearOnChange: ["solid_component", "solid_component_growth_basis"],
+      opts: [
+        {
+          value: "lte3_unmeasured",
+          label:
+            "≤3 mm / too small to measure reliably — categorical; do not assign an exact size",
+        },
+        {
+          value: "measured_gt3",
+          label: ">3 mm — enter the maximum long-axis diameter",
+        },
+      ],
+    },
+    {
+      id: "solid_component",
+      label: "Largest Solid Component (whole mm)",
+      subLabel:
+        "For a component >3 mm, enter the maximum long-axis diameter on lung-window images.",
+      type: "number",
+      showIf: (vals) =>
+        vals.guideline_applicability === "eligible" &&
+        vals.nodule_characterization === "indeterminate_thin_section" &&
+        vals.nodule_type === "part_solid" &&
+        vals.size_mode === "measured" &&
+        Number(vals.nodule_size) >= 6 &&
+        vals.solid_component_size_mode === "measured_gt3",
+      clearOnChange: ["solid_component_growth_basis"],
     },
     {
       id: "subsolid_temporal_state",
@@ -396,6 +522,10 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       subLabel:
         "For a single nodule, describe that nodule. For multiple nodules, baseline/persistent refers to the cohort and interval evolution refers to the selected most suspicious management-driving nodule(s).",
       type: "radio",
+      clearOnChange: [
+        "pure_ggo_growth_basis",
+        "solid_component_growth_basis",
+      ],
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
         vals.nodule_characterization === "indeterminate_thin_section" &&
@@ -449,7 +579,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       id: "solid_component_growth_basis",
       label: "Solid-Component Evolution Confirmation",
       subLabel:
-        "Confirm a new measurable component or established growth on comparable CT. By linear measurement, a change <2 mm may be spurious.",
+        "Confirm a visually established new component or established growth on comparable CT. Measure a component only when it is >3 mm; by linear measurement, a change <2 mm may be spurious.",
       type: "radio",
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
@@ -459,7 +589,8 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       opts: [
         {
           value: "new_component",
-          label: "A new measurable solid component developed",
+          label:
+            "A new solid component is visually established on comparable CT; measure only if >3 mm",
         },
         {
           value: "linear_ge2",
@@ -707,30 +838,47 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
     }
 
     let solidSize = null;
+    let solidComponentSizeMode = null;
+    let solidComponentBelow6 = false;
     if (noduleType === "part_solid" && size >= 6) {
-      if (String(vals.solid_component ?? "").trim() === "") {
+      solidComponentSizeMode = vals.solid_component_size_mode ?? "";
+      if (
+        !["lte3_unmeasured", "measured_gt3"].includes(solidComponentSizeMode)
+      ) {
         return {
           Error:
-            "Enter the recorded solid-component size for a part-solid nodule ≥6 mm.",
+            "Select the categorical ≤3 mm / too-small-to-measure-reliably path or the measured >3 mm solid-component path.",
         };
       }
-      if (!wholeMillimeter(vals.solid_component)) {
-        return {
-          Error:
-            "Enter a pre-recorded whole-millimeter solid-component size.",
-        };
-      }
-      solidSize = Number(vals.solid_component);
-      if (solidSize <= 0) {
-        return {
-          Error: "Solid-component size must be a positive whole-millimeter value.",
-        };
-      }
-      if (solidSize > overallLongAxis) {
-        return {
-          Error:
-            "The solid-component maximum long axis cannot exceed the overall nodule maximum long axis.",
-        };
+      if (solidComponentSizeMode === "lte3_unmeasured") {
+        solidComponentBelow6 = true;
+      } else {
+        if (String(vals.solid_component ?? "").trim() === "") {
+          return {
+            Error:
+              "Enter the recorded solid-component size for the measured >3 mm path.",
+          };
+        }
+        if (!wholeMillimeter(vals.solid_component)) {
+          return {
+            Error:
+              "Enter a pre-recorded whole-millimeter solid-component size greater than 3 mm.",
+          };
+        }
+        solidSize = Number(vals.solid_component);
+        if (solidSize <= 3) {
+          return {
+            Error:
+              "The measured solid-component path requires a positive whole-millimeter component greater than 3 mm; otherwise use the categorical ≤3 mm / too-small-to-measure-reliably path.",
+          };
+        }
+        if (solidSize > overallLongAxis) {
+          return {
+            Error:
+              "The solid-component maximum long axis cannot exceed the overall nodule maximum long axis.",
+          };
+        }
+        solidComponentBelow6 = solidSize < 6;
       }
     }
 
@@ -794,12 +942,22 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         ) {
           return {
             Error:
-              "Confirm a new measurable solid component, a component-diameter increase of at least 2 mm, or validated volumetric component growth.",
+              "Confirm a visually established new solid component, a component-diameter increase of at least 2 mm, or validated volumetric component growth.",
+          };
+        }
+        if (
+          noduleType === "part_solid" &&
+          solidComponentSizeMode === "lte3_unmeasured" &&
+          basis === "linear_ge2"
+        ) {
+          return {
+            Error:
+              "A categorical ≤3 mm / too-small-to-measure-reliably component cannot establish linear component growth; use a visually new-component state or validated volumetry.",
           };
         }
         growthBasis =
           basis === "new_component"
-            ? "A new measurable solid component developed"
+            ? "A new solid component is visually established on comparable CT; measure only if >3 mm"
             : basis === "linear_ge2"
               ? "Solid-component diameter increased by ≥2 mm on comparable CT"
               : "Solid-component growth established by validated volumetry on comparable CT under its reproducibility protocol";
@@ -966,11 +1124,11 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       if (subsolidTemporalState === "new_or_growing_solid_component") {
         recommendation = "Recharacterize and evaluate the nodule as part-solid";
         followUp =
-          "Measure the solid component and use the part-solid pathway; consider diagnostic review or resection case by case";
+          "If the solid component is >3 mm, measure its maximum long axis; otherwise use the categorical ≤3 mm / too-small-to-measure-reliably path. Then use the part-solid pathway and consider diagnostic review or resection case by case";
         rationale =
           "A nodule that develops a solid component no longer remains in the pure-ground-glass surveillance pathway.";
         decisionBoundary =
-          "Solid transformation changes the current morphology and requires separate component measurement.";
+          "Solid transformation changes the current morphology and requires separate component characterization, with measurement only when the component is >3 mm.";
       } else if (subsolidTemporalState === "pure_ggo_growth") {
         recommendation =
           "Case-specific thoracic review; consider resection or continued annual CT based on the growth pattern";
@@ -1060,7 +1218,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
             : "The solid component >8 mm crosses the escalation boundary; a short-term persistence assessment can still be clinically relevant because large transient components occur.";
     } else if (
       subsolidTemporalState === "persistent_stable" &&
-      solidSize < 6
+      solidComponentBelow6
     ) {
       recommendation =
         "Annual CT for at least 5 years while stable and the solid component remains <6 mm";
@@ -1077,7 +1235,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         "Fleischner Recommendation 4 and the subsolid table identify a persistent part-solid nodule with a solid component ≥6 mm as highly suspicious.";
       decisionBoundary =
         "Persistence is established and the solid component is ≥6 mm; the baseline 3–6-month confirmation step is not repeated.";
-    } else if (solidSize < 6) {
+    } else if (solidComponentBelow6) {
       recommendation = "CT at 3–6 months to determine persistence or resolution";
       followUp = "3–6 months";
       rationale =
@@ -1105,8 +1263,8 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         ? "≤3 mm category (unmeasured)"
         : `${size} mm`;
     const result = {
-      "Fleischner Applicability": "Applicable",
       Recommendation: recommendation,
+      "Fleischner Applicability": "Applicable",
       "Follow-up Interval": followUp,
       Rationale: rationale,
       "Decision Boundary": decisionBoundary,
@@ -1118,6 +1276,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         type: noduleType,
         overallLongAxis,
         overallShortAxis,
+        solidComponentSizeMode,
       }),
       "Guideline Scope":
         noduleType === "ground_glass" &&
@@ -1138,7 +1297,9 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       result["Risk Assessment"] =
         `Solid-nodule pathway uses clinician-selected ${highRisk ? "high risk (≥5%)" : "low risk (<5%)"}; the tool does not infer risk from isolated factors.`;
     }
-    if (solidSize !== null) {
+    if (solidComponentSizeMode === "lte3_unmeasured") {
+      result["Solid Component"] = "≤3 mm / too small to measure reliably";
+    } else if (solidSize !== null) {
       result["Solid Component"] = `${solidSize} mm`;
     }
     if (overallLongAxis !== null) {
@@ -1169,7 +1330,8 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
     } else if (
       lowerRecommendation.includes("pet/ct") ||
       lowerRecommendation.includes("tissue sampling") ||
-      lowerRecommendation.includes("resection")
+      lowerRecommendation.includes("resection") ||
+      lowerRecommendation.includes("highly suspicious")
     ) {
       result._severity = "danger";
     } else {

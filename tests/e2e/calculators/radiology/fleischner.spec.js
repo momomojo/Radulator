@@ -78,6 +78,7 @@ async function fillSubsolid(
     threshold,
     context,
     component,
+    componentMode,
     morphology,
     temporal = "Baseline examination or no adequate prior comparison",
     longAxis,
@@ -101,8 +102,12 @@ async function fillSubsolid(
     (numericSize >= 10 ||
       (type === "Part-solid nodule" && numericSize >= 6));
   if (needsAxes) {
+    const numericComponent = Number(component);
+    const componentForGeometry = Number.isFinite(numericComponent)
+      ? numericComponent
+      : numericSize;
     const resolvedLongAxis =
-      longAxis ?? Math.max(numericSize, Number(component ?? numericSize));
+      longAxis ?? Math.max(numericSize, componentForGeometry);
     const resolvedShortAxis =
       shortAxis ?? Math.max(1, 2 * numericSize - resolvedLongAxis);
     await fillInput(
@@ -116,11 +121,23 @@ async function fillSubsolid(
       String(resolvedShortAxis),
     );
   }
+  if (type === "Part-solid nodule" && size !== "lte3" && numericSize >= 6) {
+    const resolvedComponentMode =
+      componentMode ??
+      (component === "lte3"
+        ? "≤3 mm / too small to measure reliably — categorical; do not assign an exact size"
+        : ">3 mm — enter the maximum long-axis diameter");
+    await selectRadio(
+      page,
+      "Largest Solid Component Measurement",
+      resolvedComponentMode,
+    );
+  }
   await selectRadio(page, "Subsolid Nodule Comparison State", temporal);
   if (context) {
     await selectRadio(page, "Solitary 5 mm Subsolid-Nodule Context", context);
   }
-  if (component !== undefined) {
+  if (component !== undefined && component !== "lte3") {
     await fillInput(page, "Largest Solid Component", String(component));
   }
   if (morphology) {
@@ -255,6 +272,23 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await expect(results).not.toContainText("Follow-up Interval:");
   });
 
+  test("routes uncertain characterization without a table schedule", async ({
+    page,
+  }) => {
+    await selectRadio(page, "Fleischner 2017 Applicability", eligibleLabel);
+    await selectRadio(
+      page,
+      "Thin-Section Nodule Characterization",
+      "Characterization is uncertain",
+    );
+    const results = await calculate(page);
+    await expect(results).toContainText("Characterization uncertain");
+    await expect(results).toContainText(
+      "No Fleischner table schedule was generated",
+    );
+    await expect(results).not.toContainText("Follow-up Interval:");
+  });
+
   test("uses a categorical pathway instead of false precision at 3 mm or less", async ({
     page,
   }) => {
@@ -345,7 +379,9 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
       size: "5",
       context: "Selected suspicious subsolid nodule close to 6 mm",
     });
-    await expect(page.getByLabel("Largest Solid Component")).not.toBeVisible();
+    await expect(
+      page.getByLabel("Largest Solid Component", { exact: true }),
+    ).not.toBeVisible();
     const results = await calculate(page);
     await expect(results).toContainText("Consider CT at 2 and 4 years");
     await expect(results).toContainText(
@@ -633,7 +669,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await selectRadio(
       page,
       "Solid-Component Evolution Confirmation",
-      "A new measurable solid component developed",
+      "A new solid component is visually established on comparable CT; measure only if >3 mm",
     );
     await expect(
       page.getByRole("status", { name: "Calculator results" }),
@@ -687,6 +723,190 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await expect(results).toContainText(
       "PET/CT, biopsy, or resection is recommended",
     );
+  });
+
+  test("accepts a categorical small solid component without false precision", async ({
+    page,
+  }) => {
+    await selectEligible(page);
+    await selectRadio(page, "Selected Nodule Type", "Part-solid nodule");
+    await selectRadio(page, "Number of Nodules", "Single nodule");
+    await selectSize(page, "6");
+    await fillInput(page, "Overall Nodule Maximum Long Axis", "6");
+    await fillInput(page, "Overall Nodule Perpendicular Short Axis", "6");
+    await selectRadio(
+      page,
+      "Largest Solid Component Measurement",
+      "≤3 mm / too small to measure reliably — categorical; do not assign an exact size",
+    );
+    await expect(
+      page.getByLabel("Largest Solid Component", { exact: true }),
+    ).not.toBeVisible();
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "Persistent and stable after the recommended initial follow-up",
+    );
+    await selectRadio(
+      page,
+      "Particularly Suspicious Part-Solid Morphology",
+      "No particularly suspicious morphology",
+    );
+
+    const results = await calculate(page);
+    await expect(results).toContainText("Annual CT for at least 5 years");
+    await expect(results).toContainText(
+      "Solid Component: ≤3 mm / too small to measure reliably",
+    );
+    await expect(results).toContainText("may be unreliable");
+  });
+
+  test("escalates a visually new categorical component without accepting a linear-size claim", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "6",
+      component: "lte3",
+      morphology: "No particularly suspicious morphology",
+      temporal: "New or growing solid component",
+    });
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+    );
+    let results = await calculate(page);
+    await expect(results).toContainText(
+      "PET/CT, biopsy, or resection is recommended",
+    );
+    await expect(results).toContainText(
+      "Solid Component: ≤3 mm / too small to measure reliably",
+    );
+    await expect(results).toContainText("visually established");
+
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component diameter increased by ≥2 mm on comparable CT",
+    );
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot establish linear component growth",
+    );
+  });
+
+  test("requires reconfirmation after governing pathway changes", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "6",
+      component: "5",
+      morphology: "No particularly suspicious morphology",
+      temporal: "Persistent and stable after the recommended initial follow-up",
+    });
+
+    await selectRadio(page, "Number of Nodules", "Multiple nodules");
+    await expect(
+      page.getByRole("radio", {
+        name: "Persistent and stable after the recommended initial follow-up",
+      }),
+    ).not.toBeChecked();
+    await selectRadio(page, "Number of Nodules", "Single nodule");
+    await expect(
+      page.getByRole("radio", {
+        name: "No particularly suspicious morphology",
+      }),
+    ).not.toBeChecked();
+
+    await fillInput(page, "Selected Nodule Overall Size", "5");
+    await fillInput(page, "Selected Nodule Overall Size", "6");
+    await expect(page.getByLabel("Overall Nodule Maximum Long Axis")).toHaveValue(
+      "",
+    );
+    await expect(
+      page.getByLabel("Overall Nodule Perpendicular Short Axis"),
+    ).toHaveValue("");
+    await expect(
+      page.getByRole("radiogroup", {
+        name: "Largest Solid Component Measurement",
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("radio", {
+        name: ">3 mm — enter the maximum long-axis diameter",
+      }),
+    ).not.toBeChecked();
+
+    await selectRadio(page, "Selected Nodule Type", "Pure ground-glass nodule");
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "Interval growth while remaining pure ground-glass",
+    );
+    await selectRadio(
+      page,
+      "Pure-Ground-Glass Growth Confirmation",
+      "Average diameter increased by ≥2 mm on comparable CT",
+    );
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "Baseline examination or no adequate prior comparison",
+    );
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "Interval growth while remaining pure ground-glass",
+    );
+    await expect(
+      page.getByRole("radio", {
+        name: "Average diameter increased by ≥2 mm on comparable CT",
+      }),
+    ).not.toBeChecked();
+  });
+
+  test("renders a persistent component at least 6 mm as the primary danger result", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "12",
+      component: "6",
+      morphology: "No particularly suspicious morphology",
+      temporal: "Persistent and stable after the recommended initial follow-up",
+    });
+
+    const results = await calculate(page);
+    const primary = results.locator(":scope > div").first();
+    await expect(primary).toContainText("Recommendation:");
+    await expect(primary).toContainText("is highly suspicious");
+    await expect(primary).toHaveClass(/--result-danger-bg/);
+    await expect(primary).toHaveClass(/--result-danger-border/);
+  });
+
+  test("accepts validated volumetry for solid-component growth", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "12",
+      component: "8",
+      morphology: "No particularly suspicious morphology",
+      temporal: "New or growing solid component",
+    });
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component growth established by validated volumetry on comparable CT",
+    );
+
+    const results = await calculate(page);
+    await expect(results).toContainText(
+      "PET/CT, biopsy, or resection is recommended",
+    );
+    await expect(results).toContainText("validated volumetry");
   });
 
   test("validates a component against the actual overall long axis", async ({
@@ -751,7 +971,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await selectRadio(
       page,
       "Solid-Component Evolution Confirmation",
-      "A new measurable solid component developed",
+      "A new solid component is visually established on comparable CT; measure only if >3 mm",
     );
     results = await calculate(page);
     await expect(results).toContainText(
@@ -777,7 +997,9 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
       "Clinician-Estimated Malignancy Risk",
       "Low risk (<5%)",
     );
-    await expect(page.getByLabel("Largest Solid Component")).not.toBeVisible();
+    await expect(
+      page.getByLabel("Largest Solid Component", { exact: true }),
+    ).not.toBeVisible();
     await expect(
       page.getByRole("radio", {
         name: "Persistent and stable after the recommended initial follow-up",

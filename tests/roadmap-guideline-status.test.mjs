@@ -56,6 +56,13 @@ const roadmapFleischnerVectorIds = [
   "subsolid-missing-temporal-state-fails-closed",
   "categorical-lte3-solid-low-without-false-precision",
   "numeric-3-mm-requires-categorical-pathway",
+  "part-solid-categorical-lte3-component-avoids-false-precision",
+  "part-solid-categorical-new-component-escalates-without-false-precision",
+  "part-solid-categorical-linear-growth-claim-rejected",
+  "part-solid-measured-component-at-3-mm-rejected",
+  "part-solid-missing-component-mode-rejected",
+  "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
+  "uncertain-characterization-routes-without-table",
 ];
 
 for (const evidence of [

@@ -32,6 +32,7 @@
         "content_sha256": null,
         "reviewed_locators": [
           "Measurement recommendations",
+          "Solid-component measurement recommendation: measure when >3 mm; smaller component measurements may be unreliable",
           "Size-change recommendation: at least 2 mm average-diameter change and volumetric reproducibility",
           "Figures 1-6",
           "Figures 12-17"
@@ -79,12 +80,13 @@
         "id": "fleischner-2017-characterization-and-ipln",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
         "source_locator": "General Recommendations and Figures 1-5; Perifissural Nodules section",
-        "fact": "Table use requires adequate thin-section characterization; definitively benign fat or calcification and typical intrapulmonary-lymph-node morphology route away without an unnecessary surveillance schedule.",
+        "fact": "Table use requires adequate thin-section characterization; definitively benign fat or calcification and typical intrapulmonary-lymph-node morphology route away without an unnecessary surveillance schedule, and uncertain characterization fails closed without a table schedule.",
         "vector_ids": [
           "missing-characterization-fails-closed",
           "definitively-benign-fat-or-calcification-routes-without-table",
           "typical-intrapulmonary-lymph-node-routes-without-table",
-          "thick-section-characterization-fails-closed"
+          "thick-section-characterization-fails-closed",
+          "uncertain-characterization-routes-without-table"
         ]
       },
       {
@@ -167,8 +169,8 @@
       {
         "id": "fleischner-2017-part-solid-component-escalation",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-        "source_locator": "Recommendation 4: baseline persistence assessment; persistent component thresholds; growth, suspicious morphology, or component larger than 8 mm escalation",
-        "fact": "For solitary part-solid nodules at least 6 mm, baseline imaging first assesses persistence, persistent stable components below 6 mm enter annual follow-up for at least 5 years, persistent components at least 6 mm are highly suspicious, and a growing component, particularly suspicious morphology, or component larger than 8 mm triggers diagnostic evaluation options.",
+        "source_locator": "Recommendation 4: baseline persistence assessment; persistent component thresholds; new or growing component, suspicious morphology, or component larger than 8 mm escalation",
+        "fact": "For solitary part-solid nodules ≥6 mm, baseline imaging assesses persistence. Persistent stable components <6 mm enter annual follow-up for at least 5 years; persistent components ≥6 mm are highly suspicious. A visually established new component, established growth, suspicious morphology, or component >8 mm triggers diagnostic evaluation options.",
         "vector_ids": [
           "single-part-solid-6-component-5-baseline-persistence-check",
           "single-part-solid-6-component-5-persistent-uses-annual-follow-up",
@@ -178,7 +180,10 @@
           "single-part-solid-10-component-6-concern-escalates",
           "single-part-solid-10-component-8-no-concern-consider-ct",
           "single-part-solid-12-component-8-growing-escalates",
+          "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
           "single-part-solid-12-component-9-escalates-by-size",
+          "part-solid-categorical-lte3-component-avoids-false-precision",
+          "part-solid-categorical-new-component-escalates-without-false-precision",
           "part-solid-component-6-to-8-missing-concern-state-rejected",
           "part-solid-uncertain-morphology-fails-closed",
           "solid-component-unconfirmed-change-cannot-trigger-escalation"
@@ -198,8 +203,8 @@
       {
         "id": "fleischner-2017-measurement-contract",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
-        "source_locator": "Measurement recommendations and Figures 1-4 and 12-17: small-nodule average, at-least-10-mm two-axis record, largest solid component, lung windows, and established size change",
-        "fact": "Use lung windows and whole millimeters; average orthogonal diameters; record both axes at ≥10 mm and for part-solid geometry; separately record the largest solid-component long axis. A component may exceed the rounded average, never the actual overall long axis. Linear growth requires ≥2 mm average-diameter change on comparable CT; validated volumetry follows its reproducibility protocol.",
+        "source_locator": "Measurement recommendations and Figures 1-4 and 12-17: small-nodule average, at-least-10-mm two-axis record, >3-mm solid-component measurement and smaller-component unreliability, lung windows, and established size change",
+        "fact": "Use lung windows and whole mm; average orthogonal diameters. Record both axes for ≥10-mm and part-solid nodules. Measure a solid component only when >3 mm; otherwise use a categorical ≤3-mm path. It cannot prove linear growth, but a new component may be visually established. A component may exceed rounded average, never actual long axis. Linear growth needs ≥2 mm; validated volumetry is accepted.",
         "vector_ids": [
           "fractional-overall-size-rejected",
           "zero-overall-size-rejected",
@@ -207,6 +212,11 @@
           "ten-mm-legacy-axis-attestation-cannot-bypass-numeric-axes",
           "single-solid-10-valid-axes-accepted",
           "single-solid-10-axes-average-mismatch-rejected",
+          "part-solid-categorical-linear-growth-claim-rejected",
+          "part-solid-categorical-lte3-component-avoids-false-precision",
+          "part-solid-categorical-new-component-escalates-without-false-precision",
+          "part-solid-measured-component-at-3-mm-rejected",
+          "part-solid-missing-component-mode-rejected",
           "part-solid-missing-component-rejected",
           "part-solid-zero-component-rejected",
           "part-solid-negative-component-rejected",
@@ -218,7 +228,8 @@
           "part-solid-short-axis-greater-than-long-rejected",
           "pure-ground-glass-sub2mm-change-cannot-claim-growth",
           "solid-component-unconfirmed-change-cannot-trigger-escalation",
-          "single-ground-glass-validated-volumetric-growth-accepted"
+          "single-ground-glass-validated-volumetric-growth-accepted",
+          "single-part-solid-12-component-8-validated-volumetric-growth-escalates"
         ]
       },
       {
@@ -295,9 +306,14 @@
         "negative-overall-size-rejected",
         "numeric-3-mm-requires-categorical-pathway",
         "part-solid-axes-average-mismatch-rejected",
+        "part-solid-categorical-linear-growth-claim-rejected",
+        "part-solid-categorical-lte3-component-avoids-false-precision",
+        "part-solid-categorical-new-component-escalates-without-false-precision",
         "part-solid-component-6-to-8-missing-concern-state-rejected",
         "part-solid-component-exceeding-overall-long-axis-rejected",
         "part-solid-fractional-component-rejected",
+        "part-solid-measured-component-at-3-mm-rejected",
+        "part-solid-missing-component-mode-rejected",
         "part-solid-missing-component-rejected",
         "part-solid-missing-overall-long-axis-rejected",
         "part-solid-negative-component-rejected",
@@ -320,6 +336,7 @@
         "single-part-solid-12-component-6-baseline-persistence-check",
         "single-part-solid-12-component-6-persistent-is-highly-suspicious",
         "single-part-solid-12-component-8-growing-escalates",
+        "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
         "single-part-solid-12-component-9-escalates-by-size",
         "single-part-solid-5-no-routine-follow-up",
         "single-part-solid-5-selected-suspicious-option-without-component",
@@ -344,10 +361,11 @@
         "thick-section-characterization-fails-closed",
         "typical-intrapulmonary-lymph-node-routes-without-table",
         "uncertain-applicability-fails-closed",
+        "uncertain-characterization-routes-without-table",
         "under-35-routes-away-without-schedule",
         "zero-overall-size-rejected"
       ],
-      "reviewed_vectors_sha256": "c5601d60b76951af5abd097d24681dd29d174c4d162555e5d4cd227ab0ef7a47"
+      "reviewed_vectors_sha256": "c50cc61eb5fc6626986dea76e2ac1b4cf09cca378b40349e0741774a92127061"
     },
     "limitations": [
       "CI verifies Crossref metadata and NLM table fragments, not RSNA full-text content.",
@@ -359,10 +377,10 @@
   "review": {
     "schema": "radulator-independent-source-review/v1",
     "reviewer_role": "independent-clinical-source-reviewer",
-    "reviewer_revision": "fleischner-source-review/2026-08-30-r6",
-    "reviewed_at": "2026-08-30T20:19:37Z",
+    "reviewer_revision": "fleischner-source-review/2026-08-30-r7",
+    "reviewed_at": "2026-08-30T21:04:45Z",
     "disposition": "SOURCE_INTERPRETATION_APPROVED",
-    "payload_sha256": "79de3bae7c63934b444c4d147d9e86c41bf7ceffd3b572fce82cb206810c3c4b",
+    "payload_sha256": "bbc8d5cd2c33a93a8632324482587f9689e0536994efe5f9faaf89196f96582a",
     "release_authority": "none"
   }
 }
