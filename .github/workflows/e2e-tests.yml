@@ -113,6 +113,7 @@ jobs:
           npm run test:bosniak-source
           npm run test:hermes-guideline-registry
           npm run test:birads-fda-source
+          npm run test:contrast-source
           node tests/roadmap-guideline-status.test.mjs
 
       - name: Build application
