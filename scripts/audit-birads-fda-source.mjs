@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// Historical filename retained for workflow compatibility during the temporary
+// 2013 rollback. This audit is ACR-specific and makes no FDA/MQSA claim.
+
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -7,39 +10,80 @@ import process from "node:process";
 import { BIRADS } from "../src/components/calculators/BIRADS.jsx";
 
 const FIXTURE_PATH = "tests/fixtures/compute/birads.json";
-const SOURCE_HOST = "www.fda.gov";
-const SOURCES = Object.freeze({
-  finalRule:
-    "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
-  faq:
-    "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
-  alternative25:
-    "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
-  alternative12:
-    "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement",
-});
+const SOURCE_HOST = "edge.sitecorecloud.io";
+const SOURCE_PREFIX =
+  "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/";
+const OFFICIAL_ARTIFACTS = Object.freeze([
+  {
+    id: "fifth-edition-quick-reference",
+    url: `${SOURCE_PREFIX}BIRADS-Poster.pdf`,
+    bytes: 621_351,
+    sha256: "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
+  },
+  {
+    id: "mammography-summary",
+    url: `${SOURCE_PREFIX}BI-RADS-Summary-Form-Mammography.pdf`,
+    bytes: 64_921,
+    sha256: "98d88679deb266ac030de0d96d9f15a5fcde3b0a1a4d6a7aeb29aa49b85daae6",
+  },
+  {
+    id: "ultrasound-summary",
+    url: `${SOURCE_PREFIX}BI-RADS-Summary-Form-Ultrasound.pdf`,
+    bytes: 67_317,
+    sha256: "38f24a245a9ea992f5f29e221f6000eb4a60c9d8d78f4a3dce68130179adec1d",
+  },
+  {
+    id: "mri-summary",
+    url: `${SOURCE_PREFIX}BI-RADS-Summary-Form-MRI.pdf`,
+    bytes: 63_321,
+    sha256: "75900dbd050ec22266db01cf5e18a8caae1e07e0d5e5f819195af7cf0b569dd9",
+  },
+]);
 const BOUND_VECTOR_IDS = Object.freeze([
-  "category-3",
-  "category-4",
-  "category-5",
-  "incomplete-prior-comparison",
-  "post-procedure-marker",
+  "missing-modality-fails-closed",
+  "invalid-finding-type-fails-closed",
+  "mammography-incomplete",
+  "ultrasound-incomplete",
+  "mri-incomplete",
+  "known-biopsy-proven-malignancy",
+  "negative-finding-requires-radiologist-assessment",
+  "negative-screening",
+  "benign-finding-requires-radiologist-assessment",
+  "benign-finding",
+  "typically-benign-calcifications-require-radiologist-assessment",
+  "probably-benign-mass",
+  "invalid-active-descriptor-fails-closed",
+  "low-suspicion-mass",
+  "moderate-suspicion-calcifications",
+  "high-suspicion-spiculated-mass",
+  "highly-suggestive-linear-calcifications",
+  "category-5-inclusive-95-boundary",
+  "probably-benign-selection-does-not-infer-from-descriptors",
+  "screening-mammography-probably-benign-no-uncited-warning",
+  "hidden-calcification-distribution-does-not-leak",
+  "developing-asymmetry",
+  "associated-features",
+  "ultrasound-associated-features-source-exact",
+  "mri-rejects-category-4-subdivision",
+  "ultrasound-calcifications-use-unsplit-category-4",
+  "ultrasound-mass-ignores-stale-mammography-density",
+  "ultrasound-suspicious-category-4",
 ]);
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-async function fetchOfficialHtml(url) {
-  const expected = new URL(url);
-  assert.equal(expected.protocol, "https:", `${url}: source must use HTTPS`);
-  assert.equal(expected.hostname, SOURCE_HOST, `${url}: source must be an FDA host`);
+async function fetchOfficialArtifact(artifact) {
+  const expected = new URL(artifact.url);
+  assert.equal(expected.protocol, "https:");
+  assert.equal(expected.hostname, SOURCE_HOST);
 
   let lastFailure = "unknown retrieval failure";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const response = await fetch(url, {
-        headers: { "user-agent": "Radulator-BIRADS-FDA-source-audit/1" },
+      const response = await fetch(artifact.url, {
+        headers: { "user-agent": "Radulator-BIRADS-legacy-source-audit/1" },
         redirect: "follow",
         signal: AbortSignal.timeout(30_000),
       });
@@ -49,18 +93,27 @@ async function fetchOfficialHtml(url) {
         if (response.status !== 429 && response.status < 500) break;
       } else {
         const finalUrl = new URL(response.url);
-        assert.equal(finalUrl.protocol, "https:", `${url}: redirect left HTTPS`);
-        assert.equal(finalUrl.hostname, SOURCE_HOST, `${url}: redirect left FDA`);
-        assert.equal(finalUrl.pathname, expected.pathname, `${url}: unexpected redirect path`);
+        assert.equal(finalUrl.protocol, "https:", "artifact redirect left HTTPS");
+        assert.equal(finalUrl.hostname, SOURCE_HOST, "artifact redirect left the sealed host");
+        assert.equal(finalUrl.pathname, expected.pathname, "artifact redirect changed the sealed path");
         assert.match(
           response.headers.get("content-type") ?? "",
-          /^text\/html\b/i,
-          `${url}: source must be HTML`,
+          /^application\/pdf\b/i,
+          "official ACR artifact must be a PDF",
         );
         const bytes = Buffer.from(await response.arrayBuffer());
-        assert.ok(bytes.length > 1_000, `${url}: source response is unexpectedly small`);
-        assert.ok(bytes.length <= 2_000_000, `${url}: source response is unexpectedly large`);
-        return { bytes, html: bytes.toString("utf8"), url };
+        assert.equal(
+          bytes.length,
+          artifact.bytes,
+          `${artifact.id}: official ACR artifact size drifted`,
+        );
+        assert.equal(
+          sha256(bytes),
+          artifact.sha256,
+          `${artifact.id}: official ACR artifact digest drifted`,
+        );
+        assert.equal(bytes.subarray(0, 5).toString("ascii"), "%PDF-", "artifact lacks a PDF header");
+        return bytes;
       }
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error);
@@ -69,53 +122,14 @@ async function fetchOfficialHtml(url) {
       await new Promise((resolve) => setTimeout(resolve, attempt * 500));
     }
   }
-  assert.fail(`${url}: official FDA retrieval failed after 3 attempts (${lastFailure})`);
-}
-
-function decodeHtmlEntities(value) {
-  const named = new Map([
-    ["amp", "&"],
-    ["apos", "'"],
-    ["gt", ">"],
-    ["lt", "<"],
-    ["nbsp", " "],
-    ["quot", '"'],
-  ]);
-  return value
-    .replace(/&#x([a-f0-9]+);/gi, (_, digits) =>
-      String.fromCodePoint(Number.parseInt(digits, 16)),
-    )
-    .replace(/&#([0-9]+);/g, (_, digits) => String.fromCodePoint(Number(digits)))
-    .replace(/&([a-z]+);/gi, (entity, name) => named.get(name.toLowerCase()) ?? entity);
-}
-
-function visibleText(html) {
-  return decodeHtmlEntities(
-    html
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " "),
-  )
-    .normalize("NFKC")
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-
-function requireAll(text, label, fragments) {
-  for (const fragment of fragments) {
-    assert.ok(text.includes(fragment), `${label}: official FDA text lacks ${JSON.stringify(fragment)}`);
-  }
+  assert.fail(
+    `${artifact.id}: official ACR retrieval failed after 3 attempts (${lastFailure})`,
+  );
 }
 
 function assertFixtureExpectation(result, expectation, vectorId) {
-  assert.equal(
-    Object.prototype.hasOwnProperty.call(result, "Error"),
-    expectation.noError === false,
-    `${vectorId}: Error state`,
-  );
+  const hasError = Object.prototype.hasOwnProperty.call(result, "Error");
+  assert.equal(hasError, expectation.noError === false, `${vectorId}: Error state`);
   for (const field of expectation.fields) {
     assert.ok(
       Object.prototype.hasOwnProperty.call(result, field.key),
@@ -124,7 +138,8 @@ function assertFixtureExpectation(result, expectation, vectorId) {
     const actual = String(result[field.key]);
     if (Object.prototype.hasOwnProperty.call(field, "equals")) {
       assert.equal(actual, String(field.equals), `${vectorId}: ${field.key}`);
-    } else {
+    }
+    if (Object.prototype.hasOwnProperty.call(field, "includes")) {
       assert.ok(
         actual.includes(String(field.includes)),
         `${vectorId}: ${field.key} lacks ${JSON.stringify(field.includes)}`,
@@ -133,101 +148,138 @@ function assertFixtureExpectation(result, expectation, vectorId) {
   }
 }
 
-const fetched = Object.fromEntries(
-  await Promise.all(
-    Object.entries(SOURCES).map(async ([key, url]) => [key, await fetchOfficialHtml(url)]),
-  ),
+const sourceBytes = await Promise.all(
+  OFFICIAL_ARTIFACTS.map((artifact) => fetchOfficialArtifact(artifact)),
 );
-const text = Object.fromEntries(
-  Object.entries(fetched).map(([key, source]) => [key, visibleText(source.html)]),
+assert.equal(BIRADS.name, "BI-RADS Assessment Calculator (Legacy 2013)");
+assert.equal(
+  BIRADS.guidelineVersion,
+  "Legacy ACR BI-RADS 5th Ed. (2013) with public 2025 assessment-summary constraints",
 );
+assert.match(BIRADS.info.text, /Temporary legacy calculator/);
+assert.match(BIRADS.info.text, /does not implement the 2025 sixth edition/);
+assert.match(BIRADS.info.text, /radiologist selects the assessment level/);
+for (const artifact of OFFICIAL_ARTIFACTS) {
+  assert.ok(
+    BIRADS.refs.some((reference) => reference.u === artifact.url),
+    `${artifact.id}: calculator references must expose the exact official ACR artifact`,
+  );
+}
 
-requireAll(text.faq, "MQSA FAQ seven-day rule", [
-  "suspicious",
-  "highly suggestive of malignancy",
-  "written summary of the results to the patient within seven calendar days of the final interpretation",
-]);
-requireAll(text.finalRule, "MQSA final-rule provider and patient communication", [
-  'final assessment category of "suspicious" or "highly suggestive of malignancy,"',
-  "mammography report is provided to the health care provider",
-  "patient lay summary is provided to the patient within 7 calendar days of the date the mammogram was interpreted",
-]);
-requireAll(text.faq, "MQSA FAQ self-referred pathway", [
-  "facilities must have a system for referring such patients to a healthcare provider when clinically indicated",
-  "probably benign",
-  "suspicious",
-  "highly suggestive of malignancy",
-]);
-requireAll(text.finalRule, "MQSA final-rule prior-comparison follow-up", [
-  '"incomplete: need prior mammograms for comparison,"',
-  "follow-up report with a final overall assessment within 30 calendar days of the initial report",
-  "regardless of whether comparison views are obtained",
-]);
-requireAll(text.alternative25, "MQSA Alternative Standard #25", [
-  "alternative standard #25",
-  "incomplete: need additional imaging evaluation",
-  "incomplete: need prior mammograms for comparison",
-  "follow-up report issued within 30 calendar days",
-]);
-requireAll(text.alternative12, "MQSA Alternative Standard #12", [
-  "alternative standard #12",
-  "post procedure mammograms for marker placement",
-  "can only be used for a post procedure mammogram to confirm the deployment and position of a breast tissue marker",
-]);
-
-const runtime = Object.freeze({
-  category3: BIRADS.compute({ assessment: "3" }),
-  category4: BIRADS.compute({ assessment: "4" }),
-  category5: BIRADS.compute({ assessment: "5" }),
-  priorComparison: BIRADS.compute({ assessment: "0_priors" }),
-  markerPlacement: BIRADS.compute({ assessment: "post_marker" }),
+const modality = BIRADS.fields.find((field) => field.id === "modality");
+assert.deepEqual(
+  modality.opts.map((option) => option.value),
+  ["mammography", "ultrasound", "mri"],
+  "legacy workflow must retain all three source modalities",
+);
+const calcMorphology = BIRADS.fields.find((field) => field.id === "calc_morphology");
+assert.ok(
+  calcMorphology.opts.some((option) => option.value === "typically_benign"),
+  "legacy workflow must distinguish the official typically-benign morphology group",
+);
+const findingType = BIRADS.fields.find((field) => field.id === "finding_type");
+const calcificationOption = findingType.opts.find(
+  (option) => option.value === "calcifications",
+);
+assert.equal(calcificationOption.showIf({ modality: "mammography" }), true);
+assert.equal(calcificationOption.showIf({ modality: "ultrasound" }), true);
+assert.equal(calcificationOption.showIf({ modality: "mri" }), false);
+const architecturalDistortionOption = findingType.opts.find(
+  (option) => option.value === "architectural_distortion",
+);
+assert.equal(architecturalDistortionOption.showIf({ modality: "mammography" }), true);
+assert.equal(architecturalDistortionOption.showIf({ modality: "ultrasound" }), true);
+assert.equal(architecturalDistortionOption.showIf({ modality: "mri" }), false);
+const associatedFeaturesOption = findingType.opts.find(
+  (option) => option.value === "associated_features",
+);
+assert.equal(associatedFeaturesOption.label, "Associated features only");
+const suspicion = BIRADS.fields.find((field) => field.id === "suspicion_level");
+const category4A = suspicion.opts.find(
+  (option) => option.value === "low_suspicion",
+);
+const category4B = suspicion.opts.find(
+  (option) => option.value === "moderate_suspicion",
+);
+const category4C = suspicion.opts.find(
+  (option) => option.value === "high_suspicion",
+);
+const mriCategory4 = suspicion.opts.find(
+  (option) => option.value === "suspicious",
+);
+assert.equal(category4A.showIf({ modality: "mammography", finding_type: "mass" }), true);
+assert.equal(category4A.showIf({ modality: "ultrasound", finding_type: "mass" }), false);
+assert.equal(category4A.showIf({ modality: "mri", finding_type: "mass" }), false);
+assert.equal(category4B.showIf({ modality: "mammography", finding_type: "mass" }), true);
+assert.equal(category4B.showIf({ modality: "ultrasound", finding_type: "mass" }), false);
+assert.equal(category4B.showIf({ modality: "mri", finding_type: "mass" }), false);
+assert.equal(category4C.showIf({ modality: "mammography", finding_type: "mass" }), true);
+assert.equal(category4C.showIf({ modality: "ultrasound", finding_type: "mass" }), false);
+assert.equal(category4C.showIf({ modality: "mri", finding_type: "mass" }), false);
+assert.equal(mriCategory4.showIf({ modality: "mammography", finding_type: "mass" }), false);
+assert.equal(mriCategory4.showIf({ modality: "ultrasound", finding_type: "mass" }), true);
+assert.equal(mriCategory4.showIf({ modality: "mri", finding_type: "mass" }), true);
+const staleHiddenDescriptorResult = BIRADS.compute({
+  modality: "mammography",
+  study_context: "diagnostic",
+  additional_needed: "no",
+  finding_type: "mass",
+  mass_shape: "oval",
+  mass_margin: "circumscribed",
+  mass_density: "equal",
+  calc_morphology: "fine_linear",
+  calc_distribution: "linear",
+  suspicion_level: "probably_benign",
 });
-
-for (const [label, result] of [
-  ["category 4", runtime.category4],
-  ["category 5", runtime.category5],
-]) {
-  requireAll(String(result["U.S. reporting requirement"]).toLowerCase(), label, [
-    "mammography report to the health care provider",
-    "patient lay summary to the patient",
-    "within seven calendar days of interpretation",
-  ]);
-}
-for (const [label, result] of [
-  ["category 3", runtime.category3],
-  ["category 4", runtime.category4],
-  ["category 5", runtime.category5],
-]) {
-  requireAll(String(result["U.S. self-referred patient pathway"]).toLowerCase(), label, [
-    "patients who do not have a health care provider",
-    "must maintain a referral system",
-  ]);
-}
-requireAll(
-  String(runtime.priorComparison["U.S. reporting requirement"]).toLowerCase(),
-  "prior-comparison runtime",
-  [
-    "within 30 calendar days",
-    "even when comparison images cannot be obtained",
-    "alternative standard #25",
-    '"incomplete: need additional imaging evaluation"',
-  ],
-);
 assert.equal(
-  runtime.markerPlacement["MQSA category"],
-  "Post-Procedure Mammogram for Marker Placement",
+  Object.prototype.hasOwnProperty.call(staleHiddenDescriptorResult, "Decision Check"),
+  false,
+  "hidden calcification descriptors must not alter an active mass assessment",
 );
-requireAll(String(runtime.markerPlacement["Next step"]).toLowerCase(), "marker runtime", [
-  "post-procedure mammogram",
-  "document marker deployment and position",
-]);
+const screeningCategory3Result = BIRADS.compute({
+  modality: "mammography",
+  study_context: "screening",
+  additional_needed: "no",
+  finding_type: "mass",
+  mass_shape: "oval",
+  mass_margin: "circumscribed",
+  mass_density: "equal",
+  suspicion_level: "probably_benign",
+});
 assert.equal(
-  runtime.markerPlacement["BI-RADS numbering"],
-  "None — this FDA MQSA assessment is not a numbered BI-RADS category",
+  Object.prototype.hasOwnProperty.call(screeningCategory3Result, "Decision Check"),
+  false,
+  "source audit must reject an uncited screening-only assessment warning",
 );
+const descriptorInferenceResult = BIRADS.compute({
+  modality: "mammography",
+  study_context: "diagnostic",
+  additional_needed: "no",
+  finding_type: "mass",
+  mass_shape: "irregular",
+  mass_margin: "spiculated",
+  mass_density: "high",
+  suspicion_level: "probably_benign",
+});
+assert.equal(
+  Object.prototype.hasOwnProperty.call(descriptorInferenceResult, "Decision Check"),
+  false,
+  "descriptors must not infer or contradict the radiologist-assigned category",
+);
+const sourceLiteralCategory0 = BIRADS.compute({
+  modality: "ultrasound",
+  study_context: "diagnostic",
+  additional_needed: "yes",
+});
+assert.deepEqual(sourceLiteralCategory0, {
+  "BI-RADS Category": "0 - Incomplete",
+  Management: "Recall for additional imaging",
+  _severity: "info",
+});
 
 const fixture = JSON.parse(await readFile(FIXTURE_PATH, "utf8"));
 assert.equal(fixture.calculatorId, "birads");
+assert.equal(fixture.version, "legacy-fifth-edition-2013-temporary-v2");
 const casesById = new Map(fixture.cases.map((testCase) => [testCase.id, testCase]));
 assert.equal(casesById.size, fixture.cases.length, "BI-RADS fixture IDs must be unique");
 for (const vectorId of BOUND_VECTOR_IDS) {
@@ -237,24 +289,32 @@ for (const vectorId of BOUND_VECTOR_IDS) {
 }
 
 const audit = {
-  schema: "radulator-birads-fda-source-audit/v1",
-  source_authority: "U.S. Food and Drug Administration",
+  schema: "radulator-birads-legacy-source-audit/v2",
+  source_authority: "American College of Radiology",
   source_host: SOURCE_HOST,
-  sources: Object.values(fetched).map(({ bytes, url }) => ({
-    url,
-    bytes: bytes.length,
-    sha256: sha256(bytes),
+  sources: OFFICIAL_ARTIFACTS.map((artifact, index) => ({
+    id: artifact.id,
+    url: artifact.url,
+    bytes: sourceBytes[index].length,
+    sha256: sha256(sourceBytes[index]),
   })),
   source_claims: {
-    alternative_standard_12_marker_placement: true,
-    alternative_standard_25_additional_imaging: true,
-    prior_comparison_follow_up_within_30_days: true,
-    provider_report_and_patient_summary_within_7_days: true,
-    self_referred_referral_system: true,
+    assessment_categories_0_through_6: true,
+    category_0_source_literal_management: true,
+    descriptor_to_category_inference_absent: true,
+    fifth_edition_bounded_descriptor_groups: true,
+    hidden_modality_descriptors_do_not_leak: true,
+    mammography_ultrasound_mri_scope: true,
+    modality_input_required: true,
+    source_literal_probability_endpoints: true,
+    source_literal_management_wording: true,
+    v2025_modality_specific_category_4_structure: true,
   },
   bound_vector_ids: [...BOUND_VECTOR_IDS],
   runtime_vector_match: true,
   fixture_vector_match: true,
+  temporary_rollback: true,
+  full_manual_validation_complete: false,
   source_bytes_committed: false,
 };
 
@@ -262,6 +322,6 @@ if (process.argv.includes("--json")) {
   process.stdout.write(`${JSON.stringify(audit)}\n`);
 } else {
   console.log(
-    "BI-RADS FDA source audit passed: 4 official pages, 5 source claims, 5 executable vectors.",
+    `BI-RADS legacy source audit passed: ${OFFICIAL_ARTIFACTS.length} digest-pinned ACR artifacts and ${BOUND_VECTOR_IDS.length} executable vectors.`,
   );
 }
