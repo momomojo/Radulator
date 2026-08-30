@@ -393,6 +393,22 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       ["https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/"],
       `${label}.source_audit.source_urls`,
     );
+    assert.equal(audit.raw_source_bytes, 276155, `${label}.source_audit.raw_source_bytes`);
+    assert.equal(audit.canonical_source_bytes, 276075, `${label}.source_audit.canonical_source_bytes`);
+    assert.equal(
+      audit.canonical_source_sha256,
+      "fccc2f40b9ae8a85fcd7dbc093886be078a554db8f425322db6cffc3bd2499b0",
+      `${label}.source_audit.canonical_source_sha256`,
+    );
+    assert.deepEqual(audit.canonicalization, [
+      "replace ncbi_phid value with [volatile]",
+      "replace csrfmiddlewaretoken value with [volatile]",
+    ]);
+    assert.deepEqual(audit.enforced_source_locators, {
+      population: "Abstract > Patients and Methods (abstract1/sec2)",
+      equation: "RESULTS (sec16), paragraph immediately before Table 2 (T2)",
+      boundaries: "RESULTS (sec16), paragraph immediately after Table 2 (T2)",
+    });
     assert.deepEqual(audit.vector_ids, [
       "published-representative-grade-1",
       "grade-1-upper-boundary",

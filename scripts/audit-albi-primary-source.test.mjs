@@ -29,8 +29,21 @@ assert.equal(
   audit.source_url,
   "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/",
 );
-assert.match(audit.source_sha256, /^[a-f0-9]{64}$/);
-assert.ok(audit.source_bytes > 100_000);
+assert.equal(audit.source_bytes, 276_155);
+assert.equal(audit.canonical_source_bytes, 276_075);
+assert.equal(
+  audit.canonical_source_sha256,
+  "fccc2f40b9ae8a85fcd7dbc093886be078a554db8f425322db6cffc3bd2499b0",
+);
+assert.deepEqual(audit.canonicalization, [
+  "replace ncbi_phid value with [volatile]",
+  "replace csrfmiddlewaretoken value with [volatile]",
+]);
+assert.deepEqual(audit.enforced_source_locators, {
+  population: "Abstract > Patients and Methods (abstract1/sec2)",
+  equation: "RESULTS (sec16), paragraph immediately before Table 2 (T2)",
+  boundaries: "RESULTS (sec16), paragraph immediately after Table 2 (T2)",
+});
 assert.deepEqual(audit.source_claims, {
   bilirubin_transform: "log10",
   bilirubin_coefficient: 0.66,
