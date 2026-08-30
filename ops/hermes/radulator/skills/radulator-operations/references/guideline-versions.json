@@ -121,7 +121,9 @@
             "ultrasound-incomplete",
             "mri-incomplete",
             "known-biopsy-proven-malignancy",
+            "negative-finding-requires-radiologist-assessment",
             "negative-screening",
+            "benign-finding-requires-radiologist-assessment",
             "benign-finding",
             "typically-benign-calcifications-require-radiologist-assessment",
             "probably-benign-mass",
@@ -131,7 +133,7 @@
             "highly-suggestive-linear-calcifications",
             "category-5-inclusive-95-boundary",
             "probably-benign-selection-warns-on-suspicious-mass-descriptors",
-            "screening-mammography-probably-benign-needs-diagnostic-workup",
+            "screening-mammography-probably-benign-no-uncited-warning",
             "developing-asymmetry",
             "associated-features",
             "mri-rejects-category-4-subdivision",
@@ -147,7 +149,7 @@
             "source_locator": "BI-RADS overview: standardized terminology, report organization, assessment structure, and classification across mammography, ultrasound, and MRI",
             "fact": "The temporary calculator retains explicit mammography, ultrasound, and MRI workflows and returns a structured final assessment output selected by the radiologist.",
             "dimensions": ["scope", "classification", "output"],
-            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete"]
+            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-finding-requires-radiologist-assessment", "benign-finding-requires-radiologist-assessment"]
           },
           {
             "id": "acr-fifth-edition-descriptor-groups",
@@ -165,16 +167,16 @@
             "source_locator": "Quick Reference footer, BI-RADS assessment categories 0-6 and mammography/ultrasound 4A-4C labels",
             "fact": "The executable outputs preserve assessment labels 0-6, expose mammography Category 4A-4C, and fail closed when an ultrasound or MRI input tries to use those subdivisions.",
             "dimensions": ["version", "classification", "output"],
-            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-screening", "benign-finding", "probably-benign-mass", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "known-biopsy-proven-malignancy", "mri-rejects-category-4-subdivision"]
+            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-finding-requires-radiologist-assessment", "negative-screening", "benign-finding-requires-radiologist-assessment", "benign-finding", "probably-benign-mass", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "known-biopsy-proven-malignancy", "mri-rejects-category-4-subdivision"]
           },
           {
             "id": "acr-mammography-assessment-boundaries-and-management",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
             "source_sha256": "98d88679deb266ac030de0d96d9f15a5fcde3b0a1a4d6a7aeb29aa49b85daae6",
             "source_locator": "Mammography Summary Form, Assessment Categories table: categories 1-6, management, and likelihood endpoints",
-            "fact": "Mammography outputs use routine screening for categories 1-2, 6-month follow-up or surveillance for category 3, tissue diagnosis for categories 4-5, source-literal likelihood endpoints, and the printed 4B/4C overlap at exactly 50% without normalizing it.",
+            "fact": "Mammography outputs use routine screening for Categories 1-2, 6-month follow-up or surveillance for 3, tissue diagnosis for 4-5, and surgeon/oncologist follow-up with definitive local therapy (usually surgery) when appropriate for 6. They preserve source-literal likelihood endpoints and the printed 4B/4C overlap at 50%.",
             "dimensions": ["classification", "threshold", "management", "output"],
-            "vector_ids": ["negative-screening", "probably-benign-mass", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "category-5-inclusive-95-boundary", "known-biopsy-proven-malignancy"]
+            "vector_ids": ["negative-screening", "probably-benign-mass", "screening-mammography-probably-benign-no-uncited-warning", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "category-5-inclusive-95-boundary", "known-biopsy-proven-malignancy"]
           },
           {
             "id": "acr-ultrasound-assessment-boundaries-and-management",

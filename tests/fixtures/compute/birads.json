@@ -52,13 +52,21 @@
         "fields": [
           { "key": "BI-RADS Category", "equals": "6 - Known Biopsy-Proven Malignancy" },
           { "key": "Management", "includes": "surgeon and/or oncologist" },
-          { "key": "Management", "includes": "definitive local therapy" }
+          { "key": "Management", "includes": "definitive local therapy (usually surgery) when clinically appropriate" }
         ]
       }
     },
     {
-      "id": "negative-screening",
+      "id": "negative-finding-requires-radiologist-assessment",
       "inputs": { "modality": "mammography", "study_context": "screening", "additional_needed": "no", "finding_type": "negative" },
+      "expect": {
+        "noError": false,
+        "fields": [{ "key": "Error", "includes": "select the radiologist-assigned assessment" }]
+      }
+    },
+    {
+      "id": "negative-screening",
+      "inputs": { "modality": "mammography", "study_context": "screening", "additional_needed": "no", "finding_type": "negative", "suspicion_level": "negative" },
       "expect": {
         "noError": true,
         "fields": [
@@ -69,8 +77,16 @@
       }
     },
     {
-      "id": "benign-finding",
+      "id": "benign-finding-requires-radiologist-assessment",
       "inputs": { "modality": "ultrasound", "study_context": "diagnostic", "additional_needed": "no", "finding_type": "benign" },
+      "expect": {
+        "noError": false,
+        "fields": [{ "key": "Error", "includes": "select the radiologist-assigned assessment" }]
+      }
+    },
+    {
+      "id": "benign-finding",
+      "inputs": { "modality": "ultrasound", "study_context": "diagnostic", "additional_needed": "no", "finding_type": "benign", "suspicion_level": "benign" },
       "expect": {
         "noError": true,
         "fields": [
@@ -89,7 +105,7 @@
       "expect": {
         "noError": false,
         "fields": [
-          { "key": "Error", "includes": "select the overall suspicion level" }
+          { "key": "Error", "includes": "select the radiologist-assigned assessment" }
         ]
       }
     },
@@ -101,7 +117,7 @@
       },
       "expect": {
         "noError": false,
-        "fields": [{ "key": "Error", "includes": "select the overall suspicion level" }]
+        "fields": [{ "key": "Error", "includes": "select the radiologist-assigned assessment" }]
       }
     },
     {
@@ -122,7 +138,7 @@
       }
     },
     {
-      "id": "screening-mammography-probably-benign-needs-diagnostic-workup",
+      "id": "screening-mammography-probably-benign-no-uncited-warning",
       "inputs": {
         "modality": "mammography", "study_context": "screening", "additional_needed": "no",
         "finding_type": "mass", "mass_shape": "oval", "mass_margin": "circumscribed", "mass_density": "equal",
@@ -132,8 +148,7 @@
         "noError": true,
         "fields": [
           { "key": "BI-RADS Category", "equals": "3 - Probably Benign" },
-          { "key": "Decision Check", "includes": "screening mammography" },
-          { "key": "Decision Check", "includes": "diagnostic workup" }
+          { "key": "Management", "includes": "6-month" }
         ]
       }
     },

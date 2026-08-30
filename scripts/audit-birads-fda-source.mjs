@@ -44,7 +44,9 @@ const BOUND_VECTOR_IDS = Object.freeze([
   "ultrasound-incomplete",
   "mri-incomplete",
   "known-biopsy-proven-malignancy",
+  "negative-finding-requires-radiologist-assessment",
   "negative-screening",
+  "benign-finding-requires-radiologist-assessment",
   "benign-finding",
   "typically-benign-calcifications-require-radiologist-assessment",
   "probably-benign-mass",
@@ -54,7 +56,7 @@ const BOUND_VECTOR_IDS = Object.freeze([
   "highly-suggestive-linear-calcifications",
   "category-5-inclusive-95-boundary",
   "probably-benign-selection-warns-on-suspicious-mass-descriptors",
-  "screening-mammography-probably-benign-needs-diagnostic-workup",
+  "screening-mammography-probably-benign-no-uncited-warning",
   "developing-asymmetry",
   "associated-features",
   "mri-rejects-category-4-subdivision",
@@ -180,15 +182,27 @@ const suspicion = BIRADS.fields.find((field) => field.id === "suspicion_level");
 const category4A = suspicion.opts.find(
   (option) => option.value === "low_suspicion",
 );
+const category4B = suspicion.opts.find(
+  (option) => option.value === "moderate_suspicion",
+);
+const category4C = suspicion.opts.find(
+  (option) => option.value === "high_suspicion",
+);
 const mriCategory4 = suspicion.opts.find(
   (option) => option.value === "suspicious",
 );
-assert.equal(category4A.showIf({ modality: "mammography" }), true);
-assert.equal(category4A.showIf({ modality: "ultrasound" }), false);
-assert.equal(category4A.showIf({ modality: "mri" }), false);
-assert.equal(mriCategory4.showIf({ modality: "mammography" }), false);
-assert.equal(mriCategory4.showIf({ modality: "ultrasound" }), true);
-assert.equal(mriCategory4.showIf({ modality: "mri" }), true);
+assert.equal(category4A.showIf({ modality: "mammography", finding_type: "mass" }), true);
+assert.equal(category4A.showIf({ modality: "ultrasound", finding_type: "mass" }), false);
+assert.equal(category4A.showIf({ modality: "mri", finding_type: "mass" }), false);
+assert.equal(category4B.showIf({ modality: "mammography", finding_type: "mass" }), true);
+assert.equal(category4B.showIf({ modality: "ultrasound", finding_type: "mass" }), false);
+assert.equal(category4B.showIf({ modality: "mri", finding_type: "mass" }), false);
+assert.equal(category4C.showIf({ modality: "mammography", finding_type: "mass" }), true);
+assert.equal(category4C.showIf({ modality: "ultrasound", finding_type: "mass" }), false);
+assert.equal(category4C.showIf({ modality: "mri", finding_type: "mass" }), false);
+assert.equal(mriCategory4.showIf({ modality: "mammography", finding_type: "mass" }), false);
+assert.equal(mriCategory4.showIf({ modality: "ultrasound", finding_type: "mass" }), true);
+assert.equal(mriCategory4.showIf({ modality: "mri", finding_type: "mass" }), true);
 const staleHiddenDescriptorResult = BIRADS.compute({
   modality: "mammography",
   study_context: "diagnostic",
@@ -205,6 +219,21 @@ assert.equal(
   Object.prototype.hasOwnProperty.call(staleHiddenDescriptorResult, "Decision Check"),
   false,
   "hidden calcification descriptors must not alter an active mass assessment",
+);
+const screeningCategory3Result = BIRADS.compute({
+  modality: "mammography",
+  study_context: "screening",
+  additional_needed: "no",
+  finding_type: "mass",
+  mass_shape: "oval",
+  mass_margin: "circumscribed",
+  mass_density: "equal",
+  suspicion_level: "probably_benign",
+});
+assert.equal(
+  Object.prototype.hasOwnProperty.call(screeningCategory3Result, "Decision Check"),
+  false,
+  "source audit must reject an uncited screening-only assessment warning",
 );
 
 const fixture = JSON.parse(await readFile(FIXTURE_PATH, "utf8"));

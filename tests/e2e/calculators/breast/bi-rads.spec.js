@@ -138,6 +138,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Screening examination").click();
       await page.getByLabel("No - assessment complete").click();
       await page.getByLabel("Negative - no findings").click();
+      await page.getByLabel("Negative (Category 1)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -155,6 +156,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Diagnostic examination").click();
       await page.getByLabel("No - assessment complete").click();
       await page.getByLabel("Negative - no findings").click();
+      await page.getByLabel("Negative (Category 1)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -171,6 +173,20 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await expect(resultsSection).not.toContainText("mammographic");
       await expect(resultsSection).not.toContainText("annual screening");
     });
+
+    test("should not infer Category 1 from finding type alone", async ({ page }) => {
+      await page.getByLabel("Mammography").click();
+      await page.getByLabel("Screening examination").click();
+      await page.getByLabel("No - assessment complete").click();
+      await page.getByLabel("Negative - no findings").click();
+
+      await expect(page.getByText("Radiologist-Assigned Assessment")).toBeVisible();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(
+        page.getByRole("status", { name: "Calculator results" }),
+      ).toContainText("Please select the radiologist-assigned assessment");
+    });
   });
 
   test.describe("Category 2 - Benign", () => {
@@ -185,6 +201,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
           "Benign finding (cyst, calcified fibroadenoma, fat-containing lesion, implant)",
         )
         .click();
+      await page.getByLabel("Benign (Category 2)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -206,10 +223,28 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
           "Benign finding (cyst, calcified fibroadenoma, fat-containing lesion, implant)",
         )
         .click();
+      await page.getByLabel("Benign (Category 2)").click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(page.locator("text=2 - Benign")).toBeVisible();
+    });
+
+    test("should not infer Category 2 from finding type alone", async ({ page }) => {
+      await page.getByLabel("Ultrasound").click();
+      await page.getByLabel("Diagnostic examination").click();
+      await page.getByLabel("No - assessment complete").click();
+      await page
+        .getByLabel(
+          "Benign finding (cyst, calcified fibroadenoma, fat-containing lesion, implant)",
+        )
+        .click();
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(
+        page.getByRole("status", { name: "Calculator results" }),
+      ).toContainText("Please select the radiologist-assigned assessment");
     });
   });
 
@@ -288,10 +323,12 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         name: "Calculator results",
       });
       await expect(resultsSection).toContainText(
-        "Please select the overall suspicion level",
+        "Please select the radiologist-assigned assessment",
       );
       await expect(
-        page.getByText("Overall Assessment of Suspicion"),
+        page.getByRole("radiogroup", {
+          name: "Radiologist-Assigned Assessment",
+        }),
       ).toBeVisible();
     });
 
@@ -610,7 +647,9 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await expect(
         page
           .getByRole("status", { name: "Calculator results" })
-          .getByText(/definitive local therapy when clinically appropriate/),
+          .getByText(
+            /definitive local therapy \(usually surgery\) when clinically appropriate/,
+          ),
       ).toBeVisible();
     });
 
@@ -779,6 +818,12 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         page.getByLabel("Low suspicion (Category 4A; >2% to ≤10%)"),
       ).not.toBeVisible();
       await expect(
+        page.getByLabel("Moderate suspicion (Category 4B; >10% to ≤50%)"),
+      ).not.toBeVisible();
+      await expect(
+        page.getByLabel("High suspicion (Category 4C; 50% to <95%)"),
+      ).not.toBeVisible();
+      await expect(
         page.getByLabel("Suspicious (Category 4; >2% to <95%)"),
       ).toBeVisible();
     });
@@ -857,7 +902,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please select the overall suspicion level"),
+        page.locator("text=Please select the radiologist-assigned assessment"),
       ).toBeVisible();
     });
   });
@@ -967,8 +1012,8 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         name: "Calculator results",
       });
       await expect(resultsSection).toContainText("3 - Probably Benign");
-      await expect(resultsSection).toContainText("screening mammography");
-      await expect(resultsSection).toContainText("diagnostic workup");
+      await expect(resultsSection).not.toContainText("screening mammography");
+      await expect(resultsSection).not.toContainText("diagnostic workup");
     });
 
     test("should complete full ultrasound workflow", async ({ page }) => {

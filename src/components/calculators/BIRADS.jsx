@@ -9,6 +9,17 @@
  * - ACR BI-RADS Atlas Fifth Edition Quick Reference
  */
 
+const STRUCTURED_FINDING_TYPES = Object.freeze([
+  "mass",
+  "calcifications",
+  "architectural_distortion",
+  "asymmetry",
+  "associated_features",
+]);
+
+const hasStructuredFinding = (vals) =>
+  STRUCTURED_FINDING_TYPES.includes(vals.finding_type);
+
 export const BIRADS = {
   id: "birads",
   category: "Breast Imaging",
@@ -52,7 +63,7 @@ Categories apply to mammography, ultrasound, and MRI:
 • Category 5: Highly suggestive of malignancy (≥95%)
 • Category 6: Known biopsy-proven malignancy
 
-Management wording follows the linked modality summary form: routine screening for categories 1-2, short-interval follow-up or continued surveillance for category 3, tissue diagnosis for categories 4-5, and surgeon/oncologist follow-up with definitive local therapy when clinically appropriate for category 6.
+Management wording follows the linked modality summary form: routine screening for categories 1-2, short-interval follow-up or continued surveillance for category 3, tissue diagnosis for categories 4-5, and surgeon/oncologist follow-up with definitive local therapy (usually surgery) when clinically appropriate for category 6.
 
 BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, and associated features.`,
     link: {
@@ -258,49 +269,63 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       ],
     },
 
-    // OVERALL SUSPICION LEVEL (for complex cases)
+    // RADIOLOGIST-ASSIGNED ASSESSMENT
     {
       id: "suspicion_level",
-      label: "Overall Assessment of Suspicion",
+      label: "Radiologist-Assigned Assessment",
       subLabel:
-        "Radiologist-selected assessment; descriptors structure the output but do not independently derive risk",
+        "Required explicit category selection; the finding type and descriptors do not assign a category",
       helpText:
-        "Choose the overall suspicion level after integrating all imaging and clinical findings.",
+        "Choose the assessment already assigned after integrating all imaging and clinical findings.",
       type: "radio",
       showIf: (vals) =>
-        vals.finding_type === "mass" ||
-        vals.finding_type === "calcifications" ||
-        vals.finding_type === "architectural_distortion" ||
-        vals.finding_type === "asymmetry" ||
-        vals.finding_type === "associated_features",
+        vals.additional_needed !== "yes" &&
+        vals.study_context !== "known_cancer" &&
+        Boolean(vals.finding_type),
       opts: [
+        {
+          value: "negative",
+          label: "Negative (Category 1)",
+          showIf: (vals) => vals.finding_type === "negative",
+        },
+        {
+          value: "benign",
+          label: "Benign (Category 2)",
+          showIf: (vals) => vals.finding_type === "benign",
+        },
         {
           value: "probably_benign",
           label: "Probably benign (Category 3)",
+          showIf: hasStructuredFinding,
         },
         {
           value: "low_suspicion",
           label: "Low suspicion (Category 4A; >2% to ≤10%)",
-          showIf: (vals) => vals.modality === "mammography",
+          showIf: (vals) =>
+            vals.modality === "mammography" && hasStructuredFinding(vals),
         },
         {
           value: "moderate_suspicion",
           label: "Moderate suspicion (Category 4B; >10% to ≤50%)",
-          showIf: (vals) => vals.modality !== "mri",
+          showIf: (vals) =>
+            vals.modality === "mammography" && hasStructuredFinding(vals),
         },
         {
           value: "high_suspicion",
           label: "High suspicion (Category 4C; 50% to <95%)",
-          showIf: (vals) => vals.modality !== "mri",
+          showIf: (vals) =>
+            vals.modality === "mammography" && hasStructuredFinding(vals),
         },
         {
           value: "suspicious",
           label: "Suspicious (Category 4; >2% to <95%)",
-          showIf: (vals) => vals.modality !== "mammography",
+          showIf: (vals) =>
+            vals.modality !== "mammography" && hasStructuredFinding(vals),
         },
         {
           value: "highly_suggestive",
           label: "Highly suggestive (Category 5; ≥95%)",
+          showIf: hasStructuredFinding,
         },
       ],
     },
@@ -339,7 +364,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       return {
         "BI-RADS Category": "6 - Known Biopsy-Proven Malignancy",
         Management:
-          "Clinical follow-up with surgeon and/or oncologist, and definitive local therapy when clinically appropriate",
+          "Clinical follow-up with surgeon and/or oncologist, and definitive local therapy (usually surgery) when clinically appropriate",
         Note: "Category 6 is used for known biopsy-proven malignancy.",
         _severity: "danger",
       };
@@ -412,8 +437,33 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       };
     }
 
-    // Category 1: Negative
-    if (finding_type === "negative") {
+    if (!suspicion_level) {
+      return {
+        Error: "Please select the radiologist-assigned assessment.",
+      };
+    }
+
+    if (
+      (finding_type === "negative" && suspicion_level !== "negative") ||
+      (finding_type !== "negative" && suspicion_level === "negative")
+    ) {
+      return {
+        Error:
+          "The selected Category 1 assessment is inconsistent with the finding type. Reconfirm the radiologist-assigned assessment.",
+      };
+    }
+    if (
+      (finding_type === "benign" && suspicion_level !== "benign") ||
+      (finding_type !== "benign" && suspicion_level === "benign")
+    ) {
+      return {
+        Error:
+          "The selected Category 2 assessment is inconsistent with the finding type. Reconfirm the radiologist-assigned assessment.",
+      };
+    }
+
+    // Category 1: explicit radiologist-assigned negative assessment
+    if (suspicion_level === "negative") {
       return {
         "BI-RADS Category": "1 - Negative",
         "Malignancy Likelihood": "Essentially 0% likelihood of malignancy",
@@ -423,22 +473,14 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       };
     }
 
-    // Category 2: Benign
-    if (finding_type === "benign") {
+    // Category 2: explicit radiologist-assigned benign assessment
+    if (suspicion_level === "benign") {
       return {
         "BI-RADS Category": "2 - Benign",
         "Malignancy Likelihood": "Essentially 0% likelihood of malignancy",
         Management: routineScreeningManagement,
         Note: "Benign finding described for completeness.",
         _severity: "success",
-      };
-    }
-
-    // For other findings, use suspicion level
-    if (!suspicion_level) {
-      return {
-        Error:
-          "Please select the overall suspicion level based on imaging features.",
       };
     }
 
@@ -568,15 +610,6 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     if (suspiciousDescriptorWithCategory3) {
       decisionChecks.push(
         "The selected probably-benign category is discordant with one or more chosen suspicious descriptors. Reassess the radiologist-selected category and current source criteria before finalizing the report.",
-      );
-    }
-    if (
-      modality === "mammography" &&
-      study_context === "screening" &&
-      ["3", "4", "5"].includes(category)
-    ) {
-      decisionChecks.push(
-        "Categories 3, 4, and 5 should not be assigned directly from screening mammography in the fifth-edition workflow. Complete the diagnostic workup before final assessment.",
       );
     }
     if (decisionChecks.length > 0) {
