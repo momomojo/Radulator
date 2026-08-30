@@ -406,7 +406,7 @@
             "id": "acr-2026-stable-egfr-prophylaxis",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
             "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
-            "source_locator": "Pages 40 and 43: stable eGFR risk evidence and prophylaxis indications",
+            "source_locator": "Manual PDF pp. 43-44 and 47 (printed pp. 40-41 and 44): stable eGFR risk evidence and prophylaxis indications",
             "fact": "Stable eGFR 45 or greater is not an independent nephrotoxic risk factor; routine prophylaxis is not indicated for stable eGFR 30 or greater, while eGFR 30-44 may be considered individually only in high-risk circumstances.",
             "dimensions": ["scope", "threshold", "boundary", "management", "output"],
             "vector_ids": [
@@ -419,7 +419,7 @@
             "id": "acr-2026-aki-and-egfr-under-30",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
             "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
-            "source_locator": "Pages 41-43: AKI threshold unreliability, caution, standard diagnostic dose, volume expansion, and prophylaxis",
+            "source_locator": "Manual PDF pp. 44-46 (printed pp. 41-43): AKI threshold unreliability, caution, standard diagnostic dose, volume expansion, and prophylaxis",
             "fact": "For AKI, no serum creatinine or eGFR threshold adequately stratifies risk because serum creatinine is unreliable. AKI or stable eGFR below 30 enters the higher-risk pathway; use isotonic volume expansion when appropriate, prefer normal saline, recognize the ideal regimen is unknown, assess volume tolerance, and do not underdose diagnostic IV contrast solely to mitigate CI-AKI risk.",
             "dimensions": ["scope", "threshold", "management", "interpretation", "output"],
             "vector_ids": ["egfr-without-stability-status-fails-closed", "stable-egfr-29-isotonic-prophylaxis", "aki-egfr-is-unreliable"]
@@ -428,7 +428,7 @@
             "id": "acr-2026-dialysis-renal-function",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
             "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
-            "source_locator": "Pages 41 and 47: anuric dialysis and residual renal function",
+            "source_locator": "Manual PDF p. 47 (printed p. 44): anuric dialysis and residual renal function",
             "fact": "Anuric end-stage kidney disease without a functioning transplant has no further renal injury to prevent, while dialysis patients with residual urine output should be treated as higher risk for loss of residual function.",
             "dimensions": ["scope", "management", "interpretation", "output"],
             "vector_ids": ["anuric-dialysis-no-ciaki-prophylaxis", "dialysis-residual-function-higher-risk"]
@@ -437,7 +437,7 @@
             "id": "acr-2026-contrast-warming",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
             "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
-            "source_locator": "Pages 32-33: warming recommendations and limited evidence grades",
+            "source_locator": "Manual PDF p. 35 (printed p. 32): warming recommendations and limited evidence grades",
             "fact": "Routine warming is not recommended for lower-viscosity iodinated agents; higher-viscosity warming may be considered selectively to reduce viscosity or injection pressure but is not a routine requirement.",
             "dimensions": ["management", "interpretation", "output"],
             "vector_ids": ["lower-viscosity-300-no-routine-warming", "higher-viscosity-370-selective-warming"]
