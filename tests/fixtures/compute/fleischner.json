@@ -1,0 +1,318 @@
+{
+  "calculatorId": "fleischner",
+  "calculatorName": "Fleischner 2017 Pulmonary Nodules",
+  "version": "fleischner-2017-primary-guideline-and-measurement-statement",
+  "cases": [
+    {
+      "id": "single-solid-5-low-no-routine-follow-up",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "5", "risk_level": "low" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "No routine follow-up" },
+        { "key": "Risk Assessment", "includes": "clinician-selected low risk" },
+        { "key": "Measurement Basis", "includes": "whole millimeter" }
+      ] }
+    },
+    {
+      "id": "single-solid-5-high-optional-12-month-ct",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "5", "risk_level": "high" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Optional CT at 12 months" },
+        { "key": "Follow-up Interval", "equals": "12 months (optional)" }
+      ] }
+    },
+    {
+      "id": "single-solid-6-low-preserves-late-ct-option",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "6", "risk_level": "low" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 6–12 months; then consider CT at 18–24 months" },
+        { "key": "Follow-up Interval", "includes": "18–24 months (consider)" }
+      ] }
+    },
+    {
+      "id": "single-solid-8-high-two-ct-intervals",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "8", "risk_level": "high" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 6–12 months; then CT at 18–24 months" },
+        { "key": "Risk Assessment", "includes": "clinician-selected high risk" }
+      ] }
+    },
+    {
+      "id": "single-solid-9-consider-ct-pet-or-tissue",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "9", "risk_level": "low" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Consider CT at 3 months, PET/CT, or tissue sampling" },
+        { "key": "Decision Boundary", "includes": ">8 mm" }
+      ] }
+    },
+    {
+      "id": "multiple-solid-5-low-no-routine-follow-up",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "multiple", "nodule_size": "5", "risk_level": "low" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "No routine follow-up" },
+        { "key": "Measurement Basis", "includes": "most suspicious nodule" }
+      ] }
+    },
+    {
+      "id": "multiple-solid-5-high-optional-12-month-ct",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "multiple", "nodule_size": "5", "risk_level": "high" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Optional CT at 12 months" }
+      ] }
+    },
+    {
+      "id": "multiple-solid-6-low-preserves-late-ct-option",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "multiple", "nodule_size": "6", "risk_level": "low" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 3–6 months; then consider CT at 18–24 months" },
+        { "key": "Follow-up Interval", "includes": "18–24 months (consider)" }
+      ] }
+    },
+    {
+      "id": "multiple-solid-8-high-two-ct-intervals",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "multiple", "nodule_size": "8", "risk_level": "high" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 3–6 months; then CT at 18–24 months" }
+      ] }
+    },
+    {
+      "id": "multiple-solid-9-low-uses-multiple-table-row",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "multiple", "nodule_size": "9", "risk_level": "low" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 3–6 months; then consider CT at 18–24 months" },
+        { "key": "Decision Boundary", "includes": "most suspicious nodule" }
+      ] }
+    },
+    {
+      "id": "single-ground-glass-5-routine-no-follow-up",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_ground_glass_context": "routine" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "No routine follow-up" }
+      ] }
+    },
+    {
+      "id": "single-ground-glass-5-selected-suspicious-option",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_ground_glass_context": "selected_suspicious_near_6" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Consider CT at 2 and 4 years" },
+        { "key": "Decision Boundary", "includes": "selected suspicious pure ground-glass nodule close to 6 mm" }
+      ] }
+    },
+    {
+      "id": "single-ground-glass-6-until-year-5",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 6–12 months to confirm persistence; then CT every 2 years until 5 years" },
+        { "key": "Follow-up Interval", "includes": "until year 5 from baseline" }
+      ] }
+    },
+    {
+      "id": "multiple-ground-glass-5-initial-and-optional-late-ct",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "ground_glass", "nodule_count": "multiple", "nodule_size": "5" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 3–6 months; if stable, consider CT at 2 and 4 years" },
+        { "key": "Measurement Basis", "includes": "most suspicious nodule" }
+      ] }
+    },
+    {
+      "id": "multiple-ground-glass-6-defers-to-most-suspicious-nodule",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "ground_glass", "nodule_count": "multiple", "nodule_size": "6" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 3–6 months; subsequent management based on the most suspicious nodule(s)" },
+        { "key": "Decision Boundary", "includes": "may not be the largest" }
+      ] }
+    },
+    {
+      "id": "single-part-solid-5-no-routine-follow-up",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "5", "solid_component": "2" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "No routine follow-up" },
+        { "key": "Solid Component", "equals": "2 mm" }
+      ] }
+    },
+    {
+      "id": "single-part-solid-6-component-5-surveillance",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "solid_component": "5" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 3–6 months to confirm persistence; if unchanged and the solid component remains <6 mm, annual CT for 5 years" },
+        { "key": "Measurement Basis", "includes": "maximum long-axis diameter of the largest solid component" }
+      ] }
+    },
+    {
+      "id": "single-part-solid-12-component-6-highly-suspicious",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "large_nodule_axes_recorded": "yes", "solid_component": "6", "component_concern": "no" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 3–6 months to confirm persistence; a solid component ≥6 mm is highly suspicious" },
+        { "key": "Decision Boundary", "includes": "does not by itself trigger PET/CT, biopsy, or resection" }
+      ] }
+    },
+    {
+      "id": "single-part-solid-12-component-8-growing-escalates",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "large_nodule_axes_recorded": "yes", "solid_component": "8", "component_concern": "yes" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "PET/CT, biopsy, or resection is recommended" },
+        { "key": "Decision Boundary", "includes": "growing or particularly suspicious" }
+      ] }
+    },
+    {
+      "id": "single-part-solid-12-component-9-escalates-by-size",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "large_nodule_axes_recorded": "yes", "solid_component": "9" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "PET/CT, biopsy, or resection is recommended" },
+        { "key": "Decision Boundary", "includes": "solid component >8 mm" }
+      ] }
+    },
+    {
+      "id": "multiple-part-solid-5-follows-multiple-subsolid-row",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "multiple", "nodule_size": "5", "solid_component": "2" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 3–6 months; if stable, consider CT at 2 and 4 years" }
+      ] }
+    },
+    {
+      "id": "multiple-part-solid-12-defers-to-most-suspicious-nodule",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "multiple", "nodule_size": "12", "large_nodule_axes_recorded": "yes", "solid_component": "4" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT at 3–6 months; subsequent management based on the most suspicious nodule(s)" },
+        { "key": "Decision Boundary", "includes": "may not be the largest" }
+      ] }
+    },
+    {
+      "id": "missing-applicability-fails-closed",
+      "inputs": { "nodule_type": "solid", "nodule_count": "single", "nodule_size": "5", "risk_level": "low" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "applicability" }
+      ] }
+    },
+    {
+      "id": "screening-routes-away-without-schedule",
+      "inputs": { "guideline_applicability": "screening" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Fleischner Applicability", "equals": "Not applicable" },
+        { "key": "Next Step", "includes": "Lung-RADS" }
+      ] }
+    },
+    {
+      "id": "under-35-routes-away-without-schedule",
+      "inputs": { "guideline_applicability": "under_35" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Fleischner Applicability", "equals": "Not applicable" },
+        { "key": "Reason", "includes": "younger than 35" }
+      ] }
+    },
+    {
+      "id": "known-cancer-routes-away-without-schedule",
+      "inputs": { "guideline_applicability": "known_cancer" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Fleischner Applicability", "equals": "Not applicable" },
+        { "key": "Reason", "includes": "known cancer" }
+      ] }
+    },
+    {
+      "id": "immunocompromised-routes-away-without-schedule",
+      "inputs": { "guideline_applicability": "immunocompromised" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Fleischner Applicability", "equals": "Not applicable" },
+        { "key": "Reason", "includes": "immunocompromised" }
+      ] }
+    },
+    {
+      "id": "uncertain-applicability-fails-closed",
+      "inputs": { "guideline_applicability": "uncertain" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Fleischner Applicability", "equals": "Uncertain" },
+        { "key": "Next Step", "includes": "confirm eligibility" }
+      ] }
+    },
+    {
+      "id": "fractional-overall-size-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "5.5", "risk_level": "low" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "whole-millimeter" }
+      ] }
+    },
+    {
+      "id": "zero-overall-size-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "0", "risk_level": "low" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "positive" }
+      ] }
+    },
+    {
+      "id": "negative-overall-size-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "-1", "risk_level": "low" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "positive" }
+      ] }
+    },
+    {
+      "id": "mass-over-30-mm-routes-outside-nodule-table",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "31", "large_nodule_axes_recorded": "yes", "risk_level": "high" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "greater than 30 mm" }
+      ] }
+    },
+    {
+      "id": "ten-mm-size-requires-both-axes-recorded",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "10", "risk_level": "high" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "long- and short-axis" }
+      ] }
+    },
+    {
+      "id": "part-solid-missing-component-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "solid-component" }
+      ] }
+    },
+    {
+      "id": "part-solid-zero-component-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "0" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "positive" }
+      ] }
+    },
+    {
+      "id": "part-solid-negative-component-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "-1" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "positive" }
+      ] }
+    },
+    {
+      "id": "part-solid-fractional-component-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "5.5" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "whole-millimeter" }
+      ] }
+    },
+    {
+      "id": "solid-component-larger-than-nodule-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "9" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot exceed" }
+      ] }
+    },
+    {
+      "id": "solid-nodule-missing-risk-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "5" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "clinician-estimated risk" }
+      ] }
+    },
+    {
+      "id": "single-sub6-ground-glass-missing-context-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "suspicious near-6-mm exception" }
+      ] }
+    },
+    {
+      "id": "part-solid-component-6-to-8-missing-concern-state-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "6" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "growth or particularly suspicious morphology" }
+      ] }
+    }
+  ]
+}

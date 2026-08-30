@@ -1,524 +1,292 @@
 import { test, expect } from "@playwright/test";
-import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
+import {
+  fillInput,
+  navigateToCalculator,
+  selectRadio,
+} from "../../../helpers/calculator-test-helper.js";
 
-/**
- * E2E Tests for Fleischner 2017 Guidelines Calculator
- * Management of Incidentally Detected Pulmonary Nodules
- *
- * The Fleischner Society guidelines provide recommendations for follow-up
- * of incidentally detected pulmonary nodules on CT.
- *
- * Nodule Types:
- * - Solid nodules
- * - Ground-glass nodules (pure GGN)
- * - Part-solid nodules (mixed GGN)
- *
- * Key Size Thresholds:
- * - <6mm: Generally no follow-up (except high-risk)
- * - 6-8mm: Intermediate follow-up
- * - >8mm: Aggressive workup (PET/CT, biopsy)
- *
- * Risk Factors:
- * - Smoking history
- * - Upper lobe location
- * - Spiculated margins
- * - Family history of lung cancer
- * - Emphysema/pulmonary fibrosis
- */
+const eligibleLabel =
+  "Eligible incidental nodule: age ≥35, not screening, not immunocompromised, and no known cancer";
 
-test.describe("Fleischner 2017 Guidelines Calculator", () => {
+async function selectEligible(page) {
+  await selectRadio(page, "Fleischner 2017 Applicability", eligibleLabel);
+}
+
+async function calculate(page) {
+  await page.getByRole("button", { name: "Calculate" }).click();
+  return page.getByRole("status", { name: "Calculator results" });
+}
+
+async function fillSolid(page, { count = "Single nodule", size, risk }) {
+  await selectEligible(page);
+  await selectRadio(page, "Nodule Type", "Solid nodule");
+  await selectRadio(page, "Number of Nodules", count);
+  await fillInput(page, "Recorded Overall Nodule Size", size);
+  if (Number(size) >= 10) {
+    await selectRadio(
+      page,
+      "Both Overall Axes Recorded",
+      "Yes — long- and short-axis diameters are recorded",
+    );
+  }
+  await selectRadio(page, "Clinician-Estimated Malignancy Risk", risk);
+}
+
+test.describe("Fleischner 2017 source-locked calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, "Fleischner 2017 Pulmonary Nodules");
   });
 
-  test.describe("Visual and UI Tests", () => {
-    test("should display calculator with correct title and description", async ({
-      page,
-    }) => {
-      await expect(page.getByTestId('calculator-title').first()).toContainText("Fleischner");
-      await expect(
-        page.locator("text=Pulmonary nodule management"),
-      ).toBeVisible();
-    });
+  test("gates all clinical fields behind an accessible applicability choice", async ({
+    page,
+  }) => {
+    const eligible = page.getByRole("radio", { name: eligibleLabel });
+    await expect(eligible).toBeVisible();
+    await expect(
+      page.getByRole("radio", { name: "Solid nodule", exact: true }),
+    ).not.toBeVisible();
 
-    test("should have all required input fields", async ({ page }) => {
-      await expect(page.locator('label:has-text("Nodule Type")')).toBeVisible();
-      await expect(
-        page.locator('label:has-text("Number of Nodules")'),
-      ).toBeVisible();
-      await expect(
-        page.locator('label:has-text("Nodule Size (mm)")'),
-      ).toBeVisible();
-      await expect(
-        page.locator('label:has-text("Patient Risk Level")'),
-      ).toBeVisible();
-      await expect(
-        page.getByText("Smoking History", { exact: true }),
-      ).toBeVisible();
-    });
+    await eligible.focus();
+    await page.keyboard.press("Space");
 
-    test("should display info section with Fleischner explanation", async ({
-      page,
-    }) => {
-      await expect(page.locator("text=incidental nodules")).toBeVisible();
-      await expect(page.getByText("Risk Factors for Malignancy")).toBeVisible();
-    });
-
-    test("should show solid component field only for part-solid nodules", async ({
-      page,
-    }) => {
-      // Initially hidden
-      await expect(
-        page.locator('label:has-text("Solid Component Size")'),
-      ).not.toBeVisible();
-
-      // Select part-solid nodule
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
-
-      // Should now be visible
-      await expect(
-        page.locator('label:has-text("Solid Component Size")'),
-      ).toBeVisible();
-    });
+    await expect(eligible).toBeChecked();
+    await expect(
+      page.getByRole("radio", { name: "Solid nodule", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("radio", { name: "Low risk (<5%)" }),
+    ).not.toBeVisible();
   });
 
-  test.describe("Solid Nodules - Single", () => {
-    test("should recommend no follow-up for <6mm in low-risk patient", async ({
+  test("routes screening patients to Lung-RADS without a Fleischner schedule", async ({
+    page,
+  }) => {
+    await selectRadio(
       page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
-      await page.getByText("Never smoker").click();
+      "Fleischner 2017 Applicability",
+      "Nodule was detected in a lung cancer screening program",
+    );
+    const results = await calculate(page);
 
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
-      await expect(page.getByText("Risk Assessment")).toBeVisible();
-    });
-
-    test("should recommend optional CT at 12 months for <6mm in high-risk patient", async ({
-      page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "5");
-      await page.getByText("High risk - Smoking history").click();
-      await page.getByText("Current smoker").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=Optional CT at 12 months")).toBeVisible();
-      await expect(page.getByText("Risk Assessment")).toBeVisible();
-    });
-
-    test("should recommend CT at 6-12 months for 6-8mm in low-risk patient", async ({
-      page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("Low risk - No or minimal").click();
-      await page.getByText("Never smoker").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=CT at 6-12 months")).toBeVisible();
-      await expect(page.getByText("Follow-up Interval")).toBeVisible();
-    });
-
-    test("should recommend CT at 6-12 months then 18-24 months for 6-8mm in high-risk patient", async ({
-      page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("High risk - Smoking history").click();
-      await page.getByText("Former smoker").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=CT at 6-12 months, then CT at 18-24 months"),
-      ).toBeVisible();
-    });
-
-    test("should recommend aggressive workup for >8mm nodule", async ({
-      page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "12");
-      await page.getByText("High risk - Smoking history").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.getByText("PET/CT").first()).toBeVisible();
-      await expect(page.getByText("Consider CT at 3 months")).toBeVisible();
-    });
+    await expect(results).toContainText("Fleischner Applicability: Not applicable");
+    await expect(results).toContainText("Lung-RADS");
+    await expect(results).toContainText("No Fleischner follow-up schedule was generated");
+    await expect(results).not.toContainText("Follow-up Interval:");
   });
 
-  test.describe("Solid Nodules - Multiple", () => {
-    test("should recommend no follow-up for multiple <6mm in low-risk patient", async ({
-      page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Multiple nodules", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
+  test("preserves optional late CT for a low-risk single solid 6 mm nodule", async ({
+    page,
+  }) => {
+    await fillSolid(page, {
+      size: "6",
+      risk: "Low risk (<5%)",
     });
+    const results = await calculate(page);
 
-    test("should recommend CT at 3-6 months then 18-24 months for multiple ≥6mm", async ({
-      page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Multiple nodules", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "8");
-      await page.getByText("High risk - Smoking history").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=CT at 3-6 months, then CT at 18-24 months"),
-      ).toBeVisible();
-      await expect(page.locator("text=most suspicious nodule")).toBeVisible();
-    });
+    await expect(results).toContainText(
+      "CT at 6–12 months; then consider CT at 18–24 months",
+    );
+    await expect(results).toContainText("clinician-selected low risk (<5%)");
+    await expect(results).toContainText("whole millimeter on lung-window images");
   });
 
-  test.describe("Ground-Glass Nodules", () => {
-    test("should recommend no follow-up for GGN <6mm", async ({ page }) => {
-      await page.getByText("Ground-glass nodule (pure GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
+  test("uses the multiple-solid row and most-suspicious-nodule rule above 8 mm", async ({
+    page,
+  }) => {
+    await fillSolid(page, {
+      count: "Multiple nodules",
+      size: "9",
+      risk: "Low risk (<5%)",
     });
+    const results = await calculate(page);
 
-    test("should recommend long-term surveillance for single GGN ≥6mm", async ({
-      page,
-    }) => {
-      await page.getByText("Ground-glass nodule (pure GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "8");
-      await page.getByText("Low risk - No or minimal").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.getByText("CT at 6-12 months").first()).toBeVisible();
-      await expect(page.getByText("biennial for 5 years")).toBeVisible();
-      await expect(page.getByText("lung window settings")).toBeVisible();
-    });
-
-    test("should recommend shorter initial follow-up for multiple GGN ≥6mm", async ({
-      page,
-    }) => {
-      await page.getByText("Ground-glass nodule (pure GGN)").click();
-      await page.getByText("Multiple nodules", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "10");
-      await page.getByText("Low risk - No or minimal").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=CT at 3-6 months")).toBeVisible();
-      await expect(page.locator("text=multifocal")).toBeVisible();
-    });
+    await expect(results).toContainText(
+      "CT at 3–6 months; then consider CT at 18–24 months",
+    );
+    await expect(results).toContainText("most suspicious nodule, which may not be the largest");
+    await expect(results).not.toContainText("Consider CT at 3 months, PET/CT");
   });
 
-  test.describe("Part-Solid Nodules", () => {
-    test("should recommend no follow-up for part-solid <6mm", async ({
+  test("surfaces the selected suspicious solitary GGN near-6-mm exception", async ({
+    page,
+  }) => {
+    await selectEligible(page);
+    await selectRadio(page, "Nodule Type", "Pure ground-glass nodule");
+    await selectRadio(page, "Number of Nodules", "Single nodule");
+    await fillInput(page, "Recorded Overall Nodule Size", "5");
+    await selectRadio(
       page,
-    }) => {
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
+      "Solitary Pure GGN <6 mm Context",
+      "Selected suspicious pure GGN close to 6 mm",
+    );
+    const results = await calculate(page);
 
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
-    });
-
-    test("should recommend CT at 3-6 months then annual for single part-solid ≥6mm", async ({
-      page,
-    }) => {
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "10");
-      await page.fill('input[id="solid_component"]', "4");
-      await page.getByText("Low risk - No or minimal").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=CT at 3-6 months")).toBeVisible();
-      await expect(page.locator("text=annual CT for 5 years")).toBeVisible();
-      await expect(
-        page.locator("text=mediastinal window settings"),
-      ).toBeVisible();
-    });
-
-    test("should note solid component ≥6mm as concerning", async ({ page }) => {
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "15");
-      await page.fill('input[id="solid_component"]', "8");
-      await page.getByText("High risk - Smoking history").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=Solid component ≥6mm")).toBeVisible();
-      await expect(page.locator("text=PET/CT or biopsy")).toBeVisible();
-    });
-
-    test("should handle multiple part-solid nodules", async ({ page }) => {
-      await page.getByText("Part-solid nodule (mixed GGN)").click();
-      await page.getByText("Multiple nodules", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "12");
-      await page.getByText("High risk - Smoking history").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=CT at 3-6 months")).toBeVisible();
-      await expect(page.locator("text=most suspicious nodule")).toBeVisible();
-    });
+    await expect(results).toContainText("Consider CT at 2 and 4 years");
+    await expect(results).toContainText("selected suspicious pure ground-glass nodule close to 6 mm exception");
   });
 
-  test.describe("Risk Factor Assessment", () => {
-    test("should infer high risk from smoking history", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "5");
-      // Don't select explicit risk level, but select current smoker
-      await page.getByText("Current smoker", { exact: true }).click();
+  test("uses the multiple-subsolid pathway below 6 mm", async ({ page }) => {
+    await selectEligible(page);
+    await selectRadio(page, "Nodule Type", "Pure ground-glass nodule");
+    await selectRadio(page, "Number of Nodules", "Multiple nodules");
+    await fillInput(page, "Recorded Overall Nodule Size", "5");
+    const results = await calculate(page);
 
-      await page.click('button:has-text("Calculate")');
-
-      // Results should show high risk was inferred
-      await expect(page.getByText("Optional CT at 12 months")).toBeVisible();
-    });
-
-    test("should infer high risk from upper lobe location", async ({
-      page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "5");
-      await page.getByText("Never smoker", { exact: true }).click();
-      // Check upper lobe checkbox
-      await page.locator('label:has-text("Upper Lobe Location")').click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Results should show high risk was inferred from upper lobe
-      await expect(page.getByText("Optional CT at 12 months")).toBeVisible();
-    });
-
-    test("should display multiple risk factors", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("High risk - Smoking history").click();
-      await page.getByText("Former smoker", { exact: true }).click();
-      await page.locator('label:has-text("Upper Lobe Location")').click();
-      await page.locator('label:has-text("Spiculated or Irregular")').click();
-      await page
-        .locator('label:has-text("Family History of Lung Cancer")')
-        .click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // Results should show risk factors present section
-      await expect(page.getByText("Risk Factors Present:")).toBeVisible();
-      await expect(page.getByText("CT at 6-12 months").first()).toBeVisible();
-    });
+    await expect(results).toContainText(
+      "CT at 3–6 months; if stable, consider CT at 2 and 4 years",
+    );
+    await expect(results).not.toContainText("No routine follow-up");
   });
 
-  test.describe("Input Validation", () => {
-    test("should show error when required fields missing", async ({ page }) => {
-      await page.click('button:has-text("Calculate")');
+  test("does not hard-code late follow-up for multiple subsolid nodules at least 6 mm", async ({
+    page,
+  }) => {
+    await selectEligible(page);
+    await selectRadio(page, "Nodule Type", "Pure ground-glass nodule");
+    await selectRadio(page, "Number of Nodules", "Multiple nodules");
+    await fillInput(page, "Recorded Overall Nodule Size", "6");
+    const results = await calculate(page);
 
-      await expect(
-        page.locator("text=Please specify nodule type, count, and size"),
-      ).toBeVisible();
-    });
-
-    test("should show error for invalid nodule size", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "-5");
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=Please enter a valid nodule size"),
-      ).toBeVisible();
-    });
-
-    test("should show error when nodule type not selected", async ({
-      page,
-    }) => {
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "7");
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(
-        page.locator("text=Please specify nodule type"),
-      ).toBeVisible();
-    });
+    await expect(results).toContainText(
+      "subsequent management based on the most suspicious nodule(s)",
+    );
+    await expect(results).toContainText("not a fixed 2/4-year schedule");
   });
 
-  test.describe("Result Display", () => {
-    test("should display nodule characteristics summary", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("Low risk - No or minimal").click();
+  test("states the solitary pure GGN surveillance horizon as until year 5", async ({
+    page,
+  }) => {
+    await selectEligible(page);
+    await selectRadio(page, "Nodule Type", "Pure ground-glass nodule");
+    await selectRadio(page, "Number of Nodules", "Single nodule");
+    await fillInput(page, "Recorded Overall Nodule Size", "6");
+    const results = await calculate(page);
 
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=Nodule Characteristics")).toBeVisible();
-      await expect(page.locator("text=Solid, single, 7mm")).toBeVisible();
-    });
-
-    test("should display important caveats", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "7");
-      await page.getByText("Low risk - No or minimal").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.getByText("Important Caveats")).toBeVisible();
-      await expect(
-        page.getByText("NOT for lung cancer screening"),
-      ).toBeVisible();
-    });
+    await expect(results).toContainText(
+      "CT at 6–12 months to confirm persistence; then CT every 2 years until 5 years",
+    );
+    await expect(results).toContainText("until year 5 from baseline");
   });
 
-  test.describe("Edge Cases and Boundary Values", () => {
-    test("should handle exactly 6mm solid nodule correctly", async ({
+  test("keeps a 6 mm part-solid component on the highly-suspicious short-term path", async ({
+    page,
+  }) => {
+    await selectEligible(page);
+    await selectRadio(page, "Nodule Type", "Part-solid nodule");
+    await selectRadio(page, "Number of Nodules", "Single nodule");
+    await fillInput(page, "Recorded Overall Nodule Size", "8");
+    await fillInput(page, "Largest Solid Component", "6");
+    await selectRadio(
       page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "6");
-      await page.getByText("Low risk - No or minimal").click();
+      "Solid-Component Growth or Particularly Suspicious Morphology",
+      "No / not established",
+    );
+    const results = await calculate(page);
 
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.locator("text=CT at 6-12 months")).toBeVisible();
-    });
-
-    test("should handle exactly 8mm solid nodule correctly", async ({
-      page,
-    }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "8");
-      await page.getByText("Low risk - No or minimal").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // 8mm is at upper bound of 6-8mm range
-      await expect(page.locator("text=CT at 6-12 months")).toBeVisible();
-    });
-
-    test("should handle 8.1mm as >8mm nodule", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "8.1");
-      await page.getByText("High risk - Smoking history").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.getByText("PET/CT").first()).toBeVisible();
-    });
-
-    test("should handle very large nodule (>30mm)", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "35");
-      await page.getByText("High risk - Smoking history").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      await expect(page.getByText("PET/CT").first()).toBeVisible();
-      await expect(page.getByText("tissue sampling")).toBeVisible();
-    });
-
-    test("should handle decimal nodule sizes", async ({ page }) => {
-      await page.getByText("Solid nodule", { exact: true }).click();
-      await page.getByText("Single nodule", { exact: true }).click();
-      await page.fill('input[id="nodule_size"]', "5.5");
-      await page.getByText("Low risk - No or minimal").click();
-
-      await page.click('button:has-text("Calculate")');
-
-      // 5.5mm is <6mm
-      await expect(page.locator("text=No routine follow-up")).toBeVisible();
-    });
+    await expect(results).toContainText(
+      "CT at 3–6 months to confirm persistence; a solid component ≥6 mm is highly suspicious",
+    );
+    await expect(results).toContainText(
+      "does not by itself trigger PET/CT, biopsy, or resection",
+    );
   });
 
-  test.describe("References", () => {
-    test("should display Fleischner references", async ({ page }) => {
-      await expect(
-        page.getByRole("heading", { name: "References" }),
-      ).toBeVisible();
-      await expect(page.getByText("MacMahon H").first()).toBeVisible();
-    });
-
-    test("should have correct number of reference links", async ({ page }) => {
-      // References are collapsed by default (first 3) - expand to reveal all
-      const showMore = page.locator('button:has-text("more reference")');
-      if (await showMore.count()) {
-        await showMore.click();
-      }
-      const refLinks = page.locator(
-        'a[href^="https://doi.org"], a[href^="https://www.acr.org"]',
-      );
-      await expect(refLinks).toHaveCount(6);
-    });
-
-    test("should have valid DOI links for primary sources", async ({
+  test("escalates a greater-than-8-mm solid component and includes resection", async ({
+    page,
+  }) => {
+    await selectEligible(page);
+    await selectRadio(page, "Nodule Type", "Part-solid nodule");
+    await selectRadio(page, "Number of Nodules", "Single nodule");
+    await fillInput(page, "Recorded Overall Nodule Size", "12");
+    await selectRadio(
       page,
-    }) => {
-      // 2017 Fleischner 2017 Pulmonary Nodules (MacMahon et al.)
-      const guideline2017 = page.locator(
-        'a[href="https://doi.org/10.1148/radiol.2017161659"]',
-      );
-      await expect(guideline2017).toBeVisible();
-      await expect(guideline2017).toContainText("Radiology. 2017");
+      "Both Overall Axes Recorded",
+      "Yes — long- and short-axis diameters are recorded",
+    );
+    await fillInput(page, "Largest Solid Component", "9");
+    const results = await calculate(page);
 
-      // Subsolid nodules (Naidich et al. 2013)
-      const subsolid = page.locator(
-        'a[href="https://doi.org/10.1148/radiol.12120628"]',
-      );
-      await expect(subsolid).toBeVisible();
-      await expect(subsolid).toContainText("Radiology. 2013");
+    await expect(results).toContainText("PET/CT, biopsy, or resection is recommended");
+    await expect(results).toContainText("solid component >8 mm");
+    await expect(results).not.toContainText("annual CT for 5 years");
+  });
 
-      // Original 2005 guidelines
-      const original = page.locator(
-        'a[href="https://doi.org/10.1148/radiol.2372041887"]',
-      );
-      await expect(original).toBeVisible();
-      await expect(original).toContainText("Radiology. 2005");
+  test("rejects fractional measurements instead of silently assigning a threshold", async ({
+    page,
+  }) => {
+    await fillSolid(page, {
+      size: "5.5",
+      risk: "Low risk (<5%)",
     });
+    await page.getByRole("button", { name: "Calculate" }).click();
 
-    test("should open reference links in new tab", async ({ page }) => {
-      const refLinks = page.locator('a[href^="https://doi.org"]');
-      const firstLink = refLinks.first();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "pre-recorded whole-millimeter overall size",
+    );
+  });
 
-      // Check that external links have proper attributes
-      const href = await firstLink.getAttribute("href");
-      expect(href).toContain("doi.org");
+  test("requires both axes for an overall size at least 10 mm", async ({
+    page,
+  }) => {
+    await selectEligible(page);
+    await selectRadio(page, "Nodule Type", "Solid nodule");
+    await selectRadio(page, "Number of Nodules", "Single nodule");
+    await fillInput(page, "Recorded Overall Nodule Size", "10");
+    await selectRadio(page, "Clinician-Estimated Malignancy Risk", "High risk (≥5%)");
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "record both long- and short-axis diameters",
+    );
+  });
+
+  test("rejects a solid component larger than the overall nodule", async ({
+    page,
+  }) => {
+    await selectEligible(page);
+    await selectRadio(page, "Nodule Type", "Part-solid nodule");
+    await selectRadio(page, "Number of Nodules", "Single nodule");
+    await fillInput(page, "Recorded Overall Nodule Size", "8");
+    await fillInput(page, "Largest Solid Component", "9");
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot exceed the overall nodule size",
+    );
+  });
+
+  test("copies the source-qualified result text", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await fillSolid(page, {
+      size: "6",
+      risk: "Low risk (<5%)",
     });
+    await calculate(page);
+
+    await page.getByRole("button", { name: "Copy results" }).click();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain(
+      "Recommendation: CT at 6–12 months; then consider CT at 18–24 months",
+    );
+    expect(copied).toContain("Fleischner Society 2017");
+  });
+
+  test("shows the corrected measurement DOI and no obsolete DOI", async ({
+    page,
+  }) => {
+    const showMore = page.getByRole("button", { name: /more reference/i });
+    if (await showMore.count()) await showMore.click();
+
+    await expect(
+      page.locator(
+        'a[href="https://doi.org/10.1148/radiol.2017162894"]',
+      ),
+    ).toBeVisible();
+    await expect(
+      page.locator(
+        'a[href="https://doi.org/10.1148/radiol.2017170044"]',
+      ),
+    ).toHaveCount(0);
+    await expect(page.getByText(/mediastinal window settings/i)).toHaveCount(0);
   });
 });

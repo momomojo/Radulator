@@ -49,6 +49,20 @@ for (const evidence of [
       "acr-mri-assessment-boundaries-and-management",
     ],
   },
+  {
+    calculatorId: "fleischner",
+    implementedVersion: "Fleischner 2017",
+    roadmapLabel: "Fleischner 2017 incidental pulmonary nodule guidance",
+    sourceUrl: "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+    command: "npm run test:fleischner-source",
+    claimIds: [
+      "fleischner-2017-applicability",
+      "fleischner-2017-solid-table",
+      "fleischner-2017-subsolid-table",
+      "fleischner-2017-selected-subsolid-escalation",
+      "fleischner-2017-measurement-contract",
+    ],
+  },
 ]) {
   const { calculatorId, implementedVersion, roadmapLabel, sourceUrl, command, claimIds } =
     evidence;
@@ -115,7 +129,7 @@ for (const [, vectorId] of roadmap.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+){2,})`/g))
 
 assert.match(
   e2eWorkflow,
-  /name: Verify roadmap clinical source audits at exact head[\s\S]*?npm run test:bosniak-source[\s\S]*?npm run test:hermes-guideline-registry[\s\S]*?npm run test:birads-fda-source/,
+  /name: Verify roadmap clinical source audits at exact head[\s\S]*?npm run test:bosniak-source[\s\S]*?npm run test:hermes-guideline-registry[\s\S]*?npm run test:birads-fda-source[\s\S]*?npm run test:fleischner-source/,
   "the required exact-head Smoke job must run the cited roadmap source-audit commands explicitly",
 );
 

@@ -537,6 +537,74 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
     }
   }
+  if (record.calculator_id === "fleischner") {
+    const audit = evidence.source_audit;
+    const expectedSources = [
+      "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+      "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+      "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+      "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+    ];
+    assert.equal(typeof audit, "object", `${label}.source_audit is required`);
+    assert.equal(audit.schema, "radulator-live-source-audit/v1", `${label}.source_audit.schema`);
+    assert.equal(audit.command, "npm run test:fleischner-source", `${label}.source_audit.command`);
+    assert.equal(
+      audit.authority,
+      "Fleischner Society and RSNA 2017 with NLM open table cross-checks",
+      `${label}.source_audit.authority`,
+    );
+    assert.deepEqual(audit.source_urls, expectedSources, `${label}.source_audit.source_urls`);
+    assert.deepEqual(
+      audit.primary_metadata_dois,
+      ["10.1148/radiol.2017161659", "10.1148/radiol.2017162894"],
+      `${label}.source_audit.primary_metadata_dois`,
+    );
+    assert.equal(
+      audit.primary_full_text_fetched_by_ci,
+      false,
+      `${label}.source_audit must not claim the RSNA full text was fetched by CI`,
+    );
+    assert.deepEqual(
+      audit.secondary_table_fragments,
+      {
+        "ch5.Tab1": {
+          bytes: 3153,
+          sha256: "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
+        },
+        "ch5.Tab2": {
+          bytes: 1912,
+          sha256: "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
+        },
+      },
+      `${label}.source_audit.secondary_table_fragments`,
+    );
+    assert.deepEqual(
+      audit.vector_ids,
+      [
+        "single-solid-5-low-no-routine-follow-up",
+        "single-solid-6-low-preserves-late-ct-option",
+        "single-solid-9-consider-ct-pet-or-tissue",
+        "multiple-solid-6-low-preserves-late-ct-option",
+        "single-ground-glass-5-selected-suspicious-option",
+        "single-ground-glass-6-until-year-5",
+        "multiple-ground-glass-5-initial-and-optional-late-ct",
+        "multiple-ground-glass-6-defers-to-most-suspicious-nodule",
+        "single-part-solid-6-component-5-surveillance",
+        "single-part-solid-12-component-6-highly-suspicious",
+        "single-part-solid-12-component-8-growing-escalates",
+        "single-part-solid-12-component-9-escalates-by-size",
+        "screening-routes-away-without-schedule",
+        "fractional-overall-size-rejected",
+        "ten-mm-size-requires-both-axes-recorded",
+        "solid-component-larger-than-nodule-rejected",
+      ],
+      `${label}.source_audit.vector_ids`,
+    );
+    assert.equal(audit.source_bytes_committed, false, `${label}.source_audit.source_bytes_committed`);
+    for (const vectorId of audit.vector_ids) {
+      assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
+    }
+  }
   if (record.calculator_id === "contrast-dosing") {
     const audit = evidence.source_audit;
     const expectedSources = [
@@ -673,6 +741,14 @@ for (const [calculatorId, expected] of Object.entries({
   "kidney-biopsy-bleeding-risk": {
     basis_type: "primary-model",
     source_url: "https://doi.org/10.1016/j.xkme.2026.101352",
+  },
+  fleischner: {
+    basis_type: "clinical-guideline",
+    last_verified: "2026-08-30",
+    source_urls: [
+      "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+      "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+    ],
   },
 })) {
   const record = recordsByCalculator.get(calculatorId);

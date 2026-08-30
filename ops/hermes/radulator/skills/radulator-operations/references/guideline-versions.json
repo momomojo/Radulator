@@ -580,10 +580,208 @@
       "title": "Fleischner Pulmonary Nodule Guidance",
       "implemented_version": "Fleischner 2017",
       "basis_type": "clinical-guideline",
-      "verification_status": "seed-unverified",
-      "last_verified": null,
-      "justification": "Implements the 2017 Fleischner recommendations; current-version status remains queued for an authoritative society and publication audit.",
-      "sources": [{ "authority": "Fleischner Society", "title": "Guidelines for management of incidental pulmonary nodules detected on CT images: from the Fleischner Society 2017", "role": "primary-publication", "url": "https://doi.org/10.1148/radiol.2017161659" }]
+      "verification_status": "verified",
+      "last_verified": "2026-08-30",
+      "justification": "The 2017 primary guideline and measurement statement were independently reviewed, the primary publication identities are checked through Crossref, and the complete solid/subsolid table is cross-checked against digest-pinned NLM reproductions. Executable vectors bind applicability, measurement, every management row, optionality, and selected subsolid escalation while explicitly disclosing that CI does not download RSNA's bot-protected full text.",
+      "sources": [
+        {
+          "authority": "Fleischner Society and Radiological Society of North America",
+          "title": "Guidelines for Management of Incidental Pulmonary Nodules Detected on CT Images: From the Fleischner Society 2017",
+          "role": "primary-publication",
+          "url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659"
+        },
+        {
+          "authority": "Fleischner Society and Radiological Society of North America",
+          "title": "Recommendations for Measuring Pulmonary Nodules at CT: A Statement from the Fleischner Society",
+          "role": "primary-publication",
+          "url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894"
+        },
+        {
+          "authority": "National Library of Medicine Bookshelf",
+          "title": "Table 5.1, Revised Fleischner guidelines (2017) for solid nodules",
+          "role": "supporting-publication",
+          "url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+          "artifact_sha256": "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9"
+        },
+        {
+          "authority": "National Library of Medicine Bookshelf",
+          "title": "Table 5.2, Revised Fleischner guidelines (2017) for subsolid nodules",
+          "role": "supporting-publication",
+          "url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+          "artifact_sha256": "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997"
+        }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/Fleischner.jsx",
+        "fixture_path": "tests/fixtures/compute/fleischner.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "Fleischner 2017"
+        },
+        "source_audit": {
+          "schema": "radulator-live-source-audit/v1",
+          "command": "npm run test:fleischner-source",
+          "authority": "Fleischner Society and RSNA 2017 with NLM open table cross-checks",
+          "source_urls": [
+            "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+            "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+            "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly"
+          ],
+          "primary_metadata_dois": [
+            "10.1148/radiol.2017161659",
+            "10.1148/radiol.2017162894"
+          ],
+          "primary_full_text_fetched_by_ci": false,
+          "secondary_table_fragments": {
+            "ch5.Tab1": {
+              "bytes": 3153,
+              "sha256": "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9"
+            },
+            "ch5.Tab2": {
+              "bytes": 1912,
+              "sha256": "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997"
+            }
+          },
+          "vector_ids": [
+            "single-solid-5-low-no-routine-follow-up",
+            "single-solid-6-low-preserves-late-ct-option",
+            "single-solid-9-consider-ct-pet-or-tissue",
+            "multiple-solid-6-low-preserves-late-ct-option",
+            "single-ground-glass-5-selected-suspicious-option",
+            "single-ground-glass-6-until-year-5",
+            "multiple-ground-glass-5-initial-and-optional-late-ct",
+            "multiple-ground-glass-6-defers-to-most-suspicious-nodule",
+            "single-part-solid-6-component-5-surveillance",
+            "single-part-solid-12-component-6-highly-suspicious",
+            "single-part-solid-12-component-8-growing-escalates",
+            "single-part-solid-12-component-9-escalates-by-size",
+            "screening-routes-away-without-schedule",
+            "fractional-overall-size-rejected",
+            "ten-mm-size-requires-both-axes-recorded",
+            "solid-component-larger-than-nodule-rejected"
+          ],
+          "source_bytes_committed": false
+        },
+        "claims": [
+          {
+            "id": "fleischner-2017-applicability",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_locator": "Introduction and Table 1 note: population and exclusions",
+            "fact": "The management table is for incidental nodules and does not apply to patients younger than 35 years, immunocompromised patients, patients with known cancer, or lung cancer screening examinations.",
+            "dimensions": ["scope", "management", "output"],
+            "vector_ids": [
+              "screening-routes-away-without-schedule",
+              "under-35-routes-away-without-schedule",
+              "known-cancer-routes-away-without-schedule",
+              "immunocompromised-routes-away-without-schedule",
+              "uncertain-applicability-fails-closed"
+            ]
+          },
+          {
+            "id": "fleischner-2017-solid-table",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_locator": "Table 1 solid-nodule section, journal page 230; Recommendations 1-2",
+            "fact": "Single and multiple solid-nodule recommendations use the published less-than-6, 6-to-8, and greater-than-8 millimeter rows, preserving low-risk optional follow-up and the 3-month diagnostic alternatives only for a single nodule greater than 8 millimeters.",
+            "dimensions": ["threshold", "boundary", "interval", "management", "output"],
+            "vector_ids": [
+              "single-solid-5-low-no-routine-follow-up",
+              "single-solid-5-high-optional-12-month-ct",
+              "single-solid-6-low-preserves-late-ct-option",
+              "single-solid-8-high-two-ct-intervals",
+              "single-solid-9-consider-ct-pet-or-tissue",
+              "multiple-solid-5-low-no-routine-follow-up",
+              "multiple-solid-5-high-optional-12-month-ct",
+              "multiple-solid-6-low-preserves-late-ct-option",
+              "multiple-solid-8-high-two-ct-intervals",
+              "multiple-solid-9-low-uses-multiple-table-row"
+            ]
+          },
+          {
+            "id": "fleischner-2017-subsolid-table",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_locator": "Table 1 subsolid-nodule section, journal page 230; Recommendations 3-5",
+            "fact": "The subsolid table separates solitary pure ground-glass, solitary part-solid, and multiple-subsolid pathways, including the five-year horizon and management of multiple nodules by the most suspicious nodule.",
+            "dimensions": ["classification", "threshold", "interval", "duration", "management", "output"],
+            "vector_ids": [
+              "single-ground-glass-5-routine-no-follow-up",
+              "single-ground-glass-6-until-year-5",
+              "multiple-ground-glass-5-initial-and-optional-late-ct",
+              "multiple-ground-glass-6-defers-to-most-suspicious-nodule",
+              "single-part-solid-5-no-routine-follow-up",
+              "single-part-solid-6-component-5-surveillance",
+              "multiple-part-solid-5-follows-multiple-subsolid-row",
+              "multiple-part-solid-12-defers-to-most-suspicious-nodule"
+            ]
+          },
+          {
+            "id": "fleischner-2017-selected-subsolid-escalation",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_locator": "Recommendations 3-4: selected suspicious near-6-mm pure GGN and part-solid component escalation",
+            "fact": "Selected suspicious pure ground-glass nodules close to 6 millimeters may receive 2- and 4-year CT consideration; part-solid components at least 6 millimeters are highly suspicious, while greater-than-8-millimeter, growing, or particularly suspicious components support PET/CT, biopsy, or resection.",
+            "dimensions": ["threshold", "boundary", "classification", "management", "output"],
+            "vector_ids": [
+              "single-ground-glass-5-selected-suspicious-option",
+              "single-part-solid-12-component-6-highly-suspicious",
+              "single-part-solid-12-component-8-growing-escalates",
+              "single-part-solid-12-component-9-escalates-by-size"
+            ]
+          },
+          {
+            "id": "fleischner-2017-measurement-contract",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+            "source_locator": "Measurement recommendations and Figures 2, 4, 14, 16, and 17",
+            "fact": "Measurements use lung-window images and whole millimeters; overall nodules below 10 millimeters use the average of long and perpendicular short axes, larger nodules record both axes, and the largest solid component is measured separately by maximum long axis.",
+            "dimensions": ["model-input", "unit", "threshold", "scope", "output"],
+            "vector_ids": [
+              "fractional-overall-size-rejected",
+              "ten-mm-size-requires-both-axes-recorded",
+              "part-solid-fractional-component-rejected",
+              "solid-component-larger-than-nodule-rejected",
+              "single-part-solid-6-component-5-surveillance"
+            ]
+          },
+          {
+            "id": "fleischner-2017-risk-selection",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_locator": "Risk Factors for Malignancy section and Table 1 solid-nodule risk columns",
+            "fact": "Solid-nodule risk is a holistic malignancy-risk estimate using patient and lesion characteristics; the calculator therefore requires a clinician-selected risk stratum instead of inferring high or low risk from one checkbox.",
+            "dimensions": ["model-input", "classification", "scope", "output"],
+            "vector_ids": [
+              "single-solid-5-low-no-routine-follow-up",
+              "single-solid-5-high-optional-12-month-ct",
+              "solid-nodule-missing-risk-rejected"
+            ]
+          },
+          {
+            "id": "nlm-fleischner-solid-table-cross-check",
+            "source_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+            "source_sha256": "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
+            "source_locator": "NCBI Bookshelf object ch5.Tab1, exact HTML table fragment",
+            "fact": "The digest-pinned open reproduction contains all six single/multiple solid-nodule rows and preserves the distinct low- and high-risk optionality.",
+            "dimensions": ["version", "threshold", "interval", "management"],
+            "vector_ids": [
+              "single-solid-6-low-preserves-late-ct-option",
+              "multiple-solid-6-low-preserves-late-ct-option"
+            ]
+          },
+          {
+            "id": "nlm-fleischner-subsolid-table-cross-check",
+            "source_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+            "source_sha256": "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
+            "source_locator": "NCBI Bookshelf object ch5.Tab2, exact HTML table fragment",
+            "fact": "The digest-pinned open reproduction contains the solitary ground-glass, solitary part-solid, and multiple-subsolid rows, including the until-five-years wording and most-suspicious-nodule rule.",
+            "dimensions": ["version", "classification", "duration", "management"],
+            "vector_ids": [
+              "single-ground-glass-6-until-year-5",
+              "multiple-ground-glass-5-initial-and-optional-late-ct",
+              "multiple-ground-glass-6-defers-to-most-suspicious-nodule"
+            ]
+          }
+        ]
+      }
     },
     {
       "calculator_id": "hip-dysplasia",
