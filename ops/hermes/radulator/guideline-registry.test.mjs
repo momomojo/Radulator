@@ -665,7 +665,11 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     ];
     assert.equal(typeof audit, "object", `${label}.source_audit is required`);
     assert.equal(audit.schema, "radulator-live-source-audit/v1", `${label}.source_audit.schema`);
-    assert.equal(audit.command, "npm run test:fleischner-source", `${label}.source_audit.command`);
+    assert.equal(
+      audit.command,
+      "node scripts/audit-fleischner-primary-source.test.mjs",
+      `${label}.source_audit.command`,
+    );
     assert.equal(
       audit.authority,
       "Fleischner Society and RSNA 2017 with NLM open table cross-checks",

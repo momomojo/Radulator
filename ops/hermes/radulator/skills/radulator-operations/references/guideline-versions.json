@@ -629,7 +629,7 @@
         },
         "source_audit": {
           "schema": "radulator-live-source-audit/v1",
-          "command": "npm run test:fleischner-source",
+          "command": "node scripts/audit-fleischner-primary-source.test.mjs",
           "authority": "Fleischner Society and RSNA 2017 with NLM open table cross-checks",
           "source_urls": [
             "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",

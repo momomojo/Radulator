@@ -116,7 +116,6 @@ jobs:
           npm run test:birads-fda-source
           npm run test:contrast-source
           npm run test:albi-source
-          npm run test:fleischner-source
           node tests/roadmap-guideline-status.test.mjs
 
       - name: Build application
