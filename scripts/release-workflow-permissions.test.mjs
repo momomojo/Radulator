@@ -4,8 +4,9 @@ import { readFile } from "node:fs/promises";
 
 import { parse } from "yaml";
 
-const packageJson = JSON.parse(
-  await readFile(new URL("../package.json", import.meta.url), "utf8"),
+const clinicalJudgeSkill = await readFile(
+  new URL("../ops/hermes/radulator/skills/radulator-clinical-judge/SKILL.md", import.meta.url),
+  "utf8",
 );
 
 async function workflow(path) {
@@ -80,23 +81,44 @@ const releaseControlEvidence = e2e.jobs["hermes-release-control-tests"].steps.fi
 );
 assert.match(
   releaseControlEvidence.run,
-  /npm run test:hermes-install/,
-  "the protected exact-head check must execute the installer aggregate",
+  /(?:^|\n)\s*npm run test:hermes-install-core\s*(?:\n|$)/,
+  "the protected exact-head check must execute the offline installer aggregate",
+);
+const sourceAuditEvidence = e2e.jobs["smoke-tests"].steps.find(
+  (step) => step.name === "Verify roadmap clinical source audits at exact head",
+);
+for (const command of [
+  "npm run test:kbrc-source",
+  "npm run test:cac-drs-source",
+  "npm run test:bosniak-source",
+  "npm run test:birads-fda-source",
+  "npm run test:contrast-source",
+]) {
+  assert.match(
+    sourceAuditEvidence.run,
+    new RegExp(`(?:^|\\n)\\s*${command.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\s*(?:\\n|$)`),
+    `the named exact-head source-audit step must execute ${command}`,
+  );
+}
+assert.match(
+  clinicalJudgeSkill,
+  /Never run a candidate-declared source-audit command from the judge checkout/,
+  "the judge must not execute candidate commands from a stale checkout",
 );
 assert.match(
-  packageJson.scripts["test:hermes-install"],
-  /npm run test:primary-source/,
-  "the installer aggregate must retain primary-source evidence",
+  clinicalJudgeSkill,
+  /hardcoded claim flags are not source evidence/i,
+  "the judge protocol must reject hardcoded claim booleans as source evidence",
 );
 assert.match(
-  packageJson.scripts["test:primary-source"],
-  /npm run test:kbrc-source/,
-  "the exact-head aggregate must execute the KBRC primary-source audit",
+  clinicalJudgeSkill,
+  /extracts the cited source text from the verified bytes with a pinned parser/i,
+  "the judge protocol must require deterministic source-text extraction",
 );
 assert.match(
-  packageJson.scripts["test:primary-source"],
-  /npm run test:cac-drs-source/,
-  "the exact-head aggregate must execute the CAC staging primary-source audit",
+  clinicalJudgeSkill,
+  /trusted exact-head CI check ran that audit/i,
+  "the judge protocol must bind deterministic audit execution to trusted exact-head CI",
 );
 
 console.log("release workflow permission contract tests passed");
