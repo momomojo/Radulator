@@ -12,6 +12,7 @@ import {
   githubRequest,
   loadGateState,
   paged,
+  validateCiPolicy,
 } from "../../../scripts/independent-review-gate.mjs";
 import {
   analyzeRisk,
@@ -271,6 +272,7 @@ export async function collectCandidates({ repository, role, publicKeys, api, now
     if (!completeReviewEvidence(state.files, state.pr.headSha, state.pr.baseSha)) {
       throw new Error(`Exact file review evidence is incomplete for PR #${state.pr.number}.`);
     }
+    if (!validateCiPolicy(state).ok) continue;
     const { risk, details: riskDetails } = analyzeRisk(state.files, state.pr);
     const exact = exactState(state, risk);
     const existing = newestByRole(state, publicKeys, exact);

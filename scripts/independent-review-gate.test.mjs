@@ -55,6 +55,11 @@ assert.equal(
   "function",
   "the exact-head publication lifecycle must be directly regression-testable",
 );
+assert.equal(
+  typeof independentGate.requiredCiForPullRequest,
+  "function",
+  "the trusted gate must derive CI requirements from the current PR and complete changed-file evidence",
+);
 
 function keyFixture(keyId, role, profile) {
   const { publicKey, privateKey } = generateKeyPairSync("ed25519");
@@ -144,8 +149,10 @@ function checkRun(pr, name, index, overrides = {}) {
   };
 }
 
-function ciFixture(pr, { workflowRuns, checkRuns } = {}) {
-  const requiredCi = requiredCiForBase(pr.baseRef);
+function ciFixture(pr, files = STANDARD_FILES, { workflowRuns, checkRuns } = {}) {
+  const requiredCi = typeof independentGate.requiredCiForPullRequest === "function"
+    ? independentGate.requiredCiForPullRequest(pr, files)
+    : requiredCiForBase(pr.baseRef);
   const runs = workflowRuns || [workflowRun(pr)];
   const checks = checkRuns || requiredCi.map((name, index) => checkRun(pr, name, index));
   return {
@@ -226,7 +233,7 @@ function carrier(record, id = 812, overrides = {}) {
 function gateFixture(options = {}) {
   const pr = prFixture(options.pr || {});
   const files = options.files || STANDARD_FILES;
-  const ciSetup = ciFixture(pr, options.ciSetup || {});
+  const ciSetup = ciFixture(pr, files, options.ciSetup || {});
   const state = exactState(pr, ciSetup.result, files);
   const primary = signedRecord(PRIMARY, state, options.primaryRecord || {});
   return {
@@ -486,6 +493,77 @@ function expectBlocked(reasonCode, options = {}) {
   assert.deepEqual(result.judgeRoles, ["primary", "verification"]);
 }
 
+{
+  const files = [
+    ...HIGH_FILES,
+    {
+      filename: ".github/workflows/e2e-tests.yml",
+      status: "modified",
+      patch: "@@ -1 +1 @@\n-npx playwright test\n+echo skipped",
+    },
+  ];
+  const base = gateFixture({ pr: { changedFiles: files.length }, files });
+  const state = exactState(base.pr, base.ci, base.files);
+  const primary = signedRecord(PRIMARY, state);
+  const verification = signedRecord(VERIFICATION, state, { reviewed_at: "2026-08-23T20:01:30Z" });
+  assert.equal(
+    evaluateGate({ ...base, reviews: [carrier(primary), carrier(verification, 813)] }).reasonCode,
+    "MIXED_TRUST_DOMAIN_CHANGE",
+    "clinical runtime and release-control changes must be split so the candidate cannot redefine its own evidence",
+  );
+}
+
+{
+  const files = [
+    ...HIGH_FILES,
+    {
+      filename: "ops/hermes/radulator/guideline-registry.test.mjs",
+      status: "modified",
+      patch: "@@ -1 +1 @@\n-old clinical evidence\n+new clinical evidence",
+    },
+  ];
+  const base = gateFixture({ pr: { changedFiles: files.length }, files });
+  const state = exactState(base.pr, base.ci, base.files);
+  const primary = signedRecord(PRIMARY, state);
+  const verification = signedRecord(VERIFICATION, state, { reviewed_at: "2026-08-23T20:01:30Z" });
+  assert.equal(
+    evaluateGate({ ...base, reviews: [carrier(primary), carrier(verification, 813)] }).reasonCode,
+    "PASS",
+    "calculator PRs may carry clinical registry evidence without redefining their release authority",
+  );
+}
+
+{
+  const pr = prFixture();
+  const requiredCi = requiredCiForBase(pr.baseRef);
+  const workflowRuns = [workflowRun(pr)];
+  const checkRuns = requiredCi.map((name, index) => checkRun(pr, name, index));
+  const ci = resolveRequiredCi({
+    pr,
+    workflowRuns,
+    checkRuns,
+    requiredCi,
+    expectedWorkflowId: WORKFLOW_ID,
+    expectedCiAppId: CI_APP_ID,
+  });
+  const state = exactState(pr, ci, HIGH_FILES);
+  const primary = signedRecord(PRIMARY, state);
+  const verification = signedRecord(VERIFICATION, state, { reviewed_at: "2026-08-23T20:01:30Z" });
+  const result = evaluateGate({
+    pr,
+    requiredCi,
+    ci,
+    files: HIGH_FILES,
+    reviews: [carrier(primary), carrier(verification, 813)],
+    publicKeys: PUBLIC_KEYS,
+  });
+  assert.equal(
+    result.reasonCode,
+    "CI_POLICY_MISMATCH",
+    "high-risk changed files must not pass with a caller-supplied two-check develop policy",
+  );
+}
+
 expectBlocked("UNSUPPORTED_BASE", { pr: { baseRef: "feature" } });
 expectBlocked("PR_NOT_OPEN_READY", { pr: { state: "closed" } });
 expectBlocked("PR_NOT_OPEN_READY", { pr: { draft: true } });
@@ -645,6 +723,35 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
   assert.deepEqual(requiredCiForBase("develop"), ["Smoke Tests", "Targeted Calculator Tests"]);
   const mainPr = prFixture({ baseRef: "main" });
   assert.deepEqual(requiredCiForBase(mainPr.baseRef), ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"]);
+  if (typeof independentGate.requiredCiForPullRequest === "function") {
+    assert.deepEqual(
+      independentGate.requiredCiForPullRequest(pr, STANDARD_FILES),
+      ["Smoke Tests", "Targeted Calculator Tests"],
+      "standard develop PRs remain on the tight two-check path",
+    );
+    assert.deepEqual(
+      independentGate.requiredCiForPullRequest(pr, HIGH_FILES),
+      ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"],
+      "actual high-risk changed files require exact-head Full evidence even without a marker",
+    );
+    assert.deepEqual(
+      independentGate.requiredCiForPullRequest(
+        prFixture({ body: "<!-- radulator-risk: high -->" }),
+        STANDARD_FILES,
+      ),
+      ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"],
+      "the canonical marker schedules and requires Full even when the current file list is standard",
+    );
+    assert.doesNotThrow(
+      () => independentGate.requiredCiForPullRequest(pr, []),
+      "a transient empty file page must not abort the entire collector queue",
+    );
+    assert.deepEqual(
+      independentGate.requiredCiForPullRequest(pr, []),
+      ["Smoke Tests", "Targeted Calculator Tests"],
+      "incomplete file evidence may only fall back to the base minimum before completeFileList fails closed",
+    );
+  }
 }
 
 console.log("independent clinical exact-head gate tests passed");
