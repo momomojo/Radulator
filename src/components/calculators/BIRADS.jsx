@@ -569,10 +569,9 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     } else if (finding_type === "architectural_distortion") {
       findingDesc = "Architectural distortion";
     } else if (finding_type === "associated_features") {
-      findingDesc =
-        modality === "ultrasound"
-          ? "Associated features (skin changes)"
-          : "Associated features (skin/nipple changes)";
+      // The generic finding-type choice does not establish which associated
+      // feature is present, so the output must not invent a specific feature.
+      findingDesc = "Associated features";
     }
 
     // Determine category based on suspicion level

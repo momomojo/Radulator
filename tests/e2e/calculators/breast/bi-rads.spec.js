@@ -731,14 +731,14 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await expect(
         resultsSection.locator("text=4B - Moderate Suspicion"),
       ).toBeVisible();
-      await expect(
-        resultsSection.locator(
-          "text=Associated features (skin/nipple changes)",
-        ),
-      ).toBeVisible();
+      await expect(resultsSection).toContainText(
+        "Finding Description: Associated features",
+      );
+      await expect(resultsSection).not.toContainText("skin");
+      await expect(resultsSection).not.toContainText("nipple");
     });
 
-    test("should keep ultrasound associated-feature wording source-exact", async ({
+    test("should keep generic associated-feature output neutral", async ({
       page,
     }) => {
       await page.getByLabel("Ultrasound").click();
@@ -749,8 +749,9 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole("status", { name: "Calculator results" });
-      await expect(results).toContainText("Associated features (skin changes)");
-      await expect(results).not.toContainText("nipple retraction");
+      await expect(results).toContainText("Finding Description: Associated features");
+      await expect(results).not.toContainText("skin");
+      await expect(results).not.toContainText("nipple");
     });
   });
 

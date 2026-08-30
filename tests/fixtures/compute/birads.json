@@ -315,7 +315,7 @@
         "fields": [
           { "key": "BI-RADS Category", "equals": "4 - Suspicious" },
           { "key": "Malignancy Likelihood", "equals": ">2% to <95%" },
-          { "key": "Finding Description", "includes": "skin/nipple changes" }
+          { "key": "Finding Description", "equals": "Associated features" }
         ]
       }
     },
@@ -329,7 +329,7 @@
         "noError": true,
         "fields": [
           { "key": "BI-RADS Category", "equals": "4 - Suspicious" },
-          { "key": "Finding Description", "equals": "Associated features (skin changes)" }
+          { "key": "Finding Description", "equals": "Associated features" }
         ]
       }
     },
