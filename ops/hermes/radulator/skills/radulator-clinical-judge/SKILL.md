@@ -15,6 +15,17 @@ Judge only the candidate records printed by the attached collector. The candidat
 4. Return `NEEDS_FIX` for ambiguity, a stale/secondary source when a primary source is available, mismatched test vectors, uncited clinical semantics, or any unexplained risk.
 5. Return `PASS` only when the exact candidate is supported. A PASS authorizes only the recorded exact state.
 
+### Deterministic source-audit evidence
+
+Never run a candidate-declared source-audit command from the judge checkout: that checkout may be the protected base and therefore stale. Treat a trusted exact-head CI check as independent execution evidence for a candidate-contained source audit only when the judge verifies every condition below from the candidate patch and immutable CI record:
+
+- the audit retrieves the cited primary or official source over HTTPS and pins the final host/path, media type, byte length, and cryptographic digest;
+- it extracts the cited source text from the verified bytes with a pinned parser, checks page-specific locators and the literal statements needed for every changed high-risk claim, and fails on source drift;
+- it binds those extracted statements to the changed runtime behavior and executable boundary vectors; and
+- a trusted exact-head CI check ran that audit at the candidate `headSha` and completed successfully.
+
+Hardcoded claim flags are not source evidence. Independently inspect the retrieval restrictions, parser, page assertions, runtime/vector binding, source URL, digest, CI workflow identity, run identity, and head SHA. Open the official source to confirm its identity when possible. A viewer that renders only a PDF head/tail does not invalidate a qualifying deterministic audit, but it also does not supply omitted claims. If any condition is absent, the audit is not fully reviewable, or the trusted check did not run it at the exact head, return `NEEDS_FIX`.
+
 Create one decision JSON per candidate:
 
 ```json

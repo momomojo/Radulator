@@ -493,6 +493,44 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
     }
   }
+  if (record.calculator_id === "contrast-dosing") {
+    const audit = evidence.source_audit;
+    const expectedSources = [
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Adult.pdf",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf",
+    ];
+    assert.equal(typeof audit, "object", `${label}.source_audit is required`);
+    assert.equal(audit.schema, "radulator-live-source-audit/v1", `${label}.source_audit.schema`);
+    assert.equal(audit.command, "npm run test:contrast-source", `${label}.source_audit.command`);
+    assert.equal(audit.authority, "American College of Radiology", `${label}.source_audit.authority`);
+    assert.deepEqual(audit.source_urls, expectedSources, `${label}.source_audit.source_urls`);
+    assert.deepEqual(
+      audit.vector_ids,
+      [
+        "egfr-without-stability-status-fails-closed",
+        "stable-egfr-45-no-prophylaxis",
+        "stable-egfr-30-no-routine-prophylaxis",
+        "stable-egfr-44-individual-high-risk-only",
+        "stable-egfr-29-isotonic-prophylaxis",
+        "aki-egfr-is-unreliable",
+        "anuric-dialysis-no-ciaki-prophylaxis",
+        "dialysis-residual-function-higher-risk",
+        "lower-viscosity-300-no-routine-warming",
+        "higher-viscosity-370-selective-warming",
+      ],
+      `${label}.source_audit.vector_ids`,
+    );
+    assert.equal(audit.source_bytes_committed, false, `${label}.source_audit.source_bytes_committed`);
+    for (const vectorId of audit.vector_ids) {
+      assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
+    }
+    assert.deepEqual(
+      calculatorExport.refs.slice(0, 3).map((reference) => reference.u),
+      expectedSources,
+      `${label}: runtime references must expose the exact ACR manual and reaction cards`,
+    );
+  }
 }
 
 const calculators = calculatorMetadata();
