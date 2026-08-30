@@ -30,6 +30,8 @@ const HEAD = "a".repeat(40);
 const BASE = "b".repeat(40);
 const PRIMARY_ID = "primary-2026-08";
 const VERIFY_ID = "verification-2026-08";
+const STANDARD_REQUIRED_CI = ["Smoke Tests", "Targeted Calculator Tests"];
+const HIGH_REQUIRED_CI = [...STANDARD_REQUIRED_CI, "Full Test Suite"];
 const primaryKeys = generateKeyPairSync("ed25519");
 const verificationKeys = generateKeyPairSync("ed25519");
 const PUBLIC_KEYS = {
@@ -364,8 +366,10 @@ const HIGH_FILES = [{ filename: "src/components/calculators/MELDNa.jsx", status:
   );
 }
 
-function stateFixture(files = STANDARD_FILES, reviews = []) {
+function stateFixture(files = STANDARD_FILES, reviews = [], overrides = {}) {
   const labels = relevantLabelsDigest(["ready-for-gate"]);
+  const requiredCi = overrides.requiredCi || STANDARD_REQUIRED_CI;
+  const evidenceNames = overrides.evidenceNames || requiredCi;
   return {
     pr: {
       repositoryId: 1027532341,
@@ -385,21 +389,21 @@ function stateFixture(files = STANDARD_FILES, reviews = []) {
       labels: labels.labels,
       labelsDigest: labels.sha256,
     },
-    requiredCi: ["Smoke Tests", "Targeted Calculator Tests"],
+    requiredCi,
     ci: {
-      ok: true,
-      evidence: [{
-        name: "Smoke Tests",
+      ok: overrides.ciOk ?? true,
+      evidence: evidenceNames.map((name, index) => ({
+        name,
         app_id: 15368,
-        check_run_id: 1,
+        check_run_id: 1 + index,
         check_suite_id: 2,
         workflow_id: 3,
         workflow_run_id: 4,
         run_attempt: 1,
         head_sha: HEAD,
         conclusion: "success",
-        completed_at: "2026-08-23T20:00:00Z",
-      }],
+        completed_at: `2026-08-23T20:00:0${index}Z`,
+      })),
     },
     files,
     reviews,
@@ -497,17 +501,73 @@ assert.ok(standard[0].riskDetails.length > 0);
   assert.deepEqual(await collect("primary", ambiguousState), [], "a newer unique PASS supersedes an older collision");
 }
 
-const highNoPrimary = await collect("verification", stateFixture(HIGH_FILES));
+const highNoPrimary = await collect("verification", stateFixture(HIGH_FILES, [], {
+  requiredCi: HIGH_REQUIRED_CI,
+  evidenceNames: HIGH_REQUIRED_CI,
+}));
 assert.deepEqual(highNoPrimary, [], "verification waits for the primary PASS on high risk");
 
-const highState = stateFixture(HIGH_FILES);
+const downgradedHighState = stateFixture(HIGH_FILES, [], {
+  requiredCi: STANDARD_REQUIRED_CI,
+  evidenceNames: STANDARD_REQUIRED_CI,
+});
+assert.deepEqual(
+  await collect("primary", downgradedHighState),
+  [],
+  "the collector must reject a mocked high-risk state that claims green under a downgraded CI policy",
+);
+
+const missingFullEvidenceState = stateFixture(HIGH_FILES, [], {
+  requiredCi: HIGH_REQUIRED_CI,
+  evidenceNames: STANDARD_REQUIRED_CI,
+});
+assert.deepEqual(
+  await collect("primary", missingFullEvidenceState),
+  [],
+  "the collector must reject a required-CI list whose immutable evidence omits Full Test Suite",
+);
+
+const mixedTrustDomainState = stateFixture([
+  ...HIGH_FILES,
+  {
+    filename: ".github/workflows/e2e-tests.yml",
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-npx playwright test\n+echo skipped",
+  },
+], [], {
+  requiredCi: HIGH_REQUIRED_CI,
+  evidenceNames: HIGH_REQUIRED_CI,
+});
+assert.deepEqual(
+  await collect("primary", mixedTrustDomainState),
+  [],
+  "the collector must not spend a judge turn on a clinical PR that redefines its own release controls",
+);
+
+const highState = stateFixture(HIGH_FILES, [], {
+  requiredCi: HIGH_REQUIRED_CI,
+  evidenceNames: HIGH_REQUIRED_CI,
+});
 highState.reviews = [signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, highState)];
 const highVerification = await collect("verification", highState);
 assert.equal(highVerification.length, 1);
 assert.equal(highVerification[0].risk.tier, "high");
 assert.deepEqual(highVerification[0].requiredRoles, ["primary", "verification"]);
+assert.deepEqual(
+  highVerification[0].exactState.ci.map((item) => item.name),
+  ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"],
+  "the high-risk candidate and its signature digest must bind Full Test Suite identity",
+);
+assert.notEqual(
+  highVerification[0].exactState.ciSha256,
+  digest(downgradedHighState.ci.evidence),
+  "removing Full Test Suite must change the exact-state CI digest",
+);
 
-const needsFixState = stateFixture(HIGH_FILES);
+const needsFixState = stateFixture(HIGH_FILES, [], {
+  requiredCi: HIGH_REQUIRED_CI,
+  evidenceNames: HIGH_REQUIRED_CI,
+});
 needsFixState.reviews = [signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, needsFixState, "NEEDS_FIX")];
 assert.deepEqual(await collect("verification", needsFixState), [], "verification never overrides a primary NEEDS_FIX");
 

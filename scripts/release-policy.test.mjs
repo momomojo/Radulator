@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 
+import * as releasePolicy from "./release-policy.mjs";
 import {
   ATTESTATION_SCHEMA,
   canonicalJson,
@@ -126,8 +127,11 @@ for (const filename of [
   "src/components/ui/select.jsx",
   "src/components/ui/switch.jsx",
   "src/context/CalculatorContext.jsx",
+  "src/data/mesaCacReference.js",
+  "src/hooks/index.js",
   "src/hooks/useUrlSync.js",
   "src/lib/reportSnippets.js",
+  "src/main.jsx",
 ]) {
   const sharedRuntimeRisk = classifyRisk([{
     filename,
@@ -135,6 +139,67 @@ for (const filename of [
     patch: "@@ -1 +1 @@\n-return oldValue\n+return newValue",
   }]);
   assert.equal(sharedRuntimeRisk.tier, "high", `${filename} can change shared clinical inputs or outputs`);
+}
+
+for (const filename of [
+  ".github/workflows/e2e-tests.yml",
+  "ops/hermes/radulator/github-ci-identity.mjs",
+  "ops/hermes/radulator/install.py",
+  "ops/hermes/radulator/public-keys.mjs",
+  "ops/hermes/radulator/publisher_service_install.py",
+  "ops/hermes/radulator/release_promoter_cron.sh",
+  "ops/hermes/radulator/trusted_publisher_cron.sh",
+  "scripts/release-policy.mjs",
+  "scripts/independent-review-gate.mjs",
+  "scripts/deployment-run-identity.mjs",
+  "scripts/post-deploy-smoke.mjs",
+  "scripts/reconcile-deployment.mjs",
+  "scripts/rollback-request.mjs",
+  "scripts/select-rollback-deployment.mjs",
+  "scripts/spec-map.js",
+  "scripts/write-release-marker.mjs",
+  "ops/hermes/radulator/judge-candidates.mjs",
+  "ops/hermes/radulator/judge-attest.mjs",
+  ".npmrc",
+  "npm-shrinkwrap.json",
+  "package.json",
+  "playwright.config.js",
+  "playwright.config.ts",
+  "playwright.config.mjs",
+  "vite.config.ts",
+]) {
+  const releaseControlRisk = classifyRisk([{
+    filename,
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-return oldPolicy\n+return newPolicy",
+  }]);
+  assert.equal(releaseControlRisk.tier, "high", `${filename} can weaken trusted release evidence`);
+  assert.ok(releaseControlRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"));
+}
+assert.equal(
+  releasePolicy.RISK_CLASSIFIER_VERSION,
+  "radulator-clinical-risk/v3",
+  "expanding the signed classifier to release-control files requires a new policy version",
+);
+
+for (const filename of [
+  "ops/hermes/radulator/cac-drs-auc-boundary.test.mjs",
+  "ops/hermes/radulator/guideline-registry.test.mjs",
+  "ops/hermes/radulator/meld-entry-domain-evidence.test.mjs",
+  "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+  "ops/hermes/radulator/formspree_feedback_intake.py",
+  "ops/hermes/radulator/learning_context.py",
+]) {
+  const evidenceRisk = classifyRisk([{
+    filename,
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-old evidence\n+new evidence",
+  }]);
+  assert.equal(
+    evidenceRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"),
+    false,
+    `${filename} is clinical/operational evidence, not executable release authority`,
+  );
 }
 
 const thresholdRisk = classifyRisk([{
@@ -159,6 +224,28 @@ const explicitHighRisk = classifyRisk([{
 }], { title: "Improve copy", body: "Risk-Tier: high" });
 assert.equal(explicitHighRisk.tier, "high");
 assert.ok(explicitHighRisk.reasonCodes.includes("EXPLICIT_HIGH_RISK"));
+
+assert.equal(
+  releasePolicy.EXPLICIT_HIGH_RISK_MARKER,
+  "<!-- radulator-risk: high -->",
+  "the workflow and trusted policy must share one canonical high-risk scheduling marker",
+);
+assert.equal(
+  typeof releasePolicy.hasExplicitHighRiskMarker,
+  "function",
+  "the canonical scheduling marker must be checked through the release policy",
+);
+if (typeof releasePolicy.hasExplicitHighRiskMarker === "function") {
+  assert.equal(
+    releasePolicy.hasExplicitHighRiskMarker({ body: "Evidence\n<!-- radulator-risk: high -->\n" }),
+    true,
+  );
+  assert.equal(
+    releasePolicy.hasExplicitHighRiskMarker({ body: "Risk-Tier: high" }),
+    false,
+    "broader risk syntax may classify high risk but must not impersonate the exact workflow marker",
+  );
+}
 
 const renamedClinicalRisk = classifyRisk([{
   filename: "archive/meld-na.md",
