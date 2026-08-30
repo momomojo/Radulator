@@ -19,11 +19,15 @@ import { classifyRisk, digest, verifyAttestation } from "../../../scripts/releas
 
 const HEAD = "a".repeat(40);
 const BASE = "b".repeat(40);
+const STANDARD_REQUIRED_CI = ["Smoke Tests", "Targeted Calculator Tests"];
 
 function candidateFixture(overrides = {}) {
   const files = [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }];
   const risk = classifyRisk(files);
-  const ci = [{ name: "Smoke Tests", completed_at: "2026-08-23T20:00:00Z" }];
+  const ci = STANDARD_REQUIRED_CI.map((name, index) => ({
+    name,
+    completed_at: `2026-08-23T20:00:0${index}Z`,
+  }));
   return {
     schema: "radulator-judge-candidate/v1",
     candidateId: "d".repeat(64),
@@ -225,6 +229,7 @@ try {
             stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" },
             labelsDigest: candidate.exactState.labelsSha256,
           },
+          requiredCi: STANDARD_REQUIRED_CI,
           ci: candidate.ci,
           files: candidate.files,
         };
@@ -249,6 +254,7 @@ try {
             stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" },
             labelsDigest: candidate.exactState.labelsSha256,
           },
+          requiredCi: STANDARD_REQUIRED_CI,
           ci: candidate.ci,
           files: candidate.files,
           reviews: [{ id: 77, body: formatAttestationCarrier(record) }],
@@ -261,6 +267,79 @@ try {
   assert.equal(idempotent.commentId, 77);
   assert.equal(idempotent.idempotent, true);
 
+  const highFiles = [{
+    filename: "src/components/calculators/MELDNa.jsx",
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-const score = 1\n+const score = 2",
+  }];
+  const highRisk = classifyRisk(highFiles);
+  const downgradedCi = candidate.ci.evidence;
+  const highCandidate = candidateFixture({
+    files: highFiles,
+    risk: highRisk,
+    requiredRoles: ["primary", "verification"],
+    ci: { ok: true, evidence: downgradedCi },
+    exactState: {
+      ...candidate.exactState,
+      risk: highRisk,
+      ci: downgradedCi,
+      ciSha256: digest(downgradedCi),
+    },
+  });
+  const highRecord = signCandidate({
+    candidate: highCandidate,
+    decision: { ...decision, candidate_id: highCandidate.candidateId },
+    identity: {
+      keyId: "primary-2026-08", role: "primary", profile: "radulator",
+      model: "gpt-5.6-sol", provider: "openai-codex",
+    },
+    privateKey,
+    reviewedAt: "2026-08-23T20:02:00Z",
+  });
+  await assert.rejects(() => postAttestation({
+    record: highRecord,
+    publicKeys: keys,
+    api: {
+      async loadGateState() {
+        return {
+          pr: {
+            repositoryId: highCandidate.exactState.repositoryId, number: highCandidate.pr,
+            changedFiles: highFiles.length, headSha: highCandidate.headSha,
+            baseSha: highCandidate.baseSha, baseRef: highCandidate.baseRef,
+            stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" },
+            labelsDigest: highCandidate.exactState.labelsSha256,
+          },
+          requiredCi: STANDARD_REQUIRED_CI,
+          ci: highCandidate.ci,
+          files: highFiles,
+        };
+      },
+      async createComment() { throw new Error("must not post downgraded high-risk evidence"); },
+    },
+  }), /CI_POLICY_MISMATCH|trusted risk policy/i);
+
+  await assert.rejects(() => postAttestation({
+    record,
+    publicKeys: keys,
+    api: {
+      async loadGateState() {
+        return {
+          pr: {
+            repositoryId: candidate.exactState.repositoryId, number: candidate.pr,
+            changedFiles: candidate.files.length, headSha: candidate.headSha,
+            baseSha: candidate.baseSha, baseRef: candidate.baseRef,
+            stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" },
+            labelsDigest: candidate.exactState.labelsSha256,
+          },
+          requiredCi: STANDARD_REQUIRED_CI,
+          ci: { ...candidate.ci, ok: false, summary: "Full workflow is not green" },
+          files: candidate.files,
+        };
+      },
+      async createComment() { throw new Error("must not post against non-green live CI"); },
+    },
+  }), /CI_NOT_EXACT_SUCCESS|not exact green/i);
+
   await assert.rejects(() => postAttestation({
     record,
     publicKeys: keys,
@@ -268,6 +347,7 @@ try {
       async loadGateState() {
         return {
           pr: { repositoryId: candidate.exactState.repositoryId, number: 123, changedFiles: candidate.files.length, headSha: "0".repeat(40), baseSha: BASE, baseRef: "develop", stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" }, labelsDigest: candidate.exactState.labelsSha256 },
+          requiredCi: STANDARD_REQUIRED_CI,
           ci: candidate.ci,
           files: candidate.files,
         };
