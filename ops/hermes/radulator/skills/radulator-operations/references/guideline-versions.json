@@ -20,10 +20,102 @@
       "title": "ALBI Score",
       "implemented_version": "ALBI Grade (Johnson 2015)",
       "basis_type": "primary-model",
-      "verification_status": "seed-unverified",
-      "last_verified": null,
-      "justification": "Implements the published ALBI prognostic model rather than a versioned society guideline; primary-model fidelity remains queued for audit.",
-      "sources": [{ "authority": "Johnson et al.", "title": "Assessment of liver function in patients with hepatocellular carcinoma: a new evidence-based approach", "role": "primary-publication", "url": "https://doi.org/10.1200/JCO.2014.57.9151" }]
+      "verification_status": "verified",
+      "last_verified": "2026-08-29",
+      "justification": "The open primary publication confirms the printed two-variable ALBI equation, SI units, three inclusive/exclusive grade intervals, and HCC development population. Executable vectors bind the source coefficients and all grade boundaries; unsupported cohort-median and treatment-eligibility claims were removed.",
+      "sources": [{ "authority": "Johnson et al.", "title": "Assessment of liver function in patients with hepatocellular carcinoma: a new evidence-based approach", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/" }],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/ALBIScore.jsx",
+        "fixture_path": "tests/fixtures/compute/albi-score.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "ALBI Grade (Johnson 2015)"
+        },
+        "source_audit": {
+          "schema": "radulator-live-source-audit/v1",
+          "command": "npm run test:albi-source",
+          "authority": "Johnson et al., Journal of Clinical Oncology 2015",
+          "source_urls": [
+            "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/"
+          ],
+          "raw_source_bytes": 276155,
+          "canonical_source_bytes": 276075,
+          "canonical_source_sha256": "fccc2f40b9ae8a85fcd7dbc093886be078a554db8f425322db6cffc3bd2499b0",
+          "canonicalization": [
+            "replace ncbi_phid value with [volatile]",
+            "replace csrfmiddlewaretoken value with [volatile]"
+          ],
+          "enforced_source_locators": {
+            "population": "Abstract > Patients and Methods (abstract1/sec2)",
+            "equation": "RESULTS (sec16), paragraph immediately before Table 2 (T2)",
+            "boundaries": "RESULTS (sec16), paragraph immediately after Table 2 (T2)"
+          },
+          "vector_ids": [
+            "published-representative-grade-1",
+            "grade-1-upper-boundary",
+            "grade-2-lower-interior",
+            "grade-2-upper-boundary",
+            "grade-3-lower-interior",
+            "us-unit-equivalence"
+          ],
+          "source_bytes_committed": false
+        },
+        "claims": [
+          {
+            "id": "johnson-albi-equation-and-units",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/",
+            "source_locator": "Methods, ALBI model: printed linear-predictor equation immediately after Table 2",
+            "fact": "The linear predictor is log10 bilirubin in micromoles per liter times 0.66 plus albumin in grams per liter times negative 0.085.",
+            "dimensions": [
+              "formula",
+              "model-input",
+              "unit",
+              "output"
+            ],
+            "vector_ids": [
+              "published-representative-grade-1",
+              "us-unit-equivalence"
+            ]
+          },
+          {
+            "id": "johnson-albi-grade-boundaries",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/",
+            "source_locator": "Methods, paragraph after Table 2: ALBI grade cut points",
+            "fact": "Grade 1 includes a linear predictor at or below negative 2.60; Grade 2 is above negative 2.60 through negative 1.39 inclusive; Grade 3 is above negative 1.39.",
+            "dimensions": [
+              "classification",
+              "threshold",
+              "boundary",
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "grade-1-upper-boundary",
+              "grade-2-lower-interior",
+              "grade-2-upper-boundary",
+              "grade-3-lower-interior"
+            ]
+          },
+          {
+            "id": "johnson-albi-population-and-scope",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/",
+            "source_locator": "Abstract and Methods: HCC development/validation cohorts and chronic-liver-disease specificity cohort",
+            "fact": "The original model was developed in patients with HCC and evaluated in additional HCC and chronic-liver-disease cohorts; the calculator reports the source-defined risk group without assigning individual treatment eligibility.",
+            "dimensions": [
+              "scope",
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "published-representative-grade-1",
+              "grade-2-lower-interior",
+              "grade-3-lower-interior"
+            ]
+          }
+        ]
+      }
     },
     {
       "calculator_id": "aspects-score",
