@@ -419,8 +419,8 @@
             "id": "acr-2026-aki-and-egfr-under-30",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
             "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
-            "source_locator": "Pages 41-43: AKI caution, standard diagnostic dose, volume expansion, and prophylaxis",
-            "fact": "AKI or stable eGFR below 30 enters the higher-risk pathway; isotonic volume expansion is indicated when appropriate, normal saline is preferred, the ideal regimen is unknown, volume tolerance must be assessed, and diagnostic IV contrast should not be underdosed solely to mitigate CI-AKI risk.",
+            "source_locator": "Pages 41-43: AKI threshold unreliability, caution, standard diagnostic dose, volume expansion, and prophylaxis",
+            "fact": "For AKI, no serum creatinine or eGFR threshold adequately stratifies risk because serum creatinine is unreliable. AKI or stable eGFR below 30 enters the higher-risk pathway; use isotonic volume expansion when appropriate, prefer normal saline, recognize the ideal regimen is unknown, assess volume tolerance, and do not underdose diagnostic IV contrast solely to mitigate CI-AKI risk.",
             "dimensions": ["scope", "threshold", "management", "interpretation", "output"],
             "vector_ids": ["egfr-without-stability-status-fails-closed", "stable-egfr-29-isotonic-prophylaxis", "aki-egfr-is-unreliable"]
           },

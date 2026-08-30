@@ -46,6 +46,7 @@ const MANUAL_PRINTED_PAGES = Object.freeze([32, 40, 41, 42, 43, 44]);
 const VERIFIED_SOURCE_TEXT_CLAIM_IDS = Object.freeze([
   "stable-egfr-45-not-independent-risk",
   "stable-egfr-30-44-not-or-rarely-nephrotoxic",
+  "aki-egfr-threshold-inadequate-serum-creatinine-unreliable",
   "aki-or-egfr-under-30-relative-not-absolute",
   "standard-diagnostic-dose-not-reduced",
   "isotonic-normal-saline-preferred-regimen-unknown",
@@ -56,6 +57,16 @@ const VERIFIED_SOURCE_TEXT_CLAIM_IDS = Object.freeze([
   "residual-dialysis-urine-treated-higher-risk",
   "lower-viscosity-routine-warming-unsupported",
   "higher-viscosity-warming-selective-not-routine",
+]);
+const SOURCE_RUNTIME_BINDINGS = Object.freeze([
+  Object.freeze({
+    source_claim_id: "aki-egfr-threshold-inadequate-serum-creatinine-unreliable",
+    manual_pdf_page: 44,
+    manual_printed_page: 41,
+    vector_id: "aki-egfr-is-unreliable",
+    output_field: "Renal Safety Context",
+    output_includes: "eGFR is unreliable for AKI risk stratification",
+  }),
 ]);
 
 function sha256(bytes) {
@@ -158,6 +169,9 @@ async function verifyManualSourceText(manualBytes) {
     "stable baseline eGFR 30-44 mL/min/1.73m2, IV iodinated contrast media are either not nephrotoxic or",
   ]);
   requireSourceText(pageText, 44, "stable-egfr-30-44-not-or-rarely-nephrotoxic", ["rarely so"]);
+  requireSourceText(pageText, 44, "aki-egfr-threshold-inadequate-serum-creatinine-unreliable", [
+    "no serum creatinine or eGFR threshold is adequate to stratify risk for patients with AKI because serum creatinine in this setting is unreliable",
+  ]);
   requireSourceText(pageText, 45, "aki-or-egfr-under-30-relative-not-absolute", [
     "concern for the development of CI-AKI is a relative but not absolute contraindication",
     "at-risk patients that have AKI or an eGFR less than 30",
@@ -231,6 +245,26 @@ for (const source of SOURCES) {
 }
 const casesById = new Map(fixture.cases.map((testCase) => [testCase.id, testCase]));
 assert.equal(casesById.size, fixture.cases.length, "contrast fixture IDs must be unique");
+for (const binding of SOURCE_RUNTIME_BINDINGS) {
+  assert.ok(
+    sourceTextVerification.verified_claim_ids.includes(binding.source_claim_id),
+    `${binding.vector_id}: source claim is not page-verified`,
+  );
+  const testCase = casesById.get(binding.vector_id);
+  assert.ok(testCase, `contrast fixture lacks ${binding.vector_id}`);
+  assert.ok(
+    testCase.expect.fields.some(
+      (field) =>
+        field.key === binding.output_field && field.includes === binding.output_includes,
+    ),
+    `${binding.vector_id}: fixture does not bind the verified source claim to the runtime output`,
+  );
+  const result = ContrastDosing.compute({ ...testCase.inputs });
+  assert.ok(
+    String(result[binding.output_field]).includes(binding.output_includes),
+    `${binding.vector_id}: runtime output does not implement the verified source claim`,
+  );
+}
 for (const vectorId of BOUND_VECTOR_IDS) {
   const testCase = casesById.get(vectorId);
   assert.ok(testCase, `contrast fixture lacks ${vectorId}`);
@@ -251,6 +285,7 @@ const audit = {
   source_claims: {
     stable_egfr_gte_30_general_prophylaxis_not_indicated: true,
     stable_egfr_30_44_individual_high_risk_only: true,
+    aki_egfr_threshold_inadequate_serum_creatinine_unreliable: true,
     aki_or_egfr_lt_30_prophylaxis_indicated: true,
     isotonic_normal_saline_preferred_ideal_regimen_unknown: true,
     assess_heart_failure_and_hypervolemia_before_volume_expansion: true,
@@ -260,6 +295,7 @@ const audit = {
     higher_viscosity_agent_warming_selective_not_routine: true,
     official_adult_and_pediatric_reaction_cards_linked: true,
   },
+  source_runtime_bindings: SOURCE_RUNTIME_BINDINGS.map((binding) => ({ ...binding })),
   bound_vector_ids: [...BOUND_VECTOR_IDS],
   runtime_vector_match: true,
   fixture_vector_match: true,
@@ -270,6 +306,6 @@ if (process.argv.includes("--json")) {
   process.stdout.write(`${JSON.stringify(audit)}\n`);
 } else {
   console.log(
-    "ACR Contrast 2026 source audit passed: exact manual/cards, 12 page-extracted source statements, 10 bounded claims, and 10 executable vectors.",
+    "ACR Contrast 2026 source audit passed: exact manual/cards, 13 page-extracted source statements, 11 bounded source claims, and 10 executable vectors.",
   );
 }
