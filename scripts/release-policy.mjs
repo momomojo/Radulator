@@ -2,7 +2,8 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
 
 export const ATTESTATION_SCHEMA = "radulator-clinical-attestation/v1";
-export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v2";
+export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v3";
+export const EXPLICIT_HIGH_RISK_MARKER = "<!-- radulator-risk: high -->";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
@@ -16,16 +17,58 @@ const CLINICAL_RUNTIME_PREFIXES = [
   "src/components/display/",
   "src/components/ui/",
   "src/context/",
+  "src/data/",
 ];
 const CLINICAL_RUNTIME_FILES = new Set([
   "src/App.jsx",
   "src/components/StaticCalculatorShell.jsx",
+  "src/hooks/index.js",
   "src/hooks/useUrlSync.js",
   "src/lib/reportSnippets.js",
+  "src/main.jsx",
 ]);
 const CLINICAL_DOCUMENT_PREFIXES = [
   "docs/calculators/",
 ];
+const RELEASE_CONTROL_PREFIXES = [
+  ".github/actions/",
+  ".github/workflows/",
+  "ops/hermes/radulator/github-ci-identity",
+  "ops/hermes/radulator/github-token",
+  "ops/hermes/radulator/install.",
+  "ops/hermes/radulator/judge-",
+  "ops/hermes/radulator/lifecycle_controller.",
+  "ops/hermes/radulator/public-keys.",
+  "ops/hermes/radulator/publisher_service_install.",
+  "ops/hermes/radulator/release_promoter",
+  "ops/hermes/radulator/skills/radulator-clinical-judge/",
+  "ops/hermes/radulator/skills/radulator-release-controller/",
+  "ops/hermes/radulator/tests/test_install.",
+  "ops/hermes/radulator/tests/test_lifecycle_controller.",
+  "ops/hermes/radulator/tests/test_publisher_service_install.",
+  "ops/hermes/radulator/tests/test_release_promoter.",
+  "ops/hermes/radulator/tests/test_trusted_publisher.",
+  "ops/hermes/radulator/trusted_publisher",
+  "playwright.config.",
+  "scripts/authorize-deployment",
+  "scripts/auto-merge",
+  "scripts/deployment-run-identity",
+  "scripts/independent-review-gate",
+  "scripts/post-deploy-smoke",
+  "scripts/reconcile-deployment",
+  "scripts/release-policy",
+  "scripts/rollback-request",
+  "scripts/select-rollback-deployment",
+  "scripts/spec-map",
+  "scripts/write-release-marker",
+  "vite.config.",
+];
+const RELEASE_CONTROL_FILES = new Set([
+  ".npmrc",
+  "npm-shrinkwrap.json",
+  "package-lock.json",
+  "package.json",
+]);
 const CLINICAL_SEMANTIC_PATTERN = /(?:\b\d+(?:\.\d+)?\b|[%≤≥<>]|\b(?:formula|equation|calculate|score|boundary|cutoff|cut-off|threshold|unit|dose|dosage|contraindicat\w*|interpret\w*|management|recommend\w*|follow[- ]?up|interval|stage|staging|grade|guideline|version|diagnos\w*|treatment)\b)/i;
 const EXPLICIT_HIGH_RISK_PATTERN = /(?:<!--\s*radulator-risk\s*:\s*high\s*-->|^\s*(?:radulator[-_ ]*)?(?:clinical[-_ ]*)?risk(?:[-_ ]*tier)?\s*:\s*high\s*$)/im;
 
@@ -88,6 +131,10 @@ function normalizedEvidence(evidence) {
   };
 }
 
+export function hasExplicitHighRiskMarker(evidence = {}) {
+  return normalizedEvidence(evidence).body.includes(EXPLICIT_HIGH_RISK_MARKER);
+}
+
 export function analyzeRisk(files, evidence = {}) {
   if (!Array.isArray(files) || files.length === 0) throw new Error("At least one changed file is required.");
   const normalized = files.map(normalizeFile).sort((left, right) => left.filename.localeCompare(right.filename));
@@ -95,13 +142,19 @@ export function analyzeRisk(files, evidence = {}) {
   const details = [];
   const reasonCodes = new Set();
 
-  if (EXPLICIT_HIGH_RISK_PATTERN.test(`${normalizedPrEvidence.title}\n${normalizedPrEvidence.body}`)) {
+  if (
+    hasExplicitHighRiskMarker(normalizedPrEvidence) ||
+    EXPLICIT_HIGH_RISK_PATTERN.test(`${normalizedPrEvidence.title}\n${normalizedPrEvidence.body}`)
+  ) {
     details.push("PR evidence explicitly declares high risk");
     reasonCodes.add("EXPLICIT_HIGH_RISK");
   }
 
   for (const file of normalized) {
     const paths = [...new Set([file.filename, file.previousFilename].filter(Boolean))];
+    const releaseControlPaths = paths.filter((candidate) =>
+      RELEASE_CONTROL_FILES.has(candidate) ||
+      RELEASE_CONTROL_PREFIXES.some((prefix) => candidate.startsWith(prefix)));
     const runtimePaths = paths.filter((candidate) =>
       CLINICAL_RUNTIME_FILES.has(candidate) ||
       CLINICAL_RUNTIME_PREFIXES.some((prefix) => candidate.startsWith(prefix)));
@@ -110,6 +163,11 @@ export function analyzeRisk(files, evidence = {}) {
     const clinicalDocument = clinicalDocumentPaths.length > 0;
     const changedLines = file.patch === null ? null : changedPatchLines(file.patch).split("\n").filter(Boolean).length;
     const patchTruncated = file.changes !== null && changedLines !== null && changedLines < file.changes;
+
+    if (releaseControlPaths.length > 0) {
+      details.push(`${releaseControlPaths.join(" -> ")}: trusted release-control behavior changed`);
+      reasonCodes.add("RELEASE_CONTROL_CHANGE");
+    }
 
     if (runtime) {
       details.push(`${runtimePaths.join(" -> ")}: calculator runtime changes are high risk`);
