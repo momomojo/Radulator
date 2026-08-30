@@ -64,12 +64,14 @@ function calculatorReducer(state, action) {
       return {
         ...state,
         vals: { ...state.vals, [action.field]: action.value },
+        out: null,
       };
 
     case ACTIONS.BATCH_UPDATE_FIELDS:
       return {
         ...state,
         vals: { ...state.vals, ...action.updates },
+        out: null,
       };
 
     case ACTIONS.RESET_CALCULATOR:

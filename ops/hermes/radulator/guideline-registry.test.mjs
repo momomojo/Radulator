@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { digest } from "../../../scripts/release-policy.mjs";
 import { pathToFileURL } from "node:url";
 
 const root = process.cwd();
@@ -52,6 +53,121 @@ const allowedEvidenceDimensions = new Set([
   "unit",
   "version",
 ]);
+
+function assertFleischnerReviewedEvidenceLink(evidence, label) {
+  const link = evidence.reviewed_evidence;
+  assert.equal(typeof link, "object", `${label}.reviewed_evidence is required`);
+  assert.equal(
+    link.schema,
+    "radulator-reviewed-source-evidence-link/v1",
+    `${label}.reviewed_evidence.schema`,
+  );
+  assert.equal(
+    link.manifest_path,
+    "docs/evidence/fleischner-2017-reviewed-evidence.json",
+    `${label}.reviewed_evidence.manifest_path`,
+  );
+  assert.equal(
+    link.ci_primary_full_text_verified,
+    false,
+    `${label}.reviewed_evidence must not claim CI verification of RSNA full text`,
+  );
+
+  const manifestPath = path.join(root, link.manifest_path);
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  assert.equal(manifest.schema, "radulator-reviewed-source-evidence/v1");
+  assert.equal(manifest.payload.calculator_id, "fleischner");
+  assert.equal(manifest.payload.scope, "source-interpretation-only");
+  assert.equal(manifest.review.schema, "radulator-independent-source-review/v1");
+  assert.equal(manifest.review.disposition, "SOURCE_INTERPRETATION_APPROVED");
+  assert.equal(manifest.review.release_authority, "none");
+  assert.equal(
+    digest(manifest.payload),
+    manifest.review.payload_sha256,
+    `${label}.reviewed_evidence manifest payload digest`,
+  );
+  assert.equal(
+    link.payload_sha256,
+    manifest.review.payload_sha256,
+    `${label}.reviewed_evidence.payload_sha256`,
+  );
+  assert.equal(
+    link.reviewer_revision,
+    manifest.review.reviewer_revision,
+    `${label}.reviewed_evidence.reviewer_revision`,
+  );
+
+  const primarySources = manifest.payload.sources.filter(
+    (source) => source.review_transport === "interactive-browser",
+  );
+  assert.ok(primarySources.length >= 2, `${label}: reviewed primary sources are required`);
+  assert.ok(
+    primarySources.every(
+      (source) => source.ci_full_text_fetched === false && source.content_sha256 === null,
+    ),
+    `${label}: manifest must preserve the primary full-text CI limitation`,
+  );
+
+  const claimProjection = (claim) => ({
+    id: claim.id,
+    source_url: claim.source_url,
+    source_locator: claim.source_locator,
+    vector_ids: claim.vector_ids,
+  });
+  assert.equal(manifest.payload.claims.length, 12, `${label}: manifest must contain 12 claims`);
+  assert.deepEqual(
+    evidence.claims.map(claimProjection),
+    manifest.payload.claims.map(claimProjection),
+    `${label}: registry claims must exactly match manifest ids, sources, locators, and vectors`,
+  );
+
+  const expectedDimensions = new Map([
+    ["fleischner-2017-applicability", ["scope", "management", "output"]],
+    [
+      "fleischner-2017-characterization-and-ipln",
+      ["scope", "classification", "management", "output"],
+    ],
+    [
+      "fleischner-2017-solid-table",
+      ["threshold", "boundary", "interval", "management", "output"],
+    ],
+    [
+      "fleischner-2017-multiple-nodule-routing",
+      ["model-input", "threshold", "boundary", "management", "output"],
+    ],
+    [
+      "fleischner-2017-subsolid-table",
+      ["classification", "threshold", "interval", "duration", "management", "output"],
+    ],
+    [
+      "fleischner-2017-selected-subsolid-escalation",
+      ["classification", "threshold", "management", "output"],
+    ],
+    [
+      "fleischner-2017-part-solid-component-escalation",
+      ["classification", "threshold", "boundary", "management", "output"],
+    ],
+    ["fleischner-2017-risk-selection", ["model-input", "classification", "scope", "output"]],
+    [
+      "fleischner-2017-measurement-contract",
+      ["model-input", "unit", "threshold", "scope", "output"],
+    ],
+    [
+      "fleischner-2017-very-small-nodule-measurement",
+      ["model-input", "unit", "threshold", "scope", "output"],
+    ],
+    ["nlm-fleischner-solid-table-cross-check", ["version", "threshold", "interval", "management"]],
+    [
+      "nlm-fleischner-subsolid-table-cross-check",
+      ["version", "classification", "duration", "management"],
+    ],
+  ]);
+  assert.deepEqual(
+    evidence.claims.map((claim) => [claim.id, claim.dimensions]),
+    [...expectedDimensions],
+    `${label}: registry claims must preserve the reviewed evidence dimensions`,
+  );
+}
 
 function calculatorMetadata() {
   return readdirSync(calculatorDirectory)
@@ -538,6 +654,7 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     }
   }
   if (record.calculator_id === "fleischner") {
+    assertFleischnerReviewedEvidenceLink(evidence, label);
     const audit = evidence.source_audit;
     const expectedSources = [
       "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",

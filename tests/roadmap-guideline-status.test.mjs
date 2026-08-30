@@ -6,9 +6,44 @@ const registryPath =
 const roadmap = fs.readFileSync("docs/ROADMAP.md", "utf8");
 const e2eWorkflow = fs.readFileSync(".github/workflows/e2e-tests.yml", "utf8");
 const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
+const fleischnerManifest = JSON.parse(
+  fs.readFileSync(
+    "docs/evidence/fleischner-2017-reviewed-evidence.json",
+    "utf8",
+  ),
+);
+const fleischnerFixture = JSON.parse(
+  fs.readFileSync("tests/fixtures/compute/fleischner.json", "utf8"),
+);
 const records = new Map(
   registry.records.map((record) => [record.calculator_id, record]),
 );
+
+const expectedFleischnerClaimIds = [
+  "fleischner-2017-applicability",
+  "fleischner-2017-characterization-and-ipln",
+  "fleischner-2017-solid-table",
+  "fleischner-2017-multiple-nodule-routing",
+  "fleischner-2017-subsolid-table",
+  "fleischner-2017-selected-subsolid-escalation",
+  "fleischner-2017-part-solid-component-escalation",
+  "fleischner-2017-risk-selection",
+  "fleischner-2017-measurement-contract",
+  "fleischner-2017-very-small-nodule-measurement",
+  "nlm-fleischner-solid-table-cross-check",
+  "nlm-fleischner-subsolid-table-cross-check",
+];
+
+const roadmapFleischnerVectorIds = [
+  "definitively-benign-fat-or-calcification-routes-without-table",
+  "typical-intrapulmonary-lymph-node-routes-without-table",
+  "thick-section-characterization-fails-closed",
+  "multiple-solid-any-ge6-dominant-5-uses-multiple-threshold",
+  "multiple-solid-dominant-9-solitary-override",
+  "multiple-subsolid-any-ge6-dominant-5-uses-cohort-threshold",
+  "categorical-lte3-solid-low-without-false-precision",
+  "numeric-3-mm-requires-categorical-pathway",
+];
 
 for (const evidence of [
   {
@@ -55,13 +90,7 @@ for (const evidence of [
     roadmapLabel: "Fleischner 2017 incidental pulmonary nodule guidance",
     sourceUrl: "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
     command: "npm run test:fleischner-source",
-    claimIds: [
-      "fleischner-2017-applicability",
-      "fleischner-2017-solid-table",
-      "fleischner-2017-subsolid-table",
-      "fleischner-2017-selected-subsolid-escalation",
-      "fleischner-2017-measurement-contract",
-    ],
+    claimIds: expectedFleischnerClaimIds,
   },
 ]) {
   const { calculatorId, implementedVersion, roadmapLabel, sourceUrl, command, claimIds } =
@@ -99,6 +128,91 @@ for (const evidence of [
     );
   }
 }
+
+assert.equal(
+  fleischnerManifest.schema,
+  "radulator-reviewed-source-evidence/v1",
+  "Fleischner roadmap evidence must use the reviewed-source manifest schema",
+);
+assert.equal(
+  fleischnerManifest.payload.scope,
+  "source-interpretation-only",
+  "Fleischner source review must remain scoped to source interpretation",
+);
+assert.equal(
+  fleischnerManifest.review.disposition,
+  "SOURCE_INTERPRETATION_APPROVED",
+  "Fleischner manifest must preserve the bounded source-review disposition",
+);
+assert.equal(
+  fleischnerManifest.review.release_authority,
+  "none",
+  "Fleischner source review must not acquire release authority",
+);
+
+const fleischnerManifestClaimIds = fleischnerManifest.payload.claims.map(
+  (claim) => claim.id,
+);
+assert.deepEqual(
+  [...fleischnerManifestClaimIds].sort(),
+  [...expectedFleischnerClaimIds].sort(),
+  "Fleischner roadmap claims must match the exact expanded reviewed-source manifest",
+);
+
+const fleischnerRecordClaimIds = records
+  .get("fleischner")
+  .implementation_evidence.claims.map((claim) => claim.id);
+assert.deepEqual(
+  [...fleischnerRecordClaimIds].sort(),
+  [...expectedFleischnerClaimIds].sort(),
+  "Fleischner registry claims must match the exact expanded reviewed-source manifest",
+);
+
+const fleischnerFixtureIds = new Set(
+  fleischnerFixture.cases.map((testCase) => testCase.id),
+);
+const reviewedRuntimeVectorIds = new Set(
+  fleischnerManifest.payload.runtime_contract.reviewed_vector_ids,
+);
+for (const claim of fleischnerManifest.payload.claims) {
+  for (const vectorId of claim.vector_ids) {
+    assert.ok(
+      fleischnerFixtureIds.has(vectorId),
+      `Fleischner manifest vector ${vectorId} must remain executable in the canonical fixture`,
+    );
+    assert.ok(
+      reviewedRuntimeVectorIds.has(vectorId),
+      `Fleischner manifest vector ${vectorId} must remain in the reviewed runtime contract`,
+    );
+  }
+}
+
+for (const vectorId of roadmapFleischnerVectorIds) {
+  assert.ok(
+    roadmap.includes(vectorId),
+    `Fleischner roadmap must name the corrected runtime vector ${vectorId}`,
+  );
+}
+
+assert.ok(
+  roadmap.includes("evidence/fleischner-2017-reviewed-evidence.json"),
+  "Fleischner roadmap must link the committed reviewed-source manifest",
+);
+assert.match(
+  roadmap,
+  /CI-bound runtime vectors/i,
+  "Fleischner roadmap must distinguish CI-bound runtime vectors from source review",
+);
+assert.match(
+  roadmap,
+  /CI does not (?:fetch|download|inspect)[^\n]*RSNA[^\n]*full text/i,
+  "Fleischner roadmap must state that CI does not obtain RSNA full text",
+);
+assert.match(
+  roadmap,
+  /source review alone does not approve[^\n]*runtime[^\n]*(?:pull request|release)[^\n]*deployment[^\n]*live site/i,
+  "Fleischner roadmap must not promote source review into runtime or release approval",
+);
 
 for (const sourceUrl of [
   "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
