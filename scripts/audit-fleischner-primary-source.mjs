@@ -25,12 +25,12 @@ const SUBSOLID_TABLE_URL =
   "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly";
 
 const EXPECTED_PAYLOAD_SHA256 =
-  "29426004503cdd332de5e7c9b132e844d4097361405a2a2d8c43839b60de12be";
+  "79de3bae7c63934b444c4d147d9e86c41bf7ceffd3b572fce82cb206810c3c4b";
 const EXPECTED_REVIEWED_VECTORS_SHA256 =
-  "86200fe98dd5a26501d32e616fd87d0209d0c6bc87acb76de20b433255817548";
+  "c5601d60b76951af5abd097d24681dd29d174c4d162555e5d4cd227ab0ef7a47";
 const EXPECTED_REVIEWER_REVISION =
-  "fleischner-source-review/2026-08-30-r4";
-const EXPECTED_REVIEWED_AT = "2026-08-30T19:26:28Z";
+  "fleischner-source-review/2026-08-30-r6";
+const EXPECTED_REVIEWED_AT = "2026-08-30T20:19:37Z";
 
 const EXPECTED_CLAIM_IDS = [
   "fleischner-2017-applicability",
@@ -75,6 +75,19 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
   "multiple-subsolid-any-ge6-dominant-5-uses-cohort-threshold",
   "categorical-lte3-solid-low-without-false-precision",
   "numeric-3-mm-requires-categorical-pathway",
+  "subsolid-missing-temporal-state-fails-closed",
+  "single-ground-glass-6-established-growth-uses-annual-follow-up",
+  "single-ground-glass-new-solid-component-reroutes-to-part-solid",
+  "single-part-solid-6-component-5-persistent-uses-annual-follow-up",
+  "single-part-solid-12-component-6-persistent-is-highly-suspicious",
+  "part-solid-component-exceeding-overall-long-axis-rejected",
+  "multiple-ground-glass-established-growth-uses-most-suspicious-route",
+  "multiple-ground-glass-new-solid-component-uses-most-suspicious-route",
+  "single-solid-10-valid-axes-accepted",
+  "single-solid-10-axes-average-mismatch-rejected",
+  "pure-ground-glass-sub2mm-change-cannot-claim-growth",
+  "solid-component-unconfirmed-change-cannot-trigger-escalation",
+  "single-ground-glass-validated-volumetric-growth-accepted",
 ];
 
 const EXPECTED_LIMITATIONS = [
@@ -558,7 +571,7 @@ function validateManifest(manifest, fixture, registry) {
     runtime.reviewed_vector_ids,
     "the reviewed manifest must bind the exact fixture ID set",
   );
-  assert.equal(runtime.reviewed_vector_ids.length, 67, "exact vector count");
+  assert.equal(runtime.reviewed_vector_ids.length, 88, "exact vector count");
 
   const fixtureById = new Map(
     fixture.cases.map((testCase) => [testCase.id, testCase]),
@@ -618,14 +631,23 @@ function validateCalculatorSource(calculatorSource) {
   assert.ok(calculatorSource.includes(GUIDELINE_DOI));
   assert.ok(calculatorSource.includes(MEASUREMENT_DOI));
   assert.ok(!calculatorSource.includes(WRONG_MEASUREMENT_DOI));
+  assert.ok(!calculatorSource.includes("large_nodule_axes_recorded"));
   assert.ok(!/mediastinal window settings/i.test(calculatorSource));
   for (const invariant of [
     "contiguous thin-section CT (≤1.5 mm)",
     "lung-window images and record whole millimeters",
     "Do not assign a false-precision measurement to nodules ≤3 mm",
     "For nodules >3 and <10 mm, enter the average of maximal long-axis and perpendicular maximal short-axis diameters",
-    "For nodules ≥10 mm, record both axes",
+    "For nodules ≥10 mm, enter both overall axes",
     "maximum long-axis diameter of the largest solid component",
+    "Subsolid Nodule Comparison State",
+    "Pure-Ground-Glass Growth Confirmation",
+    "Solid-Component Evolution Confirmation",
+    "average-diameter increase of ≥2 mm",
+    "Validated volumetry may be used under its reproducibility protocol",
+    "A new measurable solid component developed",
+    "Solid-component diameter increased by ≥2 mm on comparable CT",
+    "overall nodule maximum long axis",
   ]) {
     assert.ok(
       normalizeWhitespace(calculatorSource).includes(invariant),

@@ -92,7 +92,14 @@ function noTableResult(result) {
   };
 }
 
-function measurementBasis({ sizeMode, size, count, type }) {
+function measurementBasis({
+  sizeMode,
+  size,
+  count,
+  type,
+  overallLongAxis,
+  overallShortAxis,
+}) {
   const parts = [
     "Characterization is based on contiguous thin-section CT (≤1.5 mm) and measurements are performed on lung-window images.",
   ];
@@ -107,7 +114,7 @@ function measurementBasis({ sizeMode, size, count, type }) {
     );
   } else {
     parts.push(
-      "For an overall size ≥10 mm, both long- and short-axis diameters have been recorded.",
+      `For an overall size ≥10 mm, the recorded maximum long- and perpendicular short-axis diameters are ${overallLongAxis} mm and ${overallShortAxis} mm.`,
     );
   }
 
@@ -125,6 +132,9 @@ function measurementBasis({ sizeMode, size, count, type }) {
     } else {
       parts.push(
         "The solid component is the maximum long-axis diameter of the largest solid component, measured separately to the nearest whole millimeter.",
+      );
+      parts.push(
+        `The component is checked against the recorded ${overallLongAxis} mm overall maximum long axis, not against the ${size} mm rounded overall average.`,
       );
     }
   }
@@ -204,8 +214,14 @@ Measurement gate:
 • Measure on lung-window images and record whole millimeters
 • Do not assign a false-precision measurement to nodules ≤3 mm
 • For nodules >3 and <10 mm, enter the average of maximal long-axis and perpendicular maximal short-axis diameters in the plane showing the greatest dimensions
-• For nodules ≥10 mm, record both axes
-• For part-solid nodules ≥6 mm, separately enter the maximum long-axis diameter of the largest solid component
+• For nodules ≥10 mm, enter both overall axes; this tool verifies their rounded average
+• For part-solid nodules ≥6 mm, enter both overall axes and separately enter the maximum long-axis diameter of the largest solid component
+
+Comparison gate:
+• For a single subsolid nodule, describe that nodule. For multiple subsolid nodules, baseline/persistent describes the cohort; interval evolution describes the selected most suspicious management-driving nodule(s)
+• State whether this is baseline/no adequate comparison, persistent and stable, still pure ground-glass with established interval growth, or has a new/growing solid component
+• Baseline confirmation, stable surveillance, pure-ground-glass growth, and solid-component evolution are distinct pathways
+• By linear measurement, establish size change only when average diameter changes by ≥2 mm on comparable CT; smaller changes may be spurious. Validated volumetry may establish growth under its reproducibility protocol
 
 For multiple nodules, separately state whether any nodule is ≥6 mm and characterize the most suspicious nodule, which may not be the largest. For solid nodules, the interpreting clinician must select the holistic malignancy-risk stratum; this tool does not infer risk from isolated factors.`,
     link: {
@@ -334,22 +350,32 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         vals.size_mode === "measured",
     },
     {
-      id: "large_nodule_axes_recorded",
-      label: "Both Overall Axes Recorded",
-      subLabel: "Required when the selected nodule's entered overall size is ≥10 mm.",
-      type: "radio",
+      id: "nodule_long_axis",
+      label: "Overall Nodule Maximum Long Axis (whole mm)",
+      subLabel:
+        "Required for every nodule ≥10 mm and every part-solid nodule ≥6 mm.",
+      type: "number",
       showIf: (vals) =>
         vals.guideline_applicability === "eligible" &&
         vals.nodule_characterization === "indeterminate_thin_section" &&
         vals.size_mode === "measured" &&
-        Number(vals.nodule_size) >= 10,
-      opts: [
-        {
-          value: "yes",
-          label: "Yes — long- and short-axis diameters are recorded",
-        },
-        { value: "no", label: "No / uncertain" },
-      ],
+        (Number(vals.nodule_size) >= 10 ||
+          (vals.nodule_type === "part_solid" &&
+            Number(vals.nodule_size) >= 6)),
+    },
+    {
+      id: "nodule_short_axis",
+      label: "Overall Nodule Perpendicular Short Axis (whole mm)",
+      subLabel:
+        "Measure perpendicular to the maximum long axis in the same plane; the rounded average must match the entered overall size.",
+      type: "number",
+      showIf: (vals) =>
+        vals.guideline_applicability === "eligible" &&
+        vals.nodule_characterization === "indeterminate_thin_section" &&
+        vals.size_mode === "measured" &&
+        (Number(vals.nodule_size) >= 10 ||
+          (vals.nodule_type === "part_solid" &&
+            Number(vals.nodule_size) >= 6)),
     },
     {
       id: "solid_component",
@@ -363,6 +389,92 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         vals.nodule_type === "part_solid" &&
         vals.size_mode === "measured" &&
         Number(vals.nodule_size) >= 6,
+    },
+    {
+      id: "subsolid_temporal_state",
+      label: "Subsolid Nodule Comparison State",
+      subLabel:
+        "For a single nodule, describe that nodule. For multiple nodules, baseline/persistent refers to the cohort and interval evolution refers to the selected most suspicious management-driving nodule(s).",
+      type: "radio",
+      showIf: (vals) =>
+        vals.guideline_applicability === "eligible" &&
+        vals.nodule_characterization === "indeterminate_thin_section" &&
+        ["ground_glass", "part_solid"].includes(vals.nodule_type),
+      opts: [
+        {
+          value: "baseline_or_no_comparison",
+          label: "Baseline examination or no adequate prior comparison",
+        },
+        {
+          value: "persistent_stable",
+          label: "Persistent and stable after the recommended initial follow-up",
+        },
+        {
+          value: "pure_ggo_growth",
+          label: "Interval growth while remaining pure ground-glass",
+        },
+        {
+          value: "new_or_growing_solid_component",
+          label: "New or growing solid component",
+        },
+      ],
+    },
+    {
+      id: "pure_ggo_growth_basis",
+      label: "Pure-Ground-Glass Growth Confirmation",
+      subLabel:
+        "Linear growth requires an average-diameter increase of ≥2 mm on comparable CT; smaller changes may be spurious. Validated volumetry may be used under its reproducibility protocol.",
+      type: "radio",
+      showIf: (vals) =>
+        vals.guideline_applicability === "eligible" &&
+        vals.nodule_characterization === "indeterminate_thin_section" &&
+        vals.nodule_type === "ground_glass" &&
+        vals.subsolid_temporal_state === "pure_ggo_growth",
+      opts: [
+        {
+          value: "linear_ge2",
+          label: "Average diameter increased by ≥2 mm on comparable CT",
+        },
+        {
+          value: "validated_volumetric",
+          label: "Growth established by validated volumetry on comparable CT",
+        },
+        {
+          value: "not_established",
+          label: "Linear change <2 mm or growth otherwise not established",
+        },
+      ],
+    },
+    {
+      id: "solid_component_growth_basis",
+      label: "Solid-Component Evolution Confirmation",
+      subLabel:
+        "Confirm a new measurable component or established growth on comparable CT. By linear measurement, a change <2 mm may be spurious.",
+      type: "radio",
+      showIf: (vals) =>
+        vals.guideline_applicability === "eligible" &&
+        vals.nodule_characterization === "indeterminate_thin_section" &&
+        ["ground_glass", "part_solid"].includes(vals.nodule_type) &&
+        vals.subsolid_temporal_state === "new_or_growing_solid_component",
+      opts: [
+        {
+          value: "new_component",
+          label: "A new measurable solid component developed",
+        },
+        {
+          value: "linear_ge2",
+          label: "Solid-component diameter increased by ≥2 mm on comparable CT",
+        },
+        {
+          value: "validated_volumetric",
+          label:
+            "Solid-component growth established by validated volumetry on comparable CT",
+        },
+        {
+          value: "not_established",
+          label: "Solid-component evolution is not established",
+        },
+      ],
     },
     {
       id: "risk_level",
@@ -421,7 +533,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
     },
     {
       id: "component_concern",
-      label: "Solid-Component Growth or Particularly Suspicious Morphology",
+      label: "Particularly Suspicious Part-Solid Morphology",
       subLabel:
         "Particularly suspicious examples include lobulated margins or cystic components.",
       type: "radio",
@@ -433,8 +545,12 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         vals.size_mode === "measured" &&
         Number(vals.nodule_size) >= 6,
       opts: [
-        { value: "no", label: "No / not established" },
-        { value: "yes", label: "Yes — growing or particularly suspicious" },
+        { value: "no", label: "No particularly suspicious morphology" },
+        {
+          value: "yes",
+          label: "Yes — lobulated, cystic, or otherwise particularly suspicious",
+        },
+        { value: "uncertain", label: "Uncertain / not assessed" },
       ],
     },
   ],
@@ -525,12 +641,6 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
             "A lesion greater than 30 mm is outside this pulmonary-nodule table; use case-specific mass evaluation.",
         };
       }
-      if (size >= 10 && vals.large_nodule_axes_recorded !== "yes") {
-        return {
-          Error:
-            "For an overall size ≥10 mm, record both long- and short-axis diameters before using this table.",
-        };
-      }
     }
 
     if (
@@ -542,6 +652,58 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         Error:
           "The selected nodule is ≥6 mm, which conflicts with the statement that every nodule is <6 mm.",
       };
+    }
+
+    let overallLongAxis = null;
+    let overallShortAxis = null;
+    const needsOverallAxes =
+      sizeMode === "measured" &&
+      (size >= 10 || (noduleType === "part_solid" && size >= 6));
+    if (needsOverallAxes) {
+      if (
+        String(vals.nodule_long_axis ?? "").trim() === "" ||
+        String(vals.nodule_short_axis ?? "").trim() === ""
+      ) {
+        return {
+          Error:
+            "Record both the overall nodule maximum long axis and perpendicular short axis before using this pathway.",
+        };
+      }
+      if (
+        !wholeMillimeter(vals.nodule_long_axis) ||
+        !wholeMillimeter(vals.nodule_short_axis)
+      ) {
+        return {
+          Error:
+            "Enter pre-recorded whole-millimeter overall long- and short-axis diameters.",
+        };
+      }
+      overallLongAxis = Number(vals.nodule_long_axis);
+      overallShortAxis = Number(vals.nodule_short_axis);
+      if (overallLongAxis <= 0 || overallShortAxis <= 0) {
+        return {
+          Error:
+            "Overall long- and short-axis diameters must be positive whole-millimeter values.",
+        };
+      }
+      if (overallLongAxis < overallShortAxis) {
+        return {
+          Error:
+            "The recorded maximum long axis cannot be shorter than the perpendicular short axis.",
+        };
+      }
+      if (overallLongAxis > 30) {
+        return {
+          Error:
+            "An overall maximum long axis greater than 30 mm is outside this pulmonary-nodule table; use case-specific mass evaluation.",
+        };
+      }
+      if (Math.round((overallLongAxis + overallShortAxis) / 2) !== size) {
+        return {
+          Error:
+            "The rounded average of the recorded overall long and short axes must match the entered overall nodule size.",
+        };
+      }
     }
 
     let solidSize = null;
@@ -563,6 +725,84 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         return {
           Error: "Solid-component size must be a positive whole-millimeter value.",
         };
+      }
+      if (solidSize > overallLongAxis) {
+        return {
+          Error:
+            "The solid-component maximum long axis cannot exceed the overall nodule maximum long axis.",
+        };
+      }
+    }
+
+    let subsolidTemporalState = null;
+    let growthBasis = null;
+    if (["ground_glass", "part_solid"].includes(noduleType)) {
+      subsolidTemporalState = vals.subsolid_temporal_state ?? "";
+      if (
+        ![
+          "baseline_or_no_comparison",
+          "persistent_stable",
+          "pure_ggo_growth",
+          "new_or_growing_solid_component",
+        ].includes(subsolidTemporalState)
+      ) {
+        return {
+          Error:
+            "Specify the subsolid nodule comparison state before assigning a follow-up pathway.",
+        };
+      }
+      if (
+        noduleType !== "ground_glass" &&
+        subsolidTemporalState === "pure_ggo_growth"
+      ) {
+        return {
+          Error:
+            "The pure-ground-glass growth state requires a nodule that remains pure ground-glass; otherwise select the new or growing solid-component state.",
+        };
+      }
+      if (subsolidTemporalState === "pure_ggo_growth") {
+        const basis = vals.pure_ggo_growth_basis ?? "";
+        if (basis === "not_established") {
+          return {
+            Error:
+              "Do not label linear size change as established growth unless average diameter increased by at least 2 mm on comparable CT; smaller changes may be spurious.",
+          };
+        }
+        if (!["linear_ge2", "validated_volumetric"].includes(basis)) {
+          return {
+            Error:
+              "Confirm pure-ground-glass growth by an average-diameter increase of at least 2 mm or a validated volumetric method.",
+          };
+        }
+        growthBasis =
+          basis === "linear_ge2"
+            ? "Average diameter increased by ≥2 mm on comparable CT"
+            : "Growth established by validated volumetry on comparable CT under its reproducibility protocol";
+      }
+      if (subsolidTemporalState === "new_or_growing_solid_component") {
+        const basis = vals.solid_component_growth_basis ?? "";
+        if (basis === "not_established") {
+          return {
+            Error:
+              "Confirm that solid-component evolution is established before using a growth-triggered pathway.",
+          };
+        }
+        if (
+          !["new_component", "linear_ge2", "validated_volumetric"].includes(
+            basis,
+          )
+        ) {
+          return {
+            Error:
+              "Confirm a new measurable solid component, a component-diameter increase of at least 2 mm, or validated volumetric component growth.",
+          };
+        }
+        growthBasis =
+          basis === "new_component"
+            ? "A new measurable solid component developed"
+            : basis === "linear_ge2"
+              ? "Solid-component diameter increased by ≥2 mm on comparable CT"
+              : "Solid-component growth established by validated volumetry on comparable CT under its reproducibility protocol";
       }
     }
 
@@ -610,11 +850,22 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       noduleType === "part_solid" &&
       noduleCount === "single" &&
       size >= 6 &&
-      !["yes", "no"].includes(vals.component_concern)
+      !["yes", "no", "uncertain"].includes(vals.component_concern)
     ) {
       return {
         Error:
-          "Specify whether solid-component growth or particularly suspicious morphology is present.",
+          "Specify whether particularly suspicious part-solid morphology is present.",
+      };
+    }
+    if (
+      noduleType === "part_solid" &&
+      noduleCount === "single" &&
+      size >= 6 &&
+      vals.component_concern === "uncertain"
+    ) {
+      return {
+        Error:
+          "Confirm whether particularly suspicious part-solid morphology is present before assigning a pathway.",
       };
     }
 
@@ -661,26 +912,85 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
           : "At least one nodule is ≥6 mm; the clinician selected the multiple-solid row, the most suspicious nodule guides management, and the later CT remains optional.";
       }
     } else if (!single) {
-      if (!cohortAtLeast6) {
+      if (
+        ["pure_ggo_growth", "new_or_growing_solid_component"].includes(
+          subsolidTemporalState,
+        )
+      ) {
         recommendation =
-          "CT at 3–6 months; if stable, consider CT at 2 and 4 years";
-        followUp = "3–6 months; if stable, 2 and 4 years (consider)";
+          "Use case-specific evaluation based on the most suspicious nodule(s)";
+        followUp =
+          "No fixed multiple-subsolid sequence after established interval evolution";
         rationale =
-          "Fleischner 2017 Table 1 §subsolid and Recommendation 5, multiple subsolid nodules all <6 mm.";
+          "Fleischner Recommendation 5 makes the most suspicious nodule the management driver after established interval evolution.";
         decisionBoundary =
-          "Every subsolid nodule is <6 mm; infection and other nonneoplastic causes should be considered.";
+          "Growth or solid-component evolution is established, so the baseline persistence-check schedule is not repeated.";
+      } else if (
+        subsolidTemporalState === "persistent_stable" &&
+        !cohortAtLeast6
+      ) {
+        recommendation =
+          "Consider CT at approximately 2 and 4 years to confirm stability";
+        followUp = "Approximately 2 and 4 years (consider)";
+        rationale =
+          "Fleischner Recommendation 5, persistent multiple subsolid nodules all <6 mm after initial 3–6-month follow-up.";
+        decisionBoundary =
+          "Persistence and initial stability are established; the 3–6-month confirmation step is not repeated.";
+      } else if (subsolidTemporalState === "persistent_stable") {
+        recommendation =
+          "Subsequent management is based on the most suspicious nodule(s)";
+        followUp =
+          "Use the morphology-specific pathway for the most suspicious nodule(s)";
+        rationale =
+          "Fleischner Recommendation 5, persistent multiple subsolid nodules with at least one nodule ≥6 mm.";
+        decisionBoundary =
+          "Persistence is established; consider multiple primary adenocarcinomas, and let the most suspicious nodule, which may not be the largest, guide management.";
+      } else if (!cohortAtLeast6) {
+        recommendation = "CT at 3–6 months to determine persistence or resolution";
+        followUp = "3–6 months";
+        rationale =
+          "Fleischner Table 1 and Recommendation 5, baseline multiple subsolid nodules all <6 mm.";
+        decisionBoundary =
+          "Every subsolid nodule is <6 mm; consider infectious and other nonneoplastic causes before later surveillance.";
       } else {
         recommendation =
           "CT at 3–6 months; subsequent management based on the most suspicious nodule(s)";
         followUp =
           "3–6 months, then the pathway for the most suspicious nodule(s)";
         rationale =
-          "Fleischner 2017 Table 1 §subsolid and Recommendation 5, multiple subsolid nodules with at least one nodule ≥6 mm.";
+          "Fleischner Table 1 and Recommendation 5, baseline multiple subsolid nodules with at least one nodule ≥6 mm.";
         decisionBoundary =
-          "At least one subsolid nodule is ≥6 mm; subsequent management is not a fixed 2/4-year schedule, and the most suspicious nodule may not be the largest.";
+          "At least one subsolid nodule is ≥6 mm; the most suspicious nodule may not be the largest.";
       }
     } else if (noduleType === "ground_glass") {
-      if (
+      if (subsolidTemporalState === "new_or_growing_solid_component") {
+        recommendation = "Recharacterize and evaluate the nodule as part-solid";
+        followUp =
+          "Measure the solid component and use the part-solid pathway; consider diagnostic review or resection case by case";
+        rationale =
+          "A nodule that develops a solid component no longer remains in the pure-ground-glass surveillance pathway.";
+        decisionBoundary =
+          "Solid transformation changes the current morphology and requires separate component measurement.";
+      } else if (subsolidTemporalState === "pure_ggo_growth") {
+        recommendation =
+          "Case-specific thoracic review; consider resection or continued annual CT based on the growth pattern";
+        followUp =
+          "Continued annual CT is explicitly described for subtle progression that remains pure ground-glass";
+        rationale =
+          "Fleischner Recommendation 3 says resection may be considered with growth, while its subtle pure-GGN progression example recommends continued yearly follow-up.";
+        decisionBoundary =
+          "There is established interval growth without solid transformation; the baseline persistence-check schedule must not be repeated unchanged.";
+      } else if (
+        subsolidTemporalState === "persistent_stable" &&
+        size >= 6
+      ) {
+        recommendation = "CT every 2 years until 5 years from baseline";
+        followUp = "Every 2 years through year 5 from baseline";
+        rationale =
+          "Fleischner Recommendation 3, persistent and stable solitary pure GGN ≥6 mm after initial confirmation.";
+        decisionBoundary =
+          "Persistence is established, so the initial 6–12-month confirmation step is not repeated.";
+      } else if (
         size === 5 &&
         vals.sub6_subsolid_context === "selected_suspicious_near_6"
       ) {
@@ -694,20 +1004,27 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         recommendation = "No routine follow-up";
         followUp = "None";
         rationale =
-          "Fleischner 2017 Table 1 §subsolid and Recommendation 3, ordinary solitary pure GGN <6 mm.";
+          "Fleischner Table 1 and Recommendation 3, ordinary solitary pure GGN <6 mm.";
         decisionBoundary = "Ordinary solitary pure ground-glass nodule <6 mm.";
       } else {
-        recommendation =
-          "CT at 6–12 months to confirm persistence; then CT every 2 years until 5 years";
+        recommendation = "CT at 6–12 months to confirm persistence";
         followUp =
-          "6–12 months, then every 2 years until year 5 from baseline";
+          "6–12 months; if persistent and stable, every 2 years until year 5 from baseline";
         rationale =
-          "Fleischner 2017 Table 1 §subsolid and Recommendation 3, solitary pure GGN ≥6 mm.";
+          "Fleischner Table 1 and Recommendation 3, baseline solitary pure GGN ≥6 mm.";
         decisionBoundary =
-          "The surveillance horizon ends at 5 years from baseline; it is not five additional years after confirmation.";
+          "This is the baseline/no-adequate-comparison pathway; the surveillance horizon ends at 5 years from baseline.";
       }
     } else if (size < 6) {
-      if (
+      if (subsolidTemporalState === "new_or_growing_solid_component") {
+        recommendation =
+          "Use case-specific thin-section recharacterization rather than the routine <6 mm row";
+        followUp = "Case-specific evaluation";
+        rationale =
+          "A discrete component is not reliably measured below 6 mm overall, but established solid-component evolution is not a routine baseline finding.";
+        decisionBoundary =
+          "Suspicious interval evolution is established despite the small overall size.";
+      } else if (
         size === 5 &&
         vals.sub6_subsolid_context === "selected_suspicious_near_6"
       ) {
@@ -721,38 +1038,60 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         recommendation = "No routine follow-up";
         followUp = "None";
         rationale =
-          "Fleischner 2017 Table 1 §subsolid and Recommendation 4, ordinary solitary part-solid nodule <6 mm.";
+          "Fleischner Table 1 and Recommendation 4, ordinary solitary part-solid nodule <6 mm.";
         decisionBoundary =
           "A discrete solid component cannot be defined reliably at this overall size.";
       }
-    } else if (vals.component_concern === "yes" || solidSize > 8) {
+    } else if (
+      subsolidTemporalState === "new_or_growing_solid_component" ||
+      vals.component_concern === "yes" ||
+      solidSize > 8
+    ) {
       recommendation = "PET/CT, biopsy, or resection is recommended";
       followUp =
-        "Diagnostic evaluation rather than the component-surveillance pathway";
+        "Diagnostic evaluation rather than the stable component-surveillance pathway";
       rationale =
-        "Fleischner Recommendation 4 escalation for a solid component >8 mm, growth, or particularly suspicious morphology.";
+        "Fleischner Recommendation 4 escalation for a growing solid component, particularly suspicious morphology, or a solid component >8 mm.";
       decisionBoundary =
-        vals.component_concern === "yes"
-          ? "The solid component is growing or particularly suspicious, which crosses the escalation boundary independently of component size."
-          : "The solid component >8 mm crosses the escalation boundary.";
+        subsolidTemporalState === "new_or_growing_solid_component"
+          ? "A new or growing solid component crosses the escalation boundary independently of its current size."
+          : vals.component_concern === "yes"
+            ? "Particularly suspicious morphology crosses the escalation boundary independently of component size."
+            : "The solid component >8 mm crosses the escalation boundary; a short-term persistence assessment can still be clinically relevant because large transient components occur.";
+    } else if (
+      subsolidTemporalState === "persistent_stable" &&
+      solidSize < 6
+    ) {
+      recommendation =
+        "Annual CT for at least 5 years while stable and the solid component remains <6 mm";
+      followUp = "Annual CT for at least 5 years";
+      rationale =
+        "Fleischner Recommendation 4, persistent and stable solitary part-solid nodule ≥6 mm with solid component <6 mm.";
+      decisionBoundary =
+        "Persistence is established, so the 3–6-month confirmation step is not repeated; surveillance applies only while stable and the component remains <6 mm.";
+    } else if (subsolidTemporalState === "persistent_stable") {
+      recommendation =
+        "Persistent part-solid nodule with a solid component ≥6 mm is highly suspicious; individualized diagnostic management is warranted";
+      followUp = "Case-specific diagnostic evaluation";
+      rationale =
+        "Fleischner Recommendation 4 and the subsolid table identify a persistent part-solid nodule with a solid component ≥6 mm as highly suspicious.";
+      decisionBoundary =
+        "Persistence is established and the solid component is ≥6 mm; the baseline 3–6-month confirmation step is not repeated.";
     } else if (solidSize < 6) {
-      recommendation =
-        "CT at 3–6 months to confirm persistence; if unchanged and the solid component remains <6 mm, annual CT for 5 years";
-      followUp =
-        "3–6 months, then annually through 5 years if unchanged and the component remains <6 mm";
+      recommendation = "CT at 3–6 months to determine persistence or resolution";
+      followUp = "3–6 months";
       rationale =
-        "Fleischner 2017 Table 1 §subsolid and Recommendation 4, solitary part-solid nodule ≥6 mm with solid component <6 mm.";
+        "Fleischner Table 1 and Recommendation 4, baseline solitary part-solid nodule ≥6 mm with solid component <6 mm.";
       decisionBoundary =
-        "Annual surveillance applies only while the solid component remains <6 mm and no growth or particularly suspicious morphology is established.";
+        "Persistence is not established; annual surveillance begins only after stability is confirmed.";
     } else {
-      recommendation =
-        "Consider CT at 3–6 months to confirm persistence; a solid component ≥6 mm is highly suspicious";
+      recommendation = "Consider CT at 3–6 months to evaluate persistence";
       followUp =
-        "Consider 3–6-month CT to confirm persistence; subsequent evaluation is based on the complete case";
+        "Consider 3–6-month CT; if persistent, a solid component ≥6 mm is highly suspicious";
       rationale =
-        "Fleischner Recommendation 4, solitary part-solid nodule with a 6–8 mm solid component and no selected additional escalation feature.";
+        "Fleischner Recommendation 4, baseline solitary part-solid nodule with a 6–8 mm solid component and no additional escalation feature.";
       decisionBoundary =
-        "A 6–8 mm solid component is highly suspicious but size in this interval alone does not by itself trigger PET/CT, biopsy, or resection.";
+        "Persistence is not established, so the baseline component is not yet labeled a persistent highly suspicious lesion.";
     }
 
     const typeLabel =
@@ -777,9 +1116,14 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         size,
         count: noduleCount,
         type: noduleType,
+        overallLongAxis,
+        overallShortAxis,
       }),
       "Guideline Scope":
-        "This is a table-based reference for an already characterized incidental pulmonary nodule; it does not diagnose malignancy or select among case-dependent diagnostic options.",
+        noduleType === "ground_glass" &&
+        subsolidTemporalState === "new_or_growing_solid_component"
+          ? "No pure-ground-glass schedule was generated; recharacterize the current morphology before using a part-solid pathway."
+          : "This is a table-based reference for an already characterized incidental pulmonary nodule; it does not diagnose malignancy or select among case-dependent diagnostic options.",
       "Source Framework":
         "Fleischner Society 2017 incidental pulmonary nodule guideline and 2017 measurement statement",
     };
@@ -796,6 +1140,27 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
     }
     if (solidSize !== null) {
       result["Solid Component"] = `${solidSize} mm`;
+    }
+    if (overallLongAxis !== null) {
+      result["Overall Nodule Axes"] =
+        `${overallLongAxis} × ${overallShortAxis} mm (rounded average ${size} mm)`;
+    }
+    if (subsolidTemporalState !== null) {
+      result["Temporal Context"] =
+        subsolidTemporalState === "baseline_or_no_comparison"
+          ? "Baseline examination or no adequate prior comparison"
+          : subsolidTemporalState === "persistent_stable"
+            ? "Persistent and stable after the recommended initial follow-up"
+            : subsolidTemporalState === "pure_ggo_growth"
+              ? noduleCount === "multiple"
+                ? "Established interval growth while the selected most suspicious nodule remains pure ground-glass"
+                : "Established interval growth while remaining pure ground-glass"
+              : noduleCount === "multiple"
+                ? "New or growing solid component in the selected most suspicious nodule(s)"
+                : "New or growing solid component";
+    }
+    if (growthBasis !== null) {
+      result["Growth Basis"] = growthBasis;
     }
 
     const lowerRecommendation = recommendation.toLowerCase();

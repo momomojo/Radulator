@@ -28,13 +28,6 @@ async function selectSize(page, size) {
   }
   await selectRadio(page, "Selected Nodule Size Category", measuredLabel);
   await fillInput(page, "Selected Nodule Overall Size", String(size));
-  if (Number(size) >= 10) {
-    await selectRadio(
-      page,
-      "Both Overall Axes Recorded",
-      "Yes — long- and short-axis diameters are recorded",
-    );
-  }
 }
 
 async function fillSolid(
@@ -58,6 +51,14 @@ async function fillSolid(
     await selectRadio(page, "Multiple-Nodule 6 mm Cohort Threshold", cohort);
   }
   await selectSize(page, size);
+  if (size !== "lte3" && Number(size) >= 10) {
+    await fillInput(page, "Overall Nodule Maximum Long Axis", String(size));
+    await fillInput(
+      page,
+      "Overall Nodule Perpendicular Short Axis",
+      String(size),
+    );
+  }
   await selectRadio(page, "Clinician-Estimated Malignancy Risk", risk);
   if (
     count === "Multiple nodules" &&
@@ -77,7 +78,10 @@ async function fillSubsolid(
     threshold,
     context,
     component,
-    concern,
+    morphology,
+    temporal = "Baseline examination or no adequate prior comparison",
+    longAxis,
+    shortAxis,
   },
 ) {
   await selectEligible(page);
@@ -91,17 +95,39 @@ async function fillSubsolid(
     await selectRadio(page, "Multiple-Nodule 6 mm Cohort Threshold", cohort);
   }
   await selectSize(page, size);
+  const numericSize = size === "lte3" ? 3 : Number(size);
+  const needsAxes =
+    size !== "lte3" &&
+    (numericSize >= 10 ||
+      (type === "Part-solid nodule" && numericSize >= 6));
+  if (needsAxes) {
+    const resolvedLongAxis =
+      longAxis ?? Math.max(numericSize, Number(component ?? numericSize));
+    const resolvedShortAxis =
+      shortAxis ?? Math.max(1, 2 * numericSize - resolvedLongAxis);
+    await fillInput(
+      page,
+      "Overall Nodule Maximum Long Axis",
+      String(resolvedLongAxis),
+    );
+    await fillInput(
+      page,
+      "Overall Nodule Perpendicular Short Axis",
+      String(resolvedShortAxis),
+    );
+  }
+  await selectRadio(page, "Subsolid Nodule Comparison State", temporal);
   if (context) {
     await selectRadio(page, "Solitary 5 mm Subsolid-Nodule Context", context);
   }
   if (component !== undefined) {
     await fillInput(page, "Largest Solid Component", String(component));
   }
-  if (concern) {
+  if (morphology) {
     await selectRadio(
       page,
-      "Solid-Component Growth or Particularly Suspicious Morphology",
-      concern,
+      "Particularly Suspicious Part-Solid Morphology",
+      morphology,
     );
   }
 }
@@ -335,7 +361,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     });
     const results = await calculate(page);
     await expect(results).toContainText(
-      "CT at 3–6 months; if stable, consider CT at 2 and 4 years",
+      "CT at 3–6 months to determine persistence or resolution",
     );
   });
 
@@ -351,7 +377,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await expect(results).toContainText(
       "subsequent management based on the most suspicious nodule(s)",
     );
-    await expect(results).toContainText("not a fixed 2/4-year schedule");
+    await expect(results).toContainText("most suspicious nodule may not be the largest");
   });
 
   test("states the solitary pure-GGN horizon as until year 5", async ({
@@ -359,9 +385,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
   }) => {
     await fillSubsolid(page, { size: "6" });
     const results = await calculate(page);
-    await expect(results).toContainText(
-      "CT at 6–12 months to confirm persistence; then CT every 2 years until 5 years",
-    );
+    await expect(results).toContainText("CT at 6–12 months to confirm persistence");
     await expect(results).toContainText("until year 5 from baseline");
   });
 
@@ -372,23 +396,25 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
       type: "Part-solid nodule",
       size: "10",
       component: "5",
-      concern: "No / not established",
+      morphology: "No particularly suspicious morphology",
+      temporal: "Persistent and stable after the recommended initial follow-up",
     });
     const results = await calculate(page);
-    await expect(results).toContainText("annual CT for 5 years");
+    await expect(results).toContainText("Annual CT for at least 5 years");
     await expect(results).not.toContainText(
       "PET/CT, biopsy, or resection is recommended",
     );
   });
 
-  test("escalates growth or suspicious morphology independently of component size", async ({
+  test("escalates suspicious morphology independently of component size", async ({
     page,
   }) => {
     await fillSubsolid(page, {
       type: "Part-solid nodule",
       size: "10",
       component: "5",
-      concern: "Yes — growing or particularly suspicious",
+      morphology:
+        "Yes — lobulated, cystic, or otherwise particularly suspicious",
     });
     const results = await calculate(page);
     await expect(results).toContainText(
@@ -397,23 +423,23 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await expect(results).toContainText(
       "independently of component size",
     );
-    await expect(results).not.toContainText("annual CT for 5 years");
+    await expect(results).not.toContainText("Annual CT for at least 5 years");
   });
 
-  test("preserves consider optionality for an uncomplicated 6–8-mm component", async ({
+  test("keeps a baseline 6–8-mm component in the persistence-check phase", async ({
     page,
   }) => {
     await fillSubsolid(page, {
       type: "Part-solid nodule",
       size: "10",
       component: "8",
-      concern: "No / not established",
+      morphology: "No particularly suspicious morphology",
     });
     const results = await calculate(page);
     await expect(results).toContainText(
-      "Consider CT at 3–6 months to confirm persistence",
+      "Consider CT at 3–6 months to evaluate persistence",
     );
-    await expect(results).toContainText("does not by itself trigger PET/CT");
+    await expect(results).toContainText("Persistence is not established");
   });
 
   test("escalates a greater-than-8-mm solid component and includes resection", async ({
@@ -423,7 +449,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
       type: "Part-solid nodule",
       size: "12",
       component: "9",
-      concern: "No / not established",
+      morphology: "No particularly suspicious morphology",
     });
     const results = await calculate(page);
     await expect(results).toContainText(
@@ -457,7 +483,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     );
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByRole("main").getByRole("alert")).toContainText(
-      "record both long- and short-axis diameters",
+      "overall nodule maximum long axis and perpendicular short axis",
     );
   });
 
@@ -468,11 +494,11 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
       type: "Part-solid nodule",
       size: "6",
       component: "7",
-      concern: "No / not established",
+      morphology: "No particularly suspicious morphology",
     });
     const results = await calculate(page);
     await expect(results).toContainText(
-      "Consider CT at 3–6 months to confirm persistence",
+      "Consider CT at 3–6 months to evaluate persistence",
     );
     await expect(results).toContainText("Solid Component: 7 mm");
   });
@@ -555,6 +581,215 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
   });
 
+  test("separates pure-GGN baseline, persistence, growth, and solid transformation", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, { size: "6" });
+    let results = await calculate(page);
+    await expect(results).toContainText("CT at 6–12 months to confirm persistence");
+
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "Persistent and stable after the recommended initial follow-up",
+    );
+    await expect(
+      page.getByRole("status", { name: "Calculator results" }),
+    ).toHaveCount(0);
+    results = await calculate(page);
+    await expect(results).toContainText("CT every 2 years until 5 years from baseline");
+
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "Interval growth while remaining pure ground-glass",
+    );
+    await selectRadio(
+      page,
+      "Pure-Ground-Glass Growth Confirmation",
+      "Linear change <2 mm or growth otherwise not established",
+    );
+    await expect(
+      page.getByRole("status", { name: "Calculator results" }),
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "at least 2 mm",
+    );
+    await selectRadio(
+      page,
+      "Pure-Ground-Glass Growth Confirmation",
+      "Average diameter increased by ≥2 mm on comparable CT",
+    );
+    results = await calculate(page);
+    await expect(results).toContainText("continued annual CT");
+    await expect(results).toContainText("consider resection");
+
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "New or growing solid component",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "A new measurable solid component developed",
+    );
+    await expect(
+      page.getByRole("status", { name: "Calculator results" }),
+    ).toHaveCount(0);
+    results = await calculate(page);
+    await expect(results).toContainText(
+      "Recharacterize and evaluate the nodule as part-solid",
+    );
+    await expect(results).toContainText("No pure-ground-glass schedule");
+  });
+
+  test("separates part-solid baseline, stable persistence, and growing component", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "6",
+      component: "5",
+      morphology: "No particularly suspicious morphology",
+    });
+    let results = await calculate(page);
+    await expect(results).toContainText(
+      "CT at 3–6 months to determine persistence or resolution",
+    );
+
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "Persistent and stable after the recommended initial follow-up",
+    );
+    await expect(
+      page.getByRole("status", { name: "Calculator results" }),
+    ).toHaveCount(0);
+    results = await calculate(page);
+    await expect(results).toContainText("Annual CT for at least 5 years");
+
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "New or growing solid component",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "Solid-component diameter increased by ≥2 mm on comparable CT",
+    );
+    await expect(
+      page.getByRole("status", { name: "Calculator results" }),
+    ).toHaveCount(0);
+    results = await calculate(page);
+    await expect(results).toContainText(
+      "PET/CT, biopsy, or resection is recommended",
+    );
+  });
+
+  test("validates a component against the actual overall long axis", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "6",
+      longAxis: "7",
+      shortAxis: "5",
+      component: "7",
+      morphology: "No particularly suspicious morphology",
+    });
+    let results = await calculate(page);
+    await expect(results).toContainText("Overall Nodule Axes: 7 × 5 mm");
+    await expect(results).toContainText("Solid Component: 7 mm");
+
+    await fillInput(page, "Largest Solid Component", "8");
+    await expect(
+      page.getByRole("status", { name: "Calculator results" }),
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "cannot exceed the overall nodule maximum long axis",
+    );
+  });
+
+  test("defines multiple-subsolid comparison state at the cohort and most-suspicious-nodule level", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      count: "Multiple nodules",
+      size: "6",
+      threshold: "At least one nodule is ≥6 mm",
+    });
+    let results = await calculate(page);
+    await expect(results).toContainText("CT at 3–6 months");
+
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "Interval growth while remaining pure ground-glass",
+    );
+    await selectRadio(
+      page,
+      "Pure-Ground-Glass Growth Confirmation",
+      "Average diameter increased by ≥2 mm on comparable CT",
+    );
+    results = await calculate(page);
+    await expect(results).toContainText(
+      "Use case-specific evaluation based on the most suspicious nodule(s)",
+    );
+    await expect(results).toContainText(
+      "Established interval growth while the selected most suspicious nodule remains pure ground-glass",
+    );
+
+    await selectRadio(
+      page,
+      "Subsolid Nodule Comparison State",
+      "New or growing solid component",
+    );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "A new measurable solid component developed",
+    );
+    results = await calculate(page);
+    await expect(results).toContainText(
+      "New or growing solid component in the selected most suspicious nodule(s)",
+    );
+  });
+
+  test("ignores hidden subsolid values after switching to a solid pathway", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "6",
+      component: "5",
+      morphology: "No particularly suspicious morphology",
+      temporal: "Persistent and stable after the recommended initial follow-up",
+    });
+    await calculate(page);
+
+    await selectRadio(page, "Selected Nodule Type", "Solid nodule");
+    await selectRadio(
+      page,
+      "Clinician-Estimated Malignancy Risk",
+      "Low risk (<5%)",
+    );
+    await expect(page.getByLabel("Largest Solid Component")).not.toBeVisible();
+    await expect(
+      page.getByRole("radio", {
+        name: "Persistent and stable after the recommended initial follow-up",
+      }),
+    ).not.toBeVisible();
+    const results = await calculate(page);
+    await expect(results).toContainText(
+      "CT at 6–12 months; then consider CT at 18–24 months",
+    );
+    await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  });
+
   test("copies and prints only the current source-qualified result", async ({
     page,
   }) => {
@@ -618,7 +853,8 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
       type: "Part-solid nodule",
       size: "12",
       component: "8",
-      concern: "No / not established",
+      morphology: "No particularly suspicious morphology",
+      temporal: "Persistent and stable after the recommended initial follow-up",
     });
     const results = await calculate(page);
     await expect(results).toContainText("solid component ≥6 mm is highly suspicious");

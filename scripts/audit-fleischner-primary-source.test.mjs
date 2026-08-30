@@ -12,9 +12,9 @@ const MEASUREMENT_URL =
 const MANIFEST_PATH =
   "docs/evidence/fleischner-2017-reviewed-evidence.json";
 const PAYLOAD_SHA256 =
-  "29426004503cdd332de5e7c9b132e844d4097361405a2a2d8c43839b60de12be";
+  "79de3bae7c63934b444c4d147d9e86c41bf7ceffd3b572fce82cb206810c3c4b";
 const REVIEWED_VECTORS_SHA256 =
-  "86200fe98dd5a26501d32e616fd87d0209d0c6bc87acb76de20b433255817548";
+  "c5601d60b76951af5abd097d24681dd29d174c4d162555e5d4cd227ab0ef7a47";
 
 const EXPECTED_CLAIM_IDS = [
   "fleischner-2017-applicability",
@@ -59,6 +59,19 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
   "multiple-subsolid-any-ge6-dominant-5-uses-cohort-threshold",
   "categorical-lte3-solid-low-without-false-precision",
   "numeric-3-mm-requires-categorical-pathway",
+  "subsolid-missing-temporal-state-fails-closed",
+  "single-ground-glass-6-established-growth-uses-annual-follow-up",
+  "single-ground-glass-new-solid-component-reroutes-to-part-solid",
+  "single-part-solid-6-component-5-persistent-uses-annual-follow-up",
+  "single-part-solid-12-component-6-persistent-is-highly-suspicious",
+  "part-solid-component-exceeding-overall-long-axis-rejected",
+  "multiple-ground-glass-established-growth-uses-most-suspicious-route",
+  "multiple-ground-glass-new-solid-component-uses-most-suspicious-route",
+  "single-solid-10-valid-axes-accepted",
+  "single-solid-10-axes-average-mismatch-rejected",
+  "pure-ground-glass-sub2mm-change-cannot-claim-growth",
+  "solid-component-unconfirmed-change-cannot-trigger-escalation",
+  "single-ground-glass-validated-volumetric-growth-accepted",
 ];
 
 const EXPECTED_LIMITATIONS = [
@@ -246,8 +259,8 @@ assert.deepEqual(audit.reviewed_source_evidence, {
   payload_sha256: PAYLOAD_SHA256,
   reviewer_schema: "radulator-independent-source-review/v1",
   reviewer_role: "independent-clinical-source-reviewer",
-  reviewer_revision: "fleischner-source-review/2026-08-30-r4",
-  reviewed_at: "2026-08-30T19:26:28Z",
+  reviewer_revision: "fleischner-source-review/2026-08-30-r6",
+  reviewed_at: "2026-08-30T20:19:37Z",
   disposition: "SOURCE_INTERPRETATION_APPROVED",
   release_authority: "none",
   scope: "source-interpretation-only",
@@ -306,7 +319,7 @@ assert.equal(
   audit.fixture_version,
   "fleischner-2017-primary-guideline-and-measurement-statement",
 );
-assert.equal(audit.executed_vector_count, 67);
+assert.equal(audit.executed_vector_count, 88);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.registry_claim_match, true);
 assert.equal(audit.reviewed_vectors_sha256, REVIEWED_VECTORS_SHA256);
@@ -320,5 +333,5 @@ assert.equal(audit.calculator_content_invariants_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "Fleischner source audit verified the reviewed-source manifest, 12 claims, 67 executable vectors, primary DOI identities, and live NLM fragments.",
+  "Fleischner source audit verified the reviewed-source manifest, 12 claims, 88 executable vectors, primary DOI identities, and live NLM fragments.",
 );

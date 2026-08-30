@@ -16,7 +16,9 @@
 - Preserve the source's optionality and exact time horizons; do not convert `consider` into a mandatory recommendation.
 - Do not infer malignancy risk from individual checkboxes. Solid-nodule risk must be a clinician-selected holistic estimate; subsolid pathways do not use the solid risk field.
 - Require a pre-recorded positive whole-millimeter size. Reject fractions instead of inventing an `x.5` rounding convention.
-- Use lung-window measurements. For overall nodules below 10 mm, instruct users to enter the rounded average of long and perpendicular short axes; for nodules at least 10 mm, require confirmation that both axes were recorded. For part-solid nodules, separately require the maximum long-axis size of the largest solid component.
+- Use lung-window measurements. For overall nodules below 10 mm, instruct users to enter the rounded average of long and perpendicular short axes; for nodules at least 10 mm, require both numeric axes and verify that their rounded average matches the entered overall size. For part-solid nodules at least 6 mm, separately require the maximum long-axis size of the largest solid component and verify that it does not exceed the actual overall maximum long axis.
+- Require an explicit prior-comparison state for every subsolid nodule so baseline confirmation, persistent/stable surveillance, pure-ground-glass growth, and a new or growing solid component cannot collapse into one schedule.
+- For multiple subsolid nodules, define baseline/persistence at cohort level and interval evolution at the selected most suspicious management-driving nodule(s). A growth-triggered path also requires an explicit establishment basis: at least 2 mm average-diameter change on comparable CT, a new measurable solid component, or validated volumetry under its reproducibility protocol.
 - Multiple-nodule size means the most suspicious nodule, which may not be the largest.
 - Applicability exclusions gate the schedule before any management output. Screening cases route to Lung-RADS context; other excluded or uncertain states receive no Fleischner schedule.
 - RSNA command-line HTTP 403 must remain explicit. The audit may verify DOI/Crossref identity and exact NLM table fragments, but must not label a secondary reproduction as the primary full text.
@@ -31,8 +33,8 @@
 - Delete after replacement: `tests/fixtures/fleischner-test-data.json`
 - Test: `scripts/run-compute-tests.mjs`
 
-- [ ] Add representative and adjacent vectors for every source cell: single/multiple solid at 5/6/8/9 mm and low/high risk; ordinary and selected-suspicious solitary GGN below 6 mm; solitary GGN at least 6 mm; multiple subsolid below and at least 6 mm; solitary part-solid with component below 6, 6–8, and above 8 mm; suspicious/growing component escalation.
-- [ ] Add invalid vectors for missing applicability, every exclusion, missing type/count/risk/size, zero/negative/fractional size, missing or invalid component, component larger than total, and missing two-axis confirmation at 10 mm or above.
+- [ ] Add representative and adjacent vectors for every source cell: single/multiple solid at 5/6/8/9 mm and low/high risk; ordinary and selected-suspicious solitary GGN below 6 mm; solitary GGN at least 6 mm; multiple subsolid below and at least 6 mm; solitary part-solid with component below 6, 6–8, and above 8 mm; and baseline, persistent/stable, pure-ground-glass growth, and solid-component-evolution transitions.
+- [ ] Add invalid vectors for missing applicability, every exclusion, missing type/count/risk/size, zero/negative/fractional size, missing or invalid component, a component exceeding the actual overall maximum long axis, missing/invalid temporal or growth-establishment state, sub-2-mm unconfirmed linear change, and missing or inconsistent numeric axes at 10 mm or above.
 - [ ] Bind expectations to observable result keys and source-literal wording, including `consider CT at 18–24 months`, `until 5 years`, and `PET/CT, biopsy, or resection` where supported.
 - [ ] Run `node --import ./scripts/register-jsx-loader.mjs scripts/run-compute-tests.mjs` and record the expected Fleischner failures before implementation.
 
@@ -44,8 +46,8 @@
 
 - [ ] Add the applicability/exclusion gate and prevent excluded or uncertain cases from reaching a Fleischner schedule.
 - [ ] Replace automatic risk-factor inference with a required clinician-selected solid-nodule risk estimate (`low` under 5% versus `high` at least 5%); hide it for subsolid pathways.
-- [ ] Enforce source-conformant whole-mm, relational, and measurement-confirmation validation.
-- [ ] Implement all approved `E-*` decision cells literally, including low-risk optionality, selected suspicious GGN handling, multiple-subsolid routing, and the part-solid 6 mm / greater-than-8 mm escalation distinction.
+- [ ] Enforce source-conformant whole-mm, relational, numeric-axis, rounded-average, and solid-component-containment validation.
+- [ ] Implement all approved `E-*` decision cells literally, including low-risk optionality, selected suspicious GGN handling, baseline versus persistent multiple-subsolid routing, source-qualified pure-ground-glass growth, and the part-solid persistence / established solid-component-evolution distinctions.
 - [ ] Remove unsupported individualized probability, diagnosis, and prognosis prose; retain concise report-ready rationale, scope, measurement method, and decision boundary.
 - [ ] Correct the Bankier measurement DOI to `10.1148/radiol.2017162894` and make all measurement guidance lung-window based.
 - [ ] Run the compute fixture until all Fleischner vectors pass without weakening expectations.
@@ -55,7 +57,7 @@
 **Files:**
 - Modify: `tests/e2e/calculators/radiology/fleischner.spec.js`
 
-- [ ] Test conditional field visibility, keyboard-accessible applicability/risk controls, and exclusion routing.
+- [ ] Test conditional field visibility, keyboard-accessible applicability/risk/temporal/growth-basis controls, exclusion routing, and clearing of hidden temporal, growth-basis, or component state when nodule type changes.
 - [ ] Test each clinical branch at representative boundaries, all invalid inputs, copy/print-safe result text, corrected references, and absence of the old auto-risk and mediastinal-window claims.
 - [ ] Assert that excluded patients never receive a follow-up schedule and that multiple-subsolid results clearly defer later management to the most suspicious nodule when required.
 - [ ] Run `npx playwright test tests/e2e/calculators/radiology/fleischner.spec.js --project=chromium`.

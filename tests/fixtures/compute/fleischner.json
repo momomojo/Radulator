@@ -84,14 +84,14 @@
     },
     {
       "id": "single-ground-glass-5-routine-no-follow-up",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "No routine follow-up" }
       ] }
     },
     {
       "id": "single-ground-glass-5-selected-suspicious-option",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "selected_suspicious_near_6" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "selected_suspicious_near_6", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "Consider CT at 2 and 4 years" },
         { "key": "Decision Boundary", "includes": "selected suspicious pure ground-glass nodule close to 6 mm" }
@@ -99,23 +99,23 @@
     },
     {
       "id": "single-ground-glass-6-until-year-5",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6", "sub6_subsolid_context": "selected_suspicious_near_6" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6", "sub6_subsolid_context": "selected_suspicious_near_6", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
-        { "key": "Recommendation", "equals": "CT at 6–12 months to confirm persistence; then CT every 2 years until 5 years" },
+        { "key": "Recommendation", "equals": "CT at 6–12 months to confirm persistence" },
         { "key": "Follow-up Interval", "includes": "until year 5 from baseline" }
       ] }
     },
     {
       "id": "multiple-ground-glass-5-initial-and-optional-late-ct",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "all_lt6", "nodule_size": "5" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "all_lt6", "nodule_size": "5", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
-        { "key": "Recommendation", "equals": "CT at 3–6 months; if stable, consider CT at 2 and 4 years" },
+        { "key": "Recommendation", "equals": "CT at 3–6 months to determine persistence or resolution" },
         { "key": "Measurement Basis", "includes": "most suspicious nodule" }
       ] }
     },
     {
       "id": "multiple-ground-glass-6-defers-to-most-suspicious-nodule",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "any_ge6", "nodule_size": "6" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "any_ge6", "nodule_size": "6", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "CT at 3–6 months; subsequent management based on the most suspicious nodule(s)" },
         { "key": "Decision Boundary", "includes": "may not be the largest" }
@@ -123,39 +123,39 @@
     },
     {
       "id": "single-part-solid-5-no-routine-follow-up",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "routine", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "No routine follow-up" },
         { "key": "Measurement Basis", "includes": "not required below 6 mm" }
       ] }
     },
     {
-      "id": "single-part-solid-6-component-5-surveillance",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "solid_component": "5", "component_concern": "no" },
+      "id": "single-part-solid-6-component-5-baseline-persistence-check",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "6", "nodule_short_axis": "6", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
-        { "key": "Recommendation", "equals": "CT at 3–6 months to confirm persistence; if unchanged and the solid component remains <6 mm, annual CT for 5 years" },
+        { "key": "Recommendation", "equals": "CT at 3–6 months to determine persistence or resolution" },
         { "key": "Measurement Basis", "includes": "maximum long-axis diameter of the largest solid component" }
       ] }
     },
     {
-      "id": "single-part-solid-12-component-6-highly-suspicious",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "large_nodule_axes_recorded": "yes", "solid_component": "6", "component_concern": "no" },
+      "id": "single-part-solid-12-component-6-baseline-persistence-check",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "nodule_long_axis": "12", "nodule_short_axis": "12", "solid_component": "6", "component_concern": "no", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
-        { "key": "Recommendation", "equals": "Consider CT at 3–6 months to confirm persistence; a solid component ≥6 mm is highly suspicious" },
-        { "key": "Decision Boundary", "includes": "does not by itself trigger PET/CT, biopsy, or resection" }
+        { "key": "Recommendation", "equals": "Consider CT at 3–6 months to evaluate persistence" },
+        { "key": "Decision Boundary", "includes": "Persistence is not established" }
       ] }
     },
     {
       "id": "single-part-solid-12-component-8-growing-escalates",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "large_nodule_axes_recorded": "yes", "solid_component": "8", "component_concern": "yes" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "nodule_long_axis": "12", "nodule_short_axis": "12", "solid_component": "8", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "linear_ge2" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "PET/CT, biopsy, or resection is recommended" },
-        { "key": "Decision Boundary", "includes": "growing or particularly suspicious" }
+        { "key": "Decision Boundary", "includes": "new or growing solid component" }
       ] }
     },
     {
       "id": "single-part-solid-12-component-9-escalates-by-size",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "large_nodule_axes_recorded": "yes", "solid_component": "9", "component_concern": "no" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "nodule_long_axis": "12", "nodule_short_axis": "12", "solid_component": "9", "component_concern": "no", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "PET/CT, biopsy, or resection is recommended" },
         { "key": "Decision Boundary", "includes": "solid component >8 mm" }
@@ -163,14 +163,14 @@
     },
     {
       "id": "multiple-part-solid-5-follows-multiple-subsolid-row",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "multiple", "multiple_size_threshold": "all_lt6", "nodule_size": "5" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "multiple", "multiple_size_threshold": "all_lt6", "nodule_size": "5", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
-        { "key": "Recommendation", "equals": "CT at 3–6 months; if stable, consider CT at 2 and 4 years" }
+        { "key": "Recommendation", "equals": "CT at 3–6 months to determine persistence or resolution" }
       ] }
     },
     {
       "id": "multiple-part-solid-12-defers-to-most-suspicious-nodule",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "multiple", "multiple_size_threshold": "any_ge6", "nodule_size": "12", "large_nodule_axes_recorded": "yes", "solid_component": "4" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "multiple", "multiple_size_threshold": "any_ge6", "nodule_size": "12", "nodule_long_axis": "12", "nodule_short_axis": "12", "solid_component": "4", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "CT at 3–6 months; subsequent management based on the most suspicious nodule(s)" },
         { "key": "Decision Boundary", "includes": "may not be the largest" }
@@ -246,51 +246,51 @@
     },
     {
       "id": "mass-over-30-mm-routes-outside-nodule-table",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "31", "large_nodule_axes_recorded": "yes", "risk_level": "high" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "31", "risk_level": "high" },
       "expect": { "noError": false, "fields": [
         { "key": "Error", "includes": "greater than 30 mm" }
       ] }
     },
     {
-      "id": "ten-mm-size-requires-both-axes-recorded",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "10", "risk_level": "high" },
+      "id": "ten-mm-legacy-axis-attestation-cannot-bypass-numeric-axes",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "10", "large_nodule_axes_recorded": "yes", "risk_level": "high" },
       "expect": { "noError": false, "fields": [
-        { "key": "Error", "includes": "long- and short-axis" }
+        { "key": "Error", "includes": "maximum long axis and perpendicular short axis" }
       ] }
     },
     {
       "id": "part-solid-missing-component-rejected",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "8", "nodule_short_axis": "8", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": false, "fields": [
         { "key": "Error", "includes": "solid-component" }
       ] }
     },
     {
       "id": "part-solid-zero-component-rejected",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "0" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "8", "nodule_short_axis": "8", "solid_component": "0", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": false, "fields": [
         { "key": "Error", "includes": "positive" }
       ] }
     },
     {
       "id": "part-solid-negative-component-rejected",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "-1" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "8", "nodule_short_axis": "8", "solid_component": "-1", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": false, "fields": [
         { "key": "Error", "includes": "positive" }
       ] }
     },
     {
       "id": "part-solid-fractional-component-rejected",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "5.5" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "8", "nodule_short_axis": "8", "solid_component": "5.5", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": false, "fields": [
         { "key": "Error", "includes": "whole-millimeter" }
       ] }
     },
     {
       "id": "solid-component-long-axis-may-exceed-overall-average",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "solid_component": "7", "component_concern": "no" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "7", "nodule_short_axis": "5", "solid_component": "7", "component_concern": "no", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
-        { "key": "Recommendation", "equals": "Consider CT at 3–6 months to confirm persistence; a solid component ≥6 mm is highly suspicious" },
+        { "key": "Recommendation", "equals": "Consider CT at 3–6 months to evaluate persistence" },
         { "key": "Solid Component", "equals": "7 mm" }
       ] }
     },
@@ -303,24 +303,24 @@
     },
     {
       "id": "single-sub6-ground-glass-missing-context-rejected",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "5", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": false, "fields": [
         { "key": "Error", "includes": "suspicious near-6-mm exception" }
       ] }
     },
     {
       "id": "part-solid-component-6-to-8-missing-concern-state-rejected",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "6" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "8", "nodule_short_axis": "8", "solid_component": "6", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": false, "fields": [
-        { "key": "Error", "includes": "growth or particularly suspicious morphology" }
+        { "key": "Error", "includes": "particularly suspicious part-solid morphology" }
       ] }
     },
     {
       "id": "single-part-solid-10-component-5-concern-escalates",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "10", "large_nodule_axes_recorded": "yes", "solid_component": "5", "component_concern": "yes" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "10", "nodule_long_axis": "10", "nodule_short_axis": "10", "solid_component": "5", "component_concern": "yes", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "PET/CT, biopsy, or resection is recommended" },
-        { "key": "Decision Boundary", "includes": "growing or particularly suspicious" }
+        { "key": "Decision Boundary", "includes": "Particularly suspicious morphology" }
       ] }
     },
     {
@@ -341,7 +341,7 @@
     },
     {
       "id": "multiple-subsolid-any-ge6-dominant-5-uses-cohort-threshold",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "any_ge6", "nodule_size": "5" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "any_ge6", "nodule_size": "5", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "CT at 3–6 months; subsequent management based on the most suspicious nodule(s)" },
         { "key": "Decision Boundary", "includes": "At least one subsolid nodule is ≥6 mm" }
@@ -349,7 +349,7 @@
     },
     {
       "id": "single-part-solid-5-selected-suspicious-option-without-component",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "selected_suspicious_near_6" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "5", "sub6_subsolid_context": "selected_suspicious_near_6", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "Consider CT at 2 and 4 years" },
         { "key": "Decision Boundary", "includes": "selected suspicious subsolid nodule close to 6 mm" }
@@ -482,7 +482,7 @@
     },
     {
       "id": "multiple-all-lt6-conflicts-with-selected-6-mm-nodule",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "all_lt6", "nodule_size": "6" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "all_lt6", "nodule_size": "6", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": false, "fields": [
         { "key": "Error", "includes": "conflicts" }
       ] }
@@ -496,17 +496,177 @@
     },
     {
       "id": "single-part-solid-10-component-6-concern-escalates",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "10", "large_nodule_axes_recorded": "yes", "solid_component": "6", "component_concern": "yes" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "10", "nodule_long_axis": "10", "nodule_short_axis": "10", "solid_component": "6", "component_concern": "yes", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "PET/CT, biopsy, or resection is recommended" }
       ] }
     },
     {
       "id": "single-part-solid-10-component-8-no-concern-consider-ct",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "10", "large_nodule_axes_recorded": "yes", "solid_component": "8", "component_concern": "no" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "10", "nodule_long_axis": "10", "nodule_short_axis": "10", "solid_component": "8", "component_concern": "no", "subsolid_temporal_state": "baseline_or_no_comparison" },
       "expect": { "noError": true, "fields": [
-        { "key": "Recommendation", "equals": "Consider CT at 3–6 months to confirm persistence; a solid component ≥6 mm is highly suspicious" },
-        { "key": "Decision Boundary", "includes": "does not by itself trigger" }
+        { "key": "Recommendation", "equals": "Consider CT at 3–6 months to evaluate persistence" },
+        { "key": "Decision Boundary", "includes": "Persistence is not established" }
+      ] }
+    },
+    {
+      "id": "single-ground-glass-6-established-growth-uses-annual-follow-up",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6", "subsolid_temporal_state": "pure_ggo_growth", "pure_ggo_growth_basis": "linear_ge2" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Case-specific thoracic review; consider resection or continued annual CT based on the growth pattern" },
+        { "key": "Decision Boundary", "includes": "interval growth" },
+        { "key": "Temporal Context", "includes": "growth" }
+      ] }
+    },
+    {
+      "id": "single-ground-glass-new-solid-component-reroutes-to-part-solid",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "8", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "new_component" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Recharacterize and evaluate the nodule as part-solid" },
+        { "key": "Guideline Scope", "includes": "No pure-ground-glass schedule" },
+        { "key": "Temporal Context", "equals": "New or growing solid component" }
+      ] }
+    },
+    {
+      "id": "single-part-solid-6-component-5-persistent-uses-annual-follow-up",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "7", "nodule_short_axis": "5", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "persistent_stable" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Annual CT for at least 5 years while stable and the solid component remains <6 mm" },
+        { "key": "Temporal Context", "includes": "Persistent and stable" }
+      ] }
+    },
+    {
+      "id": "part-solid-component-exceeding-overall-long-axis-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "7", "nodule_short_axis": "5", "solid_component": "8", "component_concern": "no", "subsolid_temporal_state": "baseline_or_no_comparison" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "cannot exceed the overall nodule maximum long axis" }
+      ] }
+    },
+    {
+      "id": "part-solid-missing-overall-long-axis-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_short_axis": "6", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "baseline_or_no_comparison" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "overall nodule maximum long axis" }
+      ] }
+    },
+    {
+      "id": "subsolid-missing-temporal-state-fails-closed",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "comparison state" }
+      ] }
+    },
+    {
+      "id": "single-ground-glass-6-persistent-continues-to-year-5",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6", "subsolid_temporal_state": "persistent_stable" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "CT every 2 years until 5 years from baseline" },
+        { "key": "Decision Boundary", "includes": "initial 6–12-month confirmation step is not repeated" }
+      ] }
+    },
+    {
+      "id": "single-part-solid-12-component-6-persistent-is-highly-suspicious",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "nodule_long_axis": "12", "nodule_short_axis": "12", "solid_component": "6", "component_concern": "no", "subsolid_temporal_state": "persistent_stable" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "includes": "is highly suspicious" },
+        { "key": "Decision Boundary", "includes": "Persistence is established" }
+      ] }
+    },
+    {
+      "id": "multiple-subsolid-all-lt6-persistent-uses-2-and-4-years",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "all_lt6", "nodule_size": "5", "subsolid_temporal_state": "persistent_stable" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Consider CT at approximately 2 and 4 years to confirm stability" }
+      ] }
+    },
+    {
+      "id": "multiple-subsolid-any-ge6-persistent-uses-most-suspicious-nodule",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "any_ge6", "nodule_size": "6", "subsolid_temporal_state": "persistent_stable" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Subsequent management is based on the most suspicious nodule(s)" },
+        { "key": "Decision Boundary", "includes": "consider multiple primary adenocarcinomas" }
+      ] }
+    },
+    {
+      "id": "part-solid-pure-ggo-growth-state-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "6", "nodule_short_axis": "6", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "pure_ggo_growth" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "requires a nodule that remains pure ground-glass" }
+      ] }
+    },
+    {
+      "id": "part-solid-uncertain-morphology-fails-closed",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "8", "nodule_short_axis": "8", "solid_component": "5", "component_concern": "uncertain", "subsolid_temporal_state": "baseline_or_no_comparison" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "Confirm whether particularly suspicious" }
+      ] }
+    },
+    {
+      "id": "part-solid-axes-average-mismatch-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "9", "nodule_short_axis": "5", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "baseline_or_no_comparison" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "rounded average" }
+      ] }
+    },
+    {
+      "id": "part-solid-short-axis-greater-than-long-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "5", "nodule_short_axis": "7", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "baseline_or_no_comparison" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "maximum long axis cannot be shorter" }
+      ] }
+    },
+    {
+      "id": "multiple-ground-glass-established-growth-uses-most-suspicious-route",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "any_ge6", "nodule_size": "6", "subsolid_temporal_state": "pure_ggo_growth", "pure_ggo_growth_basis": "linear_ge2" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Use case-specific evaluation based on the most suspicious nodule(s)" },
+        { "key": "Decision Boundary", "includes": "Growth or solid-component evolution is established" },
+        { "key": "Temporal Context", "equals": "Established interval growth while the selected most suspicious nodule remains pure ground-glass" }
+      ] }
+    },
+    {
+      "id": "multiple-ground-glass-new-solid-component-uses-most-suspicious-route",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "multiple", "multiple_size_threshold": "any_ge6", "nodule_size": "6", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "new_component" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Use case-specific evaluation based on the most suspicious nodule(s)" },
+        { "key": "Temporal Context", "equals": "New or growing solid component in the selected most suspicious nodule(s)" }
+      ] }
+    },
+    {
+      "id": "single-solid-10-valid-axes-accepted",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "10", "nodule_long_axis": "12", "nodule_short_axis": "8", "risk_level": "low" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Consider CT at 3 months, PET/CT, or tissue sampling" },
+        { "key": "Overall Nodule Axes", "equals": "12 × 8 mm (rounded average 10 mm)" }
+      ] }
+    },
+    {
+      "id": "single-solid-10-axes-average-mismatch-rejected",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "solid", "nodule_count": "single", "nodule_size": "10", "nodule_long_axis": "13", "nodule_short_axis": "9", "risk_level": "low" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "rounded average" }
+      ] }
+    },
+    {
+      "id": "pure-ground-glass-sub2mm-change-cannot-claim-growth",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6", "subsolid_temporal_state": "pure_ggo_growth", "pure_ggo_growth_basis": "not_established" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "at least 2 mm" }
+      ] }
+    },
+    {
+      "id": "solid-component-unconfirmed-change-cannot-trigger-escalation",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "8", "nodule_short_axis": "8", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "not_established" },
+      "expect": { "noError": false, "fields": [
+        { "key": "Error", "includes": "solid-component evolution is established" }
+      ] }
+    },
+    {
+      "id": "single-ground-glass-validated-volumetric-growth-accepted",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6", "subsolid_temporal_state": "pure_ggo_growth", "pure_ggo_growth_basis": "validated_volumetric" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "includes": "continued annual CT" },
+        { "key": "Growth Basis", "includes": "validated volumetry" }
       ] }
     }
   ]
