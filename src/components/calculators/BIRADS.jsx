@@ -46,7 +46,7 @@ export const BIRADS = {
 
 This is an interactive assessment assistant, not image interpretation. The radiologist selects the assessment level after interpreting the examination; descriptors only structure the finding summary and never derive a category or patient-specific probability. Apply current institutional policy, clinical context, prior examinations, and radiologic-pathologic concordance.
 
-The legacy fifth-edition quick-reference constrains modality-specific descriptor choices. Current public ACR modality summary forms are used only to constrain the category structure, source-literal probability endpoints, and management wording while the full sixth-edition implementation remains under review.
+The legacy fifth-edition quick-reference identifies descriptor groups by modality. This bounded temporary workflow exposes selected descriptors without claiming full manual coverage. Current public ACR modality summary forms independently constrain the category structure, source-literal probability endpoints, and management wording while the full sixth-edition implementation remains under review.
 
 BI-RADS (Breast Imaging Reporting and Data System) is the ACR standardized system for breast imaging interpretation and reporting.
 
@@ -128,12 +128,14 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
         {
           value: "calcifications",
           label: "Calcifications (without mass)",
-          showIf: (vals) => vals.modality === "mammography",
+          showIf: (vals) =>
+            vals.modality === "mammography" || vals.modality === "ultrasound",
         },
         {
           value: "architectural_distortion",
           label: "Architectural distortion",
-          showIf: (vals) => vals.modality === "mammography",
+          showIf: (vals) =>
+            vals.modality === "mammography" || vals.modality === "ultrasound",
         },
         {
           value: "asymmetry",
@@ -346,6 +348,21 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       suspicion_level = "",
     } = vals;
 
+    if (!["mammography", "ultrasound", "mri"].includes(modality)) {
+      return { Error: "Please select imaging modality." };
+    }
+    if (!["screening", "diagnostic", "known_cancer"].includes(study_context)) {
+      return { Error: "Please select the study context." };
+    }
+    if (
+      study_context !== "known_cancer" &&
+      !["yes", "no"].includes(additional_needed)
+    ) {
+      return {
+        Error: "Please indicate whether additional imaging is needed.",
+      };
+    }
+
     const routineScreeningManagement =
       {
         mammography: "Routine mammography screening",
@@ -372,23 +389,9 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
 
     // Category 0: Incomplete
     if (additional_needed === "yes") {
-      let additionalType = "";
-      if (modality === "mammography") {
-        additionalType =
-          "Additional mammographic views, ultrasound, or prior images for comparison";
-      } else if (modality === "ultrasound") {
-        additionalType =
-          "Mammography if not performed, or targeted additional imaging";
-      } else {
-        additionalType = "Prior studies for comparison or additional sequences";
-      }
-
       return {
         "BI-RADS Category": "0 - Incomplete",
-        Management:
-          "Recall for additional imaging evaluation before final assessment",
-        "Additional Imaging": additionalType,
-        Note: "Category 0 should only be used when additional imaging will help reach a final assessment.",
+        Management: "Recall for additional imaging",
         _severity: "info",
       };
     }
@@ -398,14 +401,15 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     }
 
     if (
-      modality !== "mammography" &&
-      ["calcifications", "architectural_distortion", "asymmetry"].includes(
-        finding_type,
-      )
+      (modality === "mri" &&
+        ["calcifications", "architectural_distortion", "asymmetry"].includes(
+          finding_type,
+        )) ||
+      (modality === "ultrasound" && finding_type === "asymmetry")
     ) {
       return {
         Error:
-          "The selected finding type is mammography-specific in this temporary workflow. Choose a modality-appropriate finding type.",
+          "The selected finding type is not available for this modality in the bounded temporary workflow. Choose a modality-appropriate finding type.",
       };
     }
 
@@ -493,11 +497,17 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     // Build finding description
     if (finding_type === "mass") {
       findingDesc = `Mass: ${mass_shape || "shape not specified"}, ${mass_margin || "margin not specified"}`;
-      if (mass_density) findingDesc += `, ${mass_density} density`;
+      if (modality === "mammography" && mass_density) {
+        findingDesc += `, ${mass_density} density`;
+      }
     } else if (finding_type === "calcifications") {
-      findingDesc = `Calcifications: ${calc_morphology || "morphology not specified"}`;
-      if (calc_distribution)
-        findingDesc += `, ${calc_distribution} distribution`;
+      findingDesc = "Calcifications";
+      if (modality === "mammography") {
+        findingDesc += `: ${calc_morphology || "morphology not specified"}`;
+        if (calc_distribution) {
+          findingDesc += `, ${calc_distribution} distribution`;
+        }
+      }
     } else if (finding_type === "asymmetry") {
       findingDesc = `Asymmetry: ${asymmetry_type || "type not specified"}`;
     } else if (finding_type === "architectural_distortion") {
@@ -594,27 +604,6 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       Management: management,
       "Finding Description": findingDesc,
     };
-
-    const suspiciousDescriptorWithCategory3 =
-      category === "3" &&
-      ((finding_type === "mass" &&
-        (mass_shape === "irregular" || mass_margin === "spiculated")) ||
-        (finding_type === "calcifications" &&
-          (calc_morphology === "fine_pleomorphic" ||
-            calc_morphology === "fine_linear")) ||
-        (finding_type === "asymmetry" && asymmetry_type === "developing") ||
-        finding_type === "architectural_distortion" ||
-        finding_type === "associated_features");
-
-    const decisionChecks = [];
-    if (suspiciousDescriptorWithCategory3) {
-      decisionChecks.push(
-        "The selected probably-benign category is discordant with one or more chosen suspicious descriptors. Reassess the radiologist-selected category and current source criteria before finalizing the report.",
-      );
-    }
-    if (decisionChecks.length > 0) {
-      result["Decision Check"] = decisionChecks.join(" ");
-    }
 
     if (["4B", "4C"].includes(categoryStr)) {
       result["Published Boundary Note"] =

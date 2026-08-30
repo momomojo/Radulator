@@ -40,6 +40,7 @@ const OFFICIAL_ARTIFACTS = Object.freeze([
   },
 ]);
 const BOUND_VECTOR_IDS = Object.freeze([
+  "missing-modality-fails-closed",
   "mammography-incomplete",
   "ultrasound-incomplete",
   "mri-incomplete",
@@ -55,12 +56,13 @@ const BOUND_VECTOR_IDS = Object.freeze([
   "high-suspicion-spiculated-mass",
   "highly-suggestive-linear-calcifications",
   "category-5-inclusive-95-boundary",
-  "probably-benign-selection-warns-on-suspicious-mass-descriptors",
+  "probably-benign-selection-does-not-infer-from-descriptors",
   "screening-mammography-probably-benign-no-uncited-warning",
   "developing-asymmetry",
   "associated-features",
   "mri-rejects-category-4-subdivision",
-  "ultrasound-rejects-mammography-specific-finding",
+  "ultrasound-calcifications-use-unsplit-category-4",
+  "ultrasound-mass-ignores-stale-mammography-density",
   "ultrasound-suspicious-category-4",
 ]);
 
@@ -176,8 +178,14 @@ const calcificationOption = findingType.opts.find(
   (option) => option.value === "calcifications",
 );
 assert.equal(calcificationOption.showIf({ modality: "mammography" }), true);
-assert.equal(calcificationOption.showIf({ modality: "ultrasound" }), false);
+assert.equal(calcificationOption.showIf({ modality: "ultrasound" }), true);
 assert.equal(calcificationOption.showIf({ modality: "mri" }), false);
+const architecturalDistortionOption = findingType.opts.find(
+  (option) => option.value === "architectural_distortion",
+);
+assert.equal(architecturalDistortionOption.showIf({ modality: "mammography" }), true);
+assert.equal(architecturalDistortionOption.showIf({ modality: "ultrasound" }), true);
+assert.equal(architecturalDistortionOption.showIf({ modality: "mri" }), false);
 const suspicion = BIRADS.fields.find((field) => field.id === "suspicion_level");
 const category4A = suspicion.opts.find(
   (option) => option.value === "low_suspicion",
@@ -235,6 +243,31 @@ assert.equal(
   false,
   "source audit must reject an uncited screening-only assessment warning",
 );
+const descriptorInferenceResult = BIRADS.compute({
+  modality: "mammography",
+  study_context: "diagnostic",
+  additional_needed: "no",
+  finding_type: "mass",
+  mass_shape: "irregular",
+  mass_margin: "spiculated",
+  mass_density: "high",
+  suspicion_level: "probably_benign",
+});
+assert.equal(
+  Object.prototype.hasOwnProperty.call(descriptorInferenceResult, "Decision Check"),
+  false,
+  "descriptors must not infer or contradict the radiologist-assigned category",
+);
+const sourceLiteralCategory0 = BIRADS.compute({
+  modality: "ultrasound",
+  study_context: "diagnostic",
+  additional_needed: "yes",
+});
+assert.deepEqual(sourceLiteralCategory0, {
+  "BI-RADS Category": "0 - Incomplete",
+  Management: "Recall for additional imaging",
+  _severity: "info",
+});
 
 const fixture = JSON.parse(await readFile(FIXTURE_PATH, "utf8"));
 assert.equal(fixture.calculatorId, "birads");
@@ -259,13 +292,15 @@ const audit = {
   })),
   source_claims: {
     assessment_categories_0_through_6: true,
-    category_0_modality_wording: true,
-    fifth_edition_descriptor_groups: true,
+    category_0_source_literal_management: true,
+    descriptor_to_category_inference_absent: true,
+    fifth_edition_bounded_descriptor_groups: true,
+    hidden_modality_descriptors_do_not_leak: true,
     mammography_ultrasound_mri_scope: true,
-    mammography_only_findings_are_modality_gated: true,
-    mri_category_4_has_no_subdivisions: true,
+    modality_input_required: true,
     source_literal_probability_endpoints: true,
     source_literal_management_wording: true,
+    v2025_modality_specific_category_4_structure: true,
   },
   bound_vector_ids: [...BOUND_VECTOR_IDS],
   runtime_vector_match: true,

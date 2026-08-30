@@ -87,17 +87,12 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(page.locator("text=0 - Incomplete")).toBeVisible();
-      await expect(
-        page.locator("text=Recall for additional imaging evaluation"),
-      ).toBeVisible();
-      await expect(
-        page.locator(
-          "text=Additional mammographic views, ultrasound, or prior images",
-        ),
-      ).toBeVisible();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Recall for additional imaging");
+      await expect(results).not.toContainText("Additional mammographic views");
     });
 
-    test("should calculate Category 0 for ultrasound needing mammography", async ({
+    test("should keep ultrasound Category 0 wording source-literal", async ({
       page,
     }) => {
       await page.getByLabel("Ultrasound").click();
@@ -107,12 +102,12 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(page.locator("text=0 - Incomplete")).toBeVisible();
-      await expect(
-        page.locator("text=Mammography if not performed"),
-      ).toBeVisible();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Recall for additional imaging");
+      await expect(results).not.toContainText("Mammography if not performed");
     });
 
-    test("should calculate Category 0 for MRI needing prior comparison", async ({
+    test("should keep MRI Category 0 wording source-literal", async ({
       page,
     }) => {
       await page.getByLabel("MRI", { exact: true }).click();
@@ -122,11 +117,9 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(page.locator("text=0 - Incomplete")).toBeVisible();
-      await expect(
-        page.locator(
-          "text=Prior studies for comparison or additional sequences",
-        ),
-      ).toBeVisible();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Recall for additional imaging");
+      await expect(results).not.toContainText("additional sequences");
     });
   });
 
@@ -332,7 +325,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should warn when Category 3 conflicts with suspicious mass descriptors", async ({
+    test("should not infer discordance from descriptors selected with Category 3", async ({
       page,
     }) => {
       await page.getByLabel("Mammography").click();
@@ -351,9 +344,9 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       const resultsSection = page.getByRole("status", {
         name: "Calculator results",
       });
-      await expect(resultsSection).toContainText("Decision Check");
-      await expect(resultsSection).toContainText("discordant");
-      await expect(resultsSection).toContainText("Reassess");
+      await expect(resultsSection).toContainText("3 - Probably Benign");
+      await expect(resultsSection).not.toContainText("Decision Check");
+      await expect(resultsSection).not.toContainText("discordant");
     });
 
     test("should ignore hidden calcification descriptors after switching to a mass", async ({
@@ -796,7 +789,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await expect(page.getByText("Mass Density")).not.toBeVisible();
     });
 
-    test("should hide mammography-only findings and margins from ultrasound", async ({
+    test("should expose supported ultrasound findings and unsplit Category 4", async ({
       page,
     }) => {
       await page.getByLabel("Ultrasound").click();
@@ -805,10 +798,10 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
 
       await expect(
         page.getByLabel("Calcifications (without mass)"),
-      ).not.toBeVisible();
+      ).toBeVisible();
       await expect(
         page.getByLabel("Architectural distortion"),
-      ).not.toBeVisible();
+      ).toBeVisible();
       await expect(page.getByLabel("Asymmetry", { exact: true })).not.toBeVisible();
 
       await page.getByLabel("Mass", { exact: true }).click();
@@ -873,6 +866,15 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
   });
 
   test.describe("Input Validation", () => {
+    test("should require an imaging modality before any assessment", async ({
+      page,
+    }) => {
+      await page.getByLabel("Known biopsy-proven malignancy").click();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(page.locator("text=Please select imaging modality")).toBeVisible();
+    });
+
     test("should show error when finding type not selected", async ({
       page,
     }) => {
@@ -908,6 +910,25 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
   });
 
   test.describe("Finding Descriptions", () => {
+    test("should ignore stale mammography density after switching to ultrasound", async ({
+      page,
+    }) => {
+      await page.getByLabel("Mammography").click();
+      await page.getByLabel("Diagnostic examination").click();
+      await page.getByLabel("No - assessment complete").click();
+      await page.getByLabel("Mass", { exact: true }).click();
+      await page.getByLabel("Oval").click();
+      await page.getByLabel("Circumscribed").click();
+      await page.getByLabel("High density").click();
+      await page.getByLabel("Ultrasound").click();
+      await page.getByLabel("Probably benign (Category 3)").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Mass: oval, circumscribed");
+      await expect(results).not.toContainText("high density");
+    });
+
     test("should display mass finding description accurately", async ({
       page,
     }) => {

@@ -92,7 +92,7 @@
       "basis_type": "classification-system",
       "verification_status": "verified",
       "last_verified": "2026-08-29",
-      "justification": "Temporary rollback while the full sixth-edition manual is pending. The digest-pinned fifth-edition quick reference constrains the three-modality descriptor choices; digest-pinned public v2025 modality summary forms constrain category structure, source-literal probability endpoints, and management wording. Descriptor-to-category inference and patient-specific probability calculation remain out of scope.",
+      "justification": "Temporary rollback while the full sixth-edition manual is pending. The digest-pinned fifth-edition quick reference bounds selected descriptor groups; digest-pinned public v2025 modality summary forms independently constrain category structure, source-literal probability endpoints, and management wording. Descriptor-to-category inference and patient-specific probability calculation remain out of scope.",
       "sources": [
         { "authority": "American College of Radiology", "title": "Breast Imaging Reporting and Data System (BI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS" },
         { "authority": "American College of Radiology", "title": "ACR BI-RADS Atlas Fifth Edition Quick Reference", "role": "official-authority", "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf", "artifact_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410" },
@@ -117,6 +117,7 @@
             "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf"
           ],
           "vector_ids": [
+            "missing-modality-fails-closed",
             "mammography-incomplete",
             "ultrasound-incomplete",
             "mri-incomplete",
@@ -132,12 +133,13 @@
             "high-suspicion-spiculated-mass",
             "highly-suggestive-linear-calcifications",
             "category-5-inclusive-95-boundary",
-            "probably-benign-selection-warns-on-suspicious-mass-descriptors",
+            "probably-benign-selection-does-not-infer-from-descriptors",
             "screening-mammography-probably-benign-no-uncited-warning",
             "developing-asymmetry",
             "associated-features",
             "mri-rejects-category-4-subdivision",
-            "ultrasound-rejects-mammography-specific-finding",
+            "ultrasound-calcifications-use-unsplit-category-4",
+            "ultrasound-mass-ignores-stale-mammography-density",
             "ultrasound-suspicious-category-4"
           ],
           "source_bytes_committed": false
@@ -147,54 +149,54 @@
             "id": "acr-birads-three-modality-scope",
             "source_url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
             "source_locator": "BI-RADS overview: standardized terminology, report organization, assessment structure, and classification across mammography, ultrasound, and MRI",
-            "fact": "The temporary calculator retains explicit mammography, ultrasound, and MRI workflows and returns a structured final assessment output selected by the radiologist.",
+            "fact": "The temporary calculator requires an explicit mammography, ultrasound, or MRI selection and returns a structured final assessment output selected by the radiologist.",
             "dimensions": ["scope", "classification", "output"],
-            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-finding-requires-radiologist-assessment", "benign-finding-requires-radiologist-assessment"]
+            "vector_ids": ["missing-modality-fails-closed", "mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-finding-requires-radiologist-assessment", "benign-finding-requires-radiologist-assessment"]
           },
           {
             "id": "acr-fifth-edition-descriptor-groups",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
             "source_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
             "source_locator": "Quick Reference columns for mammography, ultrasound, and magnetic resonance imaging descriptor groups",
-            "fact": "The temporary workflow exposes a bounded subset of fifth-edition descriptors, gates mammography-only calcification, asymmetry, and architectural-distortion choices to mammography, and rejects stale cross-modality inputs without claiming full manual coverage.",
+            "fact": "The bounded workflow exposes selected fifth-edition descriptors: calcifications and architectural distortion for mammography and ultrasound, with mammographic morphology, asymmetry, and density controls gated to mammography. Hidden values do not leak; descriptors do not assign or contradict the assessment.",
             "dimensions": ["version", "scope", "classification"],
-            "vector_ids": ["typically-benign-calcifications-require-radiologist-assessment", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "ultrasound-rejects-mammography-specific-finding"]
+            "vector_ids": ["typically-benign-calcifications-require-radiologist-assessment", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "probably-benign-selection-does-not-infer-from-descriptors", "ultrasound-calcifications-use-unsplit-category-4", "ultrasound-mass-ignores-stale-mammography-density"]
           },
           {
             "id": "acr-fifth-edition-assessment-labels",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
             "source_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
-            "source_locator": "Quick Reference footer, BI-RADS assessment categories 0-6 and mammography/ultrasound 4A-4C labels",
-            "fact": "The executable outputs preserve assessment labels 0-6, expose mammography Category 4A-4C, and fail closed when an ultrasound or MRI input tries to use those subdivisions.",
+            "source_locator": "Quick Reference footer, BI-RADS assessment categories 0-6 and legacy assessment labels",
+            "fact": "The executable outputs preserve assessment labels 0-6. Runtime modality-specific Category 4 structure is bounded by the current public modality summary-form claims below, not inferred from the legacy quick-reference footer.",
             "dimensions": ["version", "classification", "output"],
-            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-finding-requires-radiologist-assessment", "negative-screening", "benign-finding-requires-radiologist-assessment", "benign-finding", "probably-benign-mass", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "known-biopsy-proven-malignancy", "mri-rejects-category-4-subdivision"]
+            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-finding-requires-radiologist-assessment", "negative-screening", "benign-finding-requires-radiologist-assessment", "benign-finding", "probably-benign-mass", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "known-biopsy-proven-malignancy"]
           },
           {
             "id": "acr-mammography-assessment-boundaries-and-management",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
             "source_sha256": "98d88679deb266ac030de0d96d9f15a5fcde3b0a1a4d6a7aeb29aa49b85daae6",
-            "source_locator": "Mammography Summary Form, Assessment Categories table: categories 1-6, management, and likelihood endpoints",
-            "fact": "Mammography outputs use routine screening for Categories 1-2, 6-month follow-up or surveillance for 3, tissue diagnosis for 4-5, and surgeon/oncologist follow-up with definitive local therapy (usually surgery) when appropriate for 6. They preserve source-literal likelihood endpoints and the printed 4B/4C overlap at 50%.",
+            "source_locator": "Mammography Summary Form, Assessment Categories table: incomplete and final assessments, management, and likelihood endpoints",
+            "fact": "Mammography outputs use recall for Category 0, routine screening for 1-2, 6-month follow-up or surveillance for 3, tissue diagnosis for 4-5, and surgeon/oncologist follow-up plus definitive local therapy (usually surgery) when appropriate for 6. Source-literal endpoints include the printed 4B/4C overlap at 50%.",
             "dimensions": ["classification", "threshold", "management", "output"],
-            "vector_ids": ["negative-screening", "probably-benign-mass", "screening-mammography-probably-benign-no-uncited-warning", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "category-5-inclusive-95-boundary", "known-biopsy-proven-malignancy"]
+            "vector_ids": ["mammography-incomplete", "negative-screening", "probably-benign-mass", "screening-mammography-probably-benign-no-uncited-warning", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "category-5-inclusive-95-boundary", "known-biopsy-proven-malignancy"]
           },
           {
             "id": "acr-ultrasound-assessment-boundaries-and-management",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf",
             "source_sha256": "38f24a245a9ea992f5f29e221f6000eb4a60c9d8d78f4a3dce68130179adec1d",
-            "source_locator": "Ultrasound Summary Form, Assessment Categories table: categories 1-6, unsplit Category 4, management, and likelihood endpoints",
-            "fact": "Ultrasound outputs preserve the public form's unsplit Category 4, >2% to <95% likelihood, and tissue-diagnosis management; Category 3 uses >0% to <=2% and short-interval follow-up or surveillance.",
+            "source_locator": "Ultrasound Summary Form, Assessment Categories table: incomplete and final assessments, unsplit Category 4, management, and likelihood endpoints",
+            "fact": "Ultrasound outputs preserve the public form's source-literal Category 0 recall wording, unsplit Category 4, >2% to <95% likelihood, and tissue-diagnosis management; Category 3 uses >0% to <=2% and short-interval follow-up or surveillance.",
             "dimensions": ["classification", "threshold", "management", "output"],
-            "vector_ids": ["benign-finding", "ultrasound-suspicious-category-4"]
+            "vector_ids": ["ultrasound-incomplete", "benign-finding", "ultrasound-calcifications-use-unsplit-category-4", "ultrasound-suspicious-category-4"]
           },
           {
             "id": "acr-mri-assessment-boundaries-and-management",
             "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf",
             "source_sha256": "75900dbd050ec22266db01cf5e18a8caae1e07e0d5e5f819195af7cf0b569dd9",
-            "source_locator": "MRI Summary Form, Assessment Categories table: categories 1-6, unsplit Category 4, management, and likelihood endpoints",
-            "fact": "MRI outputs use an unsplit Category 4 with >2% to <95% likelihood and tissue-diagnosis management, and reject Category 4A-4C inputs.",
+            "source_locator": "MRI Summary Form, Assessment Categories table: incomplete and final assessments, unsplit Category 4, management, and likelihood endpoints",
+            "fact": "MRI outputs use source-literal Category 0 recall wording and an unsplit Category 4 with >2% to <95% likelihood and tissue-diagnosis management, and reject Category 4A-4C inputs.",
             "dimensions": ["classification", "threshold", "management", "output"],
-            "vector_ids": ["associated-features", "mri-rejects-category-4-subdivision"]
+            "vector_ids": ["mri-incomplete", "associated-features", "mri-rejects-category-4-subdivision"]
           }
         ]
       }

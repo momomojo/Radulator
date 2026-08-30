@@ -52,15 +52,17 @@ assert.deepEqual(
 );
 assert.deepEqual(audit.source_claims, {
   assessment_categories_0_through_6: true,
-  category_0_modality_wording: true,
-  fifth_edition_descriptor_groups: true,
+  category_0_source_literal_management: true,
+  descriptor_to_category_inference_absent: true,
+  fifth_edition_bounded_descriptor_groups: true,
+  hidden_modality_descriptors_do_not_leak: true,
   mammography_ultrasound_mri_scope: true,
-  mammography_only_findings_are_modality_gated: true,
-  mri_category_4_has_no_subdivisions: true,
+  modality_input_required: true,
   source_literal_probability_endpoints: true,
   source_literal_management_wording: true,
+  v2025_modality_specific_category_4_structure: true,
 });
-assert.equal(audit.bound_vector_ids.length, 22);
+assert.equal(audit.bound_vector_ids.length, 24);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.temporary_rollback, true);
@@ -68,5 +70,5 @@ assert.equal(audit.full_manual_validation_complete, false);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "BI-RADS legacy source audit verified four official ACR artifacts and 22 executable safety vectors.",
+  "BI-RADS legacy source audit verified four official ACR artifacts and 24 executable safety vectors.",
 );

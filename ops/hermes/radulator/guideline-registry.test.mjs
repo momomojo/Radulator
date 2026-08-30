@@ -409,6 +409,7 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     assert.deepEqual(
       audit.vector_ids,
       [
+        "missing-modality-fails-closed",
         "mammography-incomplete",
         "ultrasound-incomplete",
         "mri-incomplete",
@@ -424,12 +425,13 @@ async function assertExecutableImplementationEvidence(record, calculator) {
         "high-suspicion-spiculated-mass",
         "highly-suggestive-linear-calcifications",
         "category-5-inclusive-95-boundary",
-        "probably-benign-selection-warns-on-suspicious-mass-descriptors",
+        "probably-benign-selection-does-not-infer-from-descriptors",
         "screening-mammography-probably-benign-no-uncited-warning",
         "developing-asymmetry",
         "associated-features",
         "mri-rejects-category-4-subdivision",
-        "ultrasound-rejects-mammography-specific-finding",
+        "ultrasound-calcifications-use-unsplit-category-4",
+        "ultrasound-mass-ignores-stale-mammography-density",
         "ultrasound-suspicious-category-4",
       ],
       `${label}.source_audit.vector_ids`,

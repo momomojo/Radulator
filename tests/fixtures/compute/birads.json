@@ -4,6 +4,14 @@
   "version": "legacy-fifth-edition-2013-temporary-v2",
   "cases": [
     {
+      "id": "missing-modality-fails-closed",
+      "inputs": { "study_context": "known_cancer" },
+      "expect": {
+        "noError": false,
+        "fields": [{ "key": "Error", "equals": "Please select imaging modality." }]
+      }
+    },
+    {
       "id": "missing-finding",
       "inputs": { "modality": "mammography", "study_context": "screening", "additional_needed": "no" },
       "expect": {
@@ -18,7 +26,7 @@
         "noError": true,
         "fields": [
           { "key": "BI-RADS Category", "equals": "0 - Incomplete" },
-          { "key": "Additional Imaging", "includes": "Additional mammographic views" }
+          { "key": "Management", "equals": "Recall for additional imaging" }
         ]
       }
     },
@@ -29,7 +37,7 @@
         "noError": true,
         "fields": [
           { "key": "BI-RADS Category", "equals": "0 - Incomplete" },
-          { "key": "Additional Imaging", "includes": "Mammography if not performed" }
+          { "key": "Management", "equals": "Recall for additional imaging" }
         ]
       }
     },
@@ -40,7 +48,7 @@
         "noError": true,
         "fields": [
           { "key": "BI-RADS Category", "equals": "0 - Incomplete" },
-          { "key": "Additional Imaging", "includes": "additional sequences" }
+          { "key": "Management", "equals": "Recall for additional imaging" }
         ]
       }
     },
@@ -198,7 +206,7 @@
       }
     },
     {
-      "id": "probably-benign-selection-warns-on-suspicious-mass-descriptors",
+      "id": "probably-benign-selection-does-not-infer-from-descriptors",
       "inputs": {
         "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
         "finding_type": "mass", "mass_shape": "irregular", "mass_margin": "spiculated", "mass_density": "high",
@@ -207,9 +215,7 @@
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "BI-RADS Category", "equals": "3 - Probably Benign" },
-          { "key": "Decision Check", "includes": "discordant" },
-          { "key": "Decision Check", "includes": "Reassess" }
+          { "key": "BI-RADS Category", "equals": "3 - Probably Benign" }
         ]
       }
     },
@@ -290,15 +296,31 @@
       }
     },
     {
-      "id": "ultrasound-rejects-mammography-specific-finding",
+      "id": "ultrasound-calcifications-use-unsplit-category-4",
       "inputs": {
         "modality": "ultrasound", "study_context": "diagnostic", "additional_needed": "no",
-        "finding_type": "calcifications", "suspicion_level": "low_suspicion"
+        "finding_type": "calcifications", "suspicion_level": "suspicious"
       },
       "expect": {
-        "noError": false,
+        "noError": true,
         "fields": [
-          { "key": "Error", "includes": "mammography-specific" }
+          { "key": "BI-RADS Category", "equals": "4 - Suspicious" },
+          { "key": "Finding Description", "equals": "Calcifications" }
+        ]
+      }
+    },
+    {
+      "id": "ultrasound-mass-ignores-stale-mammography-density",
+      "inputs": {
+        "modality": "ultrasound", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "mass", "mass_shape": "oval", "mass_margin": "circumscribed",
+        "mass_density": "high", "suspicion_level": "probably_benign"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "3 - Probably Benign" },
+          { "key": "Finding Description", "equals": "Mass: oval, circumscribed" }
         ]
       }
     },
