@@ -378,6 +378,50 @@ async function assertExecutableImplementationEvidence(record, calculator) {
   if (record.calculator_id === "kidney-biopsy-bleeding-risk") {
     assertSourceArtifactExtraction(evidence, fixture, calculatorSource, label);
   }
+  if (record.calculator_id === "albi-score") {
+    const audit = evidence.source_audit;
+    assert.equal(typeof audit, "object", `${label}.source_audit is required`);
+    assert.equal(audit.schema, "radulator-live-source-audit/v1", `${label}.source_audit.schema`);
+    assert.equal(audit.command, "npm run test:albi-source", `${label}.source_audit.command`);
+    assert.equal(
+      audit.authority,
+      "Johnson et al., Journal of Clinical Oncology 2015",
+      `${label}.source_audit.authority`,
+    );
+    assert.deepEqual(
+      audit.source_urls,
+      ["https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/"],
+      `${label}.source_audit.source_urls`,
+    );
+    assert.equal(audit.raw_source_bytes, 276155, `${label}.source_audit.raw_source_bytes`);
+    assert.equal(audit.canonical_source_bytes, 276075, `${label}.source_audit.canonical_source_bytes`);
+    assert.equal(
+      audit.canonical_source_sha256,
+      "fccc2f40b9ae8a85fcd7dbc093886be078a554db8f425322db6cffc3bd2499b0",
+      `${label}.source_audit.canonical_source_sha256`,
+    );
+    assert.deepEqual(audit.canonicalization, [
+      "replace ncbi_phid value with [volatile]",
+      "replace csrfmiddlewaretoken value with [volatile]",
+    ]);
+    assert.deepEqual(audit.enforced_source_locators, {
+      population: "Abstract > Patients and Methods (abstract1/sec2)",
+      equation: "RESULTS (sec16), paragraph immediately before Table 2 (T2)",
+      boundaries: "RESULTS (sec16), paragraph immediately after Table 2 (T2)",
+    });
+    assert.deepEqual(audit.vector_ids, [
+      "published-representative-grade-1",
+      "grade-1-upper-boundary",
+      "grade-2-lower-interior",
+      "grade-2-upper-boundary",
+      "grade-3-lower-interior",
+      "us-unit-equivalence",
+    ]);
+    assert.equal(audit.source_bytes_committed, false, `${label}.source_audit.source_bytes_committed`);
+    for (const vectorId of audit.vector_ids) {
+      assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
+    }
+  }
   if (record.calculator_id === "birads") {
     const audit = evidence.source_audit;
     assert.equal(typeof audit, "object", `${label}.source_audit is required`);

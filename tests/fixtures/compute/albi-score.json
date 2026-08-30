@@ -1,0 +1,82 @@
+{
+  "calculatorId": "albi-score",
+  "calculatorName": "ALBI Score",
+  "version": "johnson-2015-primary-model",
+  "cases": [
+    {
+      "id": "published-representative-grade-1",
+      "inputs": { "unit_system": "SI", "albumin": "40", "bilirubin": "10" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "ALBI Score", "equals": "-2.740" },
+          { "key": "ALBI Grade", "equals": "Grade 1" },
+          { "key": "Interpretation", "includes": "Lowest-risk group" },
+          { "key": "Clinical Context", "includes": "does not determine treatment eligibility" }
+        ]
+      }
+    },
+    {
+      "id": "grade-1-upper-boundary",
+      "inputs": { "unit_system": "SI", "albumin": "38.35294117647059", "bilirubin": "10" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "ALBI Score", "equals": "-2.600" },
+          { "key": "ALBI Grade", "equals": "Grade 1" },
+          { "key": "Clinical Context", "includes": "≤ −2.60" }
+        ]
+      }
+    },
+    {
+      "id": "grade-2-lower-interior",
+      "inputs": { "unit_system": "SI", "albumin": "38.34117647058824", "bilirubin": "10" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "ALBI Score", "equals": "-2.599" },
+          { "key": "ALBI Grade", "equals": "Grade 2" },
+          { "key": "Interpretation", "includes": "Intermediate-risk group" }
+        ]
+      }
+    },
+    {
+      "id": "grade-2-upper-boundary",
+      "inputs": { "unit_system": "SI", "albumin": "24.11764705882353", "bilirubin": "10" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "ALBI Score", "equals": "-1.390" },
+          { "key": "ALBI Grade", "equals": "Grade 2" },
+          { "key": "Clinical Context", "includes": "≤ −1.39" }
+        ]
+      }
+    },
+    {
+      "id": "grade-3-lower-interior",
+      "inputs": { "unit_system": "SI", "albumin": "24.10588235294118", "bilirubin": "10" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "ALBI Score", "equals": "-1.389" },
+          { "key": "ALBI Grade", "equals": "Grade 3" },
+          { "key": "Interpretation", "includes": "Highest-risk group" },
+          { "key": "Clinical Context", "includes": "> −1.39" }
+        ]
+      }
+    },
+    {
+      "id": "us-unit-equivalence",
+      "inputs": { "unit_system": "US", "albumin": "4", "bilirubin": "0.5846585594013096" },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "ALBI Score", "equals": "-2.740" },
+          { "key": "ALBI Grade", "equals": "Grade 1" },
+          { "key": "Converted Bilirubin (SI)", "equals": "10.0 μmol/L" },
+          { "key": "Converted Albumin (SI)", "equals": "40.0 g/L" }
+        ]
+      }
+    }
+  ]
+}
