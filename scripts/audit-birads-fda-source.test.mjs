@@ -62,7 +62,7 @@ assert.deepEqual(audit.source_claims, {
   source_literal_management_wording: true,
   v2025_modality_specific_category_4_structure: true,
 });
-assert.equal(audit.bound_vector_ids.length, 24);
+assert.equal(audit.bound_vector_ids.length, 28);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.temporary_rollback, true);
@@ -70,5 +70,5 @@ assert.equal(audit.full_manual_validation_complete, false);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "BI-RADS legacy source audit verified four official ACR artifacts and 24 executable safety vectors.",
+  "BI-RADS legacy source audit verified four official ACR artifacts and 28 executable safety vectors.",
 );

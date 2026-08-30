@@ -118,6 +118,7 @@
           ],
           "vector_ids": [
             "missing-modality-fails-closed",
+            "invalid-finding-type-fails-closed",
             "mammography-incomplete",
             "ultrasound-incomplete",
             "mri-incomplete",
@@ -128,6 +129,7 @@
             "benign-finding",
             "typically-benign-calcifications-require-radiologist-assessment",
             "probably-benign-mass",
+            "invalid-active-descriptor-fails-closed",
             "low-suspicion-mass",
             "moderate-suspicion-calcifications",
             "high-suspicion-spiculated-mass",
@@ -135,8 +137,10 @@
             "category-5-inclusive-95-boundary",
             "probably-benign-selection-does-not-infer-from-descriptors",
             "screening-mammography-probably-benign-no-uncited-warning",
+            "hidden-calcification-distribution-does-not-leak",
             "developing-asymmetry",
             "associated-features",
+            "ultrasound-associated-features-source-exact",
             "mri-rejects-category-4-subdivision",
             "ultrasound-calcifications-use-unsplit-category-4",
             "ultrasound-mass-ignores-stale-mammography-density",
@@ -160,7 +164,7 @@
             "source_locator": "Quick Reference columns for mammography, ultrasound, and magnetic resonance imaging descriptor groups",
             "fact": "The bounded workflow exposes selected fifth-edition descriptors: calcifications and architectural distortion for mammography and ultrasound, with mammographic morphology, asymmetry, and density controls gated to mammography. Hidden values do not leak; descriptors do not assign or contradict the assessment.",
             "dimensions": ["version", "scope", "classification"],
-            "vector_ids": ["typically-benign-calcifications-require-radiologist-assessment", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "probably-benign-selection-does-not-infer-from-descriptors", "ultrasound-calcifications-use-unsplit-category-4", "ultrasound-mass-ignores-stale-mammography-density"]
+            "vector_ids": ["invalid-finding-type-fails-closed", "invalid-active-descriptor-fails-closed", "typically-benign-calcifications-require-radiologist-assessment", "hidden-calcification-distribution-does-not-leak", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "probably-benign-selection-does-not-infer-from-descriptors", "ultrasound-calcifications-use-unsplit-category-4", "ultrasound-associated-features-source-exact", "ultrasound-mass-ignores-stale-mammography-density"]
           },
           {
             "id": "acr-fifth-edition-assessment-labels",
@@ -187,7 +191,7 @@
             "source_locator": "Ultrasound Summary Form, Assessment Categories table: incomplete and final assessments, unsplit Category 4, management, and likelihood endpoints",
             "fact": "Ultrasound outputs preserve the public form's source-literal Category 0 recall wording, unsplit Category 4, >2% to <95% likelihood, and tissue-diagnosis management; Category 3 uses >0% to <=2% and short-interval follow-up or surveillance.",
             "dimensions": ["classification", "threshold", "management", "output"],
-            "vector_ids": ["ultrasound-incomplete", "benign-finding", "ultrasound-calcifications-use-unsplit-category-4", "ultrasound-suspicious-category-4"]
+            "vector_ids": ["ultrasound-incomplete", "benign-finding", "ultrasound-calcifications-use-unsplit-category-4", "ultrasound-associated-features-source-exact", "ultrasound-suspicious-category-4"]
           },
           {
             "id": "acr-mri-assessment-boundaries-and-management",

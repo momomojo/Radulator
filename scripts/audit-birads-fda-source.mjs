@@ -41,6 +41,7 @@ const OFFICIAL_ARTIFACTS = Object.freeze([
 ]);
 const BOUND_VECTOR_IDS = Object.freeze([
   "missing-modality-fails-closed",
+  "invalid-finding-type-fails-closed",
   "mammography-incomplete",
   "ultrasound-incomplete",
   "mri-incomplete",
@@ -51,6 +52,7 @@ const BOUND_VECTOR_IDS = Object.freeze([
   "benign-finding",
   "typically-benign-calcifications-require-radiologist-assessment",
   "probably-benign-mass",
+  "invalid-active-descriptor-fails-closed",
   "low-suspicion-mass",
   "moderate-suspicion-calcifications",
   "high-suspicion-spiculated-mass",
@@ -58,8 +60,10 @@ const BOUND_VECTOR_IDS = Object.freeze([
   "category-5-inclusive-95-boundary",
   "probably-benign-selection-does-not-infer-from-descriptors",
   "screening-mammography-probably-benign-no-uncited-warning",
+  "hidden-calcification-distribution-does-not-leak",
   "developing-asymmetry",
   "associated-features",
+  "ultrasound-associated-features-source-exact",
   "mri-rejects-category-4-subdivision",
   "ultrasound-calcifications-use-unsplit-category-4",
   "ultrasound-mass-ignores-stale-mammography-density",
@@ -186,6 +190,10 @@ const architecturalDistortionOption = findingType.opts.find(
 assert.equal(architecturalDistortionOption.showIf({ modality: "mammography" }), true);
 assert.equal(architecturalDistortionOption.showIf({ modality: "ultrasound" }), true);
 assert.equal(architecturalDistortionOption.showIf({ modality: "mri" }), false);
+const associatedFeaturesOption = findingType.opts.find(
+  (option) => option.value === "associated_features",
+);
+assert.equal(associatedFeaturesOption.label, "Associated features only");
 const suspicion = BIRADS.fields.find((field) => field.id === "suspicion_level");
 const category4A = suspicion.opts.find(
   (option) => option.value === "low_suspicion",

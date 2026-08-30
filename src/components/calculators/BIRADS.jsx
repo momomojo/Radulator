@@ -16,6 +16,11 @@ const STRUCTURED_FINDING_TYPES = Object.freeze([
   "asymmetry",
   "associated_features",
 ]);
+const FINDING_TYPES = Object.freeze([
+  "negative",
+  "benign",
+  ...STRUCTURED_FINDING_TYPES,
+]);
 
 const hasStructuredFinding = (vals) =>
   STRUCTURED_FINDING_TYPES.includes(vals.finding_type);
@@ -144,7 +149,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
         },
         {
           value: "associated_features",
-          label: "Associated features only (skin changes, nipple retraction)",
+          label: "Associated features only",
         },
       ],
     },
@@ -399,6 +404,9 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     if (!finding_type) {
       return { Error: "Please select the finding type." };
     }
+    if (!FINDING_TYPES.includes(finding_type)) {
+      return { Error: "Please select a valid finding type." };
+    }
 
     if (
       (modality === "mri" &&
@@ -411,6 +419,54 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
         Error:
           "The selected finding type is not available for this modality in the bounded temporary workflow. Choose a modality-appropriate finding type.",
       };
+    }
+
+    if (
+      finding_type === "mass" &&
+      mass_shape &&
+      !["oval", "round", "irregular"].includes(mass_shape)
+    ) {
+      return { Error: "Please select a valid mass shape." };
+    }
+    if (
+      finding_type === "mass" &&
+      modality === "mammography" &&
+      mass_density &&
+      !["fat", "low", "equal", "high"].includes(mass_density)
+    ) {
+      return { Error: "Please select a valid mammographic mass density." };
+    }
+    if (
+      finding_type === "calcifications" &&
+      modality === "mammography" &&
+      calc_morphology &&
+      ![
+        "typically_benign",
+        "amorphous",
+        "coarse_heterogeneous",
+        "fine_pleomorphic",
+        "fine_linear",
+      ].includes(calc_morphology)
+    ) {
+      return { Error: "Please select a valid calcification morphology." };
+    }
+    if (
+      finding_type === "calcifications" &&
+      modality === "mammography" &&
+      calc_morphology !== "typically_benign" &&
+      calc_distribution &&
+      !["diffuse", "regional", "grouped", "linear", "segmental"].includes(
+        calc_distribution,
+      )
+    ) {
+      return { Error: "Please select a valid calcification distribution." };
+    }
+    if (
+      finding_type === "asymmetry" &&
+      asymmetry_type &&
+      !["asymmetry", "global", "focal", "developing"].includes(asymmetry_type)
+    ) {
+      return { Error: "Please select a valid asymmetry type." };
     }
 
     const allowedMassMargins = {
@@ -504,7 +560,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       findingDesc = "Calcifications";
       if (modality === "mammography") {
         findingDesc += `: ${calc_morphology || "morphology not specified"}`;
-        if (calc_distribution) {
+        if (calc_morphology !== "typically_benign" && calc_distribution) {
           findingDesc += `, ${calc_distribution} distribution`;
         }
       }
@@ -513,7 +569,10 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     } else if (finding_type === "architectural_distortion") {
       findingDesc = "Architectural distortion";
     } else if (finding_type === "associated_features") {
-      findingDesc = "Associated features (skin/nipple changes)";
+      findingDesc =
+        modality === "ultrasound"
+          ? "Associated features (skin changes)"
+          : "Associated features (skin/nipple changes)";
     }
 
     // Determine category based on suspicion level

@@ -20,6 +20,17 @@
       }
     },
     {
+      "id": "invalid-finding-type-fails-closed",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "forged_unknown_finding", "suspicion_level": "highly_suggestive"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [{ "key": "Error", "equals": "Please select a valid finding type." }]
+      }
+    },
+    {
       "id": "mammography-incomplete",
       "inputs": { "modality": "mammography", "study_context": "screening", "additional_needed": "yes" },
       "expect": {
@@ -129,6 +140,18 @@
       }
     },
     {
+      "id": "invalid-active-descriptor-fails-closed",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "mass", "mass_shape": "forged_shape", "mass_margin": "circumscribed",
+        "suspicion_level": "low_suspicion"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [{ "key": "Error", "equals": "Please select a valid mass shape." }]
+      }
+    },
+    {
       "id": "probably-benign-mass",
       "inputs": {
         "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
@@ -157,6 +180,21 @@
         "fields": [
           { "key": "BI-RADS Category", "equals": "3 - Probably Benign" },
           { "key": "Management", "includes": "6-month" }
+        ]
+      }
+    },
+    {
+      "id": "hidden-calcification-distribution-does-not-leak",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "calcifications", "calc_morphology": "typically_benign",
+        "calc_distribution": "segmental", "suspicion_level": "probably_benign"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "3 - Probably Benign" },
+          { "key": "Finding Description", "equals": "Calcifications: typically_benign" }
         ]
       }
     },
@@ -278,6 +316,20 @@
           { "key": "BI-RADS Category", "equals": "4 - Suspicious" },
           { "key": "Malignancy Likelihood", "equals": ">2% to <95%" },
           { "key": "Finding Description", "includes": "skin/nipple changes" }
+        ]
+      }
+    },
+    {
+      "id": "ultrasound-associated-features-source-exact",
+      "inputs": {
+        "modality": "ultrasound", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "associated_features", "suspicion_level": "suspicious"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "4 - Suspicious" },
+          { "key": "Finding Description", "equals": "Associated features (skin changes)" }
         ]
       }
     },

@@ -720,9 +720,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Diagnostic examination").click();
       await page.getByLabel("No - assessment complete").click();
       await page
-        .getByLabel(
-          "Associated features only (skin changes, nipple retraction)",
-        )
+        .getByLabel("Associated features only")
         .click();
       await page.getByLabel("Moderate suspicion (Category 4B; >10% to ≤50%)").click();
 
@@ -738,6 +736,21 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
           "text=Associated features (skin/nipple changes)",
         ),
       ).toBeVisible();
+    });
+
+    test("should keep ultrasound associated-feature wording source-exact", async ({
+      page,
+    }) => {
+      await page.getByLabel("Ultrasound").click();
+      await page.getByLabel("Diagnostic examination").click();
+      await page.getByLabel("No - assessment complete").click();
+      await page.getByLabel("Associated features only").click();
+      await page.getByLabel("Suspicious (Category 4; >2% to <95%)").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Associated features (skin changes)");
+      await expect(results).not.toContainText("nipple retraction");
     });
   });
 
@@ -862,6 +875,28 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       // Amorphous should show distribution
       await page.getByLabel("Amorphous").click();
       await expect(page.getByText("Calcification Distribution")).toBeVisible();
+    });
+
+    test("should ignore a hidden distribution after switching to typically benign morphology", async ({
+      page,
+    }) => {
+      await page.getByLabel("Mammography").click();
+      await page.getByLabel("Diagnostic examination").click();
+      await page.getByLabel("No - assessment complete").click();
+      await page.getByLabel("Calcifications (without mass)").click();
+      await page.getByLabel("Amorphous").click();
+      await page.getByLabel("Segmental").click();
+      await page
+        .getByLabel(
+          "Typically benign (skin, vascular, coarse, large rod-like, round, rim, dystrophic, milk of calcium, suture)",
+        )
+        .click();
+      await page.getByLabel("Probably benign (Category 3)").click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Calcifications: typically_benign");
+      await expect(results).not.toContainText("segmental distribution");
     });
   });
 
