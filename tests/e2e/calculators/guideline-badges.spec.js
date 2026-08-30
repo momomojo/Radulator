@@ -19,8 +19,9 @@ test.describe("Guideline Version Badges", () => {
       { name: "LI-RADS v2018", expected: "LI-RADS v2018" },
       { name: "Lung-RADS v2022", expected: "Lung-RADS v2022" },
       {
-        name: "Mammography Assessment Guide (BI-RADS v2025 context)",
-        expected: "FDA MQSA 2024 · ACR BI-RADS v2025 context",
+        name: "BI-RADS Assessment Calculator (Legacy 2013)",
+        expected:
+          "Legacy ACR BI-RADS 5th Ed. (2013) with public 2025 assessment-summary constraints",
       },
       { name: "CAD-RADS 2.0", expected: "CAD-RADS 2.0 (2022)" },
       { name: "ACR NI-RADS", expected: "ACR NI-RADS 2018" },
