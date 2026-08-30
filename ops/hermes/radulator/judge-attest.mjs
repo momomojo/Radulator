@@ -11,11 +11,11 @@ import {
   completeFileList,
   githubRequest,
   loadGateState,
+  validateCiPolicy,
 } from "../../../scripts/independent-review-gate.mjs";
 import {
   ATTESTATION_SCHEMA,
   canonicalJson,
-  classifyRisk,
   digest,
   publicKeyFingerprint,
   verifyAttestation,
@@ -164,7 +164,11 @@ function exactStateFromLive(state) {
   if (!completeFileList(state.pr, state.files)) {
     throw new Error("Live changed-file evidence is incomplete or exceeds the review limit.");
   }
-  const risk = classifyRisk(state.files, state.pr);
+  const ciPolicy = validateCiPolicy(state);
+  if (!ciPolicy.ok) {
+    throw new Error(`Refusing live CI policy: ${ciPolicy.reasonCode}: ${ciPolicy.summary}`);
+  }
+  const risk = ciPolicy.risk;
   return {
     repositoryId: state.pr.repositoryId,
     pr: state.pr.number,

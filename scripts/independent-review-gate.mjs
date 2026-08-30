@@ -95,6 +95,72 @@ export function requiredCiForBase(baseRef) {
   return [];
 }
 
+export function requiredCiForPullRequest(pr, files) {
+  const required = requiredCiForBase(pr?.baseRef);
+  if (pr?.baseRef !== "develop") return required;
+  if (!Array.isArray(files) || files.length === 0) return required;
+  return classifyRisk(files, pr).tier === "high"
+    ? [...required, "Full Test Suite"]
+    : required;
+}
+
+export function validateCiPolicy({ pr, files, requiredCi, ci }) {
+  let risk;
+  let policyRequiredCi;
+  try {
+    risk = classifyRisk(files, pr);
+    policyRequiredCi = requiredCiForPullRequest(pr, files);
+  } catch (error) {
+    return {
+      ok: false,
+      reasonCode: "RISK_CLASSIFICATION_ERROR",
+      summary: `Risk classification failed: ${error.message}`,
+      risk: null,
+      requiredCi: [],
+    };
+  }
+  if (
+    risk.reasonCodes.includes("RELEASE_CONTROL_CHANGE") &&
+    risk.reasonCodes.some((code) => code.startsWith("CLINICAL_"))
+  ) {
+    return {
+      ok: false,
+      reasonCode: "MIXED_TRUST_DOMAIN_CHANGE",
+      summary: "Clinical and release-control changes must be reviewed in separate PRs; refusing self-defined evidence.",
+      risk,
+      requiredCi: policyRequiredCi,
+    };
+  }
+  if (!Array.isArray(requiredCi) || digest(requiredCi) !== digest(policyRequiredCi)) {
+    return {
+      ok: false,
+      reasonCode: "CI_POLICY_MISMATCH",
+      summary: "Caller-supplied CI requirements do not match the trusted risk policy.",
+      risk,
+      requiredCi: policyRequiredCi,
+    };
+  }
+  if (!ci?.ok) {
+    return {
+      ok: false,
+      reasonCode: "CI_NOT_EXACT_SUCCESS",
+      summary: `Required CI is not exact green: ${ci?.summary || "missing evidence"}`,
+      risk,
+      requiredCi: policyRequiredCi,
+    };
+  }
+  if (!Array.isArray(ci.evidence) || digest(ci.evidence.map((item) => item.name)) !== digest(policyRequiredCi)) {
+    return {
+      ok: false,
+      reasonCode: "CI_POLICY_MISMATCH",
+      summary: "Required CI evidence set does not match the trusted risk policy.",
+      risk,
+      requiredCi: policyRequiredCi,
+    };
+  }
+  return { ok: true, risk, requiredCi: policyRequiredCi };
+}
+
 export function relevantLabelsDigest(labels) {
   const relevant = [...new Set((labels || [])
     .map((label) => `${label}`.toLowerCase())
@@ -334,17 +400,12 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
   if (!labels.has("ready-for-gate")) return failure(pr.headSha, pr.baseSha, "ready-for-gate is absent.", "READY_LABEL_MISSING");
   const hold = [...labels].find((label) => HOLD_LABELS.has(label));
   if (hold) return failure(pr.headSha, pr.baseSha, `A hold label is present (${hold}); refusing PASS.`, "HOLD_PRESENT");
-  if (!ci?.ok) return failure(pr.headSha, pr.baseSha, `Required CI is not exact green: ${ci?.summary || "missing evidence"}`, "CI_NOT_EXACT_SUCCESS");
-  if (digest(ci.evidence.map((item) => item.name)) !== digest(requiredCi)) {
-    return failure(pr.headSha, pr.baseSha, "Required CI evidence set does not match the base policy.", "CI_POLICY_MISMATCH");
-  }
 
-  let risk;
-  try {
-    risk = classifyRisk(files, pr);
-  } catch (error) {
-    return failure(pr.headSha, pr.baseSha, `Risk classification failed: ${error.message}`, "RISK_CLASSIFICATION_ERROR");
+  const ciPolicy = validateCiPolicy({ pr, files, requiredCi, ci });
+  if (!ciPolicy.ok) {
+    return failure(pr.headSha, pr.baseSha, ciPolicy.summary, ciPolicy.reasonCode, ciPolicy.risk ? { risk: ciPolicy.risk } : {});
   }
+  const risk = ciPolicy.risk;
   const state = exactState(pr, ci, risk);
   const carriers = attestationRecords(reviews);
   const quorum = evaluateAttestationQuorum(carriers, publicKeys, state);
@@ -459,7 +520,6 @@ function normalizeFile(file) {
 export async function loadGateState(token, owner, repo, prNumber, config) {
   const prData = await githubRequest(token, `/repos/${owner}/${repo}/pulls/${prNumber}`);
   const basePr = normalizePr(prData);
-  const requiredCi = requiredCiForBase(basePr.baseRef);
   const [comments, timeline, workflowRuns, checkRuns, files] = await Promise.all([
     paged(token, `/repos/${owner}/${repo}/issues/${prNumber}/comments`),
     paged(token, `/repos/${owner}/${repo}/issues/${prNumber}/timeline`),
@@ -469,6 +529,8 @@ export async function loadGateState(token, owner, repo, prNumber, config) {
   ]);
   const stateEpoch = deriveStateEpoch(timeline, basePr.createdAt);
   const pr = { ...basePr, stateEpoch };
+  const normalizedFiles = files.map(normalizeFile);
+  const requiredCi = requiredCiForPullRequest(pr, normalizedFiles);
   const ci = resolveRequiredCi({
     pr,
     workflowRuns,
@@ -481,7 +543,7 @@ export async function loadGateState(token, owner, repo, prNumber, config) {
     pr,
     requiredCi,
     ci,
-    files: files.map(normalizeFile),
+    files: normalizedFiles,
     reviews: comments.map(normalizeComment),
     publicKeys: config.publicKeys,
   };

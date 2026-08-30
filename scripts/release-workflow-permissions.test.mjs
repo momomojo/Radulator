@@ -19,6 +19,29 @@ const deploy = await workflow("../.github/workflows/deploy.yml");
 const rollback = await workflow("../.github/workflows/rollback-deployment.yml");
 const e2e = await workflow("../.github/workflows/e2e-tests.yml");
 
+assert.deepEqual(
+  e2e.on.pull_request?.types,
+  ["opened", "reopened", "synchronize", "edited"],
+  "editing the canonical high-risk marker must launch a fresh exact-head E2E run",
+);
+const fullSuite = e2e.jobs["full-tests"];
+assert.equal(fullSuite.name, "Full Test Suite", "the signed CI context name must stay stable");
+assert.equal(
+  fullSuite.if,
+  "github.event.inputs.full_suite == 'true' || (github.event_name == 'pull_request' && (github.base_ref == 'main' || contains(github.event.pull_request.body, '<!-- radulator-risk: high -->')))",
+  "only manual dispatch, main PRs, or the canonical high-risk marker may schedule Full Test Suite",
+);
+assert.equal(
+  fullSuite.steps.find((step) => step.name === "Checkout").with.ref,
+  "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
+  "Full Test Suite must continue to execute the exact PR source head",
+);
+assert.equal(
+  fullSuite.steps.find((step) => step.name === "Run full test suite").run,
+  "npx playwright test --project=chromium",
+);
+assert.equal(e2e.permissions.contents, "read", "PR-controlled full-suite code keeps a read-only token");
+
 assert.equal(gate.jobs.evaluate.permissions.statuses, "write");
 assert.equal(
   gate.jobs["reconcile-merge"].permissions.statuses,
