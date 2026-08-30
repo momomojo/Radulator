@@ -59,7 +59,7 @@ function assertFleischnerReviewedEvidenceLink(evidence, label) {
   assert.equal(typeof link, "object", `${label}.reviewed_evidence is required`);
   assert.equal(
     link.schema,
-    "radulator-reviewed-source-evidence-link/v1",
+    "radulator-reviewed-source-evidence-link/v2",
     `${label}.reviewed_evidence.schema`,
   );
   assert.equal(
@@ -69,15 +69,15 @@ function assertFleischnerReviewedEvidenceLink(evidence, label) {
   );
   assert.equal(
     link.ci_primary_full_text_verified,
-    false,
-    `${label}.reviewed_evidence must not claim CI verification of RSNA full text`,
+    true,
+    `${label}.reviewed_evidence must record the hash-pinned RSNA-origin Memento verification`,
   );
 
   const manifestPath = path.join(root, link.manifest_path);
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  assert.equal(manifest.schema, "radulator-reviewed-source-evidence/v1");
+  assert.equal(manifest.schema, "radulator-reviewed-source-evidence/v2");
   assert.equal(manifest.payload.calculator_id, "fleischner");
-  assert.equal(manifest.payload.scope, "source-interpretation-only");
+  assert.equal(manifest.payload.scope, "source-interpretation-and-product-invariants");
   assert.equal(manifest.review.schema, "radulator-independent-source-review/v1");
   assert.equal(manifest.review.disposition, "SOURCE_INTERPRETATION_APPROVED");
   assert.equal(manifest.review.release_authority, "none");
@@ -96,30 +96,192 @@ function assertFleischnerReviewedEvidenceLink(evidence, label) {
     manifest.review.reviewer_revision,
     `${label}.reviewed_evidence.reviewer_revision`,
   );
+  assert.equal(
+    link.reviewed_at,
+    manifest.review.reviewed_at,
+    `${label}.reviewed_evidence.reviewed_at`,
+  );
+  assert.equal(
+    link.review_scope,
+    manifest.payload.scope,
+    `${label}.reviewed_evidence.review_scope`,
+  );
+  assert.equal(
+    link.review_disposition,
+    manifest.review.disposition,
+    `${label}.reviewed_evidence.review_disposition`,
+  );
+  assert.equal(
+    link.release_authority,
+    manifest.review.release_authority,
+    `${label}.reviewed_evidence.release_authority`,
+  );
 
   const primarySources = manifest.payload.sources.filter(
-    (source) => source.review_transport === "interactive-browser",
+    (source) => source.review_transport === "ci-http-memento",
   );
-  assert.ok(primarySources.length >= 2, `${label}: reviewed primary sources are required`);
+  assert.equal(primarySources.length, 2, `${label}: both RSNA-origin primary sources are required`);
   assert.ok(
     primarySources.every(
-      (source) => source.ci_full_text_fetched === false && source.content_sha256 === null,
+      (source) => source.ci_full_text_fetched === true && Array.isArray(source.artifacts),
     ),
-    `${label}: manifest must preserve the primary full-text CI limitation`,
+    `${label}: hash-pinned Memento full text must be CI-retrievable`,
+  );
+
+  const primaryArtifacts = primarySources.flatMap((source) => source.artifacts);
+  assert.deepEqual(
+    primaryArtifacts.map((artifact) => [
+      artifact.id,
+      artifact.origin_url,
+      artifact.retrieval_url,
+      artifact.retrieval_host,
+      artifact.rel_original_verified,
+      artifact.media_type,
+      artifact.content_bytes,
+      artifact.content_sha256,
+      artifact.direct_origin_fetch_status,
+    ]),
+    [
+      [
+        "guideline-vor-pdf",
+        "https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+        "https://web.archive.org/web/20211217024152id_/https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+        "web.archive.org",
+        true,
+        "application/pdf",
+        1983895,
+        "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        403,
+      ],
+      [
+        "measurement-fulltext",
+        "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+        "https://web.archive.org/web/20220119075636id_/https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+        "web.archive.org",
+        true,
+        "text/html",
+        318344,
+        "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+        403,
+      ],
+      [
+        "measurement-figure-1",
+        "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+        "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+        "web.archive.org",
+        true,
+        "image/gif",
+        62198,
+        "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+        403,
+      ],
+    ],
+    `${label}: primary artifacts must preserve exact origins, Memento retrievals, and hashes`,
+  );
+  assert.deepEqual(
+    link.primary_artifacts,
+    primaryArtifacts,
+    `${label}: registry must mirror the manifest primary-artifact records exactly`,
+  );
+  assert.ok(
+    !primaryArtifacts.some(
+      (artifact) =>
+        artifact.media_type === "application/pdf" &&
+        artifact.origin_url.includes("radiol.2017162894"),
+    ),
+    `${label}: no measurement-statement PDF was pinned or reviewed`,
   );
 
   const claimProjection = (claim) => ({
     id: claim.id,
     source_url: claim.source_url,
+    source_sha256: claim.source_sha256,
     source_locator: claim.source_locator,
     fact: claim.fact,
     vector_ids: claim.vector_ids,
   });
   assert.equal(manifest.payload.claims.length, 12, `${label}: manifest must contain 12 claims`);
+  assert.ok(
+    manifest.payload.claims.every((claim) => /^[a-f0-9]{64}$/.test(claim.source_sha256)),
+    `${label}: every source claim must bind an exact SHA-256 artifact`,
+  );
   assert.deepEqual(
     evidence.claims.map(claimProjection),
     manifest.payload.claims.map(claimProjection),
-    `${label}: registry claims must exactly match manifest ids, sources, locators, and vectors`,
+    `${label}: registry claims must exactly match manifest ids, source hashes, locators, facts, and vectors`,
+  );
+
+  assert.deepEqual(
+    evidence.implementation_invariants,
+    manifest.payload.implementation_invariants,
+    `${label}: registry implementation invariants must exactly match the reviewed manifest`,
+  );
+  assert.deepEqual(
+    manifest.payload.implementation_invariants.map((invariant) => invariant.id),
+    [
+      "fleischner-input-completeness-fail-closed",
+      "fleischner-nodule-domain-boundary",
+      "fleischner-measurement-input-geometry",
+    ],
+    `${label}: reviewed product invariants must remain explicit and separate from source claims`,
+  );
+
+  const fixture = JSON.parse(readFileSync(path.join(root, evidence.fixture_path), "utf8"));
+  const fixtureVectorIds = fixture.cases.map((testCase) => testCase.id).sort();
+  assert.equal(fixtureVectorIds.length, 113, `${label}: Fleischner fixture must contain 113 cases`);
+  assert.equal(new Set(fixtureVectorIds).size, 113, `${label}: Fleischner fixture ids must be unique`);
+  assert.deepEqual(
+    [...manifest.payload.runtime_contract.reviewed_vector_ids].sort(),
+    fixtureVectorIds,
+    `${label}: reviewed runtime vector set must exactly match the fixture`,
+  );
+  assert.equal(
+    link.reviewed_vectors_sha256,
+    manifest.payload.runtime_contract.reviewed_vectors_sha256,
+    `${label}.reviewed_evidence.reviewed_vectors_sha256`,
+  );
+  assert.equal(link.reviewed_vector_count, 113, `${label}.reviewed_evidence.reviewed_vector_count`);
+
+  const boundVectorIds = new Set([
+    ...manifest.payload.claims.flatMap((claim) => claim.vector_ids),
+    ...manifest.payload.implementation_invariants.flatMap((invariant) => invariant.vector_ids),
+  ]);
+  assert.deepEqual(
+    [...boundVectorIds].sort(),
+    fixtureVectorIds,
+    `${label}: the exact claim-plus-invariant union must cover all fixture vectors`,
+  );
+
+  const partSolidClaim = manifest.payload.claims.find(
+    (claim) => claim.id === "fleischner-2017-part-solid-component-escalation",
+  );
+  assert.ok(
+    partSolidClaim.fact.includes(
+      "A visually new component warrants diagnostic evaluation and possible resection without claiming quantitative growth.",
+    ),
+    `${label}: new-only components must not be presented as established growth`,
+  );
+  assert.ok(
+    partSolidClaim.vector_ids.includes(
+      "part-solid-measured-new-component-considers-resection-without-growth-claim",
+    ),
+    `${label}: measured new-only component regression must remain source-bound`,
+  );
+
+  const measurementClaim = manifest.payload.claims.find(
+    (claim) => claim.id === "fleischner-2017-measurement-contract",
+  );
+  assert.ok(
+    measurementClaim.fact.includes(
+      "Under 10 mm, average maximal long and perpendicular short axes; at ≥10 mm, record both.",
+    ),
+    `${label}: measurement wording must distinguish averaging from the >=10 mm recording rule`,
+  );
+  assert.ok(
+    measurementClaim.fact.includes(
+      "Volumetric growth must be externally established from comparable CT with validated reproducibility.",
+    ),
+    `${label}: registry must not claim that Radulator calculates or validates volumetry`,
   );
 
   const expectedDimensions = new Map([
@@ -452,6 +614,40 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     claimsBySource.set(claim.source_url, claimsBySource.get(claim.source_url) + 1);
   }
 
+  const implementationInvariants = evidence.implementation_invariants ?? [];
+  assert.ok(
+    Array.isArray(implementationInvariants) && implementationInvariants.length <= 6,
+    `${label}.implementation_invariants must contain at most 6 entries`,
+  );
+  const invariantIds = new Set();
+  for (const [invariantIndex, invariant] of implementationInvariants.entries()) {
+    const invariantLabel = `${label}.implementation_invariants[${invariantIndex}]`;
+    assertBoundedString(invariant.id, `${invariantLabel}.id`, 3, 80);
+    assert.match(
+      invariant.id,
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      `${invariantLabel}.id must be kebab-case`,
+    );
+    assert.ok(!invariantIds.has(invariant.id), `${invariantLabel}.id must be unique`);
+    invariantIds.add(invariant.id);
+    assertBoundedString(invariant.fact, `${invariantLabel}.fact`, 20, 400);
+    assert.ok(
+      Array.isArray(invariant.vector_ids) &&
+        invariant.vector_ids.length >= 1 &&
+        invariant.vector_ids.length <= 24,
+      `${invariantLabel}.vector_ids must contain 1-24 executable case ids`,
+    );
+    assert.equal(
+      new Set(invariant.vector_ids).size,
+      invariant.vector_ids.length,
+      `${invariantLabel}.vector_ids must not contain duplicates`,
+    );
+    for (const vectorId of invariant.vector_ids) {
+      assertBoundedString(vectorId, `${invariantLabel}.vector_ids[]`, 3, 100);
+      vectorIds.add(vectorId);
+    }
+  }
+
   for (const source of record.sources.filter((item) =>
     ["official-authority", "primary-publication"].includes(item.role),
   )) {
@@ -672,7 +868,7 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     );
     assert.equal(
       audit.authority,
-      "Fleischner Society and RSNA 2017 with NLM open table cross-checks",
+      "Fleischner Society and RSNA 2017 hash-pinned publisher-origin Memento artifacts with NLM open table cross-checks",
       `${label}.source_audit.authority`,
     );
     assert.deepEqual(audit.source_urls, expectedSources, `${label}.source_audit.source_urls`);
@@ -683,8 +879,8 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     );
     assert.equal(
       audit.primary_full_text_fetched_by_ci,
-      false,
-      `${label}.source_audit must not claim the RSNA full text was fetched by CI`,
+      true,
+      `${label}.source_audit must record CI retrieval of the hash-pinned RSNA-origin Mementos`,
     );
     assert.deepEqual(
       audit.secondary_table_fragments,
@@ -702,61 +898,7 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     );
     assert.deepEqual(
       audit.vector_ids,
-      [
-        "single-solid-5-low-no-routine-follow-up",
-        "single-solid-6-low-preserves-late-ct-option",
-        "single-solid-9-consider-ct-pet-or-tissue",
-        "multiple-solid-6-low-preserves-late-ct-option",
-        "single-ground-glass-5-selected-suspicious-option",
-        "single-ground-glass-6-until-year-5",
-        "single-ground-glass-6-persistent-continues-to-year-5",
-        "single-ground-glass-6-established-growth-uses-annual-follow-up",
-        "single-ground-glass-new-solid-component-reroutes-to-part-solid",
-        "single-ground-glass-validated-volumetric-growth-accepted",
-        "multiple-ground-glass-5-initial-and-optional-late-ct",
-        "multiple-ground-glass-6-defers-to-most-suspicious-nodule",
-        "multiple-ground-glass-established-growth-uses-most-suspicious-route",
-        "multiple-ground-glass-new-solid-component-uses-most-suspicious-route",
-        "single-part-solid-6-component-5-baseline-persistence-check",
-        "single-part-solid-6-component-5-persistent-uses-annual-follow-up",
-        "single-part-solid-12-component-6-baseline-persistence-check",
-        "single-part-solid-12-component-6-persistent-is-highly-suspicious",
-        "single-part-solid-12-component-8-growing-escalates",
-        "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
-        "single-part-solid-12-component-9-escalates-by-size",
-        "screening-routes-away-without-schedule",
-        "uncertain-characterization-routes-without-table",
-        "fractional-overall-size-rejected",
-        "ten-mm-legacy-axis-attestation-cannot-bypass-numeric-axes",
-        "single-solid-10-valid-axes-accepted",
-        "single-solid-10-axes-average-mismatch-rejected",
-        "solid-component-long-axis-may-exceed-overall-average",
-        "part-solid-component-exceeding-overall-long-axis-rejected",
-        "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
-        "categorical-lte3-pure-ggo-validated-volumetric-growth-claim-rejected",
-        "categorical-lte3-solid-component-linear-growth-claim-rejected",
-        "categorical-lte3-solid-component-missing-basis-requires-recharacterization",
-        "categorical-lte3-solid-component-validated-volumetric-growth-claim-rejected",
-        "categorical-lte3-visually-new-component-requires-recharacterization",
-        "part-solid-categorical-linear-growth-claim-rejected",
-        "part-solid-categorical-lte3-component-avoids-false-precision",
-        "part-solid-categorical-new-component-escalates-without-false-precision",
-        "part-solid-categorical-validated-volumetric-growth-claim-rejected",
-        "part-solid-measured-component-at-3-mm-rejected",
-        "part-solid-missing-component-mode-rejected",
-        "pure-ground-glass-missing-growth-basis-rejected",
-        "pure-ground-glass-sub2mm-change-cannot-claim-growth",
-        "solid-component-missing-growth-basis-rejected",
-        "sub6-ground-glass-linear-component-growth-claim-rejected",
-        "sub6-ground-glass-solid-component-missing-basis-requires-recharacterization",
-        "sub6-ground-glass-validated-volumetric-component-growth-claim-rejected",
-        "sub6-ground-glass-visually-new-component-requires-recharacterization",
-        "sub6-part-solid-linear-component-growth-claim-rejected",
-        "sub6-part-solid-solid-component-missing-basis-requires-recharacterization",
-        "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
-        "sub6-part-solid-visually-new-component-requires-recharacterization",
-        "solid-component-unconfirmed-change-cannot-trigger-escalation",
-      ],
+      [...casesById.keys()].sort(),
       `${label}.source_audit.vector_ids`,
     );
     assert.equal(audit.source_bytes_committed, false, `${label}.source_audit.source_bytes_committed`);

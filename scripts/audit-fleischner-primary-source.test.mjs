@@ -2,8 +2,12 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import process from "node:process";
-import { fetchParsedResource } from "./audit-fleischner-primary-source.mjs";
+import {
+  fetchParsedResource,
+  verifyMementoArtifact,
+} from "./audit-fleischner-primary-source.mjs";
 
 const GUIDELINE_URL =
   "https://pubs.rsna.org/doi/10.1148/radiol.2017161659";
@@ -12,9 +16,15 @@ const MEASUREMENT_URL =
 const MANIFEST_PATH =
   "docs/evidence/fleischner-2017-reviewed-evidence.json";
 const PAYLOAD_SHA256 =
-  "ee3d4a3fb0d12fa7710fb436134f475b75758992cfc27e18c699feef04178424";
+  "d677757521cedada4aba3573386beac5620701e2c7c36c648d960a4bfec39a11";
 const REVIEWED_VECTORS_SHA256 =
-  "ef3d88502b1e9e9ec10c7b345d0dc42725a4d5f1f757e6b0774d5adb7daecc9c";
+  "4f15e698faca2a32ebc28830ef6b94483249910d725148af4f8eb0695c0e08c8";
+
+const EXPECTED_INVARIANT_IDS = [
+  "fleischner-input-completeness-fail-closed",
+  "fleischner-nodule-domain-boundary",
+  "fleischner-measurement-input-geometry",
+];
 
 const EXPECTED_CLAIM_IDS = [
   "fleischner-2017-applicability",
@@ -99,11 +109,16 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
 ];
 
 const EXPECTED_LIMITATIONS = [
-  "CI verifies Crossref metadata and NLM table fragments, not RSNA full-text content.",
+  "CI retrieves hash-pinned Memento captures of RSNA-origin publisher artifacts and verifies rel=original provenance; it does not claim a successful live RSNA origin fetch.",
+  "No measurement-statement PDF is pinned; measurement claims are bound to the publisher full-text HTML fragment and Figure 1 artifact.",
   "The NLM tables are secondary cross-checks and cannot prove prose exceptions, risk interpretation, or measurement guidance.",
-  "This committed record preserves an independent source interpretation but does not prove that the historical browser review occurred.",
-  "Source review does not approve the runtime, pull request, deployment, or live site.",
+  "Source bindings and product invariants do not approve the runtime, pull request, deployment, or live site.",
+  "If Memento retrieval is not an acceptable transport, release remains blocked until equivalent licensed or RSNA-delivered bytes can be pinned and verified.",
 ];
+
+function rawSha256(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
 
 function fakeResponse({
   status = 200,
@@ -113,6 +128,8 @@ function fakeResponse({
   jsonValue = { ok: true },
   jsonError,
   textValue = "ok",
+  bytesValue = Buffer.from("ok"),
+  extraHeaders = {},
 }) {
   return {
     status,
@@ -121,6 +138,7 @@ function fakeResponse({
     headers: new Headers({
       "content-type": contentType,
       ...(retryAfter === undefined ? {} : { "retry-after": retryAfter }),
+      ...extraHeaders,
     }),
     body: { cancel: async () => {} },
     async json() {
@@ -129,6 +147,12 @@ function fakeResponse({
     },
     async text() {
       return textValue;
+    },
+    async arrayBuffer() {
+      return bytesValue.buffer.slice(
+        bytesValue.byteOffset,
+        bytesValue.byteOffset + bytesValue.byteLength,
+      );
     },
   };
 }
@@ -194,6 +218,152 @@ assert.equal(
   "body parsing must occur inside the retry boundary",
 );
 
+const parsedBytes = await fetchParsedResource("https://example.test/artifact", {
+  label: "binary-artifact",
+  parseAs: "bytes",
+  expectedContentType: "application/pdf",
+  fetchImpl: async () =>
+    fakeResponse({
+      contentType: "application/pdf",
+      url: "https://example.test/artifact",
+      bytesValue: Buffer.from("%PDF-test"),
+    }),
+});
+assert.equal(Buffer.isBuffer(parsedBytes.body), true);
+assert.equal(parsedBytes.body.toString("utf8"), "%PDF-test");
+assert.equal(parsedBytes.headers.get("content-type"), "application/pdf");
+
+const fragmentStart = '<div class="hlFld-Fulltext">';
+const fragmentEnd = "</div><!--/fulltext content-->";
+const archivedHtml = Buffer.from(
+  `prefix${fragmentStart}<p>verified text</p>${fragmentEnd}suffix`,
+);
+const inclusiveFragment = Buffer.from(
+  `${fragmentStart}<p>verified text</p>${fragmentEnd}`,
+);
+const syntheticArtifact = {
+  id: "measurement-fulltext",
+  origin_url: "https://publisher.example/article",
+  retrieval_url:
+    "https://web.archive.org/web/20220119075636id_/https://publisher.example/article",
+  retrieval_host: "web.archive.org",
+  memento_datetime: "2022-01-19T07:56:36Z",
+  rel_original_verified: true,
+  origin_last_modified: null,
+  origin_etag: null,
+  media_type: "text/html",
+  content_scope: "publisher-fulltext-html",
+  content_bytes: archivedHtml.length,
+  content_sha256: rawSha256(archivedHtml),
+  direct_origin_fetch_status: 403,
+  fragment: {
+    start_marker: fragmentStart,
+    end_marker: fragmentEnd,
+    end_marker_inclusive: true,
+    marker_occurrences: [1, 1],
+    content_bytes: inclusiveFragment.length,
+    content_sha256: rawSha256(inclusiveFragment),
+  },
+};
+
+function syntheticArtifactResponse(bytes = archivedHtml, overrides = {}) {
+  return fakeResponse({
+    contentType: "text/html; charset=UTF-8",
+    url: syntheticArtifact.retrieval_url,
+    bytesValue: bytes,
+    extraHeaders: {
+      link: `<${syntheticArtifact.origin_url}>; rel="original", <https://web.archive.org/web/timemap/link/${syntheticArtifact.origin_url}>; rel="timemap"`,
+      "memento-datetime": "Wed, 19 Jan 2022 07:56:36 GMT",
+      "x-archive-orig-date": "Wed, 19 Jan 2022 07:56:37 GMT",
+      ...overrides,
+    },
+  });
+}
+
+const verifiedSyntheticArtifact = await verifyMementoArtifact(
+  syntheticArtifact,
+  { fetchImpl: async () => syntheticArtifactResponse() },
+);
+assert.deepEqual(verifiedSyntheticArtifact, {
+  id: "measurement-fulltext",
+  origin_url: syntheticArtifact.origin_url,
+  retrieval_url: syntheticArtifact.retrieval_url,
+  final_url: syntheticArtifact.retrieval_url,
+  retrieval_host: "web.archive.org",
+  memento_datetime: "2022-01-19T07:56:36Z",
+  rel_original_verified: true,
+  origin_headers_verified: true,
+  origin_last_modified: null,
+  origin_etag: null,
+  media_type: "text/html",
+  content_scope: "publisher-fulltext-html",
+  content_bytes: archivedHtml.length,
+  content_sha256: rawSha256(archivedHtml),
+  byte_signature_verified: null,
+  fragment: {
+    content_bytes: inclusiveFragment.length,
+    content_sha256: rawSha256(inclusiveFragment),
+    marker_occurrences: [1, 1],
+    end_marker_inclusive: true,
+  },
+});
+
+await assert.rejects(
+  verifyMementoArtifact(syntheticArtifact, {
+    fetchImpl: async () =>
+      syntheticArtifactResponse(Buffer.concat([archivedHtml, Buffer.from("!")])),
+  }),
+  /bytes|SHA-256/,
+  "a byte mutation must invalidate the archived artifact",
+);
+
+await assert.rejects(
+  verifyMementoArtifact(syntheticArtifact, {
+    byteSignature: "%PDF-",
+    fetchImpl: async () => syntheticArtifactResponse(),
+  }),
+  /byte signature/,
+  "a declared artifact signature must match the first bytes",
+);
+
+await assert.rejects(
+  verifyMementoArtifact(syntheticArtifact, {
+    fetchImpl: async () =>
+      syntheticArtifactResponse(archivedHtml, {
+        link: "<https://attacker.example/article>; rel=\"original\"",
+      }),
+  }),
+  /rel=original/,
+  "the capture must bind the exact publisher origin URL",
+);
+
+await assert.rejects(
+  verifyMementoArtifact(syntheticArtifact, {
+    fetchImpl: async () =>
+      syntheticArtifactResponse(archivedHtml, {
+        "memento-datetime": "Thu, 20 Jan 2022 07:56:36 GMT",
+      }),
+  }),
+  /Memento-Datetime/,
+  "the capture timestamp must match the manifest",
+);
+
+const duplicateMarkerBytes = Buffer.from(
+  `${fragmentStart}first${fragmentEnd}${fragmentStart}second${fragmentEnd}`,
+);
+await assert.rejects(
+  verifyMementoArtifact(
+    {
+      ...syntheticArtifact,
+      content_bytes: duplicateMarkerBytes.length,
+      content_sha256: rawSha256(duplicateMarkerBytes),
+    },
+    { fetchImpl: async () => syntheticArtifactResponse(duplicateMarkerBytes) },
+  ),
+  /marker occurrences/,
+  "the inclusive full-text fragment must have unique boundary markers",
+);
+
 let contentTypeAttempts = 0;
 await assert.rejects(
   fetchParsedResource("https://example.test/resource", {
@@ -253,7 +423,7 @@ assert.equal(
 );
 
 const audit = JSON.parse(run.stdout);
-assert.equal(audit.schema, "radulator-fleischner-primary-source-audit/v2");
+assert.equal(audit.schema, "radulator-fleischner-primary-source-audit/v3");
 assert.deepEqual(audit.primary_metadata.guideline, {
   doi: "10.1148/radiol.2017161659",
   title:
@@ -279,20 +449,21 @@ assert.deepEqual(audit.primary_metadata.measurement, {
 
 assert.deepEqual(audit.reviewed_source_evidence, {
   manifest_path: MANIFEST_PATH,
-  manifest_schema: "radulator-reviewed-source-evidence/v1",
+  manifest_schema: "radulator-reviewed-source-evidence/v2",
   payload_sha256: PAYLOAD_SHA256,
   reviewer_schema: "radulator-independent-source-review/v1",
   reviewer_role: "independent-clinical-source-reviewer",
-  reviewer_revision: "fleischner-source-review/2026-08-30-r8",
-  reviewed_at: "2026-08-30T21:57:52Z",
+  reviewer_revision: "fleischner-source-review/2026-08-30-r9",
+  reviewed_at: "2026-08-30T23:32:19Z",
   disposition: "SOURCE_INTERPRETATION_APPROVED",
   release_authority: "none",
-  scope: "source-interpretation-only",
+  scope: "source-interpretation-and-product-invariants",
   claim_ids: EXPECTED_CLAIM_IDS,
+  implementation_invariant_ids: EXPECTED_INVARIANT_IDS,
   limitations: EXPECTED_LIMITATIONS,
   ci_does_not_verify: [
-    "RSNA full-text content",
-    "that the historical browser review occurred",
+    "a successful live RSNA origin fetch",
+    "a measurement-statement PDF",
     "runtime, pull request, deployment, or live-site approval",
   ],
 });
@@ -306,16 +477,97 @@ assert.deepEqual(audit.rsna_source_transport, [
   {
     id: "rsna-fleischner-2017-guideline",
     url: GUIDELINE_URL,
-    review_transport: "interactive-browser",
-    ci_full_text_fetched: false,
-    content_sha256: null,
+    review_transport: "ci-http-memento",
+    ci_full_text_fetched: true,
+    live_origin_fetched_by_ci: false,
+    artifacts: [
+      {
+        id: "guideline-vor-pdf",
+        origin_url:
+          "https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+        retrieval_url:
+          "https://web.archive.org/web/20211217024152id_/https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+        final_url:
+          "https://web.archive.org/web/20211217024152id_/https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+        retrieval_host: "web.archive.org",
+        memento_datetime: "2021-12-17T02:41:52Z",
+        rel_original_verified: true,
+        origin_headers_verified: true,
+        origin_last_modified: "Wed, 14 Jun 2017 08:18:33 GMT",
+        origin_etag: '"e6730c98d3cf943c"',
+        media_type: "application/pdf",
+        content_scope: "full-version-of-record-pdf",
+        content_bytes: 1983895,
+        content_sha256:
+          "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        byte_signature_verified: "%PDF-",
+        fragment: null,
+        direct_origin_fetch_attempted_by_ci: false,
+        manifest_recorded_direct_origin_status: 403,
+      },
+    ],
   },
   {
     id: "rsna-fleischner-2017-measurement",
     url: MEASUREMENT_URL,
-    review_transport: "interactive-browser",
-    ci_full_text_fetched: false,
-    content_sha256: null,
+    review_transport: "ci-http-memento",
+    ci_full_text_fetched: true,
+    live_origin_fetched_by_ci: false,
+    artifacts: [
+      {
+        id: "measurement-fulltext",
+        origin_url: MEASUREMENT_URL,
+        retrieval_url:
+          "https://web.archive.org/web/20220119075636id_/https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+        final_url:
+          "https://web.archive.org/web/20220119075636id_/https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+        retrieval_host: "web.archive.org",
+        memento_datetime: "2022-01-19T07:56:36Z",
+        rel_original_verified: true,
+        origin_headers_verified: true,
+        origin_last_modified: null,
+        origin_etag: null,
+        media_type: "text/html",
+        content_scope: "publisher-fulltext-html",
+        content_bytes: 318344,
+        content_sha256:
+          "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+        byte_signature_verified: null,
+        fragment: {
+          content_bytes: 194120,
+          content_sha256:
+            "2d78355e8e35408d888f18c212cc8ea3cf9eb71e6dbad6327560bb1bf9d60e30",
+          marker_occurrences: [1, 1],
+          end_marker_inclusive: true,
+        },
+        direct_origin_fetch_attempted_by_ci: false,
+        manifest_recorded_direct_origin_status: 403,
+      },
+      {
+        id: "measurement-figure-1",
+        origin_url:
+          "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+        retrieval_url:
+          "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+        final_url:
+          "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+        retrieval_host: "web.archive.org",
+        memento_datetime: "2020-10-21T01:25:28Z",
+        rel_original_verified: true,
+        origin_headers_verified: true,
+        origin_last_modified: "Thu, 15 Mar 2018 16:55:54 GMT",
+        origin_etag: '"/4Dkotn4rPc"',
+        media_type: "image/gif",
+        content_scope: "publisher-figure-1",
+        content_bytes: 62198,
+        content_sha256:
+          "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+        byte_signature_verified: "GIF",
+        fragment: null,
+        direct_origin_fetch_attempted_by_ci: false,
+        manifest_recorded_direct_origin_status: 403,
+      },
+    ],
   },
 ]);
 
@@ -343,13 +595,15 @@ assert.equal(
   audit.fixture_version,
   "fleischner-2017-primary-guideline-and-measurement-statement",
 );
-assert.equal(audit.executed_vector_count, 112);
+assert.equal(audit.executed_vector_count, 113);
 assert.equal(audit.fixture_vector_match, true);
+assert.equal(audit.claim_and_invariant_vector_match, true);
 assert.equal(audit.registry_claim_match, true);
 assert.equal(audit.reviewed_vectors_sha256, REVIEWED_VECTORS_SHA256);
 assert.deepEqual(audit.solid_matrix_vector_ids, EXPECTED_SOLID_MATRIX_VECTOR_IDS);
 assert.deepEqual(audit.critical_vector_ids, EXPECTED_CRITICAL_VECTOR_IDS);
 assert.deepEqual(audit.claim_ids, EXPECTED_CLAIM_IDS);
+assert.deepEqual(audit.implementation_invariant_ids, EXPECTED_INVARIANT_IDS);
 assert.equal(audit.correct_guideline_doi_present, true);
 assert.equal(audit.correct_measurement_doi_present, true);
 assert.equal(audit.known_wrong_measurement_doi_absent, true);
@@ -357,5 +611,5 @@ assert.equal(audit.calculator_content_invariants_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "Fleischner source audit verified the reviewed-source manifest, 12 claims, 112 executable vectors, primary DOI identities, and live NLM fragments.",
+  "Fleischner source audit verified 3 byte-pinned RSNA-origin Mementos, 12 claims plus 3 implementation invariants, all 113 executable vectors, primary DOI identities, and live NLM fragments.",
 );

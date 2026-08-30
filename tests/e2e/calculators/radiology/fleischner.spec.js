@@ -677,7 +677,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await selectRadio(
       page,
       "Solid-Component Evolution Confirmation",
-      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+      "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim",
     );
     await expect(
       page.getByRole("status", { name: "Calculator results" }),
@@ -723,6 +723,22 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "Confirm a visually established new solid component",
     );
+    await selectRadio(
+      page,
+      "Solid-Component Evolution Confirmation",
+      "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim",
+    );
+    results = await calculate(page);
+    await expect(results).toContainText(
+      "Diagnostic evaluation is warranted; consider resection",
+    );
+    await expect(results).toContainText(
+      "does not establish a ≥2 mm quantitative increase",
+    );
+    await expect(results).not.toContainText(
+      "PET/CT, biopsy, or resection is recommended",
+    );
+
     await selectRadio(
       page,
       "Solid-Component Evolution Confirmation",
@@ -786,16 +802,20 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await selectRadio(
       page,
       "Solid-Component Evolution Confirmation",
-      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+      "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim",
     );
     let results = await calculate(page);
     await expect(results).toContainText(
+      "Diagnostic evaluation is warranted; consider resection",
+    );
+    await expect(results).toContainText("does not establish a ≥2 mm quantitative increase");
+    await expect(results).not.toContainText(
       "PET/CT, biopsy, or resection is recommended",
     );
     await expect(results).toContainText(
       "Solid Component: ≤3 mm / too small to measure reliably",
     );
-    await expect(results).toContainText("visually established");
+    await expect(results).toContainText("no quantitative growth claim");
 
     await selectRadio(
       page,
@@ -864,7 +884,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await selectRadio(
       page,
       "Solid-Component Evolution Confirmation",
-      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+      "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim",
     );
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByRole("main").getByRole("alert")).toContainText(
@@ -901,7 +921,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await selectRadio(
       page,
       "Solid-Component Evolution Confirmation",
-      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+      "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim",
     );
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByRole("main").getByRole("alert")).toContainText(
@@ -930,7 +950,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await selectRadio(
       page,
       "Solid-Component Evolution Confirmation",
-      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+      "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim",
     );
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByRole("main").getByRole("alert")).toContainText(
@@ -1138,7 +1158,7 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await selectRadio(
       page,
       "Solid-Component Evolution Confirmation",
-      "A new solid component is visually established on comparable CT; measure only if >3 mm",
+      "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim",
     );
     results = await calculate(page);
     await expect(results).toContainText(

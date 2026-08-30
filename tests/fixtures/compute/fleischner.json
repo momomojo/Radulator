@@ -150,7 +150,7 @@
       "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "nodule_long_axis": "12", "nodule_short_axis": "12", "solid_component_size_mode": "measured_gt3", "solid_component": "8", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "linear_ge2" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "PET/CT, biopsy, or resection is recommended" },
-        { "key": "Decision Boundary", "includes": "new or growing solid component" }
+        { "key": "Decision Boundary", "includes": "increase of ≥2 mm establishes quantitative growth" }
       ] }
     },
     {
@@ -781,9 +781,22 @@
       "id": "part-solid-categorical-new-component-escalates-without-false-precision",
       "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "nodule_long_axis": "6", "nodule_short_axis": "6", "solid_component_size_mode": "lte3_unmeasured", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "new_component" },
       "expect": { "noError": true, "fields": [
-        { "key": "Recommendation", "equals": "PET/CT, biopsy, or resection is recommended" },
+        { "key": "Recommendation", "equals": "Diagnostic evaluation is warranted; consider resection" },
+        { "key": "Follow-up Interval", "equals": "Case-specific diagnostic evaluation" },
+        { "key": "Rationale", "includes": "development of a solid component as a reason to consider resection" },
+        { "key": "Decision Boundary", "includes": "does not establish a ≥2 mm quantitative increase" },
         { "key": "Solid Component", "equals": "≤3 mm / too small to measure reliably" },
-        { "key": "Growth Basis", "includes": "visually established" }
+        { "key": "Growth Basis", "equals": "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim" }
+      ] }
+    },
+    {
+      "id": "part-solid-measured-new-component-considers-resection-without-growth-claim",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "nodule_long_axis": "9", "nodule_short_axis": "7", "solid_component_size_mode": "measured_gt3", "solid_component": "5", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "new_component" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Diagnostic evaluation is warranted; consider resection" },
+        { "key": "Decision Boundary", "includes": "does not establish a ≥2 mm quantitative increase" },
+        { "key": "Solid Component", "equals": "5 mm" },
+        { "key": "Growth Basis", "equals": "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim" }
       ] }
     },
     {
@@ -833,6 +846,7 @@
       "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "12", "nodule_long_axis": "12", "nodule_short_axis": "12", "solid_component_size_mode": "measured_gt3", "solid_component": "8", "component_concern": "no", "subsolid_temporal_state": "new_or_growing_solid_component", "solid_component_growth_basis": "validated_volumetric" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "PET/CT, biopsy, or resection is recommended" },
+        { "key": "Decision Boundary", "includes": "Externally established solid-component growth by validated volumetry" },
         { "key": "Growth Basis", "includes": "validated volumetry" }
       ] }
     },

@@ -1,25 +1,42 @@
 {
-  "schema": "radulator-reviewed-source-evidence/v1",
+  "schema": "radulator-reviewed-source-evidence/v2",
   "payload": {
     "calculator_id": "fleischner",
     "guideline_version": "Fleischner 2017",
-    "scope": "source-interpretation-only",
+    "scope": "source-interpretation-and-product-invariants",
     "sources": [
       {
         "id": "rsna-fleischner-2017-guideline",
         "authority": "Fleischner Society and Radiological Society of North America",
         "url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
         "doi": "10.1148/radiol.2017161659",
-        "review_transport": "interactive-browser",
-        "ci_full_text_fetched": false,
-        "content_sha256": null,
+        "review_transport": "ci-http-memento",
+        "ci_full_text_fetched": true,
+        "artifacts": [
+          {
+            "id": "guideline-vor-pdf",
+            "origin_url": "https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+            "retrieval_url": "https://web.archive.org/web/20211217024152id_/https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+            "retrieval_host": "web.archive.org",
+            "memento_datetime": "2021-12-17T02:41:52Z",
+            "rel_original_verified": true,
+            "origin_last_modified": "Wed, 14 Jun 2017 08:18:33 GMT",
+            "origin_etag": "\"e6730c98d3cf943c\"",
+            "media_type": "application/pdf",
+            "content_scope": "full-version-of-record-pdf",
+            "content_bytes": 1983895,
+            "content_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+            "page_count": 16,
+            "direct_origin_fetch_status": 403
+          }
+        ],
         "reviewed_locators": [
-          "Introduction and Table 1 note",
-          "General Recommendations and Figures 1-5",
-          "Table 1 solid and subsolid sections, journal page 230",
-          "Recommendations 1-5",
-          "Risk Factors for Malignancy and Risk Estimation and Risk Models",
-          "Perifissural Nodules section"
+          "PDF p2/journal p229, Introduction",
+          "PDF p3/journal p230, Table 1A, Table 1B, and table note",
+          "PDF pp3-5/journal pp230-232, General Recommendations and Figures 1-5",
+          "PDF pp5-10/journal pp232-237, Recommendations 1-5",
+          "PDF pp10-12/journal pp237-239, Risk Factors and Risk Estimation",
+          "PDF p13/journal p240, Perifissural Nodules"
         ]
       },
       {
@@ -27,15 +44,53 @@
         "authority": "Fleischner Society and Radiological Society of North America",
         "url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
         "doi": "10.1148/radiol.2017162894",
-        "review_transport": "interactive-browser",
-        "ci_full_text_fetched": false,
-        "content_sha256": null,
+        "review_transport": "ci-http-memento",
+        "ci_full_text_fetched": true,
+        "artifacts": [
+          {
+            "id": "measurement-fulltext",
+            "origin_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+            "retrieval_url": "https://web.archive.org/web/20220119075636id_/https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+            "retrieval_host": "web.archive.org",
+            "memento_datetime": "2022-01-19T07:56:36Z",
+            "rel_original_verified": true,
+            "origin_last_modified": null,
+            "origin_etag": null,
+            "media_type": "text/html",
+            "content_scope": "publisher-fulltext-html",
+            "content_bytes": 318344,
+            "content_sha256": "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+            "direct_origin_fetch_status": 403,
+            "fragment": {
+              "start_marker": "<div class=\"hlFld-Fulltext\">",
+              "end_marker": "</div><!--/fulltext content-->",
+              "end_marker_inclusive": true,
+              "marker_occurrences": [1, 1],
+              "content_bytes": 194120,
+              "content_sha256": "2d78355e8e35408d888f18c212cc8ea3cf9eb71e6dbad6327560bb1bf9d60e30"
+            }
+          },
+          {
+            "id": "measurement-figure-1",
+            "origin_url": "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+            "retrieval_url": "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+            "retrieval_host": "web.archive.org",
+            "memento_datetime": "2020-10-21T01:25:28Z",
+            "rel_original_verified": true,
+            "origin_last_modified": "Thu, 15 Mar 2018 16:55:54 GMT",
+            "origin_etag": "\"/4Dkotn4rPc\"",
+            "media_type": "image/gif",
+            "content_scope": "publisher-figure-1",
+            "content_bytes": 62198,
+            "content_sha256": "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+            "direct_origin_fetch_status": 403
+          }
+        ],
         "reviewed_locators": [
-          "Measurement recommendations",
-          "Solid-component measurement recommendation: measure when >3 mm; smaller component measurements may be unreliable",
-          "Size-change recommendation: at least 2 mm average-diameter change and volumetric reproducibility",
-          "Figures 1-6",
-          "Figures 12-17"
+          "Full-text anchors #_i5, #_i8, #_i15, #_i18, #_i21, #_i25, #_i31, and #_i35",
+          "Full-text anchor #_i9 and Figure 6 for the <=3 mm measurement boundary",
+          "Figures 1, 2, 4, 5, 9, 12, 13, 14, 16, and 17",
+          "Figure 1 summary: small-nodule average, >=10 mm two-axis record, and >3 mm solid-component measurement"
         ]
       },
       {
@@ -65,7 +120,8 @@
       {
         "id": "fleischner-2017-applicability",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-        "source_locator": "Introduction and Table 1 note: age, screening, known-primary-cancer, and immunocompromise exclusions",
+        "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        "source_locator": "Guideline VOR PDF p2/journal p229, Introduction; p3/journal p230, Table 1 note",
         "fact": "The table is limited to eligible incidental nodules in adults at least 35 years old; screening, immunocompromise, known primary cancer, younger age, and uncertain eligibility route away without a Fleischner schedule.",
         "vector_ids": [
           "missing-applicability-fails-closed",
@@ -79,7 +135,8 @@
       {
         "id": "fleischner-2017-characterization-and-ipln",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-        "source_locator": "General Recommendations and Figures 1-5; Perifissural Nodules section",
+        "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        "source_locator": "Guideline VOR PDF pp3-5/journal pp230-232, General Recommendations and Figures 1-5; p13/journal p240, Perifissural Nodules",
         "fact": "Table use requires adequate thin-section characterization; definitively benign fat or calcification and typical intrapulmonary-lymph-node morphology route away without an unnecessary surveillance schedule, and uncertain characterization fails closed without a table schedule.",
         "vector_ids": [
           "missing-characterization-fails-closed",
@@ -92,7 +149,8 @@
       {
         "id": "fleischner-2017-solid-table",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-        "source_locator": "Table 1 solid section, journal page 230; Recommendations 1-2",
+        "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        "source_locator": "Guideline VOR PDF p3/journal p230, Table 1A; pp5-7/journal pp232-234, Recommendations 1-2",
         "fact": "The solid pathways preserve every single and multiple 5, 6, 8, and 9 mm low/high-risk boundary vector, including the table's distinct optional and required later CT language.",
         "vector_ids": [
           "single-solid-5-low-no-routine-follow-up",
@@ -116,7 +174,8 @@
       {
         "id": "fleischner-2017-multiple-nodule-routing",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-        "source_locator": "Recommendation 2: at least one nodule at least 6 mm and larger-or-more-suspicious solitary-path routing; Recommendation 5: most-suspicious-nodule routing",
+        "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        "source_locator": "Guideline VOR PDF p7/journal p234, Recommendation 2; p10/journal p237, Recommendation 5",
         "fact": "Multiple-nodule table selection uses whether any nodule reaches 6 mm, separately records the dominant most-suspicious nodule, applies the solitary pathway when a larger or more suspicious dominant solid nodule requires it, and distinguishes cohort persistence from interval evolution in the management-driving nodule(s).",
         "vector_ids": [
           "multiple-solid-any-ge6-dominant-5-uses-multiple-threshold",
@@ -132,7 +191,8 @@
       {
         "id": "fleischner-2017-subsolid-table",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-        "source_locator": "Table 1 subsolid section, journal page 230; Recommendations 3-5 and interval-growth examples",
+        "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        "source_locator": "Guideline VOR PDF p3/journal p230, Table 1B; pp7-10/journal pp234-237, Recommendations 3-5",
         "fact": "Subsolid management distinguishes baseline persistence from surveillance and established evolution. Pure-GGN growth does not return to baseline; a reliably defined new solid component routes to part-solid evaluation. Below 6 mm, a suspected component requires thin-section recharacterization and equivalent pure-GGN handling. Multiple nodules follow the 2/4-year or most-suspicious-nodule pathway.",
         "vector_ids": [
           "single-ground-glass-5-routine-no-follow-up",
@@ -164,7 +224,8 @@
       {
         "id": "fleischner-2017-selected-subsolid-escalation",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-        "source_locator": "Recommendations 3-4: close-to-6-mm options and inability to reliably define discrete components below 6 mm overall",
+        "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        "source_locator": "Guideline VOR PDF pp7-9/journal pp234-236, Recommendations 3-4; especially p9/journal p236",
         "fact": "The close-to-6-mm option applies to pure ground-glass and part-solid nodules without demanding an unreliable component measurement. Below 6 mm overall, suspected solid-component evolution requires thin-section recharacterization and is not treated as established; missing, linear, volumetric, and visually asserted bases all fail closed.",
         "vector_ids": [
           "categorical-lte3-visually-new-component-requires-recharacterization",
@@ -184,8 +245,9 @@
       {
         "id": "fleischner-2017-part-solid-component-escalation",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-        "source_locator": "Recommendation 4: baseline persistence assessment; persistent component thresholds; new or growing component, suspicious morphology, or component larger than 8 mm escalation",
-        "fact": "For solitary part-solid nodules ≥6 mm, baseline imaging assesses persistence. Stable components <6 mm receive annual CT for at least 5 years; persistent components ≥6 mm are highly suspicious. A visually new component, reliable established growth, suspicious morphology, or a component >8 mm triggers diagnostic options. Below 6 mm overall, a discrete component cannot be reliably defined.",
+        "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        "source_locator": "Guideline VOR PDF pp9-10/journal pp236-237, Recommendation 4 and Table 1B comment",
+        "fact": "Solitary part-solid nodules ≥6 mm get baseline CT for persistence. Stable components <6 mm receive annual CT for ≥5 years; persistent components ≥6 mm are highly suspicious. Suspicious morphology, established growth, or component >8 mm triggers PET/CT, biopsy, or resection. A visually new component warrants diagnostic evaluation and possible resection without claiming quantitative growth.",
         "vector_ids": [
           "single-part-solid-6-component-5-baseline-persistence-check",
           "single-part-solid-6-component-5-persistent-uses-annual-follow-up",
@@ -208,13 +270,15 @@
           "sub6-part-solid-linear-component-growth-claim-rejected",
           "sub6-part-solid-solid-component-missing-basis-requires-recharacterization",
           "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
-          "sub6-part-solid-visually-new-component-requires-recharacterization"
+          "sub6-part-solid-visually-new-component-requires-recharacterization",
+          "part-solid-measured-new-component-considers-resection-without-growth-claim"
         ]
       },
       {
         "id": "fleischner-2017-risk-selection",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
-        "source_locator": "Risk Factors for Malignancy and Risk Estimation and Risk Models; Table 1 solid risk columns",
+        "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        "source_locator": "Guideline VOR PDF pp10-12/journal pp237-239, Risk Factors and Risk Estimation",
         "fact": "Solid-nodule low risk is below 5% and high risk combines the ACCP intermediate and high categories at 5% or greater; the clinician selects the holistic category rather than the tool inferring it from one factor.",
         "vector_ids": [
           "single-solid-5-low-no-routine-follow-up",
@@ -225,15 +289,13 @@
       {
         "id": "fleischner-2017-measurement-contract",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
-        "source_locator": "Measurement recommendations and Figures 1-4 and 12-17: small-nodule average, at-least-10-mm two-axis record, >3-mm solid-component measurement and smaller-component unreliability, lung windows, and established size change",
-        "fact": "Use lung windows and whole mm; average orthogonal diameters. Record both axes for nodules ≥10 mm and part-solid nodules. Measure a solid component only when >3 mm; otherwise use a categorical ≤3-mm path that cannot establish quantitative growth. A component may exceed rounded average but not actual long axis. Linear growth requires ≥2 mm; volumetry applies only to reliably measurable structures.",
+        "source_sha256": "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+        "source_locator": "Measurement full-text fragment anchors #_i5, #_i8, #_i15, #_i18, #_i21, #_i25, #_i31, #_i35; Figures 1, 2, 4, 5, 9, 12-14, 16-17",
+        "fact": "Measure on lung windows in whole millimeters. Under 10 mm, average maximal long and perpendicular short axes; at ≥10 mm, record both. For part-solid nodules, document overall/nonsolid and solid components separately; measure solid maximum diameter only if >3 mm. Linear growth requires ≥2 mm. Volumetric growth must be externally established from comparable CT with validated reproducibility.",
         "vector_ids": [
           "fractional-overall-size-rejected",
           "zero-overall-size-rejected",
           "negative-overall-size-rejected",
-          "ten-mm-legacy-axis-attestation-cannot-bypass-numeric-axes",
-          "single-solid-10-valid-axes-accepted",
-          "single-solid-10-axes-average-mismatch-rejected",
           "part-solid-categorical-linear-growth-claim-rejected",
           "part-solid-categorical-lte3-component-avoids-false-precision",
           "part-solid-categorical-validated-volumetric-growth-claim-rejected",
@@ -243,11 +305,6 @@
           "part-solid-zero-component-rejected",
           "part-solid-negative-component-rejected",
           "part-solid-fractional-component-rejected",
-          "solid-component-long-axis-may-exceed-overall-average",
-          "part-solid-component-exceeding-overall-long-axis-rejected",
-          "part-solid-missing-overall-long-axis-rejected",
-          "part-solid-axes-average-mismatch-rejected",
-          "part-solid-short-axis-greater-than-long-rejected",
           "pure-ground-glass-sub2mm-change-cannot-claim-growth",
           "solid-component-unconfirmed-change-cannot-trigger-escalation",
           "single-ground-glass-validated-volumetric-growth-accepted",
@@ -257,7 +314,8 @@
       {
         "id": "fleischner-2017-very-small-nodule-measurement",
         "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
-        "source_locator": "Measurement statement Figure 6: nodules 3 mm or smaller should not be measured because measurement and morphology classification are unreliable",
+        "source_sha256": "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+        "source_locator": "Measurement full-text fragment anchor #_i9; Figures 1 and 6",
         "fact": "Nodules 3 mm or smaller use a categorical very-small pathway rather than a false-precision numeric diameter. Linear or volumetric growth and a discrete solid component cannot be established reliably at this size; an entered numeric 3-mm measurement is rejected.",
         "vector_ids": [
           "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
@@ -273,6 +331,7 @@
       {
         "id": "nlm-fleischner-solid-table-cross-check",
         "source_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+        "source_sha256": "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
         "source_locator": "NCBI Bookshelf object ch5.Tab1, exact HTML table fragment",
         "fact": "The digest-pinned open reproduction contains all six single/multiple solid-nodule rows and preserves the distinct low- and high-risk optionality.",
         "vector_ids": [
@@ -283,12 +342,48 @@
       {
         "id": "nlm-fleischner-subsolid-table-cross-check",
         "source_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+        "source_sha256": "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
         "source_locator": "NCBI Bookshelf object ch5.Tab2, exact HTML table fragment",
         "fact": "The digest-pinned open reproduction contains the solitary ground-glass, solitary part-solid, and multiple-subsolid rows, including the until-five-years wording and most-suspicious-nodule rule.",
         "vector_ids": [
           "single-ground-glass-6-until-year-5",
           "multiple-ground-glass-5-initial-and-optional-late-ct",
           "multiple-ground-glass-6-defers-to-most-suspicious-nodule"
+        ]
+      }
+    ],
+    "implementation_invariants": [
+      {
+        "id": "fleischner-input-completeness-fail-closed",
+        "fact": "The calculator must not emit a surveillance schedule until nodule count, nodule type, recorded size, and size-entry mode are all explicitly selected. This is a fail-closed product invariant, not a direct article claim.",
+        "vector_ids": [
+          "missing-nodule-count-fails-closed",
+          "missing-nodule-type-fails-closed",
+          "missing-recorded-size-fails-closed",
+          "missing-size-mode-fails-closed"
+        ]
+      },
+      {
+        "id": "fleischner-nodule-domain-boundary",
+        "fact": "Radulator conservatively routes an entered lesion over 30 mm outside this nodule-table calculator. This is a product-domain invariant; the two pinned 2017 RSNA-origin artifacts are not cited as proof of that boundary.",
+        "vector_ids": [
+          "mass-over-30-mm-routes-outside-nodule-table"
+        ]
+      },
+      {
+        "id": "fleischner-measurement-input-geometry",
+        "fact": "Radulator requires numeric axes when needed to validate the entered rounded average, rejects a short axis above the long axis, and prevents a solid component from exceeding the actual overall long axis. The tool accepts only externally established volumetric growth and does not calculate or validate volumetry.",
+        "vector_ids": [
+          "part-solid-axes-average-mismatch-rejected",
+          "part-solid-component-exceeding-overall-long-axis-rejected",
+          "part-solid-missing-overall-long-axis-rejected",
+          "part-solid-short-axis-greater-than-long-rejected",
+          "single-ground-glass-validated-volumetric-growth-accepted",
+          "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
+          "single-solid-10-axes-average-mismatch-rejected",
+          "single-solid-10-valid-axes-accepted",
+          "solid-component-long-axis-may-exceed-overall-average",
+          "ten-mm-legacy-axis-attestation-cannot-bypass-numeric-axes"
         ]
       }
     ],
@@ -348,6 +443,7 @@
         "part-solid-component-exceeding-overall-long-axis-rejected",
         "part-solid-fractional-component-rejected",
         "part-solid-measured-component-at-3-mm-rejected",
+        "part-solid-measured-new-component-considers-resection-without-growth-claim",
         "part-solid-missing-component-mode-rejected",
         "part-solid-missing-component-rejected",
         "part-solid-missing-overall-long-axis-rejected",
@@ -410,22 +506,23 @@
         "under-35-routes-away-without-schedule",
         "zero-overall-size-rejected"
       ],
-      "reviewed_vectors_sha256": "ef3d88502b1e9e9ec10c7b345d0dc42725a4d5f1f757e6b0774d5adb7daecc9c"
+      "reviewed_vectors_sha256": "4f15e698faca2a32ebc28830ef6b94483249910d725148af4f8eb0695c0e08c8"
     },
     "limitations": [
-      "CI verifies Crossref metadata and NLM table fragments, not RSNA full-text content.",
+      "CI retrieves hash-pinned Memento captures of RSNA-origin publisher artifacts and verifies rel=original provenance; it does not claim a successful live RSNA origin fetch.",
+      "No measurement-statement PDF is pinned; measurement claims are bound to the publisher full-text HTML fragment and Figure 1 artifact.",
       "The NLM tables are secondary cross-checks and cannot prove prose exceptions, risk interpretation, or measurement guidance.",
-      "This committed record preserves an independent source interpretation but does not prove that the historical browser review occurred.",
-      "Source review does not approve the runtime, pull request, deployment, or live site."
+      "Source bindings and product invariants do not approve the runtime, pull request, deployment, or live site.",
+      "If Memento retrieval is not an acceptable transport, release remains blocked until equivalent licensed or RSNA-delivered bytes can be pinned and verified."
     ]
   },
   "review": {
     "schema": "radulator-independent-source-review/v1",
     "reviewer_role": "independent-clinical-source-reviewer",
-    "reviewer_revision": "fleischner-source-review/2026-08-30-r8",
-    "reviewed_at": "2026-08-30T21:57:52Z",
+    "reviewer_revision": "fleischner-source-review/2026-08-30-r9",
+    "reviewed_at": "2026-08-30T23:32:19Z",
     "disposition": "SOURCE_INTERPRETATION_APPROVED",
-    "payload_sha256": "ee3d4a3fb0d12fa7710fb436134f475b75758992cfc27e18c699feef04178424",
+    "payload_sha256": "d677757521cedada4aba3573386beac5620701e2c7c36c648d960a4bfec39a11",
     "release_authority": "none"
   }
 }

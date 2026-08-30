@@ -447,7 +447,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       id: "nodule_long_axis",
       label: "Overall Nodule Maximum Long Axis (whole mm)",
       subLabel:
-        "Required for every nodule ≥10 mm and every part-solid nodule ≥6 mm.",
+        "Enter both axes to calculate and validate the rounded average for part-solid nodules 6–9 mm; for nodules ≥10 mm, both axes are recorded.",
       type: "number",
       clearOnChange: [
         "solid_component_size_mode",
@@ -590,7 +590,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         {
           value: "new_component",
           label:
-            "A new solid component is visually established on comparable CT; measure only if >3 mm",
+            "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim",
         },
         {
           value: "linear_ge2",
@@ -970,7 +970,7 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
         }
         growthBasis =
           basis === "new_component"
-            ? "A new solid component is visually established on comparable CT; measure only if >3 mm"
+            ? "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim"
             : basis === "linear_ge2"
               ? "Solid-component diameter increased by ≥2 mm on comparable CT"
               : "Solid-component growth established by validated volumetry on comparable CT under its reproducibility protocol";
@@ -1206,6 +1206,18 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
           "A discrete solid component cannot be defined reliably at this overall size.";
       }
     } else if (
+      subsolidTemporalState === "new_or_growing_solid_component" &&
+      vals.solid_component_growth_basis === "new_component" &&
+      vals.component_concern !== "yes" &&
+      !(solidSize > 8)
+    ) {
+      recommendation = "Diagnostic evaluation is warranted; consider resection";
+      followUp = "Case-specific diagnostic evaluation";
+      rationale =
+        "Fleischner Table 1 identifies development of a solid component as a reason to consider resection.";
+      decisionBoundary =
+        "The component is visually new, but this does not establish a ≥2 mm quantitative increase. A component ≤3 mm remains too small for reliable measurement. PET/CT, biopsy, or resection as a bundled recommendation requires established growth, particularly suspicious morphology, or a solid component >8 mm.";
+    } else if (
       subsolidTemporalState === "new_or_growing_solid_component" ||
       vals.component_concern === "yes" ||
       solidSize > 8
@@ -1216,11 +1228,13 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
       rationale =
         "Fleischner Recommendation 4 escalation for a growing solid component, particularly suspicious morphology, or a solid component >8 mm.";
       decisionBoundary =
-        subsolidTemporalState === "new_or_growing_solid_component"
-          ? "A new or growing solid component crosses the escalation boundary independently of its current size."
-          : vals.component_concern === "yes"
-            ? "Particularly suspicious morphology crosses the escalation boundary independently of component size."
-            : "The solid component >8 mm crosses the escalation boundary; a short-term persistence assessment can still be clinically relevant because large transient components occur.";
+        vals.component_concern === "yes"
+          ? "Particularly suspicious morphology crosses the escalation boundary independently of component size."
+          : solidSize > 8
+            ? "The solid component >8 mm crosses the escalation boundary; a short-term persistence assessment can still be clinically relevant because large transient components occur."
+            : vals.solid_component_growth_basis === "linear_ge2"
+              ? "A solid-component diameter increase of ≥2 mm establishes quantitative growth and crosses the escalation boundary."
+              : "Externally established solid-component growth by validated volumetry on comparable CT crosses the escalation boundary; Radulator does not calculate or validate volumetry.";
     } else if (
       subsolidTemporalState === "persistent_stable" &&
       solidComponentBelow6

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -25,12 +26,18 @@ const SUBSOLID_TABLE_URL =
   "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly";
 
 const EXPECTED_PAYLOAD_SHA256 =
-  "ee3d4a3fb0d12fa7710fb436134f475b75758992cfc27e18c699feef04178424";
+  "d677757521cedada4aba3573386beac5620701e2c7c36c648d960a4bfec39a11";
 const EXPECTED_REVIEWED_VECTORS_SHA256 =
-  "ef3d88502b1e9e9ec10c7b345d0dc42725a4d5f1f757e6b0774d5adb7daecc9c";
+  "4f15e698faca2a32ebc28830ef6b94483249910d725148af4f8eb0695c0e08c8";
 const EXPECTED_REVIEWER_REVISION =
-  "fleischner-source-review/2026-08-30-r8";
-const EXPECTED_REVIEWED_AT = "2026-08-30T21:57:52Z";
+  "fleischner-source-review/2026-08-30-r9";
+const EXPECTED_REVIEWED_AT = "2026-08-30T23:32:19Z";
+
+const EXPECTED_INVARIANT_IDS = [
+  "fleischner-input-completeness-fail-closed",
+  "fleischner-nodule-domain-boundary",
+  "fleischner-measurement-input-geometry",
+];
 
 const EXPECTED_CLAIM_IDS = [
   "fleischner-2017-applicability",
@@ -115,11 +122,78 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
 ];
 
 const EXPECTED_LIMITATIONS = [
-  "CI verifies Crossref metadata and NLM table fragments, not RSNA full-text content.",
+  "CI retrieves hash-pinned Memento captures of RSNA-origin publisher artifacts and verifies rel=original provenance; it does not claim a successful live RSNA origin fetch.",
+  "No measurement-statement PDF is pinned; measurement claims are bound to the publisher full-text HTML fragment and Figure 1 artifact.",
   "The NLM tables are secondary cross-checks and cannot prove prose exceptions, risk interpretation, or measurement guidance.",
-  "This committed record preserves an independent source interpretation but does not prove that the historical browser review occurred.",
-  "Source review does not approve the runtime, pull request, deployment, or live site.",
+  "Source bindings and product invariants do not approve the runtime, pull request, deployment, or live site.",
+  "If Memento retrieval is not an acceptable transport, release remains blocked until equivalent licensed or RSNA-delivered bytes can be pinned and verified.",
 ];
+
+const EXPECTED_RSNA_ARTIFACTS = {
+  guideline: {
+    id: "guideline-vor-pdf",
+    origin_url:
+      "https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+    retrieval_url:
+      "https://web.archive.org/web/20211217024152id_/https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+    retrieval_host: "web.archive.org",
+    memento_datetime: "2021-12-17T02:41:52Z",
+    rel_original_verified: true,
+    origin_last_modified: "Wed, 14 Jun 2017 08:18:33 GMT",
+    origin_etag: '"e6730c98d3cf943c"',
+    media_type: "application/pdf",
+    content_scope: "full-version-of-record-pdf",
+    content_bytes: 1983895,
+    content_sha256:
+      "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+    page_count: 16,
+    direct_origin_fetch_status: 403,
+  },
+  measurement: {
+    id: "measurement-fulltext",
+    origin_url: MEASUREMENT_URL,
+    retrieval_url:
+      "https://web.archive.org/web/20220119075636id_/https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+    retrieval_host: "web.archive.org",
+    memento_datetime: "2022-01-19T07:56:36Z",
+    rel_original_verified: true,
+    origin_last_modified: null,
+    origin_etag: null,
+    media_type: "text/html",
+    content_scope: "publisher-fulltext-html",
+    content_bytes: 318344,
+    content_sha256:
+      "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+    direct_origin_fetch_status: 403,
+    fragment: {
+      start_marker: '<div class="hlFld-Fulltext">',
+      end_marker: "</div><!--/fulltext content-->",
+      end_marker_inclusive: true,
+      marker_occurrences: [1, 1],
+      content_bytes: 194120,
+      content_sha256:
+        "2d78355e8e35408d888f18c212cc8ea3cf9eb71e6dbad6327560bb1bf9d60e30",
+    },
+  },
+  figure1: {
+    id: "measurement-figure-1",
+    origin_url:
+      "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+    retrieval_url:
+      "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+    retrieval_host: "web.archive.org",
+    memento_datetime: "2020-10-21T01:25:28Z",
+    rel_original_verified: true,
+    origin_last_modified: "Thu, 15 Mar 2018 16:55:54 GMT",
+    origin_etag: '"/4Dkotn4rPc"',
+    media_type: "image/gif",
+    content_scope: "publisher-figure-1",
+    content_bytes: 62198,
+    content_sha256:
+      "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+    direct_origin_fetch_status: 403,
+  },
+};
 
 const EXPECTED_TABLES = {
   solid: {
@@ -153,6 +227,9 @@ const RETRYABLE_HTTP_STATUSES = new Set([
 class NonRetryableRetrievalError extends Error {}
 
 function sha256(value) {
+  if (Buffer.isBuffer(value) || ArrayBuffer.isView(value)) {
+    return createHash("sha256").update(value).digest("hex");
+  }
   return digest(value);
 }
 
@@ -215,7 +292,10 @@ export async function fetchParsedResource(
     maxDelayMs = 2_000,
   },
 ) {
-  assert.ok(parseAs === "json" || parseAs === "text", `${label}: parse mode`);
+  assert.ok(
+    parseAs === "json" || parseAs === "text" || parseAs === "bytes",
+    `${label}: parse mode`,
+  );
   assert.ok(
     typeof expectedContentType === "string" && expectedContentType.length > 0,
     `${label}: expected content type`,
@@ -235,8 +315,10 @@ export async function fetchParsedResource(
           accept:
             parseAs === "json"
               ? "application/json"
+              : parseAs === "bytes"
+                ? "application/pdf,image/gif,text/html,application/xhtml+xml,application/octet-stream"
               : "text/html,application/xhtml+xml",
-          "user-agent": "Radulator-Fleischner-source-audit/2",
+          "user-agent": "Radulator-Fleischner-source-audit/3",
         },
         redirect: "follow",
         signal: AbortSignal.timeout(15_000),
@@ -287,8 +369,12 @@ export async function fetchParsedResource(
       }
 
       const body =
-        parseAs === "json" ? await response.json() : await response.text();
-      return { body, finalUrl: response.url, contentType };
+        parseAs === "json"
+          ? await response.json()
+          : parseAs === "bytes"
+            ? Buffer.from(await response.arrayBuffer())
+            : await response.text();
+      return { body, finalUrl: response.url, contentType, headers: response.headers };
     } catch (error) {
       if (error instanceof NonRetryableRetrievalError) throw error;
       lastError = error;
@@ -302,6 +388,223 @@ export async function fetchParsedResource(
   assert.fail(
     `${label}: retrieval failed after ${maxAttempts} attempts (${lastError})`,
   );
+}
+
+function bufferOccurrenceCount(buffer, marker) {
+  const markerBytes = Buffer.from(marker);
+  assert.ok(markerBytes.length > 0, "fragment marker must not be empty");
+  let count = 0;
+  let offset = 0;
+  while (offset <= buffer.length - markerBytes.length) {
+    const index = buffer.indexOf(markerBytes, offset);
+    if (index < 0) break;
+    count += 1;
+    offset = index + markerBytes.length;
+  }
+  return count;
+}
+
+function originalLinkUrls(linkHeader) {
+  const urls = [];
+  const linkPattern = /<([^>]+)>([^,]*)/g;
+  for (const match of String(linkHeader ?? "").matchAll(linkPattern)) {
+    const parameters = match[2];
+    const relMatch = parameters.match(/(?:^|;)\s*rel\s*=\s*(?:"([^"]+)"|([^;,\s]+))/i);
+    const relations = (relMatch?.[1] ?? relMatch?.[2] ?? "")
+      .split(/\s+/)
+      .filter(Boolean);
+    if (relations.includes("original")) urls.push(match[1]);
+  }
+  return urls;
+}
+
+function isoFromHttpDate(value, label) {
+  assert.ok(value, `${label}: missing header`);
+  const milliseconds = Date.parse(value);
+  assert.ok(Number.isFinite(milliseconds), `${label}: invalid HTTP date`);
+  return new Date(milliseconds).toISOString().replace(".000Z", "Z");
+}
+
+/**
+ * Retrieve and byte-verify one exact Wayback `id_` capture. This verifies the
+ * capture's publisher origin relationship; it deliberately does not contact
+ * or claim success from the current publisher origin.
+ */
+export async function verifyMementoArtifact(
+  artifact,
+  {
+    byteSignature = null,
+    fetchImpl = globalThis.fetch,
+    maxAttempts = 3,
+    sleepImpl = delay,
+  } = {},
+) {
+  assert.ok(artifact && typeof artifact === "object", "Memento artifact: object");
+  const label = `Memento ${artifact.id}`;
+  for (const key of [
+    "id",
+    "origin_url",
+    "retrieval_url",
+    "retrieval_host",
+    "memento_datetime",
+    "media_type",
+    "content_scope",
+    "content_sha256",
+  ]) {
+    assert.ok(
+      typeof artifact[key] === "string" && artifact[key].length > 0,
+      `${label}: ${key}`,
+    );
+  }
+  assert.equal(artifact.retrieval_host, "web.archive.org", `${label}: host`);
+  assert.equal(
+    new URL(artifact.retrieval_url).hostname,
+    artifact.retrieval_host,
+    `${label}: retrieval URL host`,
+  );
+  assert.ok(
+    artifact.retrieval_url.includes("id_/"),
+    `${label}: exact raw-capture id_ URL`,
+  );
+  assert.equal(
+    artifact.rel_original_verified,
+    true,
+    `${label}: manifest rel=original`,
+  );
+  assert.ok(
+    Number.isInteger(artifact.content_bytes) && artifact.content_bytes > 0,
+    `${label}: content bytes`,
+  );
+  assert.match(artifact.content_sha256, /^[a-f0-9]{64}$/, `${label}: SHA-256`);
+
+  const { body, finalUrl, headers } = await fetchParsedResource(
+    artifact.retrieval_url,
+    {
+      label,
+      parseAs: "bytes",
+      expectedContentType: artifact.media_type,
+      validateFinalUrl(finalUrlValue) {
+        assert.equal(finalUrlValue.href, artifact.retrieval_url);
+      },
+      fetchImpl,
+      maxAttempts,
+      sleepImpl,
+    },
+  );
+
+  assert.equal(finalUrl, artifact.retrieval_url, `${label}: final URL`);
+  assert.deepEqual(
+    originalLinkUrls(headers.get("link")),
+    [artifact.origin_url],
+    `${label}: rel=original`,
+  );
+  assert.equal(
+    isoFromHttpDate(headers.get("memento-datetime"), `${label}: Memento-Datetime`),
+    artifact.memento_datetime,
+    `${label}: Memento-Datetime`,
+  );
+  isoFromHttpDate(headers.get("x-archive-orig-date"), `${label}: origin Date`);
+
+  for (const [manifestKey, headerName] of [
+    ["origin_last_modified", "x-archive-orig-last-modified"],
+    ["origin_etag", "x-archive-orig-etag"],
+  ]) {
+    assert.equal(
+      headers.get(headerName),
+      artifact[manifestKey],
+      `${label}: ${headerName}`,
+    );
+  }
+
+  assert.equal(body.length, artifact.content_bytes, `${label}: bytes`);
+  assert.equal(sha256(body), artifact.content_sha256, `${label}: SHA-256`);
+  if (byteSignature !== null) {
+    assert.ok(
+      typeof byteSignature === "string" && byteSignature.length > 0,
+      `${label}: byte signature`,
+    );
+    assert.equal(
+      body.subarray(0, Buffer.byteLength(byteSignature)).toString("ascii"),
+      byteSignature,
+      `${label}: byte signature`,
+    );
+  }
+
+  let fragment = null;
+  if (artifact.fragment !== undefined) {
+    assertExactKeys(
+      artifact.fragment,
+      [
+        "start_marker",
+        "end_marker",
+        "end_marker_inclusive",
+        "marker_occurrences",
+        "content_bytes",
+        "content_sha256",
+      ],
+      `${label}: fragment`,
+    );
+    const startCount = bufferOccurrenceCount(body, artifact.fragment.start_marker);
+    const endCount = bufferOccurrenceCount(body, artifact.fragment.end_marker);
+    assert.deepEqual(
+      [startCount, endCount],
+      artifact.fragment.marker_occurrences,
+      `${label}: fragment marker occurrences`,
+    );
+    assert.deepEqual(
+      artifact.fragment.marker_occurrences,
+      [1, 1],
+      `${label}: unique fragment marker occurrences`,
+    );
+    assert.equal(
+      artifact.fragment.end_marker_inclusive,
+      true,
+      `${label}: fragment end marker must be inclusive`,
+    );
+    const start = body.indexOf(Buffer.from(artifact.fragment.start_marker));
+    const endMarkerStart = body.indexOf(
+      Buffer.from(artifact.fragment.end_marker),
+      start + Buffer.byteLength(artifact.fragment.start_marker),
+    );
+    assert.ok(start >= 0 && endMarkerStart > start, `${label}: fragment bounds`);
+    const end = endMarkerStart + Buffer.byteLength(artifact.fragment.end_marker);
+    const fragmentBytes = body.subarray(start, end);
+    assert.equal(
+      fragmentBytes.length,
+      artifact.fragment.content_bytes,
+      `${label}: fragment bytes`,
+    );
+    assert.equal(
+      sha256(fragmentBytes),
+      artifact.fragment.content_sha256,
+      `${label}: fragment SHA-256`,
+    );
+    fragment = {
+      content_bytes: fragmentBytes.length,
+      content_sha256: sha256(fragmentBytes),
+      marker_occurrences: [startCount, endCount],
+      end_marker_inclusive: true,
+    };
+  }
+
+  return {
+    id: artifact.id,
+    origin_url: artifact.origin_url,
+    retrieval_url: artifact.retrieval_url,
+    final_url: finalUrl,
+    retrieval_host: artifact.retrieval_host,
+    memento_datetime: artifact.memento_datetime,
+    rel_original_verified: true,
+    origin_headers_verified: true,
+    origin_last_modified: artifact.origin_last_modified,
+    origin_etag: artifact.origin_etag,
+    media_type: artifact.media_type,
+    content_scope: artifact.content_scope,
+    content_bytes: body.length,
+    content_sha256: sha256(body),
+    byte_signature_verified: byteSignature,
+    fragment,
+  };
 }
 
 function normalizeWhitespace(value) {
@@ -418,15 +721,24 @@ function claimProjection(claim) {
   return {
     id: claim.id,
     source_url: claim.source_url,
+    source_sha256: claim.source_sha256,
     source_locator: claim.source_locator,
     fact: claim.fact,
     vector_ids: claim.vector_ids,
   };
 }
 
+function invariantProjection(invariant) {
+  return {
+    id: invariant.id,
+    fact: invariant.fact,
+    vector_ids: invariant.vector_ids,
+  };
+}
+
 function validateManifest(manifest, fixture, registry) {
   assertExactKeys(manifest, ["schema", "payload", "review"], "manifest");
-  assert.equal(manifest.schema, "radulator-reviewed-source-evidence/v1");
+  assert.equal(manifest.schema, "radulator-reviewed-source-evidence/v2");
   assertExactKeys(
     manifest.payload,
     [
@@ -435,6 +747,7 @@ function validateManifest(manifest, fixture, registry) {
       "scope",
       "sources",
       "claims",
+      "implementation_invariants",
       "runtime_contract",
       "limitations",
     ],
@@ -456,7 +769,10 @@ function validateManifest(manifest, fixture, registry) {
 
   assert.equal(manifest.payload.calculator_id, "fleischner");
   assert.equal(manifest.payload.guideline_version, "Fleischner 2017");
-  assert.equal(manifest.payload.scope, "source-interpretation-only");
+  assert.equal(
+    manifest.payload.scope,
+    "source-interpretation-and-product-invariants",
+  );
   assert.deepEqual(manifest.payload.limitations, EXPECTED_LIMITATIONS);
   assert.equal(sha256(manifest.payload), EXPECTED_PAYLOAD_SHA256);
   assert.equal(manifest.review.payload_sha256, EXPECTED_PAYLOAD_SHA256);
@@ -502,7 +818,7 @@ function validateManifest(manifest, fixture, registry) {
         "doi",
         "review_transport",
         "ci_full_text_fetched",
-        "content_sha256",
+        "artifacts",
         "reviewed_locators",
       ],
       source.id,
@@ -511,11 +827,20 @@ function validateManifest(manifest, fixture, registry) {
     assert.equal(source.authority, "Fleischner Society and Radiological Society of North America");
     assert.equal(source.url, expected.url);
     assert.equal(source.doi, expected.doi);
-    assert.equal(source.review_transport, "interactive-browser");
-    assert.equal(source.ci_full_text_fetched, false);
-    assert.equal(source.content_sha256, null);
+    assert.equal(source.review_transport, "ci-http-memento");
+    assert.equal(source.ci_full_text_fetched, true);
     assertUniqueStrings(source.reviewed_locators, `${source.id}: locators`);
   }
+  assert.deepEqual(
+    guidelineSource.artifacts,
+    [EXPECTED_RSNA_ARTIFACTS.guideline],
+    "guideline source artifacts",
+  );
+  assert.deepEqual(
+    measurementSource.artifacts,
+    [EXPECTED_RSNA_ARTIFACTS.measurement, EXPECTED_RSNA_ARTIFACTS.figure1],
+    "measurement source artifacts",
+  );
 
   for (const [source, expected] of [
     [solidSource, EXPECTED_TABLES.solid],
@@ -554,16 +879,53 @@ function validateManifest(manifest, fixture, registry) {
   assert.deepEqual(claimIds, EXPECTED_CLAIM_IDS);
   assertUniqueStrings(claimIds, "manifest claim IDs");
   const sourceUrls = new Set(manifest.payload.sources.map((source) => source.url));
+  const sourceDigests = new Map([
+    [GUIDELINE_URL, EXPECTED_RSNA_ARTIFACTS.guideline.content_sha256],
+    [MEASUREMENT_URL, EXPECTED_RSNA_ARTIFACTS.measurement.content_sha256],
+    [SOLID_TABLE_URL, EXPECTED_TABLES.solid.sha256],
+    [SUBSOLID_TABLE_URL, EXPECTED_TABLES.subsolid.sha256],
+  ]);
   for (const claim of manifest.payload.claims) {
     assertExactKeys(
       claim,
-      ["id", "source_url", "source_locator", "fact", "vector_ids"],
+      [
+        "id",
+        "source_url",
+        "source_sha256",
+        "source_locator",
+        "fact",
+        "vector_ids",
+      ],
       `manifest claim ${claim.id}`,
     );
     assert.ok(sourceUrls.has(claim.source_url), `${claim.id}: unknown source URL`);
+    assert.equal(
+      claim.source_sha256,
+      sourceDigests.get(claim.source_url),
+      `${claim.id}: source SHA-256`,
+    );
     assert.ok(claim.source_locator.length > 0, `${claim.id}: source locator`);
     assert.ok(claim.fact.length > 0, `${claim.id}: fact`);
     assertUniqueStrings(claim.vector_ids, `${claim.id}: vector IDs`);
+  }
+
+  assert.equal(
+    manifest.payload.implementation_invariants.length,
+    3,
+    "manifest implementation invariant count",
+  );
+  const implementationInvariantIds =
+    manifest.payload.implementation_invariants.map((invariant) => invariant.id);
+  assert.deepEqual(implementationInvariantIds, EXPECTED_INVARIANT_IDS);
+  assertUniqueStrings(implementationInvariantIds, "implementation invariant IDs");
+  for (const invariant of manifest.payload.implementation_invariants) {
+    assertExactKeys(
+      invariant,
+      ["id", "fact", "vector_ids"],
+      `manifest implementation invariant ${invariant.id}`,
+    );
+    assert.ok(invariant.fact.length > 0, `${invariant.id}: fact`);
+    assertUniqueStrings(invariant.vector_ids, `${invariant.id}: vector IDs`);
   }
 
   assertExactKeys(
@@ -595,7 +957,7 @@ function validateManifest(manifest, fixture, registry) {
     runtime.reviewed_vector_ids,
     "the reviewed manifest must bind the exact fixture ID set",
   );
-  assert.equal(runtime.reviewed_vector_ids.length, 112, "exact vector count");
+  assert.equal(runtime.reviewed_vector_ids.length, 113, "exact vector count");
 
   const fixtureById = new Map(
     fixture.cases.map((testCase) => [testCase.id, testCase]),
@@ -613,6 +975,27 @@ function validateManifest(manifest, fixture, registry) {
       assert.ok(reviewedIdSet.has(vectorId), `${claim.id}: unreviewed ${vectorId}`);
     }
   }
+  for (const invariant of manifest.payload.implementation_invariants) {
+    for (const vectorId of invariant.vector_ids) {
+      assert.ok(
+        reviewedIdSet.has(vectorId),
+        `${invariant.id}: unreviewed ${vectorId}`,
+      );
+    }
+  }
+  const boundByClaimsOrInvariants = [
+    ...new Set(
+      [
+        ...manifest.payload.claims,
+        ...manifest.payload.implementation_invariants,
+      ].flatMap((binding) => binding.vector_ids),
+    ),
+  ].sort();
+  assert.deepEqual(
+    boundByClaimsOrInvariants,
+    [...fixtureIds].sort(),
+    "the exact union of claim and implementation-invariant vectors must cover every fixture case",
+  );
 
   const solidClaim = manifest.payload.claims.find(
     (claim) => claim.id === "fleischner-2017-solid-table",
@@ -636,19 +1019,35 @@ function validateManifest(manifest, fixture, registry) {
   assert.equal(registryRecord.implemented_version, "Fleischner 2017");
   const registryEvidence = registryRecord.implementation_evidence;
   assert.deepEqual(registryEvidence.reviewed_evidence, {
-    schema: "radulator-reviewed-source-evidence-link/v1",
+    schema: "radulator-reviewed-source-evidence-link/v2",
     manifest_path: MANIFEST_PATH,
     payload_sha256: EXPECTED_PAYLOAD_SHA256,
     reviewer_revision: EXPECTED_REVIEWER_REVISION,
-    ci_primary_full_text_verified: false,
+    reviewed_at: EXPECTED_REVIEWED_AT,
+    review_scope: "source-interpretation-and-product-invariants",
+    review_disposition: "SOURCE_INTERPRETATION_APPROVED",
+    release_authority: "none",
+    ci_primary_full_text_verified: true,
+    reviewed_vectors_sha256: EXPECTED_REVIEWED_VECTORS_SHA256,
+    reviewed_vector_count: 113,
+    primary_artifacts: [
+      EXPECTED_RSNA_ARTIFACTS.guideline,
+      EXPECTED_RSNA_ARTIFACTS.measurement,
+      EXPECTED_RSNA_ARTIFACTS.figure1,
+    ],
   });
   assert.deepEqual(
     registryEvidence.claims.map(claimProjection),
     manifest.payload.claims.map(claimProjection),
     "registry claims must deep-match the reviewed manifest claim bindings",
   );
+  assert.deepEqual(
+    registryEvidence.implementation_invariants.map(invariantProjection),
+    manifest.payload.implementation_invariants.map(invariantProjection),
+    "registry implementation invariants must deep-match the reviewed manifest",
+  );
 
-  return { reviewedVectorDigest, claimIds };
+  return { reviewedVectorDigest, claimIds, implementationInvariantIds };
 }
 
 function validateCalculatorSource(calculatorSource) {
@@ -673,7 +1072,7 @@ function validateCalculatorSource(calculatorSource) {
     "Solid-Component Evolution Confirmation",
     "average-diameter increase of ≥2 mm",
     "Validated volumetry may be used only for a reliably measurable nodule under its reproducibility protocol",
-    "A new solid component is visually established on comparable CT",
+    "A new solid component is visually established on comparable thin-section CT; no quantitative growth claim",
     "cannot establish quantitative growth by linear or volumetric measurement",
     "cannot establish quantitative solid-component growth",
     "cannot be reliably defined when the overall nodule is <6 mm",
@@ -710,11 +1109,11 @@ export async function runAudit() {
     assertExactKeys(testCase, ["id", "inputs", "expect"], `fixture ${testCase.id}`);
   }
 
-  const { reviewedVectorDigest, claimIds } = validateManifest(
-    manifest,
-    fixture,
-    registry,
-  );
+  const {
+    reviewedVectorDigest,
+    claimIds,
+    implementationInvariantIds,
+  } = validateManifest(manifest, fixture, registry);
   validateCalculatorSource(calculatorSource);
 
   const { Fleischner } = await import(
@@ -732,13 +1131,27 @@ export async function runAudit() {
     );
   }
 
-  const [guidelineMetadata, measurementMetadata, solidHtml, subsolidHtml] =
-    await Promise.all([
-      loadCrossref(GUIDELINE_DOI),
-      loadCrossref(MEASUREMENT_DOI),
-      loadNlmTable(SOLID_TABLE_URL, EXPECTED_TABLES.solid.objectId),
-      loadNlmTable(SUBSOLID_TABLE_URL, EXPECTED_TABLES.subsolid.objectId),
-    ]);
+  const [
+    guidelineMetadata,
+    measurementMetadata,
+    solidHtml,
+    subsolidHtml,
+    guidelineArtifactVerification,
+    measurementArtifactVerification,
+    figure1ArtifactVerification,
+  ] = await Promise.all([
+    loadCrossref(GUIDELINE_DOI),
+    loadCrossref(MEASUREMENT_DOI),
+    loadNlmTable(SOLID_TABLE_URL, EXPECTED_TABLES.solid.objectId),
+    loadNlmTable(SUBSOLID_TABLE_URL, EXPECTED_TABLES.subsolid.objectId),
+    verifyMementoArtifact(EXPECTED_RSNA_ARTIFACTS.guideline, {
+      byteSignature: "%PDF-",
+    }),
+    verifyMementoArtifact(EXPECTED_RSNA_ARTIFACTS.measurement),
+    verifyMementoArtifact(EXPECTED_RSNA_ARTIFACTS.figure1, {
+      byteSignature: "GIF",
+    }),
+  ]);
 
   assert.deepEqual(guidelineMetadata, {
     doi: GUIDELINE_DOI,
@@ -793,6 +1206,13 @@ export async function runAudit() {
   );
 
   const rsnaSources = manifest.payload.sources.slice(0, 2);
+  const artifactVerifications = new Map(
+    [
+      guidelineArtifactVerification,
+      measurementArtifactVerification,
+      figure1ArtifactVerification,
+    ].map((artifact) => [artifact.id, artifact]),
+  );
   const sourceClaims = {
     solid: {
       single_lt6: ["No routine follow-up", "Optional CT at 12 months"],
@@ -822,7 +1242,7 @@ export async function runAudit() {
   };
 
   return {
-    schema: "radulator-fleischner-primary-source-audit/v2",
+    schema: "radulator-fleischner-primary-source-audit/v3",
     calculator_id: Fleischner.id,
     guideline_version: Fleischner.guidelineVersion,
     primary_metadata: {
@@ -841,10 +1261,11 @@ export async function runAudit() {
       release_authority: manifest.review.release_authority,
       scope: manifest.payload.scope,
       claim_ids: claimIds,
+      implementation_invariant_ids: implementationInvariantIds,
       limitations: manifest.payload.limitations,
       ci_does_not_verify: [
-        "RSNA full-text content",
-        "that the historical browser review occurred",
+        "a successful live RSNA origin fetch",
+        "a measurement-statement PDF",
         "runtime, pull request, deployment, or live-site approval",
       ],
     },
@@ -853,7 +1274,13 @@ export async function runAudit() {
       url: source.url,
       review_transport: source.review_transport,
       ci_full_text_fetched: source.ci_full_text_fetched,
-      content_sha256: source.content_sha256,
+      live_origin_fetched_by_ci: false,
+      artifacts: source.artifacts.map((artifact) => ({
+        ...artifactVerifications.get(artifact.id),
+        direct_origin_fetch_attempted_by_ci: false,
+        manifest_recorded_direct_origin_status:
+          artifact.direct_origin_fetch_status,
+      })),
     })),
     secondary_cross_checks: {
       solid: {
@@ -878,11 +1305,13 @@ export async function runAudit() {
     executed_vector_count: fixture.cases.length,
     fixture_vector_match: true,
     runtime_vector_match: true,
+    claim_and_invariant_vector_match: true,
     registry_claim_match: true,
     reviewed_vectors_sha256: reviewedVectorDigest,
     solid_matrix_vector_ids: EXPECTED_SOLID_MATRIX_VECTOR_IDS,
     critical_vector_ids: EXPECTED_CRITICAL_VECTOR_IDS,
     claim_ids: claimIds,
+    implementation_invariant_ids: implementationInvariantIds,
     correct_guideline_doi_present: true,
     correct_measurement_doi_present: true,
     known_wrong_measurement_doi_absent: true,
@@ -901,7 +1330,7 @@ if (isMain) {
     process.stdout.write(`${JSON.stringify(audit)}\n`);
   } else {
     console.log(
-      `Fleischner source audit passed: ${audit.executed_vector_count} executable vectors, ${audit.claim_ids.length} reviewed claims, primary DOI identities, and 2 hashed live table fragments.`,
+      `Fleischner source audit passed: 3 byte-pinned RSNA-origin Mementos, ${audit.claim_ids.length} reviewed claims plus ${audit.implementation_invariant_ids.length} implementation invariants, ${audit.executed_vector_count} executable vectors, primary DOI identities, and 2 hashed live table fragments.`,
     );
   }
 }
