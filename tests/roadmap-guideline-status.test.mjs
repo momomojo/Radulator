@@ -34,9 +34,9 @@ for (const evidence of [
   {
     calculatorId: "birads",
     implementedVersion:
-      "Legacy ACR BI-RADS Fifth Edition (2013) temporary rollback",
+      "Legacy ACR BI-RADS Fifth Edition (2013) temporary rollback with public 2025 assessment-summary constraints",
     roadmapLabel:
-      "Legacy ACR BI-RADS Fifth Edition (2013) temporary rollback",
+      "Legacy ACR BI-RADS Fifth Edition (2013) temporary rollback with public 2025 assessment-summary constraints",
     sourceUrl:
       "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
     command: "npm run test:birads-fda-source",
@@ -44,6 +44,9 @@ for (const evidence of [
       "acr-birads-three-modality-scope",
       "acr-fifth-edition-descriptor-groups",
       "acr-fifth-edition-assessment-labels",
+      "acr-mammography-assessment-boundaries-and-management",
+      "acr-ultrasound-assessment-boundaries-and-management",
+      "acr-mri-assessment-boundaries-and-management",
     ],
   },
 ]) {

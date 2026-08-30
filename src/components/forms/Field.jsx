@@ -82,6 +82,13 @@ function FileImportField({ f, onBatch }) {
  * Supports: number, date, textarea, select, radio, checkbox, derived, file-import
  */
 function Field({ f, val, vals, on, onBatch }) {
+  const visibleOptions = (f.opts || []).filter(
+    (option) =>
+      typeof option !== "object" ||
+      !option.showIf ||
+      option.showIf(vals || {}),
+  );
+
   if (f.type === "file-import") {
     return <FileImportField f={f} onBatch={onBatch} />;
   }
@@ -134,7 +141,7 @@ function Field({ f, val, vals, on, onBatch }) {
           onChange={(e) => on(f.id, e.target.value)}
           placeholder="Select…"
         >
-          {f.opts.map((o) => {
+          {visibleOptions.map((o) => {
             // Support both string options and {value, label} objects
             const optValue = typeof o === "object" ? o.value : o;
             const optLabel = typeof o === "object" ? o.label : o;
@@ -162,7 +169,7 @@ function Field({ f, val, vals, on, onBatch }) {
           aria-label={f.label}
           aria-required={f.required || undefined}
         >
-          {f.opts.map((opt) => (
+          {visibleOptions.map((opt) => (
             <div
               key={opt.value}
               className="flex min-h-11 items-center space-x-2 rounded-md border border-border px-3"

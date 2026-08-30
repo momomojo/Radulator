@@ -400,6 +400,9 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       audit.source_urls,
       [
         "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
+        "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+        "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf",
+        "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf",
       ],
       `${label}.source_audit.source_urls`,
     );
@@ -412,14 +415,20 @@ async function assertExecutableImplementationEvidence(record, calculator) {
         "known-biopsy-proven-malignancy",
         "negative-screening",
         "benign-finding",
-        "typically-benign-calcifications-are-category-2",
+        "typically-benign-calcifications-require-radiologist-assessment",
         "probably-benign-mass",
         "low-suspicion-mass",
         "moderate-suspicion-calcifications",
         "high-suspicion-spiculated-mass",
         "highly-suggestive-linear-calcifications",
+        "category-5-inclusive-95-boundary",
         "probably-benign-selection-warns-on-suspicious-mass-descriptors",
         "screening-mammography-probably-benign-needs-diagnostic-workup",
+        "developing-asymmetry",
+        "associated-features",
+        "mri-rejects-category-4-subdivision",
+        "ultrasound-rejects-mammography-specific-finding",
+        "ultrasound-suspicious-category-4",
       ],
       `${label}.source_audit.vector_ids`,
     );
@@ -554,6 +563,9 @@ for (const [calculatorId, expected] of Object.entries({
     source_urls: [
       "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
       "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf",
     ],
   },
   "cac-mesa": {

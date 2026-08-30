@@ -14,7 +14,8 @@ export const BIRADS = {
   category: "Breast Imaging",
   name: "BI-RADS Assessment Calculator (Legacy 2013)",
   desc: "Interactive 2013-era assessment assistant for mammography, ultrasound, and MRI",
-  guidelineVersion: "Legacy ACR BI-RADS 5th Ed. (2013)",
+  guidelineVersion:
+    "Legacy ACR BI-RADS 5th Ed. (2013) with public 2025 assessment-summary constraints",
   keywords: [
     "breast",
     "mammography",
@@ -27,12 +28,14 @@ export const BIRADS = {
   ],
   tags: ["Breast", "Radiology", "Oncology"],
   metaDesc:
-    "Legacy 2013 BI-RADS assessment calculator for mammography, ultrasound, and MRI with categories 0-6, risk bands, management context, and structured finding summaries.",
+    "Temporary legacy BI-RADS assessment assistant for mammography, ultrasound, and MRI with modality-gated descriptors and source-literal category boundaries.",
 
   info: {
     text: `Temporary legacy calculator: this page restores the 2013-era fifth-edition workflow while Radulator's sixth-edition implementation is under source review. It does not implement the 2025 sixth edition.
 
-This is an interactive assessment assistant, not image interpretation. For non-benign findings, the radiologist-selected suspicion level determines the suggested category; the selected imaging descriptors structure the finding summary and clinical notes but do not independently calculate malignancy probability. Apply current institutional policy, clinical context, prior examinations, and radiologic-pathologic concordance.
+This is an interactive assessment assistant, not image interpretation. The radiologist selects the assessment level after interpreting the examination; descriptors only structure the finding summary and never derive a category or patient-specific probability. Apply current institutional policy, clinical context, prior examinations, and radiologic-pathologic concordance.
+
+The legacy fifth-edition quick-reference constrains modality-specific descriptor choices. Current public ACR modality summary forms are used only to constrain the category structure, source-literal probability endpoints, and management wording while the full sixth-edition implementation remains under review.
 
 BI-RADS (Breast Imaging Reporting and Data System) is the ACR standardized system for breast imaging interpretation and reporting.
 
@@ -40,19 +43,16 @@ Categories apply to mammography, ultrasound, and MRI:
 • Category 0: Incomplete - need additional imaging
 • Category 1: Negative
 • Category 2: Benign finding
-• Category 3: Probably benign (<2% malignancy risk)
-• Category 4: Suspicious
-  - 4A: Low suspicion (2-10%)
-  - 4B: Moderate suspicion (10-50%)
-  - 4C: High suspicion (50-95%)
-• Category 5: Highly suggestive of malignancy (>95%)
+• Category 3: Probably benign (>0% to ≤2% for mammography/ultrasound; the MRI summary prints ≥0% to ≤2%)
+• Category 4: Suspicious (>2% to <95% for ultrasound/MRI)
+  - Mammography 4A: >2% to ≤10%
+  - Mammography 4B: >10% to ≤50%
+  - Mammography 4C: 50% to <95%
+  - Ultrasound and MRI use Category 4 without A-C subdivisions in this source-gated temporary workflow
+• Category 5: Highly suggestive of malignancy (≥95%)
 • Category 6: Known biopsy-proven malignancy
 
-Key management:
-• Categories 1-2: Routine screening
-• Category 3: Short-term follow-up (6 months)
-• Categories 4-5: Tissue diagnosis (biopsy)
-• Category 6: Multidisciplinary treatment planning
+Management wording follows the linked modality summary form: routine screening for categories 1-2, short-interval follow-up or continued surveillance for category 3, tissue diagnosis for categories 4-5, and surgeon/oncologist follow-up with definitive local therapy when clinically appropriate for category 6.
 
 BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, and associated features.`,
     link: {
@@ -114,12 +114,21 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
             "Benign finding (cyst, calcified fibroadenoma, fat-containing lesion, implant)",
         },
         { value: "mass", label: "Mass" },
-        { value: "calcifications", label: "Calcifications (without mass)" },
+        {
+          value: "calcifications",
+          label: "Calcifications (without mass)",
+          showIf: (vals) => vals.modality === "mammography",
+        },
         {
           value: "architectural_distortion",
           label: "Architectural distortion",
+          showIf: (vals) => vals.modality === "mammography",
         },
-        { value: "asymmetry", label: "Asymmetry" },
+        {
+          value: "asymmetry",
+          label: "Asymmetry",
+          showIf: (vals) => vals.modality === "mammography",
+        },
         {
           value: "associated_features",
           label: "Associated features only (skin changes, nipple retraction)",
@@ -148,9 +157,31 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       showIf: (vals) => vals.finding_type === "mass",
       opts: [
         { value: "circumscribed", label: "Circumscribed" },
-        { value: "obscured", label: "Obscured" },
-        { value: "microlobulated", label: "Microlobulated" },
-        { value: "indistinct", label: "Indistinct" },
+        {
+          value: "obscured",
+          label: "Obscured",
+          showIf: (vals) => vals.modality === "mammography",
+        },
+        {
+          value: "microlobulated",
+          label: "Microlobulated",
+          showIf: (vals) => vals.modality === "mammography",
+        },
+        {
+          value: "indistinct",
+          label: "Indistinct",
+          showIf: (vals) => vals.modality === "mammography",
+        },
+        {
+          value: "angular",
+          label: "Angular",
+          showIf: (vals) => vals.modality === "ultrasound",
+        },
+        {
+          value: "irregular_margin",
+          label: "Irregular margin",
+          showIf: (vals) => vals.modality === "mri",
+        },
         { value: "spiculated", label: "Spiculated" },
       ],
     },
@@ -175,7 +206,9 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       id: "calc_morphology",
       label: "Calcification Morphology",
       type: "radio",
-      showIf: (vals) => vals.finding_type === "calcifications",
+      showIf: (vals) =>
+        vals.modality === "mammography" &&
+        vals.finding_type === "calcifications",
       opts: [
         {
           value: "typically_benign",
@@ -195,6 +228,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       label: "Calcification Distribution",
       type: "radio",
       showIf: (vals) =>
+        vals.modality === "mammography" &&
         vals.finding_type === "calcifications" &&
         vals.calc_morphology !== "typically_benign",
       opts: [
@@ -211,7 +245,8 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       id: "asymmetry_type",
       label: "Asymmetry Type",
       type: "radio",
-      showIf: (vals) => vals.finding_type === "asymmetry",
+      showIf: (vals) =>
+        vals.modality === "mammography" && vals.finding_type === "asymmetry",
       opts: [
         { value: "asymmetry", label: "Asymmetry (one view only)" },
         { value: "global", label: "Global asymmetry" },
@@ -234,25 +269,38 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       type: "radio",
       showIf: (vals) =>
         vals.finding_type === "mass" ||
-        (vals.finding_type === "calcifications" &&
-          vals.calc_morphology !== "typically_benign") ||
+        vals.finding_type === "calcifications" ||
         vals.finding_type === "architectural_distortion" ||
         vals.finding_type === "asymmetry" ||
         vals.finding_type === "associated_features",
       opts: [
         {
           value: "probably_benign",
-          label: "Probably benign (<2% likelihood of malignancy)",
+          label: "Probably benign (Category 3)",
         },
         {
           value: "low_suspicion",
-          label: "Low suspicion for malignancy (2-10%)",
+          label: "Low suspicion (Category 4A; >2% to ≤10%)",
+          showIf: (vals) => vals.modality === "mammography",
         },
-        { value: "moderate_suspicion", label: "Moderate suspicion (10-50%)" },
-        { value: "high_suspicion", label: "High suspicion (50-95%)" },
+        {
+          value: "moderate_suspicion",
+          label: "Moderate suspicion (Category 4B; >10% to ≤50%)",
+          showIf: (vals) => vals.modality !== "mri",
+        },
+        {
+          value: "high_suspicion",
+          label: "High suspicion (Category 4C; 50% to <95%)",
+          showIf: (vals) => vals.modality !== "mri",
+        },
+        {
+          value: "suspicious",
+          label: "Suspicious (Category 4; >2% to <95%)",
+          showIf: (vals) => vals.modality !== "mammography",
+        },
         {
           value: "highly_suggestive",
-          label: "Highly suggestive of malignancy (>95%)",
+          label: "Highly suggestive (Category 5; ≥95%)",
         },
       ],
     },
@@ -274,7 +322,11 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     } = vals;
 
     const routineScreeningManagement =
-      "Routine screening according to patient age, risk, symptoms, modality, and local protocol";
+      {
+        mammography: "Routine mammography screening",
+        ultrasound: "Routine screening",
+        mri: "Routine breast screening, including MRI if appropriate according to major guidelines",
+      }[modality] || "Routine screening";
     const modalityLabel =
       {
         mammography: "mammography",
@@ -287,8 +339,8 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       return {
         "BI-RADS Category": "6 - Known Biopsy-Proven Malignancy",
         Management:
-          "Coordinate multidisciplinary breast care; imaging may support staging, treatment planning, and response assessment",
-        Note: "Category 6 is used for known biopsy-proven malignancy prior to definitive treatment.",
+          "Clinical follow-up with surgeon and/or oncologist, and definitive local therapy when clinically appropriate",
+        Note: "Category 6 is used for known biopsy-proven malignancy.",
         _severity: "danger",
       };
     }
@@ -320,22 +372,53 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       return { Error: "Please select the finding type." };
     }
 
+    if (
+      modality !== "mammography" &&
+      ["calcifications", "architectural_distortion", "asymmetry"].includes(
+        finding_type,
+      )
+    ) {
+      return {
+        Error:
+          "The selected finding type is mammography-specific in this temporary workflow. Choose a modality-appropriate finding type.",
+      };
+    }
+
+    const allowedMassMargins = {
+      mammography: [
+        "circumscribed",
+        "obscured",
+        "microlobulated",
+        "indistinct",
+        "spiculated",
+      ],
+      ultrasound: [
+        "circumscribed",
+        "angular",
+        "microlobulated",
+        "indistinct",
+        "spiculated",
+      ],
+      mri: ["circumscribed", "irregular_margin", "spiculated"],
+    };
+    if (
+      finding_type === "mass" &&
+      mass_margin &&
+      !allowedMassMargins[modality]?.includes(mass_margin)
+    ) {
+      return {
+        Error:
+          "The selected mass margin is not available for this modality in the source-gated temporary workflow.",
+      };
+    }
+
     // Category 1: Negative
     if (finding_type === "negative") {
-      const followUp =
-        study_context === "screening"
-          ? { "Screening Interval": "Annual (or per guidelines)" }
-          : {
-              "Follow-up":
-                "No imaging follow-up for this negative assessment; continue age- and risk-appropriate screening and manage the clinical indication separately",
-            };
-
       return {
         "BI-RADS Category": "1 - Negative",
-        "Malignancy Risk": "Essentially 0%",
+        "Malignancy Likelihood": "Essentially 0% likelihood of malignancy",
         Management: routineScreeningManagement,
-        ...followUp,
-        Note: `No suspicious imaging finding identified on ${modalityLabel}. A negative imaging assessment does not supersede management of a persistent clinical concern.`,
+        Note: `No suspicious imaging finding identified on ${modalityLabel}; manage any persistent clinical concern separately from this imaging assessment.`,
         _severity: "success",
       };
     }
@@ -344,23 +427,9 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     if (finding_type === "benign") {
       return {
         "BI-RADS Category": "2 - Benign",
-        "Malignancy Risk": "Essentially 0%",
+        "Malignancy Likelihood": "Essentially 0% likelihood of malignancy",
         Management: routineScreeningManagement,
-        Note: "Definitively benign finding described for completeness. No cancer expected.",
-        _severity: "success",
-      };
-    }
-
-    if (
-      finding_type === "calcifications" &&
-      calc_morphology === "typically_benign"
-    ) {
-      return {
-        "BI-RADS Category": "2 - Benign",
-        "Malignancy Risk": "Essentially 0%",
-        Management: routineScreeningManagement,
-        "Finding Description": "Calcifications: typically benign calcifications",
-        Note: "The selected morphology is a typically benign calcification pattern in this legacy workflow.",
+        Note: "Benign finding described for completeness.",
         _severity: "success",
       };
     }
@@ -399,34 +468,69 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     switch (suspicion_level) {
       case "probably_benign":
         category = "3";
-        malignancyRisk = "<2%";
+        malignancyRisk =
+          modality === "mri" ? "≥0% to ≤2%" : ">0% to ≤2%";
         management =
-          "Short-interval imaging follow-up, commonly beginning at 6 months; apply modality and institutional protocol";
+          modality === "mammography"
+            ? "Short-interval (6-month) follow-up or continued surveillance mammography"
+            : "Short-interval (6-month) follow-up or continued surveillance (12 months)";
         break;
       case "low_suspicion":
+        if (modality !== "mammography") {
+          return {
+            Error:
+              "Ultrasound and MRI use Category 4 without A-C subdivisions in the source-gated temporary workflow.",
+          };
+        }
         category = "4";
         subCategory = "A";
-        malignancyRisk = "2-10%";
-        management = "Tissue diagnosis recommended (biopsy)";
+        malignancyRisk = ">2% to ≤10%";
+        management = "Tissue diagnosis";
         break;
       case "moderate_suspicion":
+        if (modality !== "mammography") {
+          return {
+            Error:
+              "Ultrasound and MRI use Category 4 without A-C subdivisions in the source-gated temporary workflow.",
+          };
+        }
         category = "4";
         subCategory = "B";
-        malignancyRisk = "10-50%";
-        management = "Tissue diagnosis required (biopsy)";
+        malignancyRisk = ">10% to ≤50%";
+        management = "Tissue diagnosis";
         break;
       case "high_suspicion":
+        if (modality !== "mammography") {
+          return {
+            Error:
+              "Ultrasound and MRI use Category 4 without A-C subdivisions in the source-gated temporary workflow.",
+          };
+        }
         category = "4";
         subCategory = "C";
-        malignancyRisk = "50-95%";
-        management = "Tissue diagnosis required (biopsy); high PPV";
+        malignancyRisk = "50% to <95%";
+        management = "Tissue diagnosis";
+        break;
+      case "suspicious":
+        if (modality === "mammography") {
+          return {
+            Error:
+              "Use the mammography Category 4A-C assessment options for mammography.",
+          };
+        }
+        category = "4";
+        malignancyRisk = ">2% to <95%";
+        management = "Tissue diagnosis";
         break;
       case "highly_suggestive":
         category = "5";
-        malignancyRisk = ">95%";
-        management =
-          "Tissue diagnosis required; appropriate action should be taken";
+        malignancyRisk = "≥95%";
+        management = "Tissue diagnosis";
         break;
+    }
+
+    if (!category) {
+      return { Error: "Please select a modality-appropriate assessment level." };
     }
 
     // Build category string and description inline
@@ -436,6 +540,7 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       "4A": "Low Suspicion for Malignancy",
       "4B": "Moderate Suspicion for Malignancy",
       "4C": "High Suspicion for Malignancy",
+      4: "Suspicious",
       5: "Highly Suggestive of Malignancy",
     };
     const categoryDesc = categoryDescriptions[categoryStr] || "Suspicious";
@@ -450,11 +555,12 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
 
     const suspiciousDescriptorWithCategory3 =
       category === "3" &&
-      (mass_shape === "irregular" ||
-        mass_margin === "spiculated" ||
-        calc_morphology === "fine_pleomorphic" ||
-        calc_morphology === "fine_linear" ||
-        asymmetry_type === "developing" ||
+      ((finding_type === "mass" &&
+        (mass_shape === "irregular" || mass_margin === "spiculated")) ||
+        (finding_type === "calcifications" &&
+          (calc_morphology === "fine_pleomorphic" ||
+            calc_morphology === "fine_linear")) ||
+        (finding_type === "asymmetry" && asymmetry_type === "developing") ||
         finding_type === "architectural_distortion" ||
         finding_type === "associated_features");
 
@@ -477,42 +583,9 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
       result["Decision Check"] = decisionChecks.join(" ");
     }
 
-    // Add feature-specific notes
-    const notes = [];
-
-    if (mass_margin === "spiculated" || mass_shape === "irregular") {
-      notes.push(
-        "Spiculated margins and irregular shape are highly suspicious features",
-      );
-    }
-
-    if (calc_morphology === "fine_linear") {
-      notes.push(
-        "Fine linear/branching calcifications are the most suspicious morphology",
-      );
-    }
-
-    if (calc_distribution === "segmental" || calc_distribution === "linear") {
-      notes.push(
-        "Segmental or linear distribution suggests ductal involvement",
-      );
-    }
-
-    if (asymmetry_type === "developing") {
-      notes.push("Developing asymmetry warrants tissue diagnosis");
-    }
-
-    if (category === "3") {
-      notes.push(
-        "Category 3 requires a complete modality-appropriate short-interval surveillance protocol; an initial 6-month follow-up is commonly used",
-      );
-      notes.push(
-        "Biopsy may be considered if patient preference or high anxiety",
-      );
-    }
-
-    if (notes.length > 0) {
-      result["Clinical Notes"] = notes.join("; ");
+    if (["4B", "4C"].includes(categoryStr)) {
+      result["Published Boundary Note"] =
+        "The public mammography summary form prints Category 4B as >10% to ≤50% and Category 4C as 50% to <95%, creating a source-literal overlap at exactly 50%. This assistant preserves the selected radiologist-assigned category and does not normalize that boundary.";
     }
 
     result._severity = category === "3" ? "warning" : "danger";
@@ -527,6 +600,18 @@ BI-RADS emphasizes standardized lexicon terms for mass shape, margin, density, a
     {
       t: "American College of Radiology. ACR BI-RADS Atlas Fifth Edition Quick Reference: mammography, ultrasound, MRI, and assessment categories.",
       u: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
+    },
+    {
+      t: "American College of Radiology. BI-RADS v2025 Mammography Summary: assessment structure, source-literal likelihood endpoints, and management wording.",
+      u: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+    },
+    {
+      t: "American College of Radiology. BI-RADS v2025 Ultrasound Summary: assessment structure, likelihood endpoints, and management wording.",
+      u: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf",
+    },
+    {
+      t: "American College of Radiology. BI-RADS v2025 MRI Summary: unsplit Category 4 structure, likelihood endpoints, and management wording.",
+      u: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf",
     },
     {
       t: "Sickles EA. Periodic mammographic follow-up of probably benign lesions: results in 3,184 consecutive cases. Radiology. 1991;179(2):463-468.",

@@ -11,14 +11,16 @@ import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js
  * - Category 0: Incomplete - need additional imaging
  * - Category 1: Negative - essentially 0% malignancy risk
  * - Category 2: Benign - essentially 0% malignancy risk
- * - Category 3: Probably benign - <2% malignancy risk
- * - Category 4A: Low suspicion - 2-10% malignancy risk
- * - Category 4B: Moderate suspicion - 10-50% malignancy risk
- * - Category 4C: High suspicion - 50-95% malignancy risk
- * - Category 5: Highly suggestive - >95% malignancy risk
+ * - Category 3: Probably benign - source-literal endpoint through 2%
+ * - Category 4A: Low suspicion - >2% to <=10%
+ * - Category 4B: Moderate suspicion - >10% to <=50%
+ * - Category 4C: High suspicion - 50% to <95%
+ * - Category 4: MRI suspicious assessment without A-C subdivisions
+ * - Category 5: Highly suggestive - >=95%
  * - Category 6: Known biopsy-proven malignancy
  *
- * Source: ACR BI-RADS Atlas, 5th Edition (2013)
+ * Sources: ACR BI-RADS Atlas 5th Edition quick reference plus public ACR
+ * modality summary forms for category boundaries and management wording.
  */
 
 const calculatorName = "BI-RADS Assessment Calculator (Legacy 2013)";
@@ -34,7 +36,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
     }) => {
       await expect(page.getByTestId('calculator-title').first()).toContainText(calculatorName);
       await expect(page.getByTestId("guideline-badge")).toHaveText(
-        "Legacy ACR BI-RADS 5th Ed. (2013)",
+        "Legacy ACR BI-RADS 5th Ed. (2013) with public 2025 assessment-summary constraints",
       );
       await expect(
         page.getByText("Breast Imaging Reporting and Data System").first(),
@@ -43,7 +45,9 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         page.getByText("does not implement the 2025 sixth edition"),
       ).toBeVisible();
       await expect(
-        page.getByText("the radiologist-selected suspicion level determines the suggested category"),
+        page.getByText("The radiologist selects the assessment level", {
+          exact: false,
+        }),
       ).toBeVisible();
     });
 
@@ -140,12 +144,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await expect(page.locator("text=1 - Negative")).toBeVisible();
       await expect(page.locator("text=Essentially 0%")).toBeVisible();
       await expect(
-        page.locator(
-          "text=Routine screening according to patient age, risk, symptoms, modality, and local protocol",
-        ),
-      ).toBeVisible();
-      await expect(
-        page.locator("text=Annual (or per guidelines)"),
+        page.locator("text=Routine mammography screening"),
       ).toBeVisible();
     });
 
@@ -164,10 +163,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         name: "Calculator results",
       });
       await expect(resultsSection).toContainText(
-        "No imaging follow-up for this negative assessment",
-      );
-      await expect(resultsSection).toContainText(
-        "manage the clinical indication separately",
+        "manage any persistent clinical concern separately",
       );
       await expect(resultsSection).toContainText(
         "No suspicious imaging finding identified on ultrasound",
@@ -196,21 +192,9 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       const resultsSection = page.getByRole("status", {
         name: "Calculator results",
       });
-      await expect(resultsSection).toContainText(
-        "age, risk, symptoms, modality, and local protocol",
-      );
-      await expect(resultsSection).not.toContainText(
-        "Routine screening mammography",
-      );
+      await expect(resultsSection).toContainText("Routine mammography screening");
       await expect(page.locator("text=Essentially 0%")).toBeVisible();
-      await expect(
-        page.locator(
-          "text=Routine screening according to patient age, risk, symptoms, modality, and local protocol",
-        ),
-      ).toBeVisible();
-      await expect(
-        page.locator("text=Definitively benign finding"),
-      ).toBeVisible();
+      await expect(page.locator("text=Benign finding described")).toBeVisible();
     });
 
     test("should calculate Category 2 on ultrasound", async ({ page }) => {
@@ -241,7 +225,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Circumscribed").click();
       await page.getByLabel("Equal density").click();
       await page
-        .getByLabel("Probably benign (<2% likelihood of malignancy)")
+        .getByLabel("Probably benign (Category 3)")
         .click();
 
       await page.click('button:has-text("Calculate")');
@@ -256,12 +240,13 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       ).toBeVisible();
       await expect(
         resultsSection.locator(
-          "text=Short-interval imaging follow-up, commonly beginning at 6 months",
+          "text=Short-interval (6-month) follow-up or continued surveillance mammography",
         ),
       ).toBeVisible();
+      await expect(resultsSection).toContainText(">0% to ≤2%");
     });
 
-    test("should show Category 3 follow-up protocol in clinical notes", async ({
+    test("should show source-literal Category 3 follow-up management", async ({
       page,
     }) => {
       await page.getByLabel("Mammography").click();
@@ -272,20 +257,19 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Circumscribed").click();
       await page.getByLabel("Low density").click();
       await page
-        .getByLabel("Probably benign (<2% likelihood of malignancy)")
+        .getByLabel("Probably benign (Category 3)")
         .click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=modality-appropriate short-interval surveillance"),
-      ).toBeVisible();
-      await expect(
-        page.locator("text=Biopsy may be considered if patient preference"),
+        page.locator(
+          "text=Short-interval (6-month) follow-up or continued surveillance mammography",
+        ),
       ).toBeVisible();
     });
 
-    test("should calculate Category 2 for typically benign calcifications", async ({
+    test("should not auto-assign Category 2 from calcification morphology", async ({
       page,
     }) => {
       await page.getByLabel("Mammography").click();
@@ -303,13 +287,12 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       const resultsSection = page.getByRole("status", {
         name: "Calculator results",
       });
-      await expect(resultsSection).toContainText("2 - Benign");
       await expect(resultsSection).toContainText(
-        "typically benign calcifications",
+        "Please select the overall suspicion level",
       );
       await expect(
         page.getByText("Overall Assessment of Suspicion"),
-      ).not.toBeVisible();
+      ).toBeVisible();
     });
 
     test("should warn when Category 3 conflicts with suspicious mass descriptors", async ({
@@ -323,7 +306,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Spiculated").click();
       await page.getByLabel("High density").click();
       await page
-        .getByLabel("Probably benign (<2% likelihood of malignancy)")
+        .getByLabel("Probably benign (Category 3)")
         .click();
 
       await page.click('button:has-text("Calculate")');
@@ -334,6 +317,32 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await expect(resultsSection).toContainText("Decision Check");
       await expect(resultsSection).toContainText("discordant");
       await expect(resultsSection).toContainText("Reassess");
+    });
+
+    test("should ignore hidden calcification descriptors after switching to a mass", async ({
+      page,
+    }) => {
+      await page.getByLabel("Mammography").click();
+      await page.getByLabel("Diagnostic examination").click();
+      await page.getByLabel("No - assessment complete").click();
+      await page.getByLabel("Calcifications (without mass)").click();
+      await page.getByLabel("Fine linear or fine-linear branching").click();
+      await page.getByLabel("Linear", { exact: true }).click();
+
+      await page.getByLabel("Mass", { exact: true }).click();
+      await page.getByLabel("Oval").click();
+      await page.getByLabel("Circumscribed").click();
+      await page.getByLabel("Equal density").click();
+      await page.getByLabel("Probably benign (Category 3)").click();
+      await page.click('button:has-text("Calculate")');
+
+      const resultsSection = page.getByRole("status", {
+        name: "Calculator results",
+      });
+      await expect(resultsSection).toContainText("3 - Probably Benign");
+      await expect(resultsSection).toContainText("Mass: oval, circumscribed");
+      await expect(resultsSection).not.toContainText("Decision Check");
+      await expect(resultsSection).not.toContainText("fine_linear");
     });
   });
 
@@ -348,7 +357,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Oval").click();
       await page.getByLabel("Obscured").click();
       await page.getByLabel("Equal density").click();
-      await page.getByLabel("Low suspicion for malignancy (2-10%)").click();
+      await page.getByLabel("Low suspicion (Category 4A; >2% to ≤10%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -361,8 +370,9 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         resultsSection.locator("text=Malignancy Likelihood:"),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Tissue diagnosis recommended (biopsy)"),
+        resultsSection.locator("text=Tissue diagnosis"),
       ).toBeVisible();
+      await expect(resultsSection).toContainText(">2% to ≤10%");
     });
 
     test("should calculate Category 4A for amorphous calcifications", async ({
@@ -374,7 +384,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Calcifications (without mass)").click();
       await page.getByLabel("Amorphous").click();
       await page.getByLabel("Grouped (clustered)").click();
-      await page.getByLabel("Low suspicion for malignancy (2-10%)").click();
+      await page.getByLabel("Low suspicion (Category 4A; >2% to ≤10%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -400,7 +410,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Irregular").click();
       await page.getByLabel("Indistinct").click();
       await page.getByLabel("Equal density").click();
-      await page.getByLabel("Moderate suspicion (10-50%)").click();
+      await page.getByLabel("Moderate suspicion (Category 4B; >10% to ≤50%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -413,8 +423,9 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         resultsSection.locator("text=Malignancy Likelihood:"),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=Tissue diagnosis required (biopsy)"),
+        resultsSection.locator("text=Tissue diagnosis"),
       ).toBeVisible();
+      await expect(resultsSection).toContainText(">10% to ≤50%");
     });
 
     test("should calculate Category 4B for coarse heterogeneous calcifications", async ({
@@ -426,7 +437,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Calcifications (without mass)").click();
       await page.getByLabel("Coarse heterogeneous").click();
       await page.getByLabel("Regional").click();
-      await page.getByLabel("Moderate suspicion (10-50%)").click();
+      await page.getByLabel("Moderate suspicion (Category 4B; >10% to ≤50%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -452,7 +463,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Irregular").click();
       await page.getByLabel("Spiculated").click();
       await page.getByLabel("High density").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
+      await page.getByLabel("High suspicion (Category 4C; 50% to <95%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -464,10 +475,11 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await expect(
         resultsSection.locator("text=Malignancy Likelihood:"),
       ).toBeVisible();
-      await expect(resultsSection.locator("text=high PPV")).toBeVisible();
+      await expect(resultsSection).toContainText("50% to <95%");
+      await expect(resultsSection).toContainText("source-literal overlap at exactly 50%");
     });
 
-    test("should show clinical note for spiculated margins", async ({
+    test("should preserve spiculated margins in the finding summary", async ({
       page,
     }) => {
       await page.getByLabel("Mammography").click();
@@ -477,14 +489,12 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Irregular").click();
       await page.getByLabel("Spiculated").click();
       await page.getByLabel("High density").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
+      await page.getByLabel("High suspicion (Category 4C; 50% to <95%)").click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator(
-          "text=Spiculated margins and irregular shape are highly suspicious",
-        ),
+        page.locator("text=Mass: irregular, spiculated"),
       ).toBeVisible();
     });
 
@@ -497,7 +507,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Calcifications (without mass)").click();
       await page.getByLabel("Fine pleomorphic").click();
       await page.getByLabel("Segmental").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
+      await page.getByLabel("High suspicion (Category 4C; 50% to <95%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -505,7 +515,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         page.locator("text=4C - High Suspicion for Malignancy"),
       ).toBeVisible();
       await expect(
-        page.locator("text=Segmental or linear distribution suggests ductal"),
+        page.locator("text=Calcifications: fine_pleomorphic, segmental distribution"),
       ).toBeVisible();
     });
   });
@@ -521,7 +531,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Irregular").click();
       await page.getByLabel("Spiculated").click();
       await page.getByLabel("High density").click();
-      await page.getByLabel("Highly suggestive of malignancy (>95%)").click();
+      await page.getByLabel("Highly suggestive (Category 5; ≥95%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -534,8 +544,9 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         resultsSection.locator("text=Malignancy Likelihood:"),
       ).toBeVisible();
       await expect(
-        resultsSection.locator("text=appropriate action should be taken"),
+        resultsSection.locator("text=Tissue diagnosis"),
       ).toBeVisible();
+      await expect(resultsSection).toContainText("≥95%");
     });
 
     test("should calculate Category 5 for fine linear calcifications", async ({
@@ -547,7 +558,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Calcifications (without mass)").click();
       await page.getByLabel("Fine linear or fine-linear branching").click();
       await page.getByLabel("Linear", { exact: true }).click();
-      await page.getByLabel("Highly suggestive of malignancy (>95%)").click();
+      await page.getByLabel("Highly suggestive (Category 5; ≥95%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -555,9 +566,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         page.locator("text=5 - Highly Suggestive of Malignancy"),
       ).toBeVisible();
       await expect(
-        page.locator(
-          "text=Fine linear/branching calcifications are the most suspicious",
-        ),
+        page.locator("text=Calcifications: fine_linear, linear distribution"),
       ).toBeVisible();
     });
 
@@ -568,7 +577,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Diagnostic examination").click();
       await page.getByLabel("No - assessment complete").click();
       await page.getByLabel("Architectural distortion").click();
-      await page.getByLabel("Highly suggestive of malignancy (>95%)").click();
+      await page.getByLabel("Highly suggestive (Category 5; ≥95%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -596,10 +605,12 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
         page.locator("text=6 - Known Biopsy-Proven Malignancy"),
       ).toBeVisible();
       await expect(
-        page.locator("text=multidisciplinary breast care"),
+        page.locator("text=Clinical follow-up with surgeon and/or oncologist"),
       ).toBeVisible();
       await expect(
-        page.getByText(/treatment planning, and response assessment/),
+        page
+          .getByRole("status", { name: "Calculator results" })
+          .getByText(/definitive local therapy when clinically appropriate/),
       ).toBeVisible();
     });
 
@@ -639,7 +650,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("No - assessment complete").click();
       await page.getByLabel("Asymmetry", { exact: true }).click();
       await page.getByLabel("Focal asymmetry").click();
-      await page.getByLabel("Low suspicion for malignancy (2-10%)").click();
+      await page.getByLabel("Low suspicion (Category 4A; >2% to ≤10%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -653,18 +664,18 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should show developing asymmetry clinical note", async ({ page }) => {
+    test("should preserve developing asymmetry in the structured finding summary", async ({ page }) => {
       await page.getByLabel("Mammography").click();
       await page.getByLabel("Diagnostic examination").click();
       await page.getByLabel("No - assessment complete").click();
       await page.getByLabel("Asymmetry", { exact: true }).click();
       await page.getByLabel("Developing asymmetry (new or increased)").click();
-      await page.getByLabel("Moderate suspicion (10-50%)").click();
+      await page.getByLabel("Moderate suspicion (Category 4B; >10% to ≤50%)").click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Developing asymmetry warrants tissue diagnosis"),
+        page.locator("text=Asymmetry: developing"),
       ).toBeVisible();
     });
   });
@@ -681,7 +692,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
           "Associated features only (skin changes, nipple retraction)",
         )
         .click();
-      await page.getByLabel("Moderate suspicion (10-50%)").click();
+      await page.getByLabel("Moderate suspicion (Category 4B; >10% to ≤50%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -744,6 +755,52 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Circumscribed").click();
 
       await expect(page.getByText("Mass Density")).not.toBeVisible();
+    });
+
+    test("should hide mammography-only findings and margins from ultrasound", async ({
+      page,
+    }) => {
+      await page.getByLabel("Ultrasound").click();
+      await page.getByLabel("Diagnostic examination").click();
+      await page.getByLabel("No - assessment complete").click();
+
+      await expect(
+        page.getByLabel("Calcifications (without mass)"),
+      ).not.toBeVisible();
+      await expect(
+        page.getByLabel("Architectural distortion"),
+      ).not.toBeVisible();
+      await expect(page.getByLabel("Asymmetry", { exact: true })).not.toBeVisible();
+
+      await page.getByLabel("Mass", { exact: true }).click();
+      await expect(page.getByLabel("Obscured", { exact: true })).not.toBeVisible();
+      await expect(page.getByLabel("Angular", { exact: true })).toBeVisible();
+      await expect(
+        page.getByLabel("Low suspicion (Category 4A; >2% to ≤10%)"),
+      ).not.toBeVisible();
+      await expect(
+        page.getByLabel("Suspicious (Category 4; >2% to <95%)"),
+      ).toBeVisible();
+    });
+
+    test("should expose unsplit Category 4 and MRI-specific margins for MRI", async ({
+      page,
+    }) => {
+      await page.getByLabel("MRI", { exact: true }).click();
+      await page.getByLabel("Diagnostic examination").click();
+      await page.getByLabel("No - assessment complete").click();
+      await page.getByLabel("Mass", { exact: true }).click();
+
+      await expect(page.getByLabel("Obscured", { exact: true })).not.toBeVisible();
+      await expect(page.getByLabel("Microlobulated", { exact: true })).not.toBeVisible();
+      await expect(page.getByLabel("Indistinct", { exact: true })).not.toBeVisible();
+      await expect(page.getByLabel("Irregular margin", { exact: true })).toBeVisible();
+      await expect(
+        page.getByLabel("Low suspicion (Category 4A; >2% to ≤10%)"),
+      ).not.toBeVisible();
+      await expect(
+        page.getByLabel("Suspicious (Category 4; >2% to <95%)"),
+      ).toBeVisible();
     });
 
     test("should show calcification distribution only for suspicious morphology", async ({
@@ -816,7 +873,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Irregular").click();
       await page.getByLabel("Spiculated").click();
       await page.getByLabel("High density").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
+      await page.getByLabel("High suspicion (Category 4C; 50% to <95%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -839,7 +896,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Calcifications (without mass)").click();
       await page.getByLabel("Fine pleomorphic").click();
       await page.getByLabel("Segmental").click();
-      await page.getByLabel("High suspicion (50-95%)").click();
+      await page.getByLabel("High suspicion (Category 4C; 50% to <95%)").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -875,10 +932,19 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await expect(quickReferenceLink).toBeVisible();
     });
 
-    test("should have reference for follow-up guidelines", async ({ page }) => {
-      // Sickles 1991 reference
-      await expect(page.getByText("Sickles EA").first()).toBeVisible();
-      await expect(page.getByText("Radiology. 1991")).toBeVisible();
+    test("should expose the official modality assessment summaries", async ({ page }) => {
+      await page
+        .getByRole("button", { name: /Show \d+ more references/ })
+        .click();
+      await expect(
+        page.getByRole("link", { name: /BI-RADS v2025 Mammography Summary/ }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /BI-RADS v2025 Ultrasound Summary/ }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /BI-RADS v2025 MRI Summary/ }),
+      ).toBeVisible();
     });
   });
 
@@ -892,7 +958,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Circumscribed").click();
       await page.getByLabel("Equal density").click();
       await page
-        .getByLabel("Probably benign (<2% likelihood of malignancy)")
+        .getByLabel("Probably benign (Category 3)")
         .click();
 
       await page.click('button:has-text("Calculate")');
@@ -914,7 +980,7 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Circumscribed").click();
       // Note: No density for ultrasound
       await page
-        .getByLabel("Probably benign (<2% likelihood of malignancy)")
+        .getByLabel("Probably benign (Category 3)")
         .click();
 
       await page.click('button:has-text("Calculate")');
@@ -927,15 +993,20 @@ test.describe("Legacy 2013 BI-RADS Assessment Calculator", () => {
       await page.getByLabel("Diagnostic examination").click();
       await page.getByLabel("No - assessment complete").click();
       await page.getByLabel("Mass", { exact: true }).click();
-      await page.getByLabel("Irregular").click();
+      await page.getByLabel("Irregular", { exact: true }).click();
       await page.getByLabel("Spiculated").click();
       // Note: No density for MRI
-      await page.getByLabel("High suspicion (50-95%)").click();
+      await expect(
+        page.getByLabel("High suspicion (Category 4C; 50% to <95%)"),
+      ).not.toBeVisible();
+      await page
+        .getByLabel("Suspicious (Category 4; >2% to <95%)")
+        .click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=4C - High Suspicion for Malignancy"),
+        page.locator("text=4 - Suspicious"),
       ).toBeVisible();
     });
   });

@@ -22,22 +22,45 @@ assert.equal(
 );
 
 const audit = JSON.parse(run.stdout);
-assert.equal(audit.schema, "radulator-birads-legacy-source-audit/v1");
+assert.equal(audit.schema, "radulator-birads-legacy-source-audit/v2");
 assert.equal(audit.source_authority, "American College of Radiology");
 assert.equal(audit.source_host, "edge.sitecorecloud.io");
-assert.equal(audit.source.bytes, 621_351);
-assert.equal(
-  audit.source.sha256,
-  "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
+assert.deepEqual(
+  audit.sources.map(({ id, bytes, sha256 }) => ({ id, bytes, sha256 })),
+  [
+    {
+      id: "fifth-edition-quick-reference",
+      bytes: 621_351,
+      sha256: "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
+    },
+    {
+      id: "mammography-summary",
+      bytes: 64_921,
+      sha256: "98d88679deb266ac030de0d96d9f15a5fcde3b0a1a4d6a7aeb29aa49b85daae6",
+    },
+    {
+      id: "ultrasound-summary",
+      bytes: 67_317,
+      sha256: "38f24a245a9ea992f5f29e221f6000eb4a60c9d8d78f4a3dce68130179adec1d",
+    },
+    {
+      id: "mri-summary",
+      bytes: 63_321,
+      sha256: "75900dbd050ec22266db01cf5e18a8caae1e07e0d5e5f819195af7cf0b569dd9",
+    },
+  ],
 );
-assert.match(audit.source.locator, /assessment categories 0-6/);
 assert.deepEqual(audit.source_claims, {
   assessment_categories_0_through_6: true,
   category_0_modality_wording: true,
   fifth_edition_descriptor_groups: true,
   mammography_ultrasound_mri_scope: true,
+  mammography_only_findings_are_modality_gated: true,
+  mri_category_4_has_no_subdivisions: true,
+  source_literal_probability_endpoints: true,
+  source_literal_management_wording: true,
 });
-assert.equal(audit.bound_vector_ids.length, 14);
+assert.equal(audit.bound_vector_ids.length, 20);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.temporary_rollback, true);
@@ -45,5 +68,5 @@ assert.equal(audit.full_manual_validation_complete, false);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "BI-RADS legacy source audit verified the official fifth-edition artifact and 14 executable safety vectors.",
+  "BI-RADS legacy source audit verified four official ACR artifacts and 20 executable safety vectors.",
 );
