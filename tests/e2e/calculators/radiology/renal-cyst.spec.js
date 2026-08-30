@@ -279,6 +279,51 @@ test.describe("Renal Cyst (Bosniak Classification) Calculator", () => {
     await expect(results).not.toContainText("No follow-up required");
   });
 
+  for (const [feature, overrides] of [
+    ["calcification", { calcifications: "present" }],
+    [
+      "few thin septa",
+      {
+        septaCount: "few",
+        septaThickness: "thin",
+        septaEnhancement: "absent",
+      },
+    ],
+  ]) {
+    test(`should preserve Bosniak II for ${feature} in a fully characterized cystic mass`, async ({
+      page,
+    }) => {
+      await fillBaseBosniakV2019(page, {
+        ...overrides,
+        density: "otherCharacterized",
+      });
+
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = resultPanel(page);
+      await expect(results).toContainText("Bosniak Category: II");
+      await expect(results).toContainText("No follow-up required");
+      await expect(results).not.toContainText("renal mass protocol MRI");
+    });
+  }
+
+  test("should preserve Bosniak II for a thin enhancing wall with calcification in a fully characterized cystic mass", async ({
+    page,
+  }) => {
+    await fillBaseBosniakV2019(page, {
+      wallEnhancement: "present",
+      calcifications: "present",
+      density: "otherCharacterized",
+    });
+
+    await page.getByRole("button", { name: "Calculate" }).click();
+
+    const results = resultPanel(page);
+    await expect(results).toContainText("Bosniak Category: II");
+    await expect(results).toContainText("No follow-up required");
+    await expect(results).not.toContainText("renal mass protocol MRI");
+  });
+
   for (const wall of ["minimallyThick", "thick"]) {
     test(`should require MRI for heterogeneous CT attenuation despite an enhancing ${wall} wall`, async ({
       page,
