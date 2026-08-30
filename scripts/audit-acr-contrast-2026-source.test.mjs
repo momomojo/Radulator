@@ -34,12 +34,6 @@ assert.deepEqual(audit.source_sha256, {
   adult_card: "8e01c557097de36dd38706f1ce9bc540797bdee5e43534db3f6123bfabb963fb",
   pediatric_card: "4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f",
 });
-assert.equal(Object.values(audit.source_claims).every(Boolean), true);
-assert.equal(Object.keys(audit.source_claims).length, 11);
-assert.equal(
-  audit.source_claims.aki_egfr_threshold_inadequate_serum_creatinine_unreliable,
-  true,
-);
 assert.deepEqual(audit.source_text_verification, {
   engine: "pdfjs-dist@4.10.38",
   manual_pdf_pages: [35, 43, 44, 45, 46, 47],
@@ -59,22 +53,96 @@ assert.deepEqual(audit.source_text_verification, {
     "lower-viscosity-routine-warming-unsupported",
     "higher-viscosity-warming-selective-not-routine",
   ],
+  verified_claim_pages: {
+    "stable-egfr-45-not-independent-risk": [43],
+    "stable-egfr-30-44-not-or-rarely-nephrotoxic": [43, 44],
+    "aki-egfr-threshold-inadequate-serum-creatinine-unreliable": [44],
+    "aki-or-egfr-under-30-relative-not-absolute": [45],
+    "standard-diagnostic-dose-not-reduced": [46],
+    "isotonic-normal-saline-preferred-regimen-unknown": [46],
+    "aki-or-egfr-under-30-prophylaxis-with-volume-risk-check": [46],
+    "stable-egfr-30-general-prophylaxis-not-indicated": [47],
+    "stable-egfr-30-44-individual-high-risk-only": [47],
+    "anuric-dialysis-no-further-renal-damage": [47],
+    "residual-dialysis-urine-treated-higher-risk": [47],
+    "lower-viscosity-routine-warming-unsupported": [35],
+    "higher-viscosity-warming-selective-not-routine": [35],
+  },
 });
-assert.deepEqual(audit.source_runtime_bindings, [
+const expectedBindingVectors = {
+  "stable-egfr-45-not-independent-risk": ["stable-egfr-45-no-prophylaxis"],
+  "stable-egfr-30-44-not-or-rarely-nephrotoxic": ["stable-egfr-44-individual-high-risk-only"],
+  "aki-egfr-threshold-inadequate-serum-creatinine-unreliable": ["aki-egfr-is-unreliable"],
+  "aki-or-egfr-under-30-relative-not-absolute": [
+    "stable-egfr-29-isotonic-prophylaxis",
+    "aki-egfr-is-unreliable",
+  ],
+  "standard-diagnostic-dose-not-reduced": ["stable-egfr-29-isotonic-prophylaxis"],
+  "isotonic-normal-saline-preferred-regimen-unknown": ["stable-egfr-29-isotonic-prophylaxis"],
+  "aki-or-egfr-under-30-prophylaxis-with-volume-risk-check": [
+    "stable-egfr-29-isotonic-prophylaxis",
+    "aki-egfr-is-unreliable",
+  ],
+  "stable-egfr-30-general-prophylaxis-not-indicated": ["stable-egfr-30-no-routine-prophylaxis"],
+  "stable-egfr-30-44-individual-high-risk-only": ["stable-egfr-44-individual-high-risk-only"],
+  "anuric-dialysis-no-further-renal-damage": ["anuric-dialysis-no-ciaki-prophylaxis"],
+  "residual-dialysis-urine-treated-higher-risk": ["dialysis-residual-function-higher-risk"],
+  "lower-viscosity-routine-warming-unsupported": ["lower-viscosity-300-no-routine-warming"],
+  "higher-viscosity-warming-selective-not-routine": ["higher-viscosity-370-selective-warming"],
+};
+assert.deepEqual(
+  audit.source_runtime_bindings.map((binding) => binding.source_claim_id),
+  audit.source_text_verification.verified_claim_ids,
+  "every page-verified source statement must have one explicit runtime binding",
+);
+assert.deepEqual(
+  Object.fromEntries(
+    audit.source_runtime_bindings.map((binding) => [
+      binding.source_claim_id,
+      binding.runtime_assertions.map((runtimeAssertion) => runtimeAssertion.vector_id),
+    ]),
+  ),
+  expectedBindingVectors,
+);
+for (const binding of audit.source_runtime_bindings) {
+  assert.equal(binding.manual_pdf_pages.length, binding.manual_printed_pages.length);
+  assert.ok(binding.manual_pdf_pages.length > 0);
+  assert.ok(binding.runtime_assertions.length > 0);
+  for (const runtimeAssertion of binding.runtime_assertions) {
+    assert.equal(typeof runtimeAssertion.output_field, "string");
+    assert.ok(runtimeAssertion.output_includes.length > 0);
+  }
+}
+assert.deepEqual(audit.source_resource_bindings, [
   {
-    source_claim_id: "aki-egfr-threshold-inadequate-serum-creatinine-unreliable",
-    manual_pdf_page: 44,
-    manual_printed_page: 41,
-    vector_id: "aki-egfr-is-unreliable",
-    output_field: "Renal Safety Context",
-    output_includes: "eGFR is unreliable for AKI risk stratification",
+    source_claim_id: "official-adult-and-pediatric-reaction-cards-linked",
+    source_keys: ["adult_card", "pediatric_card"],
+    vector_id: "lower-viscosity-300-no-routine-warming",
+    output_field: "Acute Reaction Resources",
+    output_includes: ["official ACR Adult or Pediatric Contrast Reaction Card"],
   },
 ]);
+const expectedSourceClaimKeys = [
+  ...audit.source_text_verification.verified_claim_ids,
+  audit.source_resource_bindings[0].source_claim_id,
+].map((claimId) => claimId.replaceAll("-", "_"));
+assert.deepEqual(Object.keys(audit.source_claims), expectedSourceClaimKeys);
+assert.equal(Object.values(audit.source_claims).every(Boolean), true);
+assert.deepEqual(audit.registry_claim_locators, {
+  "acr-2026-stable-egfr-prophylaxis":
+    "Manual PDF pp. 43-44 and 47 (printed pp. 40-41 and 44): stable eGFR risk evidence and prophylaxis indications",
+  "acr-2026-aki-and-egfr-under-30":
+    "Manual PDF pp. 44-46 (printed pp. 41-43): AKI threshold unreliability, caution, standard diagnostic dose, volume expansion, and prophylaxis",
+  "acr-2026-dialysis-renal-function":
+    "Manual PDF p. 47 (printed p. 44): anuric dialysis and residual renal function",
+  "acr-2026-contrast-warming":
+    "Manual PDF p. 35 (printed p. 32): warming recommendations and limited evidence grades",
+});
 assert.equal(audit.bound_vector_ids.length, 10);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "ACR Contrast 2026 source audit verified exact manual/card bytes, 13 page-extracted source statements, 11 source claims, and 10 executable renal/warming vectors.",
+  "ACR Contrast 2026 source audit verified exact manual/card bytes, 13 page-extracted source statements, 14 explicit source bindings, and 10 executable renal/warming vectors.",
 );

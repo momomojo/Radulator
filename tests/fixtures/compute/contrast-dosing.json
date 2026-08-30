@@ -59,6 +59,7 @@
         "noError": true,
         "fields": [
           { "key": "Renal Safety Context", "includes": "either not nephrotoxic or rarely so" },
+          { "key": "Renal Recommendation", "includes": "individual high-risk circumstances" },
           { "key": "Renal Recommendation", "includes": "recent AKI" }
         ]
       }
@@ -73,10 +74,11 @@
       "expect": {
         "noError": true,
         "fields": [
+          { "key": "Renal Safety Context", "includes": "Contrast concern is relative, not absolute" },
           { "key": "Renal Recommendation", "includes": "IV isotonic volume expansion is indicated" },
           { "key": "Renal Recommendation", "includes": "0.9% normal saline is preferred" },
           { "key": "Renal Recommendation", "includes": "ideal infusion rate and volume are unknown" },
-          { "key": "Diagnostic Dose", "includes": "Do not reduce the diagnostic contrast dose" }
+          { "key": "Diagnostic Dose", "includes": "Do not reduce the diagnostic contrast dose solely to mitigate CI-AKI risk" }
         ]
       }
     },
@@ -91,6 +93,7 @@
         "noError": true,
         "fields": [
           { "key": "Renal Safety Context", "includes": "eGFR is unreliable for AKI risk stratification" },
+          { "key": "Renal Safety Context", "includes": "relative, not absolute, concern" },
           { "key": "Renal Recommendation", "includes": "IV isotonic volume expansion is indicated" },
           { "key": "Volume Expansion Safety", "includes": "Heart failure or hypervolemia" }
         ]
@@ -122,6 +125,7 @@
         "noError": true,
         "fields": [
           { "key": "Renal Safety Context", "includes": "residual kidney function" },
+          { "key": "Renal Safety Context", "includes": "higher-risk renal state" },
           { "key": "Volume Expansion Safety", "includes": "Assess volume tolerance" }
         ]
       }
@@ -137,6 +141,7 @@
         "noError": true,
         "fields": [
           { "key": "Contrast Warming", "includes": "Routine warming is not supported" },
+          { "key": "Contrast Warming", "includes": "lower-viscosity 300 mg I/mL" },
           { "key": "Acute Reaction Resources", "includes": "official ACR Adult or Pediatric Contrast Reaction Card" }
         ]
       }
