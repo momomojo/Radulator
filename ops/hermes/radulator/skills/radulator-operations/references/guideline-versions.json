@@ -623,8 +623,8 @@
         "reviewed_evidence": {
           "schema": "radulator-reviewed-source-evidence-link/v1",
           "manifest_path": "docs/evidence/fleischner-2017-reviewed-evidence.json",
-          "payload_sha256": "6a1aab656bb07344c041a59e9d14d819d650009c4225310c1d04bbbe648b6fb1",
-          "reviewer_revision": "fleischner-source-review/2026-08-30-r3",
+          "payload_sha256": "29426004503cdd332de5e7c9b132e844d4097361405a2a2d8c43839b60de12be",
+          "reviewer_revision": "fleischner-source-review/2026-08-30-r4",
           "ci_primary_full_text_verified": false
         },
         "source_audit": {
@@ -668,7 +668,7 @@
             "screening-routes-away-without-schedule",
             "fractional-overall-size-rejected",
             "ten-mm-size-requires-both-axes-recorded",
-            "solid-component-larger-than-nodule-rejected"
+            "solid-component-long-axis-may-exceed-overall-average"
           ],
           "source_bytes_committed": false
         },
@@ -803,7 +803,7 @@
             "id": "fleischner-2017-measurement-contract",
             "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
             "source_locator": "Measurement recommendations and Figures 1-4 and 12-17: small-nodule average, at-least-10-mm two-axis record, largest solid component, and lung windows",
-            "fact": "Source-conformant inputs use lung-window images and recorded whole millimeters, average orthogonal diameters below 10 mm, both axes at least 10 mm, and the maximum long axis of the largest solid component where component measurement is reliable.",
+            "fact": "Inputs use lung windows and whole millimeters, average orthogonal diameters below 10 mm, record both axes at least 10 mm, and separately record the largest solid component's maximum long axis. Because overall average and component long axis are different measurements, the component is not rejected solely for exceeding the rounded overall average.",
             "dimensions": ["model-input", "unit", "threshold", "scope", "output"],
             "vector_ids": [
               "fractional-overall-size-rejected",
@@ -814,7 +814,7 @@
               "part-solid-zero-component-rejected",
               "part-solid-negative-component-rejected",
               "part-solid-fractional-component-rejected",
-              "solid-component-larger-than-nodule-rejected"
+              "solid-component-long-axis-may-exceed-overall-average"
             ]
           },
           {

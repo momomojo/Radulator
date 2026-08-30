@@ -112,6 +112,7 @@ function assertFleischnerReviewedEvidenceLink(evidence, label) {
     id: claim.id,
     source_url: claim.source_url,
     source_locator: claim.source_locator,
+    fact: claim.fact,
     vector_ids: claim.vector_ids,
   });
   assert.equal(manifest.payload.claims.length, 12, `${label}: manifest must contain 12 claims`);
@@ -713,7 +714,7 @@ async function assertExecutableImplementationEvidence(record, calculator) {
         "screening-routes-away-without-schedule",
         "fractional-overall-size-rejected",
         "ten-mm-size-requires-both-axes-recorded",
-        "solid-component-larger-than-nodule-rejected",
+        "solid-component-long-axis-may-exceed-overall-average",
       ],
       `${label}.source_audit.vector_ids`,
     );

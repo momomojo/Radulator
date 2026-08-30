@@ -97,7 +97,7 @@ Recommend exactly one disposition: `correct-and-verify`, `verify-without-behavio
 **Files:**
 - Read: `src/components/calculators/Fleischner.jsx`
 - Read: `tests/e2e/calculators/radiology/fleischner.spec.js`
-- Read: `tests/fixtures/fleischner-test-data.json`
+- Read: `tests/fixtures/compute/fleischner.json`
 - Read: `ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json`
 - Modify: none
 

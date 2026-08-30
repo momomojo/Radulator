@@ -461,18 +461,20 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     );
   });
 
-  test("rejects a solid component larger than the overall nodule", async ({
+  test("accepts a component long axis larger than the rounded overall average", async ({
     page,
   }) => {
     await fillSubsolid(page, {
       type: "Part-solid nodule",
-      size: "8",
-      component: "9",
+      size: "6",
+      component: "7",
+      concern: "No / not established",
     });
-    await page.getByRole("button", { name: "Calculate" }).click();
-    await expect(page.getByRole("main").getByRole("alert")).toContainText(
-      "cannot exceed the overall nodule size",
+    const results = await calculate(page);
+    await expect(results).toContainText(
+      "Consider CT at 3–6 months to confirm persistence",
     );
+    await expect(results).toContainText("Solid Component: 7 mm");
   });
 
   test("rejects a contradictory all-below-6 cohort with a selected 6-mm nodule", async ({
@@ -524,6 +526,33 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     results = await calculate(page);
     await expect(results).toContainText("Lung-RADS");
     await expect(results).not.toContainText("Follow-up Interval:");
+  });
+
+  test("ignores a hidden 5-mm exception after the size leaves that pathway", async ({
+    page,
+  }) => {
+    await fillSubsolid(page, {
+      size: "5",
+      context: "Selected suspicious subsolid nodule close to 6 mm",
+    });
+    let results = await calculate(page);
+    await expect(results).toContainText("Consider CT at 2 and 4 years");
+
+    await fillInput(page, "Selected Nodule Overall Size", "6");
+    await expect(
+      page.getByRole("radio", {
+        name: "Selected suspicious subsolid nodule close to 6 mm",
+      }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByRole("status", { name: "Calculator results" }),
+    ).toHaveCount(0);
+
+    results = await calculate(page);
+    await expect(results).toContainText(
+      "CT at 6–12 months to confirm persistence",
+    );
+    await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
   });
 
   test("copies and prints only the current source-qualified result", async ({
@@ -585,10 +614,15 @@ test.describe("Fleischner 2017 source-locked calculator", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload();
     await expect(page.getByRole("radio", { name: eligibleLabel })).toBeVisible();
-    await selectEligible(page);
-    await expect(
-      page.getByRole("radio", { name: "Pure ground-glass nodule" }),
-    ).toBeVisible();
+    await fillSubsolid(page, {
+      type: "Part-solid nodule",
+      size: "12",
+      component: "8",
+      concern: "No / not established",
+    });
+    const results = await calculate(page);
+    await expect(results).toContainText("solid component ≥6 mm is highly suspicious");
+    await expect(page.getByRole("button", { name: "Copy results" })).toBeVisible();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
     );

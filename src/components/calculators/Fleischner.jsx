@@ -564,11 +564,6 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
           Error: "Solid-component size must be a positive whole-millimeter value.",
         };
       }
-      if (solidSize > size) {
-        return {
-          Error: "Solid-component size cannot exceed the overall nodule size.",
-        };
-      }
     }
 
     if (noduleType === "solid" && !["low", "high"].includes(vals.risk_level)) {
@@ -590,16 +585,6 @@ For multiple nodules, separately state whether any nodule is ≥6 mm and charact
           "Specify whether the solitary 5 mm subsolid nodule is ordinary or meets the selected suspicious near-6-mm exception.",
       };
     }
-    if (
-      vals.sub6_subsolid_context === "selected_suspicious_near_6" &&
-      size !== 5
-    ) {
-      return {
-        Error:
-          "The selected suspicious close-to-6-mm exception is restricted to the 5 mm categorical boundary in this implementation.",
-      };
-    }
-
     let dominantSolidManagement = null;
     if (
       noduleType === "solid" &&

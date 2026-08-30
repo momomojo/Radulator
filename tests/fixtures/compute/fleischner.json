@@ -99,7 +99,7 @@
     },
     {
       "id": "single-ground-glass-6-until-year-5",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6" },
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "ground_glass", "nodule_count": "single", "nodule_size": "6", "sub6_subsolid_context": "selected_suspicious_near_6" },
       "expect": { "noError": true, "fields": [
         { "key": "Recommendation", "equals": "CT at 6–12 months to confirm persistence; then CT every 2 years until 5 years" },
         { "key": "Follow-up Interval", "includes": "until year 5 from baseline" }
@@ -287,10 +287,11 @@
       ] }
     },
     {
-      "id": "solid-component-larger-than-nodule-rejected",
-      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "8", "solid_component": "9" },
-      "expect": { "noError": false, "fields": [
-        { "key": "Error", "includes": "cannot exceed" }
+      "id": "solid-component-long-axis-may-exceed-overall-average",
+      "inputs": { "guideline_applicability": "eligible", "nodule_characterization": "indeterminate_thin_section", "size_mode": "measured", "nodule_type": "part_solid", "nodule_count": "single", "nodule_size": "6", "solid_component": "7", "component_concern": "no" },
+      "expect": { "noError": true, "fields": [
+        { "key": "Recommendation", "equals": "Consider CT at 3–6 months to confirm persistence; a solid component ≥6 mm is highly suspicious" },
+        { "key": "Solid Component", "equals": "7 mm" }
       ] }
     },
     {

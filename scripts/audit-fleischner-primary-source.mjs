@@ -25,12 +25,12 @@ const SUBSOLID_TABLE_URL =
   "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly";
 
 const EXPECTED_PAYLOAD_SHA256 =
-  "6a1aab656bb07344c041a59e9d14d819d650009c4225310c1d04bbbe648b6fb1";
+  "29426004503cdd332de5e7c9b132e844d4097361405a2a2d8c43839b60de12be";
 const EXPECTED_REVIEWED_VECTORS_SHA256 =
-  "94f5303e188dce00ebe03b7d7d9a3c9da29662490fdd1d9cad3983ac3e71570d";
+  "86200fe98dd5a26501d32e616fd87d0209d0c6bc87acb76de20b433255817548";
 const EXPECTED_REVIEWER_REVISION =
-  "fleischner-source-review/2026-08-30-r3";
-const EXPECTED_REVIEWED_AT = "2026-08-30T18:50:52Z";
+  "fleischner-source-review/2026-08-30-r4";
+const EXPECTED_REVIEWED_AT = "2026-08-30T19:26:28Z";
 
 const EXPECTED_CLAIM_IDS = [
   "fleischner-2017-applicability",
@@ -382,6 +382,7 @@ function claimProjection(claim) {
     id: claim.id,
     source_url: claim.source_url,
     source_locator: claim.source_locator,
+    fact: claim.fact,
     vector_ids: claim.vector_ids,
   };
 }
@@ -519,11 +520,12 @@ function validateManifest(manifest, fixture, registry) {
   for (const claim of manifest.payload.claims) {
     assertExactKeys(
       claim,
-      ["id", "source_url", "source_locator", "vector_ids"],
+      ["id", "source_url", "source_locator", "fact", "vector_ids"],
       `manifest claim ${claim.id}`,
     );
     assert.ok(sourceUrls.has(claim.source_url), `${claim.id}: unknown source URL`);
     assert.ok(claim.source_locator.length > 0, `${claim.id}: source locator`);
+    assert.ok(claim.fact.length > 0, `${claim.id}: fact`);
     assertUniqueStrings(claim.vector_ids, `${claim.id}: vector IDs`);
   }
 
