@@ -33,19 +33,20 @@ for (const evidence of [
   },
   {
     calculatorId: "birads",
-    implementedVersion: "FDA MQSA 2024 with ACR BI-RADS v2025 context",
+    implementedVersion:
+      "Legacy ACR BI-RADS Fifth Edition (2013) temporary rollback with public 2025 assessment-summary constraints",
     roadmapLabel:
-      "FDA 2023 MQSA Final Rule (enforced September 10, 2024) with ACR BI-RADS v2025 context",
+      "Legacy ACR BI-RADS Fifth Edition (2013) temporary rollback with public 2025 assessment-summary constraints",
     sourceUrl:
-      "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
     command: "npm run test:birads-fda-source",
     claimIds: [
-      "acr-v2025-context",
-      "fda-mqsa-assessment-framework",
-      "fda-seven-day-communication",
-      "fda-self-referred-referral-system",
-      "fda-alternative-standard-25",
-      "fda-alternative-standard-12",
+      "acr-birads-three-modality-scope",
+      "acr-fifth-edition-descriptor-groups",
+      "acr-fifth-edition-assessment-labels",
+      "acr-mammography-assessment-boundaries-and-management",
+      "acr-ultrasound-assessment-boundaries-and-management",
+      "acr-mri-assessment-boundaries-and-management",
     ],
   },
 ]) {

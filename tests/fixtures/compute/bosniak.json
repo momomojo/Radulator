@@ -568,6 +568,75 @@
       }
     },
     {
+      "id": "fully-characterized-cystic-mass-with-calcification-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "Management", "equals": "No follow-up required" },
+          { "key": "Rationale", "includes": "calcification of any morphology" }
+        ]
+      }
+    },
+    {
+      "id": "fully-characterized-cystic-mass-with-few-thin-septa-category-ii",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "absent",
+        "septaCount": "few",
+        "septaThickness": "thin",
+        "septaEnhancement": "absent",
+        "nodule": "none",
+        "calcifications": "absent",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "Management", "equals": "No follow-up required" },
+          { "key": "Rationale", "includes": "few (1-3) thin septa" }
+        ]
+      }
+    },
+    {
+      "id": "fully-characterized-cystic-mass-with-thin-enhancing-wall-and-calcification-category-ii",
+      "description": "A smooth thin wall may enhance without upgrading the mass, and calcification of any morphology remains a Bosniak II structural feature when the cystic mass is completely characterized.",
+      "inputs": {
+        "scopeEligibility": "eligible",
+        "solidComponent": "under25",
+        "wellDefined": "yes",
+        "wall": "thin",
+        "wallEnhancement": "present",
+        "septaCount": "none",
+        "nodule": "none",
+        "calcifications": "present",
+        "density": "otherCharacterized"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Bosniak Category", "equals": "II" },
+          { "key": "Management", "equals": "No follow-up required" },
+          { "key": "Rationale", "includes": "calcification of any morphology" }
+        ]
+      }
+    },
+    {
       "id": "heterogeneous-density-with-enhancing-3mm-wall-still-requires-mri",
       "inputs": {
         "scopeEligibility": "eligible",

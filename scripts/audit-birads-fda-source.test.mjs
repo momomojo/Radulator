@@ -18,36 +18,57 @@ const run = spawnSync(
 assert.equal(
   run.status,
   0,
-  `BI-RADS FDA source audit failed\nstdout:\n${run.stdout}\nstderr:\n${run.stderr}`,
+  `BI-RADS legacy source audit failed\nstdout:\n${run.stdout}\nstderr:\n${run.stderr}`,
 );
 
 const audit = JSON.parse(run.stdout);
-assert.equal(audit.schema, "radulator-birads-fda-source-audit/v1");
-assert.equal(audit.source_authority, "U.S. Food and Drug Administration");
-assert.equal(audit.source_host, "www.fda.gov");
-assert.equal(audit.sources.length, 4);
-for (const source of audit.sources) {
-  assert.match(source.sha256, /^[a-f0-9]{64}$/);
-  assert.ok(source.bytes > 1_000);
-}
+assert.equal(audit.schema, "radulator-birads-legacy-source-audit/v2");
+assert.equal(audit.source_authority, "American College of Radiology");
+assert.equal(audit.source_host, "edge.sitecorecloud.io");
+assert.deepEqual(
+  audit.sources.map(({ id, bytes, sha256 }) => ({ id, bytes, sha256 })),
+  [
+    {
+      id: "fifth-edition-quick-reference",
+      bytes: 621_351,
+      sha256: "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
+    },
+    {
+      id: "mammography-summary",
+      bytes: 64_921,
+      sha256: "98d88679deb266ac030de0d96d9f15a5fcde3b0a1a4d6a7aeb29aa49b85daae6",
+    },
+    {
+      id: "ultrasound-summary",
+      bytes: 67_317,
+      sha256: "38f24a245a9ea992f5f29e221f6000eb4a60c9d8d78f4a3dce68130179adec1d",
+    },
+    {
+      id: "mri-summary",
+      bytes: 63_321,
+      sha256: "75900dbd050ec22266db01cf5e18a8caae1e07e0d5e5f819195af7cf0b569dd9",
+    },
+  ],
+);
 assert.deepEqual(audit.source_claims, {
-  alternative_standard_12_marker_placement: true,
-  alternative_standard_25_additional_imaging: true,
-  prior_comparison_follow_up_within_30_days: true,
-  provider_report_and_patient_summary_within_7_days: true,
-  self_referred_referral_system: true,
+  assessment_categories_0_through_6: true,
+  category_0_source_literal_management: true,
+  descriptor_to_category_inference_absent: true,
+  fifth_edition_bounded_descriptor_groups: true,
+  hidden_modality_descriptors_do_not_leak: true,
+  mammography_ultrasound_mri_scope: true,
+  modality_input_required: true,
+  source_literal_probability_endpoints: true,
+  source_literal_management_wording: true,
+  v2025_modality_specific_category_4_structure: true,
 });
-assert.deepEqual(audit.bound_vector_ids, [
-  "category-3",
-  "category-4",
-  "category-5",
-  "incomplete-prior-comparison",
-  "post-procedure-marker",
-]);
+assert.equal(audit.bound_vector_ids.length, 28);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
+assert.equal(audit.temporary_rollback, true);
+assert.equal(audit.full_manual_validation_complete, false);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "BI-RADS FDA source audit verified four official pages and five executable evidence vectors.",
+  "BI-RADS legacy source audit verified four official ACR artifacts and 28 executable safety vectors.",
 );
