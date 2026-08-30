@@ -3,10 +3,11 @@
  * Iodinated Contrast Media Dosing for CT Studies
  *
  * Calculates weight-based contrast dosing with lean body weight adjustment,
- * iodine delivery rate, and renal risk assessment based on eGFR.
+ * iodine delivery rate, and renal-safety context based on eGFR, AKI, and
+ * dialysis status.
  *
  * Primary Sources:
- * - ACR Manual on Contrast Media 2024/2025
+ * - ACR Manual on Contrast Media 2026
  * - ESUR Guidelines on Contrast Media Version 10.0
  * - Davenport MS, et al. Radiology. 2020;294(3):660-668 (ACR/NKF Consensus)
  * - de Bucourt M, et al. Insights Imaging. 2020;11:117 (LBW-based dosing)
@@ -16,20 +17,23 @@ export const ContrastDosing = {
   id: "contrast-dosing",
   category: "Radiology",
   name: "IV Contrast Dosing",
-  desc: "Iodinated contrast dosing calculator for CT studies with renal risk assessment",
+  desc: "Iodinated contrast protocol-planning aid for CT with renal-safety context",
   keywords: ["iodine", "contrast media", "IV contrast", "iohexol", "iodixanol"],
   tags: ["Radiology", "Safety"],
+  guidelineVersion: "ACR Manual on Contrast Media 2026 (renal safety and warming context)",
   metaDesc:
-    "Free IV Contrast Dosing Calculator for CT. Weight-based iodinated contrast dosing with lean body weight adjustment, iodine delivery rate (IDR), and eGFR-based renal risk assessment.",
+    "Free IV contrast protocol-planning aid for CT. Weight-based iodinated contrast dosing with lean body weight adjustment, iodine delivery rate (IDR), and eGFR/AKI/dialysis renal-safety context.",
 
   info: {
-    text: `This calculator provides evidence-based iodinated contrast dosing recommendations for CT imaging.
+    text: `This calculator provides iodinated contrast protocol-planning support for CT imaging, with renal-safety and warming context from the ACR Manual on Contrast Media 2026.
+
+The study-type iodine targets, volume cap, IV-access flow ranges, and saline-flush volume are encoded planning defaults, not universal ACR requirements. Confirm the diagnostic protocol, catheter and power-injector limits, contrast labeling, and institutional policy before administration.
 
 Key Features:
 • Weight-based dosing with lean body weight (LBW) adjustment for BMI ≥30
 • Iodine Delivery Rate (IDR) calculation based on flow rate and concentration
-• eGFR-based renal risk stratification per ACR/NKF 2020 consensus
-• IV access-appropriate maximum flow rates
+• eGFR, AKI, and dialysis-specific renal-safety pathways
+• Encoded IV-access flow ranges with device and protocol verification reminders
 • Saline flush volume recommendations
 
 Dosing Approach:
@@ -37,13 +41,16 @@ Dosing Approach:
 • LBW dosing (obese patients): 630 mg I/kg using Boer formula
 • IDR targets: 1.0-2.0 g I/s depending on application
 
-Risk Thresholds (IV contrast per ACR/NKF 2020):
-• eGFR ≥45: Very low risk, no special precautions
-• eGFR 30-44: Low-moderate risk, consider prophylaxis
-• eGFR <30: High risk, IV hydration recommended`,
+ACR 2026 renal-safety boundaries for IV iodinated contrast:
+• Stable eGFR ≥30: prophylaxis is not indicated for the general population
+• Stable eGFR 30-44: prophylaxis may be considered only in individual high-risk circumstances
+• AKI or stable eGFR <30: individualized risk-benefit assessment and isotonic IV volume expansion when appropriate
+• Before volume expansion, assess heart failure and other hypervolemic conditions
+
+Acute reactions require an emergency response protocol; use the official ACR adult or pediatric reaction card linked in References. This dosing aid does not manage an acute reaction.`,
     link: {
       label: "View ACR Manual on Contrast Media",
-      url: "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Contrast-Manual",
+      url: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
     },
   },
 
@@ -94,7 +101,52 @@ Risk Thresholds (IV contrast per ACR/NKF 2020):
       id: "egfr",
       label: "eGFR",
       type: "number",
-      subLabel: "mL/min/1.73m² (CKD-EPI recommended)",
+      subLabel: "mL/min/1.73m² when known; eGFR is not reliable for AKI risk stratification",
+    },
+    {
+      id: "renal_status",
+      label: "Renal Function Status",
+      type: "radio",
+      opts: [
+        { value: "stable", label: "Stable renal function / no known AKI" },
+        { value: "aki", label: "Known or suspected AKI" },
+        {
+          value: "dialysis_residual",
+          label:
+            "Maintenance dialysis with residual kidney function or uncertain urine output",
+        },
+        {
+          value: "dialysis_anuric",
+          label: "Anuric maintenance dialysis without a functioning transplant",
+        },
+        { value: "unknown", label: "Unknown / not assessed" },
+      ],
+    },
+    {
+      id: "volume_expansion_risk",
+      label: "IV Volume Expansion Safety",
+      type: "radio",
+      subLabel:
+        "Assess before prophylaxis; volume expansion can be harmful in heart failure or hypervolemia",
+      showIf: (vals) =>
+        vals.renal_status === "aki" ||
+        vals.renal_status === "dialysis_residual" ||
+        (vals.renal_status === "stable" &&
+          vals.egfr !== "" &&
+          Number.isFinite(Number(vals.egfr)) &&
+          Number(vals.egfr) >= 0 &&
+          Number(vals.egfr) < 30),
+      opts: [
+        {
+          value: "none_known",
+          label: "No known heart failure or hypervolemic condition",
+        },
+        {
+          value: "heart_failure_or_hypervolemia",
+          label: "Heart failure, hypervolemia, or uncertain volume tolerance",
+        },
+        { value: "uncertain", label: "Not yet assessed" },
+      ],
     },
 
     // SECTION 3: CONTRAST SELECTION
@@ -129,6 +181,8 @@ Risk Thresholds (IV contrast per ACR/NKF 2020):
       id: "iv_access",
       label: "IV Access Type",
       type: "select",
+      subLabel:
+        "Encoded planning defaults only; verify catheter, injection site, power-injector labeling, and local protocol",
       opts: [
         { value: "18g", label: "Peripheral 18G (max 5+ mL/s)" },
         { value: "20g", label: "Peripheral 20G (max 3-5 mL/s)" },
@@ -148,6 +202,8 @@ Risk Thresholds (IV contrast per ACR/NKF 2020):
       height = "",
       sex = "",
       egfr = "",
+      renal_status = "",
+      volume_expansion_risk = "",
       contrast_agent = "",
       study_type = "",
       iv_access = "",
@@ -270,28 +326,79 @@ Risk Thresholds (IV contrast per ACR/NKF 2020):
     // Calculate saline flush volume (typically 20-50 mL at same rate)
     const salineFlush = 30; // Standard 30 mL saline flush
 
-    // eGFR-based risk assessment per ACR/NKF 2020 consensus
+    const egfrProvided = egfr !== "" && egfr !== null && egfr !== undefined;
     const egfrValue = parseFloat(egfr);
-    let renalRisk = "";
+    if (egfrProvided && (isNaN(egfrValue) || egfrValue < 0)) {
+      return { Error: "Please enter a non-negative eGFR value or leave it blank." };
+    }
+
+    // Renal-safety context from ACR Manual on Contrast Media 2026.
+    let renalContext = "";
     let renalRecommendation = "";
+    let volumeExpansionSafety = "";
+    let diagnosticDoseNote = "";
+    let higherRiskRenalPathway = false;
     let warnings = [];
 
-    if (!isNaN(egfrValue) && egfrValue > 0) {
+    if (renal_status === "aki") {
+      higherRiskRenalPathway = true;
+      renalContext =
+        "Known or suspected AKI: eGFR is unreliable for AKI risk stratification. Iodinated contrast is a relative, not absolute, concern; proceed only when the expected diagnostic benefit outweighs the renal risk.";
+      renalRecommendation =
+        "IV isotonic volume expansion is indicated when clinically feasible; 0.9% normal saline is preferred, but the ideal infusion rate and volume are unknown. Use an individualized institutional regimen.";
+    } else if (renal_status === "dialysis_anuric") {
+      renalContext =
+        "Anuric end-stage kidney disease on maintenance dialysis without a functioning transplant is not at risk for further renal injury from iodinated contrast. Confirm true anuria and consider volume/osmotic load.";
+      renalRecommendation =
+        "Prophylaxis is not indicated for contrast-induced acute kidney injury (CI-AKI) prevention in anuric maintenance dialysis.";
+    } else if (renal_status === "dialysis_residual") {
+      higherRiskRenalPathway = true;
+      renalContext =
+        "Maintenance dialysis with residual kidney function or uncertain urine output should be managed as a higher-risk renal state because loss of residual function remains possible.";
+      renalRecommendation =
+        "Use an individualized risk-benefit assessment and determine whether isotonic volume expansion is appropriate with the treating team.";
+    } else if (renal_status === "stable" && egfrProvided) {
       if (egfrValue >= 45) {
-        renalRisk = "Very Low Risk";
-        renalRecommendation = "No special precautions needed";
+        renalContext =
+          `Stable eGFR ${egfrValue} mL/min/1.73m²: IV iodinated contrast is not an independent nephrotoxic risk factor at eGFR ≥45.`;
+        renalRecommendation =
+          "Prophylaxis is not indicated for the general population with stable eGFR ≥30.";
       } else if (egfrValue >= 30) {
-        renalRisk = "Low-Moderate Risk";
+        renalContext =
+          `Stable eGFR ${egfrValue} mL/min/1.73m²: IV iodinated contrast is either not nephrotoxic or rarely so in the 30-44 range.`;
         renalRecommendation =
-          "Consider IV hydration prophylaxis at clinician discretion";
-        warnings.push("eGFR 30-44: Moderate risk - ensure adequate hydration");
+          "Prophylaxis is not indicated for the general population with stable eGFR ≥30. It may be considered only in individual high-risk circumstances such as numerous risk factors, recent AKI, or borderline eGFR.";
       } else {
-        renalRisk = "HIGH RISK";
+        higherRiskRenalPathway = true;
+        renalContext =
+          `Stable eGFR ${egfrValue} mL/min/1.73m² is within the higher-risk <30 threshold. Contrast concern is relative, not absolute; weigh diagnostic benefit, alternatives, and renal risk.`;
         renalRecommendation =
-          "IV saline prophylaxis strongly recommended (1 mL/kg/hr for 12h pre and post)";
-        warnings.push(
-          "eGFR <30: HIGH RISK for contrast-associated AKI - consider alternatives or ensure IV hydration protocol",
-        );
+          "IV isotonic volume expansion is indicated when clinically feasible; 0.9% normal saline is preferred, but the ideal infusion rate and volume are unknown. Use an individualized institutional regimen.";
+      }
+    } else if (renal_status === "stable") {
+      renalContext =
+        "Stable renal function was selected, but no eGFR was entered; the ACR eGFR threshold pathway cannot be assigned.";
+      renalRecommendation =
+        "Use the current renal assessment required by institutional screening policy when clinically indicated.";
+    } else if (egfrProvided || renal_status === "unknown") {
+      renalContext =
+        "Renal function stability and AKI status are unknown. A single eGFR does not determine the appropriate prophylaxis pathway.";
+      renalRecommendation =
+        "Assess for AKI, severe CKD, dialysis/residual kidney function, and volume-expansion risk before applying renal-safety guidance.";
+    }
+
+    if (higherRiskRenalPathway) {
+      diagnosticDoseNote =
+        "Do not reduce the diagnostic contrast dose solely to mitigate CI-AKI risk. If IV contrast is clinically necessary, use a standard diagnostic dose after individualized risk-benefit assessment.";
+      if (volume_expansion_risk === "none_known") {
+        volumeExpansionSafety =
+          "No known heart failure or hypervolemic condition was selected; apply the institutional isotonic-fluid protocol and monitor volume tolerance.";
+      } else if (volume_expansion_risk === "heart_failure_or_hypervolemia") {
+        volumeExpansionSafety =
+          "Heart failure or hypervolemia may make volume expansion harmful; individualize or defer prophylaxis with the responsible clinical team before initiation.";
+      } else {
+        volumeExpansionSafety =
+          "Assess volume tolerance, including heart failure and other hypervolemic conditions, before volume expansion.";
       }
     }
 
@@ -332,13 +439,25 @@ Risk Thresholds (IV contrast per ACR/NKF 2020):
     }
 
     // Build result object
+    const injectionRate =
+      recommendedFlowMin === recommendedFlowMax
+        ? `${recommendedFlowMin} mL/s`
+        : `${recommendedFlowMin}-${recommendedFlowMax} mL/s (recommended: ${recommendedFlow.toFixed(1)} mL/s)`;
+    const contrastWarming =
+      concentration === 300
+        ? "Routine warming is not supported for lower-viscosity 300 mg I/mL agents; ACR 2026 found insufficient supportive evidence."
+        : "Warming may be considered selectively to reduce viscosity and injection pressure for higher-viscosity agents or high-risk injections; it is not established as a routine requirement and must follow local handling policy.";
+
     const result = {
       "Recommended Contrast Volume": `${Math.round(contrastVolume)} mL`,
       "Total Iodine Dose": `${Math.round(totalIodineDose).toLocaleString()} mg I (${Math.round(totalIodineDose / dosingWeight)} mg I/kg ${dosingBasis})`,
-      "Injection Rate": `${recommendedFlowMin}-${recommendedFlowMax} mL/s (recommended: ${recommendedFlow.toFixed(1)} mL/s)`,
+      "Injection Rate": injectionRate,
       "Iodine Delivery Rate (IDR)": `${idr.toFixed(2)} g I/s - ${idrAssessment}`,
       "Injection Duration": `~${Math.round(injectionDuration)} seconds`,
-      "Saline Flush": `${salineFlush} mL at same rate`,
+      "Saline Flush": `${salineFlush} mL example at same rate; follow the diagnostic protocol and access limits`,
+      "Contrast Warming": contrastWarming,
+      "Acute Reaction Resources":
+        "For a suspected acute reaction, activate the local emergency response and use the official ACR Adult or Pediatric Contrast Reaction Card linked in References; this dosing calculator is not a treatment algorithm.",
     };
 
     // Add body composition info
@@ -353,11 +472,15 @@ Risk Thresholds (IV contrast per ACR/NKF 2020):
         `Volume reduced by ~${volumeSaved > 0 ? volumeSaved : 0} mL vs TBW dosing`;
     }
 
-    // Add renal risk if eGFR provided
-    if (!isNaN(egfrValue) && egfrValue > 0) {
-      result["Renal Risk Assessment"] =
-        `${renalRisk} (eGFR: ${egfrValue} mL/min/1.73m²)`;
+    if (renalContext) {
+      result["Renal Safety Context"] = renalContext;
       result["Renal Recommendation"] = renalRecommendation;
+    }
+    if (volumeExpansionSafety) {
+      result["Volume Expansion Safety"] = volumeExpansionSafety;
+    }
+    if (diagnosticDoseNote) {
+      result["Diagnostic Dose"] = diagnosticDoseNote;
     }
 
     // Add warnings if present
@@ -377,8 +500,9 @@ Risk Thresholds (IV contrast per ACR/NKF 2020):
         "CTA: Use bolus tracking or test bolus for optimal timing",
       );
     }
-    protocolNotes.push("Warm contrast to 37°C to reduce viscosity");
-    protocolNotes.push("Observe IV site for first 10-20 seconds of injection");
+    protocolNotes.push(
+      "Follow local injector monitoring policy, maintain patient communication, and observe the IV site during injection when feasible",
+    );
 
     result["Protocol Notes"] = protocolNotes.join("; ");
 
@@ -387,8 +511,16 @@ Risk Thresholds (IV contrast per ACR/NKF 2020):
 
   refs: [
     {
-      t: "ACR Manual on Contrast Media 2024/2025. American College of Radiology Committee on Drugs and Contrast Media.",
-      u: "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Contrast-Manual",
+      t: "ACR Manual on Contrast Media 2026. American College of Radiology Committee on Drugs and Contrast Media.",
+      u: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+    },
+    {
+      t: "ACR Adult Contrast Reaction Card (official quick-reference card).",
+      u: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Adult.pdf",
+    },
+    {
+      t: "ACR Pediatric Contrast Reaction Card (official quick-reference card).",
+      u: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf",
     },
     {
       t: "ESUR Guidelines on Contrast Agents Version 10.0. European Society of Urogenital Radiology.",

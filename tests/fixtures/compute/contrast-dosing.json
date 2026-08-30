@@ -1,0 +1,179 @@
+{
+  "calculatorId": "contrast-dosing",
+  "calculatorName": "IV Contrast Dosing",
+  "version": "acr-contrast-manual-2026-renal-warming-v1",
+  "cases": [
+    {
+      "id": "egfr-without-stability-status-fails-closed",
+      "description": "A single eGFR cannot select the prophylaxis pathway when AKI/stability status was not assessed.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "male",
+        "egfr": "25", "contrast_agent": "300", "study_type": "routine", "iv_access": "20g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Renal Safety Context", "includes": "stability and AKI status are unknown" },
+          { "key": "Renal Recommendation", "includes": "Assess for AKI" }
+        ]
+      }
+    },
+    {
+      "id": "stable-egfr-45-no-prophylaxis",
+      "description": "Stable eGFR exactly 45 is outside the ACR prophylaxis population.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "male",
+        "egfr": "45", "renal_status": "stable", "contrast_agent": "300", "study_type": "routine", "iv_access": "20g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Renal Safety Context", "includes": "not an independent nephrotoxic risk factor" },
+          { "key": "Renal Recommendation", "includes": "Prophylaxis is not indicated" }
+        ]
+      }
+    },
+    {
+      "id": "stable-egfr-30-no-routine-prophylaxis",
+      "description": "Stable eGFR exactly 30 remains outside routine prophylaxis for the general population.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "male",
+        "egfr": "30", "renal_status": "stable", "contrast_agent": "300", "study_type": "routine", "iv_access": "20g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Renal Recommendation", "includes": "not indicated for the general population" },
+          { "key": "Renal Recommendation", "includes": "individual high-risk circumstances" }
+        ]
+      }
+    },
+    {
+      "id": "stable-egfr-44-individual-high-risk-only",
+      "description": "Stable eGFR 44 may receive prophylaxis only after an individualized high-risk assessment.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "female",
+        "egfr": "44", "renal_status": "stable", "contrast_agent": "350", "study_type": "hepatic", "iv_access": "18g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Renal Safety Context", "includes": "either not nephrotoxic or rarely so" },
+          { "key": "Renal Recommendation", "includes": "individual high-risk circumstances" },
+          { "key": "Renal Recommendation", "includes": "recent AKI" }
+        ]
+      }
+    },
+    {
+      "id": "stable-egfr-29-isotonic-prophylaxis",
+      "description": "Stable eGFR below 30 enters the prophylaxis pathway without inventing one fixed regimen.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "male",
+        "egfr": "29", "renal_status": "stable", "volume_expansion_risk": "none_known", "contrast_agent": "300", "study_type": "routine", "iv_access": "20g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Renal Safety Context", "includes": "Contrast concern is relative, not absolute" },
+          { "key": "Renal Recommendation", "includes": "IV isotonic volume expansion is indicated" },
+          { "key": "Renal Recommendation", "includes": "0.9% normal saline is preferred" },
+          { "key": "Renal Recommendation", "includes": "ideal infusion rate and volume are unknown" },
+          { "key": "Diagnostic Dose", "includes": "Do not reduce the diagnostic contrast dose solely to mitigate CI-AKI risk" }
+        ]
+      }
+    },
+    {
+      "id": "aki-egfr-is-unreliable",
+      "description": "Known or suspected AKI follows the high-risk pathway regardless of the displayed eGFR.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "male",
+        "egfr": "45", "renal_status": "aki", "volume_expansion_risk": "heart_failure_or_hypervolemia", "contrast_agent": "300", "study_type": "routine", "iv_access": "20g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Renal Safety Context", "includes": "eGFR is unreliable for AKI risk stratification" },
+          { "key": "Renal Safety Context", "includes": "relative, not absolute, concern" },
+          { "key": "Renal Recommendation", "includes": "IV isotonic volume expansion is indicated" },
+          { "key": "Volume Expansion Safety", "includes": "Heart failure or hypervolemia" }
+        ]
+      }
+    },
+    {
+      "id": "anuric-dialysis-no-ciaki-prophylaxis",
+      "description": "Anuric maintenance dialysis without a functioning transplant has no additional renal injury to prevent.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "female",
+        "renal_status": "dialysis_anuric", "contrast_agent": "300", "study_type": "routine", "iv_access": "20g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Renal Safety Context", "includes": "not at risk for further renal injury from iodinated contrast" },
+          { "key": "Renal Recommendation", "includes": "Prophylaxis is not indicated for contrast-induced acute kidney injury (CI-AKI) prevention" }
+        ]
+      }
+    },
+    {
+      "id": "dialysis-residual-function-higher-risk",
+      "description": "Dialysis with residual kidney function is treated like other high-risk renal states.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "female",
+        "renal_status": "dialysis_residual", "volume_expansion_risk": "uncertain", "contrast_agent": "300", "study_type": "routine", "iv_access": "20g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Renal Safety Context", "includes": "residual kidney function" },
+          { "key": "Renal Safety Context", "includes": "higher-risk renal state" },
+          { "key": "Volume Expansion Safety", "includes": "Assess volume tolerance" }
+        ]
+      }
+    },
+    {
+      "id": "lower-viscosity-300-no-routine-warming",
+      "description": "The ACR 2026 warming chapter does not support routine warming of lower-viscosity 300 mg I/mL agents.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "male",
+        "contrast_agent": "300", "study_type": "routine", "iv_access": "20g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Contrast Warming", "includes": "Routine warming is not supported" },
+          { "key": "Contrast Warming", "includes": "lower-viscosity 300 mg I/mL" },
+          { "key": "Acute Reaction Resources", "includes": "official ACR Adult or Pediatric Contrast Reaction Card" }
+        ]
+      }
+    },
+    {
+      "id": "higher-viscosity-370-selective-warming",
+      "description": "Higher-viscosity warming is a selective consideration, not a routine requirement.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "male",
+        "contrast_agent": "370", "study_type": "cta", "iv_access": "18g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Contrast Warming", "includes": "may be considered selectively" },
+          { "key": "Contrast Warming", "includes": "not established as a routine requirement" }
+        ]
+      }
+    },
+    {
+      "id": "single-value-injection-rate-not-duplicated",
+      "description": "When protocol and access intersect at one rate, render one value rather than 3-3.",
+      "inputs": {
+        "weight_unit": "kg", "weight": "70", "height_unit": "cm", "height": "175", "sex": "male",
+        "contrast_agent": "300", "study_type": "routine", "iv_access": "20g"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "Injection Rate", "includes": "3 mL/s" }
+        ]
+      }
+    }
+  ]
+}

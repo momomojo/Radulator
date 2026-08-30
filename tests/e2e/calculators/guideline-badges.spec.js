@@ -40,6 +40,11 @@ test.describe("Guideline Version Badges", () => {
         name: "Bosniak Classification (Renal Cysts)",
         expected: "Bosniak v2019",
       },
+      {
+        name: "IV Contrast Dosing",
+        expected:
+          "ACR Manual on Contrast Media 2026 (renal safety and warming context)",
+      },
     ];
 
     for (const { name, expected } of badgeTests) {
@@ -58,7 +63,6 @@ test.describe("Guideline Version Badges", () => {
     const noBadgeCalcs = [
       "Adrenal CT Washout",
       "Adrenal MRI Chemical Shift",
-      "Contrast Dosing",
       "Prostate Volume",
     ];
 

@@ -341,12 +341,127 @@
     {
       "calculator_id": "contrast-dosing",
       "title": "IV Contrast Dosing",
-      "implemented_version": "Local dosing model with ACR and ESUR contrast guidance context",
+      "implemented_version": "Local dosing model with ACR Manual on Contrast Media 2026 renal-safety and warming context",
       "basis_type": "clinical-guideline",
-      "verification_status": "seed-unverified",
-      "last_verified": null,
-      "justification": "Uses locally encoded dosing choices with contrast-safety guidance context; no current manual version is asserted until the ACR source is rechecked.",
-      "sources": [{ "authority": "American College of Radiology", "title": "ACR Manual on Contrast Media", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Contrast-Manual" }]
+      "verification_status": "verified",
+      "last_verified": "2026-08-29",
+      "justification": "The exact ACR 2026 manual and official adult/pediatric reaction-card PDFs are byte-pinned and bound to executable renal-safety and warming vectors. Verification is deliberately limited to those claims and the official card links; the study-type iodine targets, volume cap, access-flow ranges, and saline-flush default remain locally encoded planning defaults rather than ACR-verified universal protocols.",
+      "sources": [
+        {
+          "authority": "American College of Radiology",
+          "title": "ACR Manual on Contrast Media 2026",
+          "role": "official-authority",
+          "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+          "artifact_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2"
+        },
+        {
+          "authority": "American College of Radiology",
+          "title": "ACR Adult Contrast Reaction Card",
+          "role": "official-authority",
+          "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Adult.pdf",
+          "artifact_sha256": "8e01c557097de36dd38706f1ce9bc540797bdee5e43534db3f6123bfabb963fb"
+        },
+        {
+          "authority": "American College of Radiology",
+          "title": "ACR Pediatric Contrast Reaction Card",
+          "role": "official-authority",
+          "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf",
+          "artifact_sha256": "4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f"
+        }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/ContrastDosing.jsx",
+        "fixture_path": "tests/fixtures/compute/contrast-dosing.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "ACR Manual on Contrast Media 2026 (renal safety and warming context)"
+        },
+        "source_audit": {
+          "schema": "radulator-live-source-audit/v1",
+          "command": "npm run test:contrast-source",
+          "authority": "American College of Radiology",
+          "source_urls": [
+            "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+            "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Adult.pdf",
+            "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf"
+          ],
+          "vector_ids": [
+            "egfr-without-stability-status-fails-closed",
+            "stable-egfr-45-no-prophylaxis",
+            "stable-egfr-30-no-routine-prophylaxis",
+            "stable-egfr-44-individual-high-risk-only",
+            "stable-egfr-29-isotonic-prophylaxis",
+            "aki-egfr-is-unreliable",
+            "anuric-dialysis-no-ciaki-prophylaxis",
+            "dialysis-residual-function-higher-risk",
+            "lower-viscosity-300-no-routine-warming",
+            "higher-viscosity-370-selective-warming"
+          ],
+          "source_bytes_committed": false
+        },
+        "claims": [
+          {
+            "id": "acr-2026-stable-egfr-prophylaxis",
+            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+            "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
+            "source_locator": "Manual PDF pp. 43-44 and 47 (printed pp. 40-41 and 44): stable eGFR risk evidence and prophylaxis indications",
+            "fact": "Stable eGFR 45 or greater is not an independent nephrotoxic risk factor; routine prophylaxis is not indicated for stable eGFR 30 or greater, while eGFR 30-44 may be considered individually only in high-risk circumstances.",
+            "dimensions": ["scope", "threshold", "boundary", "management", "output"],
+            "vector_ids": [
+              "stable-egfr-45-no-prophylaxis",
+              "stable-egfr-30-no-routine-prophylaxis",
+              "stable-egfr-44-individual-high-risk-only"
+            ]
+          },
+          {
+            "id": "acr-2026-aki-and-egfr-under-30",
+            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+            "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
+            "source_locator": "Manual PDF pp. 44-46 (printed pp. 41-43): AKI threshold unreliability, caution, standard diagnostic dose, volume expansion, and prophylaxis",
+            "fact": "For AKI, no serum creatinine or eGFR threshold adequately stratifies risk because serum creatinine is unreliable. AKI or stable eGFR below 30 enters the higher-risk pathway; use isotonic volume expansion when appropriate, prefer normal saline, recognize the ideal regimen is unknown, assess volume tolerance, and do not underdose diagnostic IV contrast solely to mitigate CI-AKI risk.",
+            "dimensions": ["scope", "threshold", "management", "interpretation", "output"],
+            "vector_ids": ["egfr-without-stability-status-fails-closed", "stable-egfr-29-isotonic-prophylaxis", "aki-egfr-is-unreliable"]
+          },
+          {
+            "id": "acr-2026-dialysis-renal-function",
+            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+            "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
+            "source_locator": "Manual PDF p. 47 (printed p. 44): anuric dialysis and residual renal function",
+            "fact": "Anuric end-stage kidney disease without a functioning transplant has no further renal injury to prevent, while dialysis patients with residual urine output should be treated as higher risk for loss of residual function.",
+            "dimensions": ["scope", "management", "interpretation", "output"],
+            "vector_ids": ["anuric-dialysis-no-ciaki-prophylaxis", "dialysis-residual-function-higher-risk"]
+          },
+          {
+            "id": "acr-2026-contrast-warming",
+            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+            "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
+            "source_locator": "Manual PDF p. 35 (printed p. 32): warming recommendations and limited evidence grades",
+            "fact": "Routine warming is not recommended for lower-viscosity iodinated agents; higher-viscosity warming may be considered selectively to reduce viscosity or injection pressure but is not a routine requirement.",
+            "dimensions": ["management", "interpretation", "output"],
+            "vector_ids": ["lower-viscosity-300-no-routine-warming", "higher-viscosity-370-selective-warming"]
+          },
+          {
+            "id": "acr-adult-reaction-card-link",
+            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Adult.pdf",
+            "source_sha256": "8e01c557097de36dd38706f1ce9bc540797bdee5e43534db3f6123bfabb963fb",
+            "source_locator": "Official ACR Adult Contrast Reaction Card PDF",
+            "fact": "The result directs suspected acute reactions to the linked official adult or pediatric reaction card and explicitly does not present the dosing calculator as a treatment algorithm.",
+            "dimensions": ["scope", "management", "output"],
+            "vector_ids": ["lower-viscosity-300-no-routine-warming"]
+          },
+          {
+            "id": "acr-pediatric-reaction-card-link",
+            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf",
+            "source_sha256": "4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f",
+            "source_locator": "Official ACR Pediatric Contrast Reaction Card PDF",
+            "fact": "The result directs suspected acute reactions to the linked official adult or pediatric reaction card and explicitly does not present the dosing calculator as a treatment algorithm.",
+            "dimensions": ["scope", "management", "output"],
+            "vector_ids": ["lower-viscosity-300-no-routine-warming"]
+          }
+        ]
+      }
     },
     {
       "calculator_id": "dlp-dose",
