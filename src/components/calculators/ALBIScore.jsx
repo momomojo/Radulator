@@ -1,14 +1,13 @@
 // ALBI Score (Albumin-Bilirubin Grade)
 // Formula from Johnson et al. J Clin Oncol 2015;33(6):550-558
-// ALBI Score = (log₁₀ bilirubin [μmol/L] × 0.66) + (albumin [g/L] × −0.0852)
+// ALBI Score = (log₁₀ bilirubin [μmol/L] × 0.66) + (albumin [g/L] × −0.085)
 //
 // Grading criteria:
-// - Grade 1: ≤ −2.60 (Best liver function)
+// - Grade 1: ≤ −2.60 (source-defined lowest-risk group)
 // - Grade 2: > −2.60 to ≤ −1.39 (Intermediate)
-// - Grade 3: > −1.39 (Worst liver function)
+// - Grade 3: > −1.39 (source-defined highest-risk group)
 //
-// Originally derived from Ho et al. Br J Cancer 1996;74(11):1838-1842
-// Validated in Johnson et al. 2015 for HCC prognosis
+// Developed and validated in Johnson et al. 2015 for HCC prognosis
 //
 // Unit conversions:
 // - Bilirubin: mg/dL → μmol/L (multiply by 17.104)
@@ -23,22 +22,16 @@ export const ALBIScore = {
   keywords: ["liver function", "HCC", "hepatocellular", "albumin", "bilirubin"],
   tags: ["Hepatology", "Oncology"],
   metaDesc:
-    "Free ALBI Score Calculator. Calculate Albumin-Bilirubin grade for objective liver function assessment in HCC. Supports SI and US units. Evidence-based prognosis.",
+    "Free ALBI Score Calculator. Calculate the source-defined Albumin-Bilirubin grade for objective liver function assessment in HCC. Supports SI and US units.",
   info: {
-    text: `The ALBI grade provides an objective, evidence-based assessment of liver function severity using only albumin and bilirubin. It was developed specifically for patients with hepatocellular carcinoma (HCC) and offers several advantages over Child-Pugh classification:
+    text: `The original ALBI model provides an objective assessment of liver function using only albumin and bilirubin. Johnson et al. developed it in 1,313 patients with hepatocellular carcinoma (HCC), then tested it in additional geographic, resection, and sorafenib cohorts and in patients with chronic liver disease without HCC.
 
 • More objective (no subjective parameters like ascites/encephalopathy)
-• Better prognostic discrimination, especially in well-compensated patients
 • Uses only two readily available laboratory values
-• Validated across multiple HCC cohorts and treatment modalities
+• Produces a continuous linear predictor and three source-defined risk groups
+• Was evaluated across multiple HCC cohorts and clinical settings
 
-The ALBI score is increasingly used for:
-- Refining prognosis within BCLC stages (particularly Stage B substratification)
-- Treatment selection and response prediction
-- Clinical trial stratification
-- Longitudinal monitoring of liver function
-
-Note: ALBI complements but does not replace Child-Pugh in BCLC staging.`,
+Scope: ALBI describes liver-function prognosis in studied cohorts. It does not include tumor burden, determine treatment eligibility, or replace individualized clinical assessment.`,
     link: {
       label: "View Johnson et al. 2015 Original Study",
       url: "https://doi.org/10.1200/JCO.2014.57.9151",
@@ -110,28 +103,28 @@ Note: ALBI complements but does not replace Child-Pugh in BCLC staging.`,
     }
 
     // Calculate ALBI Score
-    // Formula: (log₁₀ bilirubin [μmol/L] × 0.66) + (albumin [g/L] × −0.0852)
-    const albiScore = Math.log10(biliSI) * 0.66 + albSI * -0.0852;
+    // Formula printed by Johnson et al. 2015:
+    // (log₁₀ bilirubin [μmol/L] × 0.66) + (albumin [g/L] × −0.085)
+    const albiScore = Math.log10(biliSI) * 0.66 + albSI * -0.085;
 
     // Determine ALBI Grade
     let albiGrade, gradeInterpretation, prognosis;
 
     if (albiScore <= -2.6) {
       albiGrade = 1;
-      gradeInterpretation = "Best liver function - well-compensated";
+      gradeInterpretation = "Lowest-risk group in the original ALBI model";
       prognosis =
-        "Grade 1 patients have the best prognosis. Median survival in original cohort: 85.6 months. Suitable for curative therapies (resection, ablation, transplant) and all systemic treatments.";
+        "Source-defined Grade 1 (linear predictor ≤ −2.60). ALBI describes liver-function prognosis in studied cohorts; it does not determine treatment eligibility for an individual patient.";
     } else if (albiScore <= -1.39) {
       albiGrade = 2;
-      gradeInterpretation =
-        "Intermediate liver function - moderately compensated";
+      gradeInterpretation = "Intermediate-risk group in the original ALBI model";
       prognosis =
-        "Grade 2 patients have intermediate prognosis. Median survival in original cohort: 23.1 months. May be suitable for locoregional therapies (TACE, TARE) and systemic treatments with monitoring.";
+        "Source-defined Grade 2 (linear predictor > −2.60 to ≤ −1.39). ALBI describes liver-function prognosis in studied cohorts; it does not determine treatment eligibility for an individual patient.";
     } else {
       albiGrade = 3;
-      gradeInterpretation = "Worst liver function - poorly compensated";
+      gradeInterpretation = "Highest-risk group in the original ALBI model";
       prognosis =
-        "Grade 3 patients have the poorest prognosis. Median survival in original cohort: 6.6 months. Treatment options limited; consider best supportive care or clinical trials. Systemic therapy requires careful assessment of liver reserve.";
+        "Source-defined Grade 3 (linear predictor > −1.39). ALBI describes liver-function prognosis in studied cohorts; it does not determine treatment eligibility for an individual patient.";
     }
 
     // Build output object

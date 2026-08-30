@@ -19,12 +19,12 @@ async function expectAlbiGrade(page, grade) {
  * ALBI Score Calculator E2E Tests
  *
  * Tests the Albumin-Bilirubin (ALBI) grade calculator for liver function assessment
- * Formula: (log₁₀ bilirubin [μmol/L] × 0.66) + (albumin [g/L] × −0.0852)
+ * Formula: (log₁₀ bilirubin [μmol/L] × 0.66) + (albumin [g/L] × −0.085)
  *
  * Grading:
- * - Grade 1: ≤ −2.60 (Best liver function)
+ * - Grade 1: ≤ −2.60 (source-defined lowest-risk group)
  * - Grade 2: > −2.60 to ≤ −1.39 (Intermediate)
- * - Grade 3: > −1.39 (Worst liver function)
+ * - Grade 3: > −1.39 (source-defined highest-risk group)
  *
  * Reference: Johnson et al. J Clin Oncol 2015;33(6):550-558
  */
@@ -152,9 +152,9 @@ test.describe('ALBI Score Calculator', () => {
 
   test.describe('ALBI Score Calculations - SI Units', () => {
 
-    test('Grade 1 - Best liver function (ALBI ≤ -2.60)', async ({ page }) => {
+    test('Grade 1 - source-defined lowest-risk group (ALBI ≤ -2.60)', async ({ page }) => {
       // Test case: Albumin 40 g/L, Bilirubin 10 μmol/L
-      // Expected ALBI Score ≈ -2.742
+      // Expected ALBI Score = -2.740
 
       // Select SI units
       const siRadio = page.locator('input[type="radio"][value="SI"]');
@@ -182,15 +182,15 @@ test.describe('ALBI Score Calculator', () => {
       await expectAlbiGrade(page, 1);
 
       // Check for ALBI score in expected range
-      await expectResultText(page, /ALBI Score:\s*-2\.748/);
+      await expectResultText(page, /ALBI Score:\s*-2\.740/);
 
       // Check for interpretation
-      await expect(resultsRegion(page)).toContainText(/Best liver function|well-compensated/i);
+      await expect(resultsRegion(page)).toContainText(/Lowest-risk group/i);
     });
 
-    test('Grade 2 - Intermediate function (ALBI > -2.60 to ≤ -1.39)', async ({ page }) => {
+    test('Grade 2 - Source-defined intermediate-risk group (ALBI > -2.60 to ≤ -1.39)', async ({ page }) => {
       // Test case: Albumin 35 g/L, Bilirubin 17 μmol/L
-      // Expected ALBI Score ≈ -2.164
+      // Expected ALBI Score ≈ -2.163
 
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       if (await siRadio.isVisible()) {
@@ -212,14 +212,15 @@ test.describe('ALBI Score Calculator', () => {
 
       // Check for Grade 2 result
       await expectAlbiGrade(page, 2);
+      await expectResultText(page, /ALBI Score:\s*-2\.163/);
 
       // Check for interpretation
-      await expect(resultsRegion(page)).toContainText(/Intermediate|moderately compensated/i);
+      await expect(resultsRegion(page)).toContainText(/Intermediate-risk group/i);
     });
 
-    test('Grade 3 - Worst function (ALBI > -1.39)', async ({ page }) => {
+    test('Grade 3 - Source-defined highest-risk group (ALBI > -1.39)', async ({ page }) => {
       // Test case: Albumin 25 g/L, Bilirubin 50 μmol/L
-      // Expected ALBI Score ≈ -1.003
+      // Expected ALBI Score ≈ -1.004
 
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       if (await siRadio.isVisible()) {
@@ -241,13 +242,14 @@ test.describe('ALBI Score Calculator', () => {
 
       // Check for Grade 3 result
       await expectAlbiGrade(page, 3);
+      await expectResultText(page, /ALBI Score:\s*-1\.004/);
 
       // Check for interpretation
-      await expect(resultsRegion(page)).toContainText(/Worst|poorly compensated/i);
+      await expect(resultsRegion(page)).toContainText(/Highest-risk group/i);
     });
 
-    test('Boundary case - Grade 1/2 boundary (ALBI = -2.60)', async ({ page }) => {
-      // Albumin 38.7 g/L, Bilirubin 11 μmol/L → ALBI ≈ -2.610
+    test('Boundary case - exact Grade 1/2 boundary (ALBI = -2.60)', async ({ page }) => {
+      // Albumin 38.35294117647059 g/L, bilirubin 10 μmol/L → ALBI = -2.60
 
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       if (await siRadio.isVisible()) {
@@ -257,8 +259,8 @@ test.describe('ALBI Score Calculator', () => {
       const albuminInput = page.locator('input[type="number"]').first();
       const bilirubinInput = page.locator('input[type="number"]').nth(1);
 
-      await albuminInput.fill('38.7');
-      await bilirubinInput.fill('11');
+      await albuminInput.fill('38.35294117647059');
+      await bilirubinInput.fill('10');
 
       const computeButton = page.locator('button:has-text("Compute"), button:has-text("Calculate")').first();
       if (await computeButton.isVisible()) {
@@ -269,10 +271,11 @@ test.describe('ALBI Score Calculator', () => {
 
       // Should be Grade 1 (at or below the -2.60 cutoff)
       await expectAlbiGrade(page, 1);
+      await expectResultText(page, /ALBI Score:\s*-2\.600/);
     });
 
-    test('Boundary case - Grade 2/3 boundary (ALBI = -1.39)', async ({ page }) => {
-      // Albumin 27 g/L, Bilirubin 28 μmol/L → ALBI ≈ -1.345
+    test('Boundary case - exact Grade 2/3 boundary (ALBI = -1.39)', async ({ page }) => {
+      // Albumin 24.11764705882353 g/L, bilirubin 10 μmol/L → ALBI = -1.39
 
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       if (await siRadio.isVisible()) {
@@ -282,8 +285,8 @@ test.describe('ALBI Score Calculator', () => {
       const albuminInput = page.locator('input[type="number"]').first();
       const bilirubinInput = page.locator('input[type="number"]').nth(1);
 
-      await albuminInput.fill('27');
-      await bilirubinInput.fill('28');
+      await albuminInput.fill('24.11764705882353');
+      await bilirubinInput.fill('10');
 
       const computeButton = page.locator('button:has-text("Compute"), button:has-text("Calculate")').first();
       if (await computeButton.isVisible()) {
@@ -292,8 +295,9 @@ test.describe('ALBI Score Calculator', () => {
 
 
 
-      // Should be Grade 3 (above the -1.39 cutoff)
-      await expectAlbiGrade(page, 3);
+      // Should remain Grade 2 because the upper boundary is inclusive.
+      await expectAlbiGrade(page, 2);
+      await expectResultText(page, /ALBI Score:\s*-1\.390/);
     });
   });
 
@@ -301,7 +305,7 @@ test.describe('ALBI Score Calculator', () => {
 
     test('US units conversion - Grade 1', async ({ page }) => {
       // Test case: Albumin 4.0 g/dL, Bilirubin 0.5 mg/dL
-      // Converts to: 40 g/L, 8.55 μmol/L → ALBI ≈ -2.776
+      // Converts to: 40 g/L, 8.55 μmol/L → ALBI ≈ -2.785
 
       const usRadio = page.locator('input[type="radio"][value="US"]');
       if (await usRadio.isVisible()) {
@@ -500,11 +504,12 @@ test.describe('ALBI Score Calculator', () => {
 
 
 
-      // Should show prognosis information
-      await expect(resultsRegion(page)).toContainText(/median survival|prognosis|suitable for/i);
+      // Should show the source-defined group and explicit individual-use boundary.
+      await expect(resultsRegion(page)).toContainText(/Source-defined Grade 1/i);
+      await expect(resultsRegion(page)).toContainText(/does not determine treatment eligibility/i);
     });
 
-    test('should display appropriate treatment recommendations', async ({ page }) => {
+    test('should not infer treatment eligibility from Grade 3', async ({ page }) => {
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       if (await siRadio.isVisible()) {
         await siRadio.check();
@@ -524,8 +529,9 @@ test.describe('ALBI Score Calculator', () => {
 
 
 
-      // Should mention treatment limitations for Grade 3
-      await expect(resultsRegion(page)).toContainText(/best supportive care|limited|careful assessment/i);
+      await expect(resultsRegion(page)).toContainText(/Source-defined Grade 3/i);
+      await expect(resultsRegion(page)).toContainText(/does not determine treatment eligibility/i);
+      await expect(resultsRegion(page)).not.toContainText(/best supportive care|curative therapies/i);
     });
   });
 
@@ -601,7 +607,7 @@ test.describe('ALBI Score Calculator', () => {
 
     test('should match expected ALBI score for known values', async ({ page }) => {
       // Test case from literature: Albumin 40 g/L, Bilirubin 10 μmol/L
-      // Expected: (log10(10) * 0.66) + (40 * -0.0852) = 0.66 - 3.408 = -2.748
+      // Expected: (log10(10) * 0.66) + (40 * -0.085) = 0.66 - 3.4 = -2.740
 
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       if (await siRadio.isVisible()) {
@@ -621,8 +627,7 @@ test.describe('ALBI Score Calculator', () => {
 
 
 
-      // Check for score in range -2.74 to -2.75
-      await expectResultText(page, /ALBI Score:\s*-2\.748/);
+      await expectResultText(page, /ALBI Score:\s*-2\.740/);
     });
 
     test('should verify unit conversion accuracy', async ({ page }) => {
