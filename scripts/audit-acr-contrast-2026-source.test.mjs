@@ -35,7 +35,11 @@ assert.deepEqual(audit.source_sha256, {
   pediatric_card: "4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f",
 });
 assert.equal(Object.values(audit.source_claims).every(Boolean), true);
-assert.equal(Object.keys(audit.source_claims).length, 10);
+assert.equal(Object.keys(audit.source_claims).length, 11);
+assert.equal(
+  audit.source_claims.aki_egfr_threshold_inadequate_serum_creatinine_unreliable,
+  true,
+);
 assert.deepEqual(audit.source_text_verification, {
   engine: "pdfjs-dist@4.10.38",
   manual_pdf_pages: [35, 43, 44, 45, 46, 47],
@@ -43,6 +47,7 @@ assert.deepEqual(audit.source_text_verification, {
   verified_claim_ids: [
     "stable-egfr-45-not-independent-risk",
     "stable-egfr-30-44-not-or-rarely-nephrotoxic",
+    "aki-egfr-threshold-inadequate-serum-creatinine-unreliable",
     "aki-or-egfr-under-30-relative-not-absolute",
     "standard-diagnostic-dose-not-reduced",
     "isotonic-normal-saline-preferred-regimen-unknown",
@@ -55,11 +60,21 @@ assert.deepEqual(audit.source_text_verification, {
     "higher-viscosity-warming-selective-not-routine",
   ],
 });
+assert.deepEqual(audit.source_runtime_bindings, [
+  {
+    source_claim_id: "aki-egfr-threshold-inadequate-serum-creatinine-unreliable",
+    manual_pdf_page: 44,
+    manual_printed_page: 41,
+    vector_id: "aki-egfr-is-unreliable",
+    output_field: "Renal Safety Context",
+    output_includes: "eGFR is unreliable for AKI risk stratification",
+  },
+]);
 assert.equal(audit.bound_vector_ids.length, 10);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "ACR Contrast 2026 source audit verified exact manual/card bytes, 12 page-extracted source statements, and 10 executable renal/warming vectors.",
+  "ACR Contrast 2026 source audit verified exact manual/card bytes, 13 page-extracted source statements, 11 source claims, and 10 executable renal/warming vectors.",
 );
