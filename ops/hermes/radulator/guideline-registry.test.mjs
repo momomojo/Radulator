@@ -393,27 +393,33 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     );
     assert.equal(
       audit.authority,
-      "U.S. Food and Drug Administration",
+      "American College of Radiology",
       `${label}.source_audit.authority`,
     );
     assert.deepEqual(
       audit.source_urls,
       [
-        "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
-        "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
-        "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
-        "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement",
+        "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
       ],
       `${label}.source_audit.source_urls`,
     );
     assert.deepEqual(
       audit.vector_ids,
       [
-        "category-3",
-        "category-4",
-        "category-5",
-        "incomplete-prior-comparison",
-        "post-procedure-marker",
+        "mammography-incomplete",
+        "ultrasound-incomplete",
+        "mri-incomplete",
+        "known-biopsy-proven-malignancy",
+        "negative-screening",
+        "benign-finding",
+        "typically-benign-calcifications-are-category-2",
+        "probably-benign-mass",
+        "low-suspicion-mass",
+        "moderate-suspicion-calcifications",
+        "high-suspicion-spiculated-mass",
+        "highly-suggestive-linear-calcifications",
+        "probably-benign-selection-warns-on-suspicious-mass-descriptors",
+        "screening-mammography-probably-benign-needs-diagnostic-workup",
       ],
       `${label}.source_audit.vector_ids`,
     );
@@ -544,10 +550,10 @@ for (const calculator of calculators) {
 for (const [calculatorId, expected] of Object.entries({
   birads: {
     basis_type: "classification-system",
-    last_verified: "2026-08-26",
+    last_verified: "2026-08-29",
     source_urls: [
       "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
-      "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
+      "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
     ],
   },
   "cac-mesa": {

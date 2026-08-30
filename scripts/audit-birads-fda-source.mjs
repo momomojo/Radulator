@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// Historical filename retained for workflow compatibility during the temporary
+// 2013 rollback. This audit is ACR-specific and makes no FDA/MQSA claim.
+
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -7,39 +10,43 @@ import process from "node:process";
 import { BIRADS } from "../src/components/calculators/BIRADS.jsx";
 
 const FIXTURE_PATH = "tests/fixtures/compute/birads.json";
-const SOURCE_HOST = "www.fda.gov";
-const SOURCES = Object.freeze({
-  finalRule:
-    "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
-  faq:
-    "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
-  alternative25:
-    "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
-  alternative12:
-    "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement",
-});
+const SOURCE_HOST = "edge.sitecorecloud.io";
+const SOURCE_URL =
+  "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf";
+const EXPECTED_SOURCE_SIZE = 621_351;
+const EXPECTED_SOURCE_SHA256 =
+  "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410";
 const BOUND_VECTOR_IDS = Object.freeze([
-  "category-3",
-  "category-4",
-  "category-5",
-  "incomplete-prior-comparison",
-  "post-procedure-marker",
+  "mammography-incomplete",
+  "ultrasound-incomplete",
+  "mri-incomplete",
+  "known-biopsy-proven-malignancy",
+  "negative-screening",
+  "benign-finding",
+  "typically-benign-calcifications-are-category-2",
+  "probably-benign-mass",
+  "low-suspicion-mass",
+  "moderate-suspicion-calcifications",
+  "high-suspicion-spiculated-mass",
+  "highly-suggestive-linear-calcifications",
+  "probably-benign-selection-warns-on-suspicious-mass-descriptors",
+  "screening-mammography-probably-benign-needs-diagnostic-workup",
 ]);
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-async function fetchOfficialHtml(url) {
-  const expected = new URL(url);
-  assert.equal(expected.protocol, "https:", `${url}: source must use HTTPS`);
-  assert.equal(expected.hostname, SOURCE_HOST, `${url}: source must be an FDA host`);
+async function fetchOfficialArtifact() {
+  const expected = new URL(SOURCE_URL);
+  assert.equal(expected.protocol, "https:");
+  assert.equal(expected.hostname, SOURCE_HOST);
 
   let lastFailure = "unknown retrieval failure";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const response = await fetch(url, {
-        headers: { "user-agent": "Radulator-BIRADS-FDA-source-audit/1" },
+      const response = await fetch(SOURCE_URL, {
+        headers: { "user-agent": "Radulator-BIRADS-legacy-source-audit/1" },
         redirect: "follow",
         signal: AbortSignal.timeout(30_000),
       });
@@ -49,18 +56,19 @@ async function fetchOfficialHtml(url) {
         if (response.status !== 429 && response.status < 500) break;
       } else {
         const finalUrl = new URL(response.url);
-        assert.equal(finalUrl.protocol, "https:", `${url}: redirect left HTTPS`);
-        assert.equal(finalUrl.hostname, SOURCE_HOST, `${url}: redirect left FDA`);
-        assert.equal(finalUrl.pathname, expected.pathname, `${url}: unexpected redirect path`);
+        assert.equal(finalUrl.protocol, "https:", "artifact redirect left HTTPS");
+        assert.equal(finalUrl.hostname, SOURCE_HOST, "artifact redirect left the sealed host");
+        assert.equal(finalUrl.pathname, expected.pathname, "artifact redirect changed the sealed path");
         assert.match(
           response.headers.get("content-type") ?? "",
-          /^text\/html\b/i,
-          `${url}: source must be HTML`,
+          /^application\/pdf\b/i,
+          "official ACR artifact must be a PDF",
         );
         const bytes = Buffer.from(await response.arrayBuffer());
-        assert.ok(bytes.length > 1_000, `${url}: source response is unexpectedly small`);
-        assert.ok(bytes.length <= 2_000_000, `${url}: source response is unexpectedly large`);
-        return { bytes, html: bytes.toString("utf8"), url };
+        assert.equal(bytes.length, EXPECTED_SOURCE_SIZE, "official ACR artifact size drifted");
+        assert.equal(sha256(bytes), EXPECTED_SOURCE_SHA256, "official ACR artifact digest drifted");
+        assert.equal(bytes.subarray(0, 5).toString("ascii"), "%PDF-", "artifact lacks a PDF header");
+        return bytes;
       }
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error);
@@ -69,53 +77,12 @@ async function fetchOfficialHtml(url) {
       await new Promise((resolve) => setTimeout(resolve, attempt * 500));
     }
   }
-  assert.fail(`${url}: official FDA retrieval failed after 3 attempts (${lastFailure})`);
-}
-
-function decodeHtmlEntities(value) {
-  const named = new Map([
-    ["amp", "&"],
-    ["apos", "'"],
-    ["gt", ">"],
-    ["lt", "<"],
-    ["nbsp", " "],
-    ["quot", '"'],
-  ]);
-  return value
-    .replace(/&#x([a-f0-9]+);/gi, (_, digits) =>
-      String.fromCodePoint(Number.parseInt(digits, 16)),
-    )
-    .replace(/&#([0-9]+);/g, (_, digits) => String.fromCodePoint(Number(digits)))
-    .replace(/&([a-z]+);/gi, (entity, name) => named.get(name.toLowerCase()) ?? entity);
-}
-
-function visibleText(html) {
-  return decodeHtmlEntities(
-    html
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " "),
-  )
-    .normalize("NFKC")
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-
-function requireAll(text, label, fragments) {
-  for (const fragment of fragments) {
-    assert.ok(text.includes(fragment), `${label}: official FDA text lacks ${JSON.stringify(fragment)}`);
-  }
+  assert.fail(`official ACR retrieval failed after 3 attempts (${lastFailure})`);
 }
 
 function assertFixtureExpectation(result, expectation, vectorId) {
-  assert.equal(
-    Object.prototype.hasOwnProperty.call(result, "Error"),
-    expectation.noError === false,
-    `${vectorId}: Error state`,
-  );
+  const hasError = Object.prototype.hasOwnProperty.call(result, "Error");
+  assert.equal(hasError, expectation.noError === false, `${vectorId}: Error state`);
   for (const field of expectation.fields) {
     assert.ok(
       Object.prototype.hasOwnProperty.call(result, field.key),
@@ -124,7 +91,8 @@ function assertFixtureExpectation(result, expectation, vectorId) {
     const actual = String(result[field.key]);
     if (Object.prototype.hasOwnProperty.call(field, "equals")) {
       assert.equal(actual, String(field.equals), `${vectorId}: ${field.key}`);
-    } else {
+    }
+    if (Object.prototype.hasOwnProperty.call(field, "includes")) {
       assert.ok(
         actual.includes(String(field.includes)),
         `${vectorId}: ${field.key} lacks ${JSON.stringify(field.includes)}`,
@@ -133,101 +101,32 @@ function assertFixtureExpectation(result, expectation, vectorId) {
   }
 }
 
-const fetched = Object.fromEntries(
-  await Promise.all(
-    Object.entries(SOURCES).map(async ([key, url]) => [key, await fetchOfficialHtml(url)]),
-  ),
-);
-const text = Object.fromEntries(
-  Object.entries(fetched).map(([key, source]) => [key, visibleText(source.html)]),
+const sourceBytes = await fetchOfficialArtifact();
+assert.equal(BIRADS.name, "BI-RADS Assessment Calculator (Legacy 2013)");
+assert.equal(BIRADS.guidelineVersion, "Legacy ACR BI-RADS 5th Ed. (2013)");
+assert.match(BIRADS.info.text, /Temporary legacy calculator/);
+assert.match(BIRADS.info.text, /does not implement the 2025 sixth edition/);
+assert.match(BIRADS.info.text, /radiologist-selected suspicion level/);
+assert.ok(
+  BIRADS.refs.some((reference) => reference.u === SOURCE_URL),
+  "calculator references must expose the exact official ACR artifact",
 );
 
-requireAll(text.faq, "MQSA FAQ seven-day rule", [
-  "suspicious",
-  "highly suggestive of malignancy",
-  "written summary of the results to the patient within seven calendar days of the final interpretation",
-]);
-requireAll(text.finalRule, "MQSA final-rule provider and patient communication", [
-  'final assessment category of "suspicious" or "highly suggestive of malignancy,"',
-  "mammography report is provided to the health care provider",
-  "patient lay summary is provided to the patient within 7 calendar days of the date the mammogram was interpreted",
-]);
-requireAll(text.faq, "MQSA FAQ self-referred pathway", [
-  "facilities must have a system for referring such patients to a healthcare provider when clinically indicated",
-  "probably benign",
-  "suspicious",
-  "highly suggestive of malignancy",
-]);
-requireAll(text.finalRule, "MQSA final-rule prior-comparison follow-up", [
-  '"incomplete: need prior mammograms for comparison,"',
-  "follow-up report with a final overall assessment within 30 calendar days of the initial report",
-  "regardless of whether comparison views are obtained",
-]);
-requireAll(text.alternative25, "MQSA Alternative Standard #25", [
-  "alternative standard #25",
-  "incomplete: need additional imaging evaluation",
-  "incomplete: need prior mammograms for comparison",
-  "follow-up report issued within 30 calendar days",
-]);
-requireAll(text.alternative12, "MQSA Alternative Standard #12", [
-  "alternative standard #12",
-  "post procedure mammograms for marker placement",
-  "can only be used for a post procedure mammogram to confirm the deployment and position of a breast tissue marker",
-]);
-
-const runtime = Object.freeze({
-  category3: BIRADS.compute({ assessment: "3" }),
-  category4: BIRADS.compute({ assessment: "4" }),
-  category5: BIRADS.compute({ assessment: "5" }),
-  priorComparison: BIRADS.compute({ assessment: "0_priors" }),
-  markerPlacement: BIRADS.compute({ assessment: "post_marker" }),
-});
-
-for (const [label, result] of [
-  ["category 4", runtime.category4],
-  ["category 5", runtime.category5],
-]) {
-  requireAll(String(result["U.S. reporting requirement"]).toLowerCase(), label, [
-    "mammography report to the health care provider",
-    "patient lay summary to the patient",
-    "within seven calendar days of interpretation",
-  ]);
-}
-for (const [label, result] of [
-  ["category 3", runtime.category3],
-  ["category 4", runtime.category4],
-  ["category 5", runtime.category5],
-]) {
-  requireAll(String(result["U.S. self-referred patient pathway"]).toLowerCase(), label, [
-    "patients who do not have a health care provider",
-    "must maintain a referral system",
-  ]);
-}
-requireAll(
-  String(runtime.priorComparison["U.S. reporting requirement"]).toLowerCase(),
-  "prior-comparison runtime",
-  [
-    "within 30 calendar days",
-    "even when comparison images cannot be obtained",
-    "alternative standard #25",
-    '"incomplete: need additional imaging evaluation"',
-  ],
+const modality = BIRADS.fields.find((field) => field.id === "modality");
+assert.deepEqual(
+  modality.opts.map((option) => option.value),
+  ["mammography", "ultrasound", "mri"],
+  "legacy workflow must retain all three source modalities",
 );
-assert.equal(
-  runtime.markerPlacement["MQSA category"],
-  "Post-Procedure Mammogram for Marker Placement",
-);
-requireAll(String(runtime.markerPlacement["Next step"]).toLowerCase(), "marker runtime", [
-  "post-procedure mammogram",
-  "document marker deployment and position",
-]);
-assert.equal(
-  runtime.markerPlacement["BI-RADS numbering"],
-  "None — this FDA MQSA assessment is not a numbered BI-RADS category",
+const calcMorphology = BIRADS.fields.find((field) => field.id === "calc_morphology");
+assert.ok(
+  calcMorphology.opts.some((option) => option.value === "typically_benign"),
+  "legacy workflow must distinguish the official typically-benign morphology group",
 );
 
 const fixture = JSON.parse(await readFile(FIXTURE_PATH, "utf8"));
 assert.equal(fixture.calculatorId, "birads");
+assert.equal(fixture.version, "legacy-fifth-edition-2013-temporary-v1");
 const casesById = new Map(fixture.cases.map((testCase) => [testCase.id, testCase]));
 assert.equal(casesById.size, fixture.cases.length, "BI-RADS fixture IDs must be unique");
 for (const vectorId of BOUND_VECTOR_IDS) {
@@ -237,24 +136,27 @@ for (const vectorId of BOUND_VECTOR_IDS) {
 }
 
 const audit = {
-  schema: "radulator-birads-fda-source-audit/v1",
-  source_authority: "U.S. Food and Drug Administration",
+  schema: "radulator-birads-legacy-source-audit/v1",
+  source_authority: "American College of Radiology",
   source_host: SOURCE_HOST,
-  sources: Object.values(fetched).map(({ bytes, url }) => ({
-    url,
-    bytes: bytes.length,
-    sha256: sha256(bytes),
-  })),
+  source: {
+    url: SOURCE_URL,
+    bytes: sourceBytes.length,
+    sha256: sha256(sourceBytes),
+    locator:
+      "ACR BI-RADS Atlas Fifth Edition Quick Reference: mammography, ultrasound, MRI, descriptor tables, and assessment categories 0-6",
+  },
   source_claims: {
-    alternative_standard_12_marker_placement: true,
-    alternative_standard_25_additional_imaging: true,
-    prior_comparison_follow_up_within_30_days: true,
-    provider_report_and_patient_summary_within_7_days: true,
-    self_referred_referral_system: true,
+    assessment_categories_0_through_6: true,
+    category_0_modality_wording: true,
+    fifth_edition_descriptor_groups: true,
+    mammography_ultrasound_mri_scope: true,
   },
   bound_vector_ids: [...BOUND_VECTOR_IDS],
   runtime_vector_match: true,
   fixture_vector_match: true,
+  temporary_rollback: true,
+  full_manual_validation_complete: false,
   source_bytes_committed: false,
 };
 
@@ -262,6 +164,6 @@ if (process.argv.includes("--json")) {
   process.stdout.write(`${JSON.stringify(audit)}\n`);
 } else {
   console.log(
-    "BI-RADS FDA source audit passed: 4 official pages, 5 source claims, 5 executable vectors.",
+    `BI-RADS legacy source audit passed: digest-pinned ACR fifth-edition artifact and ${BOUND_VECTOR_IDS.length} executable vectors.`,
   );
 }

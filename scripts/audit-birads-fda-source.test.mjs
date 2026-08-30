@@ -18,36 +18,32 @@ const run = spawnSync(
 assert.equal(
   run.status,
   0,
-  `BI-RADS FDA source audit failed\nstdout:\n${run.stdout}\nstderr:\n${run.stderr}`,
+  `BI-RADS legacy source audit failed\nstdout:\n${run.stdout}\nstderr:\n${run.stderr}`,
 );
 
 const audit = JSON.parse(run.stdout);
-assert.equal(audit.schema, "radulator-birads-fda-source-audit/v1");
-assert.equal(audit.source_authority, "U.S. Food and Drug Administration");
-assert.equal(audit.source_host, "www.fda.gov");
-assert.equal(audit.sources.length, 4);
-for (const source of audit.sources) {
-  assert.match(source.sha256, /^[a-f0-9]{64}$/);
-  assert.ok(source.bytes > 1_000);
-}
+assert.equal(audit.schema, "radulator-birads-legacy-source-audit/v1");
+assert.equal(audit.source_authority, "American College of Radiology");
+assert.equal(audit.source_host, "edge.sitecorecloud.io");
+assert.equal(audit.source.bytes, 621_351);
+assert.equal(
+  audit.source.sha256,
+  "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
+);
+assert.match(audit.source.locator, /assessment categories 0-6/);
 assert.deepEqual(audit.source_claims, {
-  alternative_standard_12_marker_placement: true,
-  alternative_standard_25_additional_imaging: true,
-  prior_comparison_follow_up_within_30_days: true,
-  provider_report_and_patient_summary_within_7_days: true,
-  self_referred_referral_system: true,
+  assessment_categories_0_through_6: true,
+  category_0_modality_wording: true,
+  fifth_edition_descriptor_groups: true,
+  mammography_ultrasound_mri_scope: true,
 });
-assert.deepEqual(audit.bound_vector_ids, [
-  "category-3",
-  "category-4",
-  "category-5",
-  "incomplete-prior-comparison",
-  "post-procedure-marker",
-]);
+assert.equal(audit.bound_vector_ids.length, 14);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
+assert.equal(audit.temporary_rollback, true);
+assert.equal(audit.full_manual_validation_complete, false);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "BI-RADS FDA source audit verified four official pages and five executable evidence vectors.",
+  "BI-RADS legacy source audit verified the official fifth-edition artifact and 14 executable safety vectors.",
 );

@@ -87,101 +87,73 @@
     },
     {
       "calculator_id": "birads",
-      "title": "Mammography Assessment Guide",
-      "implemented_version": "FDA MQSA 2024 with ACR BI-RADS v2025 context",
+      "title": "BI-RADS Assessment Calculator (Temporary Legacy)",
+      "implemented_version": "Legacy ACR BI-RADS Fifth Edition (2013) temporary rollback",
       "basis_type": "classification-system",
       "verification_status": "verified",
-      "last_verified": "2026-08-26",
-      "justification": "The ACR source identifies BI-RADS v2025. A live official-FDA audit independently parses and binds the amended MQSA seven-day communication rule, self-referred referral system, 30-day prior-comparison follow-up with Alternative Standard #25, and the marker-placement assessment under Alternative Standard #12 to executable Radulator vectors.",
+      "last_verified": "2026-08-29",
+      "justification": "Temporary rollback while the sixth-edition manual is pending. Verification is narrowly bounded to the digest-pinned official ACR Fifth Edition Quick Reference: its three-modality descriptor groups, Category 0 modality wording, and assessment labels 0-6. It does not claim full fifth- or sixth-edition manual validation of every likelihood, management, or descriptor-combination rule.",
       "sources": [
         { "authority": "American College of Radiology", "title": "Breast Imaging Reporting and Data System (BI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS" },
-        { "authority": "American College of Radiology", "title": "BI-RADS v2025 Mammography Summary Form", "role": "official-authority", "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf" },
-        { "authority": "U.S. Food and Drug Administration", "title": "Important Information: Final Rule to Amend the Mammography Quality Standards Act (MQSA)", "role": "official-authority", "url": "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa" },
-        { "authority": "U.S. Food and Drug Administration", "title": "Frequently Asked Questions About MQSA", "role": "official-authority", "url": "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa" },
-        { "authority": "U.S. Food and Drug Administration", "title": "MQSA Alternative Standard #25", "role": "official-authority", "url": "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation" },
-        { "authority": "U.S. Food and Drug Administration", "title": "MQSA Alternative Standard #12", "role": "official-authority", "url": "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement" }
+        { "authority": "American College of Radiology", "title": "ACR BI-RADS Atlas Fifth Edition Quick Reference", "role": "official-authority", "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf", "artifact_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410" }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/BIRADS.jsx",
         "fixture_path": "tests/fixtures/compute/birads.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "FDA MQSA 2024 · ACR BI-RADS v2025 context" },
+        "metadata_expectation": { "field": "guidelineVersion", "equals": "Legacy ACR BI-RADS 5th Ed. (2013)" },
         "source_audit": {
           "schema": "radulator-live-source-audit/v1",
           "command": "npm run test:birads-fda-source",
-          "authority": "U.S. Food and Drug Administration",
+          "authority": "American College of Radiology",
           "source_urls": [
-            "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
-            "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
-            "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
-            "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement"
+            "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf"
           ],
           "vector_ids": [
-            "category-3",
-            "category-4",
-            "category-5",
-            "incomplete-prior-comparison",
-            "post-procedure-marker"
+            "mammography-incomplete",
+            "ultrasound-incomplete",
+            "mri-incomplete",
+            "known-biopsy-proven-malignancy",
+            "negative-screening",
+            "benign-finding",
+            "typically-benign-calcifications-are-category-2",
+            "probably-benign-mass",
+            "low-suspicion-mass",
+            "moderate-suspicion-calcifications",
+            "high-suspicion-spiculated-mass",
+            "highly-suggestive-linear-calcifications",
+            "probably-benign-selection-warns-on-suspicious-mass-descriptors",
+            "screening-mammography-probably-benign-needs-diagnostic-workup"
           ],
           "source_bytes_committed": false
         },
         "claims": [
           {
-            "id": "acr-v2025-context",
+            "id": "acr-birads-three-modality-scope",
             "source_url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
-            "source_locator": "BI-RADS overview, current manual name, citation guidance, and mammography section",
-            "fact": "The calculator identifies the ACR-owned v2025 system only as version context and does not infer an assessment from imaging features.",
-            "dimensions": ["version", "scope", "output"],
-            "vector_ids": ["category-1"]
+            "source_locator": "BI-RADS overview: standardized terminology, report organization, assessment structure, and classification across mammography, ultrasound, and MRI",
+            "fact": "The temporary calculator retains explicit mammography, ultrasound, and MRI workflows and returns a structured final assessment output selected by the radiologist.",
+            "dimensions": ["scope", "classification", "output"],
+            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete"]
           },
           {
-            "id": "acr-mammography-category-boundaries",
-            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
-            "source_locator": "Mammography assessment categories 3, 4A, 4B, 4C, and 5",
-            "fact": "The selected-category guide preserves the public ACR mammography likelihood intervals, including their literal 2 percent and 50 percent overlaps.",
-            "dimensions": ["classification", "threshold", "boundary", "output"],
-            "vector_ids": ["category-3", "category-4a", "category-4b", "category-4c", "category-5"]
+            "id": "acr-fifth-edition-descriptor-groups",
+            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
+            "source_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
+            "source_locator": "Quick Reference columns for mammography, ultrasound, and magnetic resonance imaging descriptor groups",
+            "fact": "The temporary workflow exposes a bounded subset of fifth-edition mass, calcification, asymmetry, architectural-distortion, and associated-feature descriptors without claiming full manual coverage.",
+            "dimensions": ["version", "scope", "classification"],
+            "vector_ids": ["typically-benign-calcifications-are-category-2", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications"]
           },
           {
-            "id": "fda-mqsa-assessment-framework",
-            "source_url": "https://www.fda.gov/radiation-emitting-products/mammography-quality-standards-act-mqsa-and-mqsa-program/important-information-final-rule-amend-mammography-quality-standards-act-mqsa",
-            "source_locator": "Final rule overview, mammography-report assessment categories, and September 10, 2024 compliance date",
-            "fact": "The guide returns FDA MQSA mammography-report terminology while keeping the framework distinct from the ACR BI-RADS manual.",
-            "dimensions": ["classification", "version", "output"],
-            "vector_ids": ["incomplete-additional-imaging", "category-4", "category-5"]
-          },
-          {
-            "id": "fda-seven-day-communication",
-            "source_url": "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
-            "source_locator": "FAQ: suspicious or highly suggestive final assessments and written communication timing",
-            "fact": "Suspicious and highly suggestive assessments expose the federal seven-calendar-day report and lay-summary communication requirement.",
-            "dimensions": ["classification", "threshold", "interpretation", "output"],
-            "vector_ids": ["category-4", "category-5"]
-          },
-          {
-            "id": "fda-self-referred-referral-system",
-            "source_url": "https://www.fda.gov/radiation-emitting-products/mammography-information-patients/frequently-asked-questions-about-mqsa",
-            "source_locator": "FAQ: patients without a healthcare provider and the clinically indicated referral system",
-            "fact": "Facilities accepting patients without a healthcare provider expose the required referral system for probably benign, suspicious, and highly suggestive assessments.",
-            "dimensions": ["classification", "interpretation", "output"],
-            "vector_ids": ["category-3", "category-4", "category-5"]
-          },
-          {
-            "id": "fda-alternative-standard-25",
-            "source_url": "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-25-issuing-report-assessment-incomplete-need-additional-imaging-evaluation",
-            "source_locator": "Alternative Standard #25: follow-up report after an incomplete assessment awaiting prior comparisons",
-            "fact": "The prior-comparison pathway reports the 30-day follow-up rule and the bounded alternative assessment when additional imaging remains necessary.",
-            "dimensions": ["classification", "interpretation", "output"],
-            "vector_ids": ["incomplete-prior-comparison"]
-          },
-          {
-            "id": "fda-alternative-standard-12",
-            "source_url": "https://www.fda.gov/radiation-emitting-products/regulations-mqsa/mqsa-alternative-standard-12-assessment-category-post-procedure-mammograms-marker-placement",
-            "source_locator": "Alternative Standard #12: post-procedure mammograms for marker placement",
-            "fact": "A post-procedure marker-placement mammogram is exposed as an FDA assessment without assigning it a numbered BI-RADS category.",
-            "dimensions": ["classification", "scope", "output"],
-            "vector_ids": ["post-procedure-marker"]
+            "id": "acr-fifth-edition-assessment-labels",
+            "source_url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
+            "source_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
+            "source_locator": "Quick Reference footer, BI-RADS assessment categories 0-6 and mammography/ultrasound 4A-4C labels",
+            "fact": "The executable outputs preserve the official fifth-edition assessment labels 0-6 and the mammography/ultrasound Category 4 subdivisions; probability and management wording remain outside this bounded claim.",
+            "dimensions": ["version", "classification", "output"],
+            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-screening", "benign-finding", "probably-benign-mass", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "known-biopsy-proven-malignancy"]
           }
         ]
       }

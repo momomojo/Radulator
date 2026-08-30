@@ -1,250 +1,242 @@
 {
   "calculatorId": "birads",
-  "calculatorName": "Mammography Assessment Guide",
-  "version": "fda-mqsa-2024-birads-v2025-context-v2",
+  "calculatorName": "BI-RADS Assessment Calculator (Legacy 2013)",
+  "version": "legacy-fifth-edition-2013-temporary-v1",
   "cases": [
     {
-      "id": "missing-selection",
-      "inputs": {},
+      "id": "missing-finding",
+      "inputs": { "modality": "mammography", "study_context": "screening", "additional_needed": "no" },
       "expect": {
         "noError": false,
+        "fields": [{ "key": "Error", "equals": "Please select the finding type." }]
+      }
+    },
+    {
+      "id": "mammography-incomplete",
+      "inputs": { "modality": "mammography", "study_context": "screening", "additional_needed": "yes" },
+      "expect": {
+        "noError": true,
         "fields": [
-          {
-            "key": "Error",
-            "equals": "Select the radiologist-assigned mammography assessment category."
-          }
+          { "key": "BI-RADS Category", "equals": "0 - Incomplete" },
+          { "key": "Additional Imaging", "includes": "Additional mammographic views" }
         ]
       }
     },
     {
-      "id": "incomplete-additional-imaging",
-      "inputs": { "assessment": "0_additional" },
+      "id": "ultrasound-incomplete",
+      "inputs": { "modality": "ultrasound", "study_context": "diagnostic", "additional_needed": "yes" },
       "expect": {
         "noError": true,
         "fields": [
-          {
-            "key": "Assessment",
-            "equals": "Incomplete — additional imaging evaluation is needed"
-          },
-          {
-            "key": "MQSA category",
-            "equals": "Incomplete: Need additional imaging evaluation"
-          },
-          {
-            "key": "Next step",
-            "includes": "Complete the recommended imaging evaluation"
-          }
+          { "key": "BI-RADS Category", "equals": "0 - Incomplete" },
+          { "key": "Additional Imaging", "includes": "Mammography if not performed" }
         ]
       }
     },
     {
-      "id": "incomplete-prior-comparison",
-      "inputs": { "assessment": "0_priors" },
+      "id": "mri-incomplete",
+      "inputs": { "modality": "mri", "study_context": "diagnostic", "additional_needed": "yes" },
       "expect": {
         "noError": true,
         "fields": [
-          {
-            "key": "Assessment",
-            "equals": "Incomplete — prior mammograms are needed for comparison"
-          },
-          {
-            "key": "MQSA category",
-            "equals": "Incomplete: Need prior mammograms for comparison"
-          },
-          {
-            "key": "U.S. reporting requirement",
-            "includes": "within 30 calendar days"
-          },
-          {
-            "key": "U.S. reporting requirement",
-            "includes": "Alternative Standard #25"
-          },
-          {
-            "key": "U.S. reporting requirement",
-            "includes": "Incomplete: Need additional imaging evaluation"
-          }
+          { "key": "BI-RADS Category", "equals": "0 - Incomplete" },
+          { "key": "Additional Imaging", "includes": "additional sequences" }
         ]
       }
     },
     {
-      "id": "category-1",
-      "inputs": { "assessment": "1" },
+      "id": "known-biopsy-proven-malignancy",
+      "inputs": { "modality": "mri", "study_context": "known_cancer" },
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Assessment", "equals": "1 — Negative" },
-          {
-            "key": "Source framework",
-            "equals": "FDA MQSA mammography reporting terminology with ACR BI-RADS® v2025 version context"
-          },
-          {
-            "key": "Next step",
-            "includes": "screening plan based on age, risk, symptoms, and local protocol"
-          }
+          { "key": "BI-RADS Category", "equals": "6 - Known Biopsy-Proven Malignancy" },
+          { "key": "Management", "includes": "multidisciplinary breast care" },
+          { "key": "Management", "includes": "treatment planning" }
         ]
       }
     },
     {
-      "id": "category-2",
-      "inputs": { "assessment": "2" },
+      "id": "negative-screening",
+      "inputs": { "modality": "mammography", "study_context": "screening", "additional_needed": "no", "finding_type": "negative" },
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Assessment", "equals": "2 — Benign" },
-          {
-            "key": "Likelihood context",
-            "equals": "The imaging finding is assessed as benign; this guide does not calculate patient-specific risk."
-          }
+          { "key": "BI-RADS Category", "equals": "1 - Negative" },
+          { "key": "Screening Interval", "equals": "Annual (or per guidelines)" }
         ]
       }
     },
     {
-      "id": "category-3",
-      "inputs": { "assessment": "3" },
+      "id": "benign-finding",
+      "inputs": { "modality": "ultrasound", "study_context": "diagnostic", "additional_needed": "no", "finding_type": "benign" },
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Assessment", "equals": "3 — Probably benign" },
-          {
-            "key": "Likelihood context",
-            "equals": ">0% but ≤2% expected likelihood of malignancy"
-          },
-          { "key": "Next step", "includes": "initial 6-month follow-up" },
-          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" },
-          { "key": "U.S. self-referred patient pathway", "includes": "patients who do not have a health care provider" }
+          { "key": "BI-RADS Category", "equals": "2 - Benign" },
+          { "key": "Malignancy Risk", "equals": "Essentially 0%" },
+          { "key": "Management", "equals": "Routine screening according to patient age, risk, symptoms, modality, and local protocol" }
         ]
       }
     },
     {
-      "id": "category-4",
-      "inputs": { "assessment": "4" },
+      "id": "typically-benign-calcifications-are-category-2",
+      "inputs": {
+        "modality": "mammography", "study_context": "screening", "additional_needed": "no",
+        "finding_type": "calcifications", "calc_morphology": "typically_benign"
+      },
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Assessment", "equals": "4 — Suspicious" },
-          { "key": "MQSA category", "equals": "Suspicious" },
-          {
-            "key": "Likelihood context",
-            "equals": "2% but <95% expected likelihood of malignancy"
-          },
-          { "key": "Next step", "includes": "Tissue sampling is generally indicated" },
-          { "key": "U.S. reporting requirement", "includes": "patient lay summary to the patient" },
-          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
-          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" },
-          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" }
+          { "key": "BI-RADS Category", "equals": "2 - Benign" },
+          { "key": "Finding Description", "includes": "typically benign calcifications" }
         ]
       }
     },
     {
-      "id": "category-4a",
-      "inputs": { "assessment": "4A" },
+      "id": "mass-missing-radiologist-suspicion",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "mass", "mass_shape": "oval", "mass_margin": "circumscribed", "mass_density": "equal"
+      },
+      "expect": {
+        "noError": false,
+        "fields": [{ "key": "Error", "includes": "select the overall suspicion level" }]
+      }
+    },
+    {
+      "id": "probably-benign-mass",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "mass", "mass_shape": "oval", "mass_margin": "circumscribed", "mass_density": "equal",
+        "suspicion_level": "probably_benign"
+      },
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Assessment", "equals": "4A — Low suspicion" },
-          {
-            "key": "Likelihood context",
-            "equals": ">2% to ≤10% expected likelihood of malignancy"
-          },
-          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
-          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" }
+          { "key": "BI-RADS Category", "equals": "3 - Probably Benign" },
+          { "key": "Management", "includes": "6 months" },
+          { "key": "Finding Description", "includes": "Mass: oval, circumscribed" }
         ]
       }
     },
     {
-      "id": "category-4b",
-      "inputs": { "assessment": "4B" },
+      "id": "screening-mammography-probably-benign-needs-diagnostic-workup",
+      "inputs": {
+        "modality": "mammography", "study_context": "screening", "additional_needed": "no",
+        "finding_type": "mass", "mass_shape": "oval", "mass_margin": "circumscribed", "mass_density": "equal",
+        "suspicion_level": "probably_benign"
+      },
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Assessment", "equals": "4B — Moderate suspicion" },
-          {
-            "key": "Likelihood context",
-            "equals": ">10% to ≤50% expected likelihood of malignancy"
-          },
-          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
-          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" },
-          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" }
+          { "key": "BI-RADS Category", "equals": "3 - Probably Benign" },
+          { "key": "Decision Check", "includes": "screening mammography" },
+          { "key": "Decision Check", "includes": "diagnostic workup" }
         ]
       }
     },
     {
-      "id": "category-4c",
-      "inputs": { "assessment": "4C" },
+      "id": "low-suspicion-mass",
+      "inputs": {
+        "modality": "ultrasound", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "mass", "mass_shape": "oval", "mass_margin": "obscured", "suspicion_level": "low_suspicion"
+      },
       "expect": {
         "noError": true,
         "fields": [
-          { "key": "Assessment", "equals": "4C — High suspicion" },
-          {
-            "key": "Likelihood context",
-            "equals": "50% to <95% expected likelihood of malignancy"
-          },
-          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
-          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" },
-          { "key": "Published interval note", "includes": "overlaps at exactly 2% and exactly 50%" }
+          { "key": "BI-RADS Category", "equals": "4A - Low Suspicion for Malignancy" },
+          { "key": "Malignancy Likelihood", "equals": "2-10%" }
         ]
       }
     },
     {
-      "id": "category-5",
-      "inputs": { "assessment": "5" },
+      "id": "moderate-suspicion-calcifications",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "calcifications", "calc_morphology": "coarse_heterogeneous", "calc_distribution": "regional",
+        "suspicion_level": "moderate_suspicion"
+      },
       "expect": {
         "noError": true,
         "fields": [
-          {
-            "key": "Assessment",
-            "equals": "5 — Highly suggestive of malignancy"
-          },
-          {
-            "key": "MQSA category",
-            "equals": "Highly Suggestive of Malignancy"
-          },
-          {
-            "key": "Likelihood context",
-            "equals": "≥95% expected likelihood of malignancy"
-          },
-          { "key": "Next step", "includes": "Prompt tissue confirmation" },
-          { "key": "U.S. reporting requirement", "includes": "within seven calendar days of interpretation" },
-          { "key": "U.S. self-referred patient pathway", "includes": "must maintain a referral system" }
+          { "key": "BI-RADS Category", "equals": "4B - Moderate Suspicion for Malignancy" },
+          { "key": "Finding Description", "includes": "coarse_heterogeneous" }
         ]
       }
     },
     {
-      "id": "category-6",
-      "inputs": { "assessment": "6" },
+      "id": "high-suspicion-spiculated-mass",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "mass", "mass_shape": "irregular", "mass_margin": "spiculated", "mass_density": "high",
+        "suspicion_level": "high_suspicion"
+      },
       "expect": {
         "noError": true,
         "fields": [
-          {
-            "key": "Assessment",
-            "equals": "6 — Known Biopsy-Proven Malignancy"
-          },
-          {
-            "key": "Likelihood context",
-            "equals": "Not applicable — malignancy has already been established by tissue diagnosis"
-          },
-          { "key": "Next step", "includes": "surgeon and/or oncologist" },
-          { "key": "Next step", "includes": "Definitive local therapy" },
-          { "key": "Next step", "includes": "treatment planning" },
-          { "key": "Next step", "includes": "response assessment" }
+          { "key": "BI-RADS Category", "equals": "4C - High Suspicion for Malignancy" },
+          { "key": "Clinical Notes", "includes": "Spiculated margins" }
         ]
       }
     },
     {
-      "id": "post-procedure-marker",
-      "inputs": { "assessment": "post_marker" },
+      "id": "probably-benign-selection-warns-on-suspicious-mass-descriptors",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "mass", "mass_shape": "irregular", "mass_margin": "spiculated", "mass_density": "high",
+        "suspicion_level": "probably_benign"
+      },
       "expect": {
         "noError": true,
         "fields": [
-          {
-            "key": "Assessment",
-            "equals": "Post-procedure mammogram for marker placement"
-          },
-          {
-            "key": "BI-RADS numbering",
-            "equals": "None — this FDA MQSA assessment is not a numbered BI-RADS category"
-          },
-          { "key": "Next step", "includes": "document marker deployment and position" }
+          { "key": "BI-RADS Category", "equals": "3 - Probably Benign" },
+          { "key": "Decision Check", "includes": "discordant" },
+          { "key": "Decision Check", "includes": "Reassess" }
+        ]
+      }
+    },
+    {
+      "id": "highly-suggestive-linear-calcifications",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "calcifications", "calc_morphology": "fine_linear", "calc_distribution": "linear",
+        "suspicion_level": "highly_suggestive"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "5 - Highly Suggestive of Malignancy" },
+          { "key": "Clinical Notes", "includes": "Fine linear/branching" },
+          { "key": "Clinical Notes", "includes": "ductal involvement" }
+        ]
+      }
+    },
+    {
+      "id": "developing-asymmetry",
+      "inputs": {
+        "modality": "mammography", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "asymmetry", "asymmetry_type": "developing", "suspicion_level": "moderate_suspicion"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "4B - Moderate Suspicion for Malignancy" },
+          { "key": "Clinical Notes", "includes": "Developing asymmetry" }
+        ]
+      }
+    },
+    {
+      "id": "associated-features",
+      "inputs": {
+        "modality": "mri", "study_context": "diagnostic", "additional_needed": "no",
+        "finding_type": "associated_features", "suspicion_level": "moderate_suspicion"
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "BI-RADS Category", "equals": "4B - Moderate Suspicion for Malignancy" },
+          { "key": "Finding Description", "includes": "skin/nipple changes" }
         ]
       }
     }
