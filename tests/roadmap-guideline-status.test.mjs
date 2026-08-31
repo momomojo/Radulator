@@ -135,6 +135,11 @@ assert.match(
   /name: Verify roadmap clinical source audits at exact head[\s\S]*?export LC_ALL=C\s+for audit in scripts\/audit-\*-source\.test\.mjs; do\s+test -f "\$audit"\s+node "\$audit"\s+done[\s\S]*?npm run test:hermes-guideline-registry/,
   "the required exact-head Smoke job must discover every conventional source audit and retain the registry check",
 );
+assert.equal(
+  packageJson.scripts["test:primary-source"],
+  'export LC_ALL=C; for audit in scripts/audit-*-source.test.mjs; do test -f "$audit" && node "$audit" || exit; done; npm run test:cac-drs-source',
+  "the local primary-source aggregate must discover the same conventional audits as exact-head CI",
+);
 
 for (const calculatorId of ["lirads", "nirads"]) {
   const record = records.get(calculatorId);
