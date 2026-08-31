@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import process from "node:process";
-import {
-  fetchParsedResource,
-  verifyMementoArtifact,
-} from "./audit-fleischner-primary-source.mjs";
+import * as auditModule from "./audit-fleischner-primary-source.mjs";
+import { digest } from "./release-policy.mjs";
+
+const { fetchParsedResource, verifyMementoArtifact } = auditModule;
 
 const GUIDELINE_URL =
   "https://pubs.rsna.org/doi/10.1148/radiol.2017161659";
@@ -16,7 +16,7 @@ const MEASUREMENT_URL =
 const MANIFEST_PATH =
   "docs/evidence/fleischner-2017-reviewed-evidence.json";
 const PAYLOAD_SHA256 =
-  "d677757521cedada4aba3573386beac5620701e2c7c36c648d960a4bfec39a11";
+  "e6446ba442742e612bc55b12f8f3f3f46c9d004cc326131013762f1e62b68811";
 const REVIEWED_VECTORS_SHA256 =
   "4f15e698faca2a32ebc28830ef6b94483249910d725148af4f8eb0695c0e08c8";
 
@@ -24,6 +24,7 @@ const EXPECTED_INVARIANT_IDS = [
   "fleischner-input-completeness-fail-closed",
   "fleischner-nodule-domain-boundary",
   "fleischner-measurement-input-geometry",
+  "fleischner-state-consistency-fail-closed",
 ];
 
 const EXPECTED_CLAIM_IDS = [
@@ -110,7 +111,7 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
 
 const EXPECTED_LIMITATIONS = [
   "CI retrieves hash-pinned Memento captures of RSNA-origin publisher artifacts and verifies rel=original provenance; it does not claim a successful live RSNA origin fetch.",
-  "No measurement-statement PDF is pinned; measurement claims are bound to the publisher full-text HTML fragment and Figure 1 artifact.",
+  "No measurement-statement PDF is pinned; HTML claims are machine-extracted from the publisher full-text fragment, while Figure 1 text is a hash-bound reviewed raster transcription whose exact link, bytes, format, and dimensions are verified by CI.",
   "The NLM tables are secondary cross-checks and cannot prove prose exceptions, risk interpretation, or measurement guidance.",
   "Source bindings and product invariants do not approve the runtime, pull request, deployment, or live site.",
   "If Memento retrieval is not an acceptable transport, release remains blocked until equivalent licensed or RSNA-delivered bytes can be pinned and verified.",
@@ -307,6 +308,534 @@ assert.deepEqual(verifiedSyntheticArtifact, {
     end_marker_inclusive: true,
   },
 });
+assert.equal(
+  Buffer.isBuffer(verifiedSyntheticArtifact.verified_bytes),
+  true,
+  "verified artifact bytes must remain available for literal source parsing",
+);
+assert.equal(
+  verifiedSyntheticArtifact.verified_bytes.equals(archivedHtml),
+  true,
+  "literal parsing must receive the exact byte-verified artifact",
+);
+assert.equal(
+  Buffer.isBuffer(verifiedSyntheticArtifact.verified_fragment_bytes),
+  true,
+  "the exact verified full-text fragment must remain available for anchor parsing",
+);
+assert.equal(
+  verifiedSyntheticArtifact.verified_fragment_bytes.equals(inclusiveFragment),
+  true,
+  "anchor parsing must receive the exact byte-verified fragment",
+);
+const serializedSyntheticVerification = JSON.stringify(verifiedSyntheticArtifact);
+assert.equal(serializedSyntheticVerification.includes("verified_bytes"), false);
+assert.equal(serializedSyntheticVerification.includes("verified_fragment_bytes"), false);
+assert.equal(
+  serializedSyntheticVerification.includes("alpha"),
+  false,
+  "verified source bytes must not leak into JSON audit evidence",
+);
+
+assert.equal(
+  typeof auditModule.extractPdfPageTexts,
+  "function",
+  "the audit must expose page-bounded PDF text extraction",
+);
+assert.equal(
+  typeof auditModule.extractHtmlLocatorTexts,
+  "function",
+  "the audit must expose anchor-bounded HTML text extraction",
+);
+assert.equal(
+  typeof auditModule.extractHtmlLiteralText,
+  "function",
+  "the audit must expose canonical HTML literal normalization",
+);
+assert.equal(
+  auditModule.extractHtmlLiteralText(Buffer.from("<p>A&nbsp;B &ge; 2</p>")),
+  "A B >= 2",
+);
+assert.equal(
+  typeof auditModule.verifyLiteralSourceBindings,
+  "function",
+  "the audit must expose claim-to-source-text verification",
+);
+
+const syntheticPdfPages = await auditModule.extractPdfPageTexts(
+  Buffer.from("synthetic-pdf"),
+  [2, 3],
+  {
+    expectedPageCount: 3,
+    getDocumentImpl({ data }) {
+      assert.equal(data instanceof Uint8Array, true);
+      assert.equal(Buffer.from(data).toString("utf8"), "synthetic-pdf");
+      return {
+        promise: Promise.resolve({
+          numPages: 3,
+          async getPage(pageNumber) {
+            const items =
+              pageNumber === 2
+                ? [
+                    { str: "adult patients who are at least 35 years old" },
+                    { str: "known primary cancers" },
+                    { str: "immuno-", hasEOL: true },
+                    { str: "compromised patients" },
+                    { str: "long-" },
+                    { str: "and short axes" },
+                  ]
+                : [
+                    { str: "No routine follow-up" },
+                    { str: "Use most suspicious nodule as guide" },
+                  ];
+            return {
+              async getTextContent() {
+                return { items };
+              },
+            };
+          },
+          async destroy() {},
+        }),
+      };
+    },
+  },
+);
+assert.deepEqual(syntheticPdfPages, new Map([
+  ["guideline-vor-pdf:pdf-page:2", "adult patients who are at least 35 years old known primary cancers immunocompromised patients long- and short axes"],
+  ["guideline-vor-pdf:pdf-page:3", "No routine follow-up Use most suspicious nodule as guide"],
+]));
+
+const detachablePdfBytes = Buffer.allocUnsafeSlow(13);
+detachablePdfBytes.write("synthetic-pdf");
+const detachablePdfDigest = rawSha256(detachablePdfBytes);
+await auditModule.extractPdfPageTexts(detachablePdfBytes, [1], {
+  expectedPageCount: 1,
+  getDocumentImpl({ data }) {
+    structuredClone(data.buffer, { transfer: [data.buffer] });
+    return {
+      promise: Promise.resolve({
+        numPages: 1,
+        async getPage() {
+          return {
+            async getTextContent() {
+              return { items: [{ str: "retained source text" }] };
+            },
+          };
+        },
+        async destroy() {},
+      }),
+    };
+  },
+});
+assert.equal(
+  detachablePdfBytes.length,
+  13,
+  "pdf.js must not detach the retained byte-verified artifact",
+);
+assert.equal(
+  rawSha256(detachablePdfBytes),
+  detachablePdfDigest,
+  "literal parsing must preserve the retained artifact hash",
+);
+await assert.rejects(
+  auditModule.extractPdfPageTexts(Buffer.from("wrong-page-count"), [1], {
+    expectedPageCount: 16,
+    getDocumentImpl() {
+      return {
+        promise: Promise.resolve({
+          numPages: 15,
+          async getPage() {
+            return {
+              async getTextContent() {
+                return { items: [{ str: "unexpected" }] };
+              },
+            };
+          },
+          async destroy() {},
+        }),
+      };
+    },
+  }),
+  /expected 16 PDF pages, received 15/i,
+  "the pinned guideline parser must reject a changed page count",
+);
+
+const syntheticFullText = Buffer.from(
+  '<div class="hlFld-Fulltext"><h3 id="_i5">Dimensions</h3><p>Small nodules use average long and short axes.</p><h3 id="_i8">Measurement Unit</h3><p>Record the nearest whole millimeter.</p><figure id="fig6"><figcaption>Nodules 3 mm or smaller should not be measured.</figcaption></figure></div><!--/fulltext content-->',
+);
+const syntheticHtmlLocators = auditModule.extractHtmlLocatorTexts(
+  syntheticFullText,
+  { sectionIds: ["_i5", "_i8"], figureIds: ["fig6"] },
+);
+assert.deepEqual(syntheticHtmlLocators, new Map([
+  ["measurement-fulltext:html-section:#_i5", "Dimensions Small nodules use average long and short axes."],
+  ["measurement-fulltext:html-section:#_i8", "Measurement Unit Record the nearest whole millimeter. Nodules 3 mm or smaller should not be measured."],
+  ["measurement-fulltext:html-figure:#fig6", "Nodules 3 mm or smaller should not be measured."],
+]));
+assert.throws(
+  () =>
+    auditModule.extractHtmlLocatorTexts(
+      Buffer.from('<h3 id="_i5">one</h3><h3 id="_i5">two</h3>'),
+      { sectionIds: ["_i5"], figureIds: [] },
+    ),
+  /exactly one.*_i5/i,
+  "ambiguous anchors must fail closed",
+);
+assert.throws(
+  () =>
+    auditModule.extractHtmlLocatorTexts(syntheticFullText, {
+      sectionIds: ["_i8", "_i5"],
+      figureIds: [],
+    }),
+  /section anchors must follow document order/i,
+  "reordered requested anchors must fail closed",
+);
+
+assert.equal(
+  typeof auditModule.verifyPinnedFigureArtifact,
+  "function",
+  "the audit must expose exact publisher-figure linkage and dimension verification",
+);
+const syntheticFigureHtml = Buffer.from(
+  '<figure id="fig1"><img src="/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif" data-src="/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif" data-lg-src="/cms/10.1148/radiol.2017162894/asset/images/large/radiol.2017162894.fig1.jpeg"><figcaption>Figure 1: Measurement recommendations.</figcaption></figure>',
+);
+const syntheticFigureGif = Buffer.alloc(10);
+syntheticFigureGif.write("GIF87a", 0, "ascii");
+syntheticFigureGif.writeUInt16LE(387, 6);
+syntheticFigureGif.writeUInt16LE(500, 8);
+assert.deepEqual(
+  auditModule.verifyPinnedFigureArtifact(
+    syntheticFigureHtml,
+    syntheticFigureGif,
+    {
+      artifactId: "measurement-figure-1",
+      figureId: "fig1",
+      expectedOriginUrl:
+        "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+      expectedWidth: 387,
+      expectedHeight: 500,
+    },
+  ),
+  {
+    artifact_id: "measurement-figure-1",
+    figure_id: "fig1",
+    linked_origin_url:
+      "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+    format: "GIF87a",
+    width: 387,
+    height: 500,
+  },
+);
+assert.throws(
+  () =>
+    auditModule.verifyPinnedFigureArtifact(
+      Buffer.from(
+        '<figure id="fig1"><img src="/wrong.gif"></figure>',
+      ),
+      syntheticFigureGif,
+      {
+        artifactId: "measurement-figure-1",
+        figureId: "fig1",
+        expectedOriginUrl:
+          "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+        expectedWidth: 387,
+        expectedHeight: 500,
+      },
+    ),
+  /publisher figure link/i,
+  "a relinked figure must fail closed",
+);
+const wrongDimensionGif = Buffer.from(syntheticFigureGif);
+wrongDimensionGif.writeUInt16LE(386, 6);
+assert.throws(
+  () =>
+    auditModule.verifyPinnedFigureArtifact(
+      syntheticFigureHtml,
+      wrongDimensionGif,
+      {
+        artifactId: "measurement-figure-1",
+        figureId: "fig1",
+        expectedOriginUrl:
+          "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+        expectedWidth: 387,
+        expectedHeight: 500,
+      },
+    ),
+  /GIF width/i,
+  "a dimension-changed figure must fail closed",
+);
+
+const syntheticLocatorText =
+  "adult patients who are at least 35 years old known primary cancers";
+const syntheticLocatorSha = rawSha256(Buffer.from(syntheticLocatorText));
+const syntheticFixtureCases = [
+  {
+    id: "vector-a",
+    inputs: { applicability: "eligible" },
+    expect: { fields: [{ key: "Recommendation", includes: "CT" }] },
+  },
+];
+assert.throws(
+  () =>
+    auditModule.assertFixtureExpectation(
+      { Error: "invalid input", Recommendation: "unsafe schedule" },
+      {
+        noError: false,
+        fields: [{ key: "Error", includes: "invalid" }],
+      },
+      "mixed-error-output",
+    ),
+  /error result must contain only Error/i,
+  "an error result must never carry a simultaneous clinical recommendation",
+);
+assert.equal(
+  auditModule.verifyClaimSourceProvenance(
+    [
+      {
+        id: "valid-source-claim",
+        source_url: GUIDELINE_URL,
+        source_text_assertions: [{ artifact_id: "guideline-vor-pdf" }],
+      },
+    ],
+    [
+      {
+        id: "rsna-guideline",
+        url: GUIDELINE_URL,
+        artifacts: [{ id: "guideline-vor-pdf" }],
+      },
+      {
+        id: "rsna-measurement",
+        url: MEASUREMENT_URL,
+        artifacts: [{ id: "measurement-fulltext" }],
+      },
+    ],
+  ),
+  true,
+);
+assert.throws(
+  () =>
+    auditModule.verifyClaimSourceProvenance(
+      [
+        {
+          id: "cross-source-claim",
+          source_url: GUIDELINE_URL,
+          source_text_assertions: [{ artifact_id: "measurement-fulltext" }],
+        },
+      ],
+      [
+        {
+          id: "rsna-guideline",
+          url: GUIDELINE_URL,
+          artifacts: [{ id: "guideline-vor-pdf" }],
+        },
+        {
+          id: "rsna-measurement",
+          url: MEASUREMENT_URL,
+          artifacts: [{ id: "measurement-fulltext" }],
+        },
+      ],
+    ),
+  /artifact measurement-fulltext is not declared by source/i,
+  "a claim must not borrow a literal assertion from another declared source",
+);
+assert.throws(
+  () =>
+    auditModule.verifyClaimSourceProvenance(
+      [
+        {
+          id: "ambiguous-owner-claim",
+          source_url: GUIDELINE_URL,
+          source_text_assertions: [{ artifact_id: "shared-artifact" }],
+        },
+      ],
+      [
+        {
+          id: "rsna-guideline",
+          url: GUIDELINE_URL,
+          artifacts: [{ id: "shared-artifact" }],
+        },
+        {
+          id: "rsna-measurement",
+          url: MEASUREMENT_URL,
+          artifacts: [{ id: "shared-artifact" }],
+        },
+      ],
+    ),
+  /duplicate artifact ID shared-artifact/i,
+  "artifact ownership must remain globally unique across declared sources",
+);
+const syntheticBindings = auditModule.verifyLiteralSourceBindings(
+  [
+    {
+      id: "fleischner-test-claim",
+      vector_ids: ["vector-a"],
+      source_text_assertions: [
+        {
+          artifact_id: "guideline-vor-pdf",
+          locator: "pdf-page:2",
+          locator_text_sha256: syntheticLocatorSha,
+          required_snippets: [
+            "adult patients who are at least 35 years old",
+            "known primary cancers",
+          ],
+        },
+      ],
+    },
+  ],
+  new Map([
+    ["guideline-vor-pdf:pdf-page:2", syntheticLocatorText],
+  ]),
+  {
+    expectedClaimIds: ["fleischner-test-claim"],
+    fixtureCases: syntheticFixtureCases,
+  },
+);
+assert.deepEqual(syntheticBindings, [
+  {
+    claim_id: "fleischner-test-claim",
+    vector_ids: ["vector-a"],
+    vector_count: 1,
+    vector_binding_sha256: digest(syntheticFixtureCases),
+    locator_assertions: [
+      {
+        artifact_id: "guideline-vor-pdf",
+        locator: "pdf-page:2",
+        locator_text_sha256: syntheticLocatorSha,
+        required_snippet_count: 2,
+      },
+    ],
+  },
+]);
+assert.throws(
+  () =>
+    auditModule.verifyLiteralSourceBindings(
+      [
+        {
+          id: "mutated-claim",
+          vector_ids: ["vector-a"],
+          source_text_assertions: [
+            {
+              artifact_id: "guideline-vor-pdf",
+              locator: "pdf-page:2",
+              locator_text_sha256: syntheticLocatorSha,
+              required_snippets: ["immunocompromised patients"],
+            },
+          ],
+        },
+      ],
+      new Map([
+        ["guideline-vor-pdf:pdf-page:2", syntheticLocatorText],
+      ]),
+      {
+        expectedClaimIds: ["mutated-claim"],
+        fixtureCases: syntheticFixtureCases,
+      },
+    ),
+  /missing literal snippet/i,
+  "a source-text mutation must invalidate its bound clinical claim",
+);
+assert.throws(
+  () =>
+    auditModule.verifyLiteralSourceBindings(
+      [
+        {
+          id: "duplicate-claim",
+          vector_ids: ["vector-a"],
+          source_text_assertions: [
+            {
+              artifact_id: "guideline-vor-pdf",
+              locator: "pdf-page:2",
+              locator_text_sha256: syntheticLocatorSha,
+              required_snippets: ["known primary cancers"],
+            },
+          ],
+        },
+        {
+          id: "duplicate-claim",
+          vector_ids: ["vector-a"],
+          source_text_assertions: [
+            {
+              artifact_id: "guideline-vor-pdf",
+              locator: "pdf-page:2",
+              locator_text_sha256: syntheticLocatorSha,
+              required_snippets: ["known primary cancers"],
+            },
+          ],
+        },
+      ],
+      new Map([
+        ["guideline-vor-pdf:pdf-page:2", syntheticLocatorText],
+      ]),
+      {
+        expectedClaimIds: ["duplicate-claim", "another-claim"],
+        fixtureCases: syntheticFixtureCases,
+      },
+    ),
+  /claim IDs: duplicate entry/i,
+  "duplicate literal claim IDs must fail closed",
+);
+assert.throws(
+  () =>
+    auditModule.verifyLiteralSourceBindings(
+      [
+        {
+          id: "duplicate-locator-claim",
+          vector_ids: ["vector-a"],
+          source_text_assertions: [
+            {
+              artifact_id: "guideline-vor-pdf",
+              locator: "pdf-page:2",
+              locator_text_sha256: syntheticLocatorSha,
+              required_snippets: ["known primary cancers"],
+            },
+            {
+              artifact_id: "guideline-vor-pdf",
+              locator: "pdf-page:2",
+              locator_text_sha256: syntheticLocatorSha,
+              required_snippets: ["adult patients"],
+            },
+          ],
+        },
+      ],
+      new Map([
+        ["guideline-vor-pdf:pdf-page:2", syntheticLocatorText],
+      ]),
+      {
+        expectedClaimIds: ["duplicate-locator-claim"],
+        fixtureCases: syntheticFixtureCases,
+      },
+    ),
+  /literal locator keys: duplicate entry/i,
+  "duplicate locator bindings within one claim must fail closed",
+);
+assert.throws(
+  () =>
+    auditModule.verifyLiteralSourceBindings(
+      [
+        {
+          id: "missing-vector-claim",
+          vector_ids: ["vector-not-in-fixture"],
+          source_text_assertions: [
+            {
+              artifact_id: "guideline-vor-pdf",
+              locator: "pdf-page:2",
+              locator_text_sha256: syntheticLocatorSha,
+              required_snippets: ["known primary cancers"],
+            },
+          ],
+        },
+      ],
+      new Map([
+        ["guideline-vor-pdf:pdf-page:2", syntheticLocatorText],
+      ]),
+      {
+        expectedClaimIds: ["missing-vector-claim"],
+        fixtureCases: syntheticFixtureCases,
+      },
+    ),
+  /missing fixture vector vector-not-in-fixture/i,
+  "literal bindings must fail when a sealed fixture vector is absent",
+);
 
 await assert.rejects(
   verifyMementoArtifact(syntheticArtifact, {
@@ -423,7 +952,67 @@ assert.equal(
 );
 
 const audit = JSON.parse(run.stdout);
-assert.equal(audit.schema, "radulator-fleischner-primary-source-audit/v3");
+assert.equal(audit.schema, "radulator-fleischner-primary-source-audit/v4");
+assert.equal(
+  Object.hasOwn(audit, "source_claims"),
+  false,
+  "v4 must remove the legacy hard-coded source_claims object",
+);
+assert.equal(
+  audit.source_text_verification.schema,
+  "radulator-literal-source-bindings/v1",
+);
+assert.equal(audit.source_text_verification.claim_count, 12);
+assert.equal(audit.source_text_verification.locator_assertion_count, 27);
+assert.equal(audit.source_text_verification.required_snippet_count, 37);
+assert.deepEqual(
+  audit.source_text_verification.claims.map((claim) => claim.claim_id),
+  EXPECTED_CLAIM_IDS,
+);
+assert.deepEqual(audit.source_text_verification.figure_artifact, {
+  artifact_id: "measurement-figure-1",
+  figure_id: "fig1",
+  linked_origin_url:
+    "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+  format: "GIF87a",
+  width: 387,
+  height: 500,
+});
+assert.deepEqual(audit.source_text_verification.reviewed_transcriptions, [
+  {
+    id: "fleischner-measurement-figure1-solid-component",
+    claim_id: "fleischner-2017-measurement-contract",
+    artifact_id: "measurement-figure-1",
+    artifact_sha256:
+      "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+    review_mode: "hash-bound-reviewed-raster-transcription",
+    width: 387,
+    height: 500,
+    transcription:
+      "For all part-solid nodules, the maximum diameter of the solid component should be measured if this component is >3 mm, understanding that measurements may be unreliable for small solid components. Dimensions of both solid and nonsolid components should be recorded to document change in the future (grade 2B evidence).",
+    vector_ids: [
+      "part-solid-categorical-lte3-component-avoids-false-precision",
+      "part-solid-measured-component-at-3-mm-rejected",
+    ],
+  },
+]);
+assert.equal(
+  audit.source_runtime_bindings.schema,
+  "radulator-source-runtime-bindings/v1",
+);
+assert.deepEqual(
+  audit.source_runtime_bindings.claims.map((claim) => claim.claim_id),
+  EXPECTED_CLAIM_IDS,
+);
+assert.equal(
+  audit.source_runtime_bindings.claims.every(
+    (claim) =>
+      claim.synthesis_vector_count === claim.synthesis_vector_ids.length &&
+      /^[a-f0-9]{64}$/.test(claim.synthesis_vector_sha256),
+  ),
+  true,
+  "each reviewed synthesis must bind its exact sealed fixture vectors",
+);
 assert.deepEqual(audit.primary_metadata.guideline, {
   doi: "10.1148/radiol.2017161659",
   title:
@@ -449,12 +1038,12 @@ assert.deepEqual(audit.primary_metadata.measurement, {
 
 assert.deepEqual(audit.reviewed_source_evidence, {
   manifest_path: MANIFEST_PATH,
-  manifest_schema: "radulator-reviewed-source-evidence/v2",
+  manifest_schema: "radulator-reviewed-source-evidence/v3",
   payload_sha256: PAYLOAD_SHA256,
   reviewer_schema: "radulator-independent-source-review/v1",
   reviewer_role: "independent-clinical-source-reviewer",
-  reviewer_revision: "fleischner-source-review/2026-08-30-r9",
-  reviewed_at: "2026-08-30T23:32:19Z",
+  reviewer_revision: "fleischner-source-review/2026-08-31-r10",
+  reviewed_at: "2026-08-31T01:21:01Z",
   disposition: "SOURCE_INTERPRETATION_APPROVED",
   release_authority: "none",
   scope: "source-interpretation-and-product-invariants",
@@ -611,5 +1200,5 @@ assert.equal(audit.calculator_content_invariants_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "Fleischner source audit verified 3 byte-pinned RSNA-origin Mementos, 12 claims plus 3 implementation invariants, all 113 executable vectors, primary DOI identities, and live NLM fragments.",
+  "Fleischner source audit verified 3 byte-pinned RSNA-origin Mementos, 27 literal locator assertions with 37 required snippets across 12 claims, 4 implementation invariants, all 113 executable vectors, primary DOI identities, and live NLM fragments.",
 );

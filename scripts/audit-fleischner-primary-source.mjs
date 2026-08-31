@@ -7,6 +7,7 @@ import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import process from "node:process";
+import { getDocument as getPdfDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { digest } from "./release-policy.mjs";
 
 const GUIDELINE_DOI = "10.1148/radiol.2017161659";
@@ -26,17 +27,18 @@ const SUBSOLID_TABLE_URL =
   "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly";
 
 const EXPECTED_PAYLOAD_SHA256 =
-  "d677757521cedada4aba3573386beac5620701e2c7c36c648d960a4bfec39a11";
+  "e6446ba442742e612bc55b12f8f3f3f46c9d004cc326131013762f1e62b68811";
 const EXPECTED_REVIEWED_VECTORS_SHA256 =
   "4f15e698faca2a32ebc28830ef6b94483249910d725148af4f8eb0695c0e08c8";
 const EXPECTED_REVIEWER_REVISION =
-  "fleischner-source-review/2026-08-30-r9";
-const EXPECTED_REVIEWED_AT = "2026-08-30T23:32:19Z";
+  "fleischner-source-review/2026-08-31-r10";
+const EXPECTED_REVIEWED_AT = "2026-08-31T01:21:01Z";
 
 const EXPECTED_INVARIANT_IDS = [
   "fleischner-input-completeness-fail-closed",
   "fleischner-nodule-domain-boundary",
   "fleischner-measurement-input-geometry",
+  "fleischner-state-consistency-fail-closed",
 ];
 
 const EXPECTED_CLAIM_IDS = [
@@ -123,7 +125,7 @@ const EXPECTED_CRITICAL_VECTOR_IDS = [
 
 const EXPECTED_LIMITATIONS = [
   "CI retrieves hash-pinned Memento captures of RSNA-origin publisher artifacts and verifies rel=original provenance; it does not claim a successful live RSNA origin fetch.",
-  "No measurement-statement PDF is pinned; measurement claims are bound to the publisher full-text HTML fragment and Figure 1 artifact.",
+  "No measurement-statement PDF is pinned; HTML claims are machine-extracted from the publisher full-text fragment, while Figure 1 text is a hash-bound reviewed raster transcription whose exact link, bytes, format, and dimensions are verified by CI.",
   "The NLM tables are secondary cross-checks and cannot prove prose exceptions, risk interpretation, or measurement guidance.",
   "Source bindings and product invariants do not approve the runtime, pull request, deployment, or live site.",
   "If Memento retrieval is not an acceptable transport, release remains blocked until equivalent licensed or RSNA-delivered bytes can be pinned and verified.",
@@ -193,6 +195,33 @@ const EXPECTED_RSNA_ARTIFACTS = {
       "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
     direct_origin_fetch_status: 403,
   },
+};
+
+const EXPECTED_REVIEWED_TRANSCRIPTION = {
+  id: "fleischner-measurement-figure1-solid-component",
+  claim_id: "fleischner-2017-measurement-contract",
+  artifact_id: "measurement-figure-1",
+  artifact_sha256:
+    "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+  review_mode: "hash-bound-reviewed-raster-transcription",
+  width: 387,
+  height: 500,
+  transcription:
+    "For all part-solid nodules, the maximum diameter of the solid component should be measured if this component is >3 mm, understanding that measurements may be unreliable for small solid components. Dimensions of both solid and nonsolid components should be recorded to document change in the future (grade 2B evidence).",
+  vector_ids: [
+    "part-solid-categorical-lte3-component-avoids-false-precision",
+    "part-solid-measured-component-at-3-mm-rejected",
+  ],
+};
+
+const EXPECTED_LITERAL_SOURCE_VERIFICATION = {
+  audit_schema: "radulator-fleischner-primary-source-audit/v4",
+  parser: "pdfjs-dist/legacy/build/pdf.mjs",
+  parser_version: "4.10.38",
+  claim_count: 12,
+  locator_assertion_count: 27,
+  required_snippet_count: 37,
+  trusted_exact_head_check: "Smoke Tests",
 };
 
 const EXPECTED_TABLES = {
@@ -531,6 +560,7 @@ export async function verifyMementoArtifact(
   }
 
   let fragment = null;
+  let fragmentBytes = null;
   if (artifact.fragment !== undefined) {
     assertExactKeys(
       artifact.fragment,
@@ -568,7 +598,7 @@ export async function verifyMementoArtifact(
     );
     assert.ok(start >= 0 && endMarkerStart > start, `${label}: fragment bounds`);
     const end = endMarkerStart + Buffer.byteLength(artifact.fragment.end_marker);
-    const fragmentBytes = body.subarray(start, end);
+    fragmentBytes = body.subarray(start, end);
     assert.equal(
       fragmentBytes.length,
       artifact.fragment.content_bytes,
@@ -587,7 +617,7 @@ export async function verifyMementoArtifact(
     };
   }
 
-  return {
+  const verification = {
     id: artifact.id,
     origin_url: artifact.origin_url,
     retrieval_url: artifact.retrieval_url,
@@ -605,6 +635,444 @@ export async function verifyMementoArtifact(
     byte_signature_verified: byteSignature,
     fragment,
   };
+  Object.defineProperties(verification, {
+    verified_bytes: {
+      value: body,
+      enumerable: false,
+    },
+    verified_fragment_bytes: {
+      value: fragmentBytes,
+      enumerable: false,
+    },
+  });
+  return verification;
+}
+
+function regexEscape(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeLiteralText(value) {
+  return normalizeWhitespace(
+    String(value)
+      .normalize("NFKC")
+      .replace(/[\u2012\u2013\u2014\u2212]/g, "-")
+      .replace(/\u2020/g, " ")
+      .replace(/\u2264/g, "<=")
+      .replace(/\u2265/g, ">=")
+      .replace(/\s+([,.;:])/g, "$1"),
+  );
+}
+
+function pdfItemsText(items) {
+  let text = "";
+  let previousItem = null;
+  for (const item of items) {
+    const current = String(item.str ?? "");
+    if (current.length === 0) {
+      previousItem = item;
+      continue;
+    }
+    const joinsWrappedWord =
+      previousItem?.hasEOL === true &&
+      /[A-Za-z]-$/.test(text) &&
+      /^[a-z]/.test(current);
+    if (joinsWrappedWord) {
+      text = `${text.slice(0, -1)}${current}`;
+    } else {
+      text = `${text}${text.length > 0 ? " " : ""}${current}`;
+    }
+    previousItem = item;
+  }
+  return normalizeLiteralText(text);
+}
+
+function htmlText(value) {
+  const namedEntities = new Map([
+    ["amp", "&"],
+    ["apos", "'"],
+    ["gt", ">"],
+    ["le", "≤"],
+    ["lt", "<"],
+    ["ge", "≥"],
+    ["mdash", "—"],
+    ["ndash", "–"],
+    ["nbsp", " "],
+    ["quot", '"'],
+    ["shy", ""],
+    ["thinsp", " "],
+  ]);
+  return normalizeLiteralText(
+    String(value)
+      .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+        String.fromCodePoint(Number.parseInt(hex, 16)),
+      )
+      .replace(/&#([0-9]+);/g, (_, decimal) =>
+        String.fromCodePoint(Number.parseInt(decimal, 10)),
+      )
+      .replace(/&([a-z]+);/gi, (entity, name) =>
+        namedEntities.has(name.toLowerCase())
+          ? namedEntities.get(name.toLowerCase())
+          : entity,
+      ),
+  );
+}
+
+export function extractHtmlLiteralText(value) {
+  const text =
+    Buffer.isBuffer(value) || ArrayBuffer.isView(value)
+      ? Buffer.from(
+          value.buffer,
+          value.byteOffset,
+          value.byteLength,
+        ).toString("utf8")
+      : String(value);
+  return htmlText(text);
+}
+
+export async function extractPdfPageTexts(
+  pdfBytes,
+  pageNumbers,
+  {
+    artifactId = "guideline-vor-pdf",
+    expectedPageCount = EXPECTED_RSNA_ARTIFACTS.guideline.page_count,
+    getDocumentImpl = getPdfDocument,
+  } = {},
+) {
+  assert.ok(
+    Buffer.isBuffer(pdfBytes) || ArrayBuffer.isView(pdfBytes),
+    `${artifactId}: PDF bytes`,
+  );
+  assertUniqueStrings([artifactId], `${artifactId}: artifact ID`);
+  assert.ok(Array.isArray(pageNumbers) && pageNumbers.length > 0, `${artifactId}: pages`);
+  assert.equal(
+    new Set(pageNumbers).size,
+    pageNumbers.length,
+    `${artifactId}: duplicate page`,
+  );
+  assert.equal(typeof getDocumentImpl, "function", `${artifactId}: PDF parser`);
+  assert.ok(
+    Number.isInteger(expectedPageCount) && expectedPageCount > 0,
+    `${artifactId}: expected page count`,
+  );
+
+  const loadingTask = getDocumentImpl({
+    data: Uint8Array.from(pdfBytes),
+    disableFontFace: true,
+    useSystemFonts: false,
+  });
+  const document = await loadingTask.promise;
+  try {
+    assert.equal(
+      document.numPages,
+      expectedPageCount,
+      `${artifactId}: expected ${expectedPageCount} PDF pages, received ${document.numPages}`,
+    );
+    const pages = new Map();
+    for (const pageNumber of pageNumbers) {
+      assert.ok(
+        Number.isInteger(pageNumber) &&
+          pageNumber >= 1 &&
+          pageNumber <= document.numPages,
+        `${artifactId}: invalid page ${pageNumber}`,
+      );
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const text = pdfItemsText(content.items);
+      assert.ok(text.length > 0, `${artifactId}: empty page ${pageNumber}`);
+      pages.set(`${artifactId}:pdf-page:${pageNumber}`, text);
+    }
+    return pages;
+  } finally {
+    await document.destroy?.();
+  }
+}
+
+export function extractHtmlLocatorTexts(
+  fragmentBytes,
+  {
+    artifactId = "measurement-fulltext",
+    sectionIds = [],
+    figureIds = [],
+  } = {},
+) {
+  assert.ok(
+    Buffer.isBuffer(fragmentBytes) || ArrayBuffer.isView(fragmentBytes),
+    `${artifactId}: HTML bytes`,
+  );
+  assertUniqueStrings([artifactId], `${artifactId}: artifact ID`);
+  if (sectionIds.length > 0) assertUniqueStrings(sectionIds, `${artifactId}: section IDs`);
+  if (figureIds.length > 0) assertUniqueStrings(figureIds, `${artifactId}: figure IDs`);
+  assert.ok(sectionIds.length + figureIds.length > 0, `${artifactId}: locators`);
+  const fragment = Buffer.from(
+    fragmentBytes.buffer,
+    fragmentBytes.byteOffset,
+    fragmentBytes.byteLength,
+  ).toString("utf8");
+  const locators = new Map();
+
+  const sectionStarts = sectionIds.map((sectionId) => {
+    assert.match(sectionId, /^_i\d+$/, `${artifactId}: section ID`);
+    const startPattern = new RegExp(
+      `<h[1-6][^>]*\\bid=["']${regexEscape(sectionId)}["'][^>]*>`,
+      "gi",
+    );
+    const starts = [...fragment.matchAll(startPattern)];
+    assert.equal(
+      starts.length,
+      1,
+      `${artifactId}: expected exactly one section ${sectionId}`,
+    );
+    return {
+      id: sectionId,
+      index: starts[0].index,
+      openingTag: starts[0][0],
+    };
+  });
+  assert.deepEqual(
+    sectionStarts.map(({ index }) => index),
+    sectionStarts.map(({ index }) => index).sort((left, right) => left - right),
+    `${artifactId}: section anchors must follow document order`,
+  );
+
+  for (const { id: sectionId, index: start, openingTag } of sectionStarts) {
+    const remainder = fragment.slice(start + openingTag.length);
+    const next = /<h[1-6][^>]*\bid=["']_i\d+["'][^>]*>/i.exec(remainder);
+    const text = htmlText(
+      openingTag + remainder.slice(0, next?.index ?? remainder.length),
+    );
+    assert.ok(text.length > 0, `${artifactId}: empty section ${sectionId}`);
+    locators.set(`${artifactId}:html-section:#${sectionId}`, text);
+  }
+
+  for (const figureId of figureIds) {
+    assert.match(figureId, /^fig\d+$/, `${artifactId}: figure ID`);
+    const startPattern = new RegExp(
+      `<figure[^>]*\\bid=["']${regexEscape(figureId)}["'][^>]*>`,
+      "gi",
+    );
+    const starts = [...fragment.matchAll(startPattern)];
+    assert.equal(
+      starts.length,
+      1,
+      `${artifactId}: expected exactly one figure ${figureId}`,
+    );
+    const start = starts[0].index;
+    const close = fragment.indexOf("</figure>", start);
+    assert.ok(close > start, `${artifactId}: unclosed figure ${figureId}`);
+    const text = htmlText(fragment.slice(start, close + "</figure>".length));
+    assert.ok(text.length > 0, `${artifactId}: empty figure ${figureId}`);
+    locators.set(`${artifactId}:html-figure:#${figureId}`, text);
+  }
+
+  return locators;
+}
+
+export function verifyPinnedFigureArtifact(
+  fragmentBytes,
+  figureBytes,
+  {
+    artifactId,
+    figureId,
+    expectedOriginUrl,
+    expectedWidth,
+    expectedHeight,
+  } = {},
+) {
+  assert.ok(
+    Buffer.isBuffer(fragmentBytes) || ArrayBuffer.isView(fragmentBytes),
+    `${artifactId}: HTML bytes`,
+  );
+  assert.ok(
+    Buffer.isBuffer(figureBytes) || ArrayBuffer.isView(figureBytes),
+    `${artifactId}: figure bytes`,
+  );
+  assertUniqueStrings(
+    [artifactId, figureId, expectedOriginUrl],
+    "pinned figure identity",
+  );
+  assert.match(figureId, /^fig\d+$/, `${artifactId}: figure ID`);
+  assert.ok(
+    Number.isInteger(expectedWidth) && expectedWidth > 0,
+    `${artifactId}: expected width`,
+  );
+  assert.ok(
+    Number.isInteger(expectedHeight) && expectedHeight > 0,
+    `${artifactId}: expected height`,
+  );
+
+  const fragment = Buffer.from(
+    fragmentBytes.buffer,
+    fragmentBytes.byteOffset,
+    fragmentBytes.byteLength,
+  ).toString("utf8");
+  const figurePattern = new RegExp(
+    `<figure[^>]*\\bid=["']${regexEscape(figureId)}["'][^>]*>`,
+    "gi",
+  );
+  const figureStarts = [...fragment.matchAll(figurePattern)];
+  assert.equal(
+    figureStarts.length,
+    1,
+    `${artifactId}: expected exactly one linked figure ${figureId}`,
+  );
+  const figureStart = figureStarts[0].index;
+  const figureEnd = fragment.indexOf("</figure>", figureStart);
+  assert.ok(figureEnd > figureStart, `${artifactId}: unclosed figure ${figureId}`);
+  const figureHtml = fragment.slice(
+    figureStart,
+    figureEnd + "</figure>".length,
+  );
+  const imageTags = [...figureHtml.matchAll(/<img\b[^>]*>/gi)];
+  assert.equal(
+    imageTags.length,
+    1,
+    `${artifactId}: expected exactly one image for ${figureId}`,
+  );
+  const imageMatches = [
+    ...imageTags[0][0].matchAll(/(?:^|\s)src=["']([^"']+)["']/gi),
+  ];
+  assert.equal(
+    imageMatches.length,
+    1,
+    `${artifactId}: expected exactly one src for ${figureId}`,
+  );
+  const linkedOriginUrl = new URL(
+    imageMatches[0][1],
+    expectedOriginUrl,
+  ).toString();
+  assert.equal(
+    linkedOriginUrl,
+    expectedOriginUrl,
+    `${artifactId}: publisher figure link`,
+  );
+
+  const bytes = Buffer.from(
+    figureBytes.buffer,
+    figureBytes.byteOffset,
+    figureBytes.byteLength,
+  );
+  assert.ok(bytes.length >= 10, `${artifactId}: truncated GIF`);
+  const format = bytes.subarray(0, 6).toString("ascii");
+  assert.match(format, /^GIF8[79]a$/, `${artifactId}: GIF signature`);
+  const width = bytes.readUInt16LE(6);
+  const height = bytes.readUInt16LE(8);
+  assert.equal(width, expectedWidth, `${artifactId}: GIF width`);
+  assert.equal(height, expectedHeight, `${artifactId}: GIF height`);
+
+  return {
+    artifact_id: artifactId,
+    figure_id: figureId,
+    linked_origin_url: linkedOriginUrl,
+    format,
+    width,
+    height,
+  };
+}
+
+export function verifyLiteralSourceBindings(
+  claims,
+  locatorTexts,
+  { expectedClaimIds, fixtureCases } = {},
+) {
+  assert.ok(Array.isArray(claims) && claims.length > 0, "literal bindings: claims");
+  assert.equal(locatorTexts instanceof Map, true, "literal bindings: locator map");
+  assertUniqueStrings(expectedClaimIds, "literal bindings: expected claim IDs");
+  const claimIds = claims.map((claim) => claim.id);
+  assertUniqueStrings(claimIds, "literal bindings: claim IDs");
+  assert.deepEqual(
+    claimIds,
+    expectedClaimIds,
+    "literal bindings: exact claim ID set",
+  );
+  assert.ok(
+    Array.isArray(fixtureCases) && fixtureCases.length > 0,
+    "literal bindings: fixture cases",
+  );
+  const fixtureIds = fixtureCases.map((testCase) => testCase.id);
+  assertUniqueStrings(fixtureIds, "literal bindings: fixture IDs");
+  const fixtureById = new Map(
+    fixtureCases.map((testCase) => [testCase.id, testCase]),
+  );
+
+  return claims.map((claim) => {
+    assert.ok(typeof claim.id === "string" && claim.id.length > 0, "literal binding: claim ID");
+    assertUniqueStrings(claim.vector_ids, `${claim.id}: vector IDs`);
+    const boundVectors = claim.vector_ids.map((vectorId) => {
+      const testCase = fixtureById.get(vectorId);
+      assert.ok(testCase, `${claim.id}: missing fixture vector ${vectorId}`);
+      return testCase;
+    });
+    assert.ok(
+      Array.isArray(claim.source_text_assertions) &&
+        claim.source_text_assertions.length > 0,
+      `${claim.id}: source text assertions`,
+    );
+    const locatorKeys = [];
+    const locatorAssertions = claim.source_text_assertions.map((binding) => {
+      assertExactKeys(
+        binding,
+        [
+          "artifact_id",
+          "locator",
+          "locator_text_sha256",
+          "required_snippets",
+        ],
+        `${claim.id}: source text assertion`,
+      );
+      assert.ok(
+        typeof binding.artifact_id === "string" && binding.artifact_id.length > 0,
+        `${claim.id}: artifact ID`,
+      );
+      assert.match(
+        binding.locator,
+        /^(?:pdf-page:\d+|html-section:#_i\d+|html-figure:#fig\d+|html-table:[A-Za-z0-9.]+)$/,
+        `${claim.id}: locator`,
+      );
+      assert.match(
+        binding.locator_text_sha256,
+        /^[a-f0-9]{64}$/,
+        `${claim.id}: locator text SHA-256`,
+      );
+      assertUniqueStrings(
+        binding.required_snippets,
+        `${claim.id}: required snippets`,
+      );
+      const key = `${binding.artifact_id}:${binding.locator}`;
+      locatorKeys.push(key);
+      const text = locatorTexts.get(key);
+      assert.ok(typeof text === "string" && text.length > 0, `${claim.id}: missing locator ${key}`);
+      assert.equal(
+        sha256(text),
+        binding.locator_text_sha256,
+        `${claim.id}: locator text SHA-256 ${key}`,
+      );
+      for (const snippet of binding.required_snippets) {
+        assert.ok(
+          text.includes(snippet),
+          `${claim.id}: missing literal snippet in ${key}: ${snippet}`,
+        );
+      }
+      return {
+        artifact_id: binding.artifact_id,
+        locator: binding.locator,
+        locator_text_sha256: binding.locator_text_sha256,
+        required_snippet_count: binding.required_snippets.length,
+      };
+    });
+    assertUniqueStrings(locatorKeys, `${claim.id}: literal locator keys`);
+    return {
+      claim_id: claim.id,
+      vector_ids: claim.vector_ids,
+      vector_count: boundVectors.length,
+      vector_binding_sha256: sha256(boundVectors),
+      locator_assertions: locatorAssertions,
+    };
+  });
 }
 
 function normalizeWhitespace(value) {
@@ -687,7 +1155,7 @@ function assertExpectedText(fragment, snippets, label) {
   }
 }
 
-function assertFixtureExpectation(result, expectation, context) {
+export function assertFixtureExpectation(result, expectation, context) {
   assertExactKeys(expectation, ["noError", "fields"], `${context}: expectation`);
   assert.equal(typeof expectation.noError, "boolean", `${context}: noError`);
   assert.ok(Array.isArray(expectation.fields), `${context}: fields`);
@@ -697,6 +1165,11 @@ function assertFixtureExpectation(result, expectation, context) {
     assert.equal(hasError, false, `${context}: unexpected Error ${result.Error}`);
   } else {
     assert.equal(hasError, true, `${context}: expected an Error result`);
+    assert.deepEqual(
+      Object.keys(result).sort(),
+      ["Error"],
+      `${context}: error result must contain only Error`,
+    );
   }
 
   for (const field of expectation.fields) {
@@ -717,17 +1190,6 @@ function assertFixtureExpectation(result, expectation, context) {
   }
 }
 
-function claimProjection(claim) {
-  return {
-    id: claim.id,
-    source_url: claim.source_url,
-    source_sha256: claim.source_sha256,
-    source_locator: claim.source_locator,
-    fact: claim.fact,
-    vector_ids: claim.vector_ids,
-  };
-}
-
 function invariantProjection(invariant) {
   return {
     id: invariant.id,
@@ -736,9 +1198,61 @@ function invariantProjection(invariant) {
   };
 }
 
+export function verifyClaimSourceProvenance(claims, sources) {
+  assert.ok(Array.isArray(claims) && claims.length > 0, "claim provenance: claims");
+  assert.ok(Array.isArray(sources) && sources.length > 0, "claim provenance: sources");
+  const artifactsBySourceUrl = new Map();
+  const artifactOwnerById = new Map();
+  for (const source of sources) {
+    assert.ok(
+      typeof source?.url === "string" && source.url.length > 0,
+      "claim provenance: source URL",
+    );
+    assert.equal(
+      artifactsBySourceUrl.has(source.url),
+      false,
+      `claim provenance: duplicate source URL ${source.url}`,
+    );
+    const artifactIds = Array.isArray(source.artifacts)
+      ? source.artifacts.map((artifact) => artifact.id)
+      : [source.id];
+    assertUniqueStrings(artifactIds, `claim provenance: ${source.url} artifacts`);
+    for (const artifactId of artifactIds) {
+      assert.equal(
+        artifactOwnerById.has(artifactId),
+        false,
+        `claim provenance: duplicate artifact ID ${artifactId}`,
+      );
+      artifactOwnerById.set(artifactId, source.url);
+    }
+    artifactsBySourceUrl.set(source.url, new Set(artifactIds));
+  }
+
+  for (const claim of claims) {
+    const allowedArtifactIds = artifactsBySourceUrl.get(claim.source_url);
+    assert.ok(
+      allowedArtifactIds,
+      `${claim.id}: declared source URL is not in the evidence manifest`,
+    );
+    assert.ok(
+      Array.isArray(claim.source_text_assertions) &&
+        claim.source_text_assertions.length > 0,
+      `${claim.id}: source text assertions`,
+    );
+    for (const binding of claim.source_text_assertions) {
+      assert.equal(
+        artifactOwnerById.get(binding.artifact_id),
+        claim.source_url,
+        `${claim.id}: artifact ${binding.artifact_id} is not declared by source ${claim.source_url}`,
+      );
+    }
+  }
+  return true;
+}
+
 function validateManifest(manifest, fixture, registry) {
   assertExactKeys(manifest, ["schema", "payload", "review"], "manifest");
-  assert.equal(manifest.schema, "radulator-reviewed-source-evidence/v2");
+  assert.equal(manifest.schema, "radulator-reviewed-source-evidence/v3");
   assertExactKeys(
     manifest.payload,
     [
@@ -748,6 +1262,7 @@ function validateManifest(manifest, fixture, registry) {
       "sources",
       "claims",
       "implementation_invariants",
+      "reviewed_transcriptions",
       "runtime_contract",
       "limitations",
     ],
@@ -789,7 +1304,10 @@ function validateManifest(manifest, fixture, registry) {
     EXPECTED_REVIEWER_REVISION,
   );
   assert.equal(manifest.review.reviewed_at, EXPECTED_REVIEWED_AT);
-  assert.equal(manifest.review.disposition, "SOURCE_INTERPRETATION_APPROVED");
+  assert.equal(
+    manifest.review.disposition,
+    "SOURCE_INTERPRETATION_APPROVED",
+  );
   assert.equal(manifest.review.release_authority, "none");
 
   assert.equal(manifest.payload.sources.length, 4, "manifest source count");
@@ -879,12 +1397,27 @@ function validateManifest(manifest, fixture, registry) {
   assert.deepEqual(claimIds, EXPECTED_CLAIM_IDS);
   assertUniqueStrings(claimIds, "manifest claim IDs");
   const sourceUrls = new Set(manifest.payload.sources.map((source) => source.url));
+  verifyClaimSourceProvenance(
+    manifest.payload.claims,
+    manifest.payload.sources,
+  );
   const sourceDigests = new Map([
     [GUIDELINE_URL, EXPECTED_RSNA_ARTIFACTS.guideline.content_sha256],
     [MEASUREMENT_URL, EXPECTED_RSNA_ARTIFACTS.measurement.content_sha256],
     [SOLID_TABLE_URL, EXPECTED_TABLES.solid.sha256],
     [SUBSOLID_TABLE_URL, EXPECTED_TABLES.subsolid.sha256],
   ]);
+  const assertionLocatorPatterns = new Map([
+    ["guideline-vor-pdf", /^pdf-page:\d+$/],
+    [
+      "measurement-fulltext",
+      /^html-(?:section:#_i\d+|figure:#fig\d+)$/,
+    ],
+    ["nlm-fleischner-solid-table", /^html-table:ch5\.Tab1$/],
+    ["nlm-fleischner-subsolid-table", /^html-table:ch5\.Tab2$/],
+  ]);
+  let locatorAssertionCount = 0;
+  let requiredSnippetCount = 0;
   for (const claim of manifest.payload.claims) {
     assertExactKeys(
       claim,
@@ -893,7 +1426,9 @@ function validateManifest(manifest, fixture, registry) {
         "source_url",
         "source_sha256",
         "source_locator",
-        "fact",
+        "direct_source_fact",
+        "source_text_assertions",
+        "reviewed_synthesis",
         "vector_ids",
       ],
       `manifest claim ${claim.id}`,
@@ -904,14 +1439,69 @@ function validateManifest(manifest, fixture, registry) {
       sourceDigests.get(claim.source_url),
       `${claim.id}: source SHA-256`,
     );
-    assert.ok(claim.source_locator.length > 0, `${claim.id}: source locator`);
-    assert.ok(claim.fact.length > 0, `${claim.id}: fact`);
+    for (const [field, label] of [
+      [claim.source_locator, "source locator"],
+      [claim.direct_source_fact, "direct source fact"],
+      [claim.reviewed_synthesis, "reviewed synthesis"],
+    ]) {
+      assert.ok(
+        typeof field === "string" && field.length > 0,
+        `${claim.id}: ${label}`,
+      );
+    }
     assertUniqueStrings(claim.vector_ids, `${claim.id}: vector IDs`);
+    assert.ok(
+      Array.isArray(claim.source_text_assertions) &&
+        claim.source_text_assertions.length > 0,
+      `${claim.id}: source text assertions`,
+    );
+    const claimLocatorKeys = [];
+    for (const assertionBinding of claim.source_text_assertions) {
+      assertExactKeys(
+        assertionBinding,
+        [
+          "artifact_id",
+          "locator",
+          "locator_text_sha256",
+          "required_snippets",
+        ],
+        `${claim.id}: source text assertion`,
+      );
+      const locatorPattern = assertionLocatorPatterns.get(
+        assertionBinding.artifact_id,
+      );
+      assert.ok(
+        locatorPattern,
+        `${claim.id}: unknown assertion artifact ${assertionBinding.artifact_id}`,
+      );
+      assert.match(
+        assertionBinding.locator,
+        locatorPattern,
+        `${claim.id}: assertion locator`,
+      );
+      assert.match(
+        assertionBinding.locator_text_sha256,
+        /^[a-f0-9]{64}$/,
+        `${claim.id}: locator text SHA-256`,
+      );
+      assertUniqueStrings(
+        assertionBinding.required_snippets,
+        `${claim.id}: required snippets`,
+      );
+      claimLocatorKeys.push(
+        `${assertionBinding.artifact_id}:${assertionBinding.locator}`,
+      );
+      locatorAssertionCount += 1;
+      requiredSnippetCount += assertionBinding.required_snippets.length;
+    }
+    assertUniqueStrings(claimLocatorKeys, `${claim.id}: assertion locator keys`);
   }
+  assert.equal(locatorAssertionCount, 27, "exact locator assertion count");
+  assert.equal(requiredSnippetCount, 37, "exact required snippet count");
 
   assert.equal(
     manifest.payload.implementation_invariants.length,
-    3,
+    4,
     "manifest implementation invariant count",
   );
   const implementationInvariantIds =
@@ -926,6 +1516,47 @@ function validateManifest(manifest, fixture, registry) {
     );
     assert.ok(invariant.fact.length > 0, `${invariant.id}: fact`);
     assertUniqueStrings(invariant.vector_ids, `${invariant.id}: vector IDs`);
+  }
+
+  assert.deepEqual(
+    manifest.payload.reviewed_transcriptions,
+    [EXPECTED_REVIEWED_TRANSCRIPTION],
+    "manifest must contain the exact reviewed Figure 1 transcription",
+  );
+  const reviewedTranscription = manifest.payload.reviewed_transcriptions[0];
+  assertExactKeys(
+    reviewedTranscription,
+    [
+      "id",
+      "claim_id",
+      "artifact_id",
+      "artifact_sha256",
+      "review_mode",
+      "width",
+      "height",
+      "transcription",
+      "vector_ids",
+    ],
+    "reviewed Figure 1 transcription",
+  );
+  const transcriptionClaim = manifest.payload.claims.find(
+    (claim) => claim.id === reviewedTranscription.claim_id,
+  );
+  assert.ok(transcriptionClaim, "reviewed transcription: missing bound claim");
+  assert.equal(
+    reviewedTranscription.artifact_sha256,
+    EXPECTED_RSNA_ARTIFACTS.figure1.content_sha256,
+    "reviewed transcription: artifact SHA-256",
+  );
+  assertUniqueStrings(
+    reviewedTranscription.vector_ids,
+    "reviewed transcription vector IDs",
+  );
+  for (const vectorId of reviewedTranscription.vector_ids) {
+    assert.ok(
+      transcriptionClaim.vector_ids.includes(vectorId),
+      `reviewed transcription: vector ${vectorId} must be bound to its claim`,
+    );
   }
 
   assertExactKeys(
@@ -1019,7 +1650,7 @@ function validateManifest(manifest, fixture, registry) {
   assert.equal(registryRecord.implemented_version, "Fleischner 2017");
   const registryEvidence = registryRecord.implementation_evidence;
   assert.deepEqual(registryEvidence.reviewed_evidence, {
-    schema: "radulator-reviewed-source-evidence-link/v2",
+    schema: "radulator-reviewed-source-evidence-link/v3",
     manifest_path: MANIFEST_PATH,
     payload_sha256: EXPECTED_PAYLOAD_SHA256,
     reviewer_revision: EXPECTED_REVIEWER_REVISION,
@@ -1028,6 +1659,9 @@ function validateManifest(manifest, fixture, registry) {
     review_disposition: "SOURCE_INTERPRETATION_APPROVED",
     release_authority: "none",
     ci_primary_full_text_verified: true,
+    literal_source_claim_count: 12,
+    locator_assertion_count: 27,
+    required_snippet_count: 37,
     reviewed_vectors_sha256: EXPECTED_REVIEWED_VECTORS_SHA256,
     reviewed_vector_count: 113,
     primary_artifacts: [
@@ -1035,19 +1669,118 @@ function validateManifest(manifest, fixture, registry) {
       EXPECTED_RSNA_ARTIFACTS.measurement,
       EXPECTED_RSNA_ARTIFACTS.figure1,
     ],
+    reviewed_transcriptions: [EXPECTED_REVIEWED_TRANSCRIPTION],
   });
-  assert.deepEqual(
-    registryEvidence.claims.map(claimProjection),
-    manifest.payload.claims.map(claimProjection),
-    "registry claims must deep-match the reviewed manifest claim bindings",
+  const manifestClaimKeys = [
+    "id",
+    "source_url",
+    "source_sha256",
+    "source_locator",
+    "direct_source_fact",
+    "source_text_assertions",
+    "reviewed_synthesis",
+    "vector_ids",
+  ];
+  assert.equal(
+    registryEvidence.claims.length,
+    manifest.payload.claims.length,
+    "registry claim count must match the reviewed manifest",
   );
+  for (const [index, registryClaim] of registryEvidence.claims.entries()) {
+    assertExactKeys(
+      registryClaim,
+      [...manifestClaimKeys, "dimensions", "fact"],
+      `registry claim ${registryClaim.id}`,
+    );
+    const { dimensions: _dimensions, fact, ...reviewedClaim } = registryClaim;
+    assert.equal(
+      fact,
+      reviewedClaim.reviewed_synthesis,
+      `${registryClaim.id}: compatibility fact must exactly alias the reviewed synthesis`,
+    );
+    assert.deepEqual(
+      reviewedClaim,
+      manifest.payload.claims[index],
+      `${registryClaim.id}: registry claim must deep-match every reviewed manifest field`,
+    );
+  }
   assert.deepEqual(
     registryEvidence.implementation_invariants.map(invariantProjection),
     manifest.payload.implementation_invariants.map(invariantProjection),
     "registry implementation invariants must deep-match the reviewed manifest",
   );
 
-  return { reviewedVectorDigest, claimIds, implementationInvariantIds };
+  assert.deepEqual(
+    registryEvidence.reviewed_transcriptions,
+    manifest.payload.reviewed_transcriptions,
+    "registry reviewed transcriptions must deep-match the reviewed manifest",
+  );
+
+  const sourceAudit = registryEvidence.source_audit;
+  assertExactKeys(
+    sourceAudit,
+    [
+      "schema",
+      "command",
+      "authority",
+      "source_urls",
+      "primary_metadata_dois",
+      "primary_full_text_fetched_by_ci",
+      "secondary_table_fragments",
+      "literal_source_verification",
+      "vector_ids",
+      "source_bytes_committed",
+    ],
+    "registry Fleischner source audit",
+  );
+  assert.equal(sourceAudit.schema, "radulator-live-source-audit/v2");
+  assert.equal(
+    sourceAudit.command,
+    "node scripts/audit-fleischner-primary-source.test.mjs",
+  );
+  assert.equal(
+    sourceAudit.authority,
+    "Fleischner Society and RSNA 2017 hash-pinned publisher-origin Memento artifacts with NLM open table cross-checks",
+  );
+  assert.deepEqual(sourceAudit.source_urls, [
+    GUIDELINE_URL,
+    MEASUREMENT_URL,
+    SOLID_TABLE_URL,
+    SUBSOLID_TABLE_URL,
+  ]);
+  assert.deepEqual(sourceAudit.primary_metadata_dois, [
+    GUIDELINE_DOI,
+    MEASUREMENT_DOI,
+  ]);
+  assert.equal(sourceAudit.primary_full_text_fetched_by_ci, true);
+  assert.deepEqual(sourceAudit.secondary_table_fragments, {
+    [EXPECTED_TABLES.solid.objectId]: {
+      bytes: EXPECTED_TABLES.solid.bytes,
+      sha256: EXPECTED_TABLES.solid.sha256,
+    },
+    [EXPECTED_TABLES.subsolid.objectId]: {
+      bytes: EXPECTED_TABLES.subsolid.bytes,
+      sha256: EXPECTED_TABLES.subsolid.sha256,
+    },
+  });
+  assert.deepEqual(
+    sourceAudit.literal_source_verification,
+    EXPECTED_LITERAL_SOURCE_VERIFICATION,
+  );
+  assert.deepEqual(
+    sourceAudit.vector_ids,
+    runtime.reviewed_vector_ids,
+    "registry source audit must bind the exact reviewed vector set",
+  );
+  assert.equal(sourceAudit.source_bytes_committed, false);
+
+  return {
+    reviewedVectorDigest,
+    claimIds,
+    implementationInvariantIds,
+    locatorAssertionCount,
+    requiredSnippetCount,
+  };
 }
 
 function validateCalculatorSource(calculatorSource) {
@@ -1113,6 +1846,8 @@ export async function runAudit() {
     reviewedVectorDigest,
     claimIds,
     implementationInvariantIds,
+    locatorAssertionCount,
+    requiredSnippetCount,
   } = validateManifest(manifest, fixture, registry);
   validateCalculatorSource(calculatorSource);
 
@@ -1205,6 +1940,167 @@ export async function runAudit() {
     "subsolid table",
   );
 
+  const assertionBindings = manifest.payload.claims.flatMap(
+    (claim) => claim.source_text_assertions,
+  );
+  const guidelinePageNumbers = [
+    ...new Set(
+      assertionBindings
+        .filter(
+          (binding) =>
+            binding.artifact_id === "guideline-vor-pdf" &&
+            binding.locator.startsWith("pdf-page:"),
+        )
+        .map((binding) => Number(binding.locator.slice("pdf-page:".length))),
+    ),
+  ].sort((left, right) => left - right);
+  assert.deepEqual(
+    guidelinePageNumbers,
+    [2, 3, 4, 7, 8, 9, 10, 12, 13],
+    "exact reviewed guideline PDF pages",
+  );
+
+  const measurementSectionIds = [
+    ...new Set(
+      assertionBindings
+        .filter(
+          (binding) =>
+            binding.artifact_id === "measurement-fulltext" &&
+            binding.locator.startsWith("html-section:#"),
+        )
+        .map((binding) =>
+          binding.locator.slice("html-section:#".length),
+        ),
+    ),
+  ].sort(
+    (left, right) =>
+      Number(left.slice("_i".length)) - Number(right.slice("_i".length)),
+  );
+  assert.deepEqual(
+    measurementSectionIds,
+    ["_i5", "_i8", "_i9", "_i15", "_i18", "_i21", "_i25", "_i31"],
+    "exact reviewed measurement HTML anchors",
+  );
+  const measurementFigureIds = [
+    ...new Set(
+      assertionBindings
+        .filter(
+          (binding) =>
+            binding.artifact_id === "measurement-fulltext" &&
+            binding.locator.startsWith("html-figure:#"),
+        )
+        .map((binding) => binding.locator.slice("html-figure:#".length)),
+    ),
+  ].sort((left, right) =>
+    left.localeCompare(right, "en", { numeric: true }),
+  );
+
+  const retainedGuidelineBytes = guidelineArtifactVerification.verified_bytes;
+  const retainedGuidelineByteLength = retainedGuidelineBytes.length;
+  const retainedGuidelineSha256 = sha256(retainedGuidelineBytes);
+  const guidelineLocatorTexts = await extractPdfPageTexts(
+    retainedGuidelineBytes,
+    guidelinePageNumbers,
+    {
+      artifactId: "guideline-vor-pdf",
+      expectedPageCount: EXPECTED_RSNA_ARTIFACTS.guideline.page_count,
+    },
+  );
+  assert.equal(
+    retainedGuidelineBytes.length,
+    retainedGuidelineByteLength,
+    "PDF parser must not detach retained verified guideline bytes",
+  );
+  assert.equal(
+    sha256(retainedGuidelineBytes),
+    retainedGuidelineSha256,
+    "PDF parser must preserve the retained verified guideline SHA-256",
+  );
+
+  const measurementLocatorTexts = extractHtmlLocatorTexts(
+    measurementArtifactVerification.verified_fragment_bytes,
+    {
+      artifactId: "measurement-fulltext",
+      sectionIds: measurementSectionIds,
+      figureIds: measurementFigureIds,
+    },
+  );
+  const locatorTexts = new Map([
+    ...guidelineLocatorTexts,
+    ...measurementLocatorTexts,
+    [
+      `nlm-fleischner-solid-table:html-table:${EXPECTED_TABLES.solid.objectId}`,
+      extractHtmlLiteralText(solidFragment),
+    ],
+    [
+      `nlm-fleischner-subsolid-table:html-table:${EXPECTED_TABLES.subsolid.objectId}`,
+      extractHtmlLiteralText(subsolidFragment),
+    ],
+  ]);
+  const literalBindings = verifyLiteralSourceBindings(
+    manifest.payload.claims,
+    locatorTexts,
+    {
+      expectedClaimIds: EXPECTED_CLAIM_IDS,
+      fixtureCases: fixture.cases,
+    },
+  );
+  assert.equal(literalBindings.length, 12, "exact literal claim count");
+  assert.equal(
+    literalBindings.reduce(
+      (count, claim) => count + claim.locator_assertions.length,
+      0,
+    ),
+    locatorAssertionCount,
+    "exact emitted locator assertion count",
+  );
+  assert.equal(
+    literalBindings.reduce(
+      (count, claim) =>
+        count +
+        claim.locator_assertions.reduce(
+          (claimCount, binding) =>
+            claimCount + binding.required_snippet_count,
+          0,
+        ),
+      0,
+    ),
+    requiredSnippetCount,
+    "exact emitted required snippet count",
+  );
+
+  const figureArtifact = verifyPinnedFigureArtifact(
+    measurementArtifactVerification.verified_fragment_bytes,
+    figure1ArtifactVerification.verified_bytes,
+    {
+      artifactId: EXPECTED_RSNA_ARTIFACTS.figure1.id,
+      figureId: "fig1",
+      expectedOriginUrl: EXPECTED_RSNA_ARTIFACTS.figure1.origin_url,
+      expectedWidth: EXPECTED_REVIEWED_TRANSCRIPTION.width,
+      expectedHeight: EXPECTED_REVIEWED_TRANSCRIPTION.height,
+    },
+  );
+  assert.equal(
+    EXPECTED_REVIEWED_TRANSCRIPTION.artifact_id,
+    figureArtifact.artifact_id,
+    "reviewed transcription: verified artifact ID",
+  );
+  assert.equal(
+    EXPECTED_REVIEWED_TRANSCRIPTION.artifact_sha256,
+    figure1ArtifactVerification.content_sha256,
+    "reviewed transcription: verified artifact SHA-256",
+  );
+  assert.equal(
+    EXPECTED_REVIEWED_TRANSCRIPTION.width,
+    figureArtifact.width,
+    "reviewed transcription: verified figure width",
+  );
+  assert.equal(
+    EXPECTED_REVIEWED_TRANSCRIPTION.height,
+    figureArtifact.height,
+    "reviewed transcription: verified figure height",
+  );
+
   const rsnaSources = manifest.payload.sources.slice(0, 2);
   const artifactVerifications = new Map(
     [
@@ -1213,36 +2109,9 @@ export async function runAudit() {
       figure1ArtifactVerification,
     ].map((artifact) => [artifact.id, artifact]),
   );
-  const sourceClaims = {
-    solid: {
-      single_lt6: ["No routine follow-up", "Optional CT at 12 months"],
-      single_6_to_8: [
-        "CT at 6–12 months, then consider CT at 18–24 months",
-        "CT at 6–12 months, then CT at 18–24 months",
-      ],
-      single_gt8: "Consider CT, PET/CT, or tissue sampling at 3 months",
-      multiple_lt6: ["No routine follow-up", "Optional CT at 12 months"],
-      multiple_ge6: [
-        "CT at 3–6 months, then consider CT at 18–24 months",
-        "CT at 3–6 months, then CT at 18–24 months",
-      ],
-    },
-    subsolid: {
-      single_ground_glass_lt6: "No routine follow-up",
-      single_ground_glass_ge6:
-        "CT at 6–12 months to confirm persistence, then CT every 2 years until 5 years",
-      single_part_solid_lt6: "No routine follow-up",
-      single_part_solid_ge6:
-        "CT at 3–6 months to confirm persistence. If unchanged and solid component remains <6 mm, annual CT should be performed for 5 years",
-      multiple_lt6:
-        "CT at 3–6 months. If stable, consider CT at 2 and 4 years",
-      multiple_ge6:
-        "CT at 3–6 months. Subsequent management based on the most suspicious nodule(s)",
-    },
-  };
 
   return {
-    schema: "radulator-fleischner-primary-source-audit/v3",
+    schema: "radulator-fleischner-primary-source-audit/v4",
     calculator_id: Fleischner.id,
     guideline_version: Fleischner.guidelineVersion,
     primary_metadata: {
@@ -1298,7 +2167,29 @@ export async function runAudit() {
         table_fragment_sha256: sha256(subsolidFragment),
       },
     },
-    source_claims: sourceClaims,
+    source_text_verification: {
+      schema: "radulator-literal-source-bindings/v1",
+      claim_count: literalBindings.length,
+      locator_assertion_count: locatorAssertionCount,
+      required_snippet_count: requiredSnippetCount,
+      claims: literalBindings.map(({ claim_id, locator_assertions }) => ({
+        claim_id,
+        locator_assertions,
+      })),
+      figure_artifact: figureArtifact,
+      reviewed_transcriptions: manifest.payload.reviewed_transcriptions,
+    },
+    source_runtime_bindings: {
+      schema: "radulator-source-runtime-bindings/v1",
+      claims: literalBindings.map(
+        ({ claim_id, vector_ids, vector_count, vector_binding_sha256 }) => ({
+          claim_id,
+          synthesis_vector_ids: vector_ids,
+          synthesis_vector_count: vector_count,
+          synthesis_vector_sha256: vector_binding_sha256,
+        }),
+      ),
+    },
     fixture_path: FIXTURE_PATH,
     fixture_version: fixture.version,
     bound_vector_ids: manifest.payload.runtime_contract.reviewed_vector_ids,
@@ -1330,7 +2221,7 @@ if (isMain) {
     process.stdout.write(`${JSON.stringify(audit)}\n`);
   } else {
     console.log(
-      `Fleischner source audit passed: 3 byte-pinned RSNA-origin Mementos, ${audit.claim_ids.length} reviewed claims plus ${audit.implementation_invariant_ids.length} implementation invariants, ${audit.executed_vector_count} executable vectors, primary DOI identities, and 2 hashed live table fragments.`,
+      `Fleischner source audit passed: 3 byte-pinned RSNA-origin Mementos, ${audit.source_text_verification.locator_assertion_count} literal locator assertions with ${audit.source_text_verification.required_snippet_count} required snippets across ${audit.claim_ids.length} reviewed claims, ${audit.implementation_invariant_ids.length} implementation invariants, ${audit.executed_vector_count} executable vectors, primary DOI identities, and 2 hashed live table fragments.`,
     );
   }
 }
