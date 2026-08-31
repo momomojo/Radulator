@@ -5,12 +5,13 @@ const registryPath =
   "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json";
 const roadmap = fs.readFileSync("docs/ROADMAP.md", "utf8");
 const e2eWorkflow = fs.readFileSync(".github/workflows/e2e-tests.yml", "utf8");
+const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
 const records = new Map(
   registry.records.map((record) => [record.calculator_id, record]),
 );
 
-for (const evidence of [
+const roadmapEvidence = [
   {
     calculatorId: "bosniak",
     implementedVersion: "Bosniak version 2019",
@@ -49,7 +50,9 @@ for (const evidence of [
       "acr-mri-assessment-boundaries-and-management",
     ],
   },
-]) {
+];
+
+for (const evidence of roadmapEvidence) {
   const { calculatorId, implementedVersion, roadmapLabel, sourceUrl, command, claimIds } =
     evidence;
   const record = records.get(calculatorId);
@@ -113,10 +116,24 @@ for (const [, vectorId] of roadmap.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+){2,})`/g))
   );
 }
 
+for (const { calculatorId, command } of roadmapEvidence) {
+  if (command === "npm run test:hermes-guideline-registry") continue;
+  const scriptName = command.replace(/^npm run /, "");
+  const scriptCommand = packageJson.scripts[scriptName];
+  assert.match(
+    scriptCommand,
+    /^node (scripts\/audit-[a-z0-9-]+-source\.test\.mjs)$/,
+    `${calculatorId}: roadmap command must resolve to a conventional discoverable source audit`,
+  );
+  assert.ok(
+    fs.existsSync(scriptCommand.replace(/^node /, "")),
+    `${calculatorId}: roadmap source-audit test must exist`,
+  );
+}
 assert.match(
   e2eWorkflow,
-  /name: Verify roadmap clinical source audits at exact head[\s\S]*?npm run test:bosniak-source[\s\S]*?npm run test:hermes-guideline-registry[\s\S]*?npm run test:birads-fda-source/,
-  "the required exact-head Smoke job must run the cited roadmap source-audit commands explicitly",
+  /name: Verify roadmap clinical source audits at exact head[\s\S]*?export LC_ALL=C\s+for audit in scripts\/audit-\*-source\.test\.mjs; do\s+test -f "\$audit"\s+node "\$audit"\s+done[\s\S]*?npm run test:hermes-guideline-registry/,
+  "the required exact-head Smoke job must discover every conventional source audit and retain the registry check",
 );
 
 for (const calculatorId of ["lirads", "nirads"]) {
