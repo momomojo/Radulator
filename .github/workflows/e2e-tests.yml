@@ -103,19 +103,19 @@ jobs:
           npm run test:hermes-guideline-registry
           npm run test:hermes-install-core
 
-      # These commands are named literally so a successful immutable Smoke
-      # check is exact-head evidence for every source audit cited by ROADMAP.md.
-      # Keep the network-backed audit in one required job to avoid concurrent
-      # duplicate requests to the primary-source hosts.
+      # Deterministically discover every conventional source-audit test so a
+      # successful immutable Smoke check covers new audits without a second
+      # release-control edit. Keep the network-backed audits in one required
+      # job to avoid concurrent duplicate requests to primary-source hosts.
       - name: Verify roadmap clinical source audits at exact head
         run: |
-          npm run test:kbrc-source
+          export LC_ALL=C
+          for audit in scripts/audit-*-source.test.mjs; do
+            test -f "$audit"
+            node "$audit"
+          done
           npm run test:cac-drs-source
-          npm run test:bosniak-source
           npm run test:hermes-guideline-registry
-          npm run test:birads-fda-source
-          npm run test:contrast-source
-          npm run test:albi-source
           node tests/roadmap-guideline-status.test.mjs
 
       - name: Build application

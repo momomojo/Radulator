@@ -110,19 +110,21 @@ assert.match(
 const sourceAuditEvidence = e2e.jobs["smoke-tests"].steps.find(
   (step) => step.name === "Verify roadmap clinical source audits at exact head",
 );
-for (const command of [
-  "npm run test:kbrc-source",
+const expectedSourceAuditBody = [
+  "export LC_ALL=C",
+  "for audit in scripts/audit-*-source.test.mjs; do",
+  '  test -f "$audit"',
+  '  node "$audit"',
+  "done",
   "npm run test:cac-drs-source",
-  "npm run test:bosniak-source",
-  "npm run test:birads-fda-source",
-  "npm run test:contrast-source",
-]) {
-  assert.match(
-    sourceAuditEvidence.run,
-    new RegExp(`(?:^|\\n)\\s*${command.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\s*(?:\\n|$)`),
-    `the named exact-head source-audit step must execute ${command}`,
-  );
-}
+  "npm run test:hermes-guideline-registry",
+  "node tests/roadmap-guideline-status.test.mjs",
+].join("\n");
+assert.equal(
+  sourceAuditEvidence.run.trim(),
+  expectedSourceAuditBody,
+  "the exact-head Smoke source-audit body must remain deterministic and fail closed",
+);
 assert.match(
   clinicalJudgeSkill,
   /Never run a candidate-declared source-audit command from the judge checkout/,
