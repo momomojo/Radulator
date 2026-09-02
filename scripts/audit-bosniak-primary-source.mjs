@@ -606,7 +606,7 @@ async function runSelfTests() {
       <section id="sec15"><h2>Bosniak category IIF</h2>
         For patients with a Bosniak IIF cyst, a followup every 6–12 months is suggested for the first year, and then yearly if the cyst is stable (Expert opinion).
         For patients with a Bosniak IIF cyst that do not demonstrate progression on imaging, a followup of five years is suggested (Conditional recommendation, very low certainty in evidence of effects).
-      </section>
+      </section>${"x".repeat(76_809)}
     </article></main>`;
   const cuaHtmlSourceFixture = {
     label: "CUA 2023 PMC HTML",
@@ -653,7 +653,7 @@ async function runSelfTests() {
     "volatile CUA HTML wrapper bytes must not be treated as its canonical digest",
   );
 
-  const semanticChangeFixture = cuaHtmlFixture.replace("yearly if the cyst is stable", "yearly when the cyst is stable");
+  const semanticChangeFixture = cuaHtmlFixture.replace("yearly if the cyst is stable", "yearly if the cyst is stably");
   const semanticChangeResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
     mockResponse({ body: semanticChangeFixture, url: MANAGEMENT_SOURCE.url }),
   );
@@ -663,7 +663,7 @@ async function runSelfTests() {
       fetchImpl: sequenceFetch(semanticChangeResponses, semanticChangeCalls),
       sleepImpl: noWait,
     }),
-    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 canonical article text length drifted/,
+    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 canonical article text SHA256 drifted/,
     "semantic CUA article changes fail the pinned canonical digest",
   );
   assert.equal(semanticChangeCalls.length, RETRY_ATTEMPTS, "semantic digest drift uses bounded retries");
