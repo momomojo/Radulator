@@ -940,10 +940,110 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     assert.deepEqual(
       audit.source_urls,
       [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+        "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
       ],
       `${label}.source_audit.source_urls`,
+    );
+    assert.deepEqual(
+      audit.artifacts,
+      [
+        {
+          id: "silverman-pmc-html",
+          url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+          host: "pmc.ncbi.nlm.nih.gov",
+          path: "/articles/PMC6677285/",
+          media_type: "text/html",
+          raw_source_min_bytes: 300_000,
+          raw_source_max_bytes: 1_000_000,
+          canonical_source_bytes: 111_115,
+          canonical_source_sha256:
+            "007a4c01927d5a9fb4f8b0458dedc5793fe0f3d7c051fcb8f3267b76b57c95e5",
+        },
+        {
+          id: "cua-publisher-pdf",
+          url: "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
+          host: "cuaj.ca",
+          path: "/index.php/journal/article/download/8389/5706/45369",
+          media_type: "application/pdf",
+          raw_source_bytes: 592_083,
+          raw_source_sha256:
+            "bc76209f93738f261a47f2c6e6840e0d1999dd630bcdadadbfec98a2333ef8d1",
+          canonical_source_bytes: 72_222,
+          canonical_source_sha256:
+            "7d613909afdb345b08e3690c5f71541ad954ebbf64a590c2d41a72957558f6fc",
+          page_count: 13,
+        },
+      ],
+      `${label}.source_audit.artifacts`,
+    );
+    assert.deepEqual(
+      audit.source_text_verification,
+      {
+        silverman: [
+          {
+            claim_id: "bosniak-v2019-category-ii",
+            section_id: "s5",
+            locator:
+              "HTML section #s5 (Recent Developments to Improve Characterization of Cystic Renal Masses)",
+            required_text: "well-defined homogeneous masses of 70 hu or greater",
+          },
+          {
+            claim_id: "bosniak-v2019-iif-iii-iv-features",
+            section_id: "sec17",
+            locator: "HTML section #sec17 (Bosniak IV)",
+            required_text: "focal enhancing convex protrusion 4 mm or larger",
+          },
+          {
+            claim_id: "bosniak-v2019-iif-iii-iv-features",
+            section_id: "sec17",
+            locator: "HTML section #sec17 (Bosniak IV)",
+            required_text: "obtuse margins with the wall or septa",
+          },
+        ],
+        cua: [
+          {
+            id: "cua-title",
+            page: 1,
+            locator: "PDF p. 1 title block",
+            required_text:
+              "2023 update - canadian urological association guideline: management of cystic renal lesions",
+          },
+          {
+            id: "cua-doi",
+            page: 1,
+            locator: "PDF p. 1 citation DOI",
+            required_text: "10.5489/cuaj.8389",
+          },
+          {
+            id: "cua-iif-interval",
+            page: 7,
+            locator: "PDF p. 7, Intervention and followup, recommendation 6",
+            required_text:
+              "for patients with a bosniak iif cyst, a followup every 6-12 months is suggested for the first year, and then yearly if the cyst is stable",
+          },
+          {
+            id: "cua-iif-interval-evidence",
+            page: 7,
+            locator: "PDF p. 7, Intervention and followup, recommendation 6",
+            required_text: "expert opinion",
+          },
+          {
+            id: "cua-iif-duration",
+            page: 7,
+            locator: "PDF p. 7, Intervention and followup, recommendation 7",
+            required_text:
+              "for patients with a bosniak iif cyst that do not demonstrate progression on imaging, a followup of five years is suggested",
+          },
+          {
+            id: "cua-iif-duration-evidence",
+            page: 7,
+            locator: "PDF p. 7, Intervention and followup, recommendation 7",
+            required_text: "conditional recommendation, very low certainty in evidence of effects",
+          },
+        ],
+      },
+      `${label}.source_audit.source_text_verification`,
     );
     assert.deepEqual(
       audit.vector_ids,

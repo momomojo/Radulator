@@ -107,6 +107,24 @@ assert.match(
   /(?:^|\n)\s*npm run test:hermes-install-core\s*(?:\n|$)/,
   "the protected exact-head check must execute the offline installer aggregate",
 );
+assert.match(
+  releaseControlEvidence.run,
+  /(?:^|\n)\s*npm run test:cac-drs-source\s*(?:\n|$)/,
+  "the protected exact-head check must execute the CAC primary-source audit",
+);
+const protectedBosniakCommandLines = releaseControlEvidence.run
+  .split(/\r?\n/)
+  .filter((line) => line.trim() === "npm run test:bosniak-source");
+assert.equal(
+  protectedBosniakCommandLines.length,
+  1,
+  "the protected exact-head check must contain exactly one standalone Bosniak primary-source command",
+);
+assert.equal(
+  (releaseControlEvidence.run.match(/npm run test:bosniak-source/g) ?? []).length,
+  1,
+  "the protected exact-head check must not duplicate the Bosniak primary-source command",
+);
 const sourceAuditEvidence = e2e.jobs["smoke-tests"].steps.find(
   (step) => step.name === "Verify roadmap clinical source audits at exact head",
 );
@@ -114,6 +132,10 @@ const expectedSourceAuditBody = [
   "export LC_ALL=C",
   "for audit in scripts/audit-*-source.test.mjs; do",
   '  test -f "$audit"',
+  '  if [ "$audit" = "scripts/audit-bosniak-primary-source.test.mjs" ]; then',
+  "    # Bosniak runs only in the protected exact-head lane to avoid duplicate live-source fetches.",
+  "    continue",
+  "  fi",
   '  node "$audit"',
   "done",
   "npm run test:cac-drs-source",
@@ -124,6 +146,16 @@ assert.equal(
   sourceAuditEvidence.run.trim(),
   expectedSourceAuditBody,
   "the exact-head Smoke source-audit body must remain deterministic and fail closed",
+);
+assert.equal(
+  (sourceAuditEvidence.run.match(/audit-bosniak-primary-source\.test\.mjs/g) ?? []).length,
+  1,
+  "Smoke must name the Bosniak audit exactly once as the protected-lane exclusion",
+);
+assert.doesNotMatch(
+  sourceAuditEvidence.run,
+  /^\s*(?:node\s+.*audit-bosniak-primary-source\.test\.mjs|npm run\s+test:bosniak-source)\s*$/m,
+  "Smoke must not invoke the Bosniak live audit a second time",
 );
 assert.match(
   clinicalJudgeSkill,
