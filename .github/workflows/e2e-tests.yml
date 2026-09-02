@@ -188,6 +188,7 @@ jobs:
           npm run test:hermes-seed-convert
           npm run test:hermes-guideline-registry
           npm run test:hermes-install-core
+          npm run test:cac-drs-source
           npm run check:invariants
 
 
