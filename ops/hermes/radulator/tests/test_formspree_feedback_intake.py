@@ -928,6 +928,71 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         self.assertIn("triage_task_id", state[later_digest])
         self.assertEqual(os.stat(self.state_path).st_mode & 0o777, 0o600)
 
+    def test_legacy_quarantine_remains_retryable_until_exact_binding_then_closes_once(self):
+        legacy = dict(
+            self.message,
+            id="legacy-binding-arrives-after-quarantine",
+            date="Thu, 09 Jul 2026 10:15:00 -0700",
+        )
+        digest = _receipt_digest(legacy["id"])
+        self.state_path.write_text(json.dumps({
+            "version": 1,
+            "processed": {
+                digest: {
+                    "task_id": "t_a2add0b9",
+                    "classification": "feedback",
+                    "parser_version": 1,
+                },
+            },
+        }))
+        self.state_path.chmod(0o600)
+        kanban = FakeKanban()
+        kanban.tasks["t_a2add0b9"] = {
+            "id": "t_a2add0b9",
+            "title": "Legacy Radulator feedback review",
+            "body": "Authenticated historical feedback without a receipt binding.",
+            "status": "done",
+            "parents": [],
+        }
+        gmail = FakeGmail([legacy])
+
+        first = process_feedback(gmail, kanban, self.state_path)
+        second = process_feedback(gmail, kanban, self.state_path)
+
+        self.assertEqual(first["quarantined"], 1)
+        self.assertEqual(second, {
+            "created": 0,
+            "already_processed": 1,
+            "quarantined": 0,
+        })
+        persisted = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertNotIn("legacy_repair_complete", persisted)
+
+        kanban.tasks["t_a2add0b9"]["body"] = "Receipt digest: " + digest
+        third = process_feedback(gmail, kanban, self.state_path)
+        fourth = process_feedback(gmail, kanban, self.state_path)
+
+        self.assertEqual(third, {
+            "created": 0,
+            "already_processed": 0,
+            "quarantined": 0,
+            "reconciled": 1,
+        })
+        self.assertEqual(fourth, {
+            "created": 0,
+            "already_processed": 1,
+            "quarantined": 0,
+        })
+        self.assertEqual(len(kanban.created), 2)
+        self.assertEqual(
+            kanban.created[1][2],
+            "radulator-formspree-closure-repair:" + digest + ":t_a2add0b9",
+        )
+        persisted = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertTrue(persisted["legacy_repair_complete"])
+        self.assertEqual(persisted["triage_task_id"], "t_a2add0b9")
+        self.assertEqual(persisted["task_id"], "t_feedback_2")
+
     def test_legacy_digest_binding_ignores_nested_history_and_overlong_hex_tokens(self):
         variants = {
             "nested-history": lambda digest: {
@@ -1912,10 +1977,11 @@ class FormspreeFeedbackIntakeTests(unittest.TestCase):
         replayed = process_feedback(gmail, kanban, self.state_path)
 
         self.assertEqual(first["quarantined"], 1)
-        self.assertEqual(repaired["reconciled"], 1)
+        self.assertEqual(repaired["quarantined"], 1)
         self.assertEqual(replayed["already_processed"], 1)
         self.assertEqual(len(kanban.created), 2)
         receipt = json.loads(self.state_path.read_text())["processed"][digest]
+        self.assertNotIn("legacy_repair_complete", receipt)
         replacement = receipt["legacy_binding_quarantine_task_id"]
         self.assertNotEqual(replacement, original_quarantine)
         self.assertEqual(kanban.tasks[replacement]["status"], "triage")

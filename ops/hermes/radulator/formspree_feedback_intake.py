@@ -1030,8 +1030,50 @@ def _reconcile_feedback_receipt(
                         "Replacement legacy feedback binding quarantine is not open."
                     )
                 receipt["legacy_binding_quarantine_task_id"] = replacement_id
-                return "reconciled"
-            return "reconciled" if authenticated_changed else "unchanged"
+                return "quarantined"
+
+            legacy_readback = _feedback_task_readback(kanban, original_task_id)
+            if not _has_exact_task_receipt_digest(
+                legacy_readback, original_task_id, digest,
+            ):
+                return "unchanged"
+
+            triage_task_id = original_task_id
+            superseded = receipt.setdefault(
+                "superseded_legacy_binding_quarantine_task_ids", []
+            )
+            if not isinstance(superseded, list) or any(
+                not isinstance(item, str) for item in superseded
+            ):
+                raise FeedbackIntakeError(
+                    "Persisted legacy feedback quarantine history is invalid."
+                )
+            if legacy_quarantine_id not in superseded:
+                superseded.append(legacy_quarantine_id)
+            task_id, readback = _create_verified_closure(
+                kanban,
+                received=received,
+                digest=digest,
+                triage_task_id=triage_task_id,
+                idempotency_key=(
+                    "radulator-formspree-closure-repair:"
+                    + digest
+                    + ":"
+                    + original_task_id
+                ),
+                supersedes=legacy_quarantine_id,
+            )
+            status = _task_status(readback, task_id)
+            if status in TERMINAL_TASK_STATUSES and not _has_feedback_closure_proof(
+                readback, digest, task_id, evidence_reader
+            ):
+                raise FeedbackIntakeError(
+                    "Replacement feedback closure is already terminal without release proof."
+                )
+            receipt["triage_task_id"] = triage_task_id
+            receipt["task_id"] = task_id
+            receipt["legacy_binding_status"] = "bound"
+            return "reconciled"
 
         legacy_readback = _feedback_task_readback(kanban, original_task_id)
         if not _has_exact_task_receipt_digest(
@@ -1810,7 +1852,10 @@ def _process_feedback_locked(
             outcome["repair_failed"] = outcome.get("repair_failed", 0) + 1
             continue
         repaired_this_run.add(digest)
-        if receipt.get("legacy_repair_required") is True:
+        if (
+            receipt.get("legacy_repair_required") is True
+            and reconciliation == "reconciled"
+        ):
             receipt["legacy_repair_complete"] = True
         state["authenticated_reconciliation_cursor"] = digest
         persist_state()

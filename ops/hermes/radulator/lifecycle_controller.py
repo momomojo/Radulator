@@ -835,7 +835,8 @@ def _advance_kanban_authority_after_action(
     kind = action.get("kind")
     prerequisite_id = receipt.get("task_id")
     receipt_prerequisite = receipt.get("prerequisite_authority")
-    task_ids = [tracker_id, source_id]
+    self_source = source_id == tracker_id
+    task_ids = [tracker_id] if self_source else [tracker_id, source_id]
     if kind == "create_prerequisite":
         if (
             not isinstance(prerequisite_id, str)
@@ -847,12 +848,14 @@ def _advance_kanban_authority_after_action(
             )
         task_ids.append(prerequisite_id)
     current = _read_stable_kanban_authority_set(adapter, task_ids)
-    after, source = current[:2]
-    if kind == "create_prerequisite" and current[2] != receipt_prerequisite:
+    after = current[0]
+    source = after if self_source else current[1]
+    prerequisite_index = 1 if self_source else 2
+    if kind == "create_prerequisite" and current[prerequisite_index] != receipt_prerequisite:
         raise LedgerError(
             f"Kanban prerequisite authority changed during reconciliation for {tracker_id}."
         )
-    if source != authority["source"]:
+    if not self_source and source != authority["source"]:
         raise LedgerError(
             f"Kanban authority changed during reconciliation for {tracker_id}."
         )
@@ -939,7 +942,7 @@ def _advance_kanban_authority_after_action(
     return {
         **authority,
         "tracker": after,
-        "source": source,
+        "source": after if self_source else source,
     }
 
 

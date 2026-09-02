@@ -1199,6 +1199,156 @@ class LifecycleLedgerTests(unittest.TestCase):
             replay.current_by_task["t_f60ac506"].evidence,
         )
 
+    def test_reconciliation_mutates_terminal_meld_self_source_idempotently(self):
+        self.ledger.append(
+            idempotency_key="meld-self-source-feedback",
+            source_id="meld-source",
+            task_id="t_f60ac506",
+            state="feedback",
+            timestamp="2026-08-23T20:00:00Z",
+        )
+        tasks = {
+            "t_f60ac506": {
+                "task": {
+                    "id": "t_f60ac506",
+                    "status": "done",
+                    "title": "Track clinical release of Radulator MELD PR",
+                    "body": "MELD release tracker",
+                },
+                "parents": [],
+                "comments": [],
+            },
+        }
+
+        class Adapter:
+            perform_calls = 0
+
+            def show(inner_self, task_id):
+                return json.loads(json.dumps(tasks[task_id]))
+
+            def perform(inner_self, action):
+                inner_self.perform_calls += 1
+                prerequisite_id = "t_meld_reconciliation"
+                if prerequisite_id not in tasks:
+                    tasks[prerequisite_id] = {
+                        "task": {
+                            "id": prerequisite_id,
+                            "status": "todo",
+                            "body": action["body"],
+                        },
+                        "parents": [],
+                        "comments": [],
+                    }
+                    tasks["t_f60ac506"]["parents"].append(prerequisite_id)
+                return {
+                    "kind": action["kind"],
+                    "task_id": prerequisite_id,
+                    "prerequisite_authority": lifecycle_module._kanban_authority_snapshot(
+                        tasks[prerequisite_id], prerequisite_id,
+                    ),
+                }
+
+        adapter = Adapter()
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "meld-self-source-mutating-audit",
+            "trackers": [{
+                "task_id": "t_f60ac506",
+                "source_id": "meld-source",
+                "source": {
+                    "kind": "kanban_task",
+                    "task_id": "t_f60ac506",
+                },
+            }],
+        }
+
+        first = lifecycle_module.reconcile_trackers(
+            self.ledger, spec, adapter, apply=True,
+        )
+        second = lifecycle_module.reconcile_trackers(
+            self.ledger, spec, adapter, apply=True,
+        )
+
+        self.assertEqual(first["applied_actions"], [
+            {
+                "kind": "create_prerequisite",
+                "task_id": "t_meld_reconciliation",
+                "prerequisite_authority": lifecycle_module._kanban_authority_snapshot(
+                    tasks["t_meld_reconciliation"], "t_meld_reconciliation",
+                ),
+            },
+        ])
+        self.assertEqual(second["applied_actions"], first["applied_actions"])
+        self.assertEqual(adapter.perform_calls, 2)
+        self.assertEqual(
+            tasks["t_f60ac506"]["parents"],
+            ["t_meld_reconciliation"],
+        )
+        self.assertEqual(len(self.ledger.replay().events), 1)
+
+    def test_reconciliation_rejects_unrelated_terminal_meld_self_source_drift(self):
+        self.ledger.append(
+            idempotency_key="meld-self-source-drift",
+            source_id="meld-source",
+            task_id="t_f60ac506",
+            state="feedback",
+            timestamp="2026-08-23T20:00:00Z",
+        )
+        tasks = {
+            "t_f60ac506": {
+                "task": {
+                    "id": "t_f60ac506",
+                    "status": "done",
+                    "body": "MELD release tracker",
+                },
+                "parents": [],
+                "comments": [],
+            },
+            "t_meld_reconciliation": {
+                "task": {
+                    "id": "t_meld_reconciliation",
+                    "status": "todo",
+                    "body": "reconciliation prerequisite",
+                },
+                "parents": [],
+                "comments": [],
+            },
+        }
+
+        class Adapter:
+            def show(self, task_id):
+                return json.loads(json.dumps(tasks[task_id]))
+
+            def perform(self, action):
+                tasks["t_f60ac506"]["parents"].append("t_meld_reconciliation")
+                tasks["t_f60ac506"]["task"]["body"] = "Unrelated concurrent drift"
+                return {
+                    "kind": action["kind"],
+                    "task_id": "t_meld_reconciliation",
+                    "prerequisite_authority": lifecycle_module._kanban_authority_snapshot(
+                        tasks["t_meld_reconciliation"], "t_meld_reconciliation",
+                    ),
+                }
+
+        spec = {
+            "schema": "radulator-lifecycle-reconciliation/v1",
+            "review_id": "meld-self-source-drift-audit",
+            "trackers": [{
+                "task_id": "t_f60ac506",
+                "source_id": "meld-source",
+                "source": {
+                    "kind": "kanban_task",
+                    "task_id": "t_f60ac506",
+                },
+            }],
+        }
+
+        with self.assertRaisesRegex(LedgerError, "Kanban authority changed"):
+            lifecycle_module.reconcile_trackers(
+                self.ledger, spec, Adapter(), apply=True,
+            )
+        self.assertEqual(len(self.ledger.replay().events), 1)
+
     def test_reconciliation_bootstrap_rechecks_exact_kanban_authority_before_append(self):
         tasks = {
             "t_tracker": {
