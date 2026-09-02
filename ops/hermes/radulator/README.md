@@ -93,7 +93,8 @@ sudo /usr/bin/python3 ops/hermes/radulator/publisher_service_install.py plan \
   --source-root /var/root/Radulator/ops/hermes/radulator \
   --source-commit-sha <reviewed-40-hex-sha> \
   --broker-client-config <publisher-owned-broker-client-json> \
-  --python-executable <root-owned-hermes-python> \
+  --broker-runtime-attestation <root-owned-runtime-attestation-json> \
+  --runtime-manifest <root-owned-runtime-manifest-json> \
   --publisher-user _hermespublisher \
   --publisher-uid <publisher-uid> \
   --publisher-group _hermespublisher \
@@ -106,6 +107,18 @@ sudo /usr/bin/python3 ops/hermes/radulator/publisher_service_install.py plan \
 sudo /usr/bin/python3 ops/hermes/radulator/publisher_service_install.py \
   provision --plan /var/root/radulator-publisher-plan.json
 ```
+
+The runtime attestation and external recursive manifest are the broker's public
+runtime contract.  They bind the immutable runtime root, real CPython
+executable/version/digest, CPython release provenance, Hermes source and
+install-archive digests, Radulator source SHA, service configuration digest, and
+the broker's isolated probe.  A newly provisioned broker may remain
+`active: false`, `revoked: true`, with a `PENDING` probe; activation fails closed
+until the broker has independently completed its real canaries and publishes
+`active: true`, `revoked: false`, and `PASS`.  Radulator recursively compares
+the entire installed runtime tree to the external manifest, including safe
+symlinks and immutable ownership/modes.  It never trusts a mutable user-home
+virtualenv.
 
 Provisioning first writes the exact disabled override, revokes and reads back
 absence of any prior activation attestation, boots out the exact launchd label,
@@ -122,7 +135,7 @@ sudo /usr/bin/python3 ops/hermes/radulator/publisher_service_install.py \
   activate --plan /var/root/radulator-publisher-plan.json
 ```
 
-Activation first forks permission probes under the model and publisher identities: the model UID must be denied opening the publisher-owned mode-`0600` GitHub credential file while the publisher UID must be allowed. It then uses `gh api` as the publisher UID to read back the pinned actor, non-fork repository, and active E2E workflow. It never invokes `gh auth token`. It starts the service, requires a live PID, reads back the exact persistent enabled registry state, re-verifies the immutable root-owned runtime assets after startup, and only then writes `/Library/Application Support/HermesKanban/radulator-publisher/activation-attestation.json` as root-owned mode `0644`, binding the distinct UIDs, cross-UID credential denial, broker boundary, client-config digest, immutable asset-manifest digest, and exact source commit. Profile activation independently requires its Radulator checkout to be clean and its exact `HEAD` to equal that attested source commit, so newer jobs cannot activate against an older publisher binary. Any activation failure independently revokes the attestation, disables and boots out the service, and must positively read back both process absence and the persistent disabled registry before rollback is accepted. The launchd environment contains no credential. The service wrapper obtains the credential only after entering the publisher identity and exports it only to the no-agent publisher child.
+Activation first forks permission probes under the model and publisher identities: the model UID must be denied opening the publisher-owned mode-`0600` GitHub credential file while the publisher UID must be allowed. It then runs a credential-free publisher canary through the installed wrapper as `python -I -B trusted_publisher.py --runtime-preflight`; that command validates `sys.executable`, `sys.prefix`, `sys.base_prefix`, every `sys.path` entry, the broker-client import origin, the external manifest digest, and one bounded read-only broker obligations RPC. Its only stdout is a compact JSON PASS record with the contract `radulator.publisher_runtime_preflight.v1`, exact runtime identity, broker-client module origin, and `broker_rpc: PASS`. A shell PID without this result is not health proof. Activation then uses `gh api` as the publisher UID to read back the pinned actor, non-fork repository, and active E2E workflow. It never invokes `gh auth token`. It starts the service, requires a live PID, reads back the exact persistent enabled registry state, re-verifies the immutable runtime and publisher assets after startup, and only then writes `/Library/Application Support/HermesKanban/radulator-publisher/activation-attestation.json` as root-owned mode `0644`, binding the distinct UIDs, cross-UID credential denial, broker boundary, client-config digest, immutable asset-manifest digest, exact source commit, broker runtime identity, and observed preflight result. Profile activation independently requires its Radulator checkout to be clean and its exact `HEAD` to equal that attested source commit, so newer jobs cannot activate against an older publisher binary. Any activation failure independently revokes the attestation, disables and boots out the service, and must positively read back both process absence and the persistent disabled registry before rollback is accepted. The launchd environment contains no credential. The service wrapper obtains the credential only after entering the publisher identity and exports it only to the no-agent publisher child.
 
 After configuring the repository variable and strict branch rule, enable all managed jobs. The installer reads the repository variable back directly with the authenticated GitHub CLI and requires an exact match with both local trust maps:
 

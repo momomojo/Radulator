@@ -20,6 +20,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ops.hermes.radulator import publisher_service_install as publisher_service
+
 
 SCHEMA = "radulator-hermes-install/v1"
 BACKUP_SCHEMA = "radulator-hermes-backup/v3"
@@ -40,6 +42,9 @@ PUBLISHER_SERVICE_ATTESTATION = Path(
     "/Library/Application Support/HermesKanban/"
     "radulator-publisher/activation-attestation.json"
 )
+PUBLISHER_ACTIVATION_CONTRACT_V2 = "radulator.dedicated_publisher_activation.v2"
+PUBLISHER_RUNTIME_PREFLIGHT_CONTRACT = "radulator.publisher_runtime_preflight.v1"
+RUNTIME_ATTESTATION_CONTRACT = "hermes.kanban_broker_runtime_attestation.v1"
 LEGACY_V1_TARGET_IDS = frozenset({
     "primary:cron/jobs.json",
     "verification:cron/jobs.json",
@@ -1326,29 +1331,215 @@ def _activation_python_env() -> dict[str, str]:
     }
 
 
+def _read_dedicated_publisher_attestation(path: Path) -> dict[str, Any]:
+    """Read the root-owned publisher v2 attestation without following links."""
+
+    path = Path(path)
+    try:
+        publisher_service._validate_immutable_ancestors(path, expected_uid=0)
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+        descriptor = os.open(path, flags)
+    except (OSError, ValueError) as error:
+        raise InstallError(
+            "PENDING_HERMES_RUNTIME: dedicated publisher activation attestation is unavailable."
+        ) from error
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != 0
+            or before.st_gid != 0
+            or before.st_nlink != 1
+            or stat.S_IMODE(before.st_mode) != 0o644
+            or before.st_size < 0
+            or before.st_size > 1_000_000
+        ):
+            raise InstallError(
+                "Dedicated publisher attestation is not a root-owned mode-0644 file."
+            )
+        raw = os.read(descriptor, before.st_size + 1)
+        after = os.fstat(descriptor)
+        if len(raw) != before.st_size or (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns
+        ):
+            raise InstallError("Dedicated publisher attestation changed during read.")
+    finally:
+        os.close(descriptor)
+    try:
+        value = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise InstallError("Dedicated publisher attestation is malformed.") from error
+    if not isinstance(value, dict):
+        raise InstallError("Dedicated publisher attestation is malformed.")
+    return value
+
+
+def _validate_publisher_runtime_preflight(
+    attestation: dict[str, Any], plan: dict[str, Any]
+) -> None:
+    evidence = attestation.get("publisher_runtime_preflight")
+    required = {
+        "contract", "status", "python_executable", "python_version", "runtime_root",
+        "runtime_manifest_sha256", "broker_client_module", "broker_rpc",
+    }
+    if (
+        not isinstance(evidence, dict)
+        or set(evidence) != required
+        or evidence.get("contract") != PUBLISHER_RUNTIME_PREFLIGHT_CONTRACT
+        or evidence.get("status") != "PASS"
+        or evidence.get("broker_rpc") != "PASS"
+        or evidence.get("python_executable") != attestation.get("python_executable")
+        or evidence.get("python_version") != attestation.get("python_version")
+        or evidence.get("runtime_root") != attestation.get("runtime_root")
+        or evidence.get("runtime_manifest_sha256") != attestation.get("runtime_manifest_sha256")
+        or not isinstance(evidence.get("broker_client_module"), str)
+    ):
+        raise InstallError("Dedicated publisher runtime preflight evidence is not exact.")
+    module_origin = Path(evidence["broker_client_module"])
+    runtime_root = Path(attestation["runtime_root"])
+    if not module_origin.is_absolute() or (module_origin != runtime_root and runtime_root not in module_origin.parents):
+        raise InstallError("Dedicated publisher broker import is outside the sealed runtime.")
+
+
+def _validate_publisher_activation_attestation(
+    attestation: dict[str, Any], plan: dict[str, Any]
+) -> None:
+    fields = {
+        "contract", "broker_boundary", "service_label", "active", "revoked",
+        "publisher_uid", "broker_uid", "model_uid", "repository", "github_repository_id",
+        "workflow_id", "workflow_path", "ready_label_actor", "publisher_client_config_sha256",
+        "asset_manifest_sha256", "source_commit_sha", "publisher_credential_model_denied",
+        "publisher_runtime_preflight", "broker_runtime_attestation_path",
+        "broker_runtime_attestation_sha256", "runtime_root", "runtime_manifest_path",
+        "runtime_manifest_sha256", "python_executable", "python_version", "python_sha256",
+        "service_config_sha256", "hermes_pyproject_lock_sha256", "hermes_provenance_sha256",
+        "hermes_source_sha", "hermes_install_archive_sha256", "radulator_source_sha",
+        "runtime_provenance", "publisher_probe_path", "publisher_probe_sha256",
+        "publisher_probe_contract", "publisher_probe_status", "archive_digests",
+        "isolated_probe", "verified_at",
+    }
+    actor = attestation.get("ready_label_actor")
+    if (
+        set(attestation) != fields
+        or attestation.get("contract") != PUBLISHER_ACTIVATION_CONTRACT_V2
+        or attestation.get("broker_boundary") != "hermes.dedicated_broker_identity.v1"
+        or attestation.get("service_label") != "ai.hermes.radulator-publisher"
+        or attestation.get("active") is not True
+        or attestation.get("revoked") is not False
+        or attestation.get("repository") != CANONICAL_GITHUB_REPOSITORY
+        or attestation.get("github_repository_id") != 1027532341
+        or attestation.get("workflow_id") != 227376261
+        or attestation.get("workflow_path") != ".github/workflows/e2e-tests.yml"
+        or actor != {"id": 35302851, "login": "momomojo", "type": "User"}
+        or any(type(attestation.get(name)) is not int for name in ("publisher_uid", "broker_uid", "model_uid"))
+        or len({attestation.get("publisher_uid"), attestation.get("broker_uid"), attestation.get("model_uid")}) != 3
+        or any(
+            not isinstance(attestation.get(name), str)
+            or not re.fullmatch(pattern, attestation[name])
+            for name, pattern in (
+                ("publisher_client_config_sha256", r"[0-9a-f]{64}"),
+                ("asset_manifest_sha256", r"[0-9a-f]{64}"),
+                ("broker_runtime_attestation_sha256", r"[0-9a-f]{64}"),
+                ("runtime_manifest_sha256", r"[0-9a-f]{64}"),
+                ("python_sha256", r"[0-9a-f]{64}"),
+                ("service_config_sha256", r"[0-9a-f]{64}"),
+                ("hermes_pyproject_lock_sha256", r"[0-9a-f]{64}"),
+                ("hermes_provenance_sha256", r"[0-9a-f]{64}"),
+                ("hermes_install_archive_sha256", r"[0-9a-f]{64}"),
+                ("publisher_probe_sha256", r"[0-9a-f]{64}"),
+                ("source_commit_sha", r"[0-9a-f]{40}"),
+                ("radulator_source_sha", r"[0-9a-f]{40}"),
+                ("hermes_source_sha", r"[0-9a-f]{40}"),
+            )
+        )
+        or attestation.get("source_commit_sha") != attestation.get("radulator_source_sha")
+        or attestation.get("publisher_credential_model_denied") is not True
+        or type(attestation.get("verified_at")) is not int
+        or attestation["verified_at"] <= 0
+        or not isinstance(attestation.get("runtime_root"), str)
+        or not isinstance(attestation.get("runtime_manifest_path"), str)
+        or not isinstance(attestation.get("python_executable"), str)
+        or attestation.get("python_version") != "3.11.15"
+        or not isinstance(attestation.get("runtime_provenance"), dict)
+        or attestation.get("publisher_probe_contract") != PUBLISHER_RUNTIME_PREFLIGHT_CONTRACT
+        or attestation.get("publisher_probe_status") != "PASS"
+        or not isinstance(attestation.get("archive_digests"), dict)
+        or set(attestation["archive_digests"]) != {"cpython", "hermes_install"}
+        or any(not re.fullmatch(r"[0-9a-f]{64}", str(value)) for value in attestation["archive_digests"].values())
+        or attestation["archive_digests"].get("hermes_install") != attestation["hermes_install_archive_sha256"]
+        or not isinstance(attestation.get("isolated_probe"), dict)
+        or set(attestation["isolated_probe"]) != {"command", "outcome"}
+        or attestation["isolated_probe"].get("outcome") != "PASS"
+    ):
+        raise InstallError(
+            "Dedicated publisher attestation contract is not exact; v1 requires disabled-first reprovision."
+        )
+    runtime_root = Path(attestation["runtime_root"])
+    python = Path(attestation["python_executable"])
+    expected_provenance = dict(publisher_service.CPYTHON_RUNTIME_PROVENANCE)
+    expected_provenance["sha256"] = attestation["archive_digests"]["cpython"]
+    if (
+        not runtime_root.is_absolute()
+        or not python.is_absolute()
+        or python != runtime_root / "bin/python3.11"
+        or not Path(attestation["runtime_manifest_path"]).is_absolute()
+        or not Path(attestation["broker_runtime_attestation_path"]).is_absolute()
+        or attestation["archive_digests"].get("cpython")
+        != publisher_service.CPYTHON_RUNTIME_ARCHIVE_SHA256
+        or attestation["runtime_provenance"] != expected_provenance
+        or not isinstance(attestation.get("publisher_probe_path"), str)
+        or not Path(attestation["publisher_probe_path"]).is_absolute()
+    ):
+        raise InstallError("Dedicated publisher runtime paths are not exact.")
+    _validate_publisher_runtime_preflight(attestation, plan)
+
+
 def _trusted_runtime_probe(
     hermes_root: Path,
     module_name: str,
     predicate: str,
 ) -> str:
     return (
-        "import importlib, json; from pathlib import Path; "
+        "import importlib, sys; from pathlib import Path; "
         f"root = Path({str(hermes_root)!r}).resolve(strict=True); "
+        "exe = Path(sys.executable).resolve(strict=True); "
+        "prefix = Path(sys.prefix).resolve(strict=True); "
+        "base_prefix = Path(sys.base_prefix).resolve(strict=True); "
+        "paths = [Path(item).resolve(strict=False) for item in sys.path if item]; "
         f"module = importlib.import_module({module_name!r}); "
         "origin = Path(module.__file__).resolve(strict=True); "
-        f"raise SystemExit(0 if root in origin.parents and ({predicate}) else 1)"
+        f"raise SystemExit(0 if exe == root / 'bin/python3.11' and prefix == root and base_prefix == root and all(item == root or root in item.parents for item in paths) and (origin == root or root in origin.parents) and ({predicate}) else 1)"
     )
 
 
 def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
+    """Validate the broker contracts from the same immutable runtime as publisher."""
+
     runner = runner or subprocess.run
-    hermes_root = Path(plan["radulator_home"]).parent.parent.resolve(strict=True)
-    runtime_python = hermes_root / "hermes-agent/venv/bin/python"
+    attestation = _read_dedicated_publisher_attestation(
+        Path(plan["publisher_service_attestation"])
+    )
+    _validate_publisher_activation_attestation(attestation, plan)
+    runtime_root = Path(attestation["runtime_root"])
+    runtime_python = Path(attestation["python_executable"])
+    try:
+        publisher_service._read_broker_runtime_contract(
+            attestation_path=Path(attestation["broker_runtime_attestation_path"]),
+            manifest_path=Path(attestation["runtime_manifest_path"]),
+            expected_radulator_source_sha=str(attestation["radulator_source_sha"]),
+            require_active=True,
+            expected_owner_uid=0,
+            expected_owner_gid=0,
+        )
+    except (OSError, ValueError, KeyError) as error:
+        raise InstallError(
+            "PENDING_HERMES_RUNTIME: broker-issued sealed runtime is not active or exact."
+        ) from error
     checks = (
         (
             "dedicated local commit broker",
             _trusted_runtime_probe(
-                hermes_root,
+                runtime_root,
                 "hermes_cli.kanban_dedicated_broker",
                 (
                     "module.PUBLISH_CONTRACT == 'hermes.trusted_local_commit.v1' "
@@ -1373,7 +1564,7 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
         (
             "dedicated broker publisher client",
             _trusted_runtime_probe(
-                hermes_root,
+                runtime_root,
                 "hermes_cli.kanban_broker_client",
                 "callable(getattr(module, 'load_broker_client', None))",
             ),
@@ -1381,7 +1572,7 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
         (
             "dedicated broker routes",
             _trusted_runtime_probe(
-                hermes_root,
+                runtime_root,
                 "hermes_cli.kanban_broker_routing",
                 (
                     "callable(getattr(module, 'list_publish_obligations', None)) "
@@ -1394,17 +1585,17 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
         (
             "worker security boundary",
             _trusted_runtime_probe(
-                hermes_root,
+                runtime_root,
                 "tools.kanban_worker_boundary",
                 "module.WORKER_GIT_SECURITY_BOUNDARY == 'hermes.worker_git_isolation.v1'",
             ),
         ),
     )
     for label, expression in checks:
-        command = [str(runtime_python), "-I", "-c", expression]
+        command = [str(runtime_python), "-I", "-B", "-c", expression]
         result = runner(
             command,
-            cwd=hermes_root,
+            cwd="/var/empty",
             check=False,
             capture_output=True,
             text=True,
@@ -1417,105 +1608,42 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
 def _verify_dedicated_publisher_identity(
     plan: dict[str, Any], runner=None
 ) -> None:
-    """Require a root-owned live-service attestation for the external publisher."""
+    """Require a root-owned active publisher v2 attestation and exact runtime."""
 
     runner = runner or subprocess.run
-    path = Path(plan["publisher_service_attestation"])
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    attestation = _read_dedicated_publisher_attestation(
+        Path(plan["publisher_service_attestation"])
+    )
+    _validate_publisher_activation_attestation(attestation, plan)
     try:
-        descriptor = os.open(path, flags)
-    except OSError as error:
-        raise InstallError(
-            "PENDING_HERMES_RUNTIME: dedicated publisher activation attestation "
-            "is unavailable."
-        ) from error
-    try:
-        before = os.fstat(descriptor)
-        if (
-            not stat.S_ISREG(before.st_mode)
-            or before.st_uid != 0
-            or before.st_nlink != 1
-            or stat.S_IMODE(before.st_mode) != 0o644
-        ):
-            raise InstallError(
-                "Dedicated publisher attestation is not a root-owned mode-0644 file."
-            )
-        raw = os.read(descriptor, 1_000_001)
-        if len(raw) > 1_000_000:
-            raise InstallError("Dedicated publisher attestation is too large.")
-        after = os.fstat(descriptor)
-        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
-            after.st_dev,
-            after.st_ino,
-            after.st_size,
-            after.st_mtime_ns,
-        ):
-            raise InstallError("Dedicated publisher attestation changed during read.")
-    finally:
-        os.close(descriptor)
-    try:
-        attestation = json.loads(raw)
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise InstallError("Dedicated publisher attestation is malformed.") from error
-    fields = {
-        "contract",
-        "broker_boundary",
-        "service_label",
-        "active",
-        "publisher_uid",
-        "broker_uid",
-        "model_uid",
-        "repository",
-        "github_repository_id",
-        "workflow_id",
-        "workflow_path",
-        "ready_label_actor",
-        "publisher_client_config_sha256",
-        "asset_manifest_sha256",
-        "source_commit_sha",
-        "publisher_credential_model_denied",
-        "verified_at",
-    }
-    actor = attestation.get("ready_label_actor") if isinstance(attestation, dict) else None
-    if (
-        not isinstance(attestation, dict)
-        or set(attestation) != fields
-        or attestation.get("contract")
-        != "radulator.dedicated_publisher_activation.v1"
-        or attestation.get("broker_boundary")
-        != "hermes.dedicated_broker_identity.v1"
-        or attestation.get("service_label")
-        != "ai.hermes.radulator-publisher"
-        or attestation.get("active") is not True
-        or attestation.get("repository") != CANONICAL_GITHUB_REPOSITORY
-        or attestation.get("github_repository_id") != 1027532341
-        or attestation.get("workflow_id") != 227376261
-        or attestation.get("workflow_path") != ".github/workflows/e2e-tests.yml"
-        or actor != {"id": 35302851, "login": "momomojo", "type": "User"}
-        or type(attestation.get("publisher_uid")) is not int
-        or type(attestation.get("broker_uid")) is not int
-        or type(attestation.get("model_uid")) is not int
-        or len({
-            attestation.get("publisher_uid"),
-            attestation.get("broker_uid"),
-            attestation.get("model_uid"),
-        })
-        != 3
-        or any(
-            not isinstance(attestation.get(name), str)
-            or not re.fullmatch(r"[0-9a-f]{64}", attestation[name])
-            for name in (
-                "publisher_client_config_sha256",
-                "asset_manifest_sha256",
-            )
+        broker, _manifest, broker_sha, manifest_sha = publisher_service._read_broker_runtime_contract(
+            attestation_path=Path(attestation["broker_runtime_attestation_path"]),
+            manifest_path=Path(attestation["runtime_manifest_path"]),
+            expected_radulator_source_sha=str(attestation["radulator_source_sha"]),
+            require_active=True,
+            expected_owner_uid=0,
+            expected_owner_gid=0,
         )
-        or not isinstance(attestation.get("source_commit_sha"), str)
-        or not re.fullmatch(r"[0-9a-f]{40}", attestation["source_commit_sha"])
-        or attestation.get("publisher_credential_model_denied") is not True
-        or type(attestation.get("verified_at")) is not int
-        or attestation["verified_at"] <= 0
+    except (OSError, ValueError, KeyError) as error:
+        raise InstallError(
+            "PENDING_HERMES_RUNTIME: broker-issued runtime attestation is not active or exact."
+        ) from error
+    runtime_fields = (
+        "runtime_root", "runtime_manifest_path", "runtime_manifest_sha256",
+        "python_executable", "python_version", "python_sha256", "service_config_sha256",
+        "hermes_pyproject_lock_sha256", "hermes_provenance_sha256",
+        "hermes_source_sha", "hermes_install_archive_sha256", "radulator_source_sha",
+        "runtime_provenance", "publisher_probe_path", "publisher_probe_sha256",
+        "publisher_probe_contract", "publisher_probe_status", "archive_digests",
+        "isolated_probe",
+    )
+    if any(attestation[key] != broker[key] for key in runtime_fields):
+        raise InstallError("Dedicated publisher and broker runtime identities differ.")
+    if (
+        broker_sha != attestation["broker_runtime_attestation_sha256"]
+        or manifest_sha != attestation["runtime_manifest_sha256"]
     ):
-        raise InstallError("Dedicated publisher attestation contract is not exact.")
+        raise InstallError("Dedicated publisher broker runtime digest changed.")
     git_environment = {
         **_activation_python_env(),
         "GIT_CONFIG_GLOBAL": "/dev/null",
@@ -1525,29 +1653,14 @@ def _verify_dedicated_publisher_identity(
     }
     repository = str(Path(plan["repo"]))
     status = runner(
-        [
-            "git",
-            "-C",
-            repository,
-            "status",
-            "--porcelain=v1",
-            "--untracked-files=all",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        env=git_environment,
+        ["git", "-C", repository, "status", "--porcelain=v1", "--untracked-files=all"],
+        check=False, capture_output=True, text=True, env=git_environment,
     )
     if status.returncode != 0 or (status.stdout or "").strip():
-        raise InstallError(
-            "Dedicated publisher source checkout is unavailable or not clean."
-        )
+        raise InstallError("Dedicated publisher source checkout is unavailable or not clean.")
     head = runner(
         ["git", "-C", repository, "rev-parse", "--verify", "HEAD^{commit}"],
-        check=False,
-        capture_output=True,
-        text=True,
-        env=git_environment,
+        check=False, capture_output=True, text=True, env=git_environment,
     )
     source_commit = (head.stdout or "").strip()
     if (
@@ -1555,22 +1668,14 @@ def _verify_dedicated_publisher_identity(
         or re.fullmatch(r"[0-9a-f]{40}", source_commit) is None
         or not hmac.compare_digest(source_commit, attestation["source_commit_sha"])
     ):
-        raise InstallError(
-            "Dedicated publisher source commit does not match the activation checkout."
-        )
-    service = runner(
-        [
-            "/bin/launchctl",
-            "print",
-            "system/ai.hermes.radulator-publisher",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
+        raise InstallError("Dedicated publisher source commit does not match the activation checkout.")
+    service_result = runner(
+        ["/bin/launchctl", "print", "system/ai.hermes.radulator-publisher"],
+        check=False, capture_output=True, text=True,
     )
-    output = service.stdout if isinstance(service.stdout, str) else ""
+    output = service_result.stdout if isinstance(service_result.stdout, str) else ""
     if (
-        service.returncode != 0
+        service_result.returncode != 0
         or "ai.hermes.radulator-publisher" not in output
         or re.search(r"\bstate\s*=\s*running\b", output) is None
         or re.search(r"\bpid\s*=\s*[1-9][0-9]*\b", output) is None

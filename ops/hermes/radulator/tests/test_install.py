@@ -2612,6 +2612,18 @@ with lock_path.open('a+') as lock:
                     plan, runner=self.publisher_identity_runner(head="b" * 40)
                 )
 
+    def test_v1_publisher_attestation_is_rejected_until_disabled_first_reprovision(self):
+        plan = build_plan(**self.kwargs())
+        self.write_publisher_activation_attestation(plan)
+        payload = json.loads(Path(plan["publisher_service_attestation"]).read_text())
+        with mock.patch.object(
+            install_module, "_read_dedicated_publisher_attestation", return_value=payload
+        ):
+            with self.assertRaisesRegex(InstallError, "v2|disabled-first"):
+                install_module._verify_dedicated_publisher_identity(
+                    plan, runner=self.publisher_identity_runner()
+                )
+
     def test_dedicated_publisher_attestation_requires_clean_activation_checkout(self):
         plan = build_plan(**self.kwargs())
         self.write_publisher_activation_attestation(plan)

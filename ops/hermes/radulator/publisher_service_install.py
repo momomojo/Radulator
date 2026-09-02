@@ -13,17 +13,61 @@ import hashlib
 import json
 import os
 import plistlib
+import posixpath
 import re
 import stat
 import subprocess
 import time
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any, Callable
 
 
-SERVICE_PLAN_CONTRACT = "radulator.dedicated_publisher_service_plan.v1"
-ACTIVATION_CONTRACT = "radulator.dedicated_publisher_activation.v1"
+SERVICE_PLAN_CONTRACT_V2 = "radulator.dedicated_publisher_service_plan.v2"
+ACTIVATION_CONTRACT_V2 = "radulator.dedicated_publisher_activation.v2"
+# Keep the old names as aliases for callers that import the module constants;
+# the values intentionally point at the fail-closed v2 contracts.
+SERVICE_PLAN_CONTRACT = SERVICE_PLAN_CONTRACT_V2
+ACTIVATION_CONTRACT = ACTIVATION_CONTRACT_V2
 BROKER_BOUNDARY = "hermes.dedicated_broker_identity.v1"
+BROKER_RUNTIME_ATTESTATION_CONTRACT = "hermes.kanban_broker_runtime_attestation.v1"
+BROKER_RUNTIME_MANIFEST_CONTRACT = "hermes.kanban_broker_runtime_manifest.v1"
+BROKER_RUNTIME_VERSION = "3.11.15"
+CPYTHON_RUNTIME_ARCHIVE_SHA256 = (
+    "01f0de017aacd7528084dbacd46c66cfe9a0b0cd1255be0c24854b7985dd130e"
+)
+BROKER_RUNTIME_ARCHIVE_KEYS = frozenset({"cpython", "hermes_install"})
+# These are the non-secret CPython provenance values emitted by the Hermes
+# runtime manifest.  Keeping them pinned prevents a different upstream asset
+# from being smuggled in under the same interpreter version.
+CPYTHON_RUNTIME_PROVENANCE = {
+    "source_repository": "indygreg/python-build-standalone",
+    "release_tag": "20260602",
+    "asset_id": 436826623,
+    "asset_name": "cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz",
+    "release_url": (
+        "https://github.com/indygreg/python-build-standalone/releases/download/"
+        "20260602/cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz"
+    ),
+    "verification_status": "external-sha256-bound",
+    "attestation_identity": "operator-supplied-sha256",
+    "attestation_status": "bound-no-signature",
+}
+BROKER_RUNTIME_ATTESTATION_FIELDS = frozenset(
+    {
+        "contract", "schema_version", "active", "revoked", "service_config_sha256",
+        "hermes_source_sha", "hermes_install_archive_sha256",
+        "hermes_pyproject_lock_sha256", "hermes_provenance_sha256",
+        "radulator_source_sha", "runtime_root", "runtime_manifest_path",
+        "python_executable", "python_version", "python_sha256",
+        "runtime_manifest_sha256", "runtime_provenance", "publisher_probe_path",
+        "publisher_probe_sha256", "publisher_probe_contract", "publisher_probe_status",
+        "archive_digests", "isolated_probe",
+    }
+)
+MAX_RUNTIME_MANIFEST_BYTES = 4 * 1024 * 1024
+MAX_RUNTIME_ENTRIES = 100_000
+MAX_RUNTIME_FILE_BYTES = 32 * 1024 * 1024
 SERVICE_LABEL = "ai.hermes.radulator-publisher"
 PRODUCTION_INSTALL_ROOT = Path(
     "/Library/Application Support/HermesKanban/radulator-publisher"
@@ -133,6 +177,419 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _runtime_owner_uid() -> int:
+    """Use root for production and the invoking UID for unprivileged tests."""
+
+    return 0 if os.geteuid() == 0 else os.geteuid()
+
+
+def _runtime_owner_gid() -> int:
+    """Use root's group in production and the invoking group in unit tests."""
+
+    return 0 if os.geteuid() == 0 else os.getegid()
+
+
+def _read_json_artifact(
+    path: Path,
+    *,
+    expected_uid: int,
+    expected_gid: int,
+    expected_mode: int,
+    maximum: int,
+    label: str,
+) -> tuple[dict[str, Any], bytes]:
+    content, _info = _read_file_exact(
+        path,
+        expected_uid=expected_uid,
+        expected_gid=expected_gid,
+        expected_mode=expected_mode,
+        maximum=maximum,
+    )
+    try:
+        value = json.loads(content)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"{label} is malformed") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return value, content
+
+
+def _validate_immutable_ancestors(path: Path, *, expected_uid: int) -> None:
+    """Prove every existing component of a path is a root-owned non-writable dir."""
+
+    target = Path(path)
+    if not target.is_absolute():
+        raise ValueError("runtime path must be absolute")
+    current = Path(target.anchor)
+    # Ancestors stop at the parent; the leaf is checked by the descriptor-safe
+    # file reader that follows this helper.
+    for part in target.parent.parts[1:]:
+        current /= part
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            continue
+        if (
+            stat.S_ISLNK(info.st_mode)
+            or not stat.S_ISDIR(info.st_mode)
+            or info.st_uid not in {0, int(expected_uid)}
+            or stat.S_IMODE(info.st_mode) & 0o022
+        ):
+            raise ValueError(f"runtime ancestor is mutable or symlinked: {current}")
+
+
+def _runtime_relative(value: object, *, directory: bool = False) -> str:
+    if not isinstance(value, str) or not value or "\\" in value:
+        raise ValueError("runtime manifest path is invalid")
+    if directory:
+        if not value.endswith("/"):
+            raise ValueError("runtime directory manifest path is invalid")
+        raw = value[:-1]
+    else:
+        raw = value
+    parsed = PurePosixPath(raw)
+    if (
+        parsed.is_absolute()
+        or not raw
+        or any(part in {"", ".", ".."} for part in parsed.parts)
+        or parsed.as_posix() != raw
+    ):
+        raise ValueError("runtime manifest path escapes the sealed root")
+    return value
+
+
+def _validate_runtime_manifest(
+    *,
+    manifest: dict[str, Any],
+    runtime_root: Path,
+    python_executable: Path,
+    python_version: str,
+    expected_manifest_sha256: str,
+) -> list[dict[str, Any]]:
+    required = {
+        "contract",
+        "schema_version",
+        "runtime_root",
+        "python_executable",
+        "python_version",
+        "provenance",
+        "runtime_manifest_sha256",
+        "entries",
+    }
+    entries = manifest.get("entries")
+    if (
+        set(manifest) != required
+        or manifest.get("contract") != BROKER_RUNTIME_MANIFEST_CONTRACT
+        or manifest.get("schema_version") != 1
+        or manifest.get("runtime_root") != str(runtime_root)
+        or manifest.get("python_executable") != str(python_executable)
+        or manifest.get("python_version") != python_version
+        or manifest.get("runtime_manifest_sha256") != expected_manifest_sha256
+        or not isinstance(entries, list)
+        or len(entries) == 0
+        or len(entries) > MAX_RUNTIME_ENTRIES
+    ):
+        raise ValueError("runtime manifest fields are not exact")
+    if _sha256(
+        json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ) != expected_manifest_sha256:
+        raise ValueError("runtime manifest digest does not match the broker attestation")
+
+    normalized: list[dict[str, Any]] = []
+    paths: set[str] = set()
+    for item in entries:
+        if not isinstance(item, dict) or not isinstance(item.get("type"), str):
+            raise ValueError("runtime manifest entry is malformed")
+        kind = item["type"]
+        if kind == "directory":
+            if set(item) != {"path", "type", "mode"}:
+                raise ValueError("runtime directory manifest fields are not exact")
+            path = _runtime_relative(item["path"], directory=True)
+            mode = item["mode"]
+            if type(mode) is not int or mode != 0o555:
+                raise ValueError("runtime directory mode is not immutable")
+        elif kind == "file":
+            if set(item) != {"path", "type", "mode", "size", "sha256"}:
+                raise ValueError("runtime file manifest fields are not exact")
+            path = _runtime_relative(item["path"])
+            mode = item["mode"]
+            size = item["size"]
+            if (
+                type(mode) is not int
+                or mode not in {0o444, 0o555}
+                or type(size) is not int
+                or size < 0
+                or size > MAX_RUNTIME_FILE_BYTES
+                or not isinstance(item["sha256"], str)
+                or SHA256_RE.fullmatch(item["sha256"]) is None
+            ):
+                raise ValueError("runtime file manifest identity is invalid")
+        elif kind == "symlink":
+            if set(item) != {"path", "type", "target", "mode"}:
+                raise ValueError("runtime symlink manifest fields are not exact")
+            path = _runtime_relative(item["path"])
+            if type(item["mode"]) is not int or item["mode"] != 0o555:
+                raise ValueError("runtime symlink mode is not immutable")
+            target = item["target"]
+            if not isinstance(target, str) or target.startswith("/") or "\\" in target:
+                raise ValueError("runtime symlink target is invalid")
+            target_path = posixpath.normpath(target)
+            if target_path in {"", ".", ".."} or target_path.startswith("../"):
+                raise ValueError("runtime symlink target escapes the sealed root")
+        else:
+            raise ValueError("runtime manifest contains an unsupported entry")
+        if path in paths:
+            raise ValueError("runtime manifest contains duplicate paths")
+        paths.add(path)
+        normalized.append(dict(item))
+
+    expected_python = "bin/python3.11"
+    python_entry = next(
+        (item for item in normalized if item["path"] == expected_python), None
+    )
+    if python_entry is None or python_entry.get("type") != "file":
+        raise ValueError("runtime manifest does not bind the real Python executable")
+    parent_dirs = {str(PurePosixPath(item["path"].rstrip("/")).parent) + "/" for item in normalized}
+    declared_dirs = {item["path"] for item in normalized if item["type"] == "directory"}
+    if not parent_dirs.issubset(declared_dirs | {"./"}):
+        raise ValueError("runtime manifest omits a required parent directory")
+    return normalized
+
+
+def _verify_runtime_tree(
+    *,
+    runtime_root: Path,
+    entries: list[dict[str, Any]],
+    expected_uid: int,
+    expected_gid: int | None = None,
+) -> None:
+    root = Path(runtime_root)
+    if expected_gid is None:
+        expected_gid = 0 if int(expected_uid) == 0 else _runtime_owner_gid()
+    root_info = root.lstat()
+    if (
+        stat.S_ISLNK(root_info.st_mode)
+        or not stat.S_ISDIR(root_info.st_mode)
+        or root_info.st_uid != int(expected_uid)
+        or root_info.st_gid != int(expected_gid)
+        or stat.S_IMODE(root_info.st_mode) != 0o555
+    ):
+        raise ValueError("sealed runtime root is not immutable")
+    _validate_immutable_ancestors(root, expected_uid=expected_uid)
+    expected = {str(item["path"]): item for item in entries}
+    observed: dict[str, os.stat_result] = {}
+    stack = [root]
+    while stack:
+        current = stack.pop()
+        with os.scandir(current) as children:
+            for child in children:
+                path = Path(child.path)
+                relative = path.relative_to(root).as_posix()
+                info = child.stat(follow_symlinks=False)
+                if stat.S_ISDIR(info.st_mode):
+                    key = relative + "/"
+                    stack.append(path)
+                elif stat.S_ISREG(info.st_mode):
+                    key = relative
+                elif stat.S_ISLNK(info.st_mode):
+                    key = relative
+                else:
+                    raise ValueError("sealed runtime contains an unsupported filesystem entry")
+                if key in observed:
+                    raise ValueError("sealed runtime contains duplicate filesystem entries")
+                observed[key] = info
+                if len(observed) > MAX_RUNTIME_ENTRIES:
+                    raise ValueError("sealed runtime exceeds the manifest entry bound")
+    if set(observed) != set(expected):
+        extra = sorted(set(observed) - set(expected))
+        missing = sorted(set(expected) - set(observed))
+        detail = extra[0] if extra else missing[0]
+        raise ValueError(f"sealed runtime manifest differs from filesystem: {detail}")
+    for key, item in expected.items():
+        path = root / key.rstrip("/")
+        info = observed[key]
+        if info.st_uid != int(expected_uid) or info.st_gid != int(expected_gid):
+            raise ValueError(f"sealed runtime entry ownership is unsafe: {key}")
+        kind = item["type"]
+        if kind == "directory":
+            if not stat.S_ISDIR(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o555:
+                raise ValueError(f"sealed runtime directory differs from manifest: {key}")
+        elif kind == "file":
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_nlink != 1
+                or stat.S_IMODE(info.st_mode) != item["mode"]
+            ):
+                raise ValueError(f"sealed runtime file differs from manifest: {key}")
+            content, _info = _read_file_exact(
+                path,
+                expected_uid=expected_uid,
+                expected_gid=expected_gid,
+                expected_mode=int(item["mode"]),
+                immutable_owner=True,
+                maximum=MAX_RUNTIME_FILE_BYTES,
+            )
+            if len(content) != item["size"] or _sha256(content) != item["sha256"]:
+                raise ValueError(f"sealed runtime file digest differs from manifest: {key}")
+        else:
+            if not stat.S_ISLNK(info.st_mode) or info.st_nlink != 1:
+                raise ValueError(f"sealed runtime symlink differs from manifest: {key}")
+            target = os.readlink(path)
+            # Manifest targets are root-relative; the on-disk link target is
+            # the relative spelling materialized from that root-relative
+            # target.  Resolve both into the same canonical root namespace.
+            target_path = (path.parent / target).resolve(strict=False)
+            expected_target = (root / posixpath.normpath(str(item["target"]))).resolve(strict=False)
+            if (
+                not target_path.exists()
+                or target_path != expected_target
+                or root not in target_path.parents
+            ):
+                raise ValueError(f"sealed runtime symlink escapes its root: {key}")
+
+
+def _read_broker_runtime_contract(
+    *,
+    attestation_path: Path,
+    manifest_path: Path,
+    expected_radulator_source_sha: str,
+    require_active: bool = False,
+    expected_owner_uid: int | None = None,
+    expected_owner_gid: int | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], str, str]:
+    owner = _runtime_owner_uid() if expected_owner_uid is None else int(expected_owner_uid)
+    group = _runtime_owner_gid() if expected_owner_gid is None else int(expected_owner_gid)
+    _validate_immutable_ancestors(Path(attestation_path), expected_uid=owner)
+    _validate_immutable_ancestors(Path(manifest_path), expected_uid=owner)
+    attestation, attestation_bytes = _read_json_artifact(
+        Path(attestation_path),
+        expected_uid=owner,
+        expected_gid=group,
+        expected_mode=0o644,
+        maximum=MAX_RUNTIME_MANIFEST_BYTES,
+        label="broker runtime attestation",
+    )
+    if (
+        set(attestation) != BROKER_RUNTIME_ATTESTATION_FIELDS
+        or attestation.get("contract") != BROKER_RUNTIME_ATTESTATION_CONTRACT
+    ):
+        raise ValueError("broker runtime attestation contract is not exact")
+    state_valid = (
+        isinstance(attestation.get("active"), bool)
+        and isinstance(attestation.get("revoked"), bool)
+        and attestation.get("active") != attestation.get("revoked")
+    )
+    if (
+        attestation.get("schema_version") != 1
+        or not state_valid
+        or (require_active and (attestation.get("active") is not True or attestation.get("revoked") is not False))
+        or attestation.get("python_version") != BROKER_RUNTIME_VERSION
+        or attestation.get("runtime_manifest_path") != str(manifest_path)
+        or not isinstance(attestation.get("runtime_root"), str)
+        or not isinstance(attestation.get("python_executable"), str)
+        or not isinstance(attestation.get("service_config_sha256"), str)
+        or SHA256_RE.fullmatch(attestation["service_config_sha256"]) is None
+        or attestation.get("radulator_source_sha") != expected_radulator_source_sha
+        or any(
+            not isinstance(attestation.get(name), str)
+            or not re.fullmatch(pattern, attestation[name])
+            for name, pattern in (
+                ("hermes_source_sha", r"[0-9a-f]{40}"),
+                ("hermes_install_archive_sha256", r"[0-9a-f]{64}"),
+                ("hermes_pyproject_lock_sha256", r"[0-9a-f]{64}"),
+                ("hermes_provenance_sha256", r"[0-9a-f]{64}"),
+                ("python_sha256", r"[0-9a-f]{64}"),
+                ("runtime_manifest_sha256", r"[0-9a-f]{64}"),
+                ("publisher_probe_sha256", r"[0-9a-f]{64}"),
+            )
+        )
+    ):
+        raise ValueError("broker runtime attestation evidence is not exact")
+    archives = attestation.get("archive_digests")
+    probe = attestation.get("isolated_probe")
+    if (
+        not isinstance(archives, dict)
+        or set(archives) != BROKER_RUNTIME_ARCHIVE_KEYS
+        or any(not isinstance(value, str) or SHA256_RE.fullmatch(value) is None for value in archives.values())
+        or archives["cpython"] != CPYTHON_RUNTIME_ARCHIVE_SHA256
+        or archives["hermes_install"] != attestation["hermes_install_archive_sha256"]
+        or not isinstance(attestation.get("runtime_provenance"), dict)
+        or not isinstance(probe, dict)
+        or set(probe) != {"command", "outcome"}
+        or probe.get("outcome") not in ({"PASS"} if require_active else {"PASS", "PENDING"})
+        or not isinstance(probe.get("command"), list)
+        or attestation.get("publisher_probe_contract") != "radulator.publisher_runtime_preflight.v1"
+        or attestation.get("publisher_probe_status") not in ({"PASS"} if require_active else {"PASS", "PENDING"})
+    ):
+        raise ValueError("broker runtime attestation archive or probe evidence is not exact")
+    expected_provenance = dict(CPYTHON_RUNTIME_PROVENANCE)
+    expected_provenance["sha256"] = archives["cpython"]
+    if attestation["runtime_provenance"] != expected_provenance:
+        raise ValueError("broker runtime CPython provenance is not exact")
+    runtime_root = Path(attestation["runtime_root"])
+    python = Path(attestation["python_executable"])
+    if (
+        not runtime_root.is_absolute()
+        or not python.is_absolute()
+        or python != runtime_root / "bin/python3.11"
+        or Path(manifest_path) != Path(attestation["runtime_manifest_path"])
+        or runtime_root == Path(runtime_root.anchor)
+    ):
+        raise ValueError("broker runtime paths are not exact")
+    publisher_probe = Path(attestation["publisher_probe_path"])
+    if not publisher_probe.is_absolute():
+        raise ValueError("broker publisher preflight path is not absolute")
+    _validate_immutable_ancestors(publisher_probe, expected_uid=owner)
+    probe_bytes, _probe_info = _read_file_exact(
+        publisher_probe,
+        expected_uid=owner,
+        expected_gid=group,
+        expected_mode=0o555,
+        immutable_owner=True,
+        maximum=MAX_RUNTIME_FILE_BYTES,
+    )
+    if _sha256(probe_bytes) != attestation["publisher_probe_sha256"]:
+        raise ValueError("broker publisher preflight digest differs from attestation")
+    manifest, _manifest_bytes = _read_json_artifact(
+        Path(manifest_path),
+        expected_uid=owner,
+        expected_gid=group,
+        expected_mode=0o644,
+        maximum=MAX_RUNTIME_MANIFEST_BYTES,
+        label="broker runtime manifest",
+    )
+    provenance = manifest.get("provenance")
+    expected_provenance = dict(CPYTHON_RUNTIME_PROVENANCE)
+    expected_provenance["sha256"] = archives["cpython"]
+    if provenance != expected_provenance:
+        raise ValueError("broker runtime CPython provenance is not exact")
+    entries = _validate_runtime_manifest(
+        manifest=manifest,
+        runtime_root=runtime_root,
+        python_executable=python,
+        python_version=BROKER_RUNTIME_VERSION,
+        expected_manifest_sha256=attestation["runtime_manifest_sha256"],
+    )
+    _verify_runtime_tree(
+        runtime_root=runtime_root,
+        entries=entries,
+        expected_uid=owner,
+        expected_gid=group,
+    )
+    python_entry = next(item for item in entries if item["path"] == "bin/python3.11")
+    if python_entry["sha256"] != attestation["python_sha256"]:
+        raise ValueError("broker Python digest differs from runtime manifest")
+    probe_command = probe["command"]
+    if not probe_command or str(probe_command[0]) != str(python) or "-I" not in probe_command:
+        raise ValueError("broker isolated runtime probe is not bound to Python")
+    return (
+        attestation,
+        manifest,
+        _sha256(attestation_bytes),
+        attestation["runtime_manifest_sha256"],
+    )
+
+
 def _source_manifest(source_root: Path, *, expected_uid: int) -> tuple[list[dict[str, Any]], str]:
     root = source_root.resolve(strict=True)
     root_info = root.lstat()
@@ -174,7 +631,9 @@ def build_service_plan(
     publisher_home: Path,
     broker_client_config: Path,
     launchd_plist_path: Path,
-    python_executable: Path,
+    python_executable: Path | None,
+    broker_runtime_attestation_path: Path,
+    runtime_manifest_path: Path,
     source_commit_sha: str,
     source_owner_uid: int,
     publisher_user: str,
@@ -192,7 +651,12 @@ def build_service_plan(
     publisher_home = _absolute(publisher_home, "publisher home")
     broker_client_config = _absolute(broker_client_config, "broker client config")
     launchd_plist_path = _absolute(launchd_plist_path, "launchd plist")
-    python_executable = _absolute(python_executable, "publisher Python").resolve(strict=True)
+    broker_runtime_attestation_path = _absolute(
+        broker_runtime_attestation_path, "broker runtime attestation"
+    ).resolve(strict=True)
+    runtime_manifest_path = _absolute(
+        runtime_manifest_path, "broker runtime manifest"
+    ).resolve(strict=True)
     identities = {int(publisher_uid), int(broker_uid), int(model_uid)}
     if len(identities) != 3 or any(value <= 0 for value in identities):
         raise ValueError("model, broker, and publisher UIDs must be distinct")
@@ -213,14 +677,28 @@ def build_service_plan(
     manifest, manifest_sha = _source_manifest(
         source_root, expected_uid=int(source_owner_uid)
     )
-    python_content, _python_info = _read_file_exact(
-        python_executable, immutable_owner=True, maximum=128 * 1024 * 1024
+    broker_attestation, broker_manifest, broker_attestation_sha, runtime_manifest_sha = (
+        _read_broker_runtime_contract(
+            attestation_path=broker_runtime_attestation_path,
+            manifest_path=runtime_manifest_path,
+            expected_radulator_source_sha=source_commit_sha,
+            require_active=False,
+        )
     )
-    runtime_root = install_root / "runtime"
+    runtime_root = Path(broker_attestation["runtime_root"])
+    python_executable = Path(broker_attestation["python_executable"])
+    python_content, _python_info = _read_file_exact(
+        python_executable,
+        expected_uid=_runtime_owner_uid(),
+        expected_gid=_runtime_owner_gid(),
+        immutable_owner=True,
+        maximum=128 * 1024 * 1024,
+    )
+    publisher_asset_root = install_root / "publisher"
     state_dir = publisher_home / "state"
     repository_root = publisher_home / "Radulator"
     return {
-        "contract": SERVICE_PLAN_CONTRACT,
+        "contract": SERVICE_PLAN_CONTRACT_V2,
         "enabled": False,
         "service_label": SERVICE_LABEL,
         "source_root": str(source_root),
@@ -228,6 +706,9 @@ def build_service_plan(
         "source_commit_sha": source_commit_sha,
         "install_root": str(install_root),
         "runtime_root": str(runtime_root),
+        "runtime_owner_uid": _runtime_owner_uid(),
+        "runtime_owner_gid": _runtime_owner_gid(),
+        "publisher_asset_root": str(publisher_asset_root),
         "publisher_home": str(publisher_home),
         "state_dir": str(state_dir),
         "repository_root": str(repository_root),
@@ -235,6 +716,26 @@ def build_service_plan(
         "launchd_plist_path": str(launchd_plist_path),
         "python_executable": str(python_executable),
         "python_sha256": _sha256(python_content),
+        "python_version": broker_attestation["python_version"],
+        "broker_runtime_attestation_path": str(broker_runtime_attestation_path),
+        "runtime_manifest_path": str(runtime_manifest_path),
+        "runtime_manifest_sha256": runtime_manifest_sha,
+        "broker_runtime_attestation_sha256": broker_attestation_sha,
+        "broker_runtime_attestation": broker_attestation,
+        "broker_runtime_manifest": broker_manifest,
+        "service_config_sha256": broker_attestation["service_config_sha256"],
+        "hermes_pyproject_lock_sha256": broker_attestation["hermes_pyproject_lock_sha256"],
+        "hermes_provenance_sha256": broker_attestation["hermes_provenance_sha256"],
+        "hermes_source_sha": broker_attestation["hermes_source_sha"],
+        "hermes_install_archive_sha256": broker_attestation["hermes_install_archive_sha256"],
+        "radulator_source_sha": broker_attestation["radulator_source_sha"],
+        "runtime_provenance": broker_attestation["runtime_provenance"],
+        "publisher_probe_path": broker_attestation["publisher_probe_path"],
+        "publisher_probe_sha256": broker_attestation["publisher_probe_sha256"],
+        "publisher_probe_contract": broker_attestation["publisher_probe_contract"],
+        "publisher_probe_status": broker_attestation["publisher_probe_status"],
+        "archive_digests": broker_attestation["archive_digests"],
+        "isolated_probe": broker_attestation["isolated_probe"],
         "publisher_user": publisher_user,
         "publisher_uid": int(publisher_uid),
         "publisher_group": publisher_group,
@@ -263,6 +764,9 @@ def _validate_plan(plan: dict[str, Any]) -> None:
         "source_commit_sha",
         "install_root",
         "runtime_root",
+        "runtime_owner_uid",
+        "runtime_owner_gid",
+        "publisher_asset_root",
         "publisher_home",
         "state_dir",
         "repository_root",
@@ -270,6 +774,26 @@ def _validate_plan(plan: dict[str, Any]) -> None:
         "launchd_plist_path",
         "python_executable",
         "python_sha256",
+        "python_version",
+        "broker_runtime_attestation_path",
+        "runtime_manifest_path",
+        "runtime_manifest_sha256",
+        "broker_runtime_attestation_sha256",
+        "broker_runtime_attestation",
+        "broker_runtime_manifest",
+        "service_config_sha256",
+        "hermes_pyproject_lock_sha256",
+        "hermes_provenance_sha256",
+        "hermes_source_sha",
+        "hermes_install_archive_sha256",
+        "radulator_source_sha",
+        "runtime_provenance",
+        "publisher_probe_path",
+        "publisher_probe_sha256",
+        "publisher_probe_contract",
+        "publisher_probe_status",
+        "archive_digests",
+        "isolated_probe",
         "publisher_user",
         "publisher_uid",
         "publisher_group",
@@ -289,7 +813,7 @@ def _validate_plan(plan: dict[str, Any]) -> None:
     if (
         not isinstance(plan, dict)
         or set(plan) != required
-        or plan.get("contract") != SERVICE_PLAN_CONTRACT
+        or plan.get("contract") != SERVICE_PLAN_CONTRACT_V2
         or plan.get("enabled") is not False
         or plan.get("service_label") != SERVICE_LABEL
         or plan.get("repository") != REPOSITORY
@@ -300,6 +824,33 @@ def _validate_plan(plan: dict[str, Any]) -> None:
         or not SHA1_RE.fullmatch(str(plan.get("source_commit_sha") or ""))
         or not SHA256_RE.fullmatch(str(plan.get("asset_manifest_sha256") or ""))
         or not SHA256_RE.fullmatch(str(plan.get("python_sha256") or ""))
+        or plan.get("python_version") != BROKER_RUNTIME_VERSION
+        or type(plan.get("runtime_owner_uid")) is not int
+        or type(plan.get("runtime_owner_gid")) is not int
+        or plan["runtime_owner_uid"] < 0
+        or plan["runtime_owner_gid"] < 0
+        or not SHA256_RE.fullmatch(str(plan.get("runtime_manifest_sha256") or ""))
+        or not SHA256_RE.fullmatch(str(plan.get("broker_runtime_attestation_sha256") or ""))
+        or not SHA256_RE.fullmatch(str(plan.get("service_config_sha256") or ""))
+        or not SHA256_RE.fullmatch(str(plan.get("hermes_pyproject_lock_sha256") or ""))
+        or not SHA256_RE.fullmatch(str(plan.get("hermes_provenance_sha256") or ""))
+        or not SHA1_RE.fullmatch(str(plan.get("hermes_source_sha") or ""))
+        or not SHA256_RE.fullmatch(str(plan.get("hermes_install_archive_sha256") or ""))
+        or not SHA1_RE.fullmatch(str(plan.get("radulator_source_sha") or ""))
+        or plan.get("radulator_source_sha") != plan.get("source_commit_sha")
+        or not isinstance(plan.get("archive_digests"), dict)
+        or set(plan["archive_digests"]) != BROKER_RUNTIME_ARCHIVE_KEYS
+        or any(not SHA256_RE.fullmatch(str(value)) for value in plan["archive_digests"].values())
+        or plan["archive_digests"].get("hermes_install") != plan.get("hermes_install_archive_sha256")
+        or plan["archive_digests"].get("cpython") != CPYTHON_RUNTIME_ARCHIVE_SHA256
+        or not isinstance(plan.get("runtime_provenance"), dict)
+        or plan.get("publisher_probe_contract") != "radulator.publisher_runtime_preflight.v1"
+        or plan.get("publisher_probe_status") not in {"PASS", "PENDING"}
+        or not SHA256_RE.fullmatch(str(plan.get("publisher_probe_sha256") or ""))
+        or not isinstance(plan.get("isolated_probe"), dict)
+        or set(plan["isolated_probe"]) != {"command", "outcome"}
+        or plan["isolated_probe"].get("outcome") not in {"PASS", "PENDING"}
+        or not isinstance(plan["isolated_probe"].get("command"), list)
         or len({plan.get("publisher_uid"), plan.get("broker_uid"), plan.get("model_uid")}) != 3
         or type(plan.get("model_gid")) is not int
         or plan["model_gid"] <= 0
@@ -309,6 +860,7 @@ def _validate_plan(plan: dict[str, Any]) -> None:
         "source_root",
         "install_root",
         "runtime_root",
+        "publisher_asset_root",
         "publisher_home",
         "state_dir",
         "repository_root",
@@ -316,8 +868,71 @@ def _validate_plan(plan: dict[str, Any]) -> None:
         "launchd_plist_path",
         "python_executable",
         "activation_attestation",
+        "broker_runtime_attestation_path",
+        "runtime_manifest_path",
+        "publisher_probe_path",
     ):
         _absolute(Path(plan[key]), key.replace("_", " "))
+    if Path(plan["publisher_asset_root"]) != Path(plan["install_root"]) / "publisher":
+        raise ValueError("publisher asset root is not bound to the install root")
+    if not isinstance(plan.get("broker_runtime_attestation"), dict) or not isinstance(plan.get("broker_runtime_manifest"), dict):
+        raise ValueError("publisher service plan lacks public broker runtime contract")
+    expected_provenance = dict(CPYTHON_RUNTIME_PROVENANCE)
+    expected_provenance["sha256"] = plan["archive_digests"]["cpython"]
+    if plan["runtime_provenance"] != expected_provenance:
+        raise ValueError("publisher service plan CPython provenance is not exact")
+    broker = plan["broker_runtime_attestation"]
+    if set(broker) != BROKER_RUNTIME_ATTESTATION_FIELDS:
+        raise ValueError("publisher service plan broker attestation fields are not exact")
+    if (
+        broker.get("contract") != BROKER_RUNTIME_ATTESTATION_CONTRACT
+        or broker.get("schema_version") != 1
+        or type(broker.get("active")) is not bool
+        or type(broker.get("revoked")) is not bool
+        or broker.get("revoked") is not (not broker.get("active"))
+        or broker.get("runtime_manifest_path") != plan["runtime_manifest_path"]
+        or broker.get("runtime_root") != plan["runtime_root"]
+        or broker.get("python_executable") != plan["python_executable"]
+        or broker.get("python_version") != plan["python_version"]
+        or broker.get("python_sha256") != plan["python_sha256"]
+        or broker.get("runtime_manifest_sha256") != plan["runtime_manifest_sha256"]
+        or broker.get("service_config_sha256") != plan["service_config_sha256"]
+        or broker.get("hermes_pyproject_lock_sha256") != plan["hermes_pyproject_lock_sha256"]
+        or broker.get("hermes_provenance_sha256") != plan["hermes_provenance_sha256"]
+        or broker.get("hermes_source_sha") != plan["hermes_source_sha"]
+        or broker.get("hermes_install_archive_sha256") != plan["hermes_install_archive_sha256"]
+        or broker.get("radulator_source_sha") != plan["radulator_source_sha"]
+        or broker.get("runtime_provenance") != plan["runtime_provenance"]
+        or broker.get("publisher_probe_path") != plan["publisher_probe_path"]
+        or broker.get("publisher_probe_sha256") != plan["publisher_probe_sha256"]
+        or broker.get("publisher_probe_contract") != plan["publisher_probe_contract"]
+        or broker.get("publisher_probe_status") != plan["publisher_probe_status"]
+        or broker.get("archive_digests") != plan["archive_digests"]
+        or broker.get("isolated_probe") != plan["isolated_probe"]
+    ):
+        raise ValueError("publisher service plan runtime bindings are not exact")
+    try:
+        _validate_runtime_manifest(
+            manifest=plan["broker_runtime_manifest"],
+            runtime_root=Path(plan["runtime_root"]),
+            python_executable=Path(plan["python_executable"]),
+            python_version=plan["python_version"],
+            expected_manifest_sha256=plan["runtime_manifest_sha256"],
+        )
+    except (TypeError, ValueError) as error:
+        raise ValueError("publisher service plan runtime manifest is not exact") from error
+    if (
+        Path(plan["runtime_manifest_path"]) != Path(broker.get("runtime_manifest_path", ""))
+        or Path(plan["runtime_root"]) != Path(broker.get("runtime_root", ""))
+        or Path(plan["python_executable"]) != Path(broker.get("python_executable", ""))
+        or plan["runtime_manifest_sha256"] != broker.get("runtime_manifest_sha256")
+        or plan["service_config_sha256"] != broker.get("service_config_sha256")
+        or plan["hermes_pyproject_lock_sha256"] != broker.get("hermes_pyproject_lock_sha256")
+        or plan["hermes_provenance_sha256"] != broker.get("hermes_provenance_sha256")
+        or plan["hermes_source_sha"] != broker.get("hermes_source_sha")
+        or plan["radulator_source_sha"] != broker.get("radulator_source_sha")
+    ):
+        raise ValueError("publisher service plan runtime bindings are not exact")
 
 
 def _require_fixed_production_paths(plan: dict[str, Any]) -> None:
@@ -332,20 +947,57 @@ def _require_fixed_production_paths(plan: dict[str, Any]) -> None:
         raise ValueError("publisher production plan paths or source authority are unsafe")
 
 
+def _runtime_plan_binding_matches(
+    plan: dict[str, Any],
+    attestation: dict[str, Any],
+    manifest: dict[str, Any],
+    attestation_sha: str,
+    manifest_sha: str,
+    *,
+    allow_state_transition: bool,
+) -> bool:
+    """Compare immutable runtime identity while allowing PENDING -> active once."""
+
+    if manifest != plan["broker_runtime_manifest"] or manifest_sha != plan["runtime_manifest_sha256"]:
+        return False
+    expected = plan["broker_runtime_attestation"]
+    dynamic = {"active", "revoked", "isolated_probe", "publisher_probe_status"}
+    if any(
+        key not in dynamic and attestation.get(key) != expected.get(key)
+        for key in expected
+    ):
+        return False
+    state_changed = any(attestation.get(key) != expected.get(key) for key in dynamic)
+    if state_changed and not allow_state_transition:
+        return False
+    if not state_changed and attestation_sha != plan["broker_runtime_attestation_sha256"]:
+        return False
+    return True
+
+
 def _require_production_plan(plan: dict[str, Any]) -> None:
     """Reject any root activation path that is model-writable or relocatable."""
 
     _require_fixed_production_paths(plan)
     if plan.get("source_owner_uid") != 0:
         raise ValueError("publisher production source must be root-owned")
-    _python, python_info = _read_file_exact(
-        Path(plan["python_executable"]),
-        expected_uid=0,
-        immutable_owner=True,
-        maximum=128 * 1024 * 1024,
+    broker_attestation, broker_manifest, broker_attestation_sha, runtime_manifest_sha = (
+        _read_broker_runtime_contract(
+            attestation_path=Path(plan["broker_runtime_attestation_path"]),
+            manifest_path=Path(plan["runtime_manifest_path"]),
+            expected_radulator_source_sha=str(plan["source_commit_sha"]),
+            require_active=False,
+        )
     )
-    if python_info.st_uid != 0:
-        raise ValueError("publisher Python runtime must be root-owned")
+    if not _runtime_plan_binding_matches(
+        plan,
+        broker_attestation,
+        broker_manifest,
+        broker_attestation_sha,
+        runtime_manifest_sha,
+        allow_state_transition=True,
+    ):
+        raise ValueError("publisher broker runtime contract changed after plan construction")
     source_root = Path(plan["source_root"])
     manifest, manifest_sha = _source_manifest(source_root, expected_uid=0)
     if (
@@ -409,13 +1061,18 @@ def render_launchd_plist(plan: dict[str, Any]) -> bytes:
     """Render a secret-free launchd service definition for one publisher UID."""
 
     _validate_plan(plan)
-    runtime_root = Path(plan["runtime_root"])
+    publisher_asset_root = Path(plan["publisher_asset_root"])
     state_dir = Path(plan["state_dir"])
     environment = {
         "HOME": plan["publisher_home"],
         "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
         "RADULATOR_PUBLISHER_HOME": plan["publisher_home"],
         "RADULATOR_PUBLISHER_PYTHON": plan["python_executable"],
+        "RADULATOR_PUBLISHER_RUNTIME_ROOT": plan["runtime_root"],
+        "RADULATOR_PUBLISHER_RUNTIME_MANIFEST": plan["runtime_manifest_path"],
+        "RADULATOR_PUBLISHER_RUNTIME_MANIFEST_SHA256": plan["runtime_manifest_sha256"],
+        "RADULATOR_PUBLISHER_PYTHON_VERSION": plan["python_version"],
+        "RADULATOR_PUBLISHER_PYTHON_SHA256": plan["python_sha256"],
         "RADULATOR_PUBLISHER_PROJECT_ROOT": plan["repository_root"],
         "RADULATOR_PUBLISHER_STATE_DIR": plan["state_dir"],
         "RADULATOR_BROKER_CLIENT_CONFIG": plan["broker_client_config"],
@@ -433,7 +1090,7 @@ def render_launchd_plist(plan: dict[str, Any]) -> bytes:
         "Label": SERVICE_LABEL,
         "ProgramArguments": [
             "/bin/bash",
-            str(runtime_root / "trusted_publisher_cron.sh"),
+            str(publisher_asset_root / "trusted_publisher_cron.sh"),
         ],
         "UserName": plan["publisher_user"],
         "GroupName": plan["publisher_group"],
@@ -495,15 +1152,37 @@ def _atomic_write(path: Path, content: bytes, *, uid: int, gid: int, mode: int) 
         os.close(directory)
 
 
-def _publisher_env(plan: dict[str, Any]) -> dict[str, str]:
-    return {
+def _publisher_env(
+    plan: dict[str, Any], *, extra: dict[str, str] | None = None
+) -> dict[str, str]:
+    environment = {
         "HOME": plan["publisher_home"],
         "GH_CONFIG_DIR": str(Path(plan["publisher_home"]) / ".config" / "gh"),
         "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
         "GIT_CONFIG_GLOBAL": "/dev/null",
         "GIT_CONFIG_SYSTEM": "/dev/null",
         "GIT_TERMINAL_PROMPT": "0",
+        "RADULATOR_PUBLISHER_HOME": plan["publisher_home"],
+        "RADULATOR_PUBLISHER_PYTHON": plan["python_executable"],
+        "RADULATOR_PUBLISHER_RUNTIME_ROOT": plan["runtime_root"],
+        "RADULATOR_PUBLISHER_RUNTIME_MANIFEST": plan["runtime_manifest_path"],
+        "RADULATOR_PUBLISHER_RUNTIME_MANIFEST_SHA256": plan["runtime_manifest_sha256"],
+        "RADULATOR_PUBLISHER_PYTHON_VERSION": plan["python_version"],
+        "RADULATOR_PUBLISHER_PYTHON_SHA256": plan["python_sha256"],
+        "RADULATOR_PUBLISHER_PROJECT_ROOT": plan["repository_root"],
+        "RADULATOR_PUBLISHER_STATE_DIR": plan["state_dir"],
+        "RADULATOR_BROKER_CLIENT_CONFIG": plan["broker_client_config"],
+        "RADULATOR_BROKER_UID": str(plan["broker_uid"]),
+        "RADULATOR_PUBLISHER_GID": str(plan["publisher_gid"]),
+        "RADULATOR_GITHUB_REPOSITORY_ID": str(REPOSITORY_ID),
+        "RADULATOR_GITHUB_WORKFLOW_ID": str(WORKFLOW_ID),
+        "RADULATOR_READY_LABEL_ACTOR_ID": str(READY_LABEL_ACTOR["id"]),
+        "RADULATOR_READY_LABEL_ACTOR_LOGIN": READY_LABEL_ACTOR["login"],
+        "RADULATOR_READY_LABEL_ACTOR_TYPE": READY_LABEL_ACTOR["type"],
     }
+    if extra:
+        environment.update(extra)
+    return environment
 
 
 def _run_as_publisher(
@@ -511,6 +1190,8 @@ def _run_as_publisher(
     command: list[str],
     *,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+    extra_env: dict[str, str] | None = None,
+    cwd: str | Path | None = None,
 ) -> subprocess.CompletedProcess:
     return runner(
         command,
@@ -518,8 +1199,8 @@ def _run_as_publisher(
         capture_output=True,
         text=True,
         timeout=60,
-        env=_publisher_env(plan),
-        cwd=plan["repository_root"],
+        env=_publisher_env(plan, extra=extra_env),
+        cwd=str(cwd) if cwd is not None else plan["repository_root"],
         user=int(plan["publisher_uid"]),
         group=int(plan["publisher_gid"]),
         extra_groups=(),
@@ -569,12 +1250,12 @@ def provision_service(
             "publisher service must be persistently disabled before provisioning"
         ) from (errors[0] if errors else None)
     install_root = Path(plan["install_root"])
-    runtime_root = Path(plan["runtime_root"])
+    publisher_asset_root = Path(plan["publisher_asset_root"])
     publisher_home = Path(plan["publisher_home"])
     state_dir = Path(plan["state_dir"])
     repository_root = Path(plan["repository_root"])
     _mkdir_exact(install_root, uid=0, gid=0, mode=0o711)
-    _mkdir_exact(runtime_root, uid=0, gid=0, mode=0o555)
+    _mkdir_exact(publisher_asset_root, uid=0, gid=0, mode=0o555)
     _mkdir_exact(
         Path(plan["launchd_plist_path"]).parent, uid=0, gid=0, mode=0o755
     )
@@ -601,7 +1282,7 @@ def provision_service(
         if _sha256(source) != entry["sha256"] or len(source) != entry["size"]:
             raise ValueError("publisher source changed after plan construction")
         _atomic_write(
-            runtime_root / entry["path"],
+            publisher_asset_root / entry["path"],
             source,
             uid=0,
             gid=0,
@@ -648,7 +1329,7 @@ def provision_service(
     _verify_provisioned_assets(plan)
     _verify_private_repository(plan)
     return {
-        "contract": SERVICE_PLAN_CONTRACT,
+        "contract": SERVICE_PLAN_CONTRACT_V2,
         "enabled": False,
         "service_label": SERVICE_LABEL,
         "asset_manifest_sha256": plan["asset_manifest_sha256"],
@@ -656,19 +1337,21 @@ def provision_service(
     }
 
 
-def _verify_provisioned_assets(plan: dict[str, Any]) -> None:
-    runtime_root = Path(plan["runtime_root"])
-    root_info = runtime_root.lstat()
+def _verify_provisioned_assets(
+    plan: dict[str, Any], *, require_active_runtime: bool = False
+) -> None:
+    publisher_asset_root = Path(plan["publisher_asset_root"])
+    root_info = publisher_asset_root.lstat()
     if (
         stat.S_ISLNK(root_info.st_mode)
         or not stat.S_ISDIR(root_info.st_mode)
         or root_info.st_uid != 0
         or stat.S_IMODE(root_info.st_mode) != 0o555
     ):
-        raise ValueError("publisher runtime root is not immutable")
+        raise ValueError("publisher asset root is not immutable")
     for entry in plan["asset_manifest"]:
         content, _info = _read_file_exact(
-            runtime_root / entry["path"],
+            publisher_asset_root / entry["path"],
             expected_uid=0,
             expected_gid=0,
             expected_mode=int(entry["mode"]),
@@ -683,13 +1366,32 @@ def _verify_provisioned_assets(plan: dict[str, Any]) -> None:
     )
     if plist != render_launchd_plist(plan):
         raise ValueError("publisher launchd plist differs from exact plan")
-    python, _info = _read_file_exact(
-        Path(plan["python_executable"]),
-        immutable_owner=True,
-        maximum=128 * 1024 * 1024,
+    _verify_shared_runtime(plan, require_active=require_active_runtime)
+
+
+def _verify_shared_runtime(
+    plan: dict[str, Any], *, require_active: bool = False
+) -> dict[str, Any]:
+    """Re-read the broker-issued runtime and compare every plan binding."""
+
+    attestation, manifest, attestation_sha, manifest_sha = _read_broker_runtime_contract(
+        attestation_path=Path(plan["broker_runtime_attestation_path"]),
+        manifest_path=Path(plan["runtime_manifest_path"]),
+        expected_radulator_source_sha=str(plan["source_commit_sha"]),
+        require_active=require_active,
+        expected_owner_uid=int(plan["runtime_owner_uid"]),
+        expected_owner_gid=int(plan["runtime_owner_gid"]),
     )
-    if _sha256(python) != plan["python_sha256"]:
-        raise ValueError("publisher Python runtime identity changed")
+    if not _runtime_plan_binding_matches(
+        plan,
+        attestation,
+        manifest,
+        attestation_sha,
+        manifest_sha,
+        allow_state_transition=require_active,
+    ):
+        raise ValueError("broker-issued runtime identity changed after plan construction")
+    return attestation
 
 
 def _verify_broker_client(plan: dict[str, Any]) -> str:
@@ -816,6 +1518,73 @@ def _verify_publisher_credential_isolation(plan: dict[str, Any]) -> None:
         raise ValueError(
             "publisher GitHub credential cross-UID isolation canary failed"
         )
+
+
+def _verify_publisher_runtime_canary(
+    plan: dict[str, Any],
+    *,
+    runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+) -> tuple[dict[str, Any], dict[str, Any], str]:
+    """Run the real publisher wrapper through sealed Python and a broker RPC."""
+
+    runtime_attestation = _verify_shared_runtime(plan, require_active=True)
+    wrapper = Path(plan["publisher_asset_root"]) / "trusted_publisher_cron.sh"
+    result = _run_as_publisher(
+        plan,
+        [str(wrapper)],
+        runner=runner,
+        extra_env={
+            "RADULATOR_PUBLISHER_PREFLIGHT": "1",
+            "RADULATOR_PUBLISHER_SERVICE_LOOP": "0",
+        },
+        cwd="/var/empty",
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "no preflight output").strip()[-1000:]
+        raise ValueError(f"publisher runtime preflight failed: {detail}")
+    try:
+        evidence = json.loads(result.stdout or "")
+    except (TypeError, json.JSONDecodeError) as error:
+        raise ValueError("publisher runtime preflight returned malformed evidence") from error
+    required = {
+        "contract",
+        "status",
+        "python_executable",
+        "python_version",
+        "runtime_root",
+        "runtime_manifest_sha256",
+        "broker_client_module",
+        "broker_rpc",
+    }
+    if (
+        not isinstance(evidence, dict)
+        or set(evidence) != required
+        or evidence.get("contract") != "radulator.publisher_runtime_preflight.v1"
+        or evidence.get("status") != "PASS"
+        or evidence.get("broker_rpc") != "PASS"
+        or evidence.get("python_executable") != plan["python_executable"]
+        or evidence.get("python_version") != plan["python_version"]
+        or evidence.get("runtime_root") != plan["runtime_root"]
+        or evidence.get("runtime_manifest_sha256") != plan["runtime_manifest_sha256"]
+        or not isinstance(evidence.get("broker_client_module"), str)
+    ):
+        raise ValueError("publisher runtime preflight evidence is not exact")
+    module_origin = Path(evidence["broker_client_module"])
+    runtime_root = Path(plan["runtime_root"])
+    if (
+        not module_origin.is_absolute()
+        or (module_origin != runtime_root and runtime_root not in module_origin.parents)
+    ):
+        raise ValueError("publisher runtime preflight broker import escaped the runtime")
+    current, _manifest, runtime_attestation_sha, _manifest_sha = _read_broker_runtime_contract(
+        attestation_path=Path(plan["broker_runtime_attestation_path"]),
+        manifest_path=Path(plan["runtime_manifest_path"]),
+        expected_radulator_source_sha=str(plan["source_commit_sha"]),
+        require_active=True,
+        expected_owner_uid=int(plan["runtime_owner_uid"]),
+        expected_owner_gid=int(plan["runtime_owner_gid"]),
+    )
+    return evidence, current, runtime_attestation_sha
 
 
 def _parse_json_result(result: subprocess.CompletedProcess, label: str) -> dict[str, Any]:
@@ -1001,6 +1770,16 @@ def activate_service(
         client_sha = _verify_broker_client(plan)
         _verify_private_repository(plan)
         _verify_publisher_credential_isolation(plan)
+        canary = _verify_publisher_runtime_canary(plan, runner=runner)
+        if isinstance(canary, tuple):
+            runtime_preflight, runtime_attestation = canary[:2]
+            runtime_attestation_sha = canary[2] if len(canary) > 2 else plan["broker_runtime_attestation_sha256"]
+        else:
+            # Kept for test doubles; a real canary always returns the current
+            # active broker attestation alongside its observed PASS result.
+            runtime_preflight = canary
+            runtime_attestation = plan["broker_runtime_attestation"]
+            runtime_attestation_sha = plan["broker_runtime_attestation_sha256"]
         gh = "/opt/homebrew/bin/gh"
         actor = _parse_json_result(
             _run_as_publisher(plan, [gh, "api", "user"], runner=runner), "actor"
@@ -1057,6 +1836,29 @@ def activate_service(
             "asset_manifest_sha256": plan["asset_manifest_sha256"],
             "source_commit_sha": plan["source_commit_sha"],
             "publisher_credential_model_denied": True,
+            "publisher_runtime_preflight": runtime_preflight,
+            "broker_runtime_attestation_path": plan["broker_runtime_attestation_path"],
+            "broker_runtime_attestation_sha256": runtime_attestation_sha,
+            "runtime_root": runtime_attestation["runtime_root"],
+            "runtime_manifest_path": runtime_attestation["runtime_manifest_path"],
+            "runtime_manifest_sha256": runtime_attestation["runtime_manifest_sha256"],
+            "python_executable": runtime_attestation["python_executable"],
+            "python_version": runtime_attestation["python_version"],
+            "python_sha256": runtime_attestation["python_sha256"],
+            "service_config_sha256": runtime_attestation["service_config_sha256"],
+            "hermes_pyproject_lock_sha256": runtime_attestation["hermes_pyproject_lock_sha256"],
+            "hermes_provenance_sha256": runtime_attestation["hermes_provenance_sha256"],
+            "hermes_source_sha": runtime_attestation["hermes_source_sha"],
+            "hermes_install_archive_sha256": runtime_attestation["hermes_install_archive_sha256"],
+            "radulator_source_sha": runtime_attestation["radulator_source_sha"],
+            "runtime_provenance": runtime_attestation["runtime_provenance"],
+            "publisher_probe_path": runtime_attestation["publisher_probe_path"],
+            "publisher_probe_sha256": runtime_attestation["publisher_probe_sha256"],
+            "publisher_probe_contract": runtime_attestation["publisher_probe_contract"],
+            "publisher_probe_status": runtime_attestation["publisher_probe_status"],
+            "archive_digests": runtime_attestation["archive_digests"],
+            "isolated_probe": runtime_attestation["isolated_probe"],
+            "revoked": False,
             "verified_at": int(now()),
         }
         encoded = (json.dumps(attestation, sort_keys=True, separators=(",", ":")) + "\n").encode()
@@ -1105,7 +1907,14 @@ def activate_service(
             raise ValueError(
                 "publisher launchd service did not read back persistent enablement"
             )
-        _verify_provisioned_assets(plan)
+        _verify_provisioned_assets(plan, require_active_runtime=True)
+        post_canary = _verify_publisher_runtime_canary(plan, runner=runner)
+        if isinstance(post_canary, tuple) and len(post_canary) >= 3:
+            if (
+                post_canary[1] != runtime_attestation
+                or post_canary[2] != runtime_attestation_sha
+            ):
+                raise ValueError("publisher runtime identity changed after service start")
         _atomic_write(
             Path(plan["activation_attestation"]),
             encoded,
@@ -1192,7 +2001,9 @@ def main(argv: list[str] | None = None) -> int:
     plan_parser.add_argument("--source-root", required=True, type=Path)
     plan_parser.add_argument("--source-commit-sha", required=True)
     plan_parser.add_argument("--broker-client-config", required=True, type=Path)
-    plan_parser.add_argument("--python-executable", required=True, type=Path)
+    plan_parser.add_argument("--python-executable", type=Path)
+    plan_parser.add_argument("--broker-runtime-attestation", required=True, type=Path)
+    plan_parser.add_argument("--runtime-manifest", required=True, type=Path)
     plan_parser.add_argument("--publisher-user", required=True)
     plan_parser.add_argument("--publisher-uid", required=True, type=int)
     plan_parser.add_argument("--publisher-group", required=True)
@@ -1215,6 +2026,8 @@ def main(argv: list[str] | None = None) -> int:
             broker_client_config=args.broker_client_config,
             launchd_plist_path=PRODUCTION_LAUNCHD_PLIST,
             python_executable=args.python_executable,
+            broker_runtime_attestation_path=args.broker_runtime_attestation,
+            runtime_manifest_path=args.runtime_manifest,
             source_commit_sha=args.source_commit_sha,
             source_owner_uid=0,
             publisher_user=args.publisher_user,

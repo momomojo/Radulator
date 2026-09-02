@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import plistlib
 import stat
@@ -51,11 +52,13 @@ class PublisherServiceInstallTests(unittest.TestCase):
         self.python.write_text("python\n", encoding="utf-8")
         self.python.chmod(0o755)
         self.plist = self.root / "ai.hermes.radulator-publisher.plist"
+        self.runtime_counter = 0
 
     def tearDown(self):
         self.temp.cleanup()
 
     def plan(self):
+        attestation, manifest, _runtime_root = self.shared_runtime()
         return service.build_service_plan(
             source_root=self.source,
             install_root=self.install_root,
@@ -63,6 +66,8 @@ class PublisherServiceInstallTests(unittest.TestCase):
             broker_client_config=self.client_config,
             launchd_plist_path=self.plist,
             python_executable=self.python,
+            broker_runtime_attestation_path=attestation,
+            runtime_manifest_path=manifest,
             source_commit_sha="a" * 40,
             source_owner_uid=os.geteuid(),
             publisher_user="_publisher",
@@ -73,6 +78,150 @@ class PublisherServiceInstallTests(unittest.TestCase):
             model_uid=503,
             model_gid=503,
         )
+
+    def shared_runtime(self):
+        """Write the public broker runtime-v2 contract used by focused tests."""
+        self.runtime_counter += 1
+        suffix = "" if self.runtime_counter == 1 else f"-{self.runtime_counter}"
+        runtime_root = self.root / f"sealed-runtime{suffix}"
+        package = runtime_root / "lib" / "python3.11" / "site-packages" / "hermes_cli"
+        (runtime_root / "bin").mkdir(parents=True)
+        package.mkdir(parents=True)
+        python = runtime_root / "bin" / "python3.11"
+        python.write_bytes(b"sealed python executable\n")
+        python.chmod(0o555)
+        (package / "__init__.py").write_bytes(b"\n")
+        (package / "kanban_broker_client.py").write_bytes(b"SEALED = True\n")
+        (package / "__init__.py").chmod(0o444)
+        (package / "kanban_broker_client.py").chmod(0o444)
+        for directory in (
+            runtime_root,
+            runtime_root / "bin",
+            runtime_root / "lib",
+            runtime_root / "lib" / "python3.11",
+            runtime_root / "lib" / "python3.11" / "site-packages",
+            package,
+        ):
+            directory.chmod(0o555)
+        runtime_root = runtime_root.resolve(strict=True)
+        python = python.resolve(strict=True)
+        publisher_probe = (self.root / "runtime-publisher-probe.py").resolve()
+        if not publisher_probe.exists():
+            publisher_probe.write_bytes(b"# sealed publisher preflight probe\n")
+            publisher_probe.chmod(0o555)
+        entries = [
+            {"path": "bin/", "type": "directory", "mode": 0o555},
+            {"path": "bin/python3.11", "type": "file", "mode": 0o555, "size": len(python.read_bytes()), "sha256": hashlib.sha256(python.read_bytes()).hexdigest()},
+            {"path": "lib/", "type": "directory", "mode": 0o555},
+            {"path": "lib/python3.11/", "type": "directory", "mode": 0o555},
+            {"path": "lib/python3.11/site-packages/", "type": "directory", "mode": 0o555},
+            {"path": "lib/python3.11/site-packages/hermes_cli/", "type": "directory", "mode": 0o555},
+            {"path": "lib/python3.11/site-packages/hermes_cli/__init__.py", "type": "file", "mode": 0o444, "size": 1, "sha256": hashlib.sha256(b"\n").hexdigest()},
+            {"path": "lib/python3.11/site-packages/hermes_cli/kanban_broker_client.py", "type": "file", "mode": 0o444, "size": len(b"SEALED = True\n"), "sha256": hashlib.sha256(b"SEALED = True\n").hexdigest()},
+        ]
+        manifest_sha = hashlib.sha256(json.dumps(entries, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        manifest = self.root / "broker-runtime-manifest.json"
+        manifest.write_text(json.dumps({
+            "contract": "hermes.kanban_broker_runtime_manifest.v1",
+            "schema_version": 1,
+            "runtime_root": str(runtime_root),
+            "python_executable": str(python),
+            "python_version": "3.11.15",
+            "provenance": {
+                **service.CPYTHON_RUNTIME_PROVENANCE,
+                "sha256": service.CPYTHON_RUNTIME_ARCHIVE_SHA256,
+            },
+            "runtime_manifest_sha256": manifest_sha,
+            "entries": entries,
+        }, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+        manifest.chmod(0o644)
+        manifest = manifest.resolve(strict=True)
+        attestation = self.root / "broker-runtime-attestation.json"
+        attestation.write_text(json.dumps({
+            "contract": "hermes.kanban_broker_runtime_attestation.v1",
+            "schema_version": 1,
+            "active": False,
+            "revoked": True,
+            "service_config_sha256": "e" * 64,
+            "hermes_source_sha": "b" * 40,
+            "hermes_install_archive_sha256": "d" * 64,
+            "hermes_pyproject_lock_sha256": "f" * 64,
+            "hermes_provenance_sha256": "1" * 64,
+            "radulator_source_sha": "a" * 40,
+            "runtime_root": str(runtime_root),
+            "runtime_manifest_path": str(manifest),
+            "python_executable": str(python),
+            "python_version": "3.11.15",
+            "python_sha256": hashlib.sha256(python.read_bytes()).hexdigest(),
+            "runtime_manifest_sha256": manifest_sha,
+            "runtime_provenance": {
+                **service.CPYTHON_RUNTIME_PROVENANCE,
+                "sha256": service.CPYTHON_RUNTIME_ARCHIVE_SHA256,
+            },
+            "publisher_probe_path": str(publisher_probe),
+            "publisher_probe_sha256": hashlib.sha256(publisher_probe.read_bytes()).hexdigest(),
+            "publisher_probe_contract": "radulator.publisher_runtime_preflight.v1",
+            "publisher_probe_status": "PENDING",
+            "archive_digests": {"cpython": service.CPYTHON_RUNTIME_ARCHIVE_SHA256, "hermes_install": "d" * 64},
+            "isolated_probe": {"command": [str(python), "-I", "runtime-probe.py"], "outcome": "PENDING"},
+        }, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+        attestation.chmod(0o644)
+        return attestation, manifest, runtime_root
+
+    def shared_plan(self):
+        return self.plan()
+
+    def test_plan_requires_pending_broker_runtime_v2_and_binds_external_manifest(self):
+        plan = self.shared_plan()
+        self.assertEqual(plan["contract"], service.SERVICE_PLAN_CONTRACT_V2)
+        self.assertEqual(plan["runtime_root"], str((self.root / "sealed-runtime").resolve()))
+        self.assertEqual(plan["python_version"], "3.11.15")
+        self.assertEqual(plan["broker_runtime_attestation"]["active"], False)
+        self.assertEqual(plan["broker_runtime_attestation"]["revoked"], True)
+        self.assertNotEqual(plan["publisher_asset_root"], plan["runtime_root"])
+
+    def test_plan_rejects_v1_broker_runtime_contract(self):
+        plan = self.plan()
+        attestation = Path(plan["broker_runtime_attestation_path"])
+        payload = json.loads(attestation.read_text())
+        payload["contract"] = "hermes.kanban_broker_runtime_attestation.v0"
+        attestation.write_text(json.dumps(payload) + "\n")
+        with self.assertRaisesRegex(ValueError, "runtime attestation"):
+            service._verify_shared_runtime(plan)
+
+    def test_runtime_manifest_rejects_unexpected_entry(self):
+        plan = self.shared_plan()
+        extra = Path(plan["runtime_root"]) / "unexpected"
+        Path(plan["runtime_root"]).chmod(0o755)
+        extra.write_text("unexpected\n")
+        Path(plan["runtime_root"]).chmod(0o555)
+        with self.assertRaisesRegex(ValueError, "unexpected"):
+            service._verify_shared_runtime(plan)
+
+    def test_pending_runtime_can_transition_to_active_only_with_pass_probe(self):
+        plan = self.shared_plan()
+        attestation_path = Path(plan["broker_runtime_attestation_path"])
+        payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+        payload["active"] = True
+        payload["revoked"] = False
+        payload["isolated_probe"]["outcome"] = "PASS"
+        payload["publisher_probe_status"] = "PASS"
+        attestation_path.write_text(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        attestation_path.chmod(0o644)
+        current = service._verify_shared_runtime(plan, require_active=True)
+        self.assertIs(current["active"], True)
+        self.assertIs(current["revoked"], False)
+        self.assertEqual(current["isolated_probe"]["outcome"], "PASS")
+
+    def test_wrapper_contains_b_and_runtime_preflight(self):
+        wrapper = (Path(__file__).resolve().parents[1] / "trusted_publisher_cron.sh").read_text(encoding="utf-8")
+        self.assertIn("-I", wrapper)
+        self.assertIn("-B", wrapper)
+        self.assertIn("RADULATOR_PUBLISHER_PREFLIGHT", wrapper)
+        self.assertIn("--runtime-preflight", wrapper)
 
     def test_plan_is_disabled_first_and_binds_exact_immutable_assets(self):
         plan = self.plan()
@@ -108,6 +257,7 @@ class PublisherServiceInstallTests(unittest.TestCase):
             self.plan()
 
     def test_plan_rejects_collapsed_os_identities(self):
+        attestation, manifest, _runtime_root = self.shared_runtime()
         with self.assertRaisesRegex(ValueError, "distinct"):
             service.build_service_plan(
                 source_root=self.source,
@@ -116,6 +266,8 @@ class PublisherServiceInstallTests(unittest.TestCase):
                 broker_client_config=self.client_config,
                 launchd_plist_path=self.plist,
                 python_executable=self.python,
+                broker_runtime_attestation_path=attestation,
+                runtime_manifest_path=manifest,
                 source_commit_sha="a" * 40,
                 source_owner_uid=os.geteuid(),
                 publisher_user="_publisher",
@@ -282,6 +434,8 @@ class PublisherServiceInstallTests(unittest.TestCase):
         ), mock.patch.object(
             service, "_verify_publisher_credential_isolation"
         ), mock.patch.object(
+            service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
+        ), mock.patch.object(
             service,
             "_atomic_write",
             side_effect=lambda _path, content, **_kwargs: written.update(
@@ -301,6 +455,7 @@ class PublisherServiceInstallTests(unittest.TestCase):
                 "broker_boundary",
                 "service_label",
                 "active",
+                "revoked",
                 "publisher_uid",
                 "broker_uid",
                 "model_uid",
@@ -313,6 +468,28 @@ class PublisherServiceInstallTests(unittest.TestCase):
                 "asset_manifest_sha256",
                 "source_commit_sha",
                 "publisher_credential_model_denied",
+                "publisher_runtime_preflight",
+                "broker_runtime_attestation_path",
+                "broker_runtime_attestation_sha256",
+                "runtime_root",
+                "runtime_manifest_path",
+                "runtime_manifest_sha256",
+                "python_executable",
+                "python_version",
+                "python_sha256",
+                "service_config_sha256",
+                "hermes_pyproject_lock_sha256",
+                "hermes_provenance_sha256",
+                "hermes_source_sha",
+                "hermes_install_archive_sha256",
+                "radulator_source_sha",
+                "runtime_provenance",
+                "publisher_probe_path",
+                "publisher_probe_sha256",
+                "publisher_probe_contract",
+                "publisher_probe_status",
+                "archive_digests",
+                "isolated_probe",
                 "verified_at",
             },
         )
@@ -368,10 +545,14 @@ class PublisherServiceInstallTests(unittest.TestCase):
 
         with mock.patch.object(service.os, "geteuid", return_value=0), mock.patch.object(
             service, "_require_production_plan"
+        ), mock.patch.object(
+            service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
         ), mock.patch.object(service, "_verify_provisioned_assets"), mock.patch.object(
             service, "_verify_broker_client", return_value="b" * 64
         ), mock.patch.object(service, "_verify_private_repository"), mock.patch.object(
             service, "_verify_publisher_credential_isolation"
+        ), mock.patch.object(
+            service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
         ), mock.patch.object(
             service, "_atomic_write", side_effect=OSError("disk full")
         ):
@@ -430,10 +611,14 @@ class PublisherServiceInstallTests(unittest.TestCase):
 
         with mock.patch.object(service.os, "geteuid", return_value=0), mock.patch.object(
             service, "_require_production_plan"
+        ), mock.patch.object(
+            service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
         ), mock.patch.object(service, "_verify_provisioned_assets"), mock.patch.object(
             service, "_verify_broker_client", return_value="b" * 64
         ), mock.patch.object(service, "_verify_private_repository"), mock.patch.object(
             service, "_verify_publisher_credential_isolation"
+        ), mock.patch.object(
+            service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
         ), mock.patch.object(
             service, "_atomic_write", side_effect=AssertionError("attestation written")
         ):
@@ -622,7 +807,7 @@ class PublisherServiceInstallTests(unittest.TestCase):
         runner = self.activation_runner(events)
         label = f"system/{service.SERVICE_LABEL}"
 
-        def verify_assets(_plan):
+        def verify_assets(_plan, **_kwargs):
             events.append("verify-assets")
 
         def atomic_write(_path, content, **_kwargs):
@@ -637,6 +822,8 @@ class PublisherServiceInstallTests(unittest.TestCase):
             service, "_verify_private_repository"
         ), mock.patch.object(
             service, "_verify_publisher_credential_isolation"
+        ), mock.patch.object(
+            service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
         ), mock.patch.object(
             service, "_verify_provisioned_assets", side_effect=verify_assets
         ), mock.patch.object(
@@ -692,6 +879,8 @@ class PublisherServiceInstallTests(unittest.TestCase):
                     service, "_verify_private_repository"
                 ), mock.patch.object(
                     service, "_verify_publisher_credential_isolation"
+                ), mock.patch.object(
+                    service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
                 ), mock.patch.object(service, "_verify_provisioned_assets"), mock.patch.object(
                     service, "_atomic_write",
                     side_effect=lambda _path, content, **_kwargs: written.append(content),
@@ -738,6 +927,8 @@ class PublisherServiceInstallTests(unittest.TestCase):
             service, "_verify_private_repository"
         ), mock.patch.object(
             service, "_verify_publisher_credential_isolation"
+        ), mock.patch.object(
+            service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
         ), mock.patch.object(service, "_verify_provisioned_assets"), mock.patch.object(
             service, "_atomic_write", side_effect=atomic_write
         ), mock.patch.object(
@@ -771,6 +962,8 @@ class PublisherServiceInstallTests(unittest.TestCase):
             service, "_verify_private_repository"
         ), mock.patch.object(
             service, "_verify_publisher_credential_isolation"
+        ), mock.patch.object(
+            service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
         ), mock.patch.object(service, "_verify_provisioned_assets"), mock.patch.object(
             service, "_atomic_write",
             side_effect=lambda *_args, **_kwargs: written.append(True),
@@ -798,6 +991,8 @@ class PublisherServiceInstallTests(unittest.TestCase):
             service, "_verify_private_repository"
         ), mock.patch.object(
             service, "_verify_publisher_credential_isolation"
+        ), mock.patch.object(
+            service, "_verify_publisher_runtime_canary", return_value={"contract": "radulator.publisher_runtime_preflight.v1"}
         ), mock.patch.object(
             service,
             "_verify_provisioned_assets",
