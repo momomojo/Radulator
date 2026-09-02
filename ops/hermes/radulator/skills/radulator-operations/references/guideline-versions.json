@@ -603,7 +603,55 @@
               "stage1-versus-stage2-not-assigned-without-mesa-context"
             ]
           }
-        ]
+        ],
+        "source_audit": {
+          "schema": "radulator-live-source-audit/v1",
+          "command": "npm run test:cac-drs-source",
+          "authority": "2023 Multimodality Appropriate Use Criteria and Maron et al. CAC staging proposal",
+          "trusted_exact_head_check": "Hermes Release Control Tests",
+          "source_urls": [
+            "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC10585920/unicode",
+            "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC11462328/unicode"
+          ],
+          "artifacts": [
+            {
+              "id": "auc-pmc-bioc-json",
+              "url": "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC10585920/unicode",
+              "host": "www.ncbi.nlm.nih.gov",
+              "path": "/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC10585920/unicode",
+              "media_type": "application/json",
+              "raw_source_bytes": 216779,
+              "raw_source_sha256": "e13e2353c894a67bd9092255f89a682ef43ce638aa26873a54e8ef4ae63d351a",
+              "canonical_source_bytes": 207915,
+              "canonical_source_sha256": "3870526ebbef77ece57d8ea89f0d32d2a63c2fd47013aa425ced7ceaa0c9d3f2"
+            },
+            {
+              "id": "maron-pmc-bioc-json",
+              "url": "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC11462328/unicode",
+              "host": "www.ncbi.nlm.nih.gov",
+              "path": "/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC11462328/unicode",
+              "media_type": "application/json",
+              "raw_source_bytes": 26452,
+              "raw_source_sha256": "f9513adaa3fecf0163a04eaf21f18ff1faefb9045cedc504ee9e505ebde596e0",
+              "canonical_source_bytes": 25322,
+              "canonical_source_sha256": "9fc8b5ffb054f03de2539911da77296e5435a9c60848859b6728c98cd81cf997"
+            }
+          ],
+          "vector_ids": [
+            "cac-drs-score-299",
+            "cac-drs-score-300",
+            "cac-drs-score-301",
+            "maron-stage-0",
+            "maron-stage-1",
+            "maron-stage-2-percentile-equality",
+            "maron-stage-2-lower",
+            "maron-stage-2-upper",
+            "maron-stage-3-lower",
+            "maron-stage-3-upper",
+            "maron-stage-4-lower"
+          ],
+          "source_bytes_committed": false
+        }
       }
     },
     {
