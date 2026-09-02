@@ -124,6 +124,10 @@ const expectedSourceAuditBody = [
   "export LC_ALL=C",
   "for audit in scripts/audit-*-source.test.mjs; do",
   '  test -f "$audit"',
+  '  if [ "$audit" = "scripts/audit-bosniak-primary-source.test.mjs" ]; then',
+  "    # Bosniak runs only in the protected exact-head lane to avoid duplicate live-source fetches.",
+  "    continue",
+  "  fi",
   '  node "$audit"',
   "done",
   "npm run test:cac-drs-source",
@@ -134,6 +138,16 @@ assert.equal(
   sourceAuditEvidence.run.trim(),
   expectedSourceAuditBody,
   "the exact-head Smoke source-audit body must remain deterministic and fail closed",
+);
+assert.equal(
+  (sourceAuditEvidence.run.match(/audit-bosniak-primary-source\.test\.mjs/g) ?? []).length,
+  1,
+  "Smoke must name the Bosniak audit exactly once as the protected-lane exclusion",
+);
+assert.doesNotMatch(
+  sourceAuditEvidence.run,
+  /^\s*(?:node\s+.*audit-bosniak-primary-source\.test\.mjs|npm run\s+test:bosniak-source)\s*$/m,
+  "Smoke must not invoke the Bosniak live audit a second time",
 );
 assert.match(
   clinicalJudgeSkill,

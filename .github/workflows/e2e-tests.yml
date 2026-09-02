@@ -112,6 +112,10 @@ jobs:
           export LC_ALL=C
           for audit in scripts/audit-*-source.test.mjs; do
             test -f "$audit"
+            if [ "$audit" = "scripts/audit-bosniak-primary-source.test.mjs" ]; then
+              # Bosniak runs only in the protected exact-head lane to avoid duplicate live-source fetches.
+              continue
+            fi
             node "$audit"
           done
           npm run test:cac-drs-source
