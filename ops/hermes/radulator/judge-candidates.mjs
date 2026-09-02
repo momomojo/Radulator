@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -31,15 +32,209 @@ export const FILE_REVIEW_EVIDENCE_SCHEMA = "radulator-file-review-evidence/v1";
 
 const GIT_OBJECT_PATTERN = /^[0-9a-f]{40}$/;
 const MAX_REVIEW_BLOB_BYTES = 1_000_000;
+const FILE_STATUSES = new Set(["added", "modified", "deleted", "removed", "renamed", "copied", "changed", "unchanged"]);
+const REVIEW_BLOB_MODES = new Set(["100644", "100755", "120000"]);
+const DELETED_STATUSES = new Set(["deleted", "removed"]);
+
+function exactPath(value) {
+  return typeof value === "string" && value.length > 0 && !value.includes("\0") && !value.startsWith("/") &&
+    !value.includes("\\") && !value.split("/").some((part) => !part || part === "." || part === "..");
+}
+
+function previousFilename(file) {
+  const camel = file?.previousFilename;
+  const snake = file?.previous_filename;
+  if (camel !== undefined && snake !== undefined && camel !== snake) {
+    throw new Error(`GitHub file ${file?.filename || "unknown"} has conflicting previous-file paths.`);
+  }
+  return camel ?? snake ?? null;
+}
+
+function fileIdentity(file) {
+  if (!file || typeof file !== "object" || Array.isArray(file) || !FILE_STATUSES.has(file.status) || !exactPath(file.filename)) {
+    throw new Error("GitHub file review evidence has malformed status or path.");
+  }
+  const prior = previousFilename(file);
+  if (file.status === "renamed") {
+    if (!exactPath(prior) || prior === file.filename) throw new Error(`Renamed file ${file.filename} has malformed previous-file evidence.`);
+  } else if (prior !== null) {
+    throw new Error(`Non-renamed file ${file.filename} has unexpected previous-file evidence.`);
+  }
+  for (const key of ["additions", "deletions", "changes"]) {
+    if (!Number.isSafeInteger(file[key]) || file[key] < 0) throw new Error(`GitHub file ${file.filename} has malformed ${key} evidence.`);
+  }
+  if (file.changes !== file.additions + file.deletions) {
+    throw new Error(`GitHub file ${file.filename} changes count does not equal additions plus deletions.`);
+  }
+  if (file.status === "added" && file.deletions !== 0) {
+    throw new Error(`Added file ${file.filename} has deletions; refusing ambiguous side binding.`);
+  }
+  if (DELETED_STATUSES.has(file.status) && file.additions !== 0) {
+    throw new Error(`Deleted file ${file.filename} has additions; refusing ambiguous side binding.`);
+  }
+  if (file.patch !== null && file.patch !== undefined && typeof file.patch !== "string") {
+    throw new Error(`GitHub file ${file.filename} patch evidence is malformed.`);
+  }
+  return { status: file.status, filename: file.filename, previousFilename: prior };
+}
+
+function hunkCount(start, count) {
+  if (!/^(?:0|[1-9]\d*)$/.test(start) || (count !== undefined && !/^(?:0|[1-9]\d*)$/.test(count))) return null;
+  const startNumber = Number(start);
+  const countNumber = count === undefined ? 1 : Number(count);
+  return Number.isSafeInteger(startNumber) && Number.isSafeInteger(countNumber) && countNumber >= 0 &&
+    (countNumber === 0 ? startNumber === 0 : startNumber >= 1) ? countNumber : null;
+}
+
+function patchIsExact(file) {
+  if (typeof file.patch !== "string" || !file.patch) return false;
+  const lines = file.patch.split("\n");
+  if (lines.at(-1) === "") lines.pop();
+  let hunk = null;
+  let additions = 0;
+  let deletions = 0;
+  let sawHunk = false;
+  const completeHunk = () => hunk && hunk.oldSeen === hunk.oldCount && hunk.newSeen === hunk.newCount;
+  for (const line of lines) {
+    const match = line.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(?: .*)?$/);
+    if (match) {
+      if (hunk && !completeHunk()) return false;
+      const oldCount = hunkCount(match[1], match[2]);
+      const newCount = hunkCount(match[3], match[4]);
+      if (oldCount === null || newCount === null || (oldCount === 0 && newCount === 0)) return false;
+      hunk = { oldCount, newCount, oldSeen: 0, newSeen: 0 };
+      sawHunk = true;
+      continue;
+    }
+    if (!hunk) return false;
+    if (line === "\\ No newline at end of file") continue;
+    if (line.startsWith("+")) {
+      additions += 1;
+      hunk.newSeen += 1;
+    } else if (line.startsWith("-")) {
+      deletions += 1;
+      hunk.oldSeen += 1;
+    } else if (line.startsWith(" ")) {
+      hunk.oldSeen += 1;
+      hunk.newSeen += 1;
+    } else {
+      return false;
+    }
+  }
+  return sawHunk && completeHunk() && additions === file.additions && deletions === file.deletions &&
+    file.changes === additions + deletions;
+}
+
+function needsHydration(file) {
+  fileIdentity(file);
+  return !patchIsExact(file);
+}
+
+function exactBase64(value) {
+  if (typeof value !== "string") return null;
+  const normalized = value.replace(/[\r\n]/g, "");
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)) return null;
+  const bytes = Buffer.from(normalized, "base64");
+  return bytes.toString("base64") === normalized ? bytes : null;
+}
+
+function gitBlobSha(bytes) {
+  return createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+}
+
+function deletedFile(file) {
+  return DELETED_STATUSES.has(file.status);
+}
+
+function addedFile(file) {
+  return file.status === "added";
+}
+
+function expectedReviewPath(file, side) {
+  if (side === "head") return deletedFile(file) ? null : file.filename;
+  return addedFile(file) ? null : previousFilename(file) || file.filename;
+}
+
+function reviewObjectEvidence(side, pathName, fileName) {
+  if (pathName === null) {
+    if (side !== null) throw new Error(`Review evidence for ${fileName} has an unexpected non-null side.`);
+    return;
+  }
+  if (
+    !side || typeof side !== "object" || Array.isArray(side) ||
+    side.path !== pathName ||
+    !REVIEW_BLOB_MODES.has(side.mode) ||
+    side.type !== "blob" ||
+    !GIT_OBJECT_PATTERN.test(side.sha || "") ||
+    !Number.isSafeInteger(side.size) || side.size < 0 || side.size > MAX_REVIEW_BLOB_BYTES ||
+    side.encoding !== "base64"
+  ) {
+    throw new Error(`Review evidence metadata is malformed for ${fileName}.`);
+  }
+  const bytes = exactBase64(side.content);
+  if (!bytes || bytes.length !== side.size || gitBlobSha(bytes) !== side.sha) {
+    throw new Error(`Review evidence blob binding is malformed for ${fileName}.`);
+  }
+}
+
+function validateReviewEvidence(file, headSha, baseSha) {
+  fileIdentity(file);
+  const evidence = file.reviewEvidence;
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence) ||
+    evidence.schema !== FILE_REVIEW_EVIDENCE_SCHEMA ||
+    evidence.headSha !== headSha || evidence.baseSha !== baseSha ||
+    evidence.status !== file.status) {
+    throw new Error(`Exact review evidence is malformed or cross-bound for ${file.filename}.`);
+  }
+  reviewObjectEvidence(evidence.head, expectedReviewPath(file, "head"), file.filename);
+  reviewObjectEvidence(evidence.base, expectedReviewPath(file, "base"), file.filename);
+}
+
+function fileIdentityKey(file) {
+  const identity = fileIdentity(file);
+  return [
+    identity.status,
+    identity.filename,
+    identity.previousFilename,
+    file.additions,
+    file.deletions,
+    file.changes,
+  ];
+}
+
+function assertUniqueChangedFiles(files, context = "Changed-file") {
+  if (!Array.isArray(files)) throw new Error(`${context} list is malformed.`);
+  const identities = new Set();
+  const currentPaths = new Set();
+  for (const file of files) {
+    const identity = fileIdentityKey(file);
+    const identityKey = JSON.stringify(identity);
+    if (identities.has(identityKey)) {
+      throw new Error(`${context} list contains a duplicate changed-file identity for ${identity[1]}.`);
+    }
+    identities.add(identityKey);
+    if (currentPaths.has(identity[1])) {
+      throw new Error(`${context} list contains a duplicate current changed-file path for ${identity[1]}.`);
+    }
+    currentPaths.add(identity[1]);
+  }
+}
+
+function sameFileIdentities(beforeKeys, after) {
+  return Array.isArray(after) && after.length === beforeKeys.length &&
+    beforeKeys.every((key, index) => JSON.stringify(key) === JSON.stringify(fileIdentityKey(after[index])));
+}
 
 function gitObjectMetadata(entry, pathName) {
   if (
     !entry ||
+    entry.path !== pathName ||
     typeof pathName !== "string" ||
     !pathName ||
-    !/^[0-7]{6}$/.test(entry.mode || "") ||
-    !["blob", "commit"].includes(entry.type) ||
-    !GIT_OBJECT_PATTERN.test(entry.sha || "")
+    !REVIEW_BLOB_MODES.has(entry.mode) ||
+    entry.type !== "blob" ||
+    !GIT_OBJECT_PATTERN.test(entry.sha || "") ||
+    !Number.isSafeInteger(entry.size) || entry.size < 0 || entry.size > MAX_REVIEW_BLOB_BYTES
   ) {
     throw new Error(`Git object evidence is malformed for ${pathName}.`);
   }
@@ -48,45 +243,52 @@ function gitObjectMetadata(entry, pathName) {
     mode: entry.mode,
     type: entry.type,
     sha: entry.sha,
-    size: Number.isSafeInteger(entry.size) && entry.size >= 0 ? entry.size : null,
+    size: entry.size,
   };
 }
 
 async function loadTree(request, token, owner, repo, commitSha) {
   const commit = await request(token, `/repos/${owner}/${repo}/git/commits/${commitSha}`);
-  if (!GIT_OBJECT_PATTERN.test(commit?.tree?.sha || "")) {
+  if (commit?.sha !== commitSha || !GIT_OBJECT_PATTERN.test(commit?.tree?.sha || "")) {
     throw new Error(`Git commit ${commitSha} did not return an exact tree identity.`);
   }
-  const tree = await request(token, `/repos/${owner}/${repo}/git/trees/${commit.tree.sha}?recursive=1`);
-  if (tree?.truncated || !Array.isArray(tree?.tree)) {
+  const treeSha = commit.tree.sha;
+  const tree = await request(token, `/repos/${owner}/${repo}/git/trees/${treeSha}?recursive=1`);
+  if (tree?.sha !== treeSha || tree?.truncated !== false || !Array.isArray(tree?.tree)) {
     throw new Error(`Git tree evidence for ${commitSha} is truncated or malformed.`);
   }
-  return new Map(tree.tree.map((entry) => [entry.path, entry]));
+  const entries = new Map();
+  for (const entry of tree.tree) {
+    if (!entry || !exactPath(entry.path) || entries.has(entry.path)) {
+      throw new Error(`Git tree evidence for ${commitSha} has a duplicate or malformed path.`);
+    }
+    entries.set(entry.path, entry);
+  }
+  return entries;
 }
 
 async function objectEvidence({ request, token, owner, repo, entry, pathName, blobCache }) {
   if (!entry) return null;
   const evidence = gitObjectMetadata(entry, pathName);
-  if (evidence.type !== "blob") return evidence;
-  if (!Number.isSafeInteger(evidence.size) || evidence.size > MAX_REVIEW_BLOB_BYTES) {
-    throw new Error(`Patchless blob ${pathName} is too large for bounded exact review evidence.`);
-  }
   let blob = blobCache.get(evidence.sha);
   if (!blob) {
     blob = await request(token, `/repos/${owner}/${repo}/git/blobs/${evidence.sha}`);
     blobCache.set(evidence.sha, blob);
   }
-  const content = typeof blob?.content === "string" ? blob.content.replace(/\s/g, "") : "";
+  const content = blob?.content;
+  const bytes = exactBase64(content);
   if (
+    blob?.sha !== evidence.sha ||
     blob?.encoding !== "base64" ||
-    !content ||
+    !bytes ||
     !Number.isSafeInteger(blob.size) ||
     blob.size !== evidence.size ||
-    Buffer.from(content, "base64").length !== evidence.size
+    bytes.length !== evidence.size ||
+    gitBlobSha(bytes) !== evidence.sha
   ) {
     throw new Error(`Patchless blob content is malformed for ${pathName}.`);
   }
-  return { ...evidence, encoding: "base64", content };
+  return { ...evidence, encoding: "base64", content: bytes.toString("base64") };
 }
 
 export async function hydratePatchlessReviewEvidence({
@@ -108,8 +310,15 @@ export async function hydratePatchlessReviewEvidence({
   ) {
     throw new Error("Patchless review-evidence identity is malformed.");
   }
-  const missingPatch = files.filter((file) => typeof file?.patch !== "string");
-  if (!missingPatch.length) return files;
+  assertUniqueChangedFiles(files, "Patchless review-evidence");
+  const hydration = files.map((file) => ({ file, required: needsHydration(file) }));
+  if (!hydration.some(({ required }) => required)) {
+    for (const { file } of hydration) {
+      if (file.reviewEvidence !== undefined) validateReviewEvidence(file, headSha, baseSha);
+    }
+    assertUniqueChangedFiles(files, "Patchless review-evidence");
+    return files;
+  }
 
   const [headTree, baseTree] = await Promise.all([
     loadTree(request, token, owner, repo, headSha),
@@ -117,13 +326,13 @@ export async function hydratePatchlessReviewEvidence({
   ]);
   const blobCache = new Map();
   const hydrated = [];
-  for (const file of files) {
-    if (typeof file?.patch === "string") {
+  for (const { file, required } of hydration) {
+    if (!required) {
       hydrated.push(file);
       continue;
     }
-    const headPath = file.status === "removed" ? null : file.filename;
-    const basePath = file.status === "added" ? null : (file.previousFilename || file.previous_filename || file.filename);
+    const headPath = expectedReviewPath(file, "head");
+    const basePath = expectedReviewPath(file, "base");
     const headEntry = headPath ? headTree.get(headPath) : null;
     const baseEntry = basePath ? baseTree.get(basePath) : null;
     if ((headPath && !headEntry) || (basePath && !baseEntry)) {
@@ -131,8 +340,10 @@ export async function hydratePatchlessReviewEvidence({
     }
     hydrated.push({
       ...file,
+      patch: null,
       reviewEvidence: {
         schema: FILE_REVIEW_EVIDENCE_SCHEMA,
+        status: file.status,
         headSha,
         baseSha,
         head: await objectEvidence({ request, token, owner, repo, entry: headEntry, pathName: headPath, blobCache }),
@@ -140,19 +351,22 @@ export async function hydratePatchlessReviewEvidence({
       },
     });
   }
+  assertUniqueChangedFiles(hydrated, "Hydrated review-evidence");
   return hydrated;
 }
 
 function completeReviewEvidence(files, headSha, baseSha) {
-  return files.every((file) => {
-    if (typeof file.patch === "string") return true;
-    const evidence = file.reviewEvidence;
-    return evidence?.schema === FILE_REVIEW_EVIDENCE_SCHEMA &&
-      evidence.headSha === headSha &&
-      evidence.baseSha === baseSha &&
-      (file.status === "removed" ? evidence.head === null : GIT_OBJECT_PATTERN.test(evidence.head?.sha || "")) &&
-      (file.status === "added" ? evidence.base === null : GIT_OBJECT_PATTERN.test(evidence.base?.sha || ""));
-  });
+  for (const file of files) {
+    fileIdentity(file);
+    if (typeof file.patch === "string") {
+      if (!patchIsExact(file)) throw new Error(`Changed-file patch evidence is incomplete for ${file.filename}.`);
+      if (file.reviewEvidence !== undefined) validateReviewEvidence(file, headSha, baseSha);
+      continue;
+    }
+    if (file.patch !== null) throw new Error(`Changed-file patch evidence is malformed for ${file.filename}.`);
+    validateReviewEvidence(file, headSha, baseSha);
+  }
+  return true;
 }
 
 function exactState(state, risk) {
@@ -263,15 +477,29 @@ export async function collectCandidates({ repository, role, publicKeys, api, now
     if (!labels.has("ready-for-gate")) continue;
     const state = await api.loadGateState(pr.number);
     if (!state.ci?.ok || !completeFileList(state.pr, state.files)) continue;
-    if (state.files.some((file) => typeof file.patch !== "string")) {
+    const sourceFiles = state.files;
+    assertUniqueChangedFiles(sourceFiles, `PR #${state.pr.number} changed-file`);
+    const hydration = sourceFiles.map((file) => needsHydration(file));
+    const sourceIdentityKeys = sourceFiles.map(fileIdentityKey);
+    if (hydration.some(Boolean)) {
       if (typeof api.hydrateReviewEvidence !== "function") {
-        throw new Error(`Patchless files for PR #${state.pr.number} require exact Git object evidence.`);
+        throw new Error(`Incomplete or malformed patches for PR #${state.pr.number} require exact Git object evidence.`);
       }
-      state.files = await api.hydrateReviewEvidence(state.pr, state.files);
+      state.files = await api.hydrateReviewEvidence(state.pr, sourceFiles);
+      assertUniqueChangedFiles(state.files, `PR #${state.pr.number} hydrated changed-file`);
+      if (!sameFileIdentities(sourceIdentityKeys, state.files)) {
+        throw new Error(`Exact hydration changed the changed-file identity for PR #${state.pr.number}.`);
+      }
+      if (!completeFileList(state.pr, state.files)) {
+        throw new Error(`Exact hydration returned an incomplete file list for PR #${state.pr.number}.`);
+      }
+      state.files.forEach((file, index) => {
+        if (hydration[index] && (file.patch !== null || file.reviewEvidence === undefined)) {
+          throw new Error(`Exact hydration returned incomplete evidence for ${file.filename}.`);
+        }
+      });
     }
-    if (!completeReviewEvidence(state.files, state.pr.headSha, state.pr.baseSha)) {
-      throw new Error(`Exact file review evidence is incomplete for PR #${state.pr.number}.`);
-    }
+    completeReviewEvidence(state.files, state.pr.headSha, state.pr.baseSha);
     if (!validateCiPolicy(state).ok) continue;
     const { risk, details: riskDetails } = analyzeRisk(state.files, state.pr);
     const exact = exactState(state, risk);
