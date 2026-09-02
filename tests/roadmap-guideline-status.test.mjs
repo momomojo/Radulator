@@ -140,6 +140,10 @@ assert.equal(
   'export LC_ALL=C; for audit in scripts/audit-*-source.test.mjs; do test -f "$audit" && node "$audit" || exit; done; npm run test:cac-drs-source',
   "the local primary-source aggregate must discover the same conventional audits as exact-head CI",
 );
+assert.ok(
+  fs.readdirSync("scripts").includes("audit-fleischner-primary-source.test.mjs"),
+  "the Fleischner audit must remain discoverable by local and exact-head source aggregates",
+);
 
 for (const calculatorId of ["lirads", "nirads"]) {
   const record = records.get(calculatorId);
