@@ -112,6 +112,11 @@ assert.match(
   /(?:^|\n)\s*npm run test:cac-drs-source\s*(?:\n|$)/,
   "the protected exact-head check must execute the CAC primary-source audit",
 );
+assert.match(
+  releaseControlEvidence.run,
+  /(?:^|\n)\s*npm run test:bosniak-source\s*(?:\n|$)/,
+  "the protected exact-head check must execute the Bosniak primary-source audit",
+);
 const sourceAuditEvidence = e2e.jobs["smoke-tests"].steps.find(
   (step) => step.name === "Verify roadmap clinical source audits at exact head",
 );

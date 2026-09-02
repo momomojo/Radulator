@@ -30,6 +30,70 @@ const MANAGEMENT_CANONICAL_BYTES = 72_222;
 const MANAGEMENT_CANONICAL_SHA256 =
   "7d613909afdb345b08e3690c5f71541ad954ebbf64a590c2d41a72957558f6fc";
 const MANAGEMENT_PDF_PAGES = 13;
+const SOURCE_TEXT_VERIFICATION = Object.freeze({
+  silverman: Object.freeze([
+    Object.freeze({
+      claim_id: "bosniak-v2019-category-ii",
+      section_id: "s5",
+      locator:
+        "HTML section #s5 (Recent Developments to Improve Characterization of Cystic Renal Masses)",
+      required_text: "well-defined homogeneous masses of 70 hu or greater",
+    }),
+    Object.freeze({
+      claim_id: "bosniak-v2019-iif-iii-iv-features",
+      section_id: "sec17",
+      locator: "HTML section #sec17 (Bosniak IV)",
+      required_text: "focal enhancing convex protrusion 4 mm or larger",
+    }),
+    Object.freeze({
+      claim_id: "bosniak-v2019-iif-iii-iv-features",
+      section_id: "sec17",
+      locator: "HTML section #sec17 (Bosniak IV)",
+      required_text: "obtuse margins with the wall or septa",
+    }),
+  ]),
+  cua: Object.freeze([
+    Object.freeze({
+      id: "cua-title",
+      page: 1,
+      locator: "PDF p. 1 title block",
+      required_text:
+        "2023 update - canadian urological association guideline: management of cystic renal lesions",
+    }),
+    Object.freeze({
+      id: "cua-doi",
+      page: 1,
+      locator: "PDF p. 1 citation DOI",
+      required_text: "10.5489/cuaj.8389",
+    }),
+    Object.freeze({
+      id: "cua-iif-interval",
+      page: 7,
+      locator: "PDF p. 7, Intervention and followup, recommendation 6",
+      required_text:
+        "for patients with a bosniak iif cyst, a followup every 6-12 months is suggested for the first year, and then yearly if the cyst is stable",
+    }),
+    Object.freeze({
+      id: "cua-iif-interval-evidence",
+      page: 7,
+      locator: "PDF p. 7, Intervention and followup, recommendation 6",
+      required_text: "expert opinion",
+    }),
+    Object.freeze({
+      id: "cua-iif-duration",
+      page: 7,
+      locator: "PDF p. 7, Intervention and followup, recommendation 7",
+      required_text:
+        "for patients with a bosniak iif cyst that do not demonstrate progression on imaging, a followup of five years is suggested",
+    }),
+    Object.freeze({
+      id: "cua-iif-duration-evidence",
+      page: 7,
+      locator: "PDF p. 7, Intervention and followup, recommendation 7",
+      required_text: "conditional recommendation, very low certainty in evidence of effects",
+    }),
+  ]),
+});
 const SOURCE_MAX_BYTES = 1_000_000;
 const RETRY_ATTEMPTS = 3;
 const BOUND_VECTOR_IDS = Object.freeze([
@@ -271,6 +335,52 @@ function classificationArticleText(html) {
   return visibleText(html.slice(articleStart, articleEnd + "</article>".length));
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function elementById(html, tagName, id) {
+  const openingTag = new RegExp(
+    `<${tagName}\\b(?=[^>]*\\bid=["']${escapeRegExp(id)}["'])[^>]*>`,
+    "i",
+  );
+  const openingMatch = openingTag.exec(html);
+  assert.ok(openingMatch, `Silverman HTML locator ${tagName}#${id} is missing`);
+  const tagPattern = new RegExp(`</?${tagName}\\b[^>]*>`, "gi");
+  tagPattern.lastIndex = openingMatch.index + openingMatch[0].length;
+  let depth = 1;
+  let tagMatch;
+  while ((tagMatch = tagPattern.exec(html)) !== null) {
+    if (tagMatch[0].startsWith("</")) {
+      depth -= 1;
+    } else if (!tagMatch[0].endsWith("/>")) {
+      depth += 1;
+    }
+    if (depth === 0) {
+      return html.slice(openingMatch.index, tagPattern.lastIndex);
+    }
+  }
+  assert.fail(`Silverman HTML locator ${tagName}#${id} is not closed`);
+}
+
+function assertRequiredText(text, contract, sourceLabel) {
+  assert.ok(
+    text.includes(contract.required_text),
+    `${sourceLabel} lacks ${contract.locator}: ${contract.required_text}`,
+  );
+  return contract;
+}
+
+function verifyManagementLocators(pageTexts) {
+  return SOURCE_TEXT_VERIFICATION.cua.map((contract) => {
+    assert.ok(
+      contract.page >= 1 && contract.page <= pageTexts.length,
+      `CUA 2023 locator page is outside the ${pageTexts.length}-page document: ${contract.locator}`,
+    );
+    return assertRequiredText(pageTexts[contract.page - 1], contract, "CUA 2023 publisher PDF");
+  });
+}
+
 function assertClassificationIdentity(html) {
   assert.equal(metadataValue(html, "citation_journal_title"), "Radiology", "Silverman journal identity drifted");
   assert.equal(
@@ -291,15 +401,23 @@ function validateClassification({ bytes, verifyDigest = true } = {}) {
     assert.equal(canonical.length, CLASSIFICATION_SOURCE.canonicalBytes, "Silverman canonical text length drifted");
     assert.equal(sha256(canonical), CLASSIFICATION_SOURCE.canonicalSha256, "Silverman canonical text SHA256 drifted");
   }
+  const canonicalText = canonical.toString("utf8");
   for (const [snippet, message] of [
     ["well-defined homogeneous masses of 70 hu or greater", "inclusive 70 HU category-II boundary"],
     ["focal enhancing convex protrusion 4 mm or larger", "inclusive 4 mm category-IV nodule boundary"],
     ["obtuse margins with the wall or septa", "obtuse-margin nodule qualifier"],
-  ]) assert.ok(canonical.toString("utf8").includes(snippet), `Silverman publication lacks the ${message}`);
-  return { bytes, html, canonical, canonicalSha256: sha256(canonical) };
+  ]) assert.ok(canonicalText.includes(snippet), `Silverman publication lacks the ${message}`);
+  const sourceTextVerification = SOURCE_TEXT_VERIFICATION.silverman.map((contract) =>
+    assertRequiredText(
+      visibleText(elementById(html, "section", contract.section_id)),
+      contract,
+      "Silverman publication",
+    )
+  );
+  return { bytes, html, canonical, canonicalSha256: sha256(canonical), sourceTextVerification };
 }
 
-async function extractPdfText(bytes) {
+async function extractPdfPages(bytes) {
   const document = await getDocument({
     data: new Uint8Array(bytes),
     disableWorker: true,
@@ -313,7 +431,7 @@ async function extractPdfText(bytes) {
       const content = await page.getTextContent();
       pages.push(content.items.map(({ str }) => str).join(" "));
     }
-    return pages.join("\n");
+    return pages;
   } finally {
     await document.destroy();
   }
@@ -332,12 +450,18 @@ function normalizePdfText(text) {
     .toLowerCase();
 }
 
+function normalizePdfLocatorText(text) {
+  return normalizePdfText(text).replace(/\bdem\s+-\s+onstrate\b/g, "demonstrate");
+}
+
 async function validateManagement({ bytes, verifyDigest = true } = {}) {
   if (verifyDigest) {
     assert.equal(bytes.length, MANAGEMENT_SOURCE.rawBytes, "CUA PDF raw byte length drifted");
     assert.equal(sha256(bytes), MANAGEMENT_SOURCE.rawSha256, "CUA PDF raw SHA256 drifted");
   }
-  const canonical = Buffer.from(normalizePdfText(await extractPdfText(bytes)), "utf8");
+  const pages = await extractPdfPages(bytes);
+  const pageTexts = pages.map((page) => normalizePdfLocatorText(page));
+  const canonical = Buffer.from(normalizePdfText(pages.join("\n")), "utf8");
   if (verifyDigest) {
     assert.equal(canonical.length, MANAGEMENT_SOURCE.canonicalBytes, "CUA PDF canonical text length drifted");
     assert.equal(sha256(canonical), MANAGEMENT_SOURCE.canonicalSha256, "CUA PDF canonical text SHA256 drifted");
@@ -355,7 +479,14 @@ async function validateManagement({ bytes, verifyDigest = true } = {}) {
   );
   assert.ok(text.includes("expert opinion"), "CUA 2023 lacks the interval evidence grade");
   assert.ok(text.includes("conditional recommendation, very low certainty"), "CUA 2023 lacks the duration evidence grade");
-  return { bytes, canonical, canonicalSha256: sha256(canonical), pageCount: MANAGEMENT_SOURCE.pageCount };
+  const sourceTextVerification = verifyManagementLocators(pageTexts);
+  return {
+    bytes,
+    canonical,
+    canonicalSha256: sha256(canonical),
+    pageCount: MANAGEMENT_SOURCE.pageCount,
+    sourceTextVerification,
+  };
 }
 
 const fetchClassificationHtml = (options = {}) => fetchArtifact(CLASSIFICATION_SOURCE, {
@@ -446,16 +577,63 @@ function classificationFixtureHtml(nonce) {
     <meta name="citation_doi" content="10.1148/radiol.2019182646">
     <meta name="citation_pmid" content="31210616">
     <main><article><script nonce="${nonce}">const volatile = "${nonce}";</script>
-      Well-defined homogeneous masses of 70 HU or greater are included.
-      A focal enhancing convex protrusion 4 mm or larger is a nodule.
-      Nodules have obtuse margins with the wall or septa.
+      <section id="s5"><h2>Recent Developments to Improve Characterization of Cystic Renal Masses</h2>
+        Well-defined homogeneous masses of 70 HU or greater are included.
+      </section>
+      <section id="sec17"><h3>Bosniak IV</h3>
+        A focal enhancing convex protrusion 4 mm or larger is a nodule.
+        Nodules have obtuse margins with the wall or septa.
+      </section>
     </article></main>`;
 }
 
 async function runSelfTests() {
   const noWait = async () => {};
+  const pdfLocatorFixture = Array.from({ length: MANAGEMENT_PDF_PAGES }, () => "");
+  for (const contract of SOURCE_TEXT_VERIFICATION.cua) {
+    pdfLocatorFixture[contract.page - 1] += ` ${contract.required_text}`;
+  }
+  assert.deepEqual(
+    verifyManagementLocators(pdfLocatorFixture),
+    SOURCE_TEXT_VERIFICATION.cua,
+    "CUA page locator fixture matches the pinned page contracts",
+  );
+  const misplacedPdfLocatorFixture = [...pdfLocatorFixture];
+  misplacedPdfLocatorFixture[6] = "";
+  misplacedPdfLocatorFixture[5] = pdfLocatorFixture[6];
+  assert.throws(
+    () => verifyManagementLocators(misplacedPdfLocatorFixture),
+    /CUA 2023 publisher PDF lacks PDF p\. 7/,
+    "CUA locator verification rejects matching text on a different page",
+  );
   const fixtureOne = classificationFixtureHtml("runner-one");
   const fixtureTwo = classificationFixtureHtml("runner-two");
+  const misplacedClassificationFixture = fixtureOne
+    .replace('id="s5"', 'id="swapped-s5"')
+    .replace('id="sec17"', 'id="s5"')
+    .replace('id="swapped-s5"', 'id="sec17"');
+  await assert.rejects(
+    fetchClassificationHtml({
+      fetchImpl: sequenceFetch([
+        mockResponse({
+          body: misplacedClassificationFixture,
+          url: CLASSIFICATION_SOURCE.url,
+        }),
+        mockResponse({
+          body: misplacedClassificationFixture,
+          url: CLASSIFICATION_SOURCE.url,
+        }),
+        mockResponse({
+          body: misplacedClassificationFixture,
+          url: CLASSIFICATION_SOURCE.url,
+        }),
+      ]),
+      sleepImpl: noWait,
+      verifyDigest: false,
+    }),
+    /Silverman PMC HTML retrieval failed after 3 attempts \(Silverman publication lacks HTML section #s5/,
+    "Silverman locator verification rejects matching text in a different section",
+  );
   const first = await fetchClassificationHtml({
     fetchImpl: sequenceFetch([
       mockResponse({
@@ -682,6 +860,10 @@ if (process.argv.includes("--self-test")) {
     source_canonical_sha256: {
       silverman: classificationSource.canonicalSha256,
       cua: managementSource.canonicalSha256,
+    },
+    source_text_verification: {
+      silverman: classificationSource.sourceTextVerification,
+      cua: managementSource.sourceTextVerification,
     },
     source_claims: {
       homogeneous_noncontrast_mass_70_hu_or_greater: true,

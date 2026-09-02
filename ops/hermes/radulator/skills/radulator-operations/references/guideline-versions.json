@@ -2619,6 +2619,66 @@
               "page_count": 13
             }
           ],
+          "source_text_verification": {
+            "silverman": [
+              {
+                "claim_id": "bosniak-v2019-category-ii",
+                "section_id": "s5",
+                "locator": "HTML section #s5 (Recent Developments to Improve Characterization of Cystic Renal Masses)",
+                "required_text": "well-defined homogeneous masses of 70 hu or greater"
+              },
+              {
+                "claim_id": "bosniak-v2019-iif-iii-iv-features",
+                "section_id": "sec17",
+                "locator": "HTML section #sec17 (Bosniak IV)",
+                "required_text": "focal enhancing convex protrusion 4 mm or larger"
+              },
+              {
+                "claim_id": "bosniak-v2019-iif-iii-iv-features",
+                "section_id": "sec17",
+                "locator": "HTML section #sec17 (Bosniak IV)",
+                "required_text": "obtuse margins with the wall or septa"
+              }
+            ],
+            "cua": [
+              {
+                "id": "cua-title",
+                "page": 1,
+                "locator": "PDF p. 1 title block",
+                "required_text": "2023 update - canadian urological association guideline: management of cystic renal lesions"
+              },
+              {
+                "id": "cua-doi",
+                "page": 1,
+                "locator": "PDF p. 1 citation DOI",
+                "required_text": "10.5489/cuaj.8389"
+              },
+              {
+                "id": "cua-iif-interval",
+                "page": 7,
+                "locator": "PDF p. 7, Intervention and followup, recommendation 6",
+                "required_text": "for patients with a bosniak iif cyst, a followup every 6-12 months is suggested for the first year, and then yearly if the cyst is stable"
+              },
+              {
+                "id": "cua-iif-interval-evidence",
+                "page": 7,
+                "locator": "PDF p. 7, Intervention and followup, recommendation 6",
+                "required_text": "expert opinion"
+              },
+              {
+                "id": "cua-iif-duration",
+                "page": 7,
+                "locator": "PDF p. 7, Intervention and followup, recommendation 7",
+                "required_text": "for patients with a bosniak iif cyst that do not demonstrate progression on imaging, a followup of five years is suggested"
+              },
+              {
+                "id": "cua-iif-duration-evidence",
+                "page": 7,
+                "locator": "PDF p. 7, Intervention and followup, recommendation 7",
+                "required_text": "conditional recommendation, very low certainty in evidence of effects"
+              }
+            ]
+          },
           "vector_ids": [
             "exactly-70-hu-homogeneous-noncontrast-mass-category-ii",
             "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv",
@@ -2647,7 +2707,7 @@
           {
             "id": "bosniak-v2019-category-ii",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
-            "source_locator": "Bosniak II section and Table 2: benign hyperattenuating cysts are homogeneous and 70 HU or greater at noncontrast CT",
+            "source_locator": "Silverman HTML section #s5 (Recent Developments to Improve Characterization of Cystic Renal Masses): well-defined homogeneous masses of 70 HU or greater",
             "fact": "Literal vectors distinguish a fully characterized class I simple cyst from version 2019 class II thin-septal and source-defined homogeneous attenuation subtypes, including equality at exactly 70 HU.",
             "dimensions": [
               "classification",
@@ -2669,7 +2729,7 @@
           {
             "id": "bosniak-v2019-iif-iii-iv-features",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
-            "source_locator": "Bosniak IIF, III, and IV sections: an obtuse-margin enhancing convex protrusion 4 mm or larger is a nodule",
+            "source_locator": "Silverman HTML section #sec17 (Bosniak IV): focal enhancing convex protrusion 4 mm or larger and obtuse margins with the wall or septa",
             "fact": "Executable cases bind the 3 mm minimally thick enhancing feature, 4 mm or thicker enhancing feature, exactly 4 mm obtuse-margin enhancing nodule, and enhancing acute-margin nodule to IIF, III, and IV outputs respectively.",
             "dimensions": [
               "classification",
@@ -2688,7 +2748,7 @@
           {
             "id": "cua-2023-bosniak-iif-followup",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
-            "source_locator": "Summary recommendations and Bosniak category IIF section",
+            "source_locator": "CUA 2023 publisher PDF p. 7, Intervention and followup, recommendations 6-7 and their evidence grades",
             "fact": "For Bosniak IIF cysts, CUA 2023 suggests imaging every 6-12 months in the first year, then yearly if stable, and five years of follow-up if there is no progression; the interval is expert opinion and the duration is a conditional recommendation with very low certainty.",
             "dimensions": [
               "management",

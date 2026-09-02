@@ -978,6 +978,74 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       `${label}.source_audit.artifacts`,
     );
     assert.deepEqual(
+      audit.source_text_verification,
+      {
+        silverman: [
+          {
+            claim_id: "bosniak-v2019-category-ii",
+            section_id: "s5",
+            locator:
+              "HTML section #s5 (Recent Developments to Improve Characterization of Cystic Renal Masses)",
+            required_text: "well-defined homogeneous masses of 70 hu or greater",
+          },
+          {
+            claim_id: "bosniak-v2019-iif-iii-iv-features",
+            section_id: "sec17",
+            locator: "HTML section #sec17 (Bosniak IV)",
+            required_text: "focal enhancing convex protrusion 4 mm or larger",
+          },
+          {
+            claim_id: "bosniak-v2019-iif-iii-iv-features",
+            section_id: "sec17",
+            locator: "HTML section #sec17 (Bosniak IV)",
+            required_text: "obtuse margins with the wall or septa",
+          },
+        ],
+        cua: [
+          {
+            id: "cua-title",
+            page: 1,
+            locator: "PDF p. 1 title block",
+            required_text:
+              "2023 update - canadian urological association guideline: management of cystic renal lesions",
+          },
+          {
+            id: "cua-doi",
+            page: 1,
+            locator: "PDF p. 1 citation DOI",
+            required_text: "10.5489/cuaj.8389",
+          },
+          {
+            id: "cua-iif-interval",
+            page: 7,
+            locator: "PDF p. 7, Intervention and followup, recommendation 6",
+            required_text:
+              "for patients with a bosniak iif cyst, a followup every 6-12 months is suggested for the first year, and then yearly if the cyst is stable",
+          },
+          {
+            id: "cua-iif-interval-evidence",
+            page: 7,
+            locator: "PDF p. 7, Intervention and followup, recommendation 6",
+            required_text: "expert opinion",
+          },
+          {
+            id: "cua-iif-duration",
+            page: 7,
+            locator: "PDF p. 7, Intervention and followup, recommendation 7",
+            required_text:
+              "for patients with a bosniak iif cyst that do not demonstrate progression on imaging, a followup of five years is suggested",
+          },
+          {
+            id: "cua-iif-duration-evidence",
+            page: 7,
+            locator: "PDF p. 7, Intervention and followup, recommendation 7",
+            required_text: "conditional recommendation, very low certainty in evidence of effects",
+          },
+        ],
+      },
+      `${label}.source_audit.source_text_verification`,
+    );
+    assert.deepEqual(
       audit.vector_ids,
       [
         "exactly-70-hu-homogeneous-noncontrast-mass-category-ii",
