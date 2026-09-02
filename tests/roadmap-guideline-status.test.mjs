@@ -132,8 +132,8 @@ for (const { calculatorId, command } of roadmapEvidence) {
 }
 assert.match(
   e2eWorkflow,
-  /name: Verify roadmap clinical source audits at exact head[\s\S]*?export LC_ALL=C\s+for audit in scripts\/audit-\*-source\.test\.mjs; do\s+test -f "\$audit"\s+node "\$audit"\s+done[\s\S]*?npm run test:hermes-guideline-registry/,
-  "the required exact-head Smoke job must discover every conventional source audit and retain the registry check",
+  /name: Verify roadmap clinical source audits at exact head[\s\S]*?export LC_ALL=C\s+for audit in scripts\/audit-\*-source\.test\.mjs; do\s+test -f "\$audit"\s+if \[ "\$audit" = "scripts\/audit-bosniak-primary-source\.test\.mjs" \]; then[\s\S]*?continue\s+fi\s+node "\$audit"\s+done[\s\S]*?npm run test:hermes-guideline-registry/,
+  "the required exact-head Smoke job must discover conventional source audits, delegate Bosniak to protected CI, and retain the registry check",
 );
 assert.equal(
   packageJson.scripts["test:primary-source"],

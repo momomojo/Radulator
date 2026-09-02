@@ -103,15 +103,18 @@ jobs:
           npm run test:hermes-guideline-registry
           npm run test:hermes-install-core
 
-      # Deterministically discover every conventional source-audit test so a
-      # successful immutable Smoke check covers new audits without a second
-      # release-control edit. Keep the network-backed audits in one required
-      # job to avoid concurrent duplicate requests to primary-source hosts.
+      # Deterministically discover conventional source-audit tests in Smoke.
+      # Bosniak is delegated to the protected exact-head release-control lane
+      # because that lane owns its live fetch; remaining network audits stay here.
       - name: Verify roadmap clinical source audits at exact head
         run: |
           export LC_ALL=C
           for audit in scripts/audit-*-source.test.mjs; do
             test -f "$audit"
+            if [ "$audit" = "scripts/audit-bosniak-primary-source.test.mjs" ]; then
+              # Bosniak runs only in the protected exact-head lane to avoid duplicate live-source fetches.
+              continue
+            fi
             node "$audit"
           done
           npm run test:cac-drs-source
@@ -188,6 +191,8 @@ jobs:
           npm run test:hermes-seed-convert
           npm run test:hermes-guideline-registry
           npm run test:hermes-install-core
+          npm run test:bosniak-source
+          npm run test:cac-drs-source
           npm run check:invariants
 
 
