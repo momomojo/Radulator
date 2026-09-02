@@ -112,10 +112,18 @@ assert.match(
   /(?:^|\n)\s*npm run test:cac-drs-source\s*(?:\n|$)/,
   "the protected exact-head check must execute the CAC primary-source audit",
 );
-assert.match(
-  releaseControlEvidence.run,
-  /(?:^|\n)\s*npm run test:bosniak-source\s*(?:\n|$)/,
-  "the protected exact-head check must execute the Bosniak primary-source audit",
+const protectedBosniakCommandLines = releaseControlEvidence.run
+  .split(/\r?\n/)
+  .filter((line) => line.trim() === "npm run test:bosniak-source");
+assert.equal(
+  protectedBosniakCommandLines.length,
+  1,
+  "the protected exact-head check must contain exactly one standalone Bosniak primary-source command",
+);
+assert.equal(
+  (releaseControlEvidence.run.match(/npm run test:bosniak-source/g) ?? []).length,
+  1,
+  "the protected exact-head check must not duplicate the Bosniak primary-source command",
 );
 const sourceAuditEvidence = e2e.jobs["smoke-tests"].steps.find(
   (step) => step.name === "Verify roadmap clinical source audits at exact head",
