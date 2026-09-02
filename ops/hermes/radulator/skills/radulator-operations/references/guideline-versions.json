@@ -13,7 +13,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements published AAST organ injury scales; the mixed 2018/2025 version claim still requires an official AAST version audit.",
-      "sources": [{ "authority": "American Association for the Surgery of Trauma", "title": "AAST Organ Injury Scale 2018 revision publication", "role": "primary-publication", "url": "https://doi.org/10.1097/TA.0000000000002058" }]
+      "sources": [
+        {
+          "authority": "American Association for the Surgery of Trauma",
+          "title": "AAST Organ Injury Scale 2018 revision publication",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1097/TA.0000000000002058"
+        }
+      ]
     },
     {
       "calculator_id": "albi-score",
@@ -23,7 +30,14 @@
       "verification_status": "verified",
       "last_verified": "2026-08-29",
       "justification": "The open primary publication confirms the printed two-variable ALBI equation, SI units, three inclusive/exclusive grade intervals, and HCC development population. Executable vectors bind the source coefficients and all grade boundaries; unsupported cohort-median and treatment-eligibility claims were removed.",
-      "sources": [{ "authority": "Johnson et al.", "title": "Assessment of liver function in patients with hepatocellular carcinoma: a new evidence-based approach", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/" }],
+      "sources": [
+        {
+          "authority": "Johnson et al.",
+          "title": "Assessment of liver function in patients with hepatocellular carcinoma: a new evidence-based approach",
+          "role": "primary-publication",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/"
+        }
+      ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/ALBIScore.jsx",
@@ -125,7 +139,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the original ASPECTS instrument; guideline adjacency and current interpretation need an authoritative source audit.",
-      "sources": [{ "authority": "Barber et al.", "title": "Validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke", "role": "primary-publication", "url": "https://doi.org/10.1016/S0140-6736(00)02237-6" }]
+      "sources": [
+        {
+          "authority": "Barber et al.",
+          "title": "Validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1016/S0140-6736(00)02237-6"
+        }
+      ]
     },
     {
       "calculator_id": "adrenal-ct",
@@ -135,7 +156,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Uses published washout measurements rather than a named versioned guideline; source thresholds remain queued for primary-literature review.",
-      "sources": [{ "authority": "Caoili et al.", "title": "Adrenal masses: characterization with combined unenhanced and delayed enhanced CT", "role": "primary-publication", "url": "https://doi.org/10.2214/ajr.175.5.1751411" }]
+      "sources": [
+        {
+          "authority": "Caoili et al.",
+          "title": "Adrenal masses: characterization with combined unenhanced and delayed enhanced CT",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.2214/ajr.175.5.1751411"
+        }
+      ]
     },
     {
       "calculator_id": "adrenal-mri",
@@ -145,7 +173,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Uses published signal-intensity measurements rather than a versioned guideline; the source basis remains queued for audit.",
-      "sources": [{ "authority": "Mayo-Smith et al.", "title": "Characterization of adrenal lesions with chemical shift MRI", "role": "primary-publication", "url": "https://doi.org/10.2214/AJR.10.4547" }]
+      "sources": [
+        {
+          "authority": "Mayo-Smith et al.",
+          "title": "Characterization of adrenal lesions with chemical shift MRI",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.2214/AJR.10.4547"
+        }
+      ]
     },
     {
       "calculator_id": "avs-hyperaldo",
@@ -155,7 +190,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Combines published AVS protocols and consensus material; no current-version claim is made until the named authorities are rechecked.",
-      "sources": [{ "authority": "Korean Endocrine Society", "title": "Consensus guidance for primary aldosteronism and adrenal venous sampling", "role": "context-guideline", "url": "https://doi.org/10.3803/EnM.2021.1192" }]
+      "sources": [
+        {
+          "authority": "Korean Endocrine Society",
+          "title": "Consensus guidance for primary aldosteronism and adrenal venous sampling",
+          "role": "context-guideline",
+          "url": "https://doi.org/10.3803/EnM.2021.1192"
+        }
+      ]
     },
     {
       "calculator_id": "avs-cortisol",
@@ -165,7 +207,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Uses published cortisol AVS ratios and protocols rather than a versioned society guideline; source fidelity remains queued for review.",
-      "sources": [{ "authority": "Acharya et al.", "title": "Adrenal venous sampling for ACTH-independent hypercortisolism", "role": "primary-publication", "url": "https://doi.org/10.1007/s00268-018-4788-2" }]
+      "sources": [
+        {
+          "authority": "Acharya et al.",
+          "title": "Adrenal venous sampling for ACTH-independent hypercortisolism",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1007/s00268-018-4788-2"
+        }
+      ]
     },
     {
       "calculator_id": "bclc-staging",
@@ -175,7 +224,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the BCLC 2022 strategy; a newer paper is cited in code, so the current-version relationship must be resolved before verification.",
-      "sources": [{ "authority": "BCLC Group", "title": "BCLC strategy for prognosis prediction and treatment recommendation: the 2022 update", "role": "official-authority", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8866082/" }]
+      "sources": [
+        {
+          "authority": "BCLC Group",
+          "title": "BCLC strategy for prognosis prediction and treatment recommendation: the 2022 update",
+          "role": "official-authority",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8866082/"
+        }
+      ]
     },
     {
       "calculator_id": "birads",
@@ -186,18 +242,50 @@
       "last_verified": "2026-08-29",
       "justification": "Temporary rollback while the full sixth-edition manual is pending. The digest-pinned fifth-edition quick reference bounds selected descriptor groups; digest-pinned public v2025 modality summary forms independently constrain category structure, source-literal probability endpoints, and management wording. Descriptor-to-category inference and patient-specific probability calculation remain out of scope.",
       "sources": [
-        { "authority": "American College of Radiology", "title": "Breast Imaging Reporting and Data System (BI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS" },
-        { "authority": "American College of Radiology", "title": "ACR BI-RADS Atlas Fifth Edition Quick Reference", "role": "official-authority", "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf", "artifact_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410" },
-        { "authority": "American College of Radiology", "title": "BI-RADS v2025 Mammography Summary Form", "role": "official-authority", "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf", "artifact_sha256": "98d88679deb266ac030de0d96d9f15a5fcde3b0a1a4d6a7aeb29aa49b85daae6" },
-        { "authority": "American College of Radiology", "title": "BI-RADS v2025 Ultrasound Summary Form", "role": "official-authority", "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf", "artifact_sha256": "38f24a245a9ea992f5f29e221f6000eb4a60c9d8d78f4a3dce68130179adec1d" },
-        { "authority": "American College of Radiology", "title": "BI-RADS v2025 MRI Summary Form", "role": "official-authority", "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf", "artifact_sha256": "75900dbd050ec22266db01cf5e18a8caae1e07e0d5e5f819195af7cf0b569dd9" }
+        {
+          "authority": "American College of Radiology",
+          "title": "Breast Imaging Reporting and Data System (BI-RADS)",
+          "role": "official-authority",
+          "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS"
+        },
+        {
+          "authority": "American College of Radiology",
+          "title": "ACR BI-RADS Atlas Fifth Edition Quick Reference",
+          "role": "official-authority",
+          "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
+          "artifact_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410"
+        },
+        {
+          "authority": "American College of Radiology",
+          "title": "BI-RADS v2025 Mammography Summary Form",
+          "role": "official-authority",
+          "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+          "artifact_sha256": "98d88679deb266ac030de0d96d9f15a5fcde3b0a1a4d6a7aeb29aa49b85daae6"
+        },
+        {
+          "authority": "American College of Radiology",
+          "title": "BI-RADS v2025 Ultrasound Summary Form",
+          "role": "official-authority",
+          "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf",
+          "artifact_sha256": "38f24a245a9ea992f5f29e221f6000eb4a60c9d8d78f4a3dce68130179adec1d"
+        },
+        {
+          "authority": "American College of Radiology",
+          "title": "BI-RADS v2025 MRI Summary Form",
+          "role": "official-authority",
+          "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf",
+          "artifact_sha256": "75900dbd050ec22266db01cf5e18a8caae1e07e0d5e5f819195af7cf0b569dd9"
+        }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/BIRADS.jsx",
         "fixture_path": "tests/fixtures/compute/birads.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "Legacy ACR BI-RADS 5th Ed. (2013) with public 2025 assessment-summary constraints" },
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "Legacy ACR BI-RADS 5th Ed. (2013) with public 2025 assessment-summary constraints"
+        },
         "source_audit": {
           "schema": "radulator-live-source-audit/v1",
           "command": "npm run test:birads-fda-source",
@@ -246,8 +334,19 @@
             "source_url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS",
             "source_locator": "BI-RADS overview: standardized terminology, report organization, assessment structure, and classification across mammography, ultrasound, and MRI",
             "fact": "The temporary calculator requires an explicit mammography, ultrasound, or MRI selection and returns a structured final assessment output selected by the radiologist.",
-            "dimensions": ["scope", "classification", "output"],
-            "vector_ids": ["missing-modality-fails-closed", "mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-finding-requires-radiologist-assessment", "benign-finding-requires-radiologist-assessment"]
+            "dimensions": [
+              "scope",
+              "classification",
+              "output"
+            ],
+            "vector_ids": [
+              "missing-modality-fails-closed",
+              "mammography-incomplete",
+              "ultrasound-incomplete",
+              "mri-incomplete",
+              "negative-finding-requires-radiologist-assessment",
+              "benign-finding-requires-radiologist-assessment"
+            ]
           },
           {
             "id": "acr-fifth-edition-descriptor-groups",
@@ -255,8 +354,23 @@
             "source_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
             "source_locator": "Quick Reference columns for mammography, ultrasound, and magnetic resonance imaging descriptor groups",
             "fact": "The bounded workflow exposes selected fifth-edition descriptors: calcifications and architectural distortion for mammography and ultrasound, with mammographic morphology, asymmetry, and density controls gated to mammography. Hidden values do not leak; descriptors do not assign or contradict the assessment.",
-            "dimensions": ["version", "scope", "classification"],
-            "vector_ids": ["invalid-finding-type-fails-closed", "invalid-active-descriptor-fails-closed", "typically-benign-calcifications-require-radiologist-assessment", "hidden-calcification-distribution-does-not-leak", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "probably-benign-selection-does-not-infer-from-descriptors", "ultrasound-calcifications-use-unsplit-category-4", "ultrasound-associated-features-source-exact", "ultrasound-mass-ignores-stale-mammography-density"]
+            "dimensions": [
+              "version",
+              "scope",
+              "classification"
+            ],
+            "vector_ids": [
+              "invalid-finding-type-fails-closed",
+              "invalid-active-descriptor-fails-closed",
+              "typically-benign-calcifications-require-radiologist-assessment",
+              "hidden-calcification-distribution-does-not-leak",
+              "high-suspicion-spiculated-mass",
+              "highly-suggestive-linear-calcifications",
+              "probably-benign-selection-does-not-infer-from-descriptors",
+              "ultrasound-calcifications-use-unsplit-category-4",
+              "ultrasound-associated-features-source-exact",
+              "ultrasound-mass-ignores-stale-mammography-density"
+            ]
           },
           {
             "id": "acr-fifth-edition-assessment-labels",
@@ -264,8 +378,26 @@
             "source_sha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410",
             "source_locator": "Quick Reference footer, BI-RADS assessment categories 0-6 and legacy assessment labels",
             "fact": "The executable outputs preserve assessment labels 0-6. Runtime modality-specific Category 4 structure is bounded by the current public modality summary-form claims below, not inferred from the legacy quick-reference footer.",
-            "dimensions": ["version", "classification", "output"],
-            "vector_ids": ["mammography-incomplete", "ultrasound-incomplete", "mri-incomplete", "negative-finding-requires-radiologist-assessment", "negative-screening", "benign-finding-requires-radiologist-assessment", "benign-finding", "probably-benign-mass", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "known-biopsy-proven-malignancy"]
+            "dimensions": [
+              "version",
+              "classification",
+              "output"
+            ],
+            "vector_ids": [
+              "mammography-incomplete",
+              "ultrasound-incomplete",
+              "mri-incomplete",
+              "negative-finding-requires-radiologist-assessment",
+              "negative-screening",
+              "benign-finding-requires-radiologist-assessment",
+              "benign-finding",
+              "probably-benign-mass",
+              "low-suspicion-mass",
+              "moderate-suspicion-calcifications",
+              "high-suspicion-spiculated-mass",
+              "highly-suggestive-linear-calcifications",
+              "known-biopsy-proven-malignancy"
+            ]
           },
           {
             "id": "acr-mammography-assessment-boundaries-and-management",
@@ -273,8 +405,24 @@
             "source_sha256": "98d88679deb266ac030de0d96d9f15a5fcde3b0a1a4d6a7aeb29aa49b85daae6",
             "source_locator": "Mammography Summary Form, Assessment Categories table: incomplete and final assessments, management, and likelihood endpoints",
             "fact": "Mammography outputs use recall for Category 0, routine screening for 1-2, 6-month follow-up or surveillance for 3, tissue diagnosis for 4-5, and surgeon/oncologist follow-up plus definitive local therapy (usually surgery) when appropriate for 6. Source-literal endpoints include the printed 4B/4C overlap at 50%.",
-            "dimensions": ["classification", "threshold", "management", "output"],
-            "vector_ids": ["mammography-incomplete", "negative-screening", "probably-benign-mass", "screening-mammography-probably-benign-no-uncited-warning", "low-suspicion-mass", "moderate-suspicion-calcifications", "high-suspicion-spiculated-mass", "highly-suggestive-linear-calcifications", "category-5-inclusive-95-boundary", "known-biopsy-proven-malignancy"]
+            "dimensions": [
+              "classification",
+              "threshold",
+              "management",
+              "output"
+            ],
+            "vector_ids": [
+              "mammography-incomplete",
+              "negative-screening",
+              "probably-benign-mass",
+              "screening-mammography-probably-benign-no-uncited-warning",
+              "low-suspicion-mass",
+              "moderate-suspicion-calcifications",
+              "high-suspicion-spiculated-mass",
+              "highly-suggestive-linear-calcifications",
+              "category-5-inclusive-95-boundary",
+              "known-biopsy-proven-malignancy"
+            ]
           },
           {
             "id": "acr-ultrasound-assessment-boundaries-and-management",
@@ -282,8 +430,19 @@
             "source_sha256": "38f24a245a9ea992f5f29e221f6000eb4a60c9d8d78f4a3dce68130179adec1d",
             "source_locator": "Ultrasound Summary Form, Assessment Categories table: incomplete and final assessments, unsplit Category 4, management, and likelihood endpoints",
             "fact": "Ultrasound outputs preserve the public form's source-literal Category 0 recall wording, unsplit Category 4, >2% to <95% likelihood, and tissue-diagnosis management; Category 3 uses >0% to <=2% and short-interval follow-up or surveillance.",
-            "dimensions": ["classification", "threshold", "management", "output"],
-            "vector_ids": ["ultrasound-incomplete", "benign-finding", "ultrasound-calcifications-use-unsplit-category-4", "ultrasound-associated-features-source-exact", "ultrasound-suspicious-category-4"]
+            "dimensions": [
+              "classification",
+              "threshold",
+              "management",
+              "output"
+            ],
+            "vector_ids": [
+              "ultrasound-incomplete",
+              "benign-finding",
+              "ultrasound-calcifications-use-unsplit-category-4",
+              "ultrasound-associated-features-source-exact",
+              "ultrasound-suspicious-category-4"
+            ]
           },
           {
             "id": "acr-mri-assessment-boundaries-and-management",
@@ -291,8 +450,17 @@
             "source_sha256": "75900dbd050ec22266db01cf5e18a8caae1e07e0d5e5f819195af7cf0b569dd9",
             "source_locator": "MRI Summary Form, Assessment Categories table: incomplete and final assessments, unsplit Category 4, management, and likelihood endpoints",
             "fact": "MRI outputs use source-literal Category 0 recall wording and an unsplit Category 4 with >2% to <95% likelihood and tissue-diagnosis management, and reject Category 4A-4C inputs.",
-            "dimensions": ["classification", "threshold", "management", "output"],
-            "vector_ids": ["mri-incomplete", "associated-features", "mri-rejects-category-4-subdivision"]
+            "dimensions": [
+              "classification",
+              "threshold",
+              "management",
+              "output"
+            ],
+            "vector_ids": [
+              "mri-incomplete",
+              "associated-features",
+              "mri-rejects-category-4-subdivision"
+            ]
           }
         ]
       }
@@ -306,58 +474,134 @@
       "last_verified": "2026-08-25",
       "justification": "The official MESA tool confirms the reference outputs used by Radulator; the original SCCT CAC-DRS publication supplies the score-only categories, and the 2023 multi-society appropriate-use criteria Table 1.2 supplies an accessible unambiguous 100-299 versus 300-or-greater boundary.",
       "sources": [
-        { "authority": "Multi-Ethnic Study of Atherosclerosis", "title": "CAC Score Reference Values", "role": "official-authority", "url": "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values" },
-        { "authority": "McClelland et al.", "title": "Distribution of coronary artery calcium by race, gender, and age: results from MESA", "role": "primary-publication", "url": "https://doi.org/10.1161/CIRCULATIONAHA.105.580696" },
-        { "authority": "Society of Cardiovascular Computed Tomography", "title": "CAC-DRS: Coronary Artery Calcium Data and Reporting System", "role": "context-guideline", "url": "https://doi.org/10.1016/j.jcct.2018.03.008" },
-        { "authority": "ACC, AHA, ASE, ASNC, ASPC, HFSA, HRS, SCAI, SCCT, SCMR, and STS", "title": "2023 Multimodality Appropriate Use Criteria for the Detection and Risk Assessment of Chronic Coronary Disease", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/" },
-        { "authority": "Maron et al.", "title": "Coronary artery calcium staging to guide preventive interventions", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11462328/" }
+        {
+          "authority": "Multi-Ethnic Study of Atherosclerosis",
+          "title": "CAC Score Reference Values",
+          "role": "official-authority",
+          "url": "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values"
+        },
+        {
+          "authority": "McClelland et al.",
+          "title": "Distribution of coronary artery calcium by race, gender, and age: results from MESA",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1161/CIRCULATIONAHA.105.580696"
+        },
+        {
+          "authority": "Society of Cardiovascular Computed Tomography",
+          "title": "CAC-DRS: Coronary Artery Calcium Data and Reporting System",
+          "role": "context-guideline",
+          "url": "https://doi.org/10.1016/j.jcct.2018.03.008"
+        },
+        {
+          "authority": "ACC, AHA, ASE, ASNC, ASPC, HFSA, HRS, SCAI, SCCT, SCMR, and STS",
+          "title": "2023 Multimodality Appropriate Use Criteria for the Detection and Risk Assessment of Chronic Coronary Disease",
+          "role": "primary-publication",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/"
+        },
+        {
+          "authority": "Maron et al.",
+          "title": "Coronary artery calcium staging to guide preventive interventions",
+          "role": "primary-publication",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11462328/"
+        }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/CACMesa.jsx",
         "fixture_path": "tests/fixtures/compute/cac-mesa.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "MESA reference values + CAC-DRS (SCCT 2018; AUC 2023 boundary)" },
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "MESA reference values + CAC-DRS (SCCT 2018; AUC 2023 boundary)"
+        },
         "claims": [
           {
             "id": "mesa-reference-lookup",
             "source_url": "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values",
             "source_locator": "CAC Score Reference Values: output definition, cohort scope, and supported ages and race or ethnicity groups",
             "fact": "Audited combinations return the official probability of nonzero CAC and 25th, 50th, 75th, and 90th reference scores without extrapolating outside the MESA scope.",
-            "dimensions": ["model-input", "scope", "boundary", "output"],
-            "vector_ids": ["audited-white-male-zero-cac", "audited-chinese-female-low-cac", "audited-black-female-moderate-cac", "mesa-unavailable-under-age-range", "mesa-unavailable-over-age-range", "mesa-unavailable-non-mesa-race"]
+            "dimensions": [
+              "model-input",
+              "scope",
+              "boundary",
+              "output"
+            ],
+            "vector_ids": [
+              "audited-white-male-zero-cac",
+              "audited-chinese-female-low-cac",
+              "audited-black-female-moderate-cac",
+              "mesa-unavailable-under-age-range",
+              "mesa-unavailable-over-age-range",
+              "mesa-unavailable-non-mesa-race"
+            ]
           },
           {
             "id": "mesa-race-sex-age-distribution",
             "source_url": "https://doi.org/10.1161/CIRCULATIONAHA.105.580696",
             "source_locator": "Methods and results: CAC distribution by age, sex, and the four MESA race or ethnicity groups",
             "fact": "The executable reference vectors bind the local table to the primary study dimensions of age, sex, race or ethnicity, and CAC distribution.",
-            "dimensions": ["model-input", "scope", "output"],
-            "vector_ids": ["audited-white-male-zero-cac", "audited-chinese-female-low-cac", "audited-black-female-moderate-cac", "audited-hispanic-male-severe-cac"]
+            "dimensions": [
+              "model-input",
+              "scope",
+              "output"
+            ],
+            "vector_ids": [
+              "audited-white-male-zero-cac",
+              "audited-chinese-female-low-cac",
+              "audited-black-female-moderate-cac",
+              "audited-hispanic-male-severe-cac"
+            ]
           },
           {
             "id": "scct-cac-drs-score-bands",
             "source_url": "https://doi.org/10.1016/j.jcct.2018.03.008",
             "source_locator": "CAC-DRS table and score-only A categories",
             "fact": "The calculator maps the unambiguous original CAC-DRS score bands; the later multi-society AUC is used separately to resolve the original publication's exact-300 conflict.",
-            "dimensions": ["classification", "threshold", "boundary", "output"],
-            "vector_ids": ["audited-white-male-zero-cac", "audited-black-female-moderate-cac", "audited-hispanic-male-severe-cac"]
+            "dimensions": [
+              "classification",
+              "threshold",
+              "boundary",
+              "output"
+            ],
+            "vector_ids": [
+              "audited-white-male-zero-cac",
+              "audited-black-female-moderate-cac",
+              "audited-hispanic-male-severe-cac"
+            ]
           },
           {
             "id": "multisociety-auc-cac-drs-bands",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/",
             "source_locator": "Table 1.2, clinical scenarios 18 through 21: CAC-DRS score bands after prior testing",
             "fact": "The 2023 multi-society AUC defines CAC score 100 through 299 as CAC-DRS 2 and CAC score 300 or greater as CAC-DRS 3, so exact 300 is assigned A3.",
-            "dimensions": ["classification", "threshold", "boundary", "output"],
-            "vector_ids": ["cac-drs-score-299", "cac-drs-score-300", "cac-drs-score-301"]
+            "dimensions": [
+              "classification",
+              "threshold",
+              "boundary",
+              "output"
+            ],
+            "vector_ids": [
+              "cac-drs-score-299",
+              "cac-drs-score-300",
+              "cac-drs-score-301"
+            ]
           },
           {
             "id": "maron-percentile-adjusted-staging",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11462328/",
             "source_locator": "Proposed CAC staging table: stages 0 through 4, including the stage 1 versus 2 percentile boundary and the 300 and 1,000 score boundaries",
             "fact": "The calculator binds stage 0 to CAC 0, stage 1 to CAC 1 through 99 below the supported 75th reference score, stage 2 to CAC 100 through 299 or exact nonzero 75th-reference equality, stage 3 to CAC 300 through 999, and stage 4 to CAC 1,000 or greater.",
-            "dimensions": ["classification", "threshold", "boundary", "output"],
-            "vector_ids": ["stage1-requires-cac-below-75th-reference", "stage2-includes-exact-nonzero-75th-reference", "stage1-versus-stage2-not-assigned-without-mesa-context"]
+            "dimensions": [
+              "classification",
+              "threshold",
+              "boundary",
+              "output"
+            ],
+            "vector_ids": [
+              "stage1-requires-cac-below-75th-reference",
+              "stage2-includes-exact-nonzero-75th-reference",
+              "stage1-versus-stage2-not-assigned-without-mesa-context"
+            ]
           }
         ]
       }
@@ -370,7 +614,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements CAD-RADS 2.0; the source is recorded but current society-version status remains queued for authoritative review.",
-      "sources": [{ "authority": "SCCT, ACC, ACR and NASCI", "title": "CAD-RADS 2.0 expert consensus document", "role": "primary-publication", "url": "https://doi.org/10.1016/j.jcmg.2022.01.008" }]
+      "sources": [
+        {
+          "authority": "SCCT, ACC, ACR and NASCI",
+          "title": "CAD-RADS 2.0 expert consensus document",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1016/j.jcmg.2022.01.008"
+        }
+      ]
     },
     {
       "calculator_id": "ct-pancreatitis",
@@ -380,7 +631,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements published CT pancreatitis severity models rather than a single current guideline; model fidelity remains queued for audit.",
-      "sources": [{ "authority": "Balthazar et al.", "title": "Acute pancreatitis: value of CT in establishing prognosis", "role": "primary-publication", "url": "https://doi.org/10.1148/radiology.174.2.2296641" }]
+      "sources": [
+        {
+          "authority": "Balthazar et al.",
+          "title": "Acute pancreatitis: value of CT in establishing prognosis",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1148/radiology.174.2.2296641"
+        }
+      ]
     },
     {
       "calculator_id": "child-pugh",
@@ -390,7 +648,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the published Child-Pugh model rather than a current versioned guideline; primary-model fidelity remains queued for review.",
-      "sources": [{ "authority": "Pugh et al.", "title": "Transection of the oesophagus for bleeding oesophageal varices", "role": "primary-publication", "url": "https://doi.org/10.1002/bjs.1800600817" }]
+      "sources": [
+        {
+          "authority": "Pugh et al.",
+          "title": "Transection of the oesophagus for bleeding oesophageal varices",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1002/bjs.1800600817"
+        }
+      ]
     },
     {
       "calculator_id": "cockcroft-gault",
@@ -401,31 +666,61 @@
       "last_verified": "2026-08-25",
       "justification": "The primary publication confirms the adult creatinine-clearance equation, derivation cohort, and historical 15 percent female adjustment implemented with explicit limitations.",
       "sources": [
-        { "authority": "Cockcroft and Gault", "title": "Prediction of creatinine clearance from serum creatinine", "role": "primary-publication", "url": "https://pubmed.ncbi.nlm.nih.gov/1244564/" },
-        { "authority": "Kidney Disease: Improving Global Outcomes", "title": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease", "role": "context-guideline", "url": "https://kdigo.org/wp-content/uploads/2024/03/KDIGO-2024-CKD-Guideline.pdf" }
+        {
+          "authority": "Cockcroft and Gault",
+          "title": "Prediction of creatinine clearance from serum creatinine",
+          "role": "primary-publication",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/1244564/"
+        },
+        {
+          "authority": "Kidney Disease: Improving Global Outcomes",
+          "title": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease",
+          "role": "context-guideline",
+          "url": "https://kdigo.org/wp-content/uploads/2024/03/KDIGO-2024-CKD-Guideline.pdf"
+        }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/CockcroftGault.jsx",
         "fixture_path": "tests/fixtures/compute/cockcroft-gault.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "Cockcroft-Gault equation (1976) · Radulator V1" },
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "Cockcroft-Gault equation (1976) · Radulator V1"
+        },
         "claims": [
           {
             "id": "cockcroft-gault-adult-formula",
             "source_url": "https://pubmed.ncbi.nlm.nih.gov/1244564/",
             "source_locator": "Abstract and published equation: adult age, body weight, serum creatinine, denominator 72, and 15 percent female reduction",
             "fact": "Literal adult male and female vectors exercise the published mg per dL equation, mL per minute output, and historical 0.85 female coefficient.",
-            "dimensions": ["formula", "model-input", "unit", "output"],
-            "vector_ids": ["male-midrange-mg-dl", "female-coefficient-mg-dl"]
+            "dimensions": [
+              "formula",
+              "model-input",
+              "unit",
+              "output"
+            ],
+            "vector_ids": [
+              "male-midrange-mg-dl",
+              "female-coefficient-mg-dl"
+            ]
           },
           {
             "id": "cockcroft-gault-derivation-age-scope",
             "source_url": "https://pubmed.ncbi.nlm.nih.gov/1244564/",
             "source_locator": "Abstract: derivation patients aged 18 through 92 years",
             "fact": "The adult lower boundary is accepted, age below 18 fails closed, and values above the derivation range retain an explicit caution.",
-            "dimensions": ["scope", "boundary", "interpretation", "output"],
-            "vector_ids": ["age-18-allowed", "age-17-hard-stop", "age-over-92-warning"]
+            "dimensions": [
+              "scope",
+              "boundary",
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "age-18-allowed",
+              "age-17-hard-stop",
+              "age-over-92-warning"
+            ]
           }
         ]
       }
@@ -500,7 +795,13 @@
             "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
             "source_locator": "Manual PDF pp. 43-44 and 47 (printed pp. 40-41 and 44): stable eGFR risk evidence and prophylaxis indications",
             "fact": "Stable eGFR 45 or greater is not an independent nephrotoxic risk factor; routine prophylaxis is not indicated for stable eGFR 30 or greater, while eGFR 30-44 may be considered individually only in high-risk circumstances.",
-            "dimensions": ["scope", "threshold", "boundary", "management", "output"],
+            "dimensions": [
+              "scope",
+              "threshold",
+              "boundary",
+              "management",
+              "output"
+            ],
             "vector_ids": [
               "stable-egfr-45-no-prophylaxis",
               "stable-egfr-30-no-routine-prophylaxis",
@@ -513,8 +814,18 @@
             "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
             "source_locator": "Manual PDF pp. 44-46 (printed pp. 41-43): AKI threshold unreliability, caution, standard diagnostic dose, volume expansion, and prophylaxis",
             "fact": "For AKI, no serum creatinine or eGFR threshold adequately stratifies risk because serum creatinine is unreliable. AKI or stable eGFR below 30 enters the higher-risk pathway; use isotonic volume expansion when appropriate, prefer normal saline, recognize the ideal regimen is unknown, assess volume tolerance, and do not underdose diagnostic IV contrast solely to mitigate CI-AKI risk.",
-            "dimensions": ["scope", "threshold", "management", "interpretation", "output"],
-            "vector_ids": ["egfr-without-stability-status-fails-closed", "stable-egfr-29-isotonic-prophylaxis", "aki-egfr-is-unreliable"]
+            "dimensions": [
+              "scope",
+              "threshold",
+              "management",
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "egfr-without-stability-status-fails-closed",
+              "stable-egfr-29-isotonic-prophylaxis",
+              "aki-egfr-is-unreliable"
+            ]
           },
           {
             "id": "acr-2026-dialysis-renal-function",
@@ -522,8 +833,16 @@
             "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
             "source_locator": "Manual PDF p. 47 (printed p. 44): anuric dialysis and residual renal function",
             "fact": "Anuric end-stage kidney disease without a functioning transplant has no further renal injury to prevent, while dialysis patients with residual urine output should be treated as higher risk for loss of residual function.",
-            "dimensions": ["scope", "management", "interpretation", "output"],
-            "vector_ids": ["anuric-dialysis-no-ciaki-prophylaxis", "dialysis-residual-function-higher-risk"]
+            "dimensions": [
+              "scope",
+              "management",
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "anuric-dialysis-no-ciaki-prophylaxis",
+              "dialysis-residual-function-higher-risk"
+            ]
           },
           {
             "id": "acr-2026-contrast-warming",
@@ -531,8 +850,15 @@
             "source_sha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
             "source_locator": "Manual PDF p. 35 (printed p. 32): warming recommendations and limited evidence grades",
             "fact": "Routine warming is not recommended for lower-viscosity iodinated agents; higher-viscosity warming may be considered selectively to reduce viscosity or injection pressure but is not a routine requirement.",
-            "dimensions": ["management", "interpretation", "output"],
-            "vector_ids": ["lower-viscosity-300-no-routine-warming", "higher-viscosity-370-selective-warming"]
+            "dimensions": [
+              "management",
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "lower-viscosity-300-no-routine-warming",
+              "higher-viscosity-370-selective-warming"
+            ]
           },
           {
             "id": "acr-adult-reaction-card-link",
@@ -540,8 +866,14 @@
             "source_sha256": "8e01c557097de36dd38706f1ce9bc540797bdee5e43534db3f6123bfabb963fb",
             "source_locator": "Official ACR Adult Contrast Reaction Card PDF",
             "fact": "The result directs suspected acute reactions to the linked official adult or pediatric reaction card and explicitly does not present the dosing calculator as a treatment algorithm.",
-            "dimensions": ["scope", "management", "output"],
-            "vector_ids": ["lower-viscosity-300-no-routine-warming"]
+            "dimensions": [
+              "scope",
+              "management",
+              "output"
+            ],
+            "vector_ids": [
+              "lower-viscosity-300-no-routine-warming"
+            ]
           },
           {
             "id": "acr-pediatric-reaction-card-link",
@@ -549,8 +881,14 @@
             "source_sha256": "4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f",
             "source_locator": "Official ACR Pediatric Contrast Reaction Card PDF",
             "fact": "The result directs suspected acute reactions to the linked official adult or pediatric reaction card and explicitly does not present the dosing calculator as a treatment algorithm.",
-            "dimensions": ["scope", "management", "output"],
-            "vector_ids": ["lower-viscosity-300-no-routine-warming"]
+            "dimensions": [
+              "scope",
+              "management",
+              "output"
+            ],
+            "vector_ids": [
+              "lower-viscosity-300-no-routine-warming"
+            ]
           }
         ]
       }
@@ -563,7 +901,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Uses published radiation protection and conversion references rather than a single calculator guideline; factors remain queued for source audit.",
-      "sources": [{ "authority": "International Commission on Radiological Protection", "title": "The 2007 Recommendations of the International Commission on Radiological Protection", "role": "official-authority", "url": "https://doi.org/10.1016/j.icrp.2007.10.003" }]
+      "sources": [
+        {
+          "authority": "International Commission on Radiological Protection",
+          "title": "The 2007 Recommendations of the International Commission on Radiological Protection",
+          "role": "official-authority",
+          "url": "https://doi.org/10.1016/j.icrp.2007.10.003"
+        }
+      ]
     },
     {
       "calculator_id": "feedback-form",
@@ -580,10 +925,933 @@
       "title": "Fleischner Pulmonary Nodule Guidance",
       "implemented_version": "Fleischner 2017",
       "basis_type": "clinical-guideline",
-      "verification_status": "seed-unverified",
-      "last_verified": null,
-      "justification": "Implements the 2017 Fleischner recommendations; current-version status remains queued for an authoritative society and publication audit.",
-      "sources": [{ "authority": "Fleischner Society", "title": "Guidelines for management of incidental pulmonary nodules detected on CT images: from the Fleischner Society 2017", "role": "primary-publication", "url": "https://doi.org/10.1148/radiol.2017161659" }]
+      "verification_status": "verified",
+      "last_verified": "2026-08-31",
+      "justification": "Reviewed evidence separates 12 literal source facts and their reviewed clinical syntheses from four explicit Radulator product invariants while preserving exact coverage of all 113 executable vectors. CI retrieves hash-pinned RSNA-origin artifacts, parses page- and anchor-bounded text with a pinned parser, verifies a hash-bound Figure 1 transcription, and cross-checks exact NLM table fragments. Independent source review grants no release authority.",
+      "sources": [
+        {
+          "authority": "Fleischner Society and Radiological Society of North America",
+          "title": "Guidelines for Management of Incidental Pulmonary Nodules Detected on CT Images: From the Fleischner Society 2017",
+          "role": "primary-publication",
+          "url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+          "artifact_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1"
+        },
+        {
+          "authority": "Fleischner Society and Radiological Society of North America",
+          "title": "Recommendations for Measuring Pulmonary Nodules at CT: A Statement from the Fleischner Society",
+          "role": "primary-publication",
+          "url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+          "artifact_sha256": "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1"
+        },
+        {
+          "authority": "National Library of Medicine Bookshelf",
+          "title": "Table 5.1, Revised Fleischner guidelines (2017) for solid nodules",
+          "role": "supporting-publication",
+          "url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+          "artifact_sha256": "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9"
+        },
+        {
+          "authority": "National Library of Medicine Bookshelf",
+          "title": "Table 5.2, Revised Fleischner guidelines (2017) for subsolid nodules",
+          "role": "supporting-publication",
+          "url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+          "artifact_sha256": "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997"
+        }
+      ],
+      "implementation_evidence": {
+        "schema": "radulator-source-derived-evidence/v1",
+        "calculator_path": "src/components/calculators/Fleischner.jsx",
+        "fixture_path": "tests/fixtures/compute/fleischner.json",
+        "test_command": "npm run test:hermes-guideline-registry",
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "Fleischner 2017"
+        },
+        "reviewed_evidence": {
+          "schema": "radulator-reviewed-source-evidence-link/v3",
+          "manifest_path": "docs/evidence/fleischner-2017-reviewed-evidence.json",
+          "payload_sha256": "e6446ba442742e612bc55b12f8f3f3f46c9d004cc326131013762f1e62b68811",
+          "reviewer_revision": "fleischner-source-review/2026-08-31-r10",
+          "reviewed_at": "2026-08-31T01:21:01Z",
+          "review_scope": "source-interpretation-and-product-invariants",
+          "review_disposition": "SOURCE_INTERPRETATION_APPROVED",
+          "release_authority": "none",
+          "ci_primary_full_text_verified": true,
+          "literal_source_claim_count": 12,
+          "locator_assertion_count": 27,
+          "required_snippet_count": 37,
+          "reviewed_vectors_sha256": "4f15e698faca2a32ebc28830ef6b94483249910d725148af4f8eb0695c0e08c8",
+          "reviewed_vector_count": 113,
+          "primary_artifacts": [
+            {
+              "id": "guideline-vor-pdf",
+              "origin_url": "https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+              "retrieval_url": "https://web.archive.org/web/20211217024152id_/https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+              "retrieval_host": "web.archive.org",
+              "memento_datetime": "2021-12-17T02:41:52Z",
+              "rel_original_verified": true,
+              "origin_last_modified": "Wed, 14 Jun 2017 08:18:33 GMT",
+              "origin_etag": "\"e6730c98d3cf943c\"",
+              "media_type": "application/pdf",
+              "content_scope": "full-version-of-record-pdf",
+              "content_bytes": 1983895,
+              "content_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+              "page_count": 16,
+              "direct_origin_fetch_status": 403
+            },
+            {
+              "id": "measurement-fulltext",
+              "origin_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+              "retrieval_url": "https://web.archive.org/web/20220119075636id_/https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+              "retrieval_host": "web.archive.org",
+              "memento_datetime": "2022-01-19T07:56:36Z",
+              "rel_original_verified": true,
+              "origin_last_modified": null,
+              "origin_etag": null,
+              "media_type": "text/html",
+              "content_scope": "publisher-fulltext-html",
+              "content_bytes": 318344,
+              "content_sha256": "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+              "direct_origin_fetch_status": 403,
+              "fragment": {
+                "start_marker": "<div class=\"hlFld-Fulltext\">",
+                "end_marker": "</div><!--/fulltext content-->",
+                "end_marker_inclusive": true,
+                "marker_occurrences": [
+                  1,
+                  1
+                ],
+                "content_bytes": 194120,
+                "content_sha256": "2d78355e8e35408d888f18c212cc8ea3cf9eb71e6dbad6327560bb1bf9d60e30"
+              }
+            },
+            {
+              "id": "measurement-figure-1",
+              "origin_url": "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+              "retrieval_url": "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+              "retrieval_host": "web.archive.org",
+              "memento_datetime": "2020-10-21T01:25:28Z",
+              "rel_original_verified": true,
+              "origin_last_modified": "Thu, 15 Mar 2018 16:55:54 GMT",
+              "origin_etag": "\"/4Dkotn4rPc\"",
+              "media_type": "image/gif",
+              "content_scope": "publisher-figure-1",
+              "content_bytes": 62198,
+              "content_sha256": "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+              "direct_origin_fetch_status": 403
+            }
+          ],
+          "reviewed_transcriptions": [
+            {
+              "id": "fleischner-measurement-figure1-solid-component",
+              "claim_id": "fleischner-2017-measurement-contract",
+              "artifact_id": "measurement-figure-1",
+              "artifact_sha256": "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+              "review_mode": "hash-bound-reviewed-raster-transcription",
+              "width": 387,
+              "height": 500,
+              "transcription": "For all part-solid nodules, the maximum diameter of the solid component should be measured if this component is >3 mm, understanding that measurements may be unreliable for small solid components. Dimensions of both solid and nonsolid components should be recorded to document change in the future (grade 2B evidence).",
+              "vector_ids": [
+                "part-solid-categorical-lte3-component-avoids-false-precision",
+                "part-solid-measured-component-at-3-mm-rejected"
+              ]
+            }
+          ]
+        },
+        "source_audit": {
+          "schema": "radulator-live-source-audit/v2",
+          "command": "node scripts/audit-fleischner-primary-source.test.mjs",
+          "authority": "Fleischner Society and RSNA 2017 hash-pinned publisher-origin Memento artifacts with NLM open table cross-checks",
+          "source_urls": [
+            "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+            "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+            "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly"
+          ],
+          "primary_metadata_dois": [
+            "10.1148/radiol.2017161659",
+            "10.1148/radiol.2017162894"
+          ],
+          "primary_full_text_fetched_by_ci": true,
+          "secondary_table_fragments": {
+            "ch5.Tab1": {
+              "bytes": 3153,
+              "sha256": "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9"
+            },
+            "ch5.Tab2": {
+              "bytes": 1912,
+              "sha256": "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997"
+            }
+          },
+          "vector_ids": [
+            "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
+            "categorical-lte3-pure-ggo-validated-volumetric-growth-claim-rejected",
+            "categorical-lte3-solid-component-linear-growth-claim-rejected",
+            "categorical-lte3-solid-component-missing-basis-requires-recharacterization",
+            "categorical-lte3-solid-component-validated-volumetric-growth-claim-rejected",
+            "categorical-lte3-solid-low-without-false-precision",
+            "categorical-lte3-visually-new-component-requires-recharacterization",
+            "definitively-benign-fat-or-calcification-routes-without-table",
+            "fractional-overall-size-rejected",
+            "immunocompromised-routes-away-without-schedule",
+            "known-cancer-routes-away-without-schedule",
+            "mass-over-30-mm-routes-outside-nodule-table",
+            "missing-applicability-fails-closed",
+            "missing-characterization-fails-closed",
+            "missing-nodule-count-fails-closed",
+            "missing-nodule-type-fails-closed",
+            "missing-recorded-size-fails-closed",
+            "missing-size-mode-fails-closed",
+            "multiple-all-lt6-conflicts-with-selected-6-mm-nodule",
+            "multiple-ground-glass-5-initial-and-optional-late-ct",
+            "multiple-ground-glass-6-defers-to-most-suspicious-nodule",
+            "multiple-ground-glass-established-growth-uses-most-suspicious-route",
+            "multiple-ground-glass-new-solid-component-uses-most-suspicious-route",
+            "multiple-missing-cohort-threshold-fails-closed",
+            "multiple-part-solid-12-defers-to-most-suspicious-nodule",
+            "multiple-part-solid-5-follows-multiple-subsolid-row",
+            "multiple-solid-5-high-optional-12-month-ct",
+            "multiple-solid-5-low-no-routine-follow-up",
+            "multiple-solid-6-high-two-ct-intervals",
+            "multiple-solid-6-low-preserves-late-ct-option",
+            "multiple-solid-8-high-two-ct-intervals",
+            "multiple-solid-8-low-preserves-late-ct-option",
+            "multiple-solid-9-high-two-ct-intervals",
+            "multiple-solid-9-low-uses-multiple-table-row",
+            "multiple-solid-any-ge6-dominant-5-uses-multiple-threshold",
+            "multiple-solid-dominant-9-solitary-override",
+            "multiple-solid-missing-dominant-rule-fails-closed",
+            "multiple-subsolid-all-lt6-persistent-uses-2-and-4-years",
+            "multiple-subsolid-any-ge6-dominant-5-uses-cohort-threshold",
+            "multiple-subsolid-any-ge6-persistent-uses-most-suspicious-nodule",
+            "negative-overall-size-rejected",
+            "numeric-3-mm-requires-categorical-pathway",
+            "part-solid-axes-average-mismatch-rejected",
+            "part-solid-categorical-linear-growth-claim-rejected",
+            "part-solid-categorical-lte3-component-avoids-false-precision",
+            "part-solid-categorical-new-component-escalates-without-false-precision",
+            "part-solid-categorical-validated-volumetric-growth-claim-rejected",
+            "part-solid-component-6-to-8-missing-concern-state-rejected",
+            "part-solid-component-exceeding-overall-long-axis-rejected",
+            "part-solid-fractional-component-rejected",
+            "part-solid-measured-component-at-3-mm-rejected",
+            "part-solid-measured-new-component-considers-resection-without-growth-claim",
+            "part-solid-missing-component-mode-rejected",
+            "part-solid-missing-component-rejected",
+            "part-solid-missing-overall-long-axis-rejected",
+            "part-solid-negative-component-rejected",
+            "part-solid-pure-ggo-growth-state-rejected",
+            "part-solid-short-axis-greater-than-long-rejected",
+            "part-solid-uncertain-morphology-fails-closed",
+            "part-solid-zero-component-rejected",
+            "pure-ground-glass-missing-growth-basis-rejected",
+            "pure-ground-glass-sub2mm-change-cannot-claim-growth",
+            "screening-routes-away-without-schedule",
+            "single-ground-glass-5-routine-no-follow-up",
+            "single-ground-glass-5-selected-suspicious-option",
+            "single-ground-glass-6-established-growth-uses-annual-follow-up",
+            "single-ground-glass-6-persistent-continues-to-year-5",
+            "single-ground-glass-6-until-year-5",
+            "single-ground-glass-new-solid-component-reroutes-to-part-solid",
+            "single-ground-glass-validated-volumetric-growth-accepted",
+            "single-part-solid-10-component-5-concern-escalates",
+            "single-part-solid-10-component-6-concern-escalates",
+            "single-part-solid-10-component-8-no-concern-consider-ct",
+            "single-part-solid-12-component-6-baseline-persistence-check",
+            "single-part-solid-12-component-6-persistent-is-highly-suspicious",
+            "single-part-solid-12-component-8-growing-escalates",
+            "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
+            "single-part-solid-12-component-9-escalates-by-size",
+            "single-part-solid-5-no-routine-follow-up",
+            "single-part-solid-5-selected-suspicious-option-without-component",
+            "single-part-solid-6-component-5-baseline-persistence-check",
+            "single-part-solid-6-component-5-persistent-uses-annual-follow-up",
+            "single-solid-10-axes-average-mismatch-rejected",
+            "single-solid-10-valid-axes-accepted",
+            "single-solid-5-high-optional-12-month-ct",
+            "single-solid-5-low-no-routine-follow-up",
+            "single-solid-6-high-two-ct-intervals",
+            "single-solid-6-low-preserves-late-ct-option",
+            "single-solid-8-high-two-ct-intervals",
+            "single-solid-8-low-preserves-late-ct-option",
+            "single-solid-9-consider-ct-pet-or-tissue",
+            "single-solid-9-high-consider-ct-pet-or-tissue",
+            "single-sub6-ground-glass-missing-context-rejected",
+            "solid-component-long-axis-may-exceed-overall-average",
+            "solid-component-missing-growth-basis-rejected",
+            "solid-component-unconfirmed-change-cannot-trigger-escalation",
+            "solid-nodule-missing-risk-rejected",
+            "sub6-ground-glass-linear-component-growth-claim-rejected",
+            "sub6-ground-glass-solid-component-missing-basis-requires-recharacterization",
+            "sub6-ground-glass-validated-volumetric-component-growth-claim-rejected",
+            "sub6-ground-glass-visually-new-component-requires-recharacterization",
+            "sub6-part-solid-linear-component-growth-claim-rejected",
+            "sub6-part-solid-solid-component-missing-basis-requires-recharacterization",
+            "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
+            "sub6-part-solid-visually-new-component-requires-recharacterization",
+            "subsolid-missing-temporal-state-fails-closed",
+            "ten-mm-legacy-axis-attestation-cannot-bypass-numeric-axes",
+            "thick-section-characterization-fails-closed",
+            "typical-intrapulmonary-lymph-node-routes-without-table",
+            "uncertain-applicability-fails-closed",
+            "uncertain-characterization-routes-without-table",
+            "under-35-routes-away-without-schedule",
+            "zero-overall-size-rejected"
+          ],
+          "source_bytes_committed": false,
+          "literal_source_verification": {
+            "audit_schema": "radulator-fleischner-primary-source-audit/v4",
+            "parser": "pdfjs-dist/legacy/build/pdf.mjs",
+            "parser_version": "4.10.38",
+            "claim_count": 12,
+            "locator_assertion_count": 27,
+            "required_snippet_count": 37,
+            "trusted_exact_head_check": "Smoke Tests"
+          }
+        },
+        "claims": [
+          {
+            "id": "fleischner-2017-applicability",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+            "source_locator": "Guideline VOR PDF p2/journal p229, Introduction; p3/journal p230, Table 1 note",
+            "direct_source_fact": "The guideline applies to incidentally detected CT nodules in adults at least 35 years old and excludes lung-cancer screening, immunosuppression, and known primary cancer.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:2",
+                "locator_text_sha256": "0c26e959dcbb3b60376d055a619acf3ea3e8618f7906ed948723da707ae586f1",
+                "required_snippets": [
+                  "detected at CT in adult patients who are at least 35 years old"
+                ]
+              },
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:3",
+                "locator_text_sha256": "9cafb5c818bd6d44904e7552c7698b5b722513f49d76d6f4c561419269a93a40",
+                "required_snippets": [
+                  "These recommendations do not apply to lung cancer screening, patients with immunosuppression, or patients with known primary cancer"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator routes explicitly selected excluded populations away from the Fleischner table without producing a Fleischner schedule.",
+            "fact": "Radulator routes explicitly selected excluded populations away from the Fleischner table without producing a Fleischner schedule.",
+            "vector_ids": [
+              "screening-routes-away-without-schedule",
+              "under-35-routes-away-without-schedule",
+              "known-cancer-routes-away-without-schedule",
+              "immunocompromised-routes-away-without-schedule"
+            ],
+            "dimensions": [
+              "scope",
+              "management",
+              "output"
+            ]
+          },
+          {
+            "id": "fleischner-2017-characterization-and-ipln",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+            "source_locator": "Guideline VOR PDF pp3-5/journal pp230-232, General Recommendations and Figures 1-5; p13/journal p240, Perifissural Nodules",
+            "direct_source_fact": "The guideline requires thin-section characterization, recommends no further CT for definitively benign fat or calcification, and recommends no follow-up for nodules with typical intrapulmonary-lymph-node morphology.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:3",
+                "locator_text_sha256": "9cafb5c818bd6d44904e7552c7698b5b722513f49d76d6f4c561419269a93a40",
+                "required_snippets": [
+                  "Use of thick sections increases volume averaging, which effectively precludes accurate nodule characterization of small nodules"
+                ]
+              },
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:4",
+                "locator_text_sha256": "04fb20f4adbb35f28f35ae6986502c6a7f241ffd42c27a254915de8ba82ada63",
+                "required_snippets": [
+                  "internal fat and calcification, consistent with a hamartoma. No further CT follow-up is recommended for such findings"
+                ]
+              },
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:13",
+                "locator_text_sha256": "bbda84c0d3a4815648f03fe3577db07fc5b1612f9704987b911a91476948e396",
+                "required_snippets": [
+                  "morphology consistent with an intrapulmonary lymph node, follow-up CT is not recommended"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator uses adequate characterization, definitive benignity, and typical intrapulmonary-lymph-node morphology to decide whether table routing is appropriate.",
+            "fact": "Radulator uses adequate characterization, definitive benignity, and typical intrapulmonary-lymph-node morphology to decide whether table routing is appropriate.",
+            "vector_ids": [
+              "definitively-benign-fat-or-calcification-routes-without-table",
+              "typical-intrapulmonary-lymph-node-routes-without-table",
+              "thick-section-characterization-fails-closed"
+            ],
+            "dimensions": [
+              "scope",
+              "classification",
+              "management",
+              "output"
+            ]
+          },
+          {
+            "id": "fleischner-2017-solid-table",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+            "source_locator": "Guideline VOR PDF p3/journal p230, Table 1A; pp5-7/journal pp232-234, Recommendations 1-2",
+            "direct_source_fact": "Guideline Table 1A specifies distinct single- and multiple-solid-nodule schedules by size and risk, including optional versus required later CT language.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:3",
+                "locator_text_sha256": "9cafb5c818bd6d44904e7552c7698b5b722513f49d76d6f4c561419269a93a40",
+                "required_snippets": [
+                  "Single Low risk No routine follow-up CT at 6-12 months, then consider CT at 18-24 months",
+                  "High risk Optional CT at 12 months CT at 6-12 months, then CT at 18-24 months",
+                  "High risk Optional CT at 12 months CT at 3-6 months, then at 18-24 months CT at 3-6 months, then at 18-24 months"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator maps the recorded 5, 6, 8, and 9 mm representatives to every single/multiple and low/high-risk branch while preserving optional versus required follow-up language.",
+            "fact": "Radulator maps the recorded 5, 6, 8, and 9 mm representatives to every single/multiple and low/high-risk branch while preserving optional versus required follow-up language.",
+            "vector_ids": [
+              "single-solid-5-low-no-routine-follow-up",
+              "single-solid-5-high-optional-12-month-ct",
+              "single-solid-6-low-preserves-late-ct-option",
+              "single-solid-6-high-two-ct-intervals",
+              "single-solid-8-low-preserves-late-ct-option",
+              "single-solid-8-high-two-ct-intervals",
+              "single-solid-9-consider-ct-pet-or-tissue",
+              "single-solid-9-high-consider-ct-pet-or-tissue",
+              "multiple-solid-5-low-no-routine-follow-up",
+              "multiple-solid-5-high-optional-12-month-ct",
+              "multiple-solid-6-low-preserves-late-ct-option",
+              "multiple-solid-6-high-two-ct-intervals",
+              "multiple-solid-8-low-preserves-late-ct-option",
+              "multiple-solid-8-high-two-ct-intervals",
+              "multiple-solid-9-low-uses-multiple-table-row",
+              "multiple-solid-9-high-two-ct-intervals"
+            ],
+            "dimensions": [
+              "threshold",
+              "boundary",
+              "interval",
+              "management",
+              "output"
+            ]
+          },
+          {
+            "id": "fleischner-2017-multiple-nodule-routing",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+            "source_locator": "Guideline VOR PDF p7/journal p234, Recommendation 2; p10/journal p237, Recommendation 5",
+            "direct_source_fact": "For multiple solid nodules, at least one nodule at or above 6 mm selects the higher table row and a larger or more suspicious nodule may drive solitary-nodule management; for multiple subsolid nodules, the most suspicious nodule guides management.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:7",
+                "locator_text_sha256": "33ce3903b6d08f819b140c6934d06c67fc16b82fd8c02664b6153c7364245ef8",
+                "required_snippets": [
+                  "For multiple solid noncalcified nodules with at least one nodule 6 mm or larger in diameter",
+                  "If a larger or more suspicious nodule is present, it should be used as a guide to management according to the guidelines for solitary nodules"
+                ]
+              },
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:10",
+                "locator_text_sha256": "89ee2523a2aeae1ac3b6b3bd8ea5fa5751aa6551e3f48375bd2bfcbb39d9d473",
+                "required_snippets": [
+                  "In patients with multiple subsolid lesions 6 mm or larger, the most suspicious nodule (which may not be the largest) should guide management"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator separates the cohort threshold from the selected management-driving nodule and applies the source routing rules to the recorded state.",
+            "fact": "Radulator separates the cohort threshold from the selected management-driving nodule and applies the source routing rules to the recorded state.",
+            "vector_ids": [
+              "multiple-solid-any-ge6-dominant-5-uses-multiple-threshold",
+              "multiple-solid-dominant-9-solitary-override",
+              "multiple-subsolid-any-ge6-dominant-5-uses-cohort-threshold",
+              "multiple-ground-glass-established-growth-uses-most-suspicious-route",
+              "multiple-ground-glass-new-solid-component-uses-most-suspicious-route"
+            ],
+            "dimensions": [
+              "model-input",
+              "threshold",
+              "boundary",
+              "management",
+              "output"
+            ]
+          },
+          {
+            "id": "fleischner-2017-subsolid-table",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+            "source_locator": "Guideline VOR PDF p3/journal p230, Table 1B; pp7-10/journal pp234-237, Recommendations 3-5",
+            "direct_source_fact": "Guideline Table 1B and Recommendations 3-5 specify persistence checks, surveillance through 5 years, and most-suspicious-nodule routing for solitary and multiple subsolid nodules.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:3",
+                "locator_text_sha256": "9cafb5c818bd6d44904e7552c7698b5b722513f49d76d6f4c561419269a93a40",
+                "required_snippets": [
+                  "Ground glass No routine follow-up CT at 6-12 months to confirm persistence, then CT every 2 years until 5 years",
+                  "Multiple CT at 3-6 months. If stable, consider CT at 2 and 4 years. CT at 3-6 months. Subsequent management based on the most suspicious nodule(s)"
+                ]
+              },
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:9",
+                "locator_text_sha256": "fcc382a97ffe361d0b8e7cb294b1c97e632e0ee2f24c82eeaf2bca1ed3168892",
+                "required_snippets": [
+                  "For solitary part-solid nodules 6 mm or larger with a solid component less than 6 mm in diameter, follow-up is recommended at 3-6 months and then annually for a minimum of 5 years"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator models baseline persistence, surveillance, established evolution, and most-suspicious-nodule routing without returning an evolved lesion to a baseline pathway.",
+            "fact": "Radulator models baseline persistence, surveillance, established evolution, and most-suspicious-nodule routing without returning an evolved lesion to a baseline pathway.",
+            "vector_ids": [
+              "single-ground-glass-5-routine-no-follow-up",
+              "single-ground-glass-6-until-year-5",
+              "single-ground-glass-6-persistent-continues-to-year-5",
+              "single-ground-glass-6-established-growth-uses-annual-follow-up",
+              "single-ground-glass-new-solid-component-reroutes-to-part-solid",
+              "single-ground-glass-validated-volumetric-growth-accepted",
+              "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
+              "categorical-lte3-solid-component-linear-growth-claim-rejected",
+              "sub6-part-solid-linear-component-growth-claim-rejected",
+              "sub6-ground-glass-visually-new-component-requires-recharacterization",
+              "multiple-ground-glass-5-initial-and-optional-late-ct",
+              "multiple-ground-glass-6-defers-to-most-suspicious-nodule",
+              "multiple-ground-glass-established-growth-uses-most-suspicious-route",
+              "multiple-ground-glass-new-solid-component-uses-most-suspicious-route",
+              "multiple-subsolid-all-lt6-persistent-uses-2-and-4-years",
+              "multiple-subsolid-any-ge6-persistent-uses-most-suspicious-nodule",
+              "single-part-solid-5-no-routine-follow-up",
+              "single-part-solid-6-component-5-baseline-persistence-check",
+              "multiple-part-solid-5-follows-multiple-subsolid-row",
+              "multiple-part-solid-12-defers-to-most-suspicious-nodule"
+            ],
+            "dimensions": [
+              "classification",
+              "threshold",
+              "interval",
+              "duration",
+              "management",
+              "output"
+            ]
+          },
+          {
+            "id": "fleischner-2017-selected-subsolid-escalation",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+            "source_locator": "Guideline VOR PDF pp7-9/journal pp234-236, Recommendations 3-4; especially p9/journal p236",
+            "direct_source_fact": "The guideline permits selected follow-up for suspicious subsolid nodules close to 6 mm and states that discrete solid components cannot be reliably defined in such small nodules.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:8",
+                "locator_text_sha256": "65dcfb613c2a79982ef56f289d50b4f6133bad4e63e017e9d23592c67b353bcb",
+                "required_snippets": [
+                  "including those with pure ground-glass or part-solid types) close to 6 mm in size with suspicious morphology or other risk factors"
+                ]
+              },
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:3",
+                "locator_text_sha256": "9cafb5c818bd6d44904e7552c7698b5b722513f49d76d6f4c561419269a93a40",
+                "required_snippets": [
+                  "consider follow-up at 2 and 4 years. If solid component(s) or growth develops, consider resection"
+                ]
+              },
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:9",
+                "locator_text_sha256": "fcc382a97ffe361d0b8e7cb294b1c97e632e0ee2f24c82eeaf2bca1ed3168892",
+                "required_snippets": [
+                  "discrete solid components cannot be reliably defined in such small nodules, and they should be treated similar to the way in which pure ground-glass lesions of equivalent size are treated"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator exposes the selected near-6-mm option without forcing a solid-component measurement that the guideline says may be unreliable.",
+            "fact": "Radulator exposes the selected near-6-mm option without forcing a solid-component measurement that the guideline says may be unreliable.",
+            "vector_ids": [
+              "categorical-lte3-visually-new-component-requires-recharacterization",
+              "single-ground-glass-5-selected-suspicious-option",
+              "single-part-solid-5-selected-suspicious-option-without-component",
+              "sub6-ground-glass-linear-component-growth-claim-rejected",
+              "sub6-ground-glass-validated-volumetric-component-growth-claim-rejected",
+              "sub6-ground-glass-visually-new-component-requires-recharacterization",
+              "sub6-part-solid-linear-component-growth-claim-rejected",
+              "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
+              "sub6-part-solid-visually-new-component-requires-recharacterization"
+            ],
+            "dimensions": [
+              "classification",
+              "threshold",
+              "management",
+              "output"
+            ]
+          },
+          {
+            "id": "fleischner-2017-part-solid-component-escalation",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+            "source_locator": "Guideline VOR PDF pp9-10/journal pp236-237, Recommendation 4 and Table 1B comment",
+            "direct_source_fact": "Persistent part-solid nodules at or above 6 mm are managed by solid-component size and concern: components below 6 mm receive annual surveillance, components at or above 6 mm are highly suspicious, and suspicious morphology, growth, or a component above 8 mm supports PET/CT, biopsy, or resection.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:9",
+                "locator_text_sha256": "fcc382a97ffe361d0b8e7cb294b1c97e632e0ee2f24c82eeaf2bca1ed3168892",
+                "required_snippets": [
+                  "For solitary part-solid nodules 6 mm or larger with a solid component less than 6 mm in diameter, follow-up is recommended at 3-6 months and then annually for a minimum of 5 years"
+                ]
+              },
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:3",
+                "locator_text_sha256": "9cafb5c818bd6d44904e7552c7698b5b722513f49d76d6f4c561419269a93a40",
+                "required_snippets": [
+                  "should be considered highly suspicious"
+                ]
+              },
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:10",
+                "locator_text_sha256": "89ee2523a2aeae1ac3b6b3bd8ea5fa5751aa6551e3f48375bd2bfcbb39d9d473",
+                "required_snippets": [
+                  "For nodules with particularly suspicious morphology (ie, lobulated margins or cystic components), a growing solid component, or a solid component larger than 8 mm, PET/CT, biopsy, or resection are recommended"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator separates baseline persistence, stable surveillance, established quantitative growth, concerning morphology, and a visually new component without mislabeling visual change as measured growth.",
+            "fact": "Radulator separates baseline persistence, stable surveillance, established quantitative growth, concerning morphology, and a visually new component without mislabeling visual change as measured growth.",
+            "vector_ids": [
+              "single-part-solid-6-component-5-baseline-persistence-check",
+              "single-part-solid-6-component-5-persistent-uses-annual-follow-up",
+              "single-part-solid-10-component-5-concern-escalates",
+              "single-part-solid-12-component-6-baseline-persistence-check",
+              "single-part-solid-12-component-6-persistent-is-highly-suspicious",
+              "single-part-solid-10-component-6-concern-escalates",
+              "single-part-solid-10-component-8-no-concern-consider-ct",
+              "single-part-solid-12-component-8-growing-escalates",
+              "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
+              "single-part-solid-12-component-9-escalates-by-size",
+              "part-solid-categorical-linear-growth-claim-rejected",
+              "part-solid-categorical-lte3-component-avoids-false-precision",
+              "part-solid-categorical-new-component-escalates-without-false-precision",
+              "part-solid-categorical-validated-volumetric-growth-claim-rejected",
+              "sub6-part-solid-linear-component-growth-claim-rejected",
+              "sub6-part-solid-validated-volumetric-component-growth-claim-rejected",
+              "sub6-part-solid-visually-new-component-requires-recharacterization",
+              "part-solid-measured-new-component-considers-resection-without-growth-claim"
+            ],
+            "dimensions": [
+              "classification",
+              "threshold",
+              "boundary",
+              "management",
+              "output"
+            ]
+          },
+          {
+            "id": "fleischner-2017-risk-selection",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "source_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+            "source_locator": "Guideline VOR PDF pp10-12/journal pp237-239, Risk Factors and Risk Estimation",
+            "direct_source_fact": "The guideline describes low risk as less than 5%, combines ACCP intermediate and high categories for the higher-risk group, and requires consideration of multiple clinical and morphologic factors.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "guideline-vor-pdf",
+                "locator": "pdf-page:12",
+                "locator_text_sha256": "1d47d0fec6f4c2474f31bfa091c6c2a9e7e6d3902554eca862eda8aa81c7150b",
+                "required_snippets": [
+                  "Low risk, which corresponds to an estimated risk of cancer of less than 5%",
+                  "To estimate high risk, we recommend combining the ACCP intermediate-risk (5%-65% risk) and high-risk",
+                  "Although nodule size and morphology remain the dominant factors that we use to predict risk, it is important to consider additional clinical risk factors"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator requires a clinician-selected holistic risk category and does not infer it from one factor.",
+            "fact": "Radulator requires a clinician-selected holistic risk category and does not infer it from one factor.",
+            "vector_ids": [
+              "single-solid-5-low-no-routine-follow-up",
+              "single-solid-5-high-optional-12-month-ct"
+            ],
+            "dimensions": [
+              "model-input",
+              "classification",
+              "scope",
+              "output"
+            ]
+          },
+          {
+            "id": "fleischner-2017-measurement-contract",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+            "source_sha256": "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+            "source_locator": "Measurement full-text fragment anchors #_i5, #_i8, #_i15, #_i18, #_i21, #_i25, #_i31, #_i35; Figures 1, 2, 4, 5, 9, 12-14, 16-17",
+            "direct_source_fact": "The measurement statement recommends whole-millimeter reporting, averaged long- and short-axis measurements below 10 mm, both axes at or above 10 mm, thin sections, lung windows, separate part-solid component measurement, and a 2-mm linear-growth threshold.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "measurement-fulltext",
+                "locator": "html-section:#_i5",
+                "locator_text_sha256": "7e9636c4b4454e15a8086154af549e4d6b8f3efdbf59994d088e34f4bfd9e019",
+                "required_snippets": [
+                  "dimension of small pulmonary nodules (<10 mm) should be expressed as the average of maximal long-axis and perpendicular maximal short-axis measurements in the same plane. For larger nodules and masses (>=10 mm), long- and short-axis measurements should be recorded"
+                ]
+              },
+              {
+                "artifact_id": "measurement-fulltext",
+                "locator": "html-section:#_i8",
+                "locator_text_sha256": "3f5bfce56f2467a57f7817c545cf3831690080abaddbd36991ab83ab4d474cf3",
+                "required_snippets": [
+                  "rounded to the nearest whole millimeter"
+                ]
+              },
+              {
+                "artifact_id": "measurement-fulltext",
+                "locator": "html-section:#_i15",
+                "locator_text_sha256": "d690514c738115c6b825dad729bc1b85e0d9e9e74da20f99ff5441d034858cd4",
+                "required_snippets": [
+                  "The 2-mm threshold for defining growth should be applied to both overall nodule size in both solid and part-solid nodules, as well as to the solid component of a part-solid nodule"
+                ]
+              },
+              {
+                "artifact_id": "measurement-fulltext",
+                "locator": "html-section:#_i18",
+                "locator_text_sha256": "37e78594d551fb9884c1354961644b2ecc1556c0e4555bbcf11e49fb25f6d925",
+                "required_snippets": [
+                  "support the use of contiguous thin (<=1.5 mm) sections for the purpose of small lung nodule measurements"
+                ]
+              },
+              {
+                "artifact_id": "measurement-fulltext",
+                "locator": "html-section:#_i21",
+                "locator_text_sha256": "f3866a12ffb70a5a2d4a67f4e11a6503017191937f9938ff1264e6748b5e31ca",
+                "required_snippets": [
+                  "In part-solid nodules, the CT sections should be chosen for measurements that display the largest portion of the overall nodule and the solid component, respectively"
+                ]
+              },
+              {
+                "artifact_id": "measurement-fulltext",
+                "locator": "html-section:#_i25",
+                "locator_text_sha256": "df50861793c5357739c8bdd7d7d8c2ba566ad85d4db7f398d63385106b19186c",
+                "required_snippets": [
+                  "all nodule measurements should be performed on images obtained with lung window settings"
+                ]
+              },
+              {
+                "artifact_id": "measurement-fulltext",
+                "locator": "html-section:#_i31",
+                "locator_text_sha256": "662b53958a89935901ef837630ac5667aa1dab69e7c548e52c86b0742a88becf",
+                "required_snippets": [
+                  "maximum diameter of the largest solid component should be measured"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator validates pre-recorded linear measurements and growth basis. The greater-than-3-mm solid-component threshold is bound to the separately hash-pinned Figure 1 reviewed transcription; externally established volumetry remains a product contract rather than a literal source claim.",
+            "fact": "Radulator validates pre-recorded linear measurements and growth basis. The greater-than-3-mm solid-component threshold is bound to the separately hash-pinned Figure 1 reviewed transcription; externally established volumetry remains a product contract rather than a literal source claim.",
+            "vector_ids": [
+              "part-solid-categorical-linear-growth-claim-rejected",
+              "part-solid-categorical-lte3-component-avoids-false-precision",
+              "part-solid-categorical-validated-volumetric-growth-claim-rejected",
+              "part-solid-measured-component-at-3-mm-rejected",
+              "pure-ground-glass-sub2mm-change-cannot-claim-growth",
+              "single-ground-glass-validated-volumetric-growth-accepted",
+              "single-part-solid-12-component-8-validated-volumetric-growth-escalates"
+            ],
+            "dimensions": [
+              "model-input",
+              "unit",
+              "threshold",
+              "scope",
+              "output"
+            ]
+          },
+          {
+            "id": "fleischner-2017-very-small-nodule-measurement",
+            "source_url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+            "source_sha256": "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+            "source_locator": "Measurement full-text fragment anchor #_i9; Figures 1 and 6",
+            "direct_source_fact": "The measurement statement says nodules up to 3 mm need not be measured, cannot be measured accurately, and should be described as micronodules without caliper measurements.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "measurement-fulltext",
+                "locator": "html-section:#_i9",
+                "locator_text_sha256": "38af48b0122b1404c71674c5e01d1977b058657dc323afc14baa0d3731fe1ab8",
+                "required_snippets": [
+                  "not every nodule needs to be measured, notably nodules of up to 3 mm in size",
+                  "Such small nodules are impossible to measure accurately",
+                  "it is preferable to omit any caliper measurements and instead use the term micronodule"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "Radulator implements a categorical very-small pathway and rejects unsupported numeric precision at 3 mm.",
+            "fact": "Radulator implements a categorical very-small pathway and rejects unsupported numeric precision at 3 mm.",
+            "vector_ids": [
+              "categorical-lte3-pure-ggo-linear-growth-claim-rejected",
+              "categorical-lte3-pure-ggo-validated-volumetric-growth-claim-rejected",
+              "categorical-lte3-solid-component-linear-growth-claim-rejected",
+              "categorical-lte3-solid-component-validated-volumetric-growth-claim-rejected",
+              "categorical-lte3-solid-low-without-false-precision",
+              "categorical-lte3-visually-new-component-requires-recharacterization",
+              "numeric-3-mm-requires-categorical-pathway"
+            ],
+            "dimensions": [
+              "model-input",
+              "unit",
+              "threshold",
+              "scope",
+              "output"
+            ]
+          },
+          {
+            "id": "nlm-fleischner-solid-table-cross-check",
+            "source_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+            "source_sha256": "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
+            "source_locator": "NCBI Bookshelf object ch5.Tab1, exact HTML table fragment",
+            "direct_source_fact": "The digest-pinned NLM table reproduces all six single and multiple solid-nodule rows and their low- and high-risk optionality.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "nlm-fleischner-solid-table",
+                "locator": "html-table:ch5.Tab1",
+                "locator_text_sha256": "5a9a7516677d89bebaacb9febb486dad0946ab8170a5047d52a20ab623648c5e",
+                "required_snippets": [
+                  "Single 6-8 mm CT at 6-12 months, then consider CT at 18-24 months CT at 6-12 months, then CT at 18-24 months",
+                  "Multiple 6-8 mm CT at 3-6 months, then consider CT at 18-24 months CT at 3-6 months, then CT at 18-24 months"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "The secondary table serves only as an exact open cross-check of solid-table boundaries already bound to the primary guideline and executable vectors.",
+            "fact": "The secondary table serves only as an exact open cross-check of solid-table boundaries already bound to the primary guideline and executable vectors.",
+            "vector_ids": [
+              "single-solid-6-low-preserves-late-ct-option",
+              "multiple-solid-6-low-preserves-late-ct-option"
+            ],
+            "dimensions": [
+              "version",
+              "threshold",
+              "interval",
+              "management"
+            ]
+          },
+          {
+            "id": "nlm-fleischner-subsolid-table-cross-check",
+            "source_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+            "source_sha256": "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
+            "source_locator": "NCBI Bookshelf object ch5.Tab2, exact HTML table fragment",
+            "direct_source_fact": "The digest-pinned NLM table reproduces the solitary ground-glass, solitary part-solid, and multiple-subsolid rows, including surveillance through 5 years and most-suspicious-nodule routing.",
+            "source_text_assertions": [
+              {
+                "artifact_id": "nlm-fleischner-subsolid-table",
+                "locator": "html-table:ch5.Tab2",
+                "locator_text_sha256": "fee89cdab0d0498ac55ecb9bb6f655fe555ca9a857fd662636dd5304447ae3e9",
+                "required_snippets": [
+                  "Single Ground glass No routine follow-up CT at 6-12 months to confirm persistence, then CT every 2 years until 5 years",
+                  "Multiple CT at 3-6 months. If stable, consider CT at 2 and 4 years CT at 3-6 months. Subsequent management based on the most suspicious nodule(s)"
+                ]
+              }
+            ],
+            "reviewed_synthesis": "The secondary table serves only as an exact open cross-check of subsolid-table boundaries already bound to the primary guideline and executable vectors.",
+            "fact": "The secondary table serves only as an exact open cross-check of subsolid-table boundaries already bound to the primary guideline and executable vectors.",
+            "vector_ids": [
+              "single-ground-glass-6-until-year-5",
+              "multiple-ground-glass-5-initial-and-optional-late-ct",
+              "multiple-ground-glass-6-defers-to-most-suspicious-nodule"
+            ],
+            "dimensions": [
+              "version",
+              "classification",
+              "duration",
+              "management"
+            ]
+          }
+        ],
+        "implementation_invariants": [
+          {
+            "id": "fleischner-input-completeness-fail-closed",
+            "fact": "Radulator must not emit a surveillance schedule when required applicability, characterization, cohort, risk, temporal, component, concern, or growth-basis state is missing or explicitly uncertain. This is a fail-closed product invariant, not a literal publication claim.",
+            "vector_ids": [
+              "categorical-lte3-solid-component-missing-basis-requires-recharacterization",
+              "missing-applicability-fails-closed",
+              "missing-characterization-fails-closed",
+              "missing-nodule-count-fails-closed",
+              "missing-nodule-type-fails-closed",
+              "missing-recorded-size-fails-closed",
+              "missing-size-mode-fails-closed",
+              "multiple-missing-cohort-threshold-fails-closed",
+              "multiple-solid-missing-dominant-rule-fails-closed",
+              "part-solid-component-6-to-8-missing-concern-state-rejected",
+              "part-solid-missing-component-mode-rejected",
+              "part-solid-missing-component-rejected",
+              "part-solid-uncertain-morphology-fails-closed",
+              "pure-ground-glass-missing-growth-basis-rejected",
+              "single-sub6-ground-glass-missing-context-rejected",
+              "solid-component-missing-growth-basis-rejected",
+              "solid-nodule-missing-risk-rejected",
+              "sub6-ground-glass-solid-component-missing-basis-requires-recharacterization",
+              "sub6-part-solid-solid-component-missing-basis-requires-recharacterization",
+              "subsolid-missing-temporal-state-fails-closed",
+              "uncertain-applicability-fails-closed",
+              "uncertain-characterization-routes-without-table"
+            ]
+          },
+          {
+            "id": "fleischner-nodule-domain-boundary",
+            "fact": "Radulator conservatively routes an entered lesion over 30 mm outside this nodule-table calculator. This is a product-domain invariant; the two pinned 2017 RSNA-origin artifacts are not cited as proof of that boundary.",
+            "vector_ids": [
+              "mass-over-30-mm-routes-outside-nodule-table"
+            ]
+          },
+          {
+            "id": "fleischner-measurement-input-geometry",
+            "fact": "Radulator requires positive whole-millimeter measurements, numeric axes when needed to validate a rounded average, coherent axis geometry, and a solid component that does not exceed the actual overall long axis. It accepts only externally established volumetric growth and does not calculate or validate volumetry.",
+            "vector_ids": [
+              "fractional-overall-size-rejected",
+              "negative-overall-size-rejected",
+              "part-solid-axes-average-mismatch-rejected",
+              "part-solid-component-exceeding-overall-long-axis-rejected",
+              "part-solid-fractional-component-rejected",
+              "part-solid-missing-overall-long-axis-rejected",
+              "part-solid-negative-component-rejected",
+              "part-solid-short-axis-greater-than-long-rejected",
+              "part-solid-zero-component-rejected",
+              "single-ground-glass-validated-volumetric-growth-accepted",
+              "single-part-solid-12-component-8-validated-volumetric-growth-escalates",
+              "single-solid-10-axes-average-mismatch-rejected",
+              "single-solid-10-valid-axes-accepted",
+              "solid-component-long-axis-may-exceed-overall-average",
+              "ten-mm-legacy-axis-attestation-cannot-bypass-numeric-axes",
+              "zero-overall-size-rejected"
+            ]
+          },
+          {
+            "id": "fleischner-state-consistency-fail-closed",
+            "fact": "Radulator rejects internally contradictory cohort, nodule-type, or unconfirmed-growth state instead of converting it into a surveillance or escalation recommendation. This is a product-state invariant, not a literal publication claim.",
+            "vector_ids": [
+              "multiple-all-lt6-conflicts-with-selected-6-mm-nodule",
+              "part-solid-pure-ggo-growth-state-rejected",
+              "solid-component-unconfirmed-change-cannot-trigger-escalation"
+            ]
+          }
+        ],
+        "reviewed_transcriptions": [
+          {
+            "id": "fleischner-measurement-figure1-solid-component",
+            "claim_id": "fleischner-2017-measurement-contract",
+            "artifact_id": "measurement-figure-1",
+            "artifact_sha256": "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+            "review_mode": "hash-bound-reviewed-raster-transcription",
+            "width": 387,
+            "height": 500,
+            "transcription": "For all part-solid nodules, the maximum diameter of the solid component should be measured if this component is >3 mm, understanding that measurements may be unreliable for small solid components. Dimensions of both solid and nonsolid components should be recorded to document change in the future (grade 2B evidence).",
+            "vector_ids": [
+              "part-solid-categorical-lte3-component-avoids-false-precision",
+              "part-solid-measured-component-at-3-mm-rejected"
+            ]
+          }
+        ]
+      }
     },
     {
       "calculator_id": "hip-dysplasia",
@@ -593,7 +1861,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Uses published radiographic measurement references rather than a versioned guideline; age and sex reference fidelity remains queued for audit.",
-      "sources": [{ "authority": "Tonnis et al.", "title": "Normal values of the hip joint for the evaluation of X-rays in children and adults", "role": "primary-publication", "url": "https://pubmed.ncbi.nlm.nih.gov/954321/" }]
+      "sources": [
+        {
+          "authority": "Tonnis et al.",
+          "title": "Normal values of the hip joint for the evaluation of X-rays in children and adults",
+          "role": "primary-publication",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/954321/"
+        }
+      ]
     },
     {
       "calculator_id": "ipss",
@@ -603,7 +1878,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements published IPSS diagnostic ratios and sampling interpretation; current protocol context remains queued for expert source review.",
-      "sources": [{ "authority": "Oldfield et al.", "title": "Petrosal sinus sampling with and without corticotropin-releasing hormone for the differential diagnosis of Cushing syndrome", "role": "primary-publication", "url": "https://doi.org/10.1056/NEJM199109263251301" }]
+      "sources": [
+        {
+          "authority": "Oldfield et al.",
+          "title": "Petrosal sinus sampling with and without corticotropin-releasing hormone for the differential diagnosis of Cushing syndrome",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1056/NEJM199109263251301"
+        }
+      ]
     },
     {
       "calculator_id": "khoury-catheter-selector",
@@ -613,7 +1895,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Compiles manufacturer specifications and is not a clinical guideline; every device value requires periodic current IFU verification.",
-      "sources": [{ "authority": "Terumo Neuro", "title": "Neurovascular product and specification source", "role": "official-authority", "url": "https://www.terumoneuro.com/" }]
+      "sources": [
+        {
+          "authority": "Terumo Neuro",
+          "title": "Neurovascular product and specification source",
+          "role": "official-authority",
+          "url": "https://www.terumoneuro.com/"
+        }
+      ]
     },
     {
       "calculator_id": "kidney-biopsy-bleeding-risk",
@@ -624,41 +1913,88 @@
       "last_verified": "2026-08-25",
       "justification": "The open primary publication confirms the adult diagnostic kidney-biopsy population and major-bleeding outcome; its direct supplementary PDF exposes the refit equation, predictor units, coefficients, and spline knots used by the executable source-model regression vectors.",
       "sources": [
-        { "authority": "Thorne et al.", "title": "External Validation and Recalibration of a Risk Calculator for Major Bleeding After Diagnostic Kidney Biopsy", "role": "primary-publication", "url": "https://doi.org/10.1016/j.xkme.2026.101352" },
-        { "authority": "Thorne et al. via NCBI PMC OAI-PMH", "title": "Open full-text JATS XML with supplementary material manifest for PMCID PMC13156734", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc" },
-        { "authority": "Thorne et al. via Elsevier", "title": "Direct primary supplementary PDF (Item S1) for the recalibrated KBRC equation", "role": "primary-publication", "url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf", "artifact_sha256": "d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5" },
-        { "authority": "Schorr et al.", "title": "Frequency, Timing, and Prediction of Major Bleeding Complications From Percutaneous Renal Biopsy", "role": "supporting-publication", "url": "https://doi.org/10.1177/2054358120923527" }
+        {
+          "authority": "Thorne et al.",
+          "title": "External Validation and Recalibration of a Risk Calculator for Major Bleeding After Diagnostic Kidney Biopsy",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1016/j.xkme.2026.101352"
+        },
+        {
+          "authority": "Thorne et al. via NCBI PMC OAI-PMH",
+          "title": "Open full-text JATS XML with supplementary material manifest for PMCID PMC13156734",
+          "role": "primary-publication",
+          "url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc"
+        },
+        {
+          "authority": "Thorne et al. via Elsevier",
+          "title": "Direct primary supplementary PDF (Item S1) for the recalibrated KBRC equation",
+          "role": "primary-publication",
+          "url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
+          "artifact_sha256": "d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5"
+        },
+        {
+          "authority": "Schorr et al.",
+          "title": "Frequency, Timing, and Prediction of Major Bleeding Complications From Percutaneous Renal Biopsy",
+          "role": "supporting-publication",
+          "url": "https://doi.org/10.1177/2054358120923527"
+        }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/KidneyBiopsyBleedingRisk.jsx",
         "fixture_path": "tests/fixtures/compute/kidney-biopsy-bleeding-risk.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "Thorne et al. recalibrated major-bleeding model (2026)" },
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "Thorne et al. recalibrated major-bleeding model (2026)"
+        },
         "claims": [
           {
             "id": "thorne-recalibrated-equation",
             "source_url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
             "source_locator": "Direct primary supplementary PDF, Item S1, PDF page 5",
             "fact": "The digest-pinned mmc1.pdf member supplies the intercept, every signed linear and cubic-spline coefficient and knot, logistic transform, predictor units, and native-versus-allograft coding audited against calculator source.",
-            "dimensions": ["formula", "model-input", "unit", "output"],
-            "vector_ids": ["paper-typical-native", "paper-typical-allograft", "paper-higher-risk-native", "paper-lower-risk-allograft"]
+            "dimensions": [
+              "formula",
+              "model-input",
+              "unit",
+              "output"
+            ],
+            "vector_ids": [
+              "paper-typical-native",
+              "paper-typical-allograft",
+              "paper-higher-risk-native",
+              "paper-lower-risk-allograft"
+            ]
           },
           {
             "id": "thorne-adult-diagnostic-biopsy-scope",
             "source_url": "https://doi.org/10.1016/j.xkme.2026.101352",
             "source_locator": "Methods, study population, outcome definition, and external-validation results",
             "fact": "The output is limited to adult diagnostic native or transplant kidney biopsy and reports the major-bleeding endpoint rather than minor or any bleeding.",
-            "dimensions": ["scope", "interpretation", "output"],
-            "vector_ids": ["paper-typical-native", "paper-typical-allograft", "reject-out-of-range"]
+            "dimensions": [
+              "scope",
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "paper-typical-native",
+              "paper-typical-allograft",
+              "reject-out-of-range"
+            ]
           },
           {
             "id": "thorne-calibration-above-25",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc",
             "source_locator": "Discussion, paragraph p0130",
             "fact": "The recalibrated model begins to overpredict risk in the probability range exceeding 25%; 25% is a calibration-warning boundary, not a risk category or action threshold.",
-            "dimensions": ["interpretation", "output"],
-            "vector_ids": ["calibration-above-25"]
+            "dimensions": [
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "calibration-above-25"
+            ]
           }
         ],
         "source_artifact": {
@@ -674,30 +2010,139 @@
           "source_bytes_committed": false,
           "source_locator": "mmc1.pdf, Item S1, PDF page 5: refit equation, units, and native coding",
           "equation_terms": [
-            { "sign": "+", "coefficient": 2.0998143, "input": "constant" },
-            { "sign": "+", "coefficient": 0.059035592, "input": "age" },
-            { "sign": "-", "coefficient": 0.000019209284, "input": "age", "positive_part_cubic_knot": 31 },
-            { "sign": "+", "coefficient": 0.000048213766, "input": "age", "positive_part_cubic_knot": 57 },
-            { "sign": "-", "coefficient": 0.000029004482, "input": "age", "positive_part_cubic_knot": 74.219456 },
-            { "sign": "-", "coefficient": 0.16226705, "input": "kidneySize" },
-            { "sign": "+", "coefficient": 0.014154593, "input": "kidneySize", "positive_part_cubic_knot": 9.5 },
-            { "sign": "-", "coefficient": 0.027601456, "input": "kidneySize", "positive_part_cubic_knot": 11.4 },
-            { "sign": "+", "coefficient": 0.013446863, "input": "kidneySize", "positive_part_cubic_knot": 13.4 },
-            { "sign": "-", "coefficient": 0.038695221, "input": "hemoglobin" },
-            { "sign": "-", "coefficient": 0.0000084544322, "input": "hemoglobin", "positive_part_cubic_knot": 79 },
-            { "sign": "+", "coefficient": 0.000015416906, "input": "hemoglobin", "positive_part_cubic_knot": 107 },
-            { "sign": "-", "coefficient": 0.0000069624735, "input": "hemoglobin", "positive_part_cubic_knot": 141 },
-            { "sign": "-", "coefficient": 0.0033086696, "input": "platelets" },
-            { "sign": "-", "coefficient": 6.7231169e-9, "input": "platelets", "positive_part_cubic_knot": 128.1 },
-            { "sign": "+", "coefficient": 1.120357e-8, "input": "platelets", "positive_part_cubic_knot": 220 },
-            { "sign": "-", "coefficient": 4.4804528e-9, "input": "platelets", "positive_part_cubic_knot": 357.9 },
-            { "sign": "+", "coefficient": 0.90339297, "input": "native", "transform": "number" },
-            { "sign": "-", "coefficient": 0.10722806, "input": "bmi" },
-            { "sign": "+", "coefficient": 0.00051289958, "input": "bmi", "positive_part_cubic_knot": 21.67 },
-            { "sign": "-", "coefficient": 0.00088913491, "input": "bmi", "positive_part_cubic_knot": 28.291414 },
-            { "sign": "+", "coefficient": 0.00037623533, "input": "bmi", "positive_part_cubic_knot": 37.318 }
+            {
+              "sign": "+",
+              "coefficient": 2.0998143,
+              "input": "constant"
+            },
+            {
+              "sign": "+",
+              "coefficient": 0.059035592,
+              "input": "age"
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.000019209284,
+              "input": "age",
+              "positive_part_cubic_knot": 31
+            },
+            {
+              "sign": "+",
+              "coefficient": 0.000048213766,
+              "input": "age",
+              "positive_part_cubic_knot": 57
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.000029004482,
+              "input": "age",
+              "positive_part_cubic_knot": 74.219456
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.16226705,
+              "input": "kidneySize"
+            },
+            {
+              "sign": "+",
+              "coefficient": 0.014154593,
+              "input": "kidneySize",
+              "positive_part_cubic_knot": 9.5
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.027601456,
+              "input": "kidneySize",
+              "positive_part_cubic_knot": 11.4
+            },
+            {
+              "sign": "+",
+              "coefficient": 0.013446863,
+              "input": "kidneySize",
+              "positive_part_cubic_knot": 13.4
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.038695221,
+              "input": "hemoglobin"
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.0000084544322,
+              "input": "hemoglobin",
+              "positive_part_cubic_knot": 79
+            },
+            {
+              "sign": "+",
+              "coefficient": 0.000015416906,
+              "input": "hemoglobin",
+              "positive_part_cubic_knot": 107
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.0000069624735,
+              "input": "hemoglobin",
+              "positive_part_cubic_knot": 141
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.0033086696,
+              "input": "platelets"
+            },
+            {
+              "sign": "-",
+              "coefficient": 6.7231169e-9,
+              "input": "platelets",
+              "positive_part_cubic_knot": 128.1
+            },
+            {
+              "sign": "+",
+              "coefficient": 1.120357e-8,
+              "input": "platelets",
+              "positive_part_cubic_knot": 220
+            },
+            {
+              "sign": "-",
+              "coefficient": 4.4804528e-9,
+              "input": "platelets",
+              "positive_part_cubic_knot": 357.9
+            },
+            {
+              "sign": "+",
+              "coefficient": 0.90339297,
+              "input": "native",
+              "transform": "number"
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.10722806,
+              "input": "bmi"
+            },
+            {
+              "sign": "+",
+              "coefficient": 0.00051289958,
+              "input": "bmi",
+              "positive_part_cubic_knot": 21.67
+            },
+            {
+              "sign": "-",
+              "coefficient": 0.00088913491,
+              "input": "bmi",
+              "positive_part_cubic_knot": 28.291414
+            },
+            {
+              "sign": "+",
+              "coefficient": 0.00037623533,
+              "input": "bmi",
+              "positive_part_cubic_knot": 37.318
+            }
           ],
-          "published_example_vector_ids": ["paper-typical-native", "paper-typical-allograft", "paper-higher-risk-native", "paper-lower-risk-allograft"]
+          "published_example_vector_ids": [
+            "paper-typical-native",
+            "paper-typical-allograft",
+            "paper-higher-risk-native",
+            "paper-lower-risk-allograft"
+          ]
         }
       }
     },
@@ -709,7 +2154,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the 2018 LI-RADS classification; current ACR version status remains queued for authoritative review.",
-      "sources": [{ "authority": "American College of Radiology LI-RADS Steering Committee", "title": "LI-RADS version 2018: imaging of hepatocellular carcinoma in at-risk patients", "role": "primary-publication", "url": "https://doi.org/10.1148/radiol.2018181494" }]
+      "sources": [
+        {
+          "authority": "American College of Radiology LI-RADS Steering Committee",
+          "title": "LI-RADS version 2018: imaging of hepatocellular carcinoma in at-risk patients",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1148/radiol.2018181494"
+        }
+      ]
     },
     {
       "calculator_id": "lung-rads",
@@ -719,7 +2171,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements Lung-RADS v2022; the ACR source is recorded but current-version status remains queued for authoritative review.",
-      "sources": [{ "authority": "American College of Radiology", "title": "Lung CT Screening Reporting and Data System (Lung-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Lung-RADS" }]
+      "sources": [
+        {
+          "authority": "American College of Radiology",
+          "title": "Lung CT Screening Reporting and Data System (Lung-RADS)",
+          "role": "official-authority",
+          "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Lung-RADS"
+        }
+      ]
     },
     {
       "calculator_id": "meld-na",
@@ -730,52 +2189,113 @@
       "last_verified": "2026-08-25",
       "justification": "OPTN Policy 9.1.D specifies the MELD 3.0 equations, calculation bounds, dialysis handling, and score range; the official MELD and PELD Calculators User Guide separately specifies the accepted laboratory-entry domains. Both layers are bound to executable vectors.",
       "sources": [
-        { "authority": "Health Resources and Services Administration and OPTN", "title": "OPTN Policies, Policy 9.1.D liver allocation score", "role": "official-authority", "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf" },
-        { "authority": "Health Resources and Services Administration and OPTN", "title": "MELD and PELD Calculators User Guide", "role": "official-authority", "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf" }
+        {
+          "authority": "Health Resources and Services Administration and OPTN",
+          "title": "OPTN Policies, Policy 9.1.D liver allocation score",
+          "role": "official-authority",
+          "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf"
+        },
+        {
+          "authority": "Health Resources and Services Administration and OPTN",
+          "title": "MELD and PELD Calculators User Guide",
+          "role": "official-authority",
+          "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf"
+        }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/MELDNa.jsx",
         "fixture_path": "tests/fixtures/compute/meld-na.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "MELD 3.0 (OPTN Policy 9.1.D)" },
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "MELD 3.0 (OPTN Policy 9.1.D)"
+        },
         "claims": [
           {
             "id": "optn-adult-meld3-equation",
             "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf",
             "source_locator": "Policy 9.1.D adult MELD equation and female coefficient",
             "fact": "Literal male and female vectors exercise the OPTN adult equation, including the 1.33 female term and albumin interaction.",
-            "dimensions": ["formula", "model-input", "unit", "output"],
-            "vector_ids": ["meld3-adult-female-sex-term", "meld3-adult-male-sex-comparator", "meld3-hypoalbuminemia", "meld3-high-score-female", "meld3-high-score-male-comparator"]
+            "dimensions": [
+              "formula",
+              "model-input",
+              "unit",
+              "output"
+            ],
+            "vector_ids": [
+              "meld3-adult-female-sex-term",
+              "meld3-adult-male-sex-comparator",
+              "meld3-hypoalbuminemia",
+              "meld3-high-score-female",
+              "meld3-high-score-male-comparator"
+            ]
           },
           {
             "id": "optn-registered-before-18-equation",
             "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf",
             "source_locator": "Policy 9.1.D registered-before-age-18 MELD equation",
             "fact": "Candidates currently at least age 12 but registered before age 18 use the equation with the source-specified 7.33 constant for all sexes.",
-            "dimensions": ["formula", "scope", "boundary", "output"],
-            "vector_ids": ["meld3-adolescent-path", "meld3-aged-up-from-peld-path"]
+            "dimensions": [
+              "formula",
+              "scope",
+              "boundary",
+              "output"
+            ],
+            "vector_ids": [
+              "meld3-adolescent-path",
+              "meld3-aged-up-from-peld-path"
+            ]
           },
           {
             "id": "optn-laboratory-bounds-and-dialysis",
             "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf",
             "source_locator": "Policy 9.1.D bilirubin, INR, creatinine, sodium, albumin bounds and dialysis rule",
             "fact": "After accepting a laboratory entry, the calculator applies the Policy 9.1.D calculation bounds, assigns creatinine 3.0 mg per dL for qualifying dialysis, and clamps final scores to 6 through 40.",
-            "dimensions": ["threshold", "boundary", "unit", "output"],
-            "vector_ids": ["meld3-default-low-score-male", "meld3-dialysis-creatinine-cap", "meld3-official-input-domain-clamps-laboratory-values"]
+            "dimensions": [
+              "threshold",
+              "boundary",
+              "unit",
+              "output"
+            ],
+            "vector_ids": [
+              "meld3-default-low-score-male",
+              "meld3-dialysis-creatinine-cap",
+              "meld3-official-input-domain-clamps-laboratory-values"
+            ]
           },
           {
             "id": "optn-calculator-entry-domains",
             "source_url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf",
             "source_locator": "MELD Calculator, How to Use the MELD Calculator, step 3 Enter the laboratory values",
             "fact": "The calculator accepts the official inclusive entry endpoints for creatinine, bilirubin, INR, sodium, and albumin and rejects one literal value immediately outside every endpoint before applying Policy 9.1.D calculation bounds.",
-            "dimensions": ["model-input", "threshold", "boundary", "unit"],
+            "dimensions": [
+              "model-input",
+              "threshold",
+              "boundary",
+              "unit"
+            ],
             "vector_ids": [
-              "meld3-creatinine-entry-min", "meld3-creatinine-entry-below-min", "meld3-creatinine-entry-max", "meld3-creatinine-entry-above-max",
-              "meld3-bilirubin-entry-min", "meld3-bilirubin-entry-below-min", "meld3-bilirubin-entry-max", "meld3-bilirubin-entry-above-max",
-              "meld3-inr-entry-min", "meld3-inr-entry-below-min", "meld3-inr-entry-max", "meld3-inr-entry-above-max",
-              "meld3-sodium-entry-min", "meld3-sodium-entry-below-min", "meld3-sodium-entry-max", "meld3-sodium-entry-above-max",
-              "meld3-albumin-entry-min", "meld3-albumin-entry-below-min", "meld3-albumin-entry-max", "meld3-albumin-entry-above-max"
+              "meld3-creatinine-entry-min",
+              "meld3-creatinine-entry-below-min",
+              "meld3-creatinine-entry-max",
+              "meld3-creatinine-entry-above-max",
+              "meld3-bilirubin-entry-min",
+              "meld3-bilirubin-entry-below-min",
+              "meld3-bilirubin-entry-max",
+              "meld3-bilirubin-entry-above-max",
+              "meld3-inr-entry-min",
+              "meld3-inr-entry-below-min",
+              "meld3-inr-entry-max",
+              "meld3-inr-entry-above-max",
+              "meld3-sodium-entry-min",
+              "meld3-sodium-entry-below-min",
+              "meld3-sodium-entry-max",
+              "meld3-sodium-entry-above-max",
+              "meld3-albumin-entry-min",
+              "meld3-albumin-entry-below-min",
+              "meld3-albumin-entry-max",
+              "meld3-albumin-entry-above-max"
             ]
           }
         ]
@@ -789,7 +2309,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements area-weighted liver MRE measurements with consensus context; hardware and interpretation references remain queued for audit.",
-      "sources": [{ "authority": "Manduca et al.", "title": "MR elastography: principles, guidelines, and terminology", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8495610/" }]
+      "sources": [
+        {
+          "authority": "Manduca et al.",
+          "title": "MR elastography: principles, guidelines, and terminology",
+          "role": "primary-publication",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8495610/"
+        }
+      ]
     },
     {
       "calculator_id": "mehran-cin",
@@ -799,7 +2326,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the original 2004 score while a 2021 update exists; the implemented-versus-current relationship must be resolved before verification.",
-      "sources": [{ "authority": "Mehran et al.", "title": "A simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention", "role": "primary-publication", "url": "https://doi.org/10.1016/j.jacc.2004.06.034" }]
+      "sources": [
+        {
+          "authority": "Mehran et al.",
+          "title": "A simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1016/j.jacc.2004.06.034"
+        }
+      ]
     },
     {
       "calculator_id": "milan-criteria",
@@ -809,7 +2343,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the original transplant selection criteria rather than a current society guideline; source fidelity remains queued for review.",
-      "sources": [{ "authority": "Mazzaferro et al.", "title": "Liver transplantation for the treatment of small hepatocellular carcinomas in patients with cirrhosis", "role": "primary-publication", "url": "https://pubmed.ncbi.nlm.nih.gov/8594428/" }]
+      "sources": [
+        {
+          "authority": "Mazzaferro et al.",
+          "title": "Liver transplantation for the treatment of small hepatocellular carcinomas in patients with cirrhosis",
+          "role": "primary-publication",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/8594428/"
+        }
+      ]
     },
     {
       "calculator_id": "nirads",
@@ -819,7 +2360,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the 2018 NI-RADS classification; current ACR version and management recommendations remain queued for authoritative review.",
-      "sources": [{ "authority": "American College of Radiology", "title": "Neck Imaging Reporting and Data System (NI-RADS)", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/NI-RADS" }]
+      "sources": [
+        {
+          "authority": "American College of Radiology",
+          "title": "Neck Imaging Reporting and Data System (NI-RADS)",
+          "role": "official-authority",
+          "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/NI-RADS"
+        }
+      ]
     },
     {
       "calculator_id": "orads",
@@ -829,7 +2377,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "The code combines O-RADS ultrasound and MRI material under a 2020 claim; modality-specific current versions require authoritative reconciliation.",
-      "sources": [{ "authority": "American College of Radiology", "title": "O-RADS Ultrasound", "role": "official-authority", "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/O-RADS/Ultrasound" }]
+      "sources": [
+        {
+          "authority": "American College of Radiology",
+          "title": "O-RADS Ultrasound",
+          "role": "official-authority",
+          "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/O-RADS/Ultrasound"
+        }
+      ]
     },
     {
       "calculator_id": "pesi",
@@ -840,30 +2395,63 @@
       "last_verified": "2026-08-25",
       "justification": "The primary study confirms the 11-variable original PESI model, all point increments, and the five source-defined risk classes.",
       "sources": [
-        { "authority": "Aujesky et al.", "title": "Derivation and validation of a prognostic model for pulmonary embolism", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/" }
+        {
+          "authority": "Aujesky et al.",
+          "title": "Derivation and validation of a prognostic model for pulmonary embolism",
+          "role": "primary-publication",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/"
+        }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/PESI.jsx",
         "fixture_path": "tests/fixtures/compute/pesi.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "Original PESI (2005)" },
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "Original PESI (2005)"
+        },
         "claims": [
           {
             "id": "aujesky-eleven-variable-score",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/",
             "source_locator": "Table 2 prediction-rule point system and independent predictors of 30-day mortality",
             "fact": "The executable vectors cover all 11 original variables and both sides of every vital-sign threshold with the published point increments.",
-            "dimensions": ["formula", "model-input", "threshold", "boundary", "unit", "output"],
-            "vector_ids": ["normal-threshold-edges", "abnormal-threshold-edges", "all-demographic-and-comorbidity-increments"]
+            "dimensions": [
+              "formula",
+              "model-input",
+              "threshold",
+              "boundary",
+              "unit",
+              "output"
+            ],
+            "vector_ids": [
+              "normal-threshold-edges",
+              "abnormal-threshold-edges",
+              "all-demographic-and-comorbidity-increments"
+            ]
           },
           {
             "id": "aujesky-five-class-boundaries",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/",
             "source_locator": "Table 4 risk classes and observed 30-day mortality across derivation and validation cohorts",
             "fact": "Exact boundary vectors exercise all five PESI classes and report the source cohort mortality ranges as nonindividualized observations.",
-            "dimensions": ["classification", "threshold", "boundary", "interpretation", "output"],
-            "vector_ids": ["class-i-upper", "class-ii-lower", "class-ii-upper", "class-iii-lower", "class-iv-lower", "class-iv-upper", "class-v-lower"]
+            "dimensions": [
+              "classification",
+              "threshold",
+              "boundary",
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "class-i-upper",
+              "class-ii-lower",
+              "class-ii-upper",
+              "class-iii-lower",
+              "class-iv-lower",
+              "class-iv-upper",
+              "class-v-lower"
+            ]
           }
         ]
       }
@@ -876,7 +2464,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements PI-RADS v2.1; current ACR version status remains queued for authoritative review.",
-      "sources": [{ "authority": "PI-RADS Steering Committee", "title": "PI-RADS Prostate Imaging - Reporting and Data System: 2019, version 2.1", "role": "primary-publication", "url": "https://doi.org/10.1016/j.eururo.2019.02.033" }]
+      "sources": [
+        {
+          "authority": "PI-RADS Steering Committee",
+          "title": "PI-RADS Prostate Imaging - Reporting and Data System: 2019, version 2.1",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1016/j.eururo.2019.02.033"
+        }
+      ]
     },
     {
       "calculator_id": "prostate-volume",
@@ -886,7 +2481,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Uses published measurement equations and PSA-density context rather than a versioned guideline; reference fidelity remains queued for audit.",
-      "sources": [{ "authority": "Paterson et al.", "title": "Prostate volume and PSA density measurement reference", "role": "primary-publication", "url": "https://doi.org/10.5489/cuaj.3236" }]
+      "sources": [
+        {
+          "authority": "Paterson et al.",
+          "title": "Prostate volume and PSA density measurement reference",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.5489/cuaj.3236"
+        }
+      ]
     },
     {
       "calculator_id": "radiation-dose-converter",
@@ -896,7 +2498,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Uses radiation unit and protection references rather than a single guideline; all conversion factors remain queued for primary-authority audit.",
-      "sources": [{ "authority": "International Commission on Radiological Protection", "title": "ICRP Publication 103", "role": "official-authority", "url": "https://www.icrp.org/publication.asp?id=ICRP+Publication+103" }]
+      "sources": [
+        {
+          "authority": "International Commission on Radiological Protection",
+          "title": "ICRP Publication 103",
+          "role": "official-authority",
+          "url": "https://www.icrp.org/publication.asp?id=ICRP+Publication+103"
+        }
+      ]
     },
     {
       "calculator_id": "bosniak",
@@ -907,21 +2516,41 @@
       "last_verified": "2026-08-26",
       "justification": "The open primary version 2019 publication directly specifies the eligibility boundary, quantitative CT feature definitions, inclusive 70 HU and 4 mm equality cases, and categories exercised by the bound regression vectors. The peer-reviewed CUA 2023 guideline separately supplies the displayed Bosniak IIF follow-up interval, duration, and evidence grades.",
       "sources": [
-        { "authority": "Silverman et al.", "title": "Bosniak Classification of Cystic Renal Masses, version 2019", "role": "primary-publication", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/" },
-        { "authority": "Canadian Urological Association", "title": "2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions", "role": "official-authority", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/" }
+        {
+          "authority": "Silverman et al.",
+          "title": "Bosniak Classification of Cystic Renal Masses, version 2019",
+          "role": "primary-publication",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/"
+        },
+        {
+          "authority": "Canadian Urological Association",
+          "title": "2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions",
+          "role": "official-authority",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/"
+        }
       ],
       "implementation_evidence": {
         "schema": "radulator-source-derived-evidence/v1",
         "calculator_path": "src/components/calculators/RenalCystBosniak.jsx",
         "fixture_path": "tests/fixtures/compute/bosniak.json",
         "test_command": "npm run test:hermes-guideline-registry",
-        "metadata_expectation": { "field": "guidelineVersion", "equals": "Bosniak v2019" },
+        "metadata_expectation": {
+          "field": "guidelineVersion",
+          "equals": "Bosniak v2019"
+        },
         "source_audit": {
           "schema": "radulator-live-source-audit/v1",
           "command": "npm run test:bosniak-source",
           "authority": "Silverman et al., Radiology 2019 and CUA 2023",
-          "source_urls": ["https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/", "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/"],
-          "vector_ids": ["exactly-70-hu-homogeneous-noncontrast-mass-category-ii", "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv", "minimally-thick-enhancing-wall-category-iif"],
+          "source_urls": [
+            "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
+            "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/"
+          ],
+          "vector_ids": [
+            "exactly-70-hu-homogeneous-noncontrast-mass-category-ii",
+            "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv",
+            "minimally-thick-enhancing-wall-category-iif"
+          ],
           "source_bytes_committed": false
         },
         "claims": [
@@ -930,32 +2559,74 @@
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
             "source_locator": "Definition of a cystic renal mass and suggested-reporting general-population scope",
             "fact": "The calculator rejects masses with approximately one-quarter or more enhancing tissue, alternative etiologies, and hereditary renal cancer syndromes from the general-population pathway.",
-            "dimensions": ["scope", "threshold", "boundary", "output"],
-            "vector_ids": ["approximately-quarter-enhancing-tissue-out-of-scope", "alternative-etiologies-not-excluded", "hereditary-rcc-syndrome-outside-general-population-guidance"]
+            "dimensions": [
+              "scope",
+              "threshold",
+              "boundary",
+              "output"
+            ],
+            "vector_ids": [
+              "approximately-quarter-enhancing-tissue-out-of-scope",
+              "alternative-etiologies-not-excluded",
+              "hereditary-rcc-syndrome-outside-general-population-guidance"
+            ]
           },
           {
             "id": "bosniak-v2019-category-ii",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
             "source_locator": "Bosniak II section and Table 2: benign hyperattenuating cysts are homogeneous and 70 HU or greater at noncontrast CT",
             "fact": "Literal vectors distinguish a fully characterized class I simple cyst from version 2019 class II thin-septal and source-defined homogeneous attenuation subtypes, including equality at exactly 70 HU.",
-            "dimensions": ["classification", "threshold", "boundary", "unit", "output"],
-            "vector_ids": ["simple-cyst-category-i", "exactly-70-hu-homogeneous-noncontrast-mass-category-ii", "noncontrast-minus9-to20-category-ii-not-simple-cyst", "few-thin-enhancing-septa-category-ii", "renal-mass-protocol-nonenhancing-over-20-hu-category-ii", "portal-venous-21-to-30-hu-category-ii", "too-small-low-attenuation-category-ii"]
+            "dimensions": [
+              "classification",
+              "threshold",
+              "boundary",
+              "unit",
+              "output"
+            ],
+            "vector_ids": [
+              "simple-cyst-category-i",
+              "exactly-70-hu-homogeneous-noncontrast-mass-category-ii",
+              "noncontrast-minus9-to20-category-ii-not-simple-cyst",
+              "few-thin-enhancing-septa-category-ii",
+              "renal-mass-protocol-nonenhancing-over-20-hu-category-ii",
+              "portal-venous-21-to-30-hu-category-ii",
+              "too-small-low-attenuation-category-ii"
+            ]
           },
           {
             "id": "bosniak-v2019-iif-iii-iv-features",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
             "source_locator": "Bosniak IIF, III, and IV sections: an obtuse-margin enhancing convex protrusion 4 mm or larger is a nodule",
             "fact": "Executable cases bind the 3 mm minimally thick enhancing feature, 4 mm or thicker enhancing feature, exactly 4 mm obtuse-margin enhancing nodule, and enhancing acute-margin nodule to IIF, III, and IV outputs respectively.",
-            "dimensions": ["classification", "threshold", "boundary", "unit", "output"],
-            "vector_ids": ["minimally-thick-enhancing-wall-category-iif", "thick-enhancing-wall-category-iii", "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv", "acute-margin-enhancing-nodule-category-iv"]
+            "dimensions": [
+              "classification",
+              "threshold",
+              "boundary",
+              "unit",
+              "output"
+            ],
+            "vector_ids": [
+              "minimally-thick-enhancing-wall-category-iif",
+              "thick-enhancing-wall-category-iii",
+              "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv",
+              "acute-margin-enhancing-nodule-category-iv"
+            ]
           },
           {
             "id": "cua-2023-bosniak-iif-followup",
             "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
             "source_locator": "Summary recommendations and Bosniak category IIF section",
             "fact": "For Bosniak IIF cysts, CUA 2023 suggests imaging every 6-12 months in the first year, then yearly if stable, and five years of follow-up if there is no progression; the interval is expert opinion and the duration is a conditional recommendation with very low certainty.",
-            "dimensions": ["management", "interval", "duration", "interpretation", "output"],
-            "vector_ids": ["minimally-thick-enhancing-wall-category-iif"]
+            "dimensions": [
+              "management",
+              "interval",
+              "duration",
+              "interpretation",
+              "output"
+            ],
+            "vector_ids": [
+              "minimally-thick-enhancing-wall-category-iif"
+            ]
           }
         ]
       }
@@ -968,7 +2639,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the published nephrometry anatomy score rather than a versioned guideline; model fidelity remains queued for source audit.",
-      "sources": [{ "authority": "Kutikov and Uzzo", "title": "The R.E.N.A.L. nephrometry score: a comprehensive standardized system for quantitating renal tumor size, location and depth", "role": "primary-publication", "url": "https://doi.org/10.1016/j.juro.2009.05.035" }]
+      "sources": [
+        {
+          "authority": "Kutikov and Uzzo",
+          "title": "The R.E.N.A.L. nephrometry score: a comprehensive standardized system for quantitating renal tumor size, location and depth",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1016/j.juro.2009.05.035"
+        }
+      ]
     },
     {
       "calculator_id": "shim",
@@ -978,7 +2656,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements a published patient-reported instrument rather than a current versioned guideline; scoring and licensing context remain queued for audit.",
-      "sources": [{ "authority": "Rosen et al.", "title": "Development and evaluation of an abridged, 5-item version of the International Index of Erectile Function", "role": "primary-publication", "url": "https://doi.org/10.1038/sj.ijir.3900472" }]
+      "sources": [
+        {
+          "authority": "Rosen et al.",
+          "title": "Development and evaluation of an abridged, 5-item version of the International Index of Erectile Function",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1038/sj.ijir.3900472"
+        }
+      ]
     },
     {
       "calculator_id": "spleen-size",
@@ -988,7 +2673,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Uses published height- and sex-adjusted spleen measurements rather than a guideline; table transcription remains queued for primary-source audit.",
-      "sources": [{ "authority": "Chow et al.", "title": "Spleen size reference data from healthy subjects", "role": "primary-publication", "url": "https://doi.org/10.1148/radiol.2015150887" }]
+      "sources": [
+        {
+          "authority": "Chow et al.",
+          "title": "Spleen size reference data from healthy subjects",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1148/radiol.2015150887"
+        }
+      ]
     },
     {
       "calculator_id": "tirads",
@@ -998,7 +2690,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements ACR TI-RADS 2017; current ACR version status remains queued for authoritative review.",
-      "sources": [{ "authority": "American College of Radiology", "title": "ACR Thyroid Imaging, Reporting and Data System white paper", "role": "primary-publication", "url": "https://doi.org/10.1016/j.jacr.2017.01.046" }]
+      "sources": [
+        {
+          "authority": "American College of Radiology",
+          "title": "ACR Thyroid Imaging, Reporting and Data System white paper",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1016/j.jacr.2017.01.046"
+        }
+      ]
     },
     {
       "calculator_id": "thypro-39",
@@ -1008,7 +2707,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements a published patient-reported outcome instrument rather than a versioned guideline; scoring and licensing remain queued for audit.",
-      "sources": [{ "authority": "Watt et al.", "title": "Development of a short version of the thyroid-related patient-reported outcome ThyPRO", "role": "primary-publication", "url": "https://doi.org/10.1210/jc.2014-1322" }]
+      "sources": [
+        {
+          "authority": "Watt et al.",
+          "title": "Development of a short version of the thyroid-related patient-reported outcome ThyPRO",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1210/jc.2014-1322"
+        }
+      ]
     },
     {
       "calculator_id": "wells-dvt",
@@ -1018,7 +2724,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the published DVT clinical prediction rule rather than a versioned guideline; model and current-use context remain queued for audit.",
-      "sources": [{ "authority": "Wells et al.", "title": "Evaluation of D-dimer in the diagnosis of suspected deep-vein thrombosis", "role": "primary-publication", "url": "https://doi.org/10.1056/NEJMoa023153" }]
+      "sources": [
+        {
+          "authority": "Wells et al.",
+          "title": "Evaluation of D-dimer in the diagnosis of suspected deep-vein thrombosis",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1056/NEJMoa023153"
+        }
+      ]
     },
     {
       "calculator_id": "wells-pe",
@@ -1028,7 +2741,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Implements the published PE clinical prediction rule rather than a versioned guideline; model and current-use context remain queued for audit.",
-      "sources": [{ "authority": "Wells et al.", "title": "Derivation of a simple clinical model to categorize patients probability of pulmonary embolism", "role": "primary-publication", "url": "https://pubmed.ncbi.nlm.nih.gov/10744147/" }]
+      "sources": [
+        {
+          "authority": "Wells et al.",
+          "title": "Derivation of a simple clinical model to categorize patients probability of pulmonary embolism",
+          "role": "primary-publication",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/10744147/"
+        }
+      ]
     },
     {
       "calculator_id": "y90-radiation-segmentectomy",
@@ -1038,7 +2758,14 @@
       "verification_status": "seed-unverified",
       "last_verified": null,
       "justification": "Uses published MIRD and radioembolization dosimetry models rather than a single current guideline; consensus status remains queued for review.",
-      "sources": [{ "authority": "Ho et al.", "title": "Partition model for estimating radiation doses from yttrium-90 microspheres", "role": "primary-publication", "url": "https://doi.org/10.1007/BF00949868" }]
+      "sources": [
+        {
+          "authority": "Ho et al.",
+          "title": "Partition model for estimating radiation doses from yttrium-90 microspheres",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1007/BF00949868"
+        }
+      ]
     }
   ]
 }

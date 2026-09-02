@@ -8,6 +8,26 @@ import Field from "./Field";
 function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
   const [expandedSections, setExpandedSections] = useState({});
 
+  const handleFieldChange = (field, value) => {
+    const clearOnChange =
+      typeof field.clearOnChange === "function"
+        ? field.clearOnChange(vals, value)
+        : field.clearOnChange;
+
+    if (!clearOnChange?.length || !onBatchUpdate) {
+      onFieldChange(field.id, value);
+      return;
+    }
+
+    const updates = Object.fromEntries(
+      clearOnChange
+        .filter((fieldId) => fieldId !== field.id)
+        .map((fieldId) => [fieldId, ""]),
+    );
+    updates[field.id] = value;
+    onBatchUpdate(updates);
+  };
+
   // Filter visible fields
   const visibleFields = fields.filter((f) => !f.showIf || f.showIf(vals));
 
@@ -35,7 +55,7 @@ function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
             f={f}
             val={vals[f.id]}
             vals={vals}
-            on={onFieldChange}
+            on={(_, value) => handleFieldChange(f, value)}
             onBatch={onBatchUpdate}
           />
         ))}
@@ -71,7 +91,7 @@ function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
                   f={f}
                   val={vals[f.id]}
                   vals={vals}
-                  on={onFieldChange}
+                  on={(_, value) => handleFieldChange(f, value)}
                   onBatch={onBatchUpdate}
                 />
               ))}
@@ -129,7 +149,7 @@ function FieldsWithSections({ fields, vals, onFieldChange, onBatchUpdate }) {
                   f={f}
                   val={vals[f.id]}
                   vals={vals}
-                  on={onFieldChange}
+                  on={(_, value) => handleFieldChange(f, value)}
                   onBatch={onBatchUpdate}
                 />
               ))}
