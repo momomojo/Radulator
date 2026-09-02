@@ -116,6 +116,14 @@ function assertMediaType(response, expectedMediaType, label) {
   }
 }
 
+async function cancelResponseBody(response) {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // Cleanup failure must not replace the redirect or HTTP failure being reported.
+  }
+}
+
 async function readBoundedBody(response, maxBytes, label) {
   const contentLength = response.headers.get("content-length");
   if (contentLength !== null) {
@@ -184,10 +192,10 @@ async function retrieveWithRetries({ url, label, userAgent, mediaType, maxBytes,
       });
       if (response.redirected === true) {
         lastFailure = "redirected response";
-        await response.body?.cancel();
+        await cancelResponseBody(response);
       } else if (response.status !== 200) {
         lastFailure = `HTTP ${response.status}`;
-        await response.body?.cancel();
+        await cancelResponseBody(response);
         if (response.status !== 429 && response.status >= 300 && response.status < 500) break;
       } else {
         try {
@@ -351,7 +359,7 @@ async function fetchBioc(source, validate, { fetchImpl = globalThis.fetch, sleep
 const fetchAucBiocJson = (options = {}) => fetchBioc(BIOC_SPECS.auc, validateAucBioc, options);
 const fetchMaronBiocJson = (options = {}) => fetchBioc(BIOC_SPECS.maron, validateMaronBioc, options);
 
-function mockResponse({ body, status = 200, url, contentType, contentLength = String(Buffer.byteLength(body)), redirected = false, chunkSize = 16_384, streamStats = null }) {
+function mockResponse({ body, status = 200, url, contentType, contentLength = String(Buffer.byteLength(body)), redirected = false, chunkSize = 16_384, streamStats = null, cancelError = null }) {
   const bytes = Buffer.from(body);
   const headers = new Headers({ "content-type": contentType });
   if (contentLength !== null) headers.set("content-length", contentLength);
@@ -366,6 +374,7 @@ function mockResponse({ body, status = 200, url, contentType, contentLength = St
     },
     cancel(reason) {
       if (streamStats) { streamStats.cancelCount = (streamStats.cancelCount || 0) + 1; streamStats.cancelReason = reason; }
+      if (cancelError) throw cancelError;
     },
   });
   return { status, url, redirected, headers, body: stream, arrayBuffer: async () => Uint8Array.from(bytes).buffer };
@@ -466,8 +475,14 @@ for (const source of Object.values(BIOC_SPECS)) {
   const fixture = source.id === BIOC_SPECS.auc.id ? MINIMAL_AUC_BIOC_JSON : MINIMAL_MARON_BIOC_JSON;
   const fetchSource = source.id === BIOC_SPECS.auc.id ? fetchAucBiocJson : fetchMaronBiocJson;
   const followedRedirectCalls = [];
-  await assert.rejects(fetchSource({ fetchImpl: sequenceFetch([mockResponse({ body: fixture, url: source.url, contentType: source.mediaType, redirected: true })], followedRedirectCalls), sleepImpl: noWait, verifyDigest: false }), /retrieval failed after 3 attempts/, `${source.label} followed redirect must fail closed`);
+  const redirectCleanupStats = { cancelCount: 0 };
+  const redirectFetch = async (url, options) => {
+    followedRedirectCalls.push({ url, options });
+    return mockResponse({ body: fixture, url: source.url, contentType: source.mediaType, redirected: true, streamStats: redirectCleanupStats, cancelError: new Error("redirect body cleanup failed") });
+  };
+  await assert.rejects(fetchSource({ fetchImpl: redirectFetch, sleepImpl: noWait, verifyDigest: false }), /retrieval failed after 3 attempts \(redirected response\)/, `${source.label} followed redirect must preserve the redirect failure when body cleanup rejects`);
   assert.equal(followedRedirectCalls.length, 3);
+  assert.ok(redirectCleanupStats.cancelCount >= 1, `${source.label} must attempt cleanup before retrying a redirect response`);
   assert.ok(followedRedirectCalls.every(({ options }) => options.redirect === "error"), `${source.label} fetches must disable redirect following`);
 }
 
@@ -477,8 +492,14 @@ assert.equal(malformedAucCalls.length, 3);
 
 for (const [label, status] of [["raw redirect", 302], ["non-retryable client error", 404]]) {
   const nonRetryableCalls = [];
-  await assert.rejects(fetchAucBiocJson({ fetchImpl: sequenceFetch([mockResponse({ body: "", status, url: AUC_BIOC_JSON_URL, contentType: AUC_BIOC_MEDIA_TYPE })], nonRetryableCalls), sleepImpl: noWait, verifyDigest: false }), new RegExp(`retrieval failed after 1 attempt \\(HTTP ${status}\\)`), `${label} must report the one request actually made`);
+  const cleanupStats = { cancelCount: 0 };
+  const statusFetch = async (url, options) => {
+    nonRetryableCalls.push({ url, options });
+    return mockResponse({ body: MINIMAL_AUC_BIOC_JSON, status, url: AUC_BIOC_JSON_URL, contentType: AUC_BIOC_MEDIA_TYPE, streamStats: cleanupStats, cancelError: new Error("status body cleanup failed") });
+  };
+  await assert.rejects(fetchAucBiocJson({ fetchImpl: statusFetch, sleepImpl: noWait, verifyDigest: false }), new RegExp(`retrieval failed after 1 attempt \\(HTTP ${status}\\)`), `${label} must preserve the HTTP failure when body cleanup rejects`);
   assert.equal(nonRetryableCalls.length, 1, `${label} must not consume retry attempts`);
+  assert.equal(cleanupStats.cancelCount, 1, `${label} must attempt cleanup once before stopping`);
 }
 
 for (const source of Object.values(BIOC_SPECS)) {
