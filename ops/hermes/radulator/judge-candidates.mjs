@@ -131,9 +131,11 @@ function needsHydration(file) {
 }
 
 function exactBase64(value) {
-  if (typeof value !== "string" || /\s/.test(value)) return null;
-  const bytes = Buffer.from(value, "base64");
-  return bytes.toString("base64") === value ? bytes : null;
+  if (typeof value !== "string") return null;
+  const normalized = value.replace(/[\r\n]/g, "");
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)) return null;
+  const bytes = Buffer.from(normalized, "base64");
+  return bytes.toString("base64") === normalized ? bytes : null;
 }
 
 function gitBlobSha(bytes) {
@@ -286,7 +288,7 @@ async function objectEvidence({ request, token, owner, repo, entry, pathName, bl
   ) {
     throw new Error(`Patchless blob content is malformed for ${pathName}.`);
   }
-  return { ...evidence, encoding: "base64", content };
+  return { ...evidence, encoding: "base64", content: bytes.toString("base64") };
 }
 
 export async function hydratePatchlessReviewEvidence({

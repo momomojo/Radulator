@@ -266,6 +266,14 @@ function gitBlob(text) {
   };
 }
 
+function githubWrappedBase64(value, lineLength = 60, lineEnding = "\n") {
+  const lines = [];
+  for (let offset = 0; offset < value.length; offset += lineLength) {
+    lines.push(value.slice(offset, offset + lineLength));
+  }
+  return `${lines.join(lineEnding)}${lineEnding}`;
+}
+
 function exactHydrationRequest({ headTreeSha, baseTreeSha, headBlob, baseBlob, overrides = {} }) {
   return async (_token, endpoint) => {
     if (overrides[endpoint]) return overrides[endpoint];
@@ -377,6 +385,56 @@ function exactHydrationRequest({ headTreeSha, baseTreeSha, headBlob, baseBlob, o
 }
 
 {
+  const headTreeSha = "3".repeat(40);
+  const baseTreeSha = "4".repeat(40);
+  const headBlob = gitBlob(`${"current line with enough bytes to wrap\n".repeat(12)}current tail\n`);
+  const baseBlob = gitBlob(`${"prior line with enough bytes to wrap\n".repeat(12)}prior tail\n`);
+  const wrappedHead = githubWrappedBase64(headBlob.content);
+  const wrappedBase = githubWrappedBase64(baseBlob.content, 60, "\r\n");
+  assert.ok(wrappedHead.includes("\n") && wrappedHead.endsWith("\n"));
+  assert.ok(wrappedBase.includes("\r\n") && wrappedBase.endsWith("\r\n"));
+  const hydrated = await hydratePatchlessReviewEvidence({
+    token: "opaque-token",
+    owner: "momomojo",
+    repo: "Radulator",
+    headSha: HEAD,
+    baseSha: BASE,
+    files: [{
+      filename: "tests/fixtures/compute/meld-na.json",
+      status: "modified",
+      additions: 0,
+      deletions: 0,
+      changes: 0,
+      patch: null,
+    }],
+    request: exactHydrationRequest({
+      headTreeSha,
+      baseTreeSha,
+      headBlob,
+      baseBlob,
+      overrides: {
+        [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: {
+          sha: headBlob.sha,
+          encoding: "base64",
+          size: headBlob.size,
+          content: wrappedHead,
+        },
+        [`/repos/momomojo/Radulator/git/blobs/${baseBlob.sha}`]: {
+          sha: baseBlob.sha,
+          encoding: "base64",
+          size: baseBlob.size,
+          content: wrappedBase,
+        },
+      },
+    }),
+  });
+  assert.equal(hydrated[0].reviewEvidence.head.content, headBlob.content,
+    "GitHub-wrapped LF base64 with a final newline is normalized to canonical base64");
+  assert.equal(hydrated[0].reviewEvidence.base.content, baseBlob.content,
+    "GitHub-wrapped CRLF base64 with a final newline is normalized to canonical base64");
+}
+
+{
   const headTreeSha = "1".repeat(40);
   const baseTreeSha = "2".repeat(40);
   const headBlob = gitBlob('{"current":true}\n');
@@ -455,7 +513,8 @@ function exactHydrationRequest({ headTreeSha, baseTreeSha, headBlob, baseBlob, o
     ["tree binding", { [`/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`]: { sha: baseTreeSha, truncated: false, tree: [] } }],
     ["blob response sha", { [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: { sha: baseBlob.sha, encoding: "base64", size: headBlob.size, content: headBlob.content } }],
     ["blob payload sha", { [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: { sha: headBlob.sha, encoding: "base64", size: headBlob.size, content: baseBlob.content } }],
-    ["noncanonical base64", { [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: { sha: headBlob.sha, encoding: "base64", size: headBlob.size, content: `${headBlob.content}\n` } }],
+    ["ambiguous base64 whitespace", { [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: { sha: headBlob.sha, encoding: "base64", size: headBlob.size, content: `${headBlob.content}\t` } }],
+    ["malformed base64 character", { [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: { sha: headBlob.sha, encoding: "base64", size: headBlob.size, content: `${headBlob.content}!` } }],
     ["wrong mode", { [`/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`]: { sha: headTreeSha, truncated: false, tree: [{ path: file.filename, mode: "100644", type: "tree", ...headBlob }] } }],
     ["wrong size", { [`/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`]: { sha: headTreeSha, truncated: false, tree: [{ path: file.filename, mode: "100644", type: "blob", ...headBlob, size: headBlob.size + 1 }] } }],
     ["duplicate path", { [`/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`]: { sha: headTreeSha, truncated: false, tree: [
@@ -650,7 +709,8 @@ for (const [label, file, evidence] of [
   ["wrong evidence mode", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, mode: "100600" } }],
   ["wrong evidence type", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, type: "tree" } }],
   ["wrong evidence size", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, size: patchlessEvidence.head.size + 1 } }],
-  ["noncanonical evidence base64", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, content: `${patchlessEvidence.head.content}\n` } }],
+  ["ambiguous evidence base64 whitespace", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, content: `${patchlessEvidence.head.content}\t` } }],
+  ["malformed evidence base64 character", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, content: `${patchlessEvidence.head.content}!` } }],
   ["cross-bound evidence", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, sha: patchlessEvidence.base.sha } }],
   ["modified null head", patchlessFile, { ...structuredClone(patchlessEvidence), head: null }],
   ["modified null base", patchlessFile, { ...structuredClone(patchlessEvidence), base: null }],
