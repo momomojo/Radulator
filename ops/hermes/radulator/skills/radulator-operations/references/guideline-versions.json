@@ -2568,13 +2568,13 @@
           "authority": "Silverman et al.",
           "title": "Bosniak Classification of Cystic Renal Masses, version 2019",
           "role": "primary-publication",
-          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader"
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/"
         },
         {
           "authority": "Canadian Urological Association",
           "title": "2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions",
           "role": "official-authority",
-          "url": "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369"
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/"
         }
       ],
       "implementation_evidence": {
@@ -2629,7 +2629,7 @@
         "claims": [
           {
             "id": "bosniak-v2019-eligibility",
-            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
             "source_locator": "Definition of a cystic renal mass and suggested-reporting general-population scope",
             "fact": "The calculator rejects masses with approximately one-quarter or more enhancing tissue, alternative etiologies, and hereditary renal cancer syndromes from the general-population pathway.",
             "dimensions": [
@@ -2646,7 +2646,7 @@
           },
           {
             "id": "bosniak-v2019-category-ii",
-            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
             "source_locator": "Bosniak II section and Table 2: benign hyperattenuating cysts are homogeneous and 70 HU or greater at noncontrast CT",
             "fact": "Literal vectors distinguish a fully characterized class I simple cyst from version 2019 class II thin-septal and source-defined homogeneous attenuation subtypes, including equality at exactly 70 HU.",
             "dimensions": [
@@ -2668,7 +2668,7 @@
           },
           {
             "id": "bosniak-v2019-iif-iii-iv-features",
-            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
             "source_locator": "Bosniak IIF, III, and IV sections: an obtuse-margin enhancing convex protrusion 4 mm or larger is a nodule",
             "fact": "Executable cases bind the 3 mm minimally thick enhancing feature, 4 mm or thicker enhancing feature, exactly 4 mm obtuse-margin enhancing nodule, and enhancing acute-margin nodule to IIF, III, and IV outputs respectively.",
             "dimensions": [
@@ -2687,7 +2687,7 @@
           },
           {
             "id": "cua-2023-bosniak-iif-followup",
-            "source_url": "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
             "source_locator": "Summary recommendations and Bosniak category IIF section",
             "fact": "For Bosniak IIF cysts, CUA 2023 suggests imaging every 6-12 months in the first year, then yearly if stable, and five years of follow-up if there is no progression; the interval is expert opinion and the duration is a conditional recommendation with very low certainty.",
             "dimensions": [

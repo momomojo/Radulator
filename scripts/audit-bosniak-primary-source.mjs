@@ -499,26 +499,50 @@ async function runSelfTests() {
     "fully consumed variant bodies do not require a second cleanup",
   );
 
-  const wrongUrl = mockResponse({
-    body: fixtureOne,
-    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader&variant=1",
-  });
-  await assert.rejects(
-    fetchClassificationHtml({ fetchImpl: sequenceFetch([wrongUrl]), sleepImpl: noWait, verifyDigest: false }),
-    /final URL is not exact/,
+  const wrongUrlResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+    mockResponse({
+      body: fixtureOne,
+      url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader&variant=1",
+    }),
   );
-  assert.equal(wrongUrl.stats.cancelCount, 1, "wrong final URL cancels unread body");
+  const wrongUrlCalls = [];
+  await assert.rejects(
+    fetchClassificationHtml({
+      fetchImpl: sequenceFetch(wrongUrlResponses, wrongUrlCalls),
+      sleepImpl: noWait,
+      verifyDigest: false,
+    }),
+    /Silverman PMC HTML retrieval failed after 3 attempts \(Silverman PMC HTML final URL is not exact/,
+  );
+  assert.equal(wrongUrlCalls.length, RETRY_ATTEMPTS, "wrong final URL uses bounded retries");
+  assert.deepEqual(
+    wrongUrlResponses.map(({ stats }) => stats.cancelCount),
+    [1, 1, 1],
+    "every wrong-final-URL response cancels its unread body",
+  );
 
-  const wrongMedia = mockResponse({
-    body: "wrong media body",
-    url: MANAGEMENT_SOURCE.url,
-    contentType: "text/html",
-  });
-  await assert.rejects(
-    fetchManagementPdf({ fetchImpl: sequenceFetch([wrongMedia]), sleepImpl: noWait, verifyDigest: false }),
-    /media type/,
+  const wrongMediaResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+    mockResponse({
+      body: "wrong media body",
+      url: MANAGEMENT_SOURCE.url,
+      contentType: "text/html",
+    }),
   );
-  assert.equal(wrongMedia.stats.cancelCount, 1, "wrong media type cancels unread body");
+  const wrongMediaCalls = [];
+  await assert.rejects(
+    fetchManagementPdf({
+      fetchImpl: sequenceFetch(wrongMediaResponses, wrongMediaCalls),
+      sleepImpl: noWait,
+      verifyDigest: false,
+    }),
+    /CUA 2023 publisher PDF retrieval failed after 3 attempts \(CUA 2023 publisher PDF media type/,
+  );
+  assert.equal(wrongMediaCalls.length, RETRY_ATTEMPTS, "wrong media type uses bounded retries");
+  assert.deepEqual(
+    wrongMediaResponses.map(({ stats }) => stats.cancelCount),
+    [1, 1, 1],
+    "every wrong-media response cancels its unread body",
+  );
 
   const redirectedResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
     mockResponse({

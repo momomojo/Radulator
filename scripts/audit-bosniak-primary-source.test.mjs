@@ -2,7 +2,19 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import process from "node:process";
+
+const registry = JSON.parse(
+  readFileSync(
+    "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+    "utf8",
+  ),
+);
+const bosniakRecord = registry.records.find((record) => record.calculator_id === "bosniak");
+assert.ok(bosniakRecord, "Bosniak registry record is required");
+const registryAudit = bosniakRecord.implementation_evidence?.source_audit;
+assert.ok(registryAudit, "Bosniak registry source audit is required");
 
 const fixtureRun = spawnSync(
   process.execPath,
@@ -45,6 +57,7 @@ assert.deepEqual(audit.source_urls, [
   "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
   "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
 ]);
+assert.deepEqual(audit.source_urls, registryAudit.source_urls);
 assert.deepEqual(audit.artifacts, [
   {
     id: "silverman-pmc-html",
@@ -73,6 +86,10 @@ assert.deepEqual(audit.artifacts, [
     page_count: 13,
   },
 ]);
+assert.deepEqual(audit.artifacts, registryAudit.artifacts);
+assert.deepEqual(audit.bound_vector_ids, registryAudit.vector_ids);
+assert.equal(registryAudit.command, "npm run test:bosniak-source");
+assert.equal(registryAudit.authority, "Silverman et al., Radiology 2019 and CUA 2023");
 assert.ok(audit.source_bytes.silverman >= 300_000);
 assert.ok(audit.source_bytes.silverman <= 1_000_000);
 assert.equal(audit.source_bytes.cua, 592_083);

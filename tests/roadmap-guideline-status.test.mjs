@@ -16,7 +16,7 @@ const roadmapEvidence = [
     calculatorId: "bosniak",
     implementedVersion: "Bosniak version 2019",
     roadmapLabel: "Bosniak version 2019 CT classification",
-    sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+    sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
     command: "npm run test:bosniak-source",
     claimIds: ["bosniak-v2019-category-ii", "bosniak-v2019-iif-iii-iv-features"],
   },
