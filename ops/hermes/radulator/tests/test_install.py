@@ -427,6 +427,43 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("kanban_closure", learning_skill)
         self.assertNotIn("Call `hindsight_retain`", learning_skill)
 
+    def test_lifecycle_prompt_binds_reviewed_reconciliation_spec_bytes(self):
+        spec_path = self.radulator_home / "state" / "radulator-lifecycle-reconciliation.json"
+        spec_path.parent.mkdir(mode=0o700, exist_ok=True)
+        spec_path.write_bytes(
+            b'{"schema":"radulator-lifecycle-reconciliation/v1",'
+            b'"review_id":"review-1","trackers":[{'
+            b'"task_id":"t_56c8fd34","source_id":"t_1630667d",'
+            b'"source":{"kind":"formspree_receipt","task_id":"t_1630667d",'
+            b'"digest":"1111111111111111111111111111111111111111111111111111111111111111"}}]}\n'
+        )
+        spec_path.chmod(0o600)
+
+        plan = build_plan(**self.kwargs())
+        lifecycle = next(
+            job for job in plan["jobs"] if job["name"] == "radulator-release-lifecycle"
+        )
+        expected_sha = hashlib.sha256(spec_path.read_bytes()).hexdigest()
+        self.assertEqual(plan["reconciliation_spec"], {
+            "path": str(spec_path.resolve()),
+            "sha256": expected_sha,
+        })
+        self.assertIn(
+            f"--spec {spec_path.resolve()} --spec-sha256 {expected_sha}",
+            lifecycle["prompt"],
+        )
+        self.assertIn("--apply", lifecycle["prompt"])
+
+    def test_lifecycle_prompt_refuses_unbound_later_reconciliation_spec(self):
+        plan = build_plan(**self.kwargs())
+        lifecycle = next(
+            job for job in plan["jobs"] if job["name"] == "radulator-release-lifecycle"
+        )
+        spec_path = self.radulator_home / "state" / "radulator-lifecycle-reconciliation.json"
+        self.assertEqual(plan["reconciliation_spec"]["sha256"], None)
+        self.assertIn("Never load or apply a later file", lifecycle["prompt"])
+        self.assertIn(str(spec_path), lifecycle["prompt"])
+
     def test_plan_can_pin_a_truthful_self_hosted_inference_identity(self):
         plan = build_plan(
             **self.kwargs(),
