@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
-import { generateKeyPairSync, sign } from "node:crypto";
+import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -9,6 +9,7 @@ import path from "node:path";
 import {
   claimNextCandidate,
   collectCandidates,
+  FILE_REVIEW_EVIDENCE_SCHEMA,
   hydratePatchlessReviewEvidence,
   selectCandidateBatch,
   writeCandidateCache,
@@ -253,14 +254,64 @@ const PUBLIC_KEYS = {
   assert.equal(resolveGithubToken({ env: {}, execFile() { throw new Error("not authenticated"); } }), "");
 }
 
-const STANDARD_FILES = [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }];
-const HIGH_FILES = [{ filename: "src/components/calculators/MELDNa.jsx", status: "modified", patch: "@@ -1 +1 @@\n-1\n+2" }];
+const STANDARD_FILES = [{ filename: "README.md", status: "modified", additions: 1, deletions: 1, changes: 2, patch: "@@ -1 +1 @@\n-old\n+new" }];
+const HIGH_FILES = [{ filename: "src/components/calculators/MELDNa.jsx", status: "modified", additions: 1, deletions: 1, changes: 2, patch: "@@ -1 +1 @@\n-1\n+2" }];
+
+function gitBlob(text) {
+  const bytes = Buffer.from(text);
+  return {
+    sha: createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex"),
+    size: bytes.length,
+    content: bytes.toString("base64"),
+  };
+}
+
+function githubWrappedBase64(value, lineLength = 60, lineEnding = "\n") {
+  const lines = [];
+  for (let offset = 0; offset < value.length; offset += lineLength) {
+    lines.push(value.slice(offset, offset + lineLength));
+  }
+  return `${lines.join(lineEnding)}${lineEnding}`;
+}
+
+function exactHydrationRequest({ headTreeSha, baseTreeSha, headBlob, baseBlob, overrides = {} }) {
+  return async (_token, endpoint) => {
+    if (overrides[endpoint]) return overrides[endpoint];
+    if (endpoint === `/repos/momomojo/Radulator/git/commits/${HEAD}`) {
+      return { sha: HEAD, tree: { sha: headTreeSha } };
+    }
+    if (endpoint === `/repos/momomojo/Radulator/git/commits/${BASE}`) {
+      return { sha: BASE, tree: { sha: baseTreeSha } };
+    }
+    if (endpoint === `/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`) {
+      return {
+        sha: headTreeSha,
+        truncated: false,
+        tree: [{ path: "tests/fixtures/compute/meld-na.json", mode: "100644", type: "blob", ...headBlob }],
+      };
+    }
+    if (endpoint === `/repos/momomojo/Radulator/git/trees/${baseTreeSha}?recursive=1`) {
+      return {
+        sha: baseTreeSha,
+        truncated: false,
+        tree: [{ path: "tests/fixtures/compute/meld-na.json", mode: "100644", type: "blob", ...baseBlob }],
+      };
+    }
+    if (endpoint === `/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`) {
+      return { sha: headBlob.sha, encoding: "base64", size: headBlob.size, content: headBlob.content };
+    }
+    if (endpoint === `/repos/momomojo/Radulator/git/blobs/${baseBlob.sha}`) {
+      return { sha: baseBlob.sha, encoding: "base64", size: baseBlob.size, content: baseBlob.content };
+    }
+    throw new Error(`Unexpected endpoint: ${endpoint}`);
+  };
+}
 
 {
   const headTreeSha = "1".repeat(40);
   const baseTreeSha = "2".repeat(40);
-  const headBlobSha = "3".repeat(40);
-  const baseBlobSha = "4".repeat(40);
+  const headBlob = gitBlob('{"current": true}\n');
+  const baseBlob = gitBlob('{"prior": true}\n');
   const files = [
     {
       filename: "tests/fixtures/compute/meld-na.json",
@@ -273,6 +324,7 @@ const HIGH_FILES = [{ filename: "src/components/calculators/MELDNa.jsx", status:
     ...STANDARD_FILES,
   ];
   const calls = [];
+  const exactRequest = exactHydrationRequest({ headTreeSha, baseTreeSha, headBlob, baseBlob });
   const hydrated = await hydratePatchlessReviewEvidence({
     token: "opaque-token",
     owner: "momomojo",
@@ -282,68 +334,33 @@ const HIGH_FILES = [{ filename: "src/components/calculators/MELDNa.jsx", status:
     files,
     async request(token, endpoint) {
       calls.push({ token, endpoint });
-      if (endpoint === `/repos/momomojo/Radulator/git/commits/${HEAD}`) {
-        return { tree: { sha: headTreeSha } };
-      }
-      if (endpoint === `/repos/momomojo/Radulator/git/commits/${BASE}`) {
-        return { tree: { sha: baseTreeSha } };
-      }
-      if (endpoint === `/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`) {
-        return {
-          truncated: false,
-          tree: [{
-            path: "tests/fixtures/compute/meld-na.json",
-            mode: "100644",
-            type: "blob",
-            sha: headBlobSha,
-            size: 18,
-          }],
-        };
-      }
-      if (endpoint === `/repos/momomojo/Radulator/git/trees/${baseTreeSha}?recursive=1`) {
-        return {
-          truncated: false,
-          tree: [{
-            path: "tests/fixtures/compute/meld-na.json",
-            mode: "100644",
-            type: "blob",
-            sha: baseBlobSha,
-            size: 16,
-          }],
-        };
-      }
-      if (endpoint === `/repos/momomojo/Radulator/git/blobs/${headBlobSha}`) {
-        return { encoding: "base64", size: 18, content: Buffer.from('{"current": true}\n').toString("base64") };
-      }
-      if (endpoint === `/repos/momomojo/Radulator/git/blobs/${baseBlobSha}`) {
-        return { encoding: "base64", size: 16, content: Buffer.from('{"prior": true}\n').toString("base64") };
-      }
-      throw new Error(`Unexpected endpoint: ${endpoint}`);
+      return exactRequest(token, endpoint);
     },
   });
 
   assert.equal(hydrated[1], files[1], "ordinary textual patches do not gain redundant blob evidence");
   assert.deepEqual(hydrated[0].reviewEvidence, {
     schema: "radulator-file-review-evidence/v1",
+    status: "modified",
     headSha: HEAD,
     baseSha: BASE,
     head: {
       path: "tests/fixtures/compute/meld-na.json",
       mode: "100644",
       type: "blob",
-      sha: headBlobSha,
-      size: 18,
+      sha: headBlob.sha,
+      size: headBlob.size,
       encoding: "base64",
-      content: Buffer.from('{"current": true}\n').toString("base64"),
+      content: headBlob.content,
     },
     base: {
       path: "tests/fixtures/compute/meld-na.json",
       mode: "100644",
       type: "blob",
-      sha: baseBlobSha,
-      size: 16,
+      sha: baseBlob.sha,
+      size: baseBlob.size,
       encoding: "base64",
-      content: Buffer.from('{"prior": true}\n').toString("base64"),
+      content: baseBlob.content,
     },
   });
   assert.ok(calls.every((call) => call.token === "opaque-token"));
@@ -357,13 +374,168 @@ const HIGH_FILES = [{ filename: "src/components/calculators/MELDNa.jsx", status:
       baseSha: BASE,
       files: [files[0]],
       async request(_token, endpoint) {
-        if (endpoint.includes("/git/commits/")) return { tree: { sha: headTreeSha } };
+        if (endpoint.endsWith(`/git/commits/${HEAD}`)) return { sha: HEAD, tree: { sha: headTreeSha } };
+        if (endpoint.endsWith(`/git/commits/${BASE}`)) return { sha: BASE, tree: { sha: baseTreeSha } };
         return { truncated: true, tree: [] };
       },
     }),
     /truncated/i,
     "patchless files are never judged from an incomplete Git tree",
   );
+}
+
+{
+  const headTreeSha = "3".repeat(40);
+  const baseTreeSha = "4".repeat(40);
+  const headBlob = gitBlob(`${"current line with enough bytes to wrap\n".repeat(12)}current tail\n`);
+  const baseBlob = gitBlob(`${"prior line with enough bytes to wrap\n".repeat(12)}prior tail\n`);
+  const wrappedHead = githubWrappedBase64(headBlob.content);
+  const wrappedBase = githubWrappedBase64(baseBlob.content, 60, "\r\n");
+  assert.ok(wrappedHead.includes("\n") && wrappedHead.endsWith("\n"));
+  assert.ok(wrappedBase.includes("\r\n") && wrappedBase.endsWith("\r\n"));
+  const hydrated = await hydratePatchlessReviewEvidence({
+    token: "opaque-token",
+    owner: "momomojo",
+    repo: "Radulator",
+    headSha: HEAD,
+    baseSha: BASE,
+    files: [{
+      filename: "tests/fixtures/compute/meld-na.json",
+      status: "modified",
+      additions: 0,
+      deletions: 0,
+      changes: 0,
+      patch: null,
+    }],
+    request: exactHydrationRequest({
+      headTreeSha,
+      baseTreeSha,
+      headBlob,
+      baseBlob,
+      overrides: {
+        [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: {
+          sha: headBlob.sha,
+          encoding: "base64",
+          size: headBlob.size,
+          content: wrappedHead,
+        },
+        [`/repos/momomojo/Radulator/git/blobs/${baseBlob.sha}`]: {
+          sha: baseBlob.sha,
+          encoding: "base64",
+          size: baseBlob.size,
+          content: wrappedBase,
+        },
+      },
+    }),
+  });
+  assert.equal(hydrated[0].reviewEvidence.head.content, headBlob.content,
+    "GitHub-wrapped LF base64 with a final newline is normalized to canonical base64");
+  assert.equal(hydrated[0].reviewEvidence.base.content, baseBlob.content,
+    "GitHub-wrapped CRLF base64 with a final newline is normalized to canonical base64");
+}
+
+{
+  const headTreeSha = "1".repeat(40);
+  const baseTreeSha = "2".repeat(40);
+  const headBlob = gitBlob('{"current":true}\n');
+  const baseBlob = gitBlob('{"prior":true}\n');
+  const file = {
+    filename: "tests/fixtures/compute/meld-na.json",
+    status: "modified",
+    additions: 1,
+    deletions: 1,
+    changes: 2,
+    patch: "@@ -1 +1 @@\n-old",
+  };
+  const request = exactHydrationRequest({ headTreeSha, baseTreeSha, headBlob, baseBlob });
+  const hydrated = await hydratePatchlessReviewEvidence({
+    token: "opaque-token",
+    owner: "momomojo",
+    repo: "Radulator",
+    headSha: HEAD,
+    baseSha: BASE,
+    files: [file],
+    request,
+  });
+  assert.equal(hydrated[0].reviewEvidence.head.sha, headBlob.sha,
+    "an incomplete patch must be replaced with exact object evidence");
+
+  await assert.rejects(
+    hydratePatchlessReviewEvidence({
+      token: "opaque-token",
+      owner: "momomojo",
+      repo: "Radulator",
+      headSha: HEAD,
+      baseSha: BASE,
+      files: [{ ...file, changes: 3, patch: "@@ -1 +1 @@\n-old\n+new" }],
+      request,
+    }),
+    /changes count/i,
+    "an additions-plus-deletions mismatch must fail closed",
+  );
+
+  await assert.rejects(
+    hydratePatchlessReviewEvidence({
+      token: "opaque-token",
+      owner: "momomojo",
+      repo: "Radulator",
+      headSha: HEAD,
+      baseSha: BASE,
+      files: [{
+        ...STANDARD_FILES[0],
+        reviewEvidence: { schema: FILE_REVIEW_EVIDENCE_SCHEMA, headSha: HEAD, baseSha: BASE, head: null, base: null },
+      }],
+      request,
+    }),
+    /evidence|side/i,
+    "even an exact patch may not carry weak review evidence",
+  );
+
+  for (const malformedPatch of [
+    "@@ -1,0 +1,0 @@",
+    "@@ -01 +1 @@\n-old\n+new",
+  ]) {
+    const malformed = await hydratePatchlessReviewEvidence({
+      token: "opaque-token",
+      owner: "momomojo",
+      repo: "Radulator",
+      headSha: HEAD,
+      baseSha: BASE,
+      files: [{ ...file, additions: 0, deletions: 0, changes: 0, patch: malformedPatch }],
+      request,
+    });
+    assert.equal(malformed[0].patch, null, "non-canonical or no-op hunk headers require hydration");
+    assert.ok(malformed[0].reviewEvidence);
+  }
+
+  for (const [label, overrides] of [
+    ["commit binding", { [`/repos/momomojo/Radulator/git/commits/${HEAD}`]: { sha: BASE, tree: { sha: headTreeSha } } }],
+    ["tree binding", { [`/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`]: { sha: baseTreeSha, truncated: false, tree: [] } }],
+    ["blob response sha", { [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: { sha: baseBlob.sha, encoding: "base64", size: headBlob.size, content: headBlob.content } }],
+    ["blob payload sha", { [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: { sha: headBlob.sha, encoding: "base64", size: headBlob.size, content: baseBlob.content } }],
+    ["ambiguous base64 whitespace", { [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: { sha: headBlob.sha, encoding: "base64", size: headBlob.size, content: `${headBlob.content}\t` } }],
+    ["malformed base64 character", { [`/repos/momomojo/Radulator/git/blobs/${headBlob.sha}`]: { sha: headBlob.sha, encoding: "base64", size: headBlob.size, content: `${headBlob.content}!` } }],
+    ["wrong mode", { [`/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`]: { sha: headTreeSha, truncated: false, tree: [{ path: file.filename, mode: "100644", type: "tree", ...headBlob }] } }],
+    ["wrong size", { [`/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`]: { sha: headTreeSha, truncated: false, tree: [{ path: file.filename, mode: "100644", type: "blob", ...headBlob, size: headBlob.size + 1 }] } }],
+    ["duplicate path", { [`/repos/momomojo/Radulator/git/trees/${headTreeSha}?recursive=1`]: { sha: headTreeSha, truncated: false, tree: [
+      { path: file.filename, mode: "100644", type: "blob", ...headBlob },
+      { path: file.filename, mode: "100644", type: "blob", ...headBlob },
+    ] } }],
+  ]) {
+    await assert.rejects(
+      hydratePatchlessReviewEvidence({
+        token: "opaque-token",
+        owner: "momomojo",
+        repo: "Radulator",
+        headSha: HEAD,
+        baseSha: BASE,
+        files: [{ ...file, patch: null }],
+        request: exactHydrationRequest({ headTreeSha, baseTreeSha, headBlob, baseBlob, overrides }),
+      }),
+      /exact|malformed|binding|duplicate/i,
+      `${label} must fail closed`,
+    );
+  }
 }
 
 function stateFixture(files = STANDARD_FILES, reviews = [], overrides = {}) {
@@ -472,6 +644,149 @@ assert.equal(standard[0].headSha, HEAD);
 assert.equal(standard[0].candidateId.length, 64);
 assert.ok(standard[0].riskDetails.length > 0);
 
+const patchlessFilename = "tests/fixtures/compute/meld-na.json";
+const patchlessFile = {
+  filename: patchlessFilename,
+  status: "modified",
+  additions: 0,
+  deletions: 0,
+  changes: 0,
+  patch: null,
+};
+const patchlessHeadBlob = gitBlob('{"current":true}\n');
+const patchlessBaseBlob = gitBlob('{"prior":true}\n');
+const patchlessEvidence = (await hydratePatchlessReviewEvidence({
+  token: "opaque-token",
+  owner: "momomojo",
+  repo: "Radulator",
+  headSha: HEAD,
+  baseSha: BASE,
+  files: [patchlessFile],
+  request: exactHydrationRequest({
+    headTreeSha: "1".repeat(40),
+    baseTreeSha: "2".repeat(40),
+    headBlob: patchlessHeadBlob,
+    baseBlob: patchlessBaseBlob,
+  }),
+}))[0].reviewEvidence;
+
+async function collectHydrated(file, evidence) {
+  return collectCandidates({
+    repository: "momomojo/Radulator",
+    role: "primary",
+    publicKeys: PUBLIC_KEYS,
+    api: {
+      async listOpenPrs() { return [{ number: 123, labels: [{ name: "ready-for-gate" }] }]; },
+      async loadGateState() { return stateFixture([file]); },
+      async hydrateReviewEvidence() { return [{ ...file, reviewEvidence: evidence }]; },
+    },
+    now: "2026-08-23T20:02:00Z",
+  });
+}
+
+await assert.rejects(
+  collectHydrated(patchlessFile, {
+    ...structuredClone(patchlessEvidence),
+    head: { sha: patchlessEvidence.head.sha },
+    base: { sha: patchlessEvidence.base.sha },
+  }),
+  /evidence|malformed|incomplete/i,
+  "review evidence without exact object metadata and bytes is not sufficient",
+);
+
+for (const [label, file, evidence] of [
+  ["invalid status", { ...patchlessFile, status: "unknown" }, patchlessEvidence],
+  ["absolute path", { ...patchlessFile, filename: "/etc/passwd" }, patchlessEvidence],
+  ["dot path", { ...patchlessFile, filename: "src/../secret.js" }, patchlessEvidence],
+  ["mismatched changes", { ...patchlessFile, changes: 1 }, patchlessEvidence],
+  ["missing evidence status", patchlessFile, (() => {
+    const evidence = structuredClone(patchlessEvidence);
+    delete evidence.status;
+    return evidence;
+  })()],
+  ["wrong evidence status", patchlessFile, { ...structuredClone(patchlessEvidence), status: "added" }],
+  ["wrong evidence path", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, path: "other.json" } }],
+  ["wrong evidence mode", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, mode: "100600" } }],
+  ["wrong evidence type", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, type: "tree" } }],
+  ["wrong evidence size", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, size: patchlessEvidence.head.size + 1 } }],
+  ["ambiguous evidence base64 whitespace", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, content: `${patchlessEvidence.head.content}\t` } }],
+  ["malformed evidence base64 character", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, content: `${patchlessEvidence.head.content}!` } }],
+  ["cross-bound evidence", patchlessFile, { ...structuredClone(patchlessEvidence), head: { ...patchlessEvidence.head, sha: patchlessEvidence.base.sha } }],
+  ["modified null head", patchlessFile, { ...structuredClone(patchlessEvidence), head: null }],
+  ["modified null base", patchlessFile, { ...structuredClone(patchlessEvidence), base: null }],
+  ["added non-null base", { ...patchlessFile, status: "added", additions: 1, changes: 1 }, patchlessEvidence],
+  ["removed non-null head", { ...patchlessFile, status: "removed" }, patchlessEvidence],
+]) {
+  await assert.rejects(
+    collectHydrated(file, evidence),
+    /evidence|malformed|incomplete|changes|path|status|mode|type|size|base64|side/i,
+    `${label} review evidence must fail closed`,
+  );
+}
+
+await assert.rejects(
+  collectCandidates({
+    repository: "momomojo/Radulator",
+    role: "primary",
+    publicKeys: PUBLIC_KEYS,
+    api: {
+      async listOpenPrs() { return [{ number: 123, labels: [{ name: "ready-for-gate" }] }]; },
+      async loadGateState() { return stateFixture([patchlessFile]); },
+      async hydrateReviewEvidence(_pr, files) {
+        files[0].filename = "other.json";
+        const evidence = structuredClone(patchlessEvidence);
+        evidence.head.path = "other.json";
+        evidence.base.path = "other.json";
+        return [{ ...files[0], reviewEvidence: evidence }];
+      },
+    },
+  }),
+  /identity|evidence|path/i,
+  "hydration may not mutate a file identity in place to cross-bind evidence",
+);
+
+await assert.rejects(
+  collectCandidates({
+    repository: "momomojo/Radulator",
+    role: "primary",
+    publicKeys: PUBLIC_KEYS,
+    api: {
+      async listOpenPrs() { return [{ number: 123, labels: [{ name: "ready-for-gate" }] }]; },
+      async loadGateState() {
+        return stateFixture([patchlessFile, structuredClone(patchlessFile)]);
+      },
+      async hydrateReviewEvidence(_pr, files) {
+        return files.map((file) => ({ ...file, reviewEvidence: structuredClone(patchlessEvidence) }));
+      },
+    },
+  }),
+  /duplicate|identity|path/i,
+  "duplicate changed-file identities and current paths must fail closed before hydration",
+);
+
+await assert.rejects(
+  collectCandidates({
+    repository: "momomojo/Radulator",
+    role: "primary",
+    publicKeys: PUBLIC_KEYS,
+    api: {
+      async listOpenPrs() { return [{ number: 123, labels: [{ name: "ready-for-gate" }] }]; },
+      async loadGateState() {
+        return stateFixture([patchlessFile, { ...patchlessFile, filename: "tests/fixtures/compute/other.json" }]);
+      },
+      async hydrateReviewEvidence(_pr, files) {
+        return files.map((file) => ({
+          ...file,
+          filename: patchlessFilename,
+          reviewEvidence: structuredClone(patchlessEvidence),
+        }));
+      },
+    },
+  }),
+  /duplicate|identity|path/i,
+  "hydration may not return duplicate changed-file identities or current paths",
+);
+
 {
   const incomplete = stateFixture();
   incomplete.pr.changedFiles = 2;
@@ -532,6 +847,9 @@ const mixedTrustDomainState = stateFixture([
   {
     filename: ".github/workflows/e2e-tests.yml",
     status: "modified",
+    additions: 1,
+    deletions: 1,
+    changes: 2,
     patch: "@@ -1 +1 @@\n-npx playwright test\n+echo skipped",
   },
 ], [], {
