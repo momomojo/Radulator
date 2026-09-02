@@ -941,7 +941,7 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       audit.source_urls,
       [
         "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
-        "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/?report=reader",
       ],
       `${label}.source_audit.source_urls`,
     );
@@ -961,18 +961,16 @@ async function assertExecutableImplementationEvidence(record, calculator) {
             "007a4c01927d5a9fb4f8b0458dedc5793fe0f3d7c051fcb8f3267b76b57c95e5",
         },
         {
-          id: "cua-publisher-pdf",
-          url: "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
-          host: "cuaj.ca",
-          path: "/index.php/journal/article/download/8389/5706/45369",
-          media_type: "application/pdf",
-          raw_source_bytes: 592_083,
-          raw_source_sha256:
-            "bc76209f93738f261a47f2c6e6840e0d1999dd630bcdadadbfec98a2333ef8d1",
-          canonical_source_bytes: 72_222,
+          id: "cua-pmc-html",
+          url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/?report=reader",
+          host: "pmc.ncbi.nlm.nih.gov",
+          path: "/articles/PMC10263289/",
+          media_type: "text/html",
+          raw_source_min_bytes: 300_000,
+          raw_source_max_bytes: 1_000_000,
+          canonical_source_bytes: 77_293,
           canonical_source_sha256:
-            "7d613909afdb345b08e3690c5f71541ad954ebbf64a590c2d41a72957558f6fc",
-          page_count: 13,
+            "320f8aa91a3143c45a93856f840d4d81d39f0a6d4636eb10340bbd4293180324",
         },
       ],
       `${label}.source_audit.artifacts`,
@@ -1004,41 +1002,41 @@ async function assertExecutableImplementationEvidence(record, calculator) {
         cua: [
           {
             id: "cua-title",
-            page: 1,
-            locator: "PDF p. 1 title block",
+            identity: "h1",
+            locator: "PMC HTML article H1 title",
             required_text:
               "2023 update - canadian urological association guideline: management of cystic renal lesions",
           },
           {
             id: "cua-doi",
-            page: 1,
-            locator: "PDF p. 1 citation DOI",
+            identity: "citation_doi",
+            locator: "PMC HTML citation_doi metadata",
             required_text: "10.5489/cuaj.8389",
           },
           {
             id: "cua-iif-interval",
-            page: 7,
-            locator: "PDF p. 7, Intervention and followup, recommendation 6",
+            section_id: "sec15",
+            locator: "PMC HTML section #sec15 (Bosniak category IIF), recommendation 6",
             required_text:
               "for patients with a bosniak iif cyst, a followup every 6-12 months is suggested for the first year, and then yearly if the cyst is stable",
           },
           {
             id: "cua-iif-interval-evidence",
-            page: 7,
-            locator: "PDF p. 7, Intervention and followup, recommendation 6",
+            section_id: "sec15",
+            locator: "PMC HTML section #sec15 (Bosniak category IIF), recommendation 6 evidence grade",
             required_text: "expert opinion",
           },
           {
             id: "cua-iif-duration",
-            page: 7,
-            locator: "PDF p. 7, Intervention and followup, recommendation 7",
+            section_id: "sec15",
+            locator: "PMC HTML section #sec15 (Bosniak category IIF), recommendation 7",
             required_text:
               "for patients with a bosniak iif cyst that do not demonstrate progression on imaging, a followup of five years is suggested",
           },
           {
             id: "cua-iif-duration-evidence",
-            page: 7,
-            locator: "PDF p. 7, Intervention and followup, recommendation 7",
+            section_id: "sec15",
+            locator: "PMC HTML section #sec15 (Bosniak category IIF), recommendation 7 evidence grade",
             required_text: "conditional recommendation, very low certainty in evidence of effects",
           },
         ],
