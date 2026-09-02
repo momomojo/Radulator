@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import process from "node:process";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { RenalCystBosniak } from "../src/components/calculators/RenalCystBosniak.jsx";
 
 const FIXTURE_PATH = "tests/fixtures/compute/bosniak.json";
@@ -19,17 +18,18 @@ const CLASSIFICATION_CANONICAL_BYTES = 111_115;
 const CLASSIFICATION_CANONICAL_SHA256 =
   "007a4c01927d5a9fb4f8b0458dedc5793fe0f3d7c051fcb8f3267b76b57c95e5";
 const MANAGEMENT_SOURCE_URL =
-  "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369";
-const MANAGEMENT_SOURCE_HOST = "cuaj.ca";
-const MANAGEMENT_SOURCE_PATH = "/index.php/journal/article/download/8389/5706/45369";
-const MANAGEMENT_SOURCE_MEDIA_TYPE = "application/pdf";
-const MANAGEMENT_RAW_BYTES = 592_083;
-const MANAGEMENT_RAW_SHA256 =
-  "bc76209f93738f261a47f2c6e6840e0d1999dd630bcdadadbfec98a2333ef8d1";
-const MANAGEMENT_CANONICAL_BYTES = 72_222;
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/?report=reader";
+const MANAGEMENT_SOURCE_HOST = "pmc.ncbi.nlm.nih.gov";
+const MANAGEMENT_SOURCE_PATH = "/articles/PMC10263289/";
+const MANAGEMENT_SOURCE_MEDIA_TYPE = "text/html";
+const MANAGEMENT_RAW_MIN_BYTES = 300_000;
+const MANAGEMENT_RAW_MAX_BYTES = 1_000_000;
+const MANAGEMENT_CANONICAL_BYTES = 77_293;
 const MANAGEMENT_CANONICAL_SHA256 =
-  "7d613909afdb345b08e3690c5f71541ad954ebbf64a590c2d41a72957558f6fc";
-const MANAGEMENT_PDF_PAGES = 13;
+  "320f8aa91a3143c45a93856f840d4d81d39f0a6d4636eb10340bbd4293180324";
+const MANAGEMENT_TITLE =
+  "2023 UPDATE – Canadian Urological Association guideline: Management of cystic renal lesions";
+const MANAGEMENT_FULLTEXT_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/";
 const SOURCE_TEXT_VERIFICATION = Object.freeze({
   silverman: Object.freeze([
     Object.freeze({
@@ -55,41 +55,40 @@ const SOURCE_TEXT_VERIFICATION = Object.freeze({
   cua: Object.freeze([
     Object.freeze({
       id: "cua-title",
-      page: 1,
-      locator: "PDF p. 1 title block",
-      required_text:
-        "2023 update - canadian urological association guideline: management of cystic renal lesions",
+      identity: "h1",
+      locator: "PMC HTML article H1 title",
+      required_text: "2023 update - canadian urological association guideline: management of cystic renal lesions",
     }),
     Object.freeze({
       id: "cua-doi",
-      page: 1,
-      locator: "PDF p. 1 citation DOI",
+      identity: "citation_doi",
+      locator: "PMC HTML citation_doi metadata",
       required_text: "10.5489/cuaj.8389",
     }),
     Object.freeze({
       id: "cua-iif-interval",
-      page: 7,
-      locator: "PDF p. 7, Intervention and followup, recommendation 6",
+      section_id: "sec15",
+      locator: "PMC HTML section #sec15 (Bosniak category IIF), recommendation 6",
       required_text:
         "for patients with a bosniak iif cyst, a followup every 6-12 months is suggested for the first year, and then yearly if the cyst is stable",
     }),
     Object.freeze({
       id: "cua-iif-interval-evidence",
-      page: 7,
-      locator: "PDF p. 7, Intervention and followup, recommendation 6",
+      section_id: "sec15",
+      locator: "PMC HTML section #sec15 (Bosniak category IIF), recommendation 6 evidence grade",
       required_text: "expert opinion",
     }),
     Object.freeze({
       id: "cua-iif-duration",
-      page: 7,
-      locator: "PDF p. 7, Intervention and followup, recommendation 7",
+      section_id: "sec15",
+      locator: "PMC HTML section #sec15 (Bosniak category IIF), recommendation 7",
       required_text:
         "for patients with a bosniak iif cyst that do not demonstrate progression on imaging, a followup of five years is suggested",
     }),
     Object.freeze({
       id: "cua-iif-duration-evidence",
-      page: 7,
-      locator: "PDF p. 7, Intervention and followup, recommendation 7",
+      section_id: "sec15",
+      locator: "PMC HTML section #sec15 (Bosniak category IIF), recommendation 7 evidence grade",
       required_text: "conditional recommendation, very low certainty in evidence of effects",
     }),
   ]),
@@ -301,19 +300,17 @@ const CLASSIFICATION_SOURCE = Object.freeze({
 });
 
 const MANAGEMENT_SOURCE = Object.freeze({
-  id: "cua-publisher-pdf",
-  label: "CUA 2023 publisher PDF",
+  id: "cua-pmc-html",
+  label: "CUA 2023 PMC HTML",
   url: MANAGEMENT_SOURCE_URL,
   host: MANAGEMENT_SOURCE_HOST,
   path: MANAGEMENT_SOURCE_PATH,
   mediaType: MANAGEMENT_SOURCE_MEDIA_TYPE,
   userAgent: "Radulator-Bosniak-CUA-2023-source-audit/1",
-  maxBytes: SOURCE_MAX_BYTES,
-  rawBytes: MANAGEMENT_RAW_BYTES,
-  rawSha256: MANAGEMENT_RAW_SHA256,
+  maxBytes: MANAGEMENT_RAW_MAX_BYTES,
+  minBytes: MANAGEMENT_RAW_MIN_BYTES,
   canonicalBytes: MANAGEMENT_CANONICAL_BYTES,
   canonicalSha256: MANAGEMENT_CANONICAL_SHA256,
-  pageCount: MANAGEMENT_PDF_PAGES,
 });
 
 function metadataValue(html, name) {
@@ -325,27 +322,39 @@ function metadataValue(html, name) {
   return null;
 }
 
-function classificationArticleText(html) {
+function articleBodyText(html, sourceLabel) {
   const mainStart = html.search(/<main\b/i);
   const articleOffset = mainStart < 0 ? -1 : html.slice(mainStart).search(/<article\b/i);
   const articleStart = articleOffset < 0 ? -1 : mainStart + articleOffset;
   const articleEndOffset = articleStart < 0 ? -1 : html.slice(articleStart).search(/<\/article>/i);
   const articleEnd = articleEndOffset < 0 ? -1 : articleStart + articleEndOffset;
-  assert.ok(mainStart >= 0 && articleStart > mainStart && articleEnd > articleStart, "Silverman PMC article body is missing");
+  assert.ok(
+    mainStart >= 0 && articleStart > mainStart && articleEnd > articleStart,
+    `${sourceLabel} article body is missing`,
+  );
   return visibleText(html.slice(articleStart, articleEnd + "</article>".length));
+}
+
+function classificationArticleText(html) {
+  return articleBodyText(html, "Silverman PMC");
 }
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function elementById(html, tagName, id) {
+function elementById(html, tagName, id, sourceLabel) {
   const openingTag = new RegExp(
     `<${tagName}\\b(?=[^>]*\\bid=["']${escapeRegExp(id)}["'])[^>]*>`,
-    "i",
+    "gi",
   );
-  const openingMatch = openingTag.exec(html);
-  assert.ok(openingMatch, `Silverman HTML locator ${tagName}#${id} is missing`);
+  const openingMatches = [...html.matchAll(openingTag)];
+  assert.equal(
+    openingMatches.length,
+    1,
+    `${sourceLabel} locator ${tagName}#${id} must occur exactly once (found ${openingMatches.length})`,
+  );
+  const openingMatch = openingMatches[0];
   const tagPattern = new RegExp(`</?${tagName}\\b[^>]*>`, "gi");
   tagPattern.lastIndex = openingMatch.index + openingMatch[0].length;
   let depth = 1;
@@ -360,7 +369,7 @@ function elementById(html, tagName, id) {
       return html.slice(openingMatch.index, tagPattern.lastIndex);
     }
   }
-  assert.fail(`Silverman HTML locator ${tagName}#${id} is not closed`);
+  assert.fail(`${sourceLabel} locator ${tagName}#${id} is not closed`);
 }
 
 function assertRequiredText(text, contract, sourceLabel) {
@@ -371,13 +380,25 @@ function assertRequiredText(text, contract, sourceLabel) {
   return contract;
 }
 
-function verifyManagementLocators(pageTexts) {
+function verifyManagementLocators(html) {
   return SOURCE_TEXT_VERIFICATION.cua.map((contract) => {
-    assert.ok(
-      contract.page >= 1 && contract.page <= pageTexts.length,
-      `CUA 2023 locator page is outside the ${pageTexts.length}-page document: ${contract.locator}`,
+    if (contract.identity === "h1") {
+      const heading = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+      assert.ok(heading, "CUA 2023 PMC HTML article H1 title is missing");
+      return assertRequiredText(visibleText(heading[1]), contract, "CUA 2023 PMC HTML");
+    }
+    if (contract.identity) {
+      return assertRequiredText(
+        visibleText(metadataValue(html, contract.identity) ?? ""),
+        contract,
+        "CUA 2023 PMC HTML",
+      );
+    }
+    return assertRequiredText(
+      visibleText(elementById(html, "section", contract.section_id, "CUA 2023 PMC HTML")),
+      contract,
+      "CUA 2023 PMC HTML",
     );
-    return assertRequiredText(pageTexts[contract.page - 1], contract, "CUA 2023 publisher PDF");
   });
 }
 
@@ -409,7 +430,7 @@ function validateClassification({ bytes, verifyDigest = true } = {}) {
   ]) assert.ok(canonicalText.includes(snippet), `Silverman publication lacks the ${message}`);
   const sourceTextVerification = SOURCE_TEXT_VERIFICATION.silverman.map((contract) =>
     assertRequiredText(
-      visibleText(elementById(html, "section", contract.section_id)),
+      visibleText(elementById(html, "section", contract.section_id, "Silverman HTML")),
       contract,
       "Silverman publication",
     )
@@ -417,58 +438,35 @@ function validateClassification({ bytes, verifyDigest = true } = {}) {
   return { bytes, html, canonical, canonicalSha256: sha256(canonical), sourceTextVerification };
 }
 
-async function extractPdfPages(bytes) {
-  const document = await getDocument({
-    data: new Uint8Array(bytes),
-    disableWorker: true,
-    useSystemFonts: true,
-  }).promise;
-  try {
-    assert.equal(document.numPages, MANAGEMENT_SOURCE.pageCount, "CUA PDF page count drifted");
-    const pages = [];
-    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-      const page = await document.getPage(pageNumber);
-      const content = await page.getTextContent();
-      pages.push(content.items.map(({ str }) => str).join(" "));
-    }
-    return pages;
-  } finally {
-    await document.destroy();
-  }
+function assertManagementIdentity(html) {
+  assert.equal(
+    metadataValue(html, "citation_journal_title"),
+    "Canadian Urological Association Journal",
+    "CUA 2023 journal identity drifted",
+  );
+  assert.equal(metadataValue(html, "citation_doi"), "10.5489/cuaj.8389", "CUA 2023 DOI identity drifted");
+  assert.equal(metadataValue(html, "citation_pmid"), "37310905", "CUA 2023 PMID identity drifted");
+  assert.equal(
+    metadataValue(html, "citation_fulltext_html_url"),
+    MANAGEMENT_FULLTEXT_URL,
+    "CUA 2023 full-text URL identity drifted",
+  );
+  const headings = [...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)];
+  assert.equal(headings.length, 1, "CUA 2023 article must contain exactly one H1");
+  assert.equal(visibleText(headings[0][1]), visibleText(MANAGEMENT_TITLE), "CUA 2023 H1 title identity drifted");
+  assert.match(html, /\bPMCID:\s*PMC10263289\b/i, "CUA 2023 PMCID identity drifted");
 }
 
-function normalizePdfText(text) {
-  return text
-    .normalize("NFKC")
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/[–—−]/g, "-")
-    .replace(/≥/g, ">=")
-    .replace(/≤/g, "<=")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-
-function normalizePdfLocatorText(text) {
-  return normalizePdfText(text).replace(/\bdem\s+-\s+onstrate\b/g, "demonstrate");
-}
-
-async function validateManagement({ bytes, verifyDigest = true } = {}) {
+async function validateManagementHtml({ bytes, verifyDigest = true } = {}) {
+  assert.ok(bytes.length >= MANAGEMENT_SOURCE.minBytes, "CUA 2023 PMC HTML is unexpectedly small");
+  const html = bytes.toString("utf8");
+  assertManagementIdentity(html);
+  const canonical = Buffer.from(articleBodyText(html, "CUA 2023 PMC"), "utf8");
   if (verifyDigest) {
-    assert.equal(bytes.length, MANAGEMENT_SOURCE.rawBytes, "CUA PDF raw byte length drifted");
-    assert.equal(sha256(bytes), MANAGEMENT_SOURCE.rawSha256, "CUA PDF raw SHA256 drifted");
-  }
-  const pages = await extractPdfPages(bytes);
-  const pageTexts = pages.map((page) => normalizePdfLocatorText(page));
-  const canonical = Buffer.from(normalizePdfText(pages.join("\n")), "utf8");
-  if (verifyDigest) {
-    assert.equal(canonical.length, MANAGEMENT_SOURCE.canonicalBytes, "CUA PDF canonical text length drifted");
-    assert.equal(sha256(canonical), MANAGEMENT_SOURCE.canonicalSha256, "CUA PDF canonical text SHA256 drifted");
+    assert.equal(canonical.length, MANAGEMENT_SOURCE.canonicalBytes, "CUA 2023 canonical article text length drifted");
+    assert.equal(sha256(canonical), MANAGEMENT_SOURCE.canonicalSha256, "CUA 2023 canonical article text SHA256 drifted");
   }
   const text = canonical.toString("utf8");
-  assert.ok(text.includes("2023 update - canadian urological association guideline: management of cystic renal lesions"), "CUA PDF title identity drifted");
-  assert.ok(text.includes("10.5489/cuaj.8389"), "CUA PDF DOI identity drifted");
   assert.ok(
     text.includes("for patients with a bosniak iif cyst, a followup every 6-12 months is suggested for the first year, and then yearly if the cyst is stable"),
     "CUA 2023 lacks the IIF first-year and stable annual follow-up recommendation",
@@ -479,23 +477,30 @@ async function validateManagement({ bytes, verifyDigest = true } = {}) {
   );
   assert.ok(text.includes("expert opinion"), "CUA 2023 lacks the interval evidence grade");
   assert.ok(text.includes("conditional recommendation, very low certainty"), "CUA 2023 lacks the duration evidence grade");
-  const sourceTextVerification = verifyManagementLocators(pageTexts);
-  return {
-    bytes,
-    canonical,
-    canonicalSha256: sha256(canonical),
-    pageCount: MANAGEMENT_SOURCE.pageCount,
-    sourceTextVerification,
-  };
+  const sourceTextVerification = verifyManagementLocators(html);
+  const sec15Text = visibleText(elementById(html, "section", "sec15", "CUA 2023 PMC HTML"));
+  const interval = SOURCE_TEXT_VERIFICATION.cua.find(({ id }) => id === "cua-iif-interval");
+  const intervalEvidence = SOURCE_TEXT_VERIFICATION.cua.find(({ id }) => id === "cua-iif-interval-evidence");
+  const duration = SOURCE_TEXT_VERIFICATION.cua.find(({ id }) => id === "cua-iif-duration");
+  const durationEvidence = SOURCE_TEXT_VERIFICATION.cua.find(({ id }) => id === "cua-iif-duration-evidence");
+  assert.ok(
+    sec15Text.includes(`${interval.required_text} (${intervalEvidence.required_text})`),
+    "CUA 2023 section #sec15 has an interval recommendation/evidence-grade mismatch",
+  );
+  assert.ok(
+    sec15Text.includes(`${duration.required_text} (${durationEvidence.required_text})`),
+    "CUA 2023 section #sec15 has a duration recommendation/evidence-grade mismatch",
+  );
+  return { bytes, html, canonical, canonicalSha256: sha256(canonical), sourceTextVerification };
 }
 
 const fetchClassificationHtml = (options = {}) => fetchArtifact(CLASSIFICATION_SOURCE, {
   ...options,
   validate: ({ bytes }) => validateClassification({ bytes, verifyDigest: options.verifyDigest !== false }),
 });
-const fetchManagementPdf = (options = {}) => fetchArtifact(MANAGEMENT_SOURCE, {
+const fetchManagementHtml = (options = {}) => fetchArtifact(MANAGEMENT_SOURCE, {
   ...options,
-  validate: ({ bytes }) => validateManagement({ bytes, verifyDigest: options.verifyDigest !== false }),
+  validate: ({ bytes }) => validateManagementHtml({ bytes, verifyDigest: options.verifyDigest !== false }),
 });
 
 function assertFixtureExpectation(result, expectation, vectorId) {
@@ -589,25 +594,182 @@ function classificationFixtureHtml(nonce) {
 
 async function runSelfTests() {
   const noWait = async () => {};
-  const pdfLocatorFixture = Array.from({ length: MANAGEMENT_PDF_PAGES }, () => "");
-  for (const contract of SOURCE_TEXT_VERIFICATION.cua) {
-    pdfLocatorFixture[contract.page - 1] += ` ${contract.required_text}`;
-  }
-  assert.deepEqual(
-    verifyManagementLocators(pdfLocatorFixture),
-    SOURCE_TEXT_VERIFICATION.cua,
-    "CUA page locator fixture matches the pinned page contracts",
-  );
-  const misplacedPdfLocatorFixture = [...pdfLocatorFixture];
-  misplacedPdfLocatorFixture[6] = "";
-  misplacedPdfLocatorFixture[5] = pdfLocatorFixture[6];
-  assert.throws(
-    () => verifyManagementLocators(misplacedPdfLocatorFixture),
-    /CUA 2023 publisher PDF lacks PDF p\. 7/,
-    "CUA locator verification rejects matching text on a different page",
-  );
   const fixtureOne = classificationFixtureHtml("runner-one");
   const fixtureTwo = classificationFixtureHtml("runner-two");
+  const cuaHtmlFixture = `${"x".repeat(300_000)}
+    <meta name="citation_journal_title" content="Canadian Urological Association Journal">
+    <meta name="citation_title" content="2023 UPDATE – Canadian Urological Association guideline: Management of cystic renal lesions">
+    <meta name="citation_doi" content="10.5489/cuaj.8389">
+    <meta name="citation_pmid" content="37310905">
+    <meta name="citation_fulltext_html_url" content="https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/">
+    <main><article><script nonce="cua-runner-one">const volatile = "cua-runner-one";</script><h1>2023 UPDATE – Canadian Urological Association guideline: Management of cystic renal lesions</h1><div>PMCID: PMC10263289</div>
+      <section id="sec15"><h2>Bosniak category IIF</h2>
+        For patients with a Bosniak IIF cyst, a followup every 6–12 months is suggested for the first year, and then yearly if the cyst is stable (Expert opinion).
+        For patients with a Bosniak IIF cyst that do not demonstrate progression on imaging, a followup of five years is suggested (Conditional recommendation, very low certainty in evidence of effects).
+      </section>
+    </article></main>`;
+  const cuaHtmlSourceFixture = {
+    label: "CUA 2023 PMC HTML",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/?report=reader",
+    mediaType: "text/html",
+    userAgent: "Radulator-Bosniak-CUA-2023-source-audit/1",
+    maxBytes: SOURCE_MAX_BYTES,
+  };
+  assert.equal(
+    MANAGEMENT_SOURCE.url,
+    cuaHtmlSourceFixture.url,
+    "the CUA live source must be the exact PMC reader URL",
+  );
+  assert.equal(
+    MANAGEMENT_SOURCE.mediaType,
+    cuaHtmlSourceFixture.mediaType,
+    "the CUA live source must accept HTML rather than the intermittent publisher PDF",
+  );
+  const cuaFixtureResult = await fetchManagementHtml({
+      fetchImpl: sequenceFetch([
+        mockResponse({ body: cuaHtmlFixture, url: cuaHtmlSourceFixture.url }),
+      ]),
+      sleepImpl: noWait,
+      verifyDigest: false,
+  });
+  assert.equal(cuaFixtureResult.canonical.length > 0, true, "CUA PMC HTML fixture has canonical article text");
+  assert.deepEqual(
+    cuaFixtureResult.sourceTextVerification,
+    SOURCE_TEXT_VERIFICATION.cua,
+    "CUA PMC HTML fixture matches the pinned section contracts",
+  );
+  const nonceVariantResult = await fetchManagementHtml({
+    fetchImpl: sequenceFetch([
+      mockResponse({ body: cuaHtmlFixture.replace(/cua-runner-one/g, "cua-runner-two"), url: cuaHtmlSourceFixture.url }),
+    ]),
+    sleepImpl: noWait,
+    verifyDigest: false,
+  });
+  assert.equal(nonceVariantResult.canonical.length, cuaFixtureResult.canonical.length);
+  assert.equal(nonceVariantResult.canonicalSha256, cuaFixtureResult.canonicalSha256);
+  assert.notEqual(
+    sha256(Buffer.from(cuaHtmlFixture)),
+    sha256(Buffer.from(cuaHtmlFixture.replace(/cua-runner-one/g, "cua-runner-two"))),
+    "volatile CUA HTML wrapper bytes must not be treated as its canonical digest",
+  );
+
+  const semanticChangeFixture = cuaHtmlFixture.replace("yearly if the cyst is stable", "yearly when the cyst is stable");
+  const semanticChangeResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+    mockResponse({ body: semanticChangeFixture, url: MANAGEMENT_SOURCE.url }),
+  );
+  const semanticChangeCalls = [];
+  await assert.rejects(
+    fetchManagementHtml({
+      fetchImpl: sequenceFetch(semanticChangeResponses, semanticChangeCalls),
+      sleepImpl: noWait,
+    }),
+    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 canonical article text length drifted/,
+    "semantic CUA article changes fail the pinned canonical digest",
+  );
+  assert.equal(semanticChangeCalls.length, RETRY_ATTEMPTS, "semantic digest drift uses bounded retries");
+  const semanticChangeCanonical = Buffer.from(articleBodyText(semanticChangeFixture, "CUA 2023 PMC"), "utf8");
+  assert.notEqual(
+    cuaFixtureResult.canonicalSha256,
+    sha256(semanticChangeCanonical),
+    "semantic CUA article changes alter the canonical digest",
+  );
+
+  const wrongCuaIdentityResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+    mockResponse({
+      body: cuaHtmlFixture.replace("10.5489/cuaj.8389", "10.5489/cuaj.wrong"),
+      url: MANAGEMENT_SOURCE.url,
+    }),
+  );
+  const wrongCuaIdentityCalls = [];
+  await assert.rejects(
+    fetchManagementHtml({
+      fetchImpl: sequenceFetch(wrongCuaIdentityResponses, wrongCuaIdentityCalls),
+      sleepImpl: noWait,
+      verifyDigest: false,
+    }),
+    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 DOI identity drifted/,
+    "CUA PMC HTML identity drift is rejected",
+  );
+  assert.equal(wrongCuaIdentityCalls.length, RETRY_ATTEMPTS);
+
+  const wrongCuaUrlResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+    mockResponse({
+      body: cuaHtmlFixture,
+      url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/?report=reader&variant=1",
+    }),
+  );
+  const wrongCuaUrlCalls = [];
+  await assert.rejects(
+    fetchManagementHtml({
+      fetchImpl: sequenceFetch(wrongCuaUrlResponses, wrongCuaUrlCalls),
+      sleepImpl: noWait,
+      verifyDigest: false,
+    }),
+    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 PMC HTML final URL is not exact/,
+    "CUA PMC HTML wrong final URL is rejected",
+  );
+  assert.equal(wrongCuaUrlCalls.length, RETRY_ATTEMPTS);
+  assert.deepEqual(
+    wrongCuaUrlResponses.map(({ stats }) => stats.cancelCount),
+    [1, 1, 1],
+    "every CUA wrong-final-URL response cancels its unread body",
+  );
+
+  const movedCuaLocatorFixture = cuaHtmlFixture.replace('id="sec15"', 'id="sec99"');
+  const movedCuaLocatorResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+    mockResponse({ body: movedCuaLocatorFixture, url: MANAGEMENT_SOURCE.url }),
+  );
+  const movedCuaLocatorCalls = [];
+  await assert.rejects(
+    fetchManagementHtml({
+      fetchImpl: sequenceFetch(movedCuaLocatorResponses, movedCuaLocatorCalls),
+      sleepImpl: noWait,
+      verifyDigest: false,
+    }),
+    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 PMC HTML locator section#sec15 must occur exactly once \(found 0\)/,
+    "CUA recommendations moved out of sec15 are rejected",
+  );
+  assert.equal(movedCuaLocatorCalls.length, RETRY_ATTEMPTS);
+
+  const duplicateCuaLocatorFixture = cuaHtmlFixture.replace(
+    "</article>",
+    '<section id="sec15">duplicate locator</section></article>',
+  );
+  const duplicateCuaLocatorResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+    mockResponse({ body: duplicateCuaLocatorFixture, url: MANAGEMENT_SOURCE.url }),
+  );
+  const duplicateCuaLocatorCalls = [];
+  await assert.rejects(
+    fetchManagementHtml({
+      fetchImpl: sequenceFetch(duplicateCuaLocatorResponses, duplicateCuaLocatorCalls),
+      sleepImpl: noWait,
+      verifyDigest: false,
+    }),
+    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 PMC HTML locator section#sec15 must occur exactly once \(found 2\)/,
+    "duplicate CUA section IDs are rejected",
+  );
+  assert.equal(duplicateCuaLocatorCalls.length, RETRY_ATTEMPTS);
+
+  const cuaChallenge = `${"<html><title>Preparing to download...</title>"}${"x".repeat(MANAGEMENT_SOURCE.minBytes)}</html>`;
+  const cuaChallengeResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+    mockResponse({ body: cuaChallenge, url: MANAGEMENT_SOURCE.url }),
+  );
+  const cuaChallengeCalls = [];
+  await assert.rejects(
+    fetchManagementHtml({
+      fetchImpl: sequenceFetch(cuaChallengeResponses, cuaChallengeCalls),
+      sleepImpl: noWait,
+      verifyDigest: false,
+    }),
+    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 journal identity drifted/,
+    "CUA PMC challenge/variant body is rejected",
+  );
+  assert.equal(cuaChallengeCalls.length, RETRY_ATTEMPTS);
+  assert.deepEqual(
+    cuaChallengeResponses.map(({ stats }) => stats.cancelCount),
+    [0, 0, 0],
+    "fully consumed CUA challenge bodies do not require a second cleanup",
+  );
   const misplacedClassificationFixture = fixtureOne
     .replace('id="s5"', 'id="swapped-s5"')
     .replace('id="sec17"', 'id="s5"')
@@ -703,17 +865,17 @@ async function runSelfTests() {
     mockResponse({
       body: "wrong media body",
       url: MANAGEMENT_SOURCE.url,
-      contentType: "text/html",
+      contentType: "application/pdf",
     }),
   );
   const wrongMediaCalls = [];
   await assert.rejects(
-    fetchManagementPdf({
+    fetchManagementHtml({
       fetchImpl: sequenceFetch(wrongMediaResponses, wrongMediaCalls),
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /CUA 2023 publisher PDF retrieval failed after 3 attempts \(CUA 2023 publisher PDF media type/,
+    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 PMC HTML media type/,
   );
   assert.equal(wrongMediaCalls.length, RETRY_ATTEMPTS, "wrong media type uses bounded retries");
   assert.deepEqual(
@@ -733,7 +895,7 @@ async function runSelfTests() {
   );
   const redirectedCalls = [];
   await assert.rejects(
-    fetchManagementPdf({
+    fetchManagementHtml({
       fetchImpl: sequenceFetch(redirectedResponses, redirectedCalls),
       sleepImpl: noWait,
       verifyDigest: false,
@@ -756,7 +918,7 @@ async function runSelfTests() {
   });
   const notFoundCalls = [];
   await assert.rejects(
-    fetchManagementPdf({
+    fetchManagementHtml({
       fetchImpl: sequenceFetch([notFound], notFoundCalls),
       sleepImpl: noWait,
       verifyDigest: false,
@@ -799,7 +961,7 @@ if (process.argv.includes("--self-test")) {
 } else {
   const [classificationSource, managementSource] = await Promise.all([
     fetchClassificationHtml(),
-    fetchManagementPdf(),
+    fetchManagementHtml(),
   ]);
 
   const fixture = JSON.parse(await readFile(FIXTURE_PATH, "utf8"));
@@ -834,11 +996,10 @@ if (process.argv.includes("--self-test")) {
       host: MANAGEMENT_SOURCE.host,
       path: MANAGEMENT_SOURCE.path,
       media_type: MANAGEMENT_SOURCE.mediaType,
-      raw_source_bytes: managementSource.bytes.length,
-      raw_source_sha256: sha256(managementSource.bytes),
+      raw_source_min_bytes: MANAGEMENT_SOURCE.minBytes,
+      raw_source_max_bytes: MANAGEMENT_SOURCE.maxBytes,
       canonical_source_bytes: managementSource.canonical.length,
       canonical_source_sha256: managementSource.canonicalSha256,
-      page_count: managementSource.pageCount,
     },
   ];
   const audit = {
@@ -849,9 +1010,6 @@ if (process.argv.includes("--self-test")) {
     source_bytes: {
       silverman: classificationSource.bytes.length,
       cua: managementSource.bytes.length,
-    },
-    source_sha256: {
-      cua: sha256(managementSource.bytes),
     },
     source_canonical_bytes: {
       silverman: classificationSource.canonical.length,
