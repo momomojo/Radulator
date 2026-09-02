@@ -486,6 +486,86 @@ class LifecycleLedgerTests(unittest.TestCase):
         self.assertEqual([cmd[2] for cmd in commands].count("link"), 1)
         self.assertEqual([cmd[2] for cmd in commands].count("promote"), 1)
 
+    def test_terminal_generic_reconciliation_gets_one_open_idempotent_replacement(self):
+        event = self.append("feedback", 0)
+        action = lifecycle_module._reconciliation_action(event)
+        repair_key = action["idempotency_key"] + ":repair:t_terminal"
+        repair_body = action["body"] + (
+            "\n\nRecovery: this open corrective prerequisite preserves and "
+            "supersedes prematurely terminal prerequisite t_terminal; "
+            "do not rewrite or delete its history."
+        )
+        tasks = {
+            "t_parent": {
+                "task": {"id": "t_parent", "status": "archived"},
+                "parents": ["t_unrelated_tracker_prerequisite"],
+            },
+            "t_terminal": trusted_prerequisite_readback(
+                action, "t_terminal", status="done",
+            ),
+            "t_replacement": trusted_prerequisite_readback(
+                action,
+                "t_replacement",
+                body=repair_body,
+                idempotency_key=repair_key,
+                status="todo",
+                parents=("t_unrelated_reconciliation_prerequisite",),
+            ),
+        }
+        commands = []
+        repair_ids = []
+
+        def runner(command):
+            commands.append(command)
+            args = command[2:]
+            if args[0] == "create":
+                key = args[args.index("--idempotency-key") + 1]
+                if key == action["idempotency_key"]:
+                    task_id = "t_terminal"
+                elif key == repair_key:
+                    task_id = "t_replacement"
+                    repair_ids.append(task_id)
+                else:
+                    return subprocess.CompletedProcess(command, 1, "", "unexpected key")
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks[task_id]), "",
+                )
+            if args[0] == "show":
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps(tasks[args[1]]), "",
+                )
+            if args[0] == "link":
+                parent_id, child_id = args[1:3]
+                if parent_id not in tasks[child_id]["parents"]:
+                    tasks[child_id]["parents"].append(parent_id)
+                return subprocess.CompletedProcess(command, 0, "ok", "")
+            if args[0] == "promote":
+                tasks[args[1]]["task"]["status"] = "ready"
+                return subprocess.CompletedProcess(
+                    command, 0, json.dumps({"ok": True}), "",
+                )
+            return subprocess.CompletedProcess(command, 1, "", "unexpected mutation")
+
+        adapter = HermesKanbanCLI(runner=runner)
+        first = adapter.perform(action)
+        replayed = adapter.perform(action)
+
+        self.assertTrue(action.get("requires_open_prerequisite"))
+        self.assertEqual(first["task_id"], "t_replacement")
+        self.assertEqual(replayed["task_id"], "t_replacement")
+        self.assertEqual(first["status"], "ready")
+        self.assertEqual(first["superseded_task_ids"], ["t_terminal"])
+        self.assertEqual(first["idempotency_key"], repair_key)
+        self.assertEqual(set(repair_ids), {"t_replacement"})
+        self.assertEqual(len(repair_ids), 2)
+        self.assertEqual(
+            tasks["t_parent"]["parents"],
+            ["t_unrelated_tracker_prerequisite", "t_replacement"],
+        )
+        self.assertEqual(tasks["t_terminal"]["parents"], [])
+        self.assertEqual([cmd[2] for cmd in commands].count("link"), 1)
+        self.assertEqual([cmd[2] for cmd in commands].count("promote"), 1)
+
     def test_blocked_smoke_phase_resumes_exactly_and_completes_learning(self):
         states = [
             "feedback", "implementing", "testing", "review", "approved",

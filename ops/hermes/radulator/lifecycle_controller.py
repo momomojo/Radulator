@@ -958,6 +958,7 @@ def _reconciliation_action(event: LifecycleEvent) -> dict[str, Any]:
             "state, restore a runnable corrective obligation, and do not infer deployment, smoke, learning, or completion."
         ),
         "head_sha": event.head_sha,
+        "requires_open_prerequisite": True,
         "assignee": "radulator",
         "priority": 100,
         "created_by": "radulator-lifecycle",
@@ -1259,6 +1260,7 @@ def actions_for_event(event: LifecycleEvent) -> list[dict[str, Any]]:
                 "pr": event.pr,
                 "head_sha": event.head_sha,
                 "verdict_id": verdict_id,
+                "requires_open_prerequisite": True,
                 "assignee": "codex-coding",
                 "priority": 90,
                 "max_runtime": "45m",
@@ -1758,7 +1760,8 @@ class HermesKanbanCLI:
             )
             superseded_task_ids: list[str] = []
             status = _task_status(prerequisite, prerequisite_id)
-            if action.get("verdict_id") and status in TERMINAL_KANBAN_STATUSES:
+            requires_open_prerequisite = action.get("requires_open_prerequisite", False)
+            if requires_open_prerequisite and status in TERMINAL_KANBAN_STATUSES:
                 terminal_id = prerequisite_id
                 superseded_task_ids.append(terminal_id)
                 recovery_body = action["body"] + (
@@ -1807,7 +1810,7 @@ class HermesKanbanCLI:
                 prerequisite = self.show(prerequisite_id)
                 status = _task_status(prerequisite, prerequisite_id)
             allowed_statuses = {"ready", "running", "review"}
-            if not action.get("verdict_id"):
+            if not requires_open_prerequisite:
                 allowed_statuses.update({"done", "archived"})
             if status not in allowed_statuses:
                 raise LedgerError(
