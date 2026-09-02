@@ -78,7 +78,7 @@ test.describe("ResultDisplay severity regression coverage", () => {
     await expect(resultRegion(page)).toHaveCount(0);
   });
 
-  test("renders invalid calculator output with error severity styling", async ({
+  test("renders invalid calculator output without result actions", async ({
     page,
   }) => {
     await navigateToCalculator(page, "DLP to Effective Dose");
@@ -89,6 +89,15 @@ test.describe("ResultDisplay severity regression coverage", () => {
     await expect(primaryResultCard(page)).toHaveClass(/--result-danger-bg/);
     await expect(primaryResultCard(page)).toHaveClass(
       /--result-danger-border/,
+    );
+    await expect(page.getByRole("button", { name: "Copy results" })).toHaveCount(
+      0,
+    );
+    await expect(
+      page.getByRole("button", { name: "Copy Report Snippet" }),
+    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Print Results" })).toHaveCount(
+      0,
     );
   });
 });

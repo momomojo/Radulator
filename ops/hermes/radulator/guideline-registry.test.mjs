@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { digest } from "../../../scripts/release-policy.mjs";
 import { pathToFileURL } from "node:url";
 
 const root = process.cwd();
@@ -53,6 +54,351 @@ const allowedEvidenceDimensions = new Set([
   "version",
 ]);
 
+function assertFleischnerReviewedEvidenceLink(evidence, label) {
+  const link = evidence.reviewed_evidence;
+  assert.equal(typeof link, "object", `${label}.reviewed_evidence is required`);
+  assert.equal(
+    link.schema,
+    "radulator-reviewed-source-evidence-link/v3",
+    `${label}.reviewed_evidence.schema`,
+  );
+  assert.equal(
+    link.manifest_path,
+    "docs/evidence/fleischner-2017-reviewed-evidence.json",
+    `${label}.reviewed_evidence.manifest_path`,
+  );
+  assert.equal(
+    link.ci_primary_full_text_verified,
+    true,
+    `${label}.reviewed_evidence must record the hash-pinned RSNA-origin Memento verification`,
+  );
+
+  const manifestPath = path.join(root, link.manifest_path);
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  assert.equal(manifest.schema, "radulator-reviewed-source-evidence/v3");
+  assert.equal(manifest.payload.calculator_id, "fleischner");
+  assert.equal(manifest.payload.scope, "source-interpretation-and-product-invariants");
+  assert.equal(manifest.review.schema, "radulator-independent-source-review/v1");
+  assert.equal(
+    manifest.review.disposition,
+    "SOURCE_INTERPRETATION_APPROVED",
+    `${label}: reviewed source interpretation must remain independently approved`,
+  );
+  assert.equal(manifest.review.release_authority, "none");
+  assert.equal(
+    digest(manifest.payload),
+    manifest.review.payload_sha256,
+    `${label}.reviewed_evidence manifest payload digest`,
+  );
+  assert.equal(
+    link.payload_sha256,
+    manifest.review.payload_sha256,
+    `${label}.reviewed_evidence.payload_sha256`,
+  );
+  assert.equal(
+    link.reviewer_revision,
+    manifest.review.reviewer_revision,
+    `${label}.reviewed_evidence.reviewer_revision`,
+  );
+  assert.equal(
+    link.reviewed_at,
+    manifest.review.reviewed_at,
+    `${label}.reviewed_evidence.reviewed_at`,
+  );
+  assert.equal(
+    link.review_scope,
+    manifest.payload.scope,
+    `${label}.reviewed_evidence.review_scope`,
+  );
+  assert.equal(
+    link.review_disposition,
+    manifest.review.disposition,
+    `${label}.reviewed_evidence.review_disposition`,
+  );
+  assert.equal(
+    link.release_authority,
+    manifest.review.release_authority,
+    `${label}.reviewed_evidence.release_authority`,
+  );
+  const literalAssertions = manifest.payload.claims.flatMap(
+    (claim) => claim.source_text_assertions,
+  );
+  assert.equal(link.literal_source_claim_count, 12);
+  assert.equal(link.locator_assertion_count, literalAssertions.length);
+  assert.equal(
+    link.required_snippet_count,
+    literalAssertions.flatMap((binding) => binding.required_snippets).length,
+  );
+
+  const primarySources = manifest.payload.sources.filter(
+    (source) => source.review_transport === "ci-http-memento",
+  );
+  assert.equal(primarySources.length, 2, `${label}: both RSNA-origin primary sources are required`);
+  assert.ok(
+    primarySources.every(
+      (source) => source.ci_full_text_fetched === true && Array.isArray(source.artifacts),
+    ),
+    `${label}: hash-pinned Memento full text must be CI-retrievable`,
+  );
+
+  const primaryArtifacts = primarySources.flatMap((source) => source.artifacts);
+  assert.deepEqual(
+    primaryArtifacts.map((artifact) => [
+      artifact.id,
+      artifact.origin_url,
+      artifact.retrieval_url,
+      artifact.retrieval_host,
+      artifact.rel_original_verified,
+      artifact.media_type,
+      artifact.content_bytes,
+      artifact.content_sha256,
+      artifact.direct_origin_fetch_status,
+    ]),
+    [
+      [
+        "guideline-vor-pdf",
+        "https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+        "https://web.archive.org/web/20211217024152id_/https://pubs.rsna.org/doi/pdf/10.1148/radiol.2017161659",
+        "web.archive.org",
+        true,
+        "application/pdf",
+        1983895,
+        "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+        403,
+      ],
+      [
+        "measurement-fulltext",
+        "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+        "https://web.archive.org/web/20220119075636id_/https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+        "web.archive.org",
+        true,
+        "text/html",
+        318344,
+        "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1",
+        403,
+      ],
+      [
+        "measurement-figure-1",
+        "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+        "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+        "web.archive.org",
+        true,
+        "image/gif",
+        62198,
+        "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+        403,
+      ],
+    ],
+    `${label}: primary artifacts must preserve exact origins, Memento retrievals, and hashes`,
+  );
+  assert.deepEqual(
+    link.primary_artifacts,
+    primaryArtifacts,
+    `${label}: registry must mirror the manifest primary-artifact records exactly`,
+  );
+  assert.ok(
+    !primaryArtifacts.some(
+      (artifact) =>
+        artifact.media_type === "application/pdf" &&
+        artifact.origin_url.includes("radiol.2017162894"),
+    ),
+    `${label}: no measurement-statement PDF was pinned or reviewed`,
+  );
+
+  const manifestClaimKeys = [
+    "id",
+    "source_url",
+    "source_sha256",
+    "source_locator",
+    "direct_source_fact",
+    "source_text_assertions",
+    "reviewed_synthesis",
+    "vector_ids",
+  ];
+  assert.equal(manifest.payload.claims.length, 12, `${label}: manifest must contain 12 claims`);
+  assert.ok(
+    manifest.payload.claims.every((claim) => /^[a-f0-9]{64}$/.test(claim.source_sha256)),
+    `${label}: every source claim must bind an exact SHA-256 artifact`,
+  );
+  assert.equal(
+    evidence.claims.length,
+    manifest.payload.claims.length,
+    `${label}: registry claim count must match the reviewed manifest`,
+  );
+  for (const [index, registryClaim] of evidence.claims.entries()) {
+    assert.deepEqual(
+      Object.keys(registryClaim).sort(),
+      [...manifestClaimKeys, "dimensions", "fact"].sort(),
+      `${label}: ${registryClaim.id} must carry only reviewed fields and its compatibility metadata`,
+    );
+    const { dimensions: _dimensions, fact, ...reviewedClaim } = registryClaim;
+    assert.equal(
+      fact,
+      reviewedClaim.reviewed_synthesis,
+      `${label}: ${registryClaim.id} compatibility fact must exactly alias the reviewed synthesis`,
+    );
+    assert.deepEqual(
+      reviewedClaim,
+      manifest.payload.claims[index],
+      `${label}: ${registryClaim.id} must deep-match every reviewed manifest field`,
+    );
+  }
+
+  assert.deepEqual(
+    link.reviewed_transcriptions,
+    manifest.payload.reviewed_transcriptions,
+    `${label}: registry link must mirror reviewed raster transcriptions`,
+  );
+  assert.deepEqual(
+    evidence.reviewed_transcriptions,
+    manifest.payload.reviewed_transcriptions,
+    `${label}: implementation evidence must mirror reviewed raster transcriptions`,
+  );
+
+  assert.deepEqual(
+    evidence.implementation_invariants,
+    manifest.payload.implementation_invariants,
+    `${label}: registry implementation invariants must exactly match the reviewed manifest`,
+  );
+  assert.deepEqual(
+    manifest.payload.implementation_invariants.map((invariant) => invariant.id),
+    [
+      "fleischner-input-completeness-fail-closed",
+      "fleischner-nodule-domain-boundary",
+      "fleischner-measurement-input-geometry",
+      "fleischner-state-consistency-fail-closed",
+    ],
+    `${label}: reviewed product invariants must remain explicit and separate from source claims`,
+  );
+
+  const fixture = JSON.parse(readFileSync(path.join(root, evidence.fixture_path), "utf8"));
+  const fixtureVectorIds = fixture.cases.map((testCase) => testCase.id).sort();
+  assert.equal(fixtureVectorIds.length, 113, `${label}: Fleischner fixture must contain 113 cases`);
+  assert.equal(new Set(fixtureVectorIds).size, 113, `${label}: Fleischner fixture ids must be unique`);
+  assert.deepEqual(
+    [...manifest.payload.runtime_contract.reviewed_vector_ids].sort(),
+    fixtureVectorIds,
+    `${label}: reviewed runtime vector set must exactly match the fixture`,
+  );
+  assert.equal(
+    link.reviewed_vectors_sha256,
+    manifest.payload.runtime_contract.reviewed_vectors_sha256,
+    `${label}.reviewed_evidence.reviewed_vectors_sha256`,
+  );
+  assert.equal(link.reviewed_vector_count, 113, `${label}.reviewed_evidence.reviewed_vector_count`);
+
+  const boundVectorIds = new Set([
+    ...manifest.payload.claims.flatMap((claim) => claim.vector_ids),
+    ...manifest.payload.implementation_invariants.flatMap((invariant) => invariant.vector_ids),
+  ]);
+  assert.deepEqual(
+    [...boundVectorIds].sort(),
+    fixtureVectorIds,
+    `${label}: the exact claim-plus-invariant union must cover all fixture vectors`,
+  );
+
+  const partSolidClaim = manifest.payload.claims.find(
+    (claim) => claim.id === "fleischner-2017-part-solid-component-escalation",
+  );
+  assert.ok(
+    partSolidClaim.reviewed_synthesis.includes(
+      "a visually new component without mislabeling visual change as measured growth",
+    ),
+    `${label}: new-only components must not be presented as established growth`,
+  );
+  assert.ok(
+    partSolidClaim.vector_ids.includes(
+      "part-solid-measured-new-component-considers-resection-without-growth-claim",
+    ),
+    `${label}: measured new-only component regression must remain source-bound`,
+  );
+
+  const measurementClaim = manifest.payload.claims.find(
+    (claim) => claim.id === "fleischner-2017-measurement-contract",
+  );
+  assert.ok(
+    measurementClaim.direct_source_fact.includes(
+      "averaged long- and short-axis measurements below 10 mm, both axes at or above 10 mm",
+    ),
+    `${label}: measurement wording must distinguish averaging from the >=10 mm recording rule`,
+  );
+  assert.ok(
+    measurementClaim.reviewed_synthesis.includes(
+      "externally established volumetry remains a product contract rather than a literal source claim",
+    ),
+    `${label}: registry must not claim that Radulator calculates or validates volumetry`,
+  );
+  assert.deepEqual(
+    manifest.payload.reviewed_transcriptions,
+    [
+      {
+        id: "fleischner-measurement-figure1-solid-component",
+        claim_id: "fleischner-2017-measurement-contract",
+        artifact_id: "measurement-figure-1",
+        artifact_sha256:
+          "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+        review_mode: "hash-bound-reviewed-raster-transcription",
+        width: 387,
+        height: 500,
+        transcription:
+          "For all part-solid nodules, the maximum diameter of the solid component should be measured if this component is >3 mm, understanding that measurements may be unreliable for small solid components. Dimensions of both solid and nonsolid components should be recorded to document change in the future (grade 2B evidence).",
+        vector_ids: [
+          "part-solid-categorical-lte3-component-avoids-false-precision",
+          "part-solid-measured-component-at-3-mm-rejected",
+        ],
+      },
+    ],
+    `${label}: reviewed raster transcription must remain hash and dimension bound`,
+  );
+
+  const expectedDimensions = new Map([
+    ["fleischner-2017-applicability", ["scope", "management", "output"]],
+    [
+      "fleischner-2017-characterization-and-ipln",
+      ["scope", "classification", "management", "output"],
+    ],
+    [
+      "fleischner-2017-solid-table",
+      ["threshold", "boundary", "interval", "management", "output"],
+    ],
+    [
+      "fleischner-2017-multiple-nodule-routing",
+      ["model-input", "threshold", "boundary", "management", "output"],
+    ],
+    [
+      "fleischner-2017-subsolid-table",
+      ["classification", "threshold", "interval", "duration", "management", "output"],
+    ],
+    [
+      "fleischner-2017-selected-subsolid-escalation",
+      ["classification", "threshold", "management", "output"],
+    ],
+    [
+      "fleischner-2017-part-solid-component-escalation",
+      ["classification", "threshold", "boundary", "management", "output"],
+    ],
+    ["fleischner-2017-risk-selection", ["model-input", "classification", "scope", "output"]],
+    [
+      "fleischner-2017-measurement-contract",
+      ["model-input", "unit", "threshold", "scope", "output"],
+    ],
+    [
+      "fleischner-2017-very-small-nodule-measurement",
+      ["model-input", "unit", "threshold", "scope", "output"],
+    ],
+    ["nlm-fleischner-solid-table-cross-check", ["version", "threshold", "interval", "management"]],
+    [
+      "nlm-fleischner-subsolid-table-cross-check",
+      ["version", "classification", "duration", "management"],
+    ],
+  ]);
+  assert.deepEqual(
+    evidence.claims.map((claim) => [claim.id, claim.dimensions]),
+    [...expectedDimensions],
+    `${label}: registry claims must preserve the reviewed evidence dimensions`,
+  );
+}
+
 function calculatorMetadata() {
   return readdirSync(calculatorDirectory)
     .filter((filename) => filename.endsWith(".jsx"))
@@ -93,6 +439,11 @@ function assertComputeExpectation(result, expectation, context) {
   }
   if (expectation.noError === false) {
     assert.equal(hasError, true, `${context}: expected an Error result`);
+    assert.deepEqual(
+      Object.keys(result).sort(),
+      ["Error"],
+      `${context}: error result must contain only Error`,
+    );
   }
 
   assert.ok(
@@ -122,6 +473,20 @@ function assertComputeExpectation(result, expectation, context) {
     }
   }
 }
+
+assert.throws(
+  () =>
+    assertComputeExpectation(
+      { Error: "invalid input", Recommendation: "unsafe schedule" },
+      {
+        noError: false,
+        fields: [{ key: "Error", includes: "invalid" }],
+      },
+      "mixed-error-output",
+    ),
+  /error result must contain only Error/i,
+  "registry evidence must reject an error result that also carries a clinical recommendation",
+);
 
 function parseLinearPredictorTerms(calculatorSource, label) {
   const functionStart = calculatorSource.indexOf(
@@ -290,6 +655,8 @@ async function assertExecutableImplementationEvidence(record, calculator) {
   const claimsBySource = new Map();
   const claimIds = new Set();
   const vectorIds = new Set();
+  const usesReviewedClaimSchema =
+    evidence.reviewed_evidence?.schema === "radulator-reviewed-source-evidence-link/v3";
   for (const [claimIndex, claim] of evidence.claims.entries()) {
     const claimLabel = `${label}.claims[${claimIndex}]`;
     assertBoundedString(claim.id, `${claimLabel}.id`, 3, 80);
@@ -310,7 +677,32 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       );
     }
     assertBoundedString(claim.source_locator, `${claimLabel}.source_locator`, 3, 240);
-    assertBoundedString(claim.fact, `${claimLabel}.fact`, 20, 400);
+    if (usesReviewedClaimSchema) {
+      assertBoundedString(claim.fact, `${claimLabel}.fact`, 20, 400);
+      assertBoundedString(
+        claim.direct_source_fact,
+        `${claimLabel}.direct_source_fact`,
+        20,
+        400,
+      );
+      assertBoundedString(
+        claim.reviewed_synthesis,
+        `${claimLabel}.reviewed_synthesis`,
+        20,
+        400,
+      );
+      assert.equal(
+        claim.fact,
+        claim.reviewed_synthesis,
+        `${claimLabel}.fact must exactly alias the reviewed synthesis`,
+      );
+      assert.ok(
+        Array.isArray(claim.source_text_assertions) && claim.source_text_assertions.length > 0,
+        `${claimLabel}.source_text_assertions must bind reviewed literal text`,
+      );
+    } else {
+      assertBoundedString(claim.fact, `${claimLabel}.fact`, 20, 400);
+    }
     assert.ok(
       Array.isArray(claim.dimensions) && claim.dimensions.length >= 1 && claim.dimensions.length <= 6,
       `${claimLabel}.dimensions must contain 1-6 entries`,
@@ -333,6 +725,40 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     }
     if (!claimsBySource.has(claim.source_url)) claimsBySource.set(claim.source_url, 0);
     claimsBySource.set(claim.source_url, claimsBySource.get(claim.source_url) + 1);
+  }
+
+  const implementationInvariants = evidence.implementation_invariants ?? [];
+  assert.ok(
+    Array.isArray(implementationInvariants) && implementationInvariants.length <= 6,
+    `${label}.implementation_invariants must contain at most 6 entries`,
+  );
+  const invariantIds = new Set();
+  for (const [invariantIndex, invariant] of implementationInvariants.entries()) {
+    const invariantLabel = `${label}.implementation_invariants[${invariantIndex}]`;
+    assertBoundedString(invariant.id, `${invariantLabel}.id`, 3, 80);
+    assert.match(
+      invariant.id,
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      `${invariantLabel}.id must be kebab-case`,
+    );
+    assert.ok(!invariantIds.has(invariant.id), `${invariantLabel}.id must be unique`);
+    invariantIds.add(invariant.id);
+    assertBoundedString(invariant.fact, `${invariantLabel}.fact`, 20, 400);
+    assert.ok(
+      Array.isArray(invariant.vector_ids) &&
+        invariant.vector_ids.length >= 1 &&
+        invariant.vector_ids.length <= 24,
+      `${invariantLabel}.vector_ids must contain 1-24 executable case ids`,
+    );
+    assert.equal(
+      new Set(invariant.vector_ids).size,
+      invariant.vector_ids.length,
+      `${invariantLabel}.vector_ids must not contain duplicates`,
+    );
+    for (const vectorId of invariant.vector_ids) {
+      assertBoundedString(vectorId, `${invariantLabel}.vector_ids[]`, 3, 100);
+      vectorIds.add(vectorId);
+    }
   }
 
   for (const source of record.sources.filter((item) =>
@@ -537,6 +963,75 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
     }
   }
+  if (record.calculator_id === "fleischner") {
+    assertFleischnerReviewedEvidenceLink(evidence, label);
+    const audit = evidence.source_audit;
+    const expectedSources = [
+      "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+      "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+      "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+      "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+    ];
+    assert.equal(typeof audit, "object", `${label}.source_audit is required`);
+    assert.equal(audit.schema, "radulator-live-source-audit/v2", `${label}.source_audit.schema`);
+    assert.equal(
+      audit.command,
+      "node scripts/audit-fleischner-primary-source.test.mjs",
+      `${label}.source_audit.command`,
+    );
+    assert.equal(
+      audit.authority,
+      "Fleischner Society and RSNA 2017 hash-pinned publisher-origin Memento artifacts with NLM open table cross-checks",
+      `${label}.source_audit.authority`,
+    );
+    assert.deepEqual(audit.source_urls, expectedSources, `${label}.source_audit.source_urls`);
+    assert.deepEqual(
+      audit.primary_metadata_dois,
+      ["10.1148/radiol.2017161659", "10.1148/radiol.2017162894"],
+      `${label}.source_audit.primary_metadata_dois`,
+    );
+    assert.equal(
+      audit.primary_full_text_fetched_by_ci,
+      true,
+      `${label}.source_audit must record CI retrieval of the hash-pinned RSNA-origin Mementos`,
+    );
+    assert.deepEqual(
+      audit.secondary_table_fragments,
+      {
+        "ch5.Tab1": {
+          bytes: 3153,
+          sha256: "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
+        },
+        "ch5.Tab2": {
+          bytes: 1912,
+          sha256: "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
+        },
+      },
+      `${label}.source_audit.secondary_table_fragments`,
+    );
+    assert.deepEqual(
+      audit.vector_ids,
+      [...casesById.keys()].sort(),
+      `${label}.source_audit.vector_ids`,
+    );
+    assert.equal(audit.source_bytes_committed, false, `${label}.source_audit.source_bytes_committed`);
+    assert.deepEqual(
+      audit.literal_source_verification,
+      {
+        audit_schema: "radulator-fleischner-primary-source-audit/v4",
+        parser: "pdfjs-dist/legacy/build/pdf.mjs",
+        parser_version: "4.10.38",
+        claim_count: 12,
+        locator_assertion_count: 27,
+        required_snippet_count: 37,
+        trusted_exact_head_check: "Smoke Tests",
+      },
+      `${label}.source_audit.literal_source_verification`,
+    );
+    for (const vectorId of audit.vector_ids) {
+      assert.ok(casesById.has(vectorId), `${label}.source_audit: missing vector ${vectorId}`);
+    }
+  }
   if (record.calculator_id === "contrast-dosing") {
     const audit = evidence.source_audit;
     const expectedSources = [
@@ -673,6 +1168,14 @@ for (const [calculatorId, expected] of Object.entries({
   "kidney-biopsy-bleeding-risk": {
     basis_type: "primary-model",
     source_url: "https://doi.org/10.1016/j.xkme.2026.101352",
+  },
+  fleischner: {
+    basis_type: "clinical-guideline",
+    last_verified: "2026-08-31",
+    source_urls: [
+      "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+      "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+    ],
   },
 })) {
   const record = recordsByCalculator.get(calculatorId);
