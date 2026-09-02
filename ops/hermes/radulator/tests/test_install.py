@@ -14,6 +14,7 @@ import threading
 import time
 import types
 import unittest
+import venv
 from pathlib import Path
 from unittest import mock
 
@@ -217,6 +218,45 @@ class InstallerTests(unittest.TestCase):
             "radulator_home": str(self.radulator_home),
             "repo": str(repo),
         }
+
+    def write_completion_contract_runtime(self):
+        venv_root = self.default_home / "hermes-agent" / "venv"
+        venv.EnvBuilder(with_pip=False).create(venv_root)
+        runtime_python = venv_root / "bin" / "python"
+        site_packages = Path(subprocess.check_output(
+            [str(runtime_python), "-I", "-c", "import site; print(site.getsitepackages()[0])"],
+            text=True,
+        ).strip())
+        hermes_cli = site_packages / "hermes_cli"
+        tools = site_packages / "tools"
+        hermes_cli.mkdir(parents=True)
+        tools.mkdir(parents=True)
+        (hermes_cli / "__init__.py").write_text("")
+        (tools / "__init__.py").write_text("")
+        (hermes_cli / "kanban_dedicated_broker.py").write_text(
+            "PUBLISH_CONTRACT = 'hermes.trusted_local_commit.v1'\n"
+            "PUBLISH_OBLIGATION_QUERY_CONTRACT = 'hermes.publisher_obligation_query.v1'\n"
+            "PUBLISH_CORRECTION_REQUEST_CONTRACT = 'hermes.publisher_correction_request.v1'\n"
+            "PUBLISH_ACK_CONTRACT = 'hermes.publisher_ack.v1'\n"
+            "PUBLISH_COMPLETION_QUERY_CONTRACT = 'hermes.publisher_completion_query.v1'\n"
+            "class DedicatedKanbanBroker:\n"
+            "    def list_publish_obligations(self): pass\n"
+            "    def request_publish_correction(self): pass\n"
+            "    def acknowledge_publish(self): pass\n"
+            "    def list_publish_completions(self): pass\n"
+        )
+        (hermes_cli / "kanban_broker_client.py").write_text(
+            "def load_broker_client(): pass\n"
+        )
+        (hermes_cli / "kanban_broker_routing.py").write_text(
+            "def list_publish_obligations(): pass\n"
+            "def request_publish_correction(): pass\n"
+            "def acknowledge_publish(): pass\n"
+            "def list_completion_obligations(): pass\n"
+        )
+        (tools / "kanban_worker_boundary.py").write_text(
+            "WORKER_GIT_SECURITY_BOUNDARY = 'hermes.worker_git_isolation.v1'\n"
+        )
 
     def legacy_v1_entries(self, plan, *, extra_target_id=None):
         targets = install_module._backup_targets(plan)
@@ -2374,6 +2414,19 @@ with lock_path.open('a+') as lock:
         self.assertNotIn("PYTHONHOME", invocation["env"])
         self.assertIn("__file__", command[-1])
         self.assertIn(str(self.default_home.resolve()), command[-1])
+
+    def test_activation_accepts_broker_class_completion_and_public_routing_contract(self):
+        repo = Path(self.temp.name) / "activation-repository"
+        repo.mkdir()
+        self.write_completion_contract_runtime()
+
+        try:
+            install_module._verify_broker_contract({
+                "radulator_home": str(self.radulator_home),
+                "repo": str(repo),
+            })
+        except InstallError as error:
+            self.fail(f"exact Hermes completion contract was rejected: {error}")
 
     def test_enable_requires_a_prior_disabled_first_publisher_install(self):
         plan = build_plan(**self.kwargs())

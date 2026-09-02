@@ -1291,7 +1291,7 @@ def _verify_broker_contract(plan: dict[str, Any], runner=None) -> None:
                     "and callable(getattr(module.DedicatedKanbanBroker, "
                     "'acknowledge_publish', None)) "
                     "and callable(getattr(module.DedicatedKanbanBroker, "
-                    "'list_completion_obligations', None))"
+                    "'list_publish_completions', None))"
                 ),
             ),
         ),
