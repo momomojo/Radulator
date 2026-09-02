@@ -17,6 +17,7 @@ export const ATTESTATION_MARKER = "<!-- radulator-clinical-attestation/v1 -->";
 
 const E2E_WORKFLOW_PATH = ".github/workflows/e2e-tests.yml";
 const E2E_WORKFLOW_FILE = "e2e-tests.yml";
+const E2E_WORKFLOW_NAME = "E2E Tests";
 const PUBLISHER_APP_ID = 15368;
 const PUBLISHER_USER_ID = 41898282;
 const ALLOWED_BASE_REFS = new Set(["develop", "main"]);
@@ -188,20 +189,20 @@ export function deriveStateEpoch(timeline, prCreatedAt) {
 }
 
 function runSort(left, right) {
-  const time = Date.parse(right.created_at) - Date.parse(left.created_at);
-  if (time) return time;
+  const id = right.id - left.id;
+  if (id) return id;
   const attempt = right.run_attempt - left.run_attempt;
   if (attempt) return attempt;
-  return right.id - left.id;
+  return Date.parse(right.created_at) - Date.parse(left.created_at);
 }
 
-export function resolveRequiredCi({ pr, workflowRuns, checkRuns, requiredCi, expectedWorkflowId, expectedCiAppId }) {
-  if (!positiveInteger(expectedWorkflowId) || !positiveInteger(expectedCiAppId)) {
-    return { ok: false, summary: "Expected E2E workflow/App identity is missing or malformed.", evidence: [] };
+function selectRequiredCiRun({ pr, workflowRuns, expectedWorkflowId }) {
+  if (!positiveInteger(expectedWorkflowId)) {
+    return { ok: false, summary: "Expected E2E workflow identity is missing or malformed.", evidence: [] };
   }
-
   const exactRuns = (workflowRuns || []).filter((run) =>
     run.workflow_id === expectedWorkflowId &&
+    run.name === E2E_WORKFLOW_NAME &&
     run.path === E2E_WORKFLOW_PATH &&
     run.event === "pull_request" &&
     run.head_sha === pr.headSha &&
@@ -224,6 +225,68 @@ export function resolveRequiredCi({ pr, workflowRuns, checkRuns, requiredCi, exp
   if (run.status !== "completed" || run.conclusion !== "success") {
     return { ok: false, summary: `Latest exact-head E2E run ${run.id} is ${run.status}/${run.conclusion || "none"}.`, evidence: [] };
   }
+  return { ok: true, run };
+}
+
+function authenticateAttemptJob({ job, name, run, pr, checkRuns, expectedCiAppId, expectedRepositoryFullName }) {
+  const expectedCheckRunUrl = typeof expectedRepositoryFullName === "string" &&
+    /^[^/]+\/[^/]+$/.test(expectedRepositoryFullName) && positiveInteger(job?.id)
+    ? `https://api.github.com/repos/${expectedRepositoryFullName}/check-runs/${job.id}`
+    : null;
+  if (
+    !positiveInteger(job?.id) ||
+    job.name !== name ||
+    job.run_id !== run.id ||
+    job.run_attempt !== run.run_attempt ||
+    job.head_sha !== pr.headSha ||
+    job.workflow_name !== E2E_WORKFLOW_NAME ||
+    !expectedCheckRunUrl ||
+    job.check_run_url !== expectedCheckRunUrl ||
+    job.status !== "completed" ||
+    job.conclusion !== "success"
+  ) return { ok: false, summary: `${name} job is not an exact completed success for attempt ${run.run_attempt}.` };
+
+  const matches = (checkRuns || []).filter((check) => check.id === job.id);
+  if (matches.length !== 1) {
+    return {
+      ok: false,
+      summary: `${name} check-run identity is ${matches.length ? "ambiguous" : "missing"} for attempt ${run.run_attempt}.`,
+    };
+  }
+  const check = matches[0];
+  if (
+    check.name !== name ||
+    check.check_suite?.id !== run.check_suite_id ||
+    check.app?.id !== expectedCiAppId ||
+    check.app?.slug !== "github-actions" ||
+    check.head_sha !== pr.headSha ||
+    check.status !== "completed" ||
+    check.conclusion !== "success" ||
+    !timestamp(check.completed_at)
+  ) return { ok: false, summary: `${name} check run is not an authenticated exact completed success.` };
+  return { ok: true, check };
+}
+
+export function resolveRequiredCi({
+  pr,
+  workflowRuns,
+  checkRuns,
+  attemptJobs,
+  requiredCi,
+  expectedWorkflowId,
+  expectedCiAppId,
+  expectedRepositoryFullName,
+}) {
+  if (!positiveInteger(expectedWorkflowId) || !positiveInteger(expectedCiAppId) ||
+    typeof expectedRepositoryFullName !== "string" || !/^[^/]+\/[^/]+$/.test(expectedRepositoryFullName)) {
+    return { ok: false, summary: "Expected repository/E2E workflow/App identity is missing or malformed.", evidence: [] };
+  }
+  if (pr.repositoryFullName !== expectedRepositoryFullName) {
+    return { ok: false, summary: "Pull-request repository identity does not match the trusted repository.", evidence: [] };
+  }
+  const selected = selectRequiredCiRun({ pr, workflowRuns, expectedWorkflowId });
+  if (!selected.ok) return selected;
+  const { run } = selected;
 
   const evidence = [];
   const evidenceRecord = (check) => ({
@@ -239,40 +302,35 @@ export function resolveRequiredCi({ pr, workflowRuns, checkRuns, requiredCi, exp
     completed_at: check.completed_at,
   });
   for (const name of requiredCi) {
-    const matches = (checkRuns || []).filter((check) => check.check_suite?.id === run.check_suite_id && check.name === name);
-    if (matches.length !== 1) {
-      return { ok: false, summary: `Required CI ${name} is ${matches.length ? "ambiguous" : "missing"} in E2E run ${run.id}.`, evidence: [] };
+    const matchingJobs = (attemptJobs || []).filter((job) => job?.name === name);
+    if (matchingJobs.length !== 1) {
+      return {
+        ok: false,
+        summary: `Required CI ${name} is ${matchingJobs.length ? "ambiguous" : "missing"} in E2E run ${run.id}, attempt ${run.run_attempt}.`,
+        evidence: [],
+      };
     }
-    const check = matches[0];
-    if (check.app?.id !== expectedCiAppId || check.app?.slug !== "github-actions") {
-      return { ok: false, summary: `Required CI ${name} has the wrong GitHub App identity.`, evidence: [] };
-    }
-    if (
-      !positiveInteger(check.id) ||
-      check.head_sha !== pr.headSha ||
-      check.status !== "completed" ||
-      check.conclusion !== "success" ||
-      !timestamp(check.completed_at)
-    ) return { ok: false, summary: `Required CI ${name} is not an exact completed success.`, evidence: [] };
-    evidence.push(evidenceRecord(check));
+    const authenticated = authenticateAttemptJob({
+      job: matchingJobs[0], name, run, pr, checkRuns, expectedCiAppId, expectedRepositoryFullName,
+    });
+    if (!authenticated.ok) return { ok: false, summary: `Required CI ${authenticated.summary}`, evidence: [] };
+    evidence.push(evidenceRecord(authenticated.check));
   }
 
   // Additional jobs from the same authenticated exact E2E run are review
   // context, not quorum inputs. Keeping them outside `evidence` preserves the
   // base policy digest while letting judges verify focused test/audit lanes.
   const requiredNames = new Set(requiredCi);
-  const supplementalEvidence = (checkRuns || [])
-    .filter((check) =>
-      check.check_suite?.id === run.check_suite_id &&
-      !requiredNames.has(check.name) &&
-      check.name !== REQUIRED_CONTEXT &&
-      typeof check.name === "string" && check.name &&
-      check.app?.id === expectedCiAppId && check.app?.slug === "github-actions" &&
-      positiveInteger(check.id) &&
-      check.head_sha === pr.headSha &&
-      check.status === "completed" &&
-      check.conclusion === "success" &&
-      timestamp(check.completed_at))
+  const supplementalEvidence = (attemptJobs || [])
+    .filter((job) =>
+      !requiredNames.has(job?.name) &&
+      job?.name !== REQUIRED_CONTEXT &&
+      typeof job?.name === "string" && job.name)
+    .map((job) => authenticateAttemptJob({
+      job, name: job.name, run, pr, checkRuns, expectedCiAppId, expectedRepositoryFullName,
+    }))
+    .filter((result) => result.ok)
+    .map((result) => result.check)
     .sort((left, right) => left.name.localeCompare(right.name) || left.id - right.id)
     .map(evidenceRecord);
 
@@ -463,15 +521,45 @@ export async function paged(token, path, key = null) {
   }
 }
 
+export async function countedPaged(token, path, key, request = githubRequest) {
+  if (typeof key !== "string" || !key) throw new Error("Counted pagination key is malformed.");
+  const result = [];
+  let expectedCount = null;
+  for (let page = 1; ; page += 1) {
+    const data = await request(token, `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`);
+    if (!data || typeof data !== "object" || Array.isArray(data) ||
+      !Number.isSafeInteger(data.total_count) || data.total_count < 0 ||
+      !Array.isArray(data[key])) {
+      throw new Error(`Expected counted paginated response at ${path}.`);
+    }
+    if (expectedCount === null) expectedCount = data.total_count;
+    if (data.total_count !== expectedCount) throw new Error(`Count changed during pagination at ${path}.`);
+    result.push(...data[key]);
+    if (result.length > expectedCount) throw new Error(`Counted pagination exceeded total_count at ${path}.`);
+    if (data[key].length < 100) {
+      if (result.length !== expectedCount) throw new Error(`Counted pagination did not match total_count at ${path}.`);
+      return result;
+    }
+  }
+}
+
 export function checkRunsPath(owner, repo, headSha) {
   if (!owner || !repo || !sha(headSha)) throw new Error("Check-run query identity is malformed.");
   return `/repos/${owner}/${repo}/commits/${headSha}/check-runs?filter=all`;
+}
+
+export function attemptJobsPath(owner, repo, runId, runAttempt) {
+  if (!owner || !repo || !positiveInteger(runId) || !positiveInteger(runAttempt)) {
+    throw new Error("Workflow-attempt jobs query identity is malformed.");
+  }
+  return `/repos/${owner}/${repo}/actions/runs/${runId}/attempts/${runAttempt}/jobs`;
 }
 
 function normalizePr(data, stateEpoch = null) {
   const labelState = relevantLabelsDigest(data.labels.map((label) => label.name));
   return {
     repositoryId: data.base.repo.id,
+    repositoryFullName: data.base.repo.full_name,
     number: data.number,
     changedFiles: data.changed_files,
     title: data.title,
@@ -531,13 +619,27 @@ export async function loadGateState(token, owner, repo, prNumber, config) {
   const pr = { ...basePr, stateEpoch };
   const normalizedFiles = files.map(normalizeFile);
   const requiredCi = requiredCiForPullRequest(pr, normalizedFiles);
+  const selected = selectRequiredCiRun({
+    pr,
+    workflowRuns,
+    expectedWorkflowId: config.expectedWorkflowId,
+  });
+  const attemptJobs = selected.ok
+    ? await countedPaged(
+      token,
+      attemptJobsPath(owner, repo, selected.run.id, selected.run.run_attempt),
+      "jobs",
+    )
+    : [];
   const ci = resolveRequiredCi({
     pr,
     workflowRuns,
     checkRuns,
+    attemptJobs,
     requiredCi,
     expectedWorkflowId: config.expectedWorkflowId,
     expectedCiAppId: config.expectedCiAppId,
+    expectedRepositoryFullName: `${owner}/${repo}`,
   });
   return {
     pr,
