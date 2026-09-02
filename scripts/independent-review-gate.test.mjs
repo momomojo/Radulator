@@ -28,6 +28,8 @@ const BASE = "b".repeat(40);
 const WORKFLOW_ID = 227376261;
 const CI_APP_ID = 15368;
 const CHECK_SUITE_ID = 700;
+const E2E_WORKFLOW_NAME = "E2E Tests";
+const REPOSITORY = "momomojo/Radulator";
 
 assert.deepEqual(
   relevantLabelsDigest(["ready-for-gate", "release-remediation", "unrelated"]).labels,
@@ -59,6 +61,11 @@ assert.equal(
   typeof independentGate.requiredCiForPullRequest,
   "function",
   "the trusted gate must derive CI requirements from the current PR and complete changed-file evidence",
+);
+assert.equal(
+  typeof independentGate.attemptJobsPath,
+  "function",
+  "the gate must expose its attempt-scoped workflow-jobs API boundary",
 );
 
 function keyFixture(keyId, role, profile) {
@@ -95,6 +102,7 @@ function prFixture(overrides = {}) {
   const labelState = relevantLabelsDigest(labels);
   return {
     repositoryId: 1027532341,
+    repositoryFullName: REPOSITORY,
     number: 99,
     changedFiles: 1,
     state: "open",
@@ -118,6 +126,7 @@ function workflowRun(pr, overrides = {}) {
   return {
     id: 1001,
     workflow_id: WORKFLOW_ID,
+    name: E2E_WORKFLOW_NAME,
     path: ".github/workflows/e2e-tests.yml",
     event: "pull_request",
     head_sha: pr.headSha,
@@ -131,6 +140,21 @@ function workflowRun(pr, overrides = {}) {
       head: { sha: pr.headSha },
       base: { sha: pr.baseSha, ref: pr.baseRef },
     }],
+    ...overrides,
+  };
+}
+
+function workflowJob(pr, name, index, overrides = {}) {
+  return {
+    id: 2000 + index,
+    name,
+    run_id: 1001,
+    run_attempt: 1,
+    head_sha: pr.headSha,
+    workflow_name: E2E_WORKFLOW_NAME,
+    status: "completed",
+    conclusion: "success",
+    check_run_url: `https://api.github.com/repos/momomojo/Radulator/check-runs/${2000 + index}`,
     ...overrides,
   };
 }
@@ -149,23 +173,27 @@ function checkRun(pr, name, index, overrides = {}) {
   };
 }
 
-function ciFixture(pr, files = STANDARD_FILES, { workflowRuns, checkRuns } = {}) {
+function ciFixture(pr, files = STANDARD_FILES, { workflowRuns, checkRuns, attemptJobs } = {}) {
   const requiredCi = typeof independentGate.requiredCiForPullRequest === "function"
     ? independentGate.requiredCiForPullRequest(pr, files)
     : requiredCiForBase(pr.baseRef);
   const runs = workflowRuns || [workflowRun(pr)];
   const checks = checkRuns || requiredCi.map((name, index) => checkRun(pr, name, index));
+  const jobs = attemptJobs || requiredCi.map((name, index) => workflowJob(pr, name, index));
   return {
     requiredCi,
     workflowRuns: runs,
     checkRuns: checks,
+    attemptJobs: jobs,
     result: resolveRequiredCi({
       pr,
       workflowRuns: runs,
       checkRuns: checks,
+      attemptJobs: jobs,
       requiredCi,
       expectedWorkflowId: WORKFLOW_ID,
       expectedCiAppId: CI_APP_ID,
+      expectedRepositoryFullName: REPOSITORY,
     }),
   };
 }
@@ -536,15 +564,124 @@ function expectBlocked(reasonCode, options = {}) {
 {
   const pr = prFixture();
   const requiredCi = requiredCiForBase(pr.baseRef);
+  const run = workflowRun(pr, { run_attempt: 2 });
+  const currentChecks = requiredCi.map((name, index) => checkRun(pr, name, index, {
+    id: 2500 + index,
+    completed_at: `2026-08-23T21:00:${10 + index}Z`,
+  }));
+  const currentSupplemental = checkRun(pr, "Hermes Release Control Tests", 3, {
+    id: 2503,
+    completed_at: "2026-08-23T21:00:13Z",
+  });
+  const priorSupplemental = checkRun(pr, "Hermes Release Control Tests", 8, {
+    id: 2598,
+    completed_at: "2026-08-23T20:00:18Z",
+  });
+  const attemptJobs = requiredCi.map((name, index) => workflowJob(pr, name, index, {
+    id: 2500 + index,
+    run_attempt: 2,
+    check_run_url: `https://api.github.com/repos/momomojo/Radulator/check-runs/${2500 + index}`,
+  }));
+  attemptJobs.push(workflowJob(pr, "Hermes Release Control Tests", 3, {
+    id: 2503,
+    run_attempt: 2,
+    check_run_url: "https://api.github.com/repos/momomojo/Radulator/check-runs/2503",
+  }));
+  const result = resolveRequiredCi({
+    pr,
+    workflowRuns: [run],
+    checkRuns: [...currentChecks, priorSupplemental, currentSupplemental],
+    attemptJobs,
+    requiredCi,
+    expectedWorkflowId: WORKFLOW_ID,
+    expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    result.supplementalEvidence.map((item) => item.check_run_id),
+    [2503],
+    "supplemental evidence must come only from the selected workflow attempt",
+  );
+}
+
+{
+  const pr = prFixture();
+  const requiredCi = requiredCiForBase(pr.baseRef);
+  const run = workflowRun(pr, { run_attempt: 2 });
+  const currentChecks = requiredCi.map((name, index) => checkRun(pr, name, index, {
+    id: 2400 + index,
+    completed_at: `2026-08-23T21:00:${10 + index}Z`,
+  }));
+  const attemptJobs = requiredCi.map((name, index) => workflowJob(pr, name, index, {
+    id: 2400 + index,
+    run_attempt: 2,
+    check_run_url: `https://api.github.com/repos/momomojo/Radulator/check-runs/${2400 + index}`,
+  }));
+  attemptJobs.push(workflowJob(pr, "Smoke Tests", 9, {
+    id: 2499,
+    run_attempt: 2,
+    check_run_url: "https://api.github.com/repos/momomojo/Radulator/check-runs/2499",
+  }));
+  const result = resolveRequiredCi({
+    pr,
+    workflowRuns: [run],
+    checkRuns: currentChecks,
+    attemptJobs,
+    requiredCi,
+    expectedWorkflowId: WORKFLOW_ID,
+    expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
+  });
+  assert.equal(result.ok, false, "duplicate required job names within the selected attempt must fail closed");
+  assert.match(result.summary, /Smoke Tests.*ambiguous/);
+}
+
+{
+  const pr = prFixture();
+  const requiredCi = requiredCiForBase(pr.baseRef);
+  const run = workflowRun(pr, { run_attempt: 2 });
+  const currentSmoke = checkRun(pr, "Smoke Tests", 0, {
+    id: 2300,
+    completed_at: "2026-08-23T21:00:10Z",
+  });
+  const priorTargeted = checkRun(pr, "Targeted Calculator Tests", 1, {
+    id: 2301,
+    completed_at: "2026-08-23T20:00:11Z",
+  });
+  const result = resolveRequiredCi({
+    pr,
+    workflowRuns: [run],
+    checkRuns: [currentSmoke, priorTargeted],
+    attemptJobs: [workflowJob(pr, "Smoke Tests", 0, {
+      id: 2300,
+      run_attempt: 2,
+      check_run_url: "https://api.github.com/repos/momomojo/Radulator/check-runs/2300",
+    })],
+    requiredCi,
+    expectedWorkflowId: WORKFLOW_ID,
+    expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
+  });
+  assert.equal(result.ok, false, "a rerun attempt must not borrow a prior attempt's successful required check");
+  assert.match(result.summary, /Targeted Calculator Tests.*missing/);
+}
+
+{
+  const pr = prFixture();
+  const requiredCi = requiredCiForBase(pr.baseRef);
   const workflowRuns = [workflowRun(pr)];
   const checkRuns = requiredCi.map((name, index) => checkRun(pr, name, index));
+  const attemptJobs = requiredCi.map((name, index) => workflowJob(pr, name, index));
   const ci = resolveRequiredCi({
     pr,
     workflowRuns,
+    attemptJobs,
     checkRuns,
     requiredCi,
     expectedWorkflowId: WORKFLOW_ID,
     expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
   });
   const state = exactState(pr, ci, HIGH_FILES);
   const primary = signedRecord(PRIMARY, state);
@@ -654,6 +791,112 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     `/repos/momomojo/Radulator/commits/${HEAD}/check-runs?filter=all`,
   );
   assert.throws(() => checkRunsPath("momomojo", "Radulator", "not-a-sha"), /malformed/);
+  assert.equal(
+    independentGate.attemptJobsPath("momomojo", "Radulator", 33534334936, 2),
+    "/repos/momomojo/Radulator/actions/runs/33534334936/attempts/2/jobs",
+  );
+  assert.throws(
+    () => independentGate.attemptJobsPath("momomojo", "Radulator", 0, 2),
+    /malformed/,
+  );
+}
+
+{
+  const pr = prFixture();
+  const requiredCi = requiredCiForBase(pr.baseRef);
+  const run = workflowRun(pr, { run_attempt: 2 });
+  const priorChecks = requiredCi.map((name, index) => checkRun(pr, name, index, {
+    id: 2100 + index,
+    completed_at: `2026-08-23T20:00:${10 + index}Z`,
+  }));
+  const currentChecks = requiredCi.map((name, index) => checkRun(pr, name, index, {
+    id: 2200 + index,
+    completed_at: `2026-08-23T21:00:${10 + index}Z`,
+  }));
+  const attemptJobs = requiredCi.map((name, index) => workflowJob(pr, name, index, {
+    id: 2200 + index,
+    run_attempt: 2,
+    check_run_url: `https://api.github.com/repos/momomojo/Radulator/check-runs/${2200 + index}`,
+  }));
+  const result = resolveRequiredCi({
+    pr,
+    workflowRuns: [run],
+    checkRuns: [...priorChecks, ...currentChecks],
+    attemptJobs,
+    requiredCi,
+    expectedWorkflowId: WORKFLOW_ID,
+    expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
+  });
+  assert.equal(result.ok, true, "a green current rerun attempt must ignore retained prior-attempt checks");
+  assert.deepEqual(result.evidence.map((item) => item.check_run_id), [2200, 2201]);
+  assert.ok(result.evidence.every((item) => item.run_attempt === 2));
+}
+
+{
+  const pr = prFixture();
+  const setup = ciFixture(pr);
+  const invalidBindings = [
+    ["job/check-run id", ({ jobs }) => { jobs[0].id = 2999; }],
+    ["job run id", ({ jobs }) => { jobs[0].run_id = 9999; }],
+    ["job attempt", ({ jobs }) => { jobs[0].run_attempt = 2; }],
+    ["job head", ({ jobs }) => { jobs[0].head_sha = "c".repeat(40); }],
+    ["job check-run URL", ({ jobs }) => { jobs[0].check_run_url = "https://api.github.com/repos/other/repo/check-runs/2000"; }],
+    ["paired repository and URL", ({ jobs, currentPr }) => {
+      currentPr.repositoryFullName = "other/repo";
+      jobs[0].check_run_url = "https://api.github.com/repos/other/repo/check-runs/2000";
+    }],
+    ["job status", ({ jobs }) => { jobs[0].status = "in_progress"; }],
+    ["job conclusion", ({ jobs }) => { jobs[0].conclusion = "failure"; }],
+    ["check name", ({ checks }) => { checks[0].name = "Impostor"; }],
+    ["check head", ({ checks }) => { checks[0].head_sha = "c".repeat(40); }],
+    ["check suite", ({ checks }) => { checks[0].check_suite.id = 9999; }],
+    ["check app", ({ checks }) => { checks[0].app.id = 9999; }],
+    ["check status", ({ checks }) => { checks[0].status = "in_progress"; }],
+    ["check conclusion", ({ checks }) => { checks[0].conclusion = "failure"; }],
+  ];
+  for (const [label, mutate] of invalidBindings) {
+    const currentPr = structuredClone(pr);
+    const jobs = structuredClone(setup.attemptJobs);
+    const checks = structuredClone(setup.checkRuns);
+    mutate({ jobs, checks, currentPr });
+    const result = resolveRequiredCi({
+      pr: currentPr,
+      workflowRuns: setup.workflowRuns,
+      checkRuns: checks,
+      attemptJobs: jobs,
+      requiredCi: setup.requiredCi,
+      expectedWorkflowId: WORKFLOW_ID,
+      expectedCiAppId: CI_APP_ID,
+      expectedRepositoryFullName: REPOSITORY,
+    });
+    assert.equal(result.ok, false, `${label} mismatch must fail closed`);
+  }
+}
+
+{
+  assert.equal(
+    typeof independentGate.countedPaged,
+    "function",
+    "attempt-job pagination must validate the endpoint's declared total_count",
+  );
+  const complete = await independentGate.countedPaged(
+    "token",
+    "/repos/momomojo/Radulator/actions/runs/1001/attempts/2/jobs",
+    "jobs",
+    async () => ({ total_count: 2, jobs: [{ id: 1 }, { id: 2 }] }),
+  );
+  assert.deepEqual(complete.map((job) => job.id), [1, 2]);
+  await assert.rejects(
+    independentGate.countedPaged(
+      "token",
+      "/repos/momomojo/Radulator/actions/runs/1001/attempts/2/jobs",
+      "jobs",
+      async () => ({ total_count: 3, jobs: [{ id: 1 }, { id: 2 }] }),
+    ),
+    /total_count/,
+    "an incomplete attempt-jobs response must fail closed",
+  );
 }
 
 {
@@ -661,13 +904,20 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
   const setup = ciFixture(pr);
   assert.equal(setup.result.ok, true);
   const duplicate = { ...setup.checkRuns[0], id: 2999 };
+  const duplicateJob = {
+    ...setup.attemptJobs[0],
+    id: 2999,
+    check_run_url: "https://api.github.com/repos/momomojo/Radulator/check-runs/2999",
+  };
   assert.match(resolveRequiredCi({
     pr,
     workflowRuns: setup.workflowRuns,
     checkRuns: [...setup.checkRuns, duplicate],
+    attemptJobs: [...setup.attemptJobs, duplicateJob],
     requiredCi: setup.requiredCi,
     expectedWorkflowId: WORKFLOW_ID,
     expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
   }).summary, /ambiguous/);
 
   const failedLatest = workflowRun(pr, {
@@ -680,19 +930,24 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     pr,
     workflowRuns: [setup.workflowRuns[0], failedLatest],
     checkRuns: setup.checkRuns,
+    attemptJobs: setup.attemptJobs,
     requiredCi: setup.requiredCi,
     expectedWorkflowId: WORKFLOW_ID,
     expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
   }).ok, false);
 
   const supplemental = checkRun(pr, "Hermes Release Control Tests", 3);
+  const supplementalJob = workflowJob(pr, "Hermes Release Control Tests", 3);
   const withSupplemental = resolveRequiredCi({
     pr,
     workflowRuns: setup.workflowRuns,
     checkRuns: [...setup.checkRuns, supplemental],
+    attemptJobs: [...setup.attemptJobs, supplementalJob],
     requiredCi: setup.requiredCi,
     expectedWorkflowId: WORKFLOW_ID,
     expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
   });
   assert.deepEqual(withSupplemental.evidence.map((item) => item.name), setup.requiredCi);
   assert.deepEqual(
@@ -705,9 +960,11 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     pr,
     workflowRuns: setup.workflowRuns,
     checkRuns: [...setup.checkRuns, supplemental, completedGateCheck],
+    attemptJobs: [...setup.attemptJobs, supplementalJob],
     requiredCi: setup.requiredCi,
     expectedWorkflowId: WORKFLOW_ID,
     expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
   });
   assert.deepEqual(
     afterGatePublication.supplementalEvidence,
