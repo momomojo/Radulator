@@ -4,6 +4,23 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
 
+const fixtureRun = spawnSync(
+  process.execPath,
+  [
+    "--import",
+    "./scripts/register-jsx-loader.mjs",
+    "scripts/audit-bosniak-primary-source.mjs",
+    "--self-test",
+  ],
+  { cwd: process.cwd(), encoding: "utf8" },
+);
+assert.equal(
+  fixtureRun.status,
+  0,
+  `Bosniak source retrieval fixture tests failed\nstdout:\n${fixtureRun.stdout}\nstderr:\n${fixtureRun.stderr}`,
+);
+assert.match(fixtureRun.stdout, /Bosniak source retrieval fixture tests passed/);
+
 const run = spawnSync(
   process.execPath,
   [
@@ -25,13 +42,48 @@ const audit = JSON.parse(run.stdout);
 assert.equal(audit.schema, "radulator-bosniak-primary-source-audit/v1");
 assert.equal(audit.source_authority, "Silverman et al., Radiology 2019 and CUA 2023");
 assert.deepEqual(audit.source_urls, [
-  "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
-  "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
+  "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+  "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
 ]);
-assert.match(audit.source_sha256.silverman, /^[a-f0-9]{64}$/);
-assert.match(audit.source_sha256.cua, /^[a-f0-9]{64}$/);
-assert.ok(audit.source_bytes.silverman > 10_000);
-assert.ok(audit.source_bytes.cua > 10_000);
+assert.deepEqual(audit.artifacts, [
+  {
+    id: "silverman-pmc-html",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+    host: "pmc.ncbi.nlm.nih.gov",
+    path: "/articles/PMC6677285/",
+    media_type: "text/html",
+    raw_source_min_bytes: 300_000,
+    raw_source_max_bytes: 1_000_000,
+    canonical_source_bytes: 111_115,
+    canonical_source_sha256:
+      "007a4c01927d5a9fb4f8b0458dedc5793fe0f3d7c051fcb8f3267b76b57c95e5",
+  },
+  {
+    id: "cua-publisher-pdf",
+    url: "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
+    host: "cuaj.ca",
+    path: "/index.php/journal/article/download/8389/5706/45369",
+    media_type: "application/pdf",
+    raw_source_bytes: 592_083,
+    raw_source_sha256:
+      "bc76209f93738f261a47f2c6e6840e0d1999dd630bcdadadbfec98a2333ef8d1",
+    canonical_source_bytes: 72_222,
+    canonical_source_sha256:
+      "7d613909afdb345b08e3690c5f71541ad954ebbf64a590c2d41a72957558f6fc",
+    page_count: 13,
+  },
+]);
+assert.ok(audit.source_bytes.silverman >= 300_000);
+assert.ok(audit.source_bytes.silverman <= 1_000_000);
+assert.equal(audit.source_bytes.cua, 592_083);
+assert.deepEqual(audit.source_sha256, {
+  cua: "bc76209f93738f261a47f2c6e6840e0d1999dd630bcdadadbfec98a2333ef8d1",
+});
+assert.deepEqual(audit.source_canonical_bytes, { silverman: 111_115, cua: 72_222 });
+assert.deepEqual(audit.source_canonical_sha256, {
+  silverman: "007a4c01927d5a9fb4f8b0458dedc5793fe0f3d7c051fcb8f3267b76b57c95e5",
+  cua: "7d613909afdb345b08e3690c5f71541ad954ebbf64a590c2d41a72957558f6fc",
+});
 assert.deepEqual(audit.source_claims, {
   homogeneous_noncontrast_mass_70_hu_or_greater: true,
   obtuse_margin_nodule_4_mm_or_larger: true,

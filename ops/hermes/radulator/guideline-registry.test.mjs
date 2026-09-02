@@ -940,10 +940,42 @@ async function assertExecutableImplementationEvidence(record, calculator) {
     assert.deepEqual(
       audit.source_urls,
       [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/",
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+        "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
       ],
       `${label}.source_audit.source_urls`,
+    );
+    assert.deepEqual(
+      audit.artifacts,
+      [
+        {
+          id: "silverman-pmc-html",
+          url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader",
+          host: "pmc.ncbi.nlm.nih.gov",
+          path: "/articles/PMC6677285/",
+          media_type: "text/html",
+          raw_source_min_bytes: 300_000,
+          raw_source_max_bytes: 1_000_000,
+          canonical_source_bytes: 111_115,
+          canonical_source_sha256:
+            "007a4c01927d5a9fb4f8b0458dedc5793fe0f3d7c051fcb8f3267b76b57c95e5",
+        },
+        {
+          id: "cua-publisher-pdf",
+          url: "https://cuaj.ca/index.php/journal/article/download/8389/5706/45369",
+          host: "cuaj.ca",
+          path: "/index.php/journal/article/download/8389/5706/45369",
+          media_type: "application/pdf",
+          raw_source_bytes: 592_083,
+          raw_source_sha256:
+            "bc76209f93738f261a47f2c6e6840e0d1999dd630bcdadadbfec98a2333ef8d1",
+          canonical_source_bytes: 72_222,
+          canonical_source_sha256:
+            "7d613909afdb345b08e3690c5f71541ad954ebbf64a590c2d41a72957558f6fc",
+          page_count: 13,
+        },
+      ],
+      `${label}.source_audit.artifacts`,
     );
     assert.deepEqual(
       audit.vector_ids,
