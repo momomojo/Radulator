@@ -580,8 +580,14 @@ def _read_broker_runtime_contract(
     if python_entry["sha256"] != attestation["python_sha256"]:
         raise ValueError("broker Python digest differs from runtime manifest")
     probe_command = probe["command"]
-    if not probe_command or str(probe_command[0]) != str(python) or "-I" not in probe_command:
-        raise ValueError("broker isolated runtime probe is not bound to Python")
+    expected_probe_command = [
+        str(python),
+        "-I",
+        "-B",
+        str(runtime_root / "runtime-probe.py"),
+    ]
+    if probe_command != expected_probe_command:
+        raise ValueError("broker isolated runtime probe command is not exact")
     return (
         attestation,
         manifest,
@@ -973,18 +979,43 @@ def _runtime_plan_binding_matches(
     if manifest != plan["broker_runtime_manifest"] or manifest_sha != plan["runtime_manifest_sha256"]:
         return False
     expected = plan["broker_runtime_attestation"]
-    dynamic = {"active", "revoked", "isolated_probe", "publisher_probe_status"}
+    if not isinstance(expected, dict) or set(attestation) != set(expected):
+        return False
+    expected_probe = expected.get("isolated_probe")
+    observed_probe = attestation.get("isolated_probe")
+    if (
+        not isinstance(expected_probe, dict)
+        or not isinstance(observed_probe, dict)
+        or set(expected_probe) != {"command", "outcome"}
+        or set(observed_probe) != {"command", "outcome"}
+        or observed_probe.get("command") != expected_probe.get("command")
+    ):
+        return False
+    state_fields = {"active", "revoked", "isolated_probe", "publisher_probe_status"}
     if any(
-        key not in dynamic and attestation.get(key) != expected.get(key)
+        key not in state_fields and attestation.get(key) != expected.get(key)
         for key in expected
     ):
         return False
-    state_changed = any(attestation.get(key) != expected.get(key) for key in dynamic)
-    if state_changed and not allow_state_transition:
-        return False
-    if not state_changed and attestation_sha != plan["broker_runtime_attestation_sha256"]:
-        return False
-    return True
+    expected_state = (
+        expected.get("active"),
+        expected.get("revoked"),
+        expected_probe.get("outcome"),
+        expected.get("publisher_probe_status"),
+    )
+    observed_state = (
+        attestation.get("active"),
+        attestation.get("revoked"),
+        observed_probe.get("outcome"),
+        attestation.get("publisher_probe_status"),
+    )
+    if observed_state == expected_state:
+        return attestation_sha == plan["broker_runtime_attestation_sha256"]
+    return (
+        allow_state_transition
+        and expected_state == (False, True, "PENDING", "PENDING")
+        and observed_state == (True, False, "PASS", "PASS")
+    )
 
 
 def _require_production_plan(plan: dict[str, Any]) -> None:
