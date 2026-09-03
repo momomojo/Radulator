@@ -107,7 +107,9 @@ class PublisherServiceInstallTests(unittest.TestCase):
         python = python.resolve(strict=True)
         publisher_probe = (self.root / "runtime-publisher-probe.py").resolve()
         if not publisher_probe.exists():
-            publisher_probe.write_bytes(b"# sealed publisher preflight probe\n")
+            publisher_probe.write_bytes(
+                (self.source / "trusted_publisher.py").read_bytes()
+            )
             publisher_probe.chmod(0o555)
         entries = [
             {"path": "bin/", "type": "directory", "mode": 0o555},
@@ -222,6 +224,101 @@ class PublisherServiceInstallTests(unittest.TestCase):
         self.assertIn("-B", wrapper)
         self.assertIn("RADULATOR_PUBLISHER_PREFLIGHT", wrapper)
         self.assertIn("--runtime-preflight", wrapper)
+
+    def test_wrapper_runtime_preflight_needs_no_publication_only_configuration(self):
+        wrapper = Path(__file__).resolve().parents[1] / "trusted_publisher_cron.sh"
+        capture = self.root / "preflight-args.txt"
+        capture_environment = self.root / "preflight-environment.txt"
+        fake_python = self.root / "sealed-python"
+        fake_python.write_text(
+            "#!/bin/sh\n"
+            "printf '%s\\n' \"$@\" > \"$RADULATOR_PREFLIGHT_CAPTURE\"\n"
+            "printf '%s\\n' \"${GH_CONFIG_DIR-unset}\" > \"$RADULATOR_PREFLIGHT_ENV_CAPTURE\"\n",
+            encoding="utf-8",
+        )
+        fake_python.chmod(0o755)
+        env = {
+            "PATH": "/usr/bin:/bin",
+            "RADULATOR_PREFLIGHT_CAPTURE": str(capture),
+            "RADULATOR_PREFLIGHT_ENV_CAPTURE": str(capture_environment),
+            "RADULATOR_PUBLISHER_PREFLIGHT": "1",
+            "GH_CONFIG_DIR": "/credential-bearing-config",
+            "RADULATOR_PUBLISHER_HOME": str(self.publisher_home),
+            "RADULATOR_PUBLISHER_PYTHON": str(fake_python),
+            "RADULATOR_PUBLISHER_RUNTIME_ROOT": str(self.root / "sealed-runtime"),
+            "RADULATOR_PUBLISHER_RUNTIME_MANIFEST": str(self.root / "runtime-manifest.json"),
+            "RADULATOR_PUBLISHER_RUNTIME_MANIFEST_SHA256": "a" * 64,
+            "RADULATOR_PUBLISHER_PYTHON_VERSION": "3.11.15",
+            "RADULATOR_PUBLISHER_PYTHON_SHA256": "b" * 64,
+            "RADULATOR_BROKER_CLIENT_CONFIG": str(self.client_config),
+        }
+
+        result = subprocess.run(
+            ["/bin/bash", str(wrapper)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env,
+            cwd="/var/empty",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = capture.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(arguments[:3], ["-I", "-B", str(wrapper.with_name("trusted_publisher.py"))])
+        self.assertIn("--runtime-preflight", arguments)
+        self.assertIn("--repository-id", arguments)
+        self.assertIn("--broker-client-config", arguments)
+        for publication_only in (
+            "--project-root", "--lifecycle-controller", "--ledger", "--lock-file"
+        ):
+            self.assertNotIn(publication_only, arguments)
+        self.assertEqual(capture_environment.read_text(encoding="utf-8"), "unset\n")
+
+    def test_cpython_runtime_provenance_is_exact_canonical_upstream_asset(self):
+        self.assertEqual(
+            service.CPYTHON_RUNTIME_PROVENANCE,
+            {
+                "source_repository": "astral-sh/python-build-standalone",
+                "release_tag": "20260602",
+                "asset_id": 436826623,
+                "asset_name": "cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz",
+                "release_url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260602/cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz",
+                "verification_status": "external-sha256-bound",
+                "attestation_identity": "operator-supplied-sha256",
+                "attestation_status": "bound-no-signature",
+            },
+        )
+        self.assertEqual(
+            service.CPYTHON_RUNTIME_ARCHIVE_SHA256,
+            "01f0de017aacd7528084dbacd46c66cfe9a0b0cd1255be0c24854b7985dd130e",
+        )
+
+    def test_plan_rejects_broker_probe_that_differs_from_reviewed_source_asset(self):
+        attestation, manifest, _runtime_root = self.shared_runtime()
+        trusted_publisher = self.source / "trusted_publisher.py"
+        trusted_publisher.write_text("# changed reviewed publisher source\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "publisher probe.*reviewed source"):
+            service.build_service_plan(
+                source_root=self.source,
+                install_root=self.install_root,
+                publisher_home=self.publisher_home,
+                broker_client_config=self.client_config,
+                launchd_plist_path=self.plist,
+                python_executable=self.python,
+                broker_runtime_attestation_path=attestation,
+                runtime_manifest_path=manifest,
+                source_commit_sha="a" * 40,
+                source_owner_uid=os.geteuid(),
+                publisher_user="_publisher",
+                publisher_uid=501,
+                publisher_group="_publisher",
+                publisher_gid=501,
+                broker_uid=502,
+                model_uid=503,
+                model_gid=503,
+            )
 
     def test_plan_is_disabled_first_and_binds_exact_immutable_assets(self):
         plan = self.plan()

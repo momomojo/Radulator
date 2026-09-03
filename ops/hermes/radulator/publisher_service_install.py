@@ -41,12 +41,12 @@ BROKER_RUNTIME_ARCHIVE_KEYS = frozenset({"cpython", "hermes_install"})
 # runtime manifest.  Keeping them pinned prevents a different upstream asset
 # from being smuggled in under the same interpreter version.
 CPYTHON_RUNTIME_PROVENANCE = {
-    "source_repository": "indygreg/python-build-standalone",
+    "source_repository": "astral-sh/python-build-standalone",
     "release_tag": "20260602",
     "asset_id": 436826623,
     "asset_name": "cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz",
     "release_url": (
-        "https://github.com/indygreg/python-build-standalone/releases/download/"
+        "https://github.com/astral-sh/python-build-standalone/releases/download/"
         "20260602/cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz"
     ),
     "verification_status": "external-sha256-bound",
@@ -685,6 +685,18 @@ def build_service_plan(
             require_active=False,
         )
     )
+    trusted_publisher_entry = next(
+        (entry for entry in manifest if entry.get("path") == "trusted_publisher.py"),
+        None,
+    )
+    if (
+        trusted_publisher_entry is None
+        or trusted_publisher_entry.get("sha256")
+        != broker_attestation["publisher_probe_sha256"]
+    ):
+        raise ValueError(
+            "broker publisher probe does not match the reviewed source commit/path"
+        )
     runtime_root = Path(broker_attestation["runtime_root"])
     python_executable = Path(broker_attestation["python_executable"])
     python_content, _python_info = _read_file_exact(

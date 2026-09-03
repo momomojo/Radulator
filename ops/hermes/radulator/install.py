@@ -20,7 +20,10 @@ import time
 from pathlib import Path
 from typing import Any
 
-from ops.hermes.radulator import publisher_service_install as publisher_service
+if __package__:
+    from ops.hermes.radulator import publisher_service_install as publisher_service
+else:
+    import publisher_service_install as publisher_service
 
 
 SCHEMA = "radulator-hermes-install/v1"

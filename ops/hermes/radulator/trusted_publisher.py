@@ -142,12 +142,17 @@ class PublisherConfig:
     ready_label_actor_id: int | None = None
     ready_label_actor_login: str | None = None
     ready_label_actor_type: str | None = None
-    runtime_preflight: bool = False
-    runtime_root: Path | None = None
-    runtime_manifest: Path | None = None
-    runtime_manifest_sha256: str | None = None
-    runtime_python_version: str | None = None
-    runtime_python_sha256: str | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class RuntimePreflightConfig:
+    runtime_root: Path
+    runtime_manifest: Path
+    runtime_manifest_sha256: str
+    runtime_python_version: str
+    runtime_python_sha256: str
+    repository_id: str
+    broker_client_config: Path
 
 
 class PublisherError(RuntimeError):
@@ -3542,7 +3547,7 @@ def _runtime_preflight_read(
 
 
 def run_runtime_preflight(
-    config: PublisherConfig,
+    config: RuntimePreflightConfig,
     broker_client: Any,
 ) -> dict[str, str]:
     """Prove the direct ``python -I -B trusted_publisher.py`` contract.
@@ -3553,17 +3558,6 @@ def run_runtime_preflight(
     satisfy the service health gate by itself.
     """
 
-    required = (
-        config.runtime_root,
-        config.runtime_manifest,
-        config.runtime_manifest_sha256,
-        config.runtime_python_version,
-        config.runtime_python_sha256,
-        config.repository_id,
-        config.broker_client_config,
-    )
-    if any(value is None for value in required):
-        raise PublisherError("runtime preflight configuration is incomplete")
     runtime_root_input = Path(config.runtime_root)
     runtime_manifest_input = Path(config.runtime_manifest)
     runtime_root = runtime_root_input.resolve(strict=True)
@@ -3642,13 +3636,13 @@ def run_runtime_preflight(
             "release_url", "sha256", "verification_status",
             "attestation_identity", "attestation_status",
         }
-        or provenance.get("source_repository") != "indygreg/python-build-standalone"
+        or provenance.get("source_repository") != "astral-sh/python-build-standalone"
         or provenance.get("release_tag") != "20260602"
         or provenance.get("asset_id") != 436826623
         or provenance.get("asset_name")
         != "cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz"
         or provenance.get("release_url")
-        != "https://github.com/indygreg/python-build-standalone/releases/download/20260602/cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz"
+        != "https://github.com/astral-sh/python-build-standalone/releases/download/20260602/cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz"
         or not isinstance(provenance.get("sha256"), str)
         or not re.fullmatch(r"[0-9a-f]{64}", provenance["sha256"])
         or provenance.get("sha256") != CPYTHON_RUNTIME_ARCHIVE_SHA256
@@ -3729,16 +3723,6 @@ def parse_runtime_config(argv: list[str] | None = None) -> tuple[PublisherConfig
     parser.add_argument("--ready-label-actor-id", type=int)
     parser.add_argument("--ready-label-actor-login")
     parser.add_argument("--ready-label-actor-type", choices=("User", "Bot"))
-    parser.add_argument(
-        "--runtime-preflight",
-        action="store_true",
-        help="verify the sealed interpreter, broker-client import, and one read-only broker RPC",
-    )
-    parser.add_argument("--runtime-root")
-    parser.add_argument("--runtime-manifest")
-    parser.add_argument("--runtime-manifest-sha256")
-    parser.add_argument("--runtime-python-version")
-    parser.add_argument("--runtime-python-sha256")
     args = parser.parse_args(argv)
     project_root = Path(args.project_root)
     lifecycle_controller = Path(args.lifecycle_controller)
@@ -3762,19 +3746,6 @@ def parse_runtime_config(argv: list[str] | None = None) -> tuple[PublisherConfig
         parser.error("--publisher-state-dir must be absolute")
     if broker_client_config is not None and not broker_client_config.is_absolute():
         parser.error("--broker-client-config must be absolute")
-    runtime_root = Path(args.runtime_root) if args.runtime_root else None
-    runtime_manifest = Path(args.runtime_manifest) if args.runtime_manifest else None
-    if args.runtime_preflight:
-        if runtime_root is None or not runtime_root.is_absolute():
-            parser.error("--runtime-root must be absolute for runtime preflight")
-        if runtime_manifest is None or not runtime_manifest.is_absolute():
-            parser.error("--runtime-manifest must be absolute for runtime preflight")
-        if not re.fullmatch(r"[0-9a-f]{64}", args.runtime_manifest_sha256 or ""):
-            parser.error("--runtime-manifest-sha256 is required for runtime preflight")
-        if not re.fullmatch(r"[0-9a-f]{64}", args.runtime_python_sha256 or ""):
-            parser.error("--runtime-python-sha256 is required for runtime preflight")
-        if not re.fullmatch(r"3\.[0-9]+\.[0-9]+", args.runtime_python_version or ""):
-            parser.error("--runtime-python-version is required for runtime preflight")
     if args.repository != "momomojo/Radulator" or args.base_branch != "develop":
         parser.error("publisher repository/base must be momomojo/Radulator and develop")
     if not TASK_ID_PATTERN.fullmatch(args.board or ""):
@@ -3800,19 +3771,57 @@ def parse_runtime_config(argv: list[str] | None = None) -> tuple[PublisherConfig
         ready_label_actor_id=args.ready_label_actor_id,
         ready_label_actor_login=args.ready_label_actor_login,
         ready_label_actor_type=args.ready_label_actor_type,
-        runtime_preflight=bool(args.runtime_preflight),
+    )
+    return config, lock_file
+
+
+def parse_runtime_preflight_config(
+    argv: list[str] | None = None,
+) -> RuntimePreflightConfig:
+    parser = argparse.ArgumentParser(
+        description="Verify the sealed publisher runtime without publication credentials."
+    )
+    parser.add_argument("--runtime-preflight", action="store_true", required=True)
+    parser.add_argument("--runtime-root", required=True)
+    parser.add_argument("--runtime-manifest", required=True)
+    parser.add_argument("--runtime-manifest-sha256", required=True)
+    parser.add_argument("--runtime-python-version", required=True)
+    parser.add_argument("--runtime-python-sha256", required=True)
+    parser.add_argument("--repository-id", required=True)
+    parser.add_argument("--broker-client-config", required=True)
+    args = parser.parse_args(argv)
+    runtime_root = Path(args.runtime_root)
+    runtime_manifest = Path(args.runtime_manifest)
+    broker_client_config = Path(args.broker_client_config)
+    if not runtime_root.is_absolute():
+        parser.error("--runtime-root must be absolute")
+    if not runtime_manifest.is_absolute():
+        parser.error("--runtime-manifest must be absolute")
+    if not broker_client_config.is_absolute():
+        parser.error("--broker-client-config must be absolute")
+    if not re.fullmatch(r"[0-9a-f]{64}", args.runtime_manifest_sha256):
+        parser.error("--runtime-manifest-sha256 must be a lowercase SHA-256")
+    if not re.fullmatch(r"[0-9a-f]{64}", args.runtime_python_sha256):
+        parser.error("--runtime-python-sha256 must be a lowercase SHA-256")
+    if not re.fullmatch(r"3\.(?:11|12|13)\.[0-9]+", args.runtime_python_version):
+        parser.error("--runtime-python-version must be supported Python 3.11-3.13")
+    if not TASK_ID_PATTERN.fullmatch(args.repository_id):
+        parser.error("--repository-id is malformed")
+    return RuntimePreflightConfig(
         runtime_root=runtime_root,
         runtime_manifest=runtime_manifest,
         runtime_manifest_sha256=args.runtime_manifest_sha256,
         runtime_python_version=args.runtime_python_version,
         runtime_python_sha256=args.runtime_python_sha256,
+        repository_id=args.repository_id,
+        broker_client_config=broker_client_config,
     )
-    return config, lock_file
 
 
 def main(argv: list[str] | None = None, *, broker_client: Any = None) -> int:
-    config, lock_file = parse_runtime_config(argv)
-    if config.runtime_preflight:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if "--runtime-preflight" in arguments:
+        config = parse_runtime_preflight_config(arguments)
         if broker_client is None:
             try:
                 from hermes_cli.kanban_broker_client import load_broker_client
@@ -3825,6 +3834,7 @@ def main(argv: list[str] | None = None, *, broker_client: Any = None) -> int:
         result = run_runtime_preflight(config, broker_client)
         print(json.dumps(result, sort_keys=True, separators=(",", ":")))
         return 0
+    config, lock_file = parse_runtime_config(arguments)
     required_broker = {
         "repository_id": config.repository_id,
         "publisher_state_dir": config.publisher_state_dir,

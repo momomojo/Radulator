@@ -1,5 +1,7 @@
 import base64
+import contextlib
 import fcntl
+import functools
 import hashlib
 import hmac
 import importlib.util
@@ -27,6 +29,15 @@ from ops.hermes.radulator.install import (
     read_github_public_keys,
     restore_install,
 )
+
+
+def with_publisher_runtime_contract(test):
+    @functools.wraps(test)
+    def wrapped(self, *args, **kwargs):
+        with self.publisher_runtime_contract():
+            return test(self, *args, **kwargs)
+
+    return wrapped
 
 
 class InstallerTests(unittest.TestCase):
@@ -60,44 +71,113 @@ class InstallerTests(unittest.TestCase):
         self.activation_commands.append(command)
         return subprocess.CompletedProcess(command, 0, "passed", "")
 
+    def publisher_activation_attestation(self, *, source_commit="a" * 40):
+        runtime_root = (Path(self.temp.name) / "sealed-runtime").resolve()
+        runtime_manifest = (Path(self.temp.name) / "runtime-manifest.json").resolve()
+        broker_attestation = (Path(self.temp.name) / "runtime-attestation.json").resolve()
+        python = runtime_root / "bin/python3.11"
+        publisher_probe = (Path(self.temp.name) / "trusted_publisher.py").resolve()
+        runtime_provenance = {
+            **install_module.publisher_service.CPYTHON_RUNTIME_PROVENANCE,
+            "sha256": install_module.publisher_service.CPYTHON_RUNTIME_ARCHIVE_SHA256,
+        }
+        return {
+            "contract": "radulator.dedicated_publisher_activation.v2",
+            "broker_boundary": "hermes.dedicated_broker_identity.v1",
+            "service_label": "ai.hermes.radulator-publisher",
+            "active": True,
+            "revoked": False,
+            "publisher_uid": 503,
+            "broker_uid": 502,
+            "model_uid": 501,
+            "repository": "momomojo/Radulator",
+            "github_repository_id": 1027532341,
+            "workflow_id": 227376261,
+            "workflow_path": ".github/workflows/e2e-tests.yml",
+            "ready_label_actor": {
+                "id": 35302851,
+                "login": "momomojo",
+                "type": "User",
+            },
+            "publisher_client_config_sha256": "1" * 64,
+            "asset_manifest_sha256": "2" * 64,
+            "source_commit_sha": source_commit,
+            "publisher_credential_model_denied": True,
+            "publisher_runtime_preflight": {
+                "contract": "radulator.publisher_runtime_preflight.v1",
+                "status": "PASS",
+                "python_executable": str(python),
+                "python_version": "3.11.15",
+                "runtime_root": str(runtime_root),
+                "runtime_manifest_sha256": "4" * 64,
+                "broker_client_module": str(
+                    runtime_root
+                    / "lib/python3.11/site-packages/hermes_cli/kanban_broker_client.py"
+                ),
+                "broker_rpc": "PASS",
+            },
+            "broker_runtime_attestation_path": str(broker_attestation),
+            "broker_runtime_attestation_sha256": "3" * 64,
+            "runtime_root": str(runtime_root),
+            "runtime_manifest_path": str(runtime_manifest),
+            "runtime_manifest_sha256": "4" * 64,
+            "python_executable": str(python),
+            "python_version": "3.11.15",
+            "python_sha256": "5" * 64,
+            "service_config_sha256": "6" * 64,
+            "hermes_pyproject_lock_sha256": "7" * 64,
+            "hermes_provenance_sha256": "8" * 64,
+            "hermes_source_sha": "b" * 40,
+            "hermes_install_archive_sha256": "d" * 64,
+            "radulator_source_sha": source_commit,
+            "runtime_provenance": runtime_provenance,
+            "publisher_probe_path": str(publisher_probe),
+            "publisher_probe_sha256": "9" * 64,
+            "publisher_probe_contract": "radulator.publisher_runtime_preflight.v1",
+            "publisher_probe_status": "PASS",
+            "archive_digests": {
+                "cpython": install_module.publisher_service.CPYTHON_RUNTIME_ARCHIVE_SHA256,
+                "hermes_install": "d" * 64,
+            },
+            "isolated_probe": {"command": [str(python), "-I", "-B"], "outcome": "PASS"},
+            "verified_at": 1,
+        }
+
     def write_publisher_activation_attestation(self, plan, *, source_commit="a" * 40):
         path = Path(self.temp.name) / "publisher-attestation.json"
         plan["publisher_service_attestation"] = str(path)
-        path.write_text(
-            json.dumps(
-                {
-                    "contract": "radulator.dedicated_publisher_activation.v1",
-                    "broker_boundary": "hermes.dedicated_broker_identity.v1",
-                    "service_label": "ai.hermes.radulator-publisher",
-                    "active": True,
-                    "publisher_uid": 503,
-                    "broker_uid": 502,
-                    "model_uid": 501,
-                    "repository": "momomojo/Radulator",
-                    "github_repository_id": 1027532341,
-                    "workflow_id": 227376261,
-                    "workflow_path": ".github/workflows/e2e-tests.yml",
-                    "ready_label_actor": {
-                        "id": 35302851,
-                        "login": "momomojo",
-                        "type": "User",
-                    },
-                    "publisher_client_config_sha256": "1" * 64,
-                    "asset_manifest_sha256": "2" * 64,
-                    "source_commit_sha": source_commit,
-                    "publisher_credential_model_denied": True,
-                    "verified_at": 1,
-                }
-            )
-            + "\n"
-        )
+        path.write_text(json.dumps(self.publisher_activation_attestation(source_commit=source_commit)) + "\n")
         path.chmod(0o644)
+
+    @contextlib.contextmanager
+    def publisher_runtime_contract(self, *, source_commit="a" * 40):
+        attestation = self.publisher_activation_attestation(source_commit=source_commit)
+        broker = {
+            key: attestation[key]
+            for key in install_module.publisher_service.BROKER_RUNTIME_ATTESTATION_FIELDS
+            if key in attestation
+        }
+        broker.update({
+            "contract": "hermes.kanban_broker_runtime_attestation.v1",
+            "schema_version": 1,
+        })
+        with mock.patch.object(
+            install_module,
+            "_read_dedicated_publisher_attestation",
+            return_value=attestation,
+        ), mock.patch.object(
+            install_module.publisher_service,
+            "_read_broker_runtime_contract",
+            return_value=(broker, {}, "3" * 64, "4" * 64),
+        ):
+            yield attestation
 
     def root_owned_fstat(self, descriptor):
         info = self.real_fstat(descriptor)
         return types.SimpleNamespace(
             st_mode=info.st_mode,
             st_uid=0,
+            st_gid=0,
             st_nlink=info.st_nlink,
             st_dev=info.st_dev,
             st_ino=info.st_ino,
@@ -217,6 +297,9 @@ class InstallerTests(unittest.TestCase):
         return {
             "radulator_home": str(self.radulator_home),
             "repo": str(repo),
+            "publisher_service_attestation": str(
+                Path(self.temp.name) / "missing-publisher-attestation.json"
+            ),
         }
 
     def write_completion_contract_runtime(self):
@@ -306,6 +389,21 @@ class InstallerTests(unittest.TestCase):
         )
         with mock.patch.object(install_module, "dt", fake_datetime):
             self.assertEqual(install_module._now(), "2026-08-23T22:00:00Z")
+
+    def test_installer_help_runs_when_invoked_by_file_path(self):
+        result = subprocess.run(
+            [sys.executable, str(Path(install_module.__file__).resolve()), "--help"],
+            cwd="/var/empty",
+            env={"PATH": "/usr/bin:/bin"},
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("usage:", result.stdout)
+        self.assertIn("--radulator-home", result.stdout)
 
     def test_repository_lint_ignores_managed_worktree_storage(self):
         eslint_config = (self.repo / "eslint.config.js").read_text()
@@ -1161,6 +1259,7 @@ class InstallerTests(unittest.TestCase):
             (self.radulator_home / "scripts" / "trusted_publisher_cron.sh").exists()
         )
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_enable_holds_both_gateway_job_locks_through_render_and_journal_finish(self, _identity):
         result = apply_install(**self.kwargs())
@@ -1282,6 +1381,7 @@ with lock_path.open('a+') as lock:
 
         self.assertEqual(publisher.read_bytes(), b"operator bytes must not be replaced\n")
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_activation_proofs_run_unlocked_while_all_managed_consumers_are_disabled(self, _identity):
         result = apply_install(**self.kwargs())
@@ -1337,6 +1437,7 @@ with lock_path.open('a+') as lock:
         self.assertTrue(observations)
         self.assertTrue(all(acquired and disabled for acquired, disabled in observations))
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_crash_between_profile_enable_writes_recovers_both_profiles_disabled(self, _identity):
         result = apply_install(**self.kwargs())
@@ -1794,6 +1895,7 @@ with lock_path.open('a+') as lock:
         self.assertFalse(self.publisher_job()["enabled"])
         self.assertEqual(publisher.read_bytes(), (self.repo / "ops/hermes/radulator/trusted_publisher.py").read_bytes())
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_explicit_enable_copies_drift_then_preflights_while_disabled_before_reenabling(self, _identity):
         plan = build_plan(**self.kwargs())
@@ -1824,6 +1926,7 @@ with lock_path.open('a+') as lock:
         self.assertFalse(self.publisher_job()["enabled"])
         self.assertEqual(self.publisher_job()["state"], "paused")
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_repeated_enable_is_an_exact_jobs_file_noop_across_timestamp_boundaries(self, _identity):
         plan = build_plan(**self.kwargs())
@@ -1861,6 +1964,7 @@ with lock_path.open('a+') as lock:
             {path: path.read_bytes() for path in before},
         )
 
+    @with_publisher_runtime_contract
     def test_failed_post_copy_enable_restores_prior_publisher_bytes_and_remains_disabled(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -2162,6 +2266,7 @@ with lock_path.open('a+') as lock:
             self.original_radulator_jobs,
         )
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_enable_then_restore_recovers_original_files(self, _identity):
         result = apply_install(**self.kwargs())
@@ -2210,6 +2315,7 @@ with lock_path.open('a+') as lock:
         self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher.py").exists())
         self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher_cron.sh").exists())
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_verification_profile_write_failure_restores_both_job_files_exactly(self, _identity):
         result = apply_install(**self.kwargs())
@@ -2254,6 +2360,7 @@ with lock_path.open('a+') as lock:
         self.assertEqual(primary_path.read_bytes(), before[primary_path])
         self.assertEqual(verification_path.read_bytes(), before[verification_path])
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_job_snapshot_restore_failure_disables_and_reads_back_every_managed_job(self, _identity):
         result = apply_install(**self.kwargs())
@@ -2336,6 +2443,7 @@ with lock_path.open('a+') as lock:
         self.assertEqual(primary_path.read_bytes(), before_primary)
         self.assertEqual(verification_path.read_bytes(), before_verification)
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_verification_failure_from_active_install_quiesces_every_managed_job(self, _identity):
         result = apply_install(**self.kwargs())
@@ -2375,6 +2483,7 @@ with lock_path.open('a+') as lock:
                 self.assertIsNone(job.get("next_run_at"))
         self.assertEqual(observed_ids, managed_ids)
 
+    @with_publisher_runtime_contract
     def test_enable_requires_exact_installed_broker_contract(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -2438,32 +2547,41 @@ with lock_path.open('a+') as lock:
             observed.append((command, kwargs))
             return subprocess.CompletedProcess(command, 1, "", "missing runtime")
 
-        with self.assertRaisesRegex(InstallError, "Installed Hermes runtime"):
-            install_module._verify_broker_contract(plan, runner)
+        with self.publisher_runtime_contract():
+            with self.assertRaisesRegex(InstallError, "Installed Hermes runtime"):
+                install_module._verify_broker_contract(plan, runner)
 
         command, invocation = observed[0]
         self.assertEqual(command[1], "-I")
         self.assertEqual(
             Path(invocation["cwd"]).resolve(),
-            self.default_home.resolve(),
+            Path("/var/empty").resolve(),
         )
         self.assertNotIn("PYTHONPATH", invocation["env"])
         self.assertNotIn("PYTHONHOME", invocation["env"])
         self.assertIn("__file__", command[-1])
-        self.assertIn(str(self.default_home.resolve()), command[-1])
+        self.assertEqual(command[2], "-B")
+        self.assertIn(str((Path(self.temp.name) / "sealed-runtime").resolve()), command[-1])
 
     def test_activation_accepts_broker_class_completion_and_public_routing_contract(self):
         repo = Path(self.temp.name) / "activation-repository"
         repo.mkdir()
         self.write_completion_contract_runtime()
 
-        try:
-            install_module._verify_broker_contract({
-                "radulator_home": str(self.radulator_home),
-                "repo": str(repo),
-            })
-        except InstallError as error:
-            self.fail(f"exact Hermes completion contract was rejected: {error}")
+        plan = {
+            "radulator_home": str(self.radulator_home),
+            "repo": str(repo),
+            "publisher_service_attestation": str(
+                Path(self.temp.name) / "publisher-attestation.json"
+            ),
+        }
+        with self.publisher_runtime_contract():
+            try:
+                install_module._verify_broker_contract(
+                    plan, runner=self.passing_activation_runner
+                )
+            except InstallError as error:
+                self.fail(f"exact Hermes completion contract was rejected: {error}")
 
     def test_enable_requires_a_prior_disabled_first_publisher_install(self):
         plan = build_plan(**self.kwargs())
@@ -2477,6 +2595,7 @@ with lock_path.open('a+') as lock:
 
         self.assertFalse((self.radulator_home / "scripts" / "trusted_publisher.py").exists())
 
+    @with_publisher_runtime_contract
     def test_enable_requires_exact_installed_worker_security_boundary(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -2495,6 +2614,7 @@ with lock_path.open('a+') as lock:
                 activation_test_runner=runner,
             )
 
+    @with_publisher_runtime_contract
     def test_enable_requires_dedicated_broker_publisher_client(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -2516,6 +2636,7 @@ with lock_path.open('a+') as lock:
 
         self.assertFalse(self.publisher_job()["enabled"])
 
+    @with_publisher_runtime_contract
     def test_enable_requires_dedicated_broker_routes(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -2537,6 +2658,7 @@ with lock_path.open('a+') as lock:
 
         self.assertFalse(self.publisher_job()["enabled"])
 
+    @with_publisher_runtime_contract
     def test_enable_requires_publish_correction_contract(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -2558,6 +2680,7 @@ with lock_path.open('a+') as lock:
 
         self.assertFalse(self.publisher_job()["enabled"])
 
+    @with_publisher_runtime_contract
     def test_activation_probes_never_call_legacy_same_uid_authority(self):
         plan = build_plan(**self.kwargs())
         apply_install(**self.kwargs())
@@ -2569,7 +2692,7 @@ with lock_path.open('a+') as lock:
             observed.append(rendered)
             return subprocess.CompletedProcess(command, 0, "passed", "")
 
-        with self.assertRaisesRegex(InstallError, "activation attestation"):
+        with self.assertRaisesRegex(InstallError, "not clean"):
             apply_install(
                 **self.kwargs(),
                 enable=True,
@@ -2600,22 +2723,20 @@ with lock_path.open('a+') as lock:
 
         self.assertFalse(self.publisher_job()["enabled"])
 
+    @with_publisher_runtime_contract
     def test_dedicated_publisher_attestation_must_match_activation_checkout_head(self):
         plan = build_plan(**self.kwargs())
-        self.write_publisher_activation_attestation(plan)
 
-        with mock.patch.object(
-            install_module.os, "fstat", side_effect=self.root_owned_fstat
-        ):
-            with self.assertRaisesRegex(InstallError, "source commit"):
-                install_module._verify_dedicated_publisher_identity(
-                    plan, runner=self.publisher_identity_runner(head="b" * 40)
-                )
+        with self.assertRaisesRegex(InstallError, "source commit"):
+            install_module._verify_dedicated_publisher_identity(
+                plan, runner=self.publisher_identity_runner(head="b" * 40)
+            )
 
     def test_v1_publisher_attestation_is_rejected_until_disabled_first_reprovision(self):
         plan = build_plan(**self.kwargs())
         self.write_publisher_activation_attestation(plan)
         payload = json.loads(Path(plan["publisher_service_attestation"]).read_text())
+        payload["contract"] = "radulator.dedicated_publisher_activation.v1"
         with mock.patch.object(
             install_module, "_read_dedicated_publisher_attestation", return_value=payload
         ):
@@ -2624,21 +2745,19 @@ with lock_path.open('a+') as lock:
                     plan, runner=self.publisher_identity_runner()
                 )
 
+    @with_publisher_runtime_contract
     def test_dedicated_publisher_attestation_requires_clean_activation_checkout(self):
         plan = build_plan(**self.kwargs())
-        self.write_publisher_activation_attestation(plan)
 
-        with mock.patch.object(
-            install_module.os, "fstat", side_effect=self.root_owned_fstat
-        ):
-            with self.assertRaisesRegex(InstallError, "not clean"):
-                install_module._verify_dedicated_publisher_identity(
-                    plan,
-                    runner=self.publisher_identity_runner(
-                        status="?? unreviewed-publisher.py\n"
-                    ),
-                )
+        with self.assertRaisesRegex(InstallError, "not clean"):
+            install_module._verify_dedicated_publisher_identity(
+                plan,
+                runner=self.publisher_identity_runner(
+                    status="?? unreviewed-publisher.py\n"
+                ),
+            )
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_profile_activation_never_requests_publisher_github_token(self, _identity):
         plan = build_plan(**self.kwargs())
@@ -2715,6 +2834,7 @@ with lock_path.open('a+') as lock:
                 activation_test_runner=self.passing_activation_runner,
             )
 
+    @with_publisher_runtime_contract
     @mock.patch.object(install_module, "_verify_dedicated_publisher_identity")
     def test_enable_refuses_any_failed_repository_self_test(self, _identity):
         plan = build_plan(**self.kwargs())
