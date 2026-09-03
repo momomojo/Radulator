@@ -96,6 +96,9 @@ class PublisherServiceInstallTests(unittest.TestCase):
         python = runtime_root / "bin" / "python3.11"
         python.write_bytes(b"sealed python executable\n")
         python.chmod(0o555)
+        runtime_probe = runtime_root / "runtime-probe.py"
+        runtime_probe.write_bytes(b"# sealed runtime probe\n")
+        runtime_probe.chmod(0o555)
         (package / "__init__.py").write_bytes(b"\n")
         (package / "kanban_broker_client.py").write_bytes(b"SEALED = True\n")
         (package / "__init__.py").chmod(0o444)
@@ -111,6 +114,7 @@ class PublisherServiceInstallTests(unittest.TestCase):
             directory.chmod(0o555)
         runtime_root = runtime_root.resolve(strict=True)
         python = python.resolve(strict=True)
+        runtime_probe = runtime_probe.resolve(strict=True)
         publisher_probe = (self.root / "runtime-publisher-probe.py").resolve()
         if not publisher_probe.exists():
             publisher_probe.write_bytes(
@@ -126,6 +130,7 @@ class PublisherServiceInstallTests(unittest.TestCase):
             {"path": "lib/python3.11/site-packages/hermes_cli/", "type": "directory", "mode": 0o555},
             {"path": "lib/python3.11/site-packages/hermes_cli/__init__.py", "type": "file", "mode": 0o444, "size": 1, "sha256": hashlib.sha256(b"\n").hexdigest()},
             {"path": "lib/python3.11/site-packages/hermes_cli/kanban_broker_client.py", "type": "file", "mode": 0o444, "size": len(b"SEALED = True\n"), "sha256": hashlib.sha256(b"SEALED = True\n").hexdigest()},
+            {"path": "runtime-probe.py", "type": "file", "mode": 0o555, "size": len(runtime_probe.read_bytes()), "sha256": hashlib.sha256(runtime_probe.read_bytes()).hexdigest()},
         ]
         manifest_sha = hashlib.sha256(json.dumps(entries, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         manifest = self.root / "broker-runtime-manifest.json"
@@ -171,7 +176,10 @@ class PublisherServiceInstallTests(unittest.TestCase):
             "publisher_probe_contract": "radulator.publisher_runtime_preflight.v1",
             "publisher_probe_status": "PENDING",
             "archive_digests": {"cpython": service.CPYTHON_RUNTIME_ARCHIVE_SHA256, "hermes_install": "d" * 64},
-            "isolated_probe": {"command": [str(python), "-I", "runtime-probe.py"], "outcome": "PENDING"},
+            "isolated_probe": {
+                "command": [str(python), "-I", "-B", str(runtime_probe)],
+                "outcome": "PENDING",
+            },
         }, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
         attestation.chmod(0o644)
         return attestation, manifest, runtime_root
@@ -256,6 +264,127 @@ class PublisherServiceInstallTests(unittest.TestCase):
         self.assertIs(current["active"], True)
         self.assertIs(current["revoked"], False)
         self.assertEqual(current["isolated_probe"]["outcome"], "PASS")
+
+    def test_broker_runtime_contract_rejects_noncanonical_isolated_probe_commands(self):
+        for mutation in (
+            "reordered flags",
+            "relative probe path",
+            "extra argument",
+            "missing no-bytecode flag",
+            "different probe script",
+            "different python path",
+        ):
+            with self.subTest(mutation=mutation):
+                plan = self.shared_plan()
+                attestation_path = Path(plan["broker_runtime_attestation_path"])
+                payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+                python = plan["python_executable"]
+                runtime_probe = str(Path(plan["runtime_root"]) / "runtime-probe.py")
+                commands = {
+                    "reordered flags": [python, "-B", "-I", runtime_probe],
+                    "relative probe path": [python, "-I", "-B", "runtime-probe.py"],
+                    "extra argument": [python, "-I", "-B", runtime_probe, "--verbose"],
+                    "missing no-bytecode flag": [python, "-I", runtime_probe],
+                    "different probe script": [
+                        python,
+                        "-I",
+                        "-B",
+                        str(Path(plan["runtime_root"]) / "other-probe.py"),
+                    ],
+                    "different python path": [
+                        str(Path(plan["runtime_root"]) / "bin/python3.12"),
+                        "-I",
+                        "-B",
+                        runtime_probe,
+                    ],
+                }
+                payload["active"] = True
+                payload["revoked"] = False
+                payload["publisher_probe_status"] = "PASS"
+                payload["isolated_probe"] = {
+                    "command": commands[mutation],
+                    "outcome": "PASS",
+                }
+                attestation_path.write_text(
+                    json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n",
+                    encoding="utf-8",
+                )
+                attestation_path.chmod(0o644)
+
+                with self.assertRaisesRegex(ValueError, "isolated runtime probe"):
+                    service._read_broker_runtime_contract(
+                        attestation_path=attestation_path,
+                        manifest_path=Path(plan["runtime_manifest_path"]),
+                        expected_radulator_source_sha=plan["source_commit_sha"],
+                        require_active=True,
+                        expected_owner_uid=os.geteuid(),
+                        expected_owner_gid=os.getegid(),
+                    )
+
+    def test_runtime_plan_binding_rejects_probe_command_drift_during_transition(self):
+        plan = self.shared_plan()
+        attestation = json.loads(
+            json.dumps(plan["broker_runtime_attestation"])
+        )
+        attestation["active"] = True
+        attestation["revoked"] = False
+        attestation["publisher_probe_status"] = "PASS"
+        attestation["isolated_probe"]["outcome"] = "PASS"
+        attestation["isolated_probe"]["command"].append("--unreviewed")
+
+        self.assertFalse(
+            service._runtime_plan_binding_matches(
+                plan,
+                attestation,
+                plan["broker_runtime_manifest"],
+                "0" * 64,
+                plan["runtime_manifest_sha256"],
+                allow_state_transition=True,
+            )
+        )
+
+    def test_runtime_plan_binding_allows_only_exact_pending_to_pass_transition(self):
+        plan = self.shared_plan()
+
+        active = json.loads(json.dumps(plan["broker_runtime_attestation"]))
+        active["active"] = True
+        active["revoked"] = False
+        active["publisher_probe_status"] = "PASS"
+        active["isolated_probe"]["outcome"] = "PASS"
+        self.assertTrue(
+            service._runtime_plan_binding_matches(
+                plan,
+                active,
+                plan["broker_runtime_manifest"],
+                "0" * 64,
+                plan["runtime_manifest_sha256"],
+                allow_state_transition=True,
+            )
+        )
+
+        invalid_states = (
+            ("active but still revoked", True, True, "PASS", "PASS"),
+            ("active before isolated probe pass", True, False, "PENDING", "PASS"),
+            ("active before publisher probe pass", True, False, "PASS", "PENDING"),
+            ("passes while inactive", False, True, "PASS", "PASS"),
+        )
+        for name, active_state, revoked, isolated_outcome, publisher_status in invalid_states:
+            with self.subTest(name=name):
+                observed = json.loads(json.dumps(plan["broker_runtime_attestation"]))
+                observed["active"] = active_state
+                observed["revoked"] = revoked
+                observed["publisher_probe_status"] = publisher_status
+                observed["isolated_probe"]["outcome"] = isolated_outcome
+                self.assertFalse(
+                    service._runtime_plan_binding_matches(
+                        plan,
+                        observed,
+                        plan["broker_runtime_manifest"],
+                        "0" * 64,
+                        plan["runtime_manifest_sha256"],
+                        allow_state_transition=True,
+                    )
+                )
 
     def test_wrapper_contains_b_and_runtime_preflight(self):
         wrapper = (Path(__file__).resolve().parents[1] / "trusted_publisher_cron.sh").read_text(encoding="utf-8")
