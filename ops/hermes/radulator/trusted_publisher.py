@@ -10,6 +10,7 @@ import fcntl
 import hashlib
 import json
 import os
+import platform
 import re
 import secrets
 import stat
@@ -141,6 +142,17 @@ class PublisherConfig:
     ready_label_actor_id: int | None = None
     ready_label_actor_login: str | None = None
     ready_label_actor_type: str | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class RuntimePreflightConfig:
+    runtime_root: Path
+    runtime_manifest: Path
+    runtime_manifest_sha256: str
+    runtime_python_version: str
+    runtime_python_sha256: str
+    repository_id: str
+    broker_client_config: Path
 
 
 class PublisherError(RuntimeError):
@@ -3478,6 +3490,218 @@ def run_broker_once(
     }
 
 
+RUNTIME_PREFLIGHT_CONTRACT = "radulator.publisher_runtime_preflight.v1"
+RUNTIME_MANIFEST_CONTRACT = "hermes.kanban_broker_runtime_manifest.v1"
+CPYTHON_RUNTIME_ARCHIVE_SHA256 = (
+    "01f0de017aacd7528084dbacd46c66cfe9a0b0cd1255be0c24854b7985dd130e"
+)
+
+
+def _runtime_preflight_read(
+    path: Path,
+    *,
+    maximum: int,
+    expected_uid: int | None = None,
+    expected_gid: int | None = None,
+    expected_mode: int | None = None,
+) -> bytes:
+    """Read a broker-published public artifact without following a symlink."""
+
+    fd = os.open(
+        path,
+        os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0),
+    )
+    try:
+        info = os.fstat(fd)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+            or info.st_size < 0
+            or info.st_size > maximum
+            or (expected_uid is not None and info.st_uid != expected_uid)
+            or (expected_gid is not None and info.st_gid != expected_gid)
+            or (expected_mode is not None and stat.S_IMODE(info.st_mode) != expected_mode)
+        ):
+            raise PublisherError("runtime preflight artifact is not a bounded regular file")
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(fd, min(1024 * 1024, maximum + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > maximum:
+                raise PublisherError("runtime preflight artifact exceeds its size bound")
+        after = os.fstat(fd)
+        if (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+        ):
+            raise PublisherError("runtime preflight artifact changed during read")
+        return b"".join(chunks)
+    finally:
+        os.close(fd)
+
+
+def run_runtime_preflight(
+    config: RuntimePreflightConfig,
+    broker_client: Any,
+) -> dict[str, str]:
+    """Prove the direct ``python -I -B trusted_publisher.py`` contract.
+
+    This path performs no GitHub authentication and no publication.  It imports
+    the broker client from the sealed interpreter's site-packages and makes one
+    bounded read-only obligations RPC, so a shell process with a live PID cannot
+    satisfy the service health gate by itself.
+    """
+
+    runtime_root_input = Path(config.runtime_root)
+    runtime_manifest_input = Path(config.runtime_manifest)
+    runtime_root = runtime_root_input.resolve(strict=True)
+    runtime_manifest = runtime_manifest_input.resolve(strict=True)
+    if runtime_root_input != runtime_root or runtime_manifest_input != runtime_manifest:
+        raise PublisherError("sealed runtime paths must be canonical")
+    executable = Path(sys.executable).resolve(strict=True)
+    expected_executable = runtime_root / "bin" / "python3.11"
+    if executable != expected_executable or runtime_root == Path(runtime_root.anchor):
+        raise PublisherError("sealed Python executable is not the broker runtime")
+    root_info = runtime_root.lstat()
+    if (
+        stat.S_ISLNK(root_info.st_mode)
+        or not stat.S_ISDIR(root_info.st_mode)
+        or root_info.st_uid != 0
+        or stat.S_IMODE(root_info.st_mode) != 0o555
+    ):
+        raise PublisherError("sealed Python runtime root is mutable")
+    if platform.python_version() != config.runtime_python_version:
+        raise PublisherError("sealed Python version does not match the broker attestation")
+    if not (sys.version_info >= (3, 11) and sys.version_info < (3, 14)):
+        raise PublisherError("sealed Python version is outside the supported range")
+    try:
+        prefix = Path(sys.prefix).resolve(strict=True)
+        base_prefix = Path(sys.base_prefix).resolve(strict=True)
+    except OSError as error:
+        raise PublisherError("sealed Python prefix identity is unavailable") from error
+    if prefix != runtime_root or base_prefix != runtime_root:
+        raise PublisherError("sealed Python prefix escaped the broker runtime")
+    python_bytes = _runtime_preflight_read(
+        executable,
+        maximum=128 * 1024 * 1024,
+        expected_uid=0,
+        expected_gid=0,
+        expected_mode=0o555,
+    )
+    if hashlib.sha256(python_bytes).hexdigest() != config.runtime_python_sha256:
+        raise PublisherError("sealed Python executable digest changed")
+    for item in sys.path:
+        if item:
+            resolved = Path(item).resolve(strict=False)
+            if resolved != runtime_root and runtime_root not in resolved.parents:
+                raise PublisherError("sealed Python sys.path escaped the broker runtime")
+    manifest_bytes = _runtime_preflight_read(
+        runtime_manifest,
+        maximum=4 * 1024 * 1024,
+        expected_uid=0,
+        expected_gid=0,
+        expected_mode=0o644,
+    )
+    try:
+        manifest = json.loads(manifest_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise PublisherError("broker runtime manifest is malformed") from error
+    if (
+        not isinstance(manifest, dict)
+        or set(manifest) != {
+            "contract", "schema_version", "runtime_root", "python_executable",
+            "python_version", "provenance", "runtime_manifest_sha256", "entries",
+        }
+        or manifest.get("contract") != RUNTIME_MANIFEST_CONTRACT
+        or manifest.get("schema_version") != 1
+        or manifest.get("runtime_root") != str(runtime_root)
+        or manifest.get("python_executable") != str(expected_executable)
+        or manifest.get("python_version") != config.runtime_python_version
+        or manifest.get("runtime_manifest_sha256") != config.runtime_manifest_sha256
+        or not isinstance(manifest.get("provenance"), dict)
+        or not isinstance(manifest.get("entries"), list)
+    ):
+        raise PublisherError("broker runtime manifest identity is not exact")
+    provenance = manifest["provenance"]
+    if (
+        set(provenance)
+        != {
+            "source_repository", "release_tag", "asset_id", "asset_name",
+            "release_url", "sha256", "verification_status",
+            "attestation_identity", "attestation_status",
+        }
+        or provenance.get("source_repository") != "astral-sh/python-build-standalone"
+        or provenance.get("release_tag") != "20260602"
+        or provenance.get("asset_id") != 436826623
+        or provenance.get("asset_name")
+        != "cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz"
+        or provenance.get("release_url")
+        != "https://github.com/astral-sh/python-build-standalone/releases/download/20260602/cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz"
+        or not isinstance(provenance.get("sha256"), str)
+        or not re.fullmatch(r"[0-9a-f]{64}", provenance["sha256"])
+        or provenance.get("sha256") != CPYTHON_RUNTIME_ARCHIVE_SHA256
+        or provenance.get("verification_status") != "external-sha256-bound"
+        or provenance.get("attestation_identity") != "operator-supplied-sha256"
+        or provenance.get("attestation_status") != "bound-no-signature"
+    ):
+        raise PublisherError("broker CPython provenance is not exact")
+    if hashlib.sha256(
+        json.dumps(manifest["entries"], sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest() != config.runtime_manifest_sha256:
+        raise PublisherError("broker runtime manifest digest changed")
+    module = sys.modules.get("hermes_cli.kanban_broker_client")
+    if module is None:
+        raise PublisherError("sealed broker client import is unavailable")
+    module_path = getattr(module, "__file__", None)
+    if not module_path:
+        raise PublisherError("sealed broker client import has no file identity")
+    module_origin = Path(module_path).resolve(strict=True)
+    if module_origin != runtime_root and runtime_root not in module_origin.parents:
+        raise PublisherError("sealed broker client import escaped the broker runtime")
+    try:
+        result = broker_client.call(
+            "list_publish_obligations",
+            {
+                "contract": BROKER_OBLIGATION_QUERY_CONTRACT,
+                "repository_id": config.repository_id,
+                "after_created_at": 0,
+                "after_receipt_id": "",
+                "limit": 1,
+            },
+        )
+    except Exception:
+        # Do not expose broker/client exception text: it may contain socket or
+        # credential-adjacent details in a launchd stderr log.
+        raise PublisherError("publisher runtime broker RPC canary failed") from None
+    if (
+        not isinstance(result, dict)
+        or set(result) != {"contract", "broker_boundary", "items", "has_more", "next_cursor"}
+        or result.get("contract") != BROKER_OBLIGATION_QUERY_CONTRACT
+        or result.get("broker_boundary") != BROKER_BOUNDARY
+        or not isinstance(result.get("items"), list)
+        or len(result["items"]) > 1
+        or type(result.get("has_more")) is not bool
+        or (not result["items"] and (result.get("next_cursor") is not None or result.get("has_more") is not False))
+    ):
+        raise PublisherError("publisher runtime broker RPC canary response is not exact")
+    return {
+        "contract": RUNTIME_PREFLIGHT_CONTRACT,
+        "status": "PASS",
+        "python_executable": str(executable),
+        "python_version": platform.python_version(),
+        "runtime_root": str(runtime_root),
+        "runtime_manifest_sha256": str(config.runtime_manifest_sha256),
+        "broker_client_module": str(module_origin),
+        "broker_rpc": "PASS",
+    }
+
+
 def parse_runtime_config(argv: list[str] | None = None) -> tuple[PublisherConfig, Path]:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--board", default=os.environ.get("RADULATOR_HERMES_BOARD", "default"))
@@ -3551,8 +3775,66 @@ def parse_runtime_config(argv: list[str] | None = None) -> tuple[PublisherConfig
     return config, lock_file
 
 
+def parse_runtime_preflight_config(
+    argv: list[str] | None = None,
+) -> RuntimePreflightConfig:
+    parser = argparse.ArgumentParser(
+        description="Verify the sealed publisher runtime without publication credentials."
+    )
+    parser.add_argument("--runtime-preflight", action="store_true", required=True)
+    parser.add_argument("--runtime-root", required=True)
+    parser.add_argument("--runtime-manifest", required=True)
+    parser.add_argument("--runtime-manifest-sha256", required=True)
+    parser.add_argument("--runtime-python-version", required=True)
+    parser.add_argument("--runtime-python-sha256", required=True)
+    parser.add_argument("--repository-id", required=True)
+    parser.add_argument("--broker-client-config", required=True)
+    args = parser.parse_args(argv)
+    runtime_root = Path(args.runtime_root)
+    runtime_manifest = Path(args.runtime_manifest)
+    broker_client_config = Path(args.broker_client_config)
+    if not runtime_root.is_absolute():
+        parser.error("--runtime-root must be absolute")
+    if not runtime_manifest.is_absolute():
+        parser.error("--runtime-manifest must be absolute")
+    if not broker_client_config.is_absolute():
+        parser.error("--broker-client-config must be absolute")
+    if not re.fullmatch(r"[0-9a-f]{64}", args.runtime_manifest_sha256):
+        parser.error("--runtime-manifest-sha256 must be a lowercase SHA-256")
+    if not re.fullmatch(r"[0-9a-f]{64}", args.runtime_python_sha256):
+        parser.error("--runtime-python-sha256 must be a lowercase SHA-256")
+    if not re.fullmatch(r"3\.(?:11|12|13)\.[0-9]+", args.runtime_python_version):
+        parser.error("--runtime-python-version must be supported Python 3.11-3.13")
+    if not TASK_ID_PATTERN.fullmatch(args.repository_id):
+        parser.error("--repository-id is malformed")
+    return RuntimePreflightConfig(
+        runtime_root=runtime_root,
+        runtime_manifest=runtime_manifest,
+        runtime_manifest_sha256=args.runtime_manifest_sha256,
+        runtime_python_version=args.runtime_python_version,
+        runtime_python_sha256=args.runtime_python_sha256,
+        repository_id=args.repository_id,
+        broker_client_config=broker_client_config,
+    )
+
+
 def main(argv: list[str] | None = None, *, broker_client: Any = None) -> int:
-    config, lock_file = parse_runtime_config(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if "--runtime-preflight" in arguments:
+        config = parse_runtime_preflight_config(arguments)
+        if broker_client is None:
+            try:
+                from hermes_cli.kanban_broker_client import load_broker_client
+
+                broker_client = load_broker_client(
+                    config.broker_client_config, expected_surface="publisher"
+                )
+            except Exception:
+                raise PublisherError("publisher runtime broker client is unavailable") from None
+        result = run_runtime_preflight(config, broker_client)
+        print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+        return 0
+    config, lock_file = parse_runtime_config(arguments)
     required_broker = {
         "repository_id": config.repository_id,
         "publisher_state_dir": config.publisher_state_dir,
