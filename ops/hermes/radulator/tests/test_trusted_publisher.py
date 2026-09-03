@@ -3729,22 +3729,23 @@ class TrustedPublisherRunTests(unittest.TestCase):
         self.assertEqual(config.broker_client_config, client)
 
     def test_direct_isolated_runtime_preflight_help_exposes_only_minimal_contract(self):
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-I",
-                "-B",
-                str(Path(publisher.__file__).resolve()),
-                "--runtime-preflight",
-                "--help",
-            ],
-            cwd="/var/empty",
-            env={"PATH": "/usr/bin:/bin"},
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        with tempfile.TemporaryDirectory() as working_directory:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-I",
+                    "-B",
+                    str(Path(publisher.__file__).resolve()),
+                    "--runtime-preflight",
+                    "--help",
+                ],
+                cwd=working_directory,
+                env={"PATH": "/usr/bin:/bin"},
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("--repository-id", result.stdout)

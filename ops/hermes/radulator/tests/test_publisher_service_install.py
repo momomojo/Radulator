@@ -30,6 +30,12 @@ class UnlinkIsInconclusive:
 
 class PublisherServiceInstallTests(unittest.TestCase):
     def setUp(self):
+        self.real_ancestor_validator = service._validate_immutable_ancestors
+        self.ancestor_validator_patcher = mock.patch.object(
+            service, "_validate_immutable_ancestors"
+        )
+        self.ancestor_validator_patcher.start()
+        self.addCleanup(self.ancestor_validator_patcher.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.source = self.root / "source"
@@ -182,6 +188,39 @@ class PublisherServiceInstallTests(unittest.TestCase):
         self.assertEqual(plan["broker_runtime_attestation"]["revoked"], True)
         self.assertNotEqual(plan["publisher_asset_root"], plan["runtime_root"])
 
+    def test_real_ancestor_validator_rejects_world_writable_ancestor(self):
+        path_metadata = {
+            "/sealed": mock.Mock(st_mode=stat.S_IFDIR | 0o755, st_uid=0),
+            "/sealed/runtime": mock.Mock(
+                st_mode=stat.S_IFDIR | 0o777, st_uid=os.geteuid()
+            ),
+        }
+
+        with mock.patch.object(
+            Path, "lstat", new=lambda path: path_metadata[str(path)]
+        ):
+            with self.assertRaisesRegex(ValueError, "runtime ancestor is mutable"):
+                self.real_ancestor_validator(
+                    Path("/sealed/runtime/attestation.json"),
+                    expected_uid=os.geteuid(),
+                )
+
+    def test_real_ancestor_validator_accepts_controlled_immutable_ancestry(self):
+        path_metadata = {
+            "/sealed": mock.Mock(st_mode=stat.S_IFDIR | 0o755, st_uid=0),
+            "/sealed/runtime": mock.Mock(
+                st_mode=stat.S_IFDIR | 0o550, st_uid=os.geteuid()
+            ),
+        }
+
+        with mock.patch.object(
+            Path, "lstat", new=lambda path: path_metadata[str(path)]
+        ):
+            self.real_ancestor_validator(
+                Path("/sealed/runtime/attestation.json"),
+                expected_uid=os.geteuid(),
+            )
+
     def test_plan_rejects_v1_broker_runtime_contract(self):
         plan = self.plan()
         attestation = Path(plan["broker_runtime_attestation_path"])
@@ -253,15 +292,16 @@ class PublisherServiceInstallTests(unittest.TestCase):
             "RADULATOR_BROKER_CLIENT_CONFIG": str(self.client_config),
         }
 
-        result = subprocess.run(
-            ["/bin/bash", str(wrapper)],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env=env,
-            cwd="/var/empty",
-        )
+        with tempfile.TemporaryDirectory() as working_directory:
+            result = subprocess.run(
+                ["/bin/bash", str(wrapper)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env=env,
+                cwd=working_directory,
+            )
 
         self.assertEqual(result.returncode, 0, result.stderr)
         arguments = capture.read_text(encoding="utf-8").splitlines()
