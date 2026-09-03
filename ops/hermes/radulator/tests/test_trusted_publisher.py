@@ -5,7 +5,9 @@ import inspect
 import io
 import json
 import os
+import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -3702,6 +3704,146 @@ class TrustedPublisherRunTests(unittest.TestCase):
             self.assertEqual(parsed_lock, lock)
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 publisher.parse_runtime_config(["--project-root", "relative"])
+
+    def test_runtime_preflight_cli_does_not_require_publication_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            manifest = root / "runtime-manifest.json"
+            client = root / "publisher-client.json"
+            manifest.write_text("{}\n", encoding="utf-8")
+            client.write_text("{}\n", encoding="utf-8")
+            config = publisher.parse_runtime_preflight_config([
+                "--runtime-preflight",
+                "--runtime-root", str(root),
+                "--runtime-manifest", str(manifest),
+                "--runtime-manifest-sha256", "a" * 64,
+                "--runtime-python-version", "3.11.15",
+                "--runtime-python-sha256", "b" * 64,
+                "--repository-id", "radulator",
+                "--broker-client-config", str(client),
+            ])
+
+        self.assertEqual(config.runtime_root, root)
+        self.assertEqual(config.runtime_manifest, manifest)
+        self.assertEqual(config.repository_id, "radulator")
+        self.assertEqual(config.broker_client_config, client)
+
+    def test_direct_isolated_runtime_preflight_help_exposes_only_minimal_contract(self):
+        with tempfile.TemporaryDirectory() as working_directory:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-I",
+                    "-B",
+                    str(Path(publisher.__file__).resolve()),
+                    "--runtime-preflight",
+                    "--help",
+                ],
+                cwd=working_directory,
+                env={"PATH": "/usr/bin:/bin"},
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--repository-id", result.stdout)
+        self.assertIn("--broker-client-config", result.stdout)
+        for publication_only in (
+            "--project-root", "--lifecycle-controller", "--ledger", "--lock-file"
+        ):
+            self.assertNotIn(publication_only, result.stdout)
+
+    def test_runtime_preflight_issues_one_bounded_read_only_broker_rpc(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime_root = Path(directory).resolve()
+            executable = runtime_root / "bin" / "python3.11"
+            module_origin = (
+                runtime_root
+                / "lib/python3.11/site-packages/hermes_cli/kanban_broker_client.py"
+            )
+            executable.parent.mkdir(parents=True)
+            module_origin.parent.mkdir(parents=True)
+            executable.write_bytes(b"sealed-python\n")
+            module_origin.write_text("# broker client\n", encoding="utf-8")
+            entries = []
+            entries_sha = hashlib.sha256(b"[]").hexdigest()
+            manifest = runtime_root / "runtime-manifest.json"
+            manifest_payload = {
+                "contract": "hermes.kanban_broker_runtime_manifest.v1",
+                "schema_version": 1,
+                "runtime_root": str(runtime_root),
+                "python_executable": str(executable),
+                "python_version": "3.11.15",
+                "provenance": {
+                    "source_repository": "astral-sh/python-build-standalone",
+                    "release_tag": "20260602",
+                    "asset_id": 436826623,
+                    "asset_name": "cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz",
+                    "release_url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260602/cpython-3.11.15+20260602-aarch64-apple-darwin-install_only.tar.gz",
+                    "sha256": publisher.CPYTHON_RUNTIME_ARCHIVE_SHA256,
+                    "verification_status": "external-sha256-bound",
+                    "attestation_identity": "operator-supplied-sha256",
+                    "attestation_status": "bound-no-signature",
+                },
+                "runtime_manifest_sha256": entries_sha,
+                "entries": entries,
+            }
+            manifest_bytes = json.dumps(manifest_payload).encode("utf-8")
+            manifest.write_bytes(manifest_bytes)
+            config = publisher.RuntimePreflightConfig(
+                runtime_root=runtime_root,
+                runtime_manifest=manifest,
+                runtime_manifest_sha256=entries_sha,
+                runtime_python_version="3.11.15",
+                runtime_python_sha256=hashlib.sha256(b"sealed-python\n").hexdigest(),
+                repository_id="radulator",
+                broker_client_config=runtime_root / "publisher-client.json",
+            )
+            broker = mock.Mock()
+            broker.call.return_value = {
+                "contract": "hermes.publisher_obligation_query.v1",
+                "broker_boundary": "hermes.dedicated_broker_identity.v1",
+                "items": [],
+                "has_more": False,
+                "next_cursor": None,
+            }
+            real_lstat = Path.lstat
+
+            def lstat(path):
+                if path == runtime_root:
+                    return SimpleNamespace(st_mode=stat.S_IFDIR | 0o555, st_uid=0)
+                return real_lstat(path)
+
+            def read(path, **_kwargs):
+                return b"sealed-python\n" if path == executable else manifest_bytes
+
+            module = SimpleNamespace(__file__=str(module_origin))
+            with mock.patch.object(publisher.sys, "executable", str(executable)), mock.patch.object(
+                publisher.sys, "prefix", str(runtime_root)
+            ), mock.patch.object(publisher.sys, "base_prefix", str(runtime_root)), mock.patch.object(
+                publisher.sys, "path", [str(runtime_root / "lib/python3.11/site-packages")]
+            ), mock.patch.object(publisher.sys, "version_info", (3, 11, 15)), mock.patch.object(
+                publisher.platform, "python_version", return_value="3.11.15"
+            ), mock.patch.object(Path, "lstat", lstat), mock.patch.object(
+                publisher, "_runtime_preflight_read", side_effect=read
+            ), mock.patch.dict(
+                publisher.sys.modules, {"hermes_cli.kanban_broker_client": module}
+            ):
+                result = publisher.run_runtime_preflight(config, broker)
+
+        self.assertEqual(result["broker_rpc"], "PASS")
+        broker.call.assert_called_once_with(
+            "list_publish_obligations",
+            {
+                "contract": "hermes.publisher_obligation_query.v1",
+                "repository_id": "radulator",
+                "after_created_at": 0,
+                "after_receipt_id": "",
+                "limit": 1,
+            },
+        )
 
     def test_main_uses_only_publisher_broker_client_and_never_kanban_database(self):
         with tempfile.TemporaryDirectory() as directory:
