@@ -391,15 +391,16 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual(install_module._now(), "2026-08-23T22:00:00Z")
 
     def test_installer_help_runs_when_invoked_by_file_path(self):
-        result = subprocess.run(
-            [sys.executable, str(Path(install_module.__file__).resolve()), "--help"],
-            cwd="/var/empty",
-            env={"PATH": "/usr/bin:/bin"},
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        with tempfile.TemporaryDirectory() as working_directory:
+            result = subprocess.run(
+                [sys.executable, str(Path(install_module.__file__).resolve()), "--help"],
+                cwd=working_directory,
+                env={"PATH": "/usr/bin:/bin"},
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("usage:", result.stdout)
