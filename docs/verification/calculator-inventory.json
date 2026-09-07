@@ -1,0 +1,2092 @@
+{
+  "schema": "radulator-calculator-verification-inventory/v1",
+  "scope": {
+    "medicalCategoryExcludes": [
+      "Feedback"
+    ],
+    "clinicalSignoff": "not established",
+    "releaseProof": "not established",
+    "limitations": "Registry statuses are existing evidence claims. Fixture counts and browser-spec presence are inventory signals, not proof that tests passed, clinical review occurred, or a release is live."
+  },
+  "summary": {
+    "calculators": 42,
+    "medicalCalculators": 42,
+    "excludedCalculators": 1,
+    "registry": {
+      "verified": 10,
+      "seedUnverified": 32,
+      "missing": 0,
+      "other": 0
+    },
+    "compute": {
+      "fixtureFiles": 11,
+      "cases": 293
+    },
+    "browser": {
+      "allSpecFiles": 45,
+      "calculatorSpecificSpecFiles": 42,
+      "sharedSpecFiles": 3
+    }
+  },
+  "rows": [
+    {
+      "id": "aast-trauma-grading",
+      "name": "AAST Trauma Grading",
+      "category": "Trauma",
+      "guidelineVersion": "AAST OIS 2018/2025",
+      "sourcePath": "src/components/calculators/AASTTraumaGrading.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements published AAST organ injury scales; the mixed 2018/2025 version claim still requires an official AAST version audit.",
+        "sourceReferences": [
+          {
+            "authority": "American Association for the Surgery of Trauma",
+            "title": "AAST Organ Injury Scale 2018 revision publication",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1097/TA.0000000000002058"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/trauma/aast-trauma-grading.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/AASTTraumaGrading.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/trauma/aast-trauma-grading.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "adrenal-ct",
+      "name": "Adrenal CT Washout",
+      "category": "Radiology",
+      "guidelineVersion": null,
+      "sourcePath": "src/components/calculators/AdrenalCTWashout.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Uses published washout measurements rather than a named versioned guideline; source thresholds remain queued for primary-literature review.",
+        "sourceReferences": [
+          {
+            "authority": "Caoili et al.",
+            "title": "Adrenal masses: characterization with combined unenhanced and delayed enhanced CT",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.2214/ajr.175.5.1751411"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/adrenal-ct-washout.spec.js",
+          "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js",
+          "tests/e2e/calculators/radiology/prostate-volume.spec.js"
+        ],
+        "specCount": 4
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/AdrenalCTWashout.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/adrenal-ct-washout.spec.js",
+          "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js",
+          "tests/e2e/calculators/radiology/prostate-volume.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "adrenal-mri",
+      "name": "Adrenal MRI Chemical Shift",
+      "category": "Radiology",
+      "guidelineVersion": null,
+      "sourcePath": "src/components/calculators/AdrenalMRICSI.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Uses published signal-intensity measurements rather than a versioned guideline; the source basis remains queued for audit.",
+        "sourceReferences": [
+          {
+            "authority": "Mayo-Smith et al.",
+            "title": "Characterization of adrenal lesions with chemical shift MRI",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.2214/AJR.10.4547"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/AdrenalMRICSI.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "albi-score",
+      "name": "ALBI Score",
+      "category": "Hepatology/Liver",
+      "guidelineVersion": "ALBI Grade (Johnson 2015)",
+      "sourcePath": "src/components/calculators/ALBIScore.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-29",
+        "reviewScope": "source-derived evidence (3 claim(s), 6 vector(s), )",
+        "justification": "The open primary publication confirms the printed two-variable ALBI equation, SI units, three inclusive/exclusive grade intervals, and HCC development population. Executable vectors bind the source coefficients and all grade boundaries; unsupported cohort-median and treatment-eligibility claims were removed.",
+        "sourceReferences": [
+          {
+            "authority": "Johnson et al.",
+            "title": "Assessment of liver function in patients with hepatocellular carcinoma: a new evidence-based approach",
+            "role": "primary-publication",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/ALBIScore.jsx",
+          "fixturePath": "tests/fixtures/compute/albi-score.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 3,
+          "vectorCount": 6
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/albi-score.json"
+        ],
+        "caseCount": 6
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/hepatology/albi-score.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/ALBIScore.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/albi-score.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/hepatology/albi-score.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "aspects-score",
+      "name": "ASPECTS Score",
+      "category": "Neuroradiology",
+      "guidelineVersion": "ASPECTS (Barber 2000)",
+      "sourcePath": "src/components/calculators/ASPECTSScore.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the original ASPECTS instrument; guideline adjacency and current interpretation need an authoritative source audit.",
+        "sourceReferences": [
+          {
+            "authority": "Barber et al.",
+            "title": "Validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1016/S0140-6736(00)02237-6"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/neuroradiology/aspects-score.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/ASPECTSScore.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/neuroradiology/aspects-score.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "avs-cortisol",
+      "name": "Adrenal Vein Sampling – Cortisol",
+      "category": "Interventional",
+      "guidelineVersion": null,
+      "sourcePath": "src/components/calculators/AdrenalVeinSamplingCortisol.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Uses published cortisol AVS ratios and protocols rather than a versioned society guideline; source fidelity remains queued for review.",
+        "sourceReferences": [
+          {
+            "authority": "Acharya et al.",
+            "title": "Adrenal venous sampling for ACTH-independent hypercortisolism",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1007/s00268-018-4788-2"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/interventional/avs-cortisol.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/AdrenalVeinSamplingCortisol.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/interventional/avs-cortisol.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "avs-hyperaldo",
+      "name": "Adrenal Vein Sampling – Aldosterone",
+      "category": "Interventional",
+      "guidelineVersion": null,
+      "sourcePath": "src/components/calculators/AdrenalVeinSamplingAldo.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Combines published AVS protocols and consensus material; no current-version claim is made until the named authorities are rechecked.",
+        "sourceReferences": [
+          {
+            "authority": "Korean Endocrine Society",
+            "title": "Consensus guidance for primary aldosteronism and adrenal venous sampling",
+            "role": "context-guideline",
+            "url": "https://doi.org/10.3803/EnM.2021.1192"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/interventional/avs-hyperaldo.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/AdrenalVeinSamplingAldo.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/interventional/avs-hyperaldo.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "bclc-staging",
+      "name": "BCLC Staging (HCC)",
+      "category": "Hepatology/Liver",
+      "guidelineVersion": "BCLC 2022",
+      "sourcePath": "src/components/calculators/BCLCStaging.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the BCLC 2022 strategy; a newer paper is cited in code, so the current-version relationship must be resolved before verification.",
+        "sourceReferences": [
+          {
+            "authority": "BCLC Group",
+            "title": "BCLC strategy for prognosis prediction and treatment recommendation: the 2022 update",
+            "role": "official-authority",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8866082/"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/hepatology/bclc-staging.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/BCLCStaging.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/hepatology/bclc-staging.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "birads",
+      "name": "BI-RADS Assessment Calculator (Legacy 2013)",
+      "category": "Breast Imaging",
+      "guidelineVersion": "Legacy ACR BI-RADS 5th Ed. (2013) with public 2025 assessment-summary constraints",
+      "sourcePath": "src/components/calculators/BIRADS.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-29",
+        "reviewScope": "source-derived evidence (6 claim(s), 28 vector(s), )",
+        "justification": "Temporary rollback while the full sixth-edition manual is pending. The digest-pinned fifth-edition quick reference bounds selected descriptor groups; digest-pinned public v2025 modality summary forms independently constrain category structure, source-literal probability endpoints, and management wording. Descriptor-to-category inference and patient-specific probability calculation remain out of scope.",
+        "sourceReferences": [
+          {
+            "authority": "American College of Radiology",
+            "title": "Breast Imaging Reporting and Data System (BI-RADS)",
+            "role": "official-authority",
+            "url": "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS"
+          },
+          {
+            "authority": "American College of Radiology",
+            "title": "ACR BI-RADS Atlas Fifth Edition Quick Reference",
+            "role": "official-authority",
+            "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf",
+            "artifactSha256": "7ee3b4e3713103eba7c5618b49a5dc9112c3aa11ba8b8620b34d7ccb1b5cb410"
+          },
+          {
+            "authority": "American College of Radiology",
+            "title": "BI-RADS v2025 Mammography Summary Form",
+            "role": "official-authority",
+            "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf",
+            "artifactSha256": "98d88679deb266ac030de0d96d9f15a5fcde3b0a1a4d6a7aeb29aa49b85daae6"
+          },
+          {
+            "authority": "American College of Radiology",
+            "title": "BI-RADS v2025 Ultrasound Summary Form",
+            "role": "official-authority",
+            "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf",
+            "artifactSha256": "38f24a245a9ea992f5f29e221f6000eb4a60c9d8d78f4a3dce68130179adec1d"
+          },
+          {
+            "authority": "American College of Radiology",
+            "title": "BI-RADS v2025 MRI Summary Form",
+            "role": "official-authority",
+            "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf",
+            "artifactSha256": "75900dbd050ec22266db01cf5e18a8caae1e07e0d5e5f819195af7cf0b569dd9"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/BIRADS.jsx",
+          "fixturePath": "tests/fixtures/compute/birads.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 6,
+          "vectorCount": 28
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/birads.json"
+        ],
+        "caseCount": 30
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/breast/bi-rads.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/BIRADS.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/birads.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/breast/bi-rads.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "bosniak",
+      "name": "Bosniak Classification (Renal Cysts)",
+      "category": "Radiology",
+      "guidelineVersion": "Bosniak v2019",
+      "sourcePath": "src/components/calculators/RenalCystBosniak.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-26",
+        "reviewScope": "source-derived evidence (4 claim(s), 3 vector(s), )",
+        "justification": "The open primary version 2019 publication directly specifies the eligibility boundary, quantitative CT feature definitions, inclusive 70 HU and 4 mm equality cases, and categories exercised by the bound regression vectors. The peer-reviewed CUA 2023 guideline separately supplies the displayed Bosniak IIF follow-up interval, duration, and evidence grades.",
+        "sourceReferences": [
+          {
+            "authority": "Silverman et al.",
+            "title": "Bosniak Classification of Cystic Renal Masses, version 2019",
+            "role": "primary-publication",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/"
+          },
+          {
+            "authority": "Canadian Urological Association",
+            "title": "2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions",
+            "role": "official-authority",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/RenalCystBosniak.jsx",
+          "fixturePath": "tests/fixtures/compute/bosniak.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 4,
+          "vectorCount": 3
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/bosniak.json"
+        ],
+        "caseCount": 35
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/renal-cyst.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/RenalCystBosniak.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/bosniak.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/renal-cyst.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "cac-mesa",
+      "name": "CAC/MESA Calculator",
+      "category": "Cardiac Imaging",
+      "guidelineVersion": "MESA reference values + CAC-DRS (SCCT 2018; AUC 2023 boundary)",
+      "sourcePath": "src/components/calculators/CACMesa.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-25",
+        "reviewScope": "source-derived evidence (5 claim(s), 11 vector(s), )",
+        "justification": "The official MESA tool confirms the reference outputs used by Radulator; the original SCCT CAC-DRS publication supplies the score-only categories, and the 2023 multi-society appropriate-use criteria Table 1.2 supplies an accessible unambiguous 100-299 versus 300-or-greater boundary.",
+        "sourceReferences": [
+          {
+            "authority": "Multi-Ethnic Study of Atherosclerosis",
+            "title": "CAC Score Reference Values",
+            "role": "official-authority",
+            "url": "https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values"
+          },
+          {
+            "authority": "McClelland et al.",
+            "title": "Distribution of coronary artery calcium by race, gender, and age: results from MESA",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1161/CIRCULATIONAHA.105.580696"
+          },
+          {
+            "authority": "Society of Cardiovascular Computed Tomography",
+            "title": "CAC-DRS: Coronary Artery Calcium Data and Reporting System",
+            "role": "context-guideline",
+            "url": "https://doi.org/10.1016/j.jcct.2018.03.008"
+          },
+          {
+            "authority": "ACC, AHA, ASE, ASNC, ASPC, HFSA, HRS, SCAI, SCCT, SCMR, and STS",
+            "title": "2023 Multimodality Appropriate Use Criteria for the Detection and Risk Assessment of Chronic Coronary Disease",
+            "role": "primary-publication",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/"
+          },
+          {
+            "authority": "Maron et al.",
+            "title": "Coronary artery calcium staging to guide preventive interventions",
+            "role": "primary-publication",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11462328/"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/CACMesa.jsx",
+          "fixturePath": "tests/fixtures/compute/cac-mesa.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 5,
+          "vectorCount": 11
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/cac-mesa.json"
+        ],
+        "caseCount": 18
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/cardiac/cac-mesa.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/CACMesa.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/cac-mesa.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/cardiac/cac-mesa.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "cad-rads",
+      "name": "CAD-RADS 2.0",
+      "category": "Cardiac Imaging",
+      "guidelineVersion": "CAD-RADS 2.0 (2022)",
+      "sourcePath": "src/components/calculators/CADRADS.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements CAD-RADS 2.0; the source is recorded but current society-version status remains queued for authoritative review.",
+        "sourceReferences": [
+          {
+            "authority": "SCCT, ACC, ACR and NASCI",
+            "title": "CAD-RADS 2.0 expert consensus document",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1016/j.jcmg.2022.01.008"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/cardiac/cad-rads.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/CADRADS.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/cardiac/cad-rads.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "child-pugh",
+      "name": "Child-Pugh Score",
+      "category": "Hepatology/Liver",
+      "guidelineVersion": "Child-Pugh (Pugh 1973)",
+      "sourcePath": "src/components/calculators/ChildPugh.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the published Child-Pugh model rather than a current versioned guideline; primary-model fidelity remains queued for review.",
+        "sourceReferences": [
+          {
+            "authority": "Pugh et al.",
+            "title": "Transection of the oesophagus for bleeding oesophageal varices",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1002/bjs.1800600817"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/copy-results.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/hepatology/bclc-staging.spec.js",
+          "tests/e2e/calculators/hepatology/child-pugh.spec.js"
+        ],
+        "specCount": 4
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/ChildPugh.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/copy-results.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/hepatology/bclc-staging.spec.js",
+          "tests/e2e/calculators/hepatology/child-pugh.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "cockcroft-gault",
+      "name": "Cockcroft-Gault eCrCl",
+      "category": "Nephrology",
+      "guidelineVersion": "Cockcroft-Gault equation (1976) · Radulator V1",
+      "sourcePath": "src/components/calculators/CockcroftGault.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-25",
+        "reviewScope": "source-derived evidence (2 claim(s), )",
+        "justification": "The primary publication confirms the adult creatinine-clearance equation, derivation cohort, and historical 15 percent female adjustment implemented with explicit limitations.",
+        "sourceReferences": [
+          {
+            "authority": "Cockcroft and Gault",
+            "title": "Prediction of creatinine clearance from serum creatinine",
+            "role": "primary-publication",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/1244564/"
+          },
+          {
+            "authority": "Kidney Disease: Improving Global Outcomes",
+            "title": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease",
+            "role": "context-guideline",
+            "url": "https://kdigo.org/wp-content/uploads/2024/03/KDIGO-2024-CKD-Guideline.pdf"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/CockcroftGault.jsx",
+          "fixturePath": "tests/fixtures/compute/cockcroft-gault.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 2,
+          "vectorCount": 0
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/cockcroft-gault.json"
+        ],
+        "caseCount": 16
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/nephrology/cockcroft-gault.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/CockcroftGault.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/cockcroft-gault.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/nephrology/cockcroft-gault.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "contrast-dosing",
+      "name": "IV Contrast Dosing",
+      "category": "Radiology",
+      "guidelineVersion": "ACR Manual on Contrast Media 2026 (renal safety and warming context)",
+      "sourcePath": "src/components/calculators/ContrastDosing.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-29",
+        "reviewScope": "source-derived evidence (6 claim(s), 10 vector(s), )",
+        "justification": "The exact ACR 2026 manual and official adult/pediatric reaction-card PDFs are byte-pinned and bound to executable renal-safety and warming vectors. Verification is deliberately limited to those claims and the official card links; the study-type iodine targets, volume cap, access-flow ranges, and saline-flush default remain locally encoded planning defaults rather than ACR-verified universal protocols.",
+        "sourceReferences": [
+          {
+            "authority": "American College of Radiology",
+            "title": "ACR Manual on Contrast Media 2026",
+            "role": "official-authority",
+            "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+            "artifactSha256": "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2"
+          },
+          {
+            "authority": "American College of Radiology",
+            "title": "ACR Adult Contrast Reaction Card",
+            "role": "official-authority",
+            "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Adult.pdf",
+            "artifactSha256": "8e01c557097de36dd38706f1ce9bc540797bdee5e43534db3f6123bfabb963fb"
+          },
+          {
+            "authority": "American College of Radiology",
+            "title": "ACR Pediatric Contrast Reaction Card",
+            "role": "official-authority",
+            "url": "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf",
+            "artifactSha256": "4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/ContrastDosing.jsx",
+          "fixturePath": "tests/fixtures/compute/contrast-dosing.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 6,
+          "vectorCount": 10
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/contrast-dosing.json"
+        ],
+        "caseCount": 11
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/contrast-dosing.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/ContrastDosing.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/contrast-dosing.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/contrast-dosing.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "ct-pancreatitis",
+      "name": "CT Severity Index (CTSI)",
+      "category": "Hepatology/Liver",
+      "guidelineVersion": "Balthazar CTSI (2004)",
+      "sourcePath": "src/components/calculators/CTPancreatitis.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements published CT pancreatitis severity models rather than a single current guideline; model fidelity remains queued for audit.",
+        "sourceReferences": [
+          {
+            "authority": "Balthazar et al.",
+            "title": "Acute pancreatitis: value of CT in establishing prognosis",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1148/radiology.174.2.2296641"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/hepatology/ct-pancreatitis.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/CTPancreatitis.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/hepatology/ct-pancreatitis.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "dlp-dose",
+      "name": "DLP to Effective Dose",
+      "category": "Radiology",
+      "guidelineVersion": "ICRP 103 (2007)",
+      "sourcePath": "src/components/calculators/DLPDose.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Uses published radiation protection and conversion references rather than a single calculator guideline; factors remain queued for source audit.",
+        "sourceReferences": [
+          {
+            "authority": "International Commission on Radiological Protection",
+            "title": "The 2007 Recommendations of the International Commission on Radiological Protection",
+            "role": "official-authority",
+            "url": "https://doi.org/10.1016/j.icrp.2007.10.003"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/radiology/dlp-dose.spec.js",
+          "tests/e2e/calculators/report-snippets.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/DLPDose.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/radiology/dlp-dose.spec.js",
+          "tests/e2e/calculators/report-snippets.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "fleischner",
+      "name": "Fleischner 2017 Pulmonary Nodules",
+      "category": "Radiology",
+      "guidelineVersion": "Fleischner 2017",
+      "sourcePath": "src/components/calculators/Fleischner.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-31",
+        "reviewScope": "source-derived evidence (12 claim(s), 113 vector(s), )",
+        "justification": "Reviewed evidence separates 12 literal source facts and their reviewed clinical syntheses from four explicit Radulator product invariants while preserving exact coverage of all 113 executable vectors. CI retrieves hash-pinned RSNA-origin artifacts, parses page- and anchor-bounded text with a pinned parser, verifies a hash-bound Figure 1 transcription, and cross-checks exact NLM table fragments. Independent source review grants no release authority.",
+        "sourceReferences": [
+          {
+            "authority": "Fleischner Society and Radiological Society of North America",
+            "title": "Guidelines for Management of Incidental Pulmonary Nodules Detected on CT Images: From the Fleischner Society 2017",
+            "role": "primary-publication",
+            "url": "https://pubs.rsna.org/doi/10.1148/radiol.2017161659",
+            "artifactSha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1"
+          },
+          {
+            "authority": "Fleischner Society and Radiological Society of North America",
+            "title": "Recommendations for Measuring Pulmonary Nodules at CT: A Statement from the Fleischner Society",
+            "role": "primary-publication",
+            "url": "https://pubs.rsna.org/doi/10.1148/radiol.2017162894",
+            "artifactSha256": "633592d2253388d5a3d441ec16cd34ddb04762fc964ec023706fc0bc12e6d2d1"
+          },
+          {
+            "authority": "National Library of Medicine Bookshelf",
+            "title": "Table 5.1, Revised Fleischner guidelines (2017) for solid nodules",
+            "role": "supporting-publication",
+            "url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+            "artifactSha256": "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9"
+          },
+          {
+            "authority": "National Library of Medicine Bookshelf",
+            "title": "Table 5.2, Revised Fleischner guidelines (2017) for subsolid nodules",
+            "role": "supporting-publication",
+            "url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+            "artifactSha256": "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/Fleischner.jsx",
+          "fixturePath": "tests/fixtures/compute/fleischner.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 12,
+          "vectorCount": 113
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/fleischner.json"
+        ],
+        "caseCount": 113
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/radiology/fleischner.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/Fleischner.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/fleischner.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/radiology/fleischner.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "hip-dysplasia",
+      "name": "Hip Dysplasia",
+      "category": "Radiology",
+      "guidelineVersion": null,
+      "sourcePath": "src/components/calculators/HipDysplasiaIndices.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Uses published radiographic measurement references rather than a versioned guideline; age and sex reference fidelity remains queued for audit.",
+        "sourceReferences": [
+          {
+            "authority": "Tonnis et al.",
+            "title": "Normal values of the hip joint for the evaluation of X-rays in children and adults",
+            "role": "primary-publication",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/954321/"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/radiology/hip-dysplasia.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/HipDysplasiaIndices.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/radiology/hip-dysplasia.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "ipss",
+      "name": "Inferior Petrosal Sinus Sampling (IPSS)",
+      "category": "Interventional",
+      "guidelineVersion": "IPSS (Oldfield 1991)",
+      "sourcePath": "src/components/calculators/IPSS.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements published IPSS diagnostic ratios and sampling interpretation; current protocol context remains queued for expert source review.",
+        "sourceReferences": [
+          {
+            "authority": "Oldfield et al.",
+            "title": "Petrosal sinus sampling with and without corticotropin-releasing hormone for the differential diagnosis of Cushing syndrome",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1056/NEJM199109263251301"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/interventional/ipss.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/IPSS.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/interventional/ipss.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "khoury-catheter-selector",
+      "name": "Khoury Catheter Selector",
+      "category": "Interventional",
+      "guidelineVersion": null,
+      "sourcePath": "src/components/calculators/KhouryCatheterSelector.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Compiles manufacturer specifications and is not a clinical guideline; every device value requires periodic current IFU verification.",
+        "sourceReferences": [
+          {
+            "authority": "Terumo Neuro",
+            "title": "Neurovascular product and specification source",
+            "role": "official-authority",
+            "url": "https://www.terumoneuro.com/"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/interventional/khoury-catheter-selector.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/KhouryCatheterSelector.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/interventional/khoury-catheter-selector.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "kidney-biopsy-bleeding-risk",
+      "name": "Kidney Biopsy Major Bleeding Risk (KBRC)",
+      "category": "Nephrology",
+      "guidelineVersion": "Thorne et al. recalibrated major-bleeding model (2026)",
+      "sourcePath": "src/components/calculators/KidneyBiopsyBleedingRisk.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-25",
+        "reviewScope": "source-derived evidence (3 claim(s), )",
+        "justification": "The open primary publication confirms the adult diagnostic kidney-biopsy population and major-bleeding outcome; its direct supplementary PDF exposes the refit equation, predictor units, coefficients, and spline knots used by the executable source-model regression vectors.",
+        "sourceReferences": [
+          {
+            "authority": "Thorne et al.",
+            "title": "External Validation and Recalibration of a Risk Calculator for Major Bleeding After Diagnostic Kidney Biopsy",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1016/j.xkme.2026.101352"
+          },
+          {
+            "authority": "Thorne et al. via NCBI PMC OAI-PMH",
+            "title": "Open full-text JATS XML with supplementary material manifest for PMCID PMC13156734",
+            "role": "primary-publication",
+            "url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc"
+          },
+          {
+            "authority": "Thorne et al. via Elsevier",
+            "title": "Direct primary supplementary PDF (Item S1) for the recalibrated KBRC equation",
+            "role": "primary-publication",
+            "url": "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
+            "artifactSha256": "d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5"
+          },
+          {
+            "authority": "Schorr et al.",
+            "title": "Frequency, Timing, and Prediction of Major Bleeding Complications From Percutaneous Renal Biopsy",
+            "role": "supporting-publication",
+            "url": "https://doi.org/10.1177/2054358120923527"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/KidneyBiopsyBleedingRisk.jsx",
+          "fixturePath": "tests/fixtures/compute/kidney-biopsy-bleeding-risk.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 3,
+          "vectorCount": 0
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/kidney-biopsy-bleeding-risk.json"
+        ],
+        "caseCount": 6
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/nephrology/kidney-biopsy-bleeding-risk.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/KidneyBiopsyBleedingRisk.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/kidney-biopsy-bleeding-risk.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/nephrology/kidney-biopsy-bleeding-risk.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "lirads",
+      "name": "LI-RADS v2018",
+      "category": "Hepatology/Liver",
+      "guidelineVersion": "LI-RADS v2018",
+      "sourcePath": "src/components/calculators/LIRADS.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the 2018 LI-RADS classification; current ACR version status remains queued for authoritative review.",
+        "sourceReferences": [
+          {
+            "authority": "American College of Radiology LI-RADS Steering Committee",
+            "title": "LI-RADS version 2018: imaging of hepatocellular carcinoma in at-risk patients",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1148/radiol.2018181494"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/hepatology/lirads.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/LIRADS.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/hepatology/lirads.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "lung-rads",
+      "name": "Lung-RADS v2022",
+      "category": "Radiology",
+      "guidelineVersion": "Lung-RADS v2022",
+      "sourcePath": "src/components/calculators/LUNGRADS.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements Lung-RADS v2022; the ACR source is recorded but current-version status remains queued for authoritative review.",
+        "sourceReferences": [
+          {
+            "authority": "American College of Radiology",
+            "title": "Lung CT Screening Reporting and Data System (Lung-RADS)",
+            "role": "official-authority",
+            "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Lung-RADS"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/lung-rads.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/LUNGRADS.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/lung-rads.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "mehran-cin",
+      "name": "Mehran CIN Risk Score",
+      "category": "Nephrology",
+      "guidelineVersion": "Mehran Score (2004)",
+      "sourcePath": "src/components/calculators/MehranCIN.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the original 2004 score while a 2021 update exists; the implemented-versus-current relationship must be resolved before verification.",
+        "sourceReferences": [
+          {
+            "authority": "Mehran et al.",
+            "title": "A simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1016/j.jacc.2004.06.034"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/nephrology/cockcroft-gault.spec.js",
+          "tests/e2e/calculators/nephrology/mehran-cin.spec.js"
+        ],
+        "specCount": 3
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/MehranCIN.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/nephrology/cockcroft-gault.spec.js",
+          "tests/e2e/calculators/nephrology/mehran-cin.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "meld-na",
+      "name": "MELD-Na Score",
+      "category": "Hepatology/Liver",
+      "guidelineVersion": "MELD 3.0 (OPTN Policy 9.1.D)",
+      "sourcePath": "src/components/calculators/MELDNa.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-25",
+        "reviewScope": "source-derived evidence (4 claim(s), )",
+        "justification": "OPTN Policy 9.1.D specifies the MELD 3.0 equations, calculation bounds, dialysis handling, and score range; the official MELD and PELD Calculators User Guide separately specifies the accepted laboratory-entry domains. Both layers are bound to executable vectors.",
+        "sourceReferences": [
+          {
+            "authority": "Health Resources and Services Administration and OPTN",
+            "title": "OPTN Policies, Policy 9.1.D liver allocation score",
+            "role": "official-authority",
+            "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf"
+          },
+          {
+            "authority": "Health Resources and Services Administration and OPTN",
+            "title": "MELD and PELD Calculators User Guide",
+            "role": "official-authority",
+            "url": "https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/MELDNa.jsx",
+          "fixturePath": "tests/fixtures/compute/meld-na.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 4,
+          "vectorCount": 0
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/meld-na.json"
+        ],
+        "caseCount": 36
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/hepatology/meld-na.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/MELDNa.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/meld-na.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/hepatology/meld-na.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "milan-criteria",
+      "name": "Milan Criteria (HCC)",
+      "category": "Hepatology/Liver",
+      "guidelineVersion": "Milan Criteria (Mazzaferro 1996)",
+      "sourcePath": "src/components/calculators/MilanCriteria.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the original transplant selection criteria rather than a current society guideline; source fidelity remains queued for review.",
+        "sourceReferences": [
+          {
+            "authority": "Mazzaferro et al.",
+            "title": "Liver transplantation for the treatment of small hepatocellular carcinomas in patients with cirrhosis",
+            "role": "primary-publication",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/8594428/"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/hepatology/milan-criteria.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/MilanCriteria.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/hepatology/milan-criteria.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "mr-elastography",
+      "name": "MR Elastography (Liver)",
+      "category": "Hepatology/Liver",
+      "guidelineVersion": "MRE Consensus (Manduca 2020)",
+      "sourcePath": "src/components/calculators/MRElastography.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements area-weighted liver MRE measurements with consensus context; hardware and interpretation references remain queued for audit.",
+        "sourceReferences": [
+          {
+            "authority": "Manduca et al.",
+            "title": "MR elastography: principles, guidelines, and terminology",
+            "role": "primary-publication",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8495610/"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/hepatology/mr-elastography.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/MRElastography.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/hepatology/mr-elastography.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "nirads",
+      "name": "ACR NI-RADS",
+      "category": "Neuroradiology",
+      "guidelineVersion": "ACR NI-RADS 2018",
+      "sourcePath": "src/components/calculators/NIRADS.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the 2018 NI-RADS classification; current ACR version and management recommendations remain queued for authoritative review.",
+        "sourceReferences": [
+          {
+            "authority": "American College of Radiology",
+            "title": "Neck Imaging Reporting and Data System (NI-RADS)",
+            "role": "official-authority",
+            "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/NI-RADS"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/neuroradiology/ni-rads.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/NIRADS.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/neuroradiology/ni-rads.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "orads",
+      "name": "ACR O-RADS",
+      "category": "Women's Imaging",
+      "guidelineVersion": "ACR O-RADS 2020",
+      "sourcePath": "src/components/calculators/ORADS.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "The code combines O-RADS ultrasound and MRI material under a 2020 claim; modality-specific current versions require authoritative reconciliation.",
+        "sourceReferences": [
+          {
+            "authority": "American College of Radiology",
+            "title": "O-RADS Ultrasound",
+            "role": "official-authority",
+            "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/O-RADS/Ultrasound"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/womens/o-rads.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/ORADS.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/womens/o-rads.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "pesi",
+      "name": "PESI Score",
+      "category": "Clinical Decision",
+      "guidelineVersion": "Original PESI (2005)",
+      "sourcePath": "src/components/calculators/PESI.jsx",
+      "registry": {
+        "status": "verified",
+        "lastVerified": "2026-08-25",
+        "reviewScope": "source-derived evidence (2 claim(s), )",
+        "justification": "The primary study confirms the 11-variable original PESI model, all point increments, and the five source-defined risk classes.",
+        "sourceReferences": [
+          {
+            "authority": "Aujesky et al.",
+            "title": "Derivation and validation of a prognostic model for pulmonary embolism",
+            "role": "primary-publication",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/"
+          }
+        ],
+        "implementationEvidence": {
+          "calculatorPath": "src/components/calculators/PESI.jsx",
+          "fixturePath": "tests/fixtures/compute/pesi.json",
+          "testCommand": "npm run test:hermes-guideline-registry",
+          "claimCount": 2,
+          "vectorCount": 0
+        }
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/pesi.json"
+        ],
+        "caseCount": 18
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/clinical/pesi.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/PESI.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/pesi.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/clinical/pesi.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "pirads",
+      "name": "PI-RADS v2.1",
+      "category": "Urology",
+      "guidelineVersion": "PI-RADS v2.1 (2019)",
+      "sourcePath": "src/components/calculators/PIRADS.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements PI-RADS v2.1; current ACR version status remains queued for authoritative review.",
+        "sourceReferences": [
+          {
+            "authority": "PI-RADS Steering Committee",
+            "title": "PI-RADS Prostate Imaging - Reporting and Data System: 2019, version 2.1",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1016/j.eururo.2019.02.033"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/prostate-volume.spec.js",
+          "tests/e2e/calculators/urology/pirads.spec.js"
+        ],
+        "specCount": 3
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/PIRADS.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/prostate-volume.spec.js",
+          "tests/e2e/calculators/urology/pirads.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "prostate-volume",
+      "name": "Prostate Volume & PSA Density",
+      "category": "Radiology",
+      "guidelineVersion": null,
+      "sourcePath": "src/components/calculators/ProstateVolume.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Uses published measurement equations and PSA-density context rather than a versioned guideline; reference fidelity remains queued for audit.",
+        "sourceReferences": [
+          {
+            "authority": "Paterson et al.",
+            "title": "Prostate volume and PSA density measurement reference",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.5489/cuaj.3236"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/copy-results.spec.js",
+          "tests/e2e/calculators/radiology/prostate-volume.spec.js",
+          "tests/e2e/calculators/report-snippets.spec.js"
+        ],
+        "specCount": 3
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/ProstateVolume.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/copy-results.spec.js",
+          "tests/e2e/calculators/radiology/prostate-volume.spec.js",
+          "tests/e2e/calculators/report-snippets.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "radiation-dose-converter",
+      "name": "Radiation Dose Converter",
+      "category": "Radiology",
+      "guidelineVersion": null,
+      "sourcePath": "src/components/calculators/RadiationDoseConverter.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Uses radiation unit and protection references rather than a single guideline; all conversion factors remain queued for primary-authority audit.",
+        "sourceReferences": [
+          {
+            "authority": "International Commission on Radiological Protection",
+            "title": "ICRP Publication 103",
+            "role": "official-authority",
+            "url": "https://www.icrp.org/publication.asp?id=ICRP+Publication+103"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/radiology/radiation-dose-converter.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/RadiationDoseConverter.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/radiology/radiation-dose-converter.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "renal-nephrometry",
+      "name": "RENAL Nephrometry Score",
+      "category": "Urology",
+      "guidelineVersion": "R.E.N.A.L. Score (Kutikov 2009)",
+      "sourcePath": "src/components/calculators/RenalNephrometry.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the published nephrometry anatomy score rather than a versioned guideline; model fidelity remains queued for source audit.",
+        "sourceReferences": [
+          {
+            "authority": "Kutikov and Uzzo",
+            "title": "The R.E.N.A.L. nephrometry score: a comprehensive standardized system for quantitating renal tumor size, location and depth",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1016/j.juro.2009.05.035"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/urology/renal-nephrometry.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/RenalNephrometry.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/urology/renal-nephrometry.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "shim",
+      "name": "IIEF-5 (SHIM Score)",
+      "category": "Urology",
+      "guidelineVersion": "IIEF-5 (Rosen 1999)",
+      "sourcePath": "src/components/calculators/SHIMCalculator.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements a published patient-reported instrument rather than a current versioned guideline; scoring and licensing context remain queued for audit.",
+        "sourceReferences": [
+          {
+            "authority": "Rosen et al.",
+            "title": "Development and evaluation of an abridged, 5-item version of the International Index of Erectile Function",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1038/sj.ijir.3900472"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/urology/shim.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/SHIMCalculator.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/urology/shim.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "spleen-size",
+      "name": "Spleen Size",
+      "category": "Radiology",
+      "guidelineVersion": "Chow et al. 2016",
+      "sourcePath": "src/components/calculators/SpleenSizeULN.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Uses published height- and sex-adjusted spleen measurements rather than a guideline; table transcription remains queued for primary-source audit.",
+        "sourceReferences": [
+          {
+            "authority": "Chow et al.",
+            "title": "Spleen size reference data from healthy subjects",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1148/radiol.2015150887"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/radiology/hip-dysplasia.spec.js",
+          "tests/e2e/calculators/radiology/spleen-size.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/SpleenSizeULN.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/radiology/hip-dysplasia.spec.js",
+          "tests/e2e/calculators/radiology/spleen-size.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "thypro-39",
+      "name": "ThyPRO-39",
+      "category": "Interventional",
+      "guidelineVersion": "ThyPRO-39 (Watt 2014)",
+      "sourcePath": "src/components/calculators/ThyPRO39.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements a published patient-reported outcome instrument rather than a versioned guideline; scoring and licensing remain queued for audit.",
+        "sourceReferences": [
+          {
+            "authority": "Watt et al.",
+            "title": "Development of a short version of the thyroid-related patient-reported outcome ThyPRO",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1210/jc.2014-1322"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/thypro-39.json"
+        ],
+        "caseCount": 4
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/interventional/thypro-39.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/ThyPRO39.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/thypro-39.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/interventional/thypro-39.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "tirads",
+      "name": "ACR TI-RADS",
+      "category": "Radiology",
+      "guidelineVersion": "ACR TI-RADS 2017",
+      "sourcePath": "src/components/calculators/TIRADS.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements ACR TI-RADS 2017; current ACR version status remains queued for authoritative review.",
+        "sourceReferences": [
+          {
+            "authority": "American College of Radiology",
+            "title": "ACR Thyroid Imaging, Reporting and Data System white paper",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1016/j.jacr.2017.01.046"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/tirads.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/TIRADS.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/guideline-badges.spec.js",
+          "tests/e2e/calculators/radiology/tirads.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "wells-dvt",
+      "name": "Wells Criteria for DVT",
+      "category": "Clinical Decision",
+      "guidelineVersion": "Wells Criteria (2003)",
+      "sourcePath": "src/components/calculators/WellsDVT.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the published DVT clinical prediction rule rather than a versioned guideline; model and current-use context remain queued for audit.",
+        "sourceReferences": [
+          {
+            "authority": "Wells et al.",
+            "title": "Evaluation of D-dimer in the diagnosis of suspected deep-vein thrombosis",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1056/NEJMoa023153"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/clinical/wells-dvt.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/WellsDVT.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/clinical/wells-dvt.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "wells-pe",
+      "name": "Wells Criteria for PE",
+      "category": "Clinical Decision",
+      "guidelineVersion": "Wells Criteria (2000)",
+      "sourcePath": "src/components/calculators/WellsPE.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements the published PE clinical prediction rule rather than a versioned guideline; model and current-use context remain queued for audit.",
+        "sourceReferences": [
+          {
+            "authority": "Wells et al.",
+            "title": "Derivation of a simple clinical model to categorize patients probability of pulmonary embolism",
+            "role": "primary-publication",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/10744147/"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/clinical/wells-pe.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js"
+        ],
+        "specCount": 2
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/WellsPE.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/clinical/wells-pe.spec.js",
+          "tests/e2e/calculators/guideline-badges.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "y90-radiation-segmentectomy",
+      "name": "Y-90 Radioembolization Dosimetry",
+      "category": "Hepatology/Liver",
+      "guidelineVersion": "MIRD Dosimetry (Ho 1996)",
+      "sourcePath": "src/components/calculators/Y90RadiationSegmentectomy.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Uses published MIRD and radioembolization dosimetry models rather than a single current guideline; consensus status remains queued for review.",
+        "sourceReferences": [
+          {
+            "authority": "Ho et al.",
+            "title": "Partition model for estimating radiation doses from yttrium-90 microspheres",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1007/BF00949868"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [],
+        "caseCount": 0
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/hepatology/y90-radiation.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/Y90RadiationSegmentectomy.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [],
+        "browserSpecs": [
+          "tests/e2e/calculators/hepatology/y90-radiation.spec.js"
+        ]
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "id": "feedback-form",
+      "name": "Send Feedback",
+      "category": "Feedback",
+      "sourcePath": "src/components/calculators/FeedbackForm.jsx",
+      "reason": "excluded from the medical inventory because category is Feedback"
+    }
+  ]
+}
