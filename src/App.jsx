@@ -24,7 +24,6 @@ import {
   trackCalculation,
   trackOutboundLink,
   trackCSVDownload,
-  trackSearch,
   trackResultViewed,
   trackResultsCopied,
   trackOnboarding,
@@ -286,35 +285,6 @@ function AppContent() {
   // Page meta tags
   usePageMeta(selectedDef);
 
-  // Track initial page view (GA4 config has send_page_view: false for SPA)
-  useEffect(() => {
-    const sendPageView = (eventName, params) => {
-      if (import.meta.env.DEV) {
-        console.log("[GA4 Dev]", eventName, params);
-        return;
-      }
-      if (typeof window !== "undefined" && typeof window.gtag === "function") {
-        window.gtag("event", eventName, params);
-      }
-    };
-    sendPageView("page_view", {
-      page_title: document.title,
-      page_location: window.location.href,
-    });
-  }, []);
-
-  // Debounced search tracking
-  const searchTimerRef = useRef(null);
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (searchQuery.trim()) {
-      searchTimerRef.current = setTimeout(() => {
-        trackSearch(searchQuery.trim());
-      }, 500);
-    }
-    return () => clearTimeout(searchTimerRef.current);
-  }, [searchQuery]);
-
   // Sync MRE rows into compute values
   useEffect(() => {
     if (def?.id === "mr-elastography") {
@@ -346,9 +316,9 @@ function AppContent() {
     let result;
     try {
       result = def.compute(vals);
-    } catch (error) {
+    } catch {
       if (import.meta.env.DEV) {
-        console.error("Calculator compute failed:", error);
+        console.error("RADULATOR_COMPUTE_ERROR");
       }
       setResults(null);
       setCopied(false);
