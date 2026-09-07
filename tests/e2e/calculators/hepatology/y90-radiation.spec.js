@@ -230,7 +230,8 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByText("Patient height must be between 0-300 cm if provided")).toBeVisible();
 
-    await page.fill('input[id="patient_height"]', "");
+    await page.fill('input[id="patient_weight"]', "");
+    await page.fill('input[id="patient_height"]', "175");
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByText("Body Surface Area")).toHaveCount(0);
 
@@ -251,6 +252,9 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
     await page.fill('input[id="target_dose"]', "101");
     await expect(page.getByRole("status", { name: "Calculator results" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByRole("status", { name: "Calculator results" })).toBeVisible();
+    await expect(page.getByText("Mean Segment Dose: 101.0 Gy")).toBeVisible();
     await page.locator('input[value="partition"]').click();
     await expect(page.getByRole("status", { name: "Calculator results" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Copy results" })).toHaveCount(0);
@@ -285,21 +289,28 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     await expect.poll(() => page.evaluate(() => window.__radulatorClipboardWrites.length)).toBe(1);
   });
 
-  test("copies the complete scope and validates the print layout", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "chromium", "native clipboard readback is scoped to Chromium");
-    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  test("copies the complete scope and validates the print layout", async ({ page, browserName }) => {
+    if (browserName === "chromium") {
+      await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    }
     await openCalculator(page);
     await fillUniform(page);
     await page.getByRole("button", { name: "Calculate" }).click();
 
-    await page.getByRole("button", { name: "Copy results" }).click();
-    const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
-    expect(clipboardText).toContain("Educational compartment dosimetry for clinician-selected targets. Assumes 1.0 kg lung mass and 1.03 g/mL liver density. Does not assess cumulative lung dose, hepatic reserve, extrahepatic deposition, product-specific eligibility, or treatment suitability. No calibration-to-treatment decay or vial-order calculation.");
-    expect(clipboardText).toContain("Treatment Suitability");
-    expect(clipboardText).not.toContain("Activity to Order");
-    expect(clipboardText).not.toContain("Recommended Vial Size");
+    if (browserName === "chromium") {
+      await page.getByRole("button", { name: "Copy results" }).click();
+      const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+      expect(clipboardText).toContain("Educational compartment dosimetry for clinician-selected targets. Assumes 1.0 kg lung mass and 1.03 g/mL liver density. Does not assess cumulative lung dose, hepatic reserve, extrahepatic deposition, product-specific eligibility, or treatment suitability. No calibration-to-treatment decay or vial-order calculation.");
+      expect(clipboardText).toContain("Treatment Suitability");
+      expect(clipboardText).not.toContain("Activity to Order");
+      expect(clipboardText).not.toContain("Recommended Vial Size");
+    }
 
+    const skipLink = page.getByRole("link", { name: "Skip to calculator", exact: true });
+    await skipLink.focus();
+    await expect(skipLink).toBeVisible();
     await page.emulateMedia({ media: "print" });
+    await expect(skipLink).toBeHidden();
     await expect(page.getByText("Treatment Suitability: Not assessed")).toBeVisible();
     await expect(page.getByRole("status", { name: "Calculator results" })).toContainText("Educational compartment dosimetry for clinician-selected targets.");
     await expect(page.locator("aside")).not.toBeVisible();
