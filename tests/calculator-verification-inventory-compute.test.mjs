@@ -174,6 +174,32 @@ test("collectInventory reflects the checked-out source, registry, fixtures, and 
   assert.ok(albi.registry.sourceReferences.some((source) => source.url.includes("PMC4322258")));
 });
 
+test("renderMarkdown is a compact linked index without hiding row evidence", () => {
+  const inventory = collectInventory({ root: process.cwd() });
+  const markdown = renderMarkdown(inventory);
+
+  assert.ok(markdown.length < 25_000, `expected a concise index, got ${markdown.length} bytes`);
+  assert.match(markdown, /\[JSON snapshot\]\(\.\/calculator-inventory\.json\)/);
+  assert.match(markdown, /canonical guideline registry/);
+  assert.match(markdown, /Clinical signoff: not established for any calculator/);
+  assert.match(markdown, /Release\/proof: not established for any calculator/);
+  assert.match(markdown, /## Calculator index/);
+  assert.doesNotMatch(markdown, /## Source pointers by calculator/);
+  assert.doesNotMatch(markdown, /Registry justification:/);
+  assert.equal((markdown.match(/^\| `[^`]+` \|/gm) || []).length, inventory.rows.length);
+
+  for (const row of inventory.rows) {
+    assert.match(markdown, new RegExp("^\\| `" + row.id + "` \\|", "m"));
+    assert.ok(markdown.includes(`../../${row.sourcePointers.calculator})`));
+    for (const path of row.compute.fixturePaths) {
+      assert.ok(markdown.includes(`../../${path})`));
+    }
+    for (const path of row.browser.specPaths) {
+      assert.ok(markdown.includes(`../../${path})`));
+    }
+  }
+});
+
 test("runCli --check accepts the committed deterministic snapshots", () => {
   const messages = [];
   const status = runCli(["--check", "--root", process.cwd()], {

@@ -364,15 +364,15 @@ function markdownPathLink(path, label = path) {
   return `[${label}](../../${path})`;
 }
 
-function sourceUrlLink(source) {
-  if (!source.url) return source.title || "unlinked source";
-  return `[${source.title || source.url}](${source.url})`;
-}
-
 function registryStatusLabel(row) {
   if (row.registry.status === "verified") return "verified (existing registry claim)";
   if (row.registry.status === "seed-unverified") return "seed-unverified (registry claim)";
   return row.registry.status;
+}
+
+function markdownPathLinks(paths) {
+  if (paths.length === 0) return "none observed";
+  return paths.map((path) => markdownPathLink(path)).join("<br>");
 }
 
 export function renderMarkdown(inventory) {
@@ -380,7 +380,7 @@ export function renderMarkdown(inventory) {
   const lines = [
     "# Calculator verification inventory",
     "",
-    "Generated from the checked-out calculator exports, the guideline registry, canonical compute fixture files, and Playwright spec presence. This is an inventory artifact, not a clinical certification.",
+    "Generated from checked-out calculator exports, the guideline registry, canonical compute fixtures, and Playwright spec presence. This is an inventory artifact, not a clinical certification.",
     "",
     "## Scope and limitations",
     "",
@@ -388,54 +388,22 @@ export function renderMarkdown(inventory) {
     `- Registry claims: ${summary.registry.verified} verified, ${summary.registry.seedUnverified} seed-unverified, ${summary.registry.missing} missing; these labels are existing registry assertions, not a new independent clinical certification.`,
     `- Canonical compute fixture inventory: ${summary.compute.fixtureFiles} fixture files and ${summary.compute.cases} cases; counts do not establish that the tests passed or that all behavior is covered.`,
     `- Browser spec presence: ${summary.browser.calculatorSpecificSpecFiles} calculator-specific files and ${summary.browser.sharedSpecFiles} shared files; associations are statically detected from actual navigation or routes, so indirect or parameterized helpers may be omitted. Presence does not establish branch coverage, correct medicine, or a successful browser run.`,
-    "- Clinical signoff: not established.",
-    "- Release/proof: not established.",
+    "- Clinical signoff: not established for any calculator in this inventory.",
+    "- Release/proof: not established for any calculator in this inventory.",
+    `- Full row evidence remains in the [JSON snapshot](./${DEFAULT_JSON_PATH.split("/").pop()}) and the ${markdownPathLink(DEFAULT_REGISTRY_PATH, "canonical guideline registry")}.`,
     "",
-    "## Summary",
+    "## Calculator index",
     "",
-    "| ID | Name | Category | Registry claim | Compute fixture cases | Browser spec presence | Clinical signoff | Release/proof |",
-    "|---|---|---|---|---:|---|---|---|",
+    "Each row links the calculator export, every observed canonical fixture, and every statically associated browser spec. Registry justifications, source references, and implementation evidence remain available in the linked JSON/registry rather than being duplicated here.",
+    "",
+    "| ID | Calculator | Category | Guideline/version | Registry claim | Source export | Compute cases / fixtures | Browser specs |",
+    "|---|---|---|---|---|---|---|---|",
   ];
 
   for (const row of inventory.rows) {
     lines.push(
-      `| \`${row.id}\` | ${row.name} | ${row.category} | ${registryStatusLabel(row)} | ${row.compute.caseCount} | ${row.browser.specCount > 0 ? `${row.browser.specCount} file(s)` : "none observed"} | ${row.clinicalSignoff} | ${row.releaseProof} |`,
+      `| \`${row.id}\` | ${row.name} | ${row.category} | ${row.guidelineVersion || "not recorded"} | ${registryStatusLabel(row)}; last verified ${row.registry.lastVerified || "not recorded"} | ${markdownPathLink(row.sourcePointers.calculator)} | ${row.compute.caseCount} case(s) / ${markdownPathLinks(row.compute.fixturePaths)} | ${row.browser.specCount} file(s) / ${markdownPathLinks(row.browser.specPaths)} |`,
     );
-  }
-
-  lines.push("", "## Source pointers by calculator", "");
-  for (const row of inventory.rows) {
-    lines.push(`### ${row.name} (\`${row.id}\`)`, "");
-    lines.push(`- Calculator export: ${markdownPathLink(row.sourcePointers.calculator)}`);
-    lines.push(
-      `- Guideline registry: ${markdownPathLink(row.sourcePointers.registry)}; status **${registryStatusLabel(row)}**; last verified **${row.registry.lastVerified || "not recorded"}**; review scope: ${row.registry.reviewScope}.`,
-    );
-    if (row.guidelineVersion) lines.push(`- Public metadata guideline/version label: ${row.guidelineVersion}.`);
-    if (row.registry.justification) lines.push(`- Registry justification: ${row.registry.justification}`);
-    if (row.registry.sourceReferences.length > 0) {
-      lines.push("- Registry source references:");
-      for (const source of row.registry.sourceReferences) {
-        const details = [source.authority, source.role].filter(Boolean).join("; ");
-        lines.push(`  - ${sourceUrlLink(source)}${details ? ` (${details})` : ""}`);
-      }
-    } else {
-      lines.push("- Registry source references: none recorded.");
-    }
-    if (row.compute.fixturePaths.length > 0) {
-      lines.push(
-        `- Canonical compute fixture inventory (${row.compute.caseCount} case(s)): ${row.compute.fixturePaths.map((path) => markdownPathLink(path)).join(", ")}.`,
-      );
-    } else {
-      lines.push("- Canonical compute fixture inventory: none observed.");
-    }
-    if (row.browser.specPaths.length > 0) {
-      lines.push(
-        `- Browser spec presence (${row.browser.specCount} file(s)): ${row.browser.specPaths.map((path) => markdownPathLink(path)).join(", ")}.`,
-      );
-    } else {
-      lines.push("- Browser spec presence: none observed.");
-    }
-    lines.push("- Clinical signoff: **not established**.", "- Release/proof: **not established**.", "");
   }
 
   return `${lines.join("\n").trimEnd()}\n`;
