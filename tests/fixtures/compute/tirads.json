@@ -1,0 +1,170 @@
+{
+  "calculatorId": "tirads",
+  "calculatorName": "ACR TI-RADS",
+  "version": "acr-ti-rads-2017-bounded-compute-v1",
+  "cases": [
+    {
+      "id": "benign-cystic-composition-only",
+      "inputs": { "composition": "cystic" },
+      "expect": { "noError": true, "fields": [
+        { "key": "TI-RADS Category", "equals": "TR1 - Benign" },
+        { "key": "Total Points", "equals": "0 points" }
+      ] }
+    },
+    {
+      "id": "benign-spongiform-composition-only",
+      "inputs": { "composition": "spongiform" },
+      "expect": { "noError": true, "fields": [
+        { "key": "TI-RADS Category", "equals": "TR1 - Benign" },
+        { "key": "Total Points", "equals": "0 points" },
+        { "key": "Clinical Notes", "includes": "Spongiform composition" }
+      ] }
+    },
+    {
+      "id": "solid-baseline-no-scored-foci",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": true, "echogenic_foci_macro": false, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": false
+      },
+      "expect": { "noError": true, "fields": [
+        { "key": "Total Points", "equals": "3 points" },
+        { "key": "TI-RADS Category", "equals": "TR3 - Mildly Suspicious" }
+      ] }
+    },
+    {
+      "id": "foci-macro-adds-one",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": false, "echogenic_foci_macro": true, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": false
+      },
+      "expect": { "noError": true, "fields": [ { "key": "Total Points", "equals": "4 points" }, { "key": "TI-RADS Category", "equals": "TR4 - Moderately Suspicious" } ] }
+    },
+    {
+      "id": "foci-rim-adds-two",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": false, "echogenic_foci_macro": false, "echogenic_foci_peripheral": true, "echogenic_foci_punctate": false
+      },
+      "expect": { "noError": true, "fields": [ { "key": "Total Points", "equals": "5 points" }, { "key": "TI-RADS Category", "equals": "TR4 - Moderately Suspicious" } ] }
+    },
+    {
+      "id": "foci-punctate-adds-three",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": false, "echogenic_foci_macro": false, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": true
+      },
+      "expect": { "noError": true, "fields": [ { "key": "Total Points", "equals": "6 points" }, { "key": "TI-RADS Category", "equals": "TR4 - Moderately Suspicious" } ] }
+    },
+    {
+      "id": "foci-macro-and-rim-add",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": false, "echogenic_foci_macro": true, "echogenic_foci_peripheral": true, "echogenic_foci_punctate": false
+      },
+      "expect": { "noError": true, "fields": [ { "key": "Total Points", "equals": "6 points" }, { "key": "TI-RADS Category", "equals": "TR4 - Moderately Suspicious" } ] }
+    },
+    {
+      "id": "foci-macro-and-punctate-cross-tr5",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": false, "echogenic_foci_macro": true, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": true
+      },
+      "expect": { "noError": true, "fields": [ { "key": "Total Points", "equals": "7 points" }, { "key": "TI-RADS Category", "equals": "TR5 - Highly Suspicious" } ] }
+    },
+    {
+      "id": "foci-rim-and-punctate-add",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": false, "echogenic_foci_macro": false, "echogenic_foci_peripheral": true, "echogenic_foci_punctate": true
+      },
+      "expect": { "noError": true, "fields": [ { "key": "Total Points", "equals": "8 points" }, { "key": "TI-RADS Category", "equals": "TR5 - Highly Suspicious" } ] }
+    },
+    {
+      "id": "foci-all-additive",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": false, "echogenic_foci_macro": true, "echogenic_foci_peripheral": true, "echogenic_foci_punctate": true
+      },
+      "expect": { "noError": true, "fields": [ { "key": "Total Points", "equals": "9 points" }, { "key": "TI-RADS Category", "equals": "TR5 - Highly Suspicious" } ] }
+    },
+    {
+      "id": "maximum-seventeen-points",
+      "inputs": {
+        "composition": "solid", "echogenicity": "very_hypoechoic", "shape": "taller", "margin": "ete",
+        "echogenic_foci_none": false, "echogenic_foci_macro": true, "echogenic_foci_peripheral": true, "echogenic_foci_punctate": true
+      },
+      "expect": { "noError": true, "fields": [ { "key": "Total Points", "equals": "17 points" }, { "key": "TI-RADS Category", "equals": "TR5 - Highly Suspicious" } ] }
+    },
+    {
+      "id": "tr3-below-surveillance-threshold",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": true, "echogenic_foci_macro": false, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": false, "nodule_size": "1.4"
+      },
+      "expect": { "noError": true, "fields": [ { "key": "FNA Recommendation", "includes": "No FNA or routine TI-RADS follow-up" } ] }
+    },
+    {
+      "id": "tr3-at-surveillance-threshold",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": true, "echogenic_foci_macro": false, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": false, "nodule_size": "1.5"
+      },
+      "expect": { "noError": true, "fields": [ { "key": "Follow-up Recommendation", "equals": "Follow-up at 1, 3, and 5 years" } ] }
+    },
+    {
+      "id": "tr3-at-fna-threshold",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": true, "echogenic_foci_macro": false, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": false, "nodule_size": "2.5"
+      },
+      "expect": { "noError": true, "fields": [ { "key": "FNA Recommendation", "includes": "FNA recommended" } ] }
+    },
+    {
+      "id": "tr4-at-surveillance-threshold",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hypoechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": true, "echogenic_foci_macro": false, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": false, "nodule_size": "1"
+      },
+      "expect": { "noError": true, "fields": [ { "key": "TI-RADS Category", "equals": "TR4 - Moderately Suspicious" }, { "key": "Follow-up Recommendation", "equals": "Follow-up at 1, 2, 3, and 5 years" } ] }
+    },
+    {
+      "id": "tr5-at-surveillance-threshold",
+      "inputs": {
+        "composition": "solid", "echogenicity": "very_hypoechoic", "shape": "taller", "margin": "smooth",
+        "echogenic_foci_none": true, "echogenic_foci_macro": false, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": false, "nodule_size": "0.5"
+      },
+      "expect": { "noError": true, "fields": [ { "key": "TI-RADS Category", "equals": "TR5 - Highly Suspicious" }, { "key": "Follow-up Recommendation", "equals": "Annual follow-up for up to 5 years" } ] }
+    },
+    {
+      "id": "punctate-alone-at-1-2cm-is-tr4-follow-up",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": false, "echogenic_foci_macro": false, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": true, "nodule_size": "1.2"
+      },
+      "expect": { "noError": true, "fields": [ { "key": "TI-RADS Category", "equals": "TR4 - Moderately Suspicious" }, { "key": "Follow-up Recommendation", "equals": "Follow-up at 1, 2, 3, and 5 years" }, { "key": "FNA Recommendation", "includes": "No FNA recommended" } ] }
+    },
+    {
+      "id": "macro-and-punctate-at-1-2cm-is-tr5-fna",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": false, "echogenic_foci_macro": true, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": true, "nodule_size": "1.2"
+      },
+      "expect": { "noError": true, "fields": [ { "key": "TI-RADS Category", "equals": "TR5 - Highly Suspicious" }, { "key": "FNA Recommendation", "includes": "FNA recommended" } ] }
+    },
+    {
+      "id": "invalid-legacy-single-foci-value",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth", "echogenic_foci": "punctate"
+      },
+      "expect": { "noError": false, "fields": [ { "key": "Error", "includes": "legacy single-value" } ] }
+    },
+    {
+      "id": "invalid-nonfinite-or-partial-size",
+      "inputs": {
+        "composition": "solid", "echogenicity": "hyperechoic", "shape": "wider", "margin": "smooth",
+        "echogenic_foci_none": true, "echogenic_foci_macro": false, "echogenic_foci_peripheral": false, "echogenic_foci_punctate": false, "nodule_size": "1.2cm"
+      },
+      "expect": { "noError": false, "fields": [ { "key": "Error", "includes": "finite positive" } ] }
+    }
+  ]
+}

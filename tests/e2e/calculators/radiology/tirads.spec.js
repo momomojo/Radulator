@@ -10,14 +10,14 @@ import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js
  * - Echogenicity (0-3 pts)
  * - Shape (0-3 pts)
  * - Margin (0-3 pts)
- * - Echogenic Foci (0-3 pts)
+ * - Echogenic Foci (0-6 pts when scored findings coexist)
  *
  * Categories:
- * - TR1 (0 pts): Benign, <2% malignancy risk
- * - TR2 (2 pts): Not Suspicious, <2% malignancy risk
- * - TR3 (3 pts): Mildly Suspicious, ~5% malignancy risk
- * - TR4 (4-6 pts): Moderately Suspicious, 5-20% malignancy risk
- * - TR5 (≥7 pts): Highly Suspicious, >20% malignancy risk
+ * - TR1 (0 pts): Benign, <=2% source-reported group estimate
+ * - TR2 (2 pts): Not Suspicious, <=2% source-reported group estimate
+ * - TR3 (3 pts): Mildly Suspicious, 5% source-reported group estimate
+ * - TR4 (4-6 pts): Moderately Suspicious, 5-20% source-reported group estimate
+ * - TR5 (≥7 pts): Highly Suspicious, >=20% source-reported group estimate
  */
 
 test.describe("ACR TI-RADS Calculator", () => {
@@ -71,37 +71,53 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page
         .getByText("Cystic or almost completely cystic (0 pts)")
         .click();
-      await page.getByText("Anechoic (0 pts)").click();
-      await page.getByText("Wider-than-tall (0 pts)").click();
-      await page.getByText("Smooth (0 pts)").click();
-      await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
-        .click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(page.locator("text=TR1 - Benign")).toBeVisible();
       await expect(page.locator("text=0 points")).toBeVisible();
-      await expect(page.locator("text=<2%")).toBeVisible();
+      await expect(page.locator("text=<=2%")).toBeVisible();
       await expect(page.locator("text=No FNA recommended")).toBeVisible();
+    });
+
+    test("should hide and clear dependent features across solid-spongiform-solid transitions", async ({
+      page,
+    }) => {
+      await page.getByText("Solid or almost completely solid (2 pts)").click();
+      await page.getByText("Hyperechoic or isoechoic (1 pt)").click();
+      await page.getByText("Wider-than-tall (0 pts)").click();
+      await page.getByText("Lobulated or irregular (2 pts)").click();
+      await page.getByText("Macrocalcifications (1 pt)").click();
+      await page.fill('input[id="nodule_size"]', "3");
+
+      await page.getByText("Spongiform (0 pts)").click();
+      await expect(page.getByText("Hyperechoic or isoechoic (1 pt)")).not.toBeVisible();
+      await expect(page.getByText("Maximum Nodule Dimension (cm)")).toBeVisible();
+
+      await page.getByText("Solid or almost completely solid (2 pts)").click();
+      await expect(page.getByText("Hyperechoic or isoechoic (1 pt)")).toBeVisible();
+      await expect(page.locator('input[id="echogenicity-hyperechoic"]')).not.toBeChecked();
+      await expect(page.locator('input[id="margin-lobulated"]')).not.toBeChecked();
+      await expect(page.locator('button[id="echogenic_foci_macro"]')).toHaveAttribute("data-state", "unchecked");
+
+      await page.getByText("Spongiform (0 pts)").click();
+      await page.click('button:has-text("Calculate")');
+      await expect(page.locator("text=TR1 - Benign")).toBeVisible();
+      await expect(page.getByText("Nodule Size: 3 cm")).toBeVisible();
     });
   });
 
-  test.describe("TR2 - Not Suspicious Category", () => {
-    test("should calculate TR2 for spongiform nodule (0 pts)", async ({
+  test.describe("TR1 - Spongiform Category", () => {
+    test("should calculate TR1 for spongiform nodule (0 pts)", async ({
       page,
     }) => {
       await page.getByText("Spongiform (0 pts)").click();
-      await page.getByText("Hyperechoic or isoechoic (1 pt)").click(); // 1 pt
-      await page.getByText("Wider-than-tall (0 pts)").click(); // 0 pts
-      await page.getByText("Smooth (0 pts)").click(); // 0 pts
-      await page.getByText("Macrocalcifications (1 pt)").click(); // 1 pt
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(page.locator("text=TR2 - Not Suspicious")).toBeVisible();
-      await expect(page.getByText("Total Points: 2 points")).toBeVisible();
-      await expect(page.getByText("<2%").first()).toBeVisible();
+      await expect(page.locator("text=TR1 - Benign")).toBeVisible();
+      await expect(page.getByText("Total Points: 0 points")).toBeVisible();
+      await expect(page.getByText("<=2%").first()).toBeVisible();
     });
   });
 
@@ -112,14 +128,14 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.getByText("Wider-than-tall (0 pts)").click(); // 0 pts
       await page.getByText("Smooth (0 pts)").click(); // 0 pts
       await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
         .click(); // 0 pts
 
       await page.click('button:has-text("Calculate")');
 
       await expect(page.locator("text=TR3 - Mildly Suspicious")).toBeVisible();
       await expect(page.getByText("Total Points: 3 points")).toBeVisible();
-      await expect(page.getByText("~5%").first()).toBeVisible();
+      await expect(page.getByText("5%").first()).toBeVisible();
     });
 
     test("should recommend FNA for TR3 ≥2.5 cm", async ({ page }) => {
@@ -128,7 +144,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.getByText("Wider-than-tall (0 pts)").click();
       await page.getByText("Smooth (0 pts)").click();
       await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
         .click();
       await page.fill('input[id="nodule_size"]', "2.8");
 
@@ -146,7 +162,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.getByText("Wider-than-tall (0 pts)").click(); // 0 pts
       await page.getByText("Smooth (0 pts)").click(); // 0 pts
       await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
         .click(); // 0 pts
 
       await page.click('button:has-text("Calculate")');
@@ -164,7 +180,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.getByText("Wider-than-tall (0 pts)").click(); // 0 pts
       await page.getByText("Lobulated or irregular (2 pts)").click(); // 2 pts
       await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
         .click(); // 0 pts
 
       await page.click('button:has-text("Calculate")');
@@ -172,7 +188,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await expect(
         page.locator("text=TR4 - Moderately Suspicious"),
       ).toBeVisible();
-      await expect(page.locator("text=6 points")).toBeVisible();
+      await expect(page.getByText("6 points", { exact: true })).toBeVisible();
     });
 
     test("should recommend FNA for TR4 ≥1.5 cm", async ({ page }) => {
@@ -181,7 +197,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.getByText("Wider-than-tall (0 pts)").click();
       await page.getByText("Smooth (0 pts)").click();
       await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
         .click();
       await page.fill('input[id="nodule_size"]', "1.8");
 
@@ -193,20 +209,42 @@ test.describe("ACR TI-RADS Calculator", () => {
   });
 
   test.describe("TR5 - Highly Suspicious Category", () => {
+    test("should add coexisting macro and punctate foci at the 1.2 cm boundary", async ({
+      page,
+    }) => {
+      await page.getByText("Solid or almost completely solid (2 pts)").click();
+      await page.getByText("Hyperechoic or isoechoic (1 pt)").click();
+      await page.getByText("Wider-than-tall (0 pts)").click();
+      await page.getByText("Smooth (0 pts)").click();
+      await page.getByText("Punctate echogenic foci (3 pts)").click();
+      await page.fill('input[id="nodule_size"]', "1.2");
+      await page.click('button:has-text("Calculate")');
+
+      await expect(page.locator("text=TR4 - Moderately Suspicious")).toBeVisible();
+      await expect(page.getByText("6 points", { exact: true })).toBeVisible();
+      await expect(page.getByText("Follow-up at 1, 2, 3, and 5 years")).toBeVisible();
+
+      await page.getByText("Macrocalcifications (1 pt)").click();
+      await page.click('button:has-text("Calculate")');
+      await expect(page.locator("text=TR5 - Highly Suspicious")).toBeVisible();
+      await expect(page.getByText("7 points", { exact: true })).toBeVisible();
+      await expect(page.getByText("FNA recommended (>=1.0 cm)")).toBeVisible();
+    });
+
     test("should calculate TR5 for 7+ points", async ({ page }) => {
       await page.getByText("Solid or almost completely solid (2 pts)").click(); // 2 pts
       await page.getByText("Hypoechoic (2 pts)").click(); // 2 pts
       await page.getByText("Taller-than-wide (3 pts)").click(); // 3 pts
       await page.getByText("Smooth (0 pts)").click(); // 0 pts
       await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
         .click(); // 0 pts
 
       await page.click('button:has-text("Calculate")');
 
       await expect(page.locator("text=TR5 - Highly Suspicious")).toBeVisible();
       await expect(page.locator("text=7 points")).toBeVisible();
-      await expect(page.locator("text=>20%")).toBeVisible();
+      await expect(page.locator("text=>=20%")).toBeVisible();
     });
 
     test("should calculate high-risk nodule with all suspicious features (12+ pts)", async ({
@@ -232,7 +270,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.getByText("Taller-than-wide (3 pts)").click(); // 3 pts
       await page.getByText("Smooth (0 pts)").click();
       await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
         .click();
       await page.fill('input[id="nodule_size"]', "1.2");
 
@@ -251,7 +289,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.getByText("Wider-than-tall (0 pts)").click();
       await page.getByText("Extrathyroidal extension (3 pts)").click(); // 3 pts
       await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
         .click();
 
       await page.click('button:has-text("Calculate")');
@@ -283,18 +321,40 @@ test.describe("ACR TI-RADS Calculator", () => {
   test.describe("Clinical Notes", () => {
     test("should show note for spongiform composition", async ({ page }) => {
       await page.getByText("Spongiform (0 pts)").click();
-      await page.getByText("Anechoic (0 pts)").click();
-      await page.getByText("Wider-than-tall (0 pts)").click();
-      await page.getByText("Smooth (0 pts)").click();
-      await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
-        .click();
 
       await page.click('button:has-text("Calculate")');
 
       await expect(
         page.locator("text=Spongiform composition is a benign feature"),
       ).toBeVisible();
+    });
+
+    test("should copy and print the corrected source-qualified result", async ({
+      page,
+    }) => {
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, "clipboard", {
+          configurable: true,
+          value: { writeText: async (text) => { window.__radulatorClipboard = text; } },
+        });
+      });
+      await page.getByText("Solid or almost completely solid (2 pts)").click();
+      await page.getByText("Hyperechoic or isoechoic (1 pt)").click();
+      await page.getByText("Wider-than-tall (0 pts)").click();
+      await page.getByText("Smooth (0 pts)").click();
+      await page
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
+        .click();
+      await page.click('button:has-text("Calculate")');
+
+      await page.getByRole("button", { name: "Copy results" }).click();
+      const copied = await page.evaluate(() => window.__radulatorClipboard || "");
+      expect(copied).toContain("TR3 - Mildly Suspicious");
+      expect(copied).toContain("source-reported group estimate");
+
+      await page.evaluate(() => { window.__radulatorPrintCalls = 0; window.print = () => { window.__radulatorPrintCalls += 1; }; });
+      await page.getByRole("button", { name: "Print Results" }).click();
+      await expect.poll(() => page.evaluate(() => window.__radulatorPrintCalls)).toBe(1);
     });
 
     test("should show note for punctate echogenic foci", async ({ page }) => {
@@ -320,7 +380,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.getByText("Taller-than-wide (3 pts)").click();
       await page.getByText("Smooth (0 pts)").click();
       await page
-        .getByText("None or large comet-tail artifacts (0 pts)")
+        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
         .click();
 
       await page.click('button:has-text("Calculate")');
@@ -336,7 +396,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(
-        page.locator("text=Please complete all ultrasound feature assessments"),
+        page.locator("text=Please complete the composition assessment"),
       ).toBeVisible();
     });
 
