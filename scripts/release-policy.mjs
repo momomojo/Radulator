@@ -2,7 +2,7 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
 
 export const ATTESTATION_SCHEMA = "radulator-clinical-attestation/v1";
-export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v3";
+export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v4";
 export const EXPLICIT_HIGH_RISK_MARKER = "<!-- radulator-risk: high -->";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
@@ -13,6 +13,8 @@ const FEEDBACK_ONLY_FILES = new Set([
 ]);
 const CLINICAL_RUNTIME_PREFIXES = [
   "src/components/calculators/",
+  "src/calculators/",
+  "src/clinical/",
   "src/components/forms/",
   "src/components/display/",
   "src/components/ui/",
@@ -29,6 +31,18 @@ const CLINICAL_RUNTIME_FILES = new Set([
 ]);
 const CLINICAL_DOCUMENT_PREFIXES = [
   "docs/calculators/",
+];
+const CLINICAL_EVIDENCE_FILES = new Set([
+  "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+  "ops/hermes/radulator/guideline-registry.test.mjs",
+  "scripts/run-compute-tests.mjs",
+  "scripts/register-jsx-loader.mjs",
+]);
+const CLINICAL_EVIDENCE_PREFIXES = [
+  "docs/evidence/",
+  "tests/fixtures/",
+  "tests/expected-answers/",
+  "tests/expected_answers/",
 ];
 const RELEASE_CONTROL_PREFIXES = [
   ".github/actions/",
@@ -64,6 +78,8 @@ const RELEASE_CONTROL_PREFIXES = [
   "vite.config.",
 ];
 const RELEASE_CONTROL_FILES = new Set([
+  "AGENTS.md",
+  "docs/development/feature-verification.md",
   ".npmrc",
   "npm-shrinkwrap.json",
   "package-lock.json",
@@ -131,6 +147,20 @@ function normalizedEvidence(evidence) {
   };
 }
 
+function isReleaseControlPath(candidate) {
+  return RELEASE_CONTROL_FILES.has(candidate) ||
+    candidate.endsWith("/AGENTS.md") ||
+    RELEASE_CONTROL_PREFIXES.some((prefix) => candidate.startsWith(prefix));
+}
+
+function isClinicalEvidencePath(candidate) {
+  return CLINICAL_EVIDENCE_FILES.has(candidate) ||
+    CLINICAL_EVIDENCE_PREFIXES.some((prefix) => candidate.startsWith(prefix)) ||
+    /^scripts\/audit-[^/]*-source[^/]*$/.test(candidate) ||
+    candidate.startsWith("ops/hermes/radulator/guideline-registry") ||
+    /^ops\/hermes\/radulator\/.*(?:evidence|expected[-_]?answer|source[-_]?audit|fixture).*$/i.test(candidate);
+}
+
 export function hasExplicitHighRiskMarker(evidence = {}) {
   return normalizedEvidence(evidence).body.includes(EXPLICIT_HIGH_RISK_MARKER);
 }
@@ -152,9 +182,8 @@ export function analyzeRisk(files, evidence = {}) {
 
   for (const file of normalized) {
     const paths = [...new Set([file.filename, file.previousFilename].filter(Boolean))];
-    const releaseControlPaths = paths.filter((candidate) =>
-      RELEASE_CONTROL_FILES.has(candidate) ||
-      RELEASE_CONTROL_PREFIXES.some((prefix) => candidate.startsWith(prefix)));
+    const releaseControlPaths = paths.filter(isReleaseControlPath);
+    const clinicalEvidencePaths = paths.filter(isClinicalEvidencePath);
     const runtimePaths = paths.filter((candidate) =>
       CLINICAL_RUNTIME_FILES.has(candidate) ||
       CLINICAL_RUNTIME_PREFIXES.some((prefix) => candidate.startsWith(prefix)));
@@ -167,6 +196,11 @@ export function analyzeRisk(files, evidence = {}) {
     if (releaseControlPaths.length > 0) {
       details.push(`${releaseControlPaths.join(" -> ")}: trusted release-control behavior changed`);
       reasonCodes.add("RELEASE_CONTROL_CHANGE");
+    }
+
+    if (clinicalEvidencePaths.length > 0) {
+      details.push(`${clinicalEvidencePaths.join(" -> ")}: clinical evidence, expected answers, source audits, or calculator metadata changed`);
+      reasonCodes.add("CLINICAL_EVIDENCE_CHANGE");
     }
 
     if (runtime) {

@@ -178,8 +178,8 @@ for (const filename of [
 }
 assert.equal(
   releasePolicy.RISK_CLASSIFIER_VERSION,
-  "radulator-clinical-risk/v3",
-  "expanding the signed classifier to release-control files requires a new policy version",
+  "radulator-clinical-risk/v4",
+  "expanding the signed classifier to clinical evidence and prompt-harness files requires a new policy version",
 );
 
 for (const filename of [
@@ -201,6 +201,92 @@ for (const filename of [
     `${filename} is clinical/operational evidence, not executable release authority`,
   );
 }
+
+for (const filename of [
+  "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+  "ops/hermes/radulator/guideline-registry.mjs",
+  "ops/hermes/radulator/guideline-registry.test.mjs",
+  "docs/evidence/fleischner-2017-reviewed-evidence.json",
+  "tests/fixtures/compute/meld-na.json",
+  "tests/expected-answers/meld-na.json",
+  "scripts/audit-kbrc-primary-source.mjs",
+  "scripts/audit-kbrc-primary-source.test.mjs",
+  "scripts/run-compute-tests.mjs",
+  "scripts/register-jsx-loader.mjs",
+  "src/calculators/registry.js",
+  "src/clinical/evidence.js",
+]) {
+  const evidenceRisk = classifyRisk([{
+    filename,
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-old evidence\n+new evidence",
+  }]);
+  assert.equal(evidenceRisk.tier, "high", `${filename} must require independent clinical review`);
+  assert.ok(
+    evidenceRisk.reasonCodes.includes("CLINICAL_EVIDENCE_CHANGE") ||
+      evidenceRisk.reasonCodes.includes("CLINICAL_RUNTIME_CHANGE"),
+    `${filename} must be classified as clinical evidence or runtime`,
+  );
+  assert.equal(
+    evidenceRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"),
+    false,
+    `${filename} is clinical evidence, not executable release authority`,
+  );
+}
+
+for (const file of [
+  {
+    filename: "docs/evidence/removed-source.json",
+    previous_filename: "docs/evidence/removed-source.json",
+    status: "deleted",
+  },
+  {
+    filename: "docs/archive/removed-source.json",
+    previous_filename: "docs/evidence/removed-source.json",
+    status: "renamed",
+  },
+  {
+    filename: "tests/fixtures/removed-answer.json",
+    previous_filename: "tests/fixtures/old-answer.json",
+    status: "renamed",
+  },
+]) {
+  const evidenceRisk = classifyRisk([file]);
+  assert.equal(evidenceRisk.tier, "high", `${file.status} evidence paths must fail closed`);
+  assert.ok(evidenceRisk.reasonCodes.includes("CLINICAL_EVIDENCE_CHANGE"));
+}
+
+const mixedClinicalEvidenceRisk = classifyRisk([
+  ...calculatorFiles,
+  {
+    filename: "tests/fixtures/compute/meld-na.json",
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-old expected answer\n+new expected answer",
+  },
+]);
+assert.equal(mixedClinicalEvidenceRisk.tier, "high");
+assert.ok(mixedClinicalEvidenceRisk.reasonCodes.includes("CLINICAL_RUNTIME_CHANGE"));
+assert.ok(mixedClinicalEvidenceRisk.reasonCodes.includes("CLINICAL_EVIDENCE_CHANGE"));
+assert.equal(
+  mixedClinicalEvidenceRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"),
+  false,
+  "clinical evidence may accompany a clinical PR without becoming a mixed trust-domain change",
+);
+
+const promptHarnessRisk = classifyRisk([{
+  filename: "AGENTS.md",
+  status: "modified",
+  patch: "@@ -1 +1 @@\n-old harness policy\n+new harness policy",
+}]);
+assert.equal(promptHarnessRisk.tier, "high");
+assert.ok(promptHarnessRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"));
+const featureVerificationHarnessRisk = classifyRisk([{
+  filename: "docs/development/feature-verification.md",
+  status: "modified",
+  patch: "@@ -1 +1 @@\n-old verification policy\n+new verification policy",
+}]);
+assert.equal(featureVerificationHarnessRisk.tier, "high");
+assert.ok(featureVerificationHarnessRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"));
 
 const thresholdRisk = classifyRisk([{
   filename: "docs/calculators/hepatology/meld-na.md",

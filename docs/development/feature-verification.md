@@ -13,6 +13,8 @@ Use this before PR handoff for:
 
 Medical formula/threshold/guideline/content changes still require the medical evidence/signoff pipeline before implementation.
 
+For clinical evidence, expected-answer, source-audit, compute-fixture, or calculator-metadata changes, include the primary clinical source and independently derived expected results. Run the focused source-audit or compute check that exercises those results, and route the exact head through the signed risk-tiered review gate. A green fixture or focused test proves only its stated cases; do not describe it as verification of all medical content.
+
 ## Procedure
 
 1. Start a local app target:
@@ -44,6 +46,8 @@ You are a read-only Radulator feature verifier. Do not edit code. Drive the runn
 - `test-results/feature-proof/<name>.md`
 - `test-results/feature-proof/<name>.json`
 - `test-results/feature-proof/<name>.png`
+
+For control-only, documentation-only, or harness changes, record the focused test and canonical local gate instead of manufacturing browser proof. Once a check passes, repeat it only after a relevant edit, failure, or unresolved concern.
 
 ## PR body checklist
 

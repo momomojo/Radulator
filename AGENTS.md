@@ -4,19 +4,27 @@ You are working on **radulator.com** — free medical calculators used by real c
 
 **Branch model (release train).** Feature/fix PRs target **`develop`** (integration branch; smoke + targeted CI required). Batches are promoted develop→main by an automated promotion PR that runs the **full Playwright suite** and gets a fresh production-gate review of the whole batch — only then does anything deploy. The ONLY PRs that may target `main` directly are hotfixes for live production breakage, and they also require the full suite. If you are unsure which base to use: `develop`.
 
+## Agent harness
+
+Use GPT-6 Astra as the coordinating owner. Implementation agents use GPT-5.6 Luna at xhigh reasoning unless the owner explicitly selects another supported setting; independent reviewers must remain separate from the implementation agent and use the signed risk-tiered review path. Delegate genuinely independent work in parallel with isolated scopes, and keep one owner responsible for integration. A direct owner task is valid even when it did not arrive through a seed or strategist routine.
+
+Infer routine details from the task and prior approvals, preserve ongoing authorization, and ask only when an unresolved choice would materially change scope, safety, or an external irreversible action. Do not repeat a plan, spawn a boilerplate planning loop, or rerun passing checks without a relevant change, a failed concern, or a required gate. Keep output concise and state assumptions and outcome evidence clearly.
+
+Never print, search for, or copy token contents into prompts, logs, review records, or agent messages. The supervised host CLI is an approved execution path; Hermes queue/tracker requirements apply only to an explicitly Hermes-managed worker task and are documented separately below.
+
 ## Local-first CI policy
 
-Before the first push, run the canonical local gate: `npm ci`, `npm run build`, `npm run lint`, and `npm run check:invariants`, plus the card's required behavioral test (for example, `npm run test:smoke`). Batch deterministic fixes locally instead of using Actions as a debugger. When feasible, consequential institutional, security, build, and workflow PRs get a GPT-5.6 Sol xhigh local review before publication. Ordinary feature iterations do not manually dispatch the full suite; required PR checks and the promotion full suite are never skipped or waived.
+Before handoff or the first push, run the canonical local gate: `npm ci`, `npm run build`, `npm run lint`, and `npm run check:invariants`, plus the task's meaningful focused or behavioral test. Batch deterministic fixes locally instead of using Actions as a debugger. Run broader checks only when the change, a failure, or an unresolved concern justifies them; required PR checks and the promotion full suite are never skipped or waived. Do not manually dispatch the full suite for ordinary iterations.
 
 ## The lifecycle — every task, in order
 
-**1. RESEARCH (before any edit).** Read your task card/issue completely. Read only the files your change touches plus their tests — not the tree. Check how the registry contract applies (below). If the task is ambiguous or conflicts with what you find in code, STOP and report the conflict instead of guessing.
+**1. RESEARCH (before any edit).** Read the task and applicable instructions completely. Read only the files your change touches plus their tests — not the tree. Check how the registry contract applies (below). Make reasonable routine assumptions from the task context; pause only for a material scope, safety, or authorization conflict.
 
-**2. PLAN.** Before editing, write down (in your card comment or PR description): what you will change, what could break, and the **outcome test** — the observable result that proves success (a passing test, a rendered page, a measured count). If you cannot name an outcome test, you do not understand the task yet — go back to research.
+**2. PLAN.** For non-trivial work, keep one compact note of the change, main break risk, and **outcome test** — the observable result that proves success. Reuse an existing reviewed plan or task card instead of repeating it in new boilerplate.
 
 **3. EXECUTE.** Small, single-purpose commits with conventional messages (`fix:`, `feat:`, `docs:`, `test:`). Match the surrounding code's style exactly. Never edit generated artifacts (`dist/`). Never commit secrets, tokens, or `.env` content.
 
-**4. TEST.** Minimum for every change: `npm ci && npm run build && npm run lint && npm run check:invariants`. Lint/invariants must match main's baseline — zero NEW errors. Behavioral changes need a test that would catch their regression. Calculator logic changes additionally require the full Playwright suite (`npm test`) — not just smoke. UI/product changes need feature proof per `docs/development/feature-verification.md`: start `scripts/dev-local.sh up` or `preview`, drive the app, and record screenshot/trace/proof paths.
+**4. TEST.** Minimum for every implementation change: `npm ci && npm run build && npm run lint && npm run check:invariants`, plus a meaningful regression or behavioral test. Lint/invariants must match main's baseline — zero NEW errors. Calculator logic changes additionally require the full Playwright suite (`npm test`) — not just smoke. UI/product changes need feature proof per `docs/development/feature-verification.md`: start `scripts/dev-local.sh up` or `preview`, drive the app, and record screenshot/trace/proof paths. Do not repeat checks that already passed unless code, dependencies, or the failure concern changed.
 
 **5. CLEAN UP.** Re-read your full diff as a hostile reviewer: stray debug output, commented-out code, accidental file touches, scope creep — remove them. Your diff should contain nothing you cannot justify in one sentence.
 
@@ -28,7 +36,7 @@ If you are a Hermes Kanban implementation worker, create/read back the separate 
 
 - **Medical content is sacred.** Never change formulas, thresholds, score boundaries, units, interpretation text, management recommendations, or guideline versions unless the task explicitly authorizes it and provides primary-source evidence. Include citations and regression vectors in the PR. Do not self-approve: uncertainty is a `NEEDS_FIX` verdict. Clinical release authority belongs to the signed risk-tiered judge quorum, not an informal owner wait or a worker assertion.
 - **PR-only.** Never push to `main` or `develop` directly. PRs target `develop` (hotfix-to-`main` only for live production breakage). Never merge manually; only the trusted controller may merge the exact SHA authorized by the clinical gate and branch protection.
-- **The roadmap is not yours.** `docs/ROADMAP.md` is written EXCLUSIVELY by the Strategist routine (and the owner). Workers never edit it — if your task seems to require a roadmap change, note it in your PR description and the strategist will pick it up. Work arrives as GitHub issues labeled `seed` (`lane:flash` / `lane:codex`) — execute the seed body as written; if it is ambiguous, that is a finding for the seed author, not a license to improvise.
+- **The roadmap is not yours.** `docs/ROADMAP.md` is written EXCLUSIVELY by the Strategist routine and the owner. Workers never edit it — if your task seems to require a roadmap change, note it in the task or PR description. Work may arrive through a seed or directly from the owner; follow the authorized task body and record material assumptions rather than inventing roadmap scope.
 - **The registry contract.** Every calculator is one self-contained `.jsx` in `src/components/calculators/` exporting `id`, `name`, `category` (double-quoted string literals — build tooling parses them statically). The registry, README counts, sitemap, and static pages all derive from this metadata. Renaming/removing an `id` breaks deep links (`#/<id>`) and static pages (`/calculators/<id>/`) — treat ids as permanent.
 - **GitHub auth (hermes workers):** `export GH_TOKEN="$(sed -n 's/^GH_TOKEN=//p' "$HERMES_HOME/.env" | head -1)"` and verify with `gh api user -q .login` before any GitHub operation. If invalid, block with that fact.
 
