@@ -54,6 +54,8 @@ Allowed files: `src/components/calculators/Y90RadiationSegmentectomy.jsx`, new `
 
 This is one urgent correction with explicit restrictions, not a completed full audit. If any rule/case is unclear, return it to Astra; do not alter expected answers to match current behavior.
 
+Pre-implementation independent check: six expected cases and source/conversion conventions independently confirmed. Accepted clarifications: visibly define T/N as **tumor-to-normal activity concentration (activity or corrected counts per unit mass), not the total tumor/normal counts ratio**. Replace the entire old information/interpretation safety prose with the prescribed limited scope/checks, including removal of `<10 Gy normal`, `10–20 Gy acceptable`, and positive `≥190 Gy threshold met` wording. This is replacement of unsupported guidance, not only suppression of the old dose-increase prompt. Assertions must reject those inherited claims wherever they appear in metadata or results.
+
 ## Remaining audit and acceptance
 
 - Y90-1 implementation, final independent review, full required CI, signed review and exact live proof pending.
