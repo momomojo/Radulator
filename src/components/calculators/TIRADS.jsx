@@ -12,6 +12,142 @@
  * - Middleton WD, et al. Radiology. 2017;285(1):274-281 (Validation Study)
  */
 
+const COMPOSITION_ONLY_FIELDS = [
+  "echogenicity",
+  "shape",
+  "margin",
+  "echogenic_foci_none",
+  "echogenic_foci_macro",
+  "echogenic_foci_peripheral",
+  "echogenic_foci_punctate",
+];
+
+const COMPOSITION_VALUES = ["cystic", "spongiform", "mixed", "solid"];
+const ECHOGENICITY_VALUES = [
+  "anechoic",
+  "hyperechoic",
+  "hypoechoic",
+  "very_hypoechoic",
+];
+const SHAPE_VALUES = ["wider", "taller"];
+const MARGIN_VALUES = ["smooth", "ill_defined", "lobulated", "ete"];
+const ECHOGENIC_FOCI_FIELDS = [
+  "echogenic_foci_none",
+  "echogenic_foci_macro",
+  "echogenic_foci_peripheral",
+  "echogenic_foci_punctate",
+];
+
+const isCompositionOnly = (composition) =>
+  composition === "cystic" || composition === "spongiform";
+
+const positiveNumberPattern = /^[+]?\d*\.?\d+(?:[eE][+-]?\d+)?$/;
+const hasInputValue = (value) => value !== undefined && value !== null && value !== "";
+
+function parseNoduleSize(value) {
+  if (value === undefined || value === null) return { value: null };
+  if (typeof value === "string" && value.trim() === "") return { value: null };
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value <= 0) {
+      return { error: "Nodule size must be a finite positive number or blank." };
+    }
+    return { value };
+  }
+
+  if (typeof value !== "string" || !positiveNumberPattern.test(value.trim())) {
+    return { error: "Nodule size must be a finite positive number or blank." };
+  }
+
+  const parsed = Number(value.trim());
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return { error: "Nodule size must be a finite positive number or blank." };
+  }
+  return { value: parsed };
+}
+
+function validateEchogenicFoci(vals) {
+  if (Object.prototype.hasOwnProperty.call(vals, "echogenic_foci")) {
+    return {
+      error:
+        "Echogenic foci require the explicit checkboxes; the legacy single-value field is unsupported.",
+    };
+  }
+
+  const foci = Object.fromEntries(
+    ECHOGENIC_FOCI_FIELDS.map((field) => [
+      field,
+      vals[field] === undefined || vals[field] === "" ? false : vals[field],
+    ]),
+  );
+  for (const field of ECHOGENIC_FOCI_FIELDS) {
+    if (typeof foci[field] !== "boolean") {
+      return {
+        error: "Echogenic foci must be selected explicitly with boolean options.",
+      };
+    }
+  }
+
+  const scored = [
+    foci.echogenic_foci_macro,
+    foci.echogenic_foci_peripheral,
+    foci.echogenic_foci_punctate,
+  ];
+  if (foci.echogenic_foci_none && scored.some(Boolean)) {
+    return {
+      error:
+        "Echogenic foci options are exclusive: choose no scored foci/artifacts only or the scored foci present.",
+    };
+  }
+  if (!foci.echogenic_foci_none && !scored.some(Boolean)) {
+    return {
+      error: "Select the echogenic foci present, or choose no scored foci/artifacts only.",
+    };
+  }
+
+  return {
+    points:
+      (foci.echogenic_foci_macro ? 1 : 0) +
+      (foci.echogenic_foci_peripheral ? 2 : 0) +
+      (foci.echogenic_foci_punctate ? 3 : 0),
+    punctate: foci.echogenic_foci_punctate,
+  };
+}
+
+function buildResult({
+  category,
+  categoryName,
+  groupRisk,
+  totalScore,
+  pointBreakdown,
+  fnaRecommendation,
+  followUpRecommendation,
+  size,
+  notes = [],
+}) {
+  const result = {
+    "TI-RADS Category": `${category} - ${categoryName}`,
+    "Total Points": `${totalScore} points`,
+    "Point Breakdown": pointBreakdown,
+    "Source-reported group risk estimate": `${groupRisk} (source-reported group estimate; not an individual probability)`,
+    "FNA Recommendation": fnaRecommendation,
+  };
+
+  if (followUpRecommendation) {
+    result["Follow-up Recommendation"] = followUpRecommendation;
+  }
+  if (size !== null) result["Nodule Size"] = `${size} cm`;
+  if (notes.length > 0) result["Clinical Notes"] = notes.join("; ");
+
+  result._severity =
+    category === "TR1" || category === "TR2"
+      ? "success"
+      : category === "TR3"
+        ? "warning"
+        : "danger";
+  return result;
+}
+
 export const TIRADS = {
   id: "tirads",
   category: "Radiology",
@@ -31,9 +167,9 @@ The system assigns points based on 5 ultrasound feature categories:
 • Echogenicity (0-3 points)
 • Shape (0-3 points)
 • Margin (0-3 points)
-• Echogenic Foci (0-3 points)
+• Echogenic Foci (0-6 points when multiple scored foci coexist)
 
-Total points determine the TI-RADS category (TR1-TR5), which guides FNA recommendations based on nodule size.
+Total points determine the TI-RADS category (TR1-TR5), which guides FNA recommendations based on nodule size. Risk values below are source-reported group estimates, not individual probabilities.
 
 This calculator follows the 2017 ACR TI-RADS guidelines.`,
     link: {
@@ -48,6 +184,7 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
       id: "composition",
       label: "Composition",
       type: "radio",
+      clearOnChange: COMPOSITION_ONLY_FIELDS,
       opts: [
         {
           value: "cystic",
@@ -64,6 +201,7 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
       id: "echogenicity",
       label: "Echogenicity",
       type: "radio",
+      showIf: (vals) => !isCompositionOnly(vals.composition),
       opts: [
         { value: "anechoic", label: "Anechoic (0 pts)" },
         {
@@ -80,6 +218,7 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
       id: "shape",
       label: "Shape",
       type: "radio",
+      showIf: (vals) => !isCompositionOnly(vals.composition),
       opts: [
         { value: "wider", label: "Wider-than-tall (0 pts)" },
         { value: "taller", label: "Taller-than-wide (3 pts)" },
@@ -91,6 +230,7 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
       id: "margin",
       label: "Margin",
       type: "radio",
+      showIf: (vals) => !isCompositionOnly(vals.composition),
       opts: [
         { value: "smooth", label: "Smooth (0 pts)" },
         { value: "ill_defined", label: "Ill-defined (0 pts)" },
@@ -101,21 +241,28 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
 
     // SECTION 5: ECHOGENIC FOCI
     {
-      id: "echogenic_foci",
-      label: "Echogenic Foci (select the highest point value present)",
-      type: "radio",
-      opts: [
-        {
-          value: "none",
-          label: "None or large comet-tail artifacts (0 pts)",
-        },
-        { value: "macro", label: "Macrocalcifications (1 pt)" },
-        {
-          value: "peripheral",
-          label: "Peripheral (rim) calcifications (2 pts)",
-        },
-        { value: "punctate", label: "Punctate echogenic foci (3 pts)" },
-      ],
+      id: "echogenic_foci_none",
+      label: "No scored echogenic foci / large comet-tail artifacts only (0 pts)",
+      type: "checkbox",
+      showIf: (vals) => !isCompositionOnly(vals.composition),
+    },
+    {
+      id: "echogenic_foci_macro",
+      label: "Macrocalcifications (1 pt)",
+      type: "checkbox",
+      showIf: (vals) => !isCompositionOnly(vals.composition),
+    },
+    {
+      id: "echogenic_foci_peripheral",
+      label: "Peripheral (rim) calcifications (2 pts)",
+      type: "checkbox",
+      showIf: (vals) => !isCompositionOnly(vals.composition),
+    },
+    {
+      id: "echogenic_foci_punctate",
+      label: "Punctate echogenic foci (3 pts)",
+      type: "checkbox",
+      showIf: (vals) => !isCompositionOnly(vals.composition),
     },
 
     // SECTION 6: NODULE SIZE (for FNA recommendations)
@@ -133,256 +280,186 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
       echogenicity = "",
       shape = "",
       margin = "",
-      echogenic_foci = "",
       nodule_size = "",
-    } = vals;
+    } = vals || {};
 
-    // Validate required fields
-    if (!composition || !echogenicity || !shape || !margin || !echogenic_foci) {
+    const sizeResult = parseNoduleSize(nodule_size);
+    if (sizeResult.error) return { Error: sizeResult.error };
+    const size = sizeResult.value;
+
+    if (Object.prototype.hasOwnProperty.call(vals || {}, "echogenic_foci")) {
       return {
         Error:
-          "Please complete all ultrasound feature assessments to calculate TI-RADS category.",
+          "Echogenic foci require the explicit checkboxes; the legacy single-value field is unsupported.",
       };
     }
 
-    // Calculate points for each category
-    let compositionPts = 0;
-    let echogenicityPts = 0;
-    let shapePts = 0;
-    let marginPts = 0;
-    let echogenicFociPts = 0;
-
-    // Composition scoring
-    switch (composition) {
-      case "cystic":
-      case "spongiform":
-        compositionPts = 0;
-        break;
-      case "mixed":
-        compositionPts = 1;
-        break;
-      case "solid":
-        compositionPts = 2;
-        break;
+    if (!composition) {
+      return { Error: "Please complete the composition assessment to calculate TI-RADS." };
+    }
+    if (!COMPOSITION_VALUES.includes(composition)) {
+      return { Error: "Invalid composition; reassess the ultrasound features." };
     }
 
-    // Echogenicity scoring
-    switch (echogenicity) {
-      case "anechoic":
-        echogenicityPts = 0;
-        break;
-      case "hyperechoic":
-        echogenicityPts = 1;
-        break;
-      case "hypoechoic":
-        echogenicityPts = 2;
-        break;
-      case "very_hypoechoic":
-        echogenicityPts = 3;
-        break;
+    if (isCompositionOnly(composition)) {
+      if (hasInputValue(echogenicity) && !ECHOGENICITY_VALUES.includes(echogenicity)) {
+        return { Error: "Invalid echogenicity; reassess the ultrasound features." };
+      }
+      if (hasInputValue(shape) && !SHAPE_VALUES.includes(shape)) {
+        return { Error: "Invalid shape; reassess the ultrasound features." };
+      }
+      if (hasInputValue(margin) && !MARGIN_VALUES.includes(margin)) {
+        return { Error: "Invalid margin; reassess the ultrasound features." };
+      }
+      const suspiciousResidual =
+        hasInputValue(margin) && !["smooth", "ill_defined"].includes(margin);
+      if (suspiciousResidual) {
+        return {
+          Error:
+            "Reassess composition: cystic or spongiform nodules cannot retain suspicious residual feature selections.",
+        };
+      }
+
+      const hasScoredOrInvalidFoci = ECHOGENIC_FOCI_FIELDS.some((field) => {
+        const value = vals?.[field];
+        return value === true || (value !== undefined && value !== "" && typeof value !== "boolean");
+      });
+      if (hasScoredOrInvalidFoci) {
+        const fociResult = validateEchogenicFoci(vals || {});
+        if (fociResult.error || fociResult.points !== 0) {
+          return {
+            Error:
+              "Reassess composition: cystic or spongiform nodules cannot retain suspicious residual echogenic foci.",
+          };
+        }
+      }
+
+      return buildResult({
+        category: "TR1",
+        categoryName: "Benign",
+        groupRisk: "<=2%",
+        totalScore: 0,
+        pointBreakdown: "Composition: 0 | Echogenicity: 0 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
+        fnaRecommendation: "No FNA recommended",
+        size,
+        notes:
+          composition === "spongiform"
+            ? [
+                "Spongiform composition is a benign feature (aggregation of multiple microcystic components)",
+              ]
+            : [],
+      });
     }
 
-    // Shape scoring
-    switch (shape) {
-      case "wider":
-        shapePts = 0;
-        break;
-      case "taller":
-        shapePts = 3;
-        break;
+    if (!echogenicity || !shape || !margin) {
+      return {
+        Error: "Please complete all ultrasound feature assessments to calculate TI-RADS category.",
+      };
+    }
+    if (!ECHOGENICITY_VALUES.includes(echogenicity)) {
+      return { Error: "Invalid echogenicity; reassess the ultrasound features." };
+    }
+    if (!SHAPE_VALUES.includes(shape)) {
+      return { Error: "Invalid shape; reassess the ultrasound features." };
+    }
+    if (!MARGIN_VALUES.includes(margin)) {
+      return { Error: "Invalid margin; reassess the ultrasound features." };
+    }
+    if (echogenicity === "anechoic") {
+      return {
+        Error:
+          "Reassess composition and echogenicity: anechoic applies to cystic or almost completely cystic nodules.",
+      };
     }
 
-    // Margin scoring
-    switch (margin) {
-      case "smooth":
-      case "ill_defined":
-        marginPts = 0;
-        break;
-      case "lobulated":
-        marginPts = 2;
-        break;
-      case "ete":
-        marginPts = 3;
-        break;
-    }
+    const fociResult = validateEchogenicFoci(vals || {});
+    if (fociResult.error) return { Error: fociResult.error };
 
-    // Echogenic foci scoring (highest value, not additive)
-    switch (echogenic_foci) {
-      case "none":
-        echogenicFociPts = 0;
-        break;
-      case "macro":
-        echogenicFociPts = 1;
-        break;
-      case "peripheral":
-        echogenicFociPts = 2;
-        break;
-      case "punctate":
-        echogenicFociPts = 3;
-        break;
-    }
-
-    // Calculate total score
+    const compositionPts = { mixed: 1, solid: 2 }[composition];
+    const echogenicityPts = {
+      hyperechoic: 1,
+      hypoechoic: 2,
+      very_hypoechoic: 3,
+    }[echogenicity];
+    const shapePts = shape === "taller" ? 3 : 0;
+    const marginPts =
+      margin === "lobulated" ? 2 : margin === "ete" ? 3 : 0;
     const totalScore =
-      compositionPts +
-      echogenicityPts +
-      shapePts +
-      marginPts +
-      echogenicFociPts;
+      compositionPts + echogenicityPts + shapePts + marginPts + fociResult.points;
 
-    // Determine TI-RADS category
-    let category = "";
-    let categoryName = "";
-    let malignancyRisk = "";
-
-    if (totalScore === 0) {
-      category = "TR1";
-      categoryName = "Benign";
-      malignancyRisk = "<2%";
-    } else if (totalScore === 2) {
-      category = "TR2";
-      categoryName = "Not Suspicious";
-      malignancyRisk = "<2%";
-    } else if (totalScore === 3) {
-      category = "TR3";
-      categoryName = "Mildly Suspicious";
-      malignancyRisk = "~5%";
-    } else if (totalScore >= 4 && totalScore <= 6) {
-      category = "TR4";
-      categoryName = "Moderately Suspicious";
-      malignancyRisk = "5-20%";
-    } else if (totalScore >= 7) {
-      category = "TR5";
-      categoryName = "Highly Suspicious";
-      malignancyRisk = ">20%";
-    } else {
-      // Score of 1 (edge case)
-      category = "TR2";
-      categoryName = "Not Suspicious";
-      malignancyRisk = "<2%";
+    const category =
+      totalScore === 0
+        ? { id: "TR1", name: "Benign", groupRisk: "<=2%" }
+        : totalScore === 2
+          ? { id: "TR2", name: "Not Suspicious", groupRisk: "<=2%" }
+          : totalScore === 3
+            ? { id: "TR3", name: "Mildly Suspicious", groupRisk: "5%" }
+            : totalScore >= 4 && totalScore <= 6
+              ? { id: "TR4", name: "Moderately Suspicious", groupRisk: "5-20%" }
+              : totalScore >= 7
+                ? { id: "TR5", name: "Highly Suspicious", groupRisk: ">=20%" }
+                : null;
+    if (!category) {
+      return {
+        Error:
+          "Unable to assign a TI-RADS category for this score; reassess the ultrasound features.",
+      };
     }
 
-    // Determine FNA recommendation based on category and size
-    const size = parseFloat(nodule_size) || 0;
-    let fnaRecommendation = "";
-    let followUpRecommendation = "";
-
-    if (category === "TR1") {
-      fnaRecommendation = "No FNA recommended";
-      followUpRecommendation = "No follow-up needed for benign nodules";
-    } else if (category === "TR2") {
-      fnaRecommendation = "No FNA recommended";
-      followUpRecommendation = "No follow-up needed";
-    } else if (category === "TR3") {
-      if (size >= 2.5) {
-        fnaRecommendation = "FNA recommended (≥2.5 cm)";
-      } else if (size >= 1.5) {
-        fnaRecommendation = "Follow recommended; FNA optional";
-        followUpRecommendation = "Follow at 1, 2, 3, and 5 years";
-      } else if (size > 0) {
-        fnaRecommendation = "No FNA recommended (<1.5 cm)";
-        followUpRecommendation =
-          "Consider follow-up if clinical concern; otherwise not required";
-      } else {
-        fnaRecommendation =
-          "FNA if ≥2.5 cm; Follow if ≥1.5 cm; No FNA if <1.5 cm";
-      }
-    } else if (category === "TR4") {
-      if (size >= 1.5) {
-        fnaRecommendation = "FNA recommended (≥1.5 cm)";
-      } else if (size >= 1.0) {
-        fnaRecommendation = "Follow recommended; FNA optional";
-        followUpRecommendation = "Follow at 1, 2, 3, and 5 years";
-      } else if (size > 0) {
-        fnaRecommendation = "No FNA recommended (<1.0 cm)";
-        followUpRecommendation =
-          "Consider follow-up if clinical concern; otherwise not required";
-      } else {
-        fnaRecommendation =
-          "FNA if ≥1.5 cm; Follow if ≥1.0 cm; No FNA if <1.0 cm";
-      }
-    } else if (category === "TR5") {
-      if (size >= 1.0) {
-        fnaRecommendation = "FNA recommended (≥1.0 cm)";
-      } else if (size >= 0.5) {
-        fnaRecommendation = "Follow recommended; FNA optional";
-        followUpRecommendation = "Annual follow-up recommended";
-      } else if (size > 0) {
-        fnaRecommendation = "No FNA recommended (<0.5 cm)";
-        followUpRecommendation =
-          "Consider follow-up; observation reasonable for very small nodules";
-      } else {
-        fnaRecommendation =
-          "FNA if ≥1.0 cm; Follow if ≥0.5 cm; No FNA if <0.5 cm";
-      }
-    }
-
-    // Build point breakdown
-    const pointBreakdown = `Composition: ${compositionPts} | Echogenicity: ${echogenicityPts} | Shape: ${shapePts} | Margin: ${marginPts} | Echogenic Foci: ${echogenicFociPts}`;
-
-    // Build result object
-    const result = {
-      "TI-RADS Category": `${category} - ${categoryName}`,
-      "Total Points": `${totalScore} points`,
-      "Point Breakdown": pointBreakdown,
-      "Estimated Malignancy Risk": malignancyRisk,
-      "FNA Recommendation": fnaRecommendation,
+    const thresholds = {
+      TR3: { fna: 2.5, follow: 1.5, schedule: "Follow-up at 1, 3, and 5 years" },
+      TR4: { fna: 1.5, follow: 1.0, schedule: "Follow-up at 1, 2, 3, and 5 years" },
+      TR5: { fna: 1.0, follow: 0.5, schedule: "Annual follow-up for up to 5 years" },
     };
-
-    // Add follow-up if applicable
-    if (followUpRecommendation) {
-      result["Follow-up Recommendation"] = followUpRecommendation;
+    let fnaRecommendation = "No FNA recommended";
+    let followUpRecommendation = "";
+    if (thresholds[category.id]) {
+      const { fna, follow, schedule } = thresholds[category.id];
+      const fnaLabel = fna.toFixed(1);
+      const followLabel = follow.toFixed(1);
+      if (size === null) {
+        fnaRecommendation =
+          `FNA at >=${fnaLabel} cm; surveillance at >=${followLabel} cm; no routine TI-RADS follow-up below ${followLabel} cm`;
+      } else if (size >= fna) {
+        fnaRecommendation = `FNA recommended (>=${fnaLabel} cm)`;
+      } else if (size >= follow) {
+        fnaRecommendation = `No FNA recommended (<${fnaLabel} cm)`;
+        followUpRecommendation = schedule;
+      } else {
+        fnaRecommendation =
+          `No FNA or routine TI-RADS follow-up recommended (<${followLabel} cm)`;
+      }
     }
 
-    // Add size-based context
-    if (size > 0) {
-      result["Nodule Size"] = `${size} cm`;
-    }
-
-    // Add clinical notes for specific findings
     const notes = [];
-
-    if (composition === "spongiform") {
-      notes.push(
-        "Spongiform composition is a benign feature (aggregation of multiple microcystic components)",
-      );
-    }
-
     if (margin === "ete") {
-      notes.push(
-        "Extrathyroidal extension is highly suspicious for malignancy and may indicate T3/T4 disease",
-      );
+      notes.push("Extrathyroidal extension is highly suspicious for malignancy");
     }
-
-    if (echogenic_foci === "punctate") {
+    if (fociResult.punctate) {
       notes.push(
         "Punctate echogenic foci may represent psammomatous calcifications, associated with papillary thyroid carcinoma",
       );
     }
-
     if (shape === "taller") {
       notes.push(
         "Taller-than-wide shape suggests growth across tissue planes, suspicious for malignancy",
       );
     }
-
     if (echogenicity === "very_hypoechoic") {
-      notes.push(
-        "Very hypoechoic (darker than strap muscles) is highly suspicious",
-      );
+      notes.push("Very hypoechoic (darker than strap muscles) is highly suspicious");
     }
 
-    if (notes.length > 0) {
-      result["Clinical Notes"] = notes.join("; ");
-    }
-
-    result._severity =
-      category === "TR1" || category === "TR2"
-        ? "success"
-        : category === "TR3"
-          ? "warning"
-          : "danger";
-    return result;
+    return buildResult({
+      category: category.id,
+      categoryName: category.name,
+      groupRisk: category.groupRisk,
+      totalScore,
+      pointBreakdown: `Composition: ${compositionPts} | Echogenicity: ${echogenicityPts} | Shape: ${shapePts} | Margin: ${marginPts} | Echogenic Foci: ${fociResult.points}`,
+      fnaRecommendation,
+      followUpRecommendation,
+      size,
+      notes,
+    });
   },
 
   refs: [
