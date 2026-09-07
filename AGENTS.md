@@ -2,7 +2,7 @@
 
 You are working on **radulator.com** — free medical calculators used by real clinicians. Push to `main` = production deploy within minutes, which is why feature work never targets it directly. Work like a careful engineer at a medical device company: small, verified, reversible steps.
 
-**Branch model (release train).** Feature/fix PRs target **`develop`** (integration branch; smoke + targeted CI required). Batches are promoted develop→main by an automated promotion PR that runs the **full Playwright suite** and gets a fresh production-gate review of the whole batch — only then does anything deploy. The ONLY PRs that may target `main` directly are hotfixes for live production breakage, and they also require the full suite. If you are unsure which base to use: `develop`.
+**Branch model (release train).** Feature/fix PRs target **`develop`** (integration branch; smoke + targeted CI required, with the full suite required when the trusted risk classifier marks the change high risk). Batches are promoted develop→main by an automated promotion PR that runs the **full Playwright suite** and gets a fresh production-gate review of the whole batch — only then does anything deploy. The ONLY PRs that may target `main` directly are hotfixes for live production breakage, and they also require the full suite. If you are unsure which base to use: `develop`.
 
 ## Agent harness
 
@@ -37,8 +37,8 @@ If you are a Hermes Kanban implementation worker, create/read back the separate 
 - **Medical content is sacred.** Never change formulas, thresholds, score boundaries, units, interpretation text, management recommendations, or guideline versions unless the task explicitly authorizes it and provides primary-source evidence. Include citations and regression vectors in the PR. Do not self-approve: uncertainty is a `NEEDS_FIX` verdict. Clinical release authority belongs to the signed risk-tiered judge quorum, not an informal owner wait or a worker assertion.
 - **PR-only.** Never push to `main` or `develop` directly. PRs target `develop` (hotfix-to-`main` only for live production breakage). Never merge manually; only the trusted controller may merge the exact SHA authorized by the clinical gate and branch protection.
 - **The roadmap is not yours.** `docs/ROADMAP.md` is written EXCLUSIVELY by the Strategist routine and the owner. Workers never edit it — if your task seems to require a roadmap change, note it in the task or PR description. Work may arrive through a seed or directly from the owner; follow the authorized task body and record material assumptions rather than inventing roadmap scope.
-- **The registry contract.** Every calculator is one self-contained `.jsx` in `src/components/calculators/` exporting `id`, `name`, `category` (double-quoted string literals — build tooling parses them statically). The registry, README counts, sitemap, and static pages all derive from this metadata. Renaming/removing an `id` breaks deep links (`#/<id>`) and static pages (`/calculators/<id>/`) — treat ids as permanent.
-- **GitHub auth (hermes workers):** `export GH_TOKEN="$(sed -n 's/^GH_TOKEN=//p' "$HERMES_HOME/.env" | head -1)"` and verify with `gh api user -q .login` before any GitHub operation. If invalid, block with that fact.
+- **The registry contract.** The static calculator metadata definition/adaptor remains a `.jsx` in `src/components/calculators/` exporting `id`, `name`, and `category` (double-quoted string literals — build tooling parses them statically). Pure clinical helpers may live in adjacent modules when authorized; the metadata definition remains the registry source and calculator IDs never move. The registry, README counts, sitemap, and static pages all derive from this metadata. Renaming/removing an `id` breaks deep links (`#/<id>`) and static pages (`/calculators/<id>/`) — treat ids as permanent.
+- **GitHub auth.** Supervised host work uses the configured `gh` credential store and non-secret identity checks. Hermes workers use the approved credential-free publisher path; never extract, print, or pass token contents through the shell, prompts, logs, or review records.
 
 ## Error classes to think about (these have actually bitten this repo)
 
@@ -53,7 +53,7 @@ If you are a Hermes Kanban implementation worker, create/read back the separate 
 ```bash
 npm ci            # always this, never bare npm install, for clean state
 npm run dev       # local dev server
-npm run build     # production build — also generates 38 static calculator pages + sitemap
+npm run build     # production build — also generates registry-derived static calculator pages + sitemap
 npm run lint      # must match main's baseline (no NEW errors)
 npm run check:invariants  # Radulator-specific metadata/guardrail checks
 npm test          # full Playwright suite (required for calculator-logic changes)

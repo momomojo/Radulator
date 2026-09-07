@@ -34,13 +34,20 @@ const CLINICAL_DOCUMENT_PREFIXES = [
 ];
 const CLINICAL_EVIDENCE_FILES = new Set([
   "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+  "ops/hermes/radulator/cac-drs-auc-boundary.test.mjs",
   "ops/hermes/radulator/guideline-registry.test.mjs",
+  "scripts/generate-mesa-cac-reference.mjs",
+  "scripts/generate-mesa-cac-reference.test.mjs",
+  "scripts/jsx-loader.mjs",
   "scripts/run-compute-tests.mjs",
   "scripts/register-jsx-loader.mjs",
 ]);
 const CLINICAL_EVIDENCE_PREFIXES = [
   "docs/evidence/",
   "tests/fixtures/",
+  "tests/data/",
+  "tests/test-data/",
+  "tests/e2e/calculators/",
   "tests/expected-answers/",
   "tests/expected_answers/",
 ];
@@ -157,6 +164,7 @@ function isClinicalEvidencePath(candidate) {
   return CLINICAL_EVIDENCE_FILES.has(candidate) ||
     CLINICAL_EVIDENCE_PREFIXES.some((prefix) => candidate.startsWith(prefix)) ||
     /^scripts\/audit-[^/]*-source[^/]*$/.test(candidate) ||
+    candidate.startsWith("scripts/generate-mesa-cac-reference") ||
     candidate.startsWith("ops/hermes/radulator/guideline-registry") ||
     /^ops\/hermes\/radulator\/.*(?:evidence|expected[-_]?answer|source[-_]?audit|fixture).*$/i.test(candidate);
 }
