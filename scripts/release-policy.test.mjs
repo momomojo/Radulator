@@ -178,7 +178,7 @@ for (const filename of [
 }
 assert.equal(
   releasePolicy.RISK_CLASSIFIER_VERSION,
-  "radulator-clinical-risk/v4",
+  "radulator-clinical-risk/v5",
   "expanding the signed classifier to clinical evidence and prompt-harness files requires a new policy version",
 );
 
@@ -225,6 +225,7 @@ for (const filename of [
   "scripts/register-jsx-loader.mjs",
   "tests/kbrc-math.test.mjs",
   "tests/meld-na-fixture-policy.test.mjs",
+  "tests/albi-compute.test.mjs",
   "src/calculators/registry.js",
   "src/clinical/evidence.js",
 ]) {

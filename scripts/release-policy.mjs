@@ -2,7 +2,7 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
 
 export const ATTESTATION_SCHEMA = "radulator-clinical-attestation/v1";
-export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v4";
+export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v5";
 export const EXPLICIT_HIGH_RISK_MARKER = "<!-- radulator-risk: high -->";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
@@ -165,6 +165,7 @@ function isReleaseControlPath(candidate) {
 function isClinicalEvidencePath(candidate) {
   return CLINICAL_EVIDENCE_FILES.has(candidate) ||
     CLINICAL_EVIDENCE_PREFIXES.some((prefix) => candidate.startsWith(prefix)) ||
+    /^tests\/[^/]+-compute\.test\.mjs$/.test(candidate) ||
     /^scripts\/audit-[^/]*-source[^/]*$/.test(candidate) ||
     candidate.startsWith("scripts/generate-mesa-cac-reference") ||
     candidate.startsWith("ops/hermes/radulator/guideline-registry") ||
