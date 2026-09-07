@@ -204,6 +204,173 @@ test("uses ACR size thresholds and the source follow-up schedules without option
   assert.equal(tr5Follow["Source-reported group risk estimate"], ">=20% (source-reported group estimate; not an individual probability)");
 });
 
+test("covers below, at, and above every ACR follow-up and FNA boundary", () => {
+  const cases = [
+    {
+      id: "TR3 below follow-up",
+      points: 3,
+      category: "TR3 - Mildly Suspicious",
+      size: "1.4",
+      fna: "No FNA or routine TI-RADS follow-up recommended (<1.5 cm)",
+      followUp: undefined,
+    },
+    {
+      id: "TR3 at follow-up",
+      points: 3,
+      category: "TR3 - Mildly Suspicious",
+      size: "1.5",
+      fna: "No FNA recommended (<2.5 cm)",
+      followUp: "Follow-up at 1, 3, and 5 years",
+    },
+    {
+      id: "TR3 above follow-up",
+      points: 3,
+      category: "TR3 - Mildly Suspicious",
+      size: "1.6",
+      fna: "No FNA recommended (<2.5 cm)",
+      followUp: "Follow-up at 1, 3, and 5 years",
+    },
+    {
+      id: "TR3 below FNA",
+      points: 3,
+      category: "TR3 - Mildly Suspicious",
+      size: "2.4",
+      fna: "No FNA recommended (<2.5 cm)",
+      followUp: "Follow-up at 1, 3, and 5 years",
+    },
+    {
+      id: "TR3 at FNA",
+      points: 3,
+      category: "TR3 - Mildly Suspicious",
+      size: "2.5",
+      fna: "FNA recommended (>=2.5 cm)",
+      followUp: undefined,
+    },
+    {
+      id: "TR3 above FNA",
+      points: 3,
+      category: "TR3 - Mildly Suspicious",
+      size: "2.6",
+      fna: "FNA recommended (>=2.5 cm)",
+      followUp: undefined,
+    },
+    {
+      id: "TR4 below follow-up",
+      points: 4,
+      category: "TR4 - Moderately Suspicious",
+      overrides: { echogenicity: "hypoechoic" },
+      size: "0.9",
+      fna: "No FNA or routine TI-RADS follow-up recommended (<1.0 cm)",
+      followUp: undefined,
+    },
+    {
+      id: "TR4 at follow-up",
+      points: 4,
+      category: "TR4 - Moderately Suspicious",
+      overrides: { echogenicity: "hypoechoic" },
+      size: "1.0",
+      fna: "No FNA recommended (<1.5 cm)",
+      followUp: "Follow-up at 1, 2, 3, and 5 years",
+    },
+    {
+      id: "TR4 above follow-up",
+      points: 4,
+      category: "TR4 - Moderately Suspicious",
+      overrides: { echogenicity: "hypoechoic" },
+      size: "1.1",
+      fna: "No FNA recommended (<1.5 cm)",
+      followUp: "Follow-up at 1, 2, 3, and 5 years",
+    },
+    {
+      id: "TR4 below FNA",
+      points: 4,
+      category: "TR4 - Moderately Suspicious",
+      overrides: { echogenicity: "hypoechoic" },
+      size: "1.4",
+      fna: "No FNA recommended (<1.5 cm)",
+      followUp: "Follow-up at 1, 2, 3, and 5 years",
+    },
+    {
+      id: "TR4 at FNA",
+      points: 4,
+      category: "TR4 - Moderately Suspicious",
+      overrides: { echogenicity: "hypoechoic" },
+      size: "1.5",
+      fna: "FNA recommended (>=1.5 cm)",
+      followUp: undefined,
+    },
+    {
+      id: "TR4 above FNA",
+      points: 4,
+      category: "TR4 - Moderately Suspicious",
+      overrides: { echogenicity: "hypoechoic" },
+      size: "1.6",
+      fna: "FNA recommended (>=1.5 cm)",
+      followUp: undefined,
+    },
+    {
+      id: "TR5 below follow-up",
+      points: 8,
+      category: "TR5 - Highly Suspicious",
+      overrides: { echogenicity: "very_hypoechoic", shape: "taller" },
+      size: "0.4",
+      fna: "No FNA or routine TI-RADS follow-up recommended (<0.5 cm)",
+      followUp: undefined,
+    },
+    {
+      id: "TR5 at follow-up",
+      points: 8,
+      category: "TR5 - Highly Suspicious",
+      overrides: { echogenicity: "very_hypoechoic", shape: "taller" },
+      size: "0.5",
+      fna: "No FNA recommended (<1.0 cm)",
+      followUp: "Annual follow-up for up to 5 years",
+    },
+    {
+      id: "TR5 above follow-up",
+      points: 8,
+      category: "TR5 - Highly Suspicious",
+      overrides: { echogenicity: "very_hypoechoic", shape: "taller" },
+      size: "0.6",
+      fna: "No FNA recommended (<1.0 cm)",
+      followUp: "Annual follow-up for up to 5 years",
+    },
+    {
+      id: "TR5 below FNA",
+      points: 8,
+      category: "TR5 - Highly Suspicious",
+      overrides: { echogenicity: "very_hypoechoic", shape: "taller" },
+      size: "0.9",
+      fna: "No FNA recommended (<1.0 cm)",
+      followUp: "Annual follow-up for up to 5 years",
+    },
+    {
+      id: "TR5 at FNA",
+      points: 8,
+      category: "TR5 - Highly Suspicious",
+      overrides: { echogenicity: "very_hypoechoic", shape: "taller" },
+      size: "1.0",
+      fna: "FNA recommended (>=1.0 cm)",
+      followUp: undefined,
+    },
+    {
+      id: "TR5 above FNA",
+      points: 8,
+      category: "TR5 - Highly Suspicious",
+      overrides: { echogenicity: "very_hypoechoic", shape: "taller" },
+      size: "1.1",
+      fna: "FNA recommended (>=1.0 cm)",
+      followUp: undefined,
+    },
+  ];
+
+  for (const { id, points, category, overrides = {}, size, fna, followUp } of cases) {
+    const result = assertScore(withValues({ ...overrides, nodule_size: size }), points, category);
+    assert.equal(result["FNA Recommendation"], fna, id);
+    assert.equal(result["Follow-up Recommendation"], followUp, id);
+  }
+});
+
 test("reports group risk estimates instead of individual probabilities", () => {
   const result = assertScore(withValues(), 3, "TR3 - Mildly Suspicious");
   assert.equal(result["Source-reported group risk estimate"], "5% (source-reported group estimate; not an individual probability)");
