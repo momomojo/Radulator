@@ -111,9 +111,7 @@ export function loadComputeFixtures({ root, computeDir = DEFAULT_COMPUTE_DIR } =
     });
 }
 
-function specContainsCalculator(source, calculator) {
-  if (source.includes(calculator.name) || source.includes(calculator.id)) return true;
-
+export function specContainsCalculator(source, calculator) {
   const variables = new Map();
   for (const match of source.matchAll(
     /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(["'])(.*?)\2/g,
@@ -122,17 +120,14 @@ function specContainsCalculator(source, calculator) {
   }
 
   for (const match of source.matchAll(
-    /navigateToCalculator\(\s*page\s*,\s*([^),\n]+)\s*\)/g,
+    /navigateToCalculator\(\s*page\s*,\s*(?:"([^"]*)"|'([^']*)'|([A-Za-z_$][\w$]*))\s*\)/g,
   )) {
-    const argument = match[1].trim();
-    const value =
-      (argument.startsWith('"') || argument.startsWith("'"))
-        ? argument.slice(1, -1)
-        : variables.get(argument);
+    const value = match[1] ?? match[2] ?? variables.get(match[3]);
     if (value === calculator.id || value === calculator.name) return true;
   }
 
-  return false;
+  return source.includes(`/#/${calculator.id}`) ||
+    source.includes(`/calculators/${calculator.id}/`);
 }
 
 export function loadBrowserSpecs({
@@ -185,7 +180,7 @@ export function summarizeComputeFixtures(fixtures = []) {
   };
 }
 
-function registryReviewScope(record) {
+export function registryReviewScope(record) {
   if (!record) return "no registry row";
   const evidence = record.implementation_evidence;
   if (!evidence) return "registry row only; no implementation_evidence block";
@@ -195,10 +190,9 @@ function registryReviewScope(record) {
   const vectorCount = Array.isArray(evidence.source_audit?.vector_ids)
     ? evidence.source_audit.vector_ids.length
     : 0;
-  const parts = [`source-derived evidence (${claimCount} claim(s)`];
+  const parts = [`${claimCount} claim(s)`];
   if (vectorCount > 0) parts.push(`${vectorCount} vector(s)`);
-  parts.push(")");
-  return parts.join(", ");
+  return `source-derived evidence (${parts.join(", ")})`;
 }
 
 function normalizeSourceReferences(record) {
@@ -277,7 +271,7 @@ export function buildInventory({
                 claimCount: Array.isArray(registryRecord.implementation_evidence.claims)
                   ? registryRecord.implementation_evidence.claims.length
                   : 0,
-                vectorCount: Array.isArray(
+                sourceAuditVectorCount: Array.isArray(
                   registryRecord.implementation_evidence.source_audit?.vector_ids,
                 )
                   ? registryRecord.implementation_evidence.source_audit.vector_ids.length
@@ -393,7 +387,7 @@ export function renderMarkdown(inventory) {
     `- Medical rows: ${summary.medicalCalculators}; the Feedback category is excluded (${inventory.excluded.map((row) => row.id).join(", ") || "none"}).`,
     `- Registry claims: ${summary.registry.verified} verified, ${summary.registry.seedUnverified} seed-unverified, ${summary.registry.missing} missing; these labels are existing registry assertions, not a new independent clinical certification.`,
     `- Canonical compute fixture inventory: ${summary.compute.fixtureFiles} fixture files and ${summary.compute.cases} cases; counts do not establish that the tests passed or that all behavior is covered.`,
-    `- Browser spec presence: ${summary.browser.calculatorSpecificSpecFiles} calculator-specific files and ${summary.browser.sharedSpecFiles} shared files; presence does not establish branch coverage, correct medicine, or a successful browser run.`,
+    `- Browser spec presence: ${summary.browser.calculatorSpecificSpecFiles} calculator-specific files and ${summary.browser.sharedSpecFiles} shared files; associations are statically detected from actual navigation or routes, so indirect or parameterized helpers may be omitted. Presence does not establish branch coverage, correct medicine, or a successful browser run.`,
     "- Clinical signoff: not established.",
     "- Release/proof: not established.",
     "",

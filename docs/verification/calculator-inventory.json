@@ -100,12 +100,10 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/adrenal-ct-washout.spec.js",
-          "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js",
-          "tests/e2e/calculators/radiology/prostate-volume.spec.js"
+          "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js"
         ],
-        "specCount": 4
+        "specCount": 2
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -114,10 +112,8 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/adrenal-ct-washout.spec.js",
-          "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js",
-          "tests/e2e/calculators/radiology/prostate-volume.spec.js"
+          "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js"
         ]
       }
     },
@@ -148,10 +144,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -160,7 +155,6 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js"
         ]
       }
@@ -174,7 +168,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-29",
-        "reviewScope": "source-derived evidence (3 claim(s), 6 vector(s), )",
+        "reviewScope": "source-derived evidence (3 claim(s), 6 vector(s))",
         "justification": "The open primary publication confirms the printed two-variable ALBI equation, SI units, three inclusive/exclusive grade intervals, and HCC development population. Executable vectors bind the source coefficients and all grade boundaries; unsupported cohort-median and treatment-eligibility claims were removed.",
         "sourceReferences": [
           {
@@ -189,7 +183,7 @@
           "fixturePath": "tests/fixtures/compute/albi-score.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 3,
-          "vectorCount": 6
+          "sourceAuditVectorCount": 6
         }
       },
       "compute": {
@@ -394,7 +388,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-29",
-        "reviewScope": "source-derived evidence (6 claim(s), 28 vector(s), )",
+        "reviewScope": "source-derived evidence (6 claim(s), 28 vector(s))",
         "justification": "Temporary rollback while the full sixth-edition manual is pending. The digest-pinned fifth-edition quick reference bounds selected descriptor groups; digest-pinned public v2025 modality summary forms independently constrain category structure, source-literal probability endpoints, and management wording. Descriptor-to-category inference and patient-specific probability calculation remain out of scope.",
         "sourceReferences": [
           {
@@ -437,7 +431,7 @@
           "fixturePath": "tests/fixtures/compute/birads.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 6,
-          "vectorCount": 28
+          "sourceAuditVectorCount": 28
         }
       },
       "compute": {
@@ -448,10 +442,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/breast/bi-rads.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js"
+          "tests/e2e/calculators/breast/bi-rads.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -462,8 +455,7 @@
           "tests/fixtures/compute/birads.json"
         ],
         "browserSpecs": [
-          "tests/e2e/calculators/breast/bi-rads.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js"
+          "tests/e2e/calculators/breast/bi-rads.spec.js"
         ]
       }
     },
@@ -476,7 +468,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-26",
-        "reviewScope": "source-derived evidence (4 claim(s), 3 vector(s), )",
+        "reviewScope": "source-derived evidence (4 claim(s), 3 vector(s))",
         "justification": "The open primary version 2019 publication directly specifies the eligibility boundary, quantitative CT feature definitions, inclusive 70 HU and 4 mm equality cases, and categories exercised by the bound regression vectors. The peer-reviewed CUA 2023 guideline separately supplies the displayed Bosniak IIF follow-up interval, duration, and evidence grades.",
         "sourceReferences": [
           {
@@ -497,7 +489,7 @@
           "fixturePath": "tests/fixtures/compute/bosniak.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 4,
-          "vectorCount": 3
+          "sourceAuditVectorCount": 3
         }
       },
       "compute": {
@@ -536,7 +528,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-25",
-        "reviewScope": "source-derived evidence (5 claim(s), 11 vector(s), )",
+        "reviewScope": "source-derived evidence (5 claim(s), 11 vector(s))",
         "justification": "The official MESA tool confirms the reference outputs used by Radulator; the original SCCT CAC-DRS publication supplies the score-only categories, and the 2023 multi-society appropriate-use criteria Table 1.2 supplies an accessible unambiguous 100-299 versus 300-or-greater boundary.",
         "sourceReferences": [
           {
@@ -575,7 +567,7 @@
           "fixturePath": "tests/fixtures/compute/cac-mesa.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 5,
-          "vectorCount": 11
+          "sourceAuditVectorCount": 11
         }
       },
       "compute": {
@@ -630,10 +622,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/cardiac/cad-rads.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js"
+          "tests/e2e/calculators/cardiac/cad-rads.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -642,8 +633,7 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/cardiac/cad-rads.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js"
+          "tests/e2e/calculators/cardiac/cad-rads.spec.js"
         ]
       }
     },
@@ -675,11 +665,9 @@
       "browser": {
         "specPaths": [
           "tests/e2e/calculators/copy-results.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js",
-          "tests/e2e/calculators/hepatology/bclc-staging.spec.js",
           "tests/e2e/calculators/hepatology/child-pugh.spec.js"
         ],
-        "specCount": 4
+        "specCount": 2
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -689,8 +677,6 @@
         "computeFixtures": [],
         "browserSpecs": [
           "tests/e2e/calculators/copy-results.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js",
-          "tests/e2e/calculators/hepatology/bclc-staging.spec.js",
           "tests/e2e/calculators/hepatology/child-pugh.spec.js"
         ]
       }
@@ -704,7 +690,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-25",
-        "reviewScope": "source-derived evidence (2 claim(s), )",
+        "reviewScope": "source-derived evidence (2 claim(s))",
         "justification": "The primary publication confirms the adult creatinine-clearance equation, derivation cohort, and historical 15 percent female adjustment implemented with explicit limitations.",
         "sourceReferences": [
           {
@@ -725,7 +711,7 @@
           "fixturePath": "tests/fixtures/compute/cockcroft-gault.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 2,
-          "vectorCount": 0
+          "sourceAuditVectorCount": 0
         }
       },
       "compute": {
@@ -762,7 +748,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-29",
-        "reviewScope": "source-derived evidence (6 claim(s), 10 vector(s), )",
+        "reviewScope": "source-derived evidence (6 claim(s), 10 vector(s))",
         "justification": "The exact ACR 2026 manual and official adult/pediatric reaction-card PDFs are byte-pinned and bound to executable renal-safety and warming vectors. Verification is deliberately limited to those claims and the official card links; the study-type iodine targets, volume cap, access-flow ranges, and saline-flush default remain locally encoded planning defaults rather than ACR-verified universal protocols.",
         "sourceReferences": [
           {
@@ -792,7 +778,7 @@
           "fixturePath": "tests/fixtures/compute/contrast-dosing.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 6,
-          "vectorCount": 10
+          "sourceAuditVectorCount": 10
         }
       },
       "compute": {
@@ -803,10 +789,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/contrast-dosing.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -817,7 +802,6 @@
           "tests/fixtures/compute/contrast-dosing.json"
         ],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/contrast-dosing.spec.js"
         ]
       }
@@ -917,7 +901,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-31",
-        "reviewScope": "source-derived evidence (12 claim(s), 113 vector(s), )",
+        "reviewScope": "source-derived evidence (12 claim(s), 113 vector(s))",
         "justification": "Reviewed evidence separates 12 literal source facts and their reviewed clinical syntheses from four explicit Radulator product invariants while preserving exact coverage of all 113 executable vectors. CI retrieves hash-pinned RSNA-origin artifacts, parses page- and anchor-bounded text with a pinned parser, verifies a hash-bound Figure 1 transcription, and cross-checks exact NLM table fragments. Independent source review grants no release authority.",
         "sourceReferences": [
           {
@@ -954,7 +938,7 @@
           "fixturePath": "tests/fixtures/compute/fleischner.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 12,
-          "vectorCount": 113
+          "sourceAuditVectorCount": 113
         }
       },
       "compute": {
@@ -1117,7 +1101,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-25",
-        "reviewScope": "source-derived evidence (3 claim(s), )",
+        "reviewScope": "source-derived evidence (3 claim(s))",
         "justification": "The open primary publication confirms the adult diagnostic kidney-biopsy population and major-bleeding outcome; its direct supplementary PDF exposes the refit equation, predictor units, coefficients, and spline knots used by the executable source-model regression vectors.",
         "sourceReferences": [
           {
@@ -1151,7 +1135,7 @@
           "fixturePath": "tests/fixtures/compute/kidney-biopsy-bleeding-risk.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 3,
-          "vectorCount": 0
+          "sourceAuditVectorCount": 0
         }
       },
       "compute": {
@@ -1206,10 +1190,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/hepatology/lirads.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1218,7 +1201,6 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/hepatology/lirads.spec.js"
         ]
       }
@@ -1250,10 +1232,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/lung-rads.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1262,7 +1243,6 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/lung-rads.spec.js"
         ]
       }
@@ -1294,11 +1274,10 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/nephrology/cockcroft-gault.spec.js",
           "tests/e2e/calculators/nephrology/mehran-cin.spec.js"
         ],
-        "specCount": 3
+        "specCount": 2
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1307,7 +1286,6 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/nephrology/cockcroft-gault.spec.js",
           "tests/e2e/calculators/nephrology/mehran-cin.spec.js"
         ]
@@ -1322,7 +1300,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-25",
-        "reviewScope": "source-derived evidence (4 claim(s), )",
+        "reviewScope": "source-derived evidence (4 claim(s))",
         "justification": "OPTN Policy 9.1.D specifies the MELD 3.0 equations, calculation bounds, dialysis handling, and score range; the official MELD and PELD Calculators User Guide separately specifies the accepted laboratory-entry domains. Both layers are bound to executable vectors.",
         "sourceReferences": [
           {
@@ -1343,7 +1321,7 @@
           "fixturePath": "tests/fixtures/compute/meld-na.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 4,
-          "vectorCount": 0
+          "sourceAuditVectorCount": 0
         }
       },
       "compute": {
@@ -1354,10 +1332,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/hepatology/meld-na.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1368,7 +1345,6 @@
           "tests/fixtures/compute/meld-na.json"
         ],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/hepatology/meld-na.spec.js"
         ]
       }
@@ -1484,10 +1460,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/neuroradiology/ni-rads.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1496,7 +1471,6 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/neuroradiology/ni-rads.spec.js"
         ]
       }
@@ -1528,10 +1502,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/womens/o-rads.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1540,7 +1513,6 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/womens/o-rads.spec.js"
         ]
       }
@@ -1554,7 +1526,7 @@
       "registry": {
         "status": "verified",
         "lastVerified": "2026-08-25",
-        "reviewScope": "source-derived evidence (2 claim(s), )",
+        "reviewScope": "source-derived evidence (2 claim(s))",
         "justification": "The primary study confirms the 11-variable original PESI model, all point increments, and the five source-defined risk classes.",
         "sourceReferences": [
           {
@@ -1569,7 +1541,7 @@
           "fixturePath": "tests/fixtures/compute/pesi.json",
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 2,
-          "vectorCount": 0
+          "sourceAuditVectorCount": 0
         }
       },
       "compute": {
@@ -1624,11 +1596,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
-          "tests/e2e/calculators/radiology/prostate-volume.spec.js",
           "tests/e2e/calculators/urology/pirads.spec.js"
         ],
-        "specCount": 3
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1637,8 +1607,6 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
-          "tests/e2e/calculators/radiology/prostate-volume.spec.js",
           "tests/e2e/calculators/urology/pirads.spec.js"
         ]
       }
@@ -1842,10 +1810,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/radiology/hip-dysplasia.spec.js",
           "tests/e2e/calculators/radiology/spleen-size.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1854,7 +1821,6 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/radiology/hip-dysplasia.spec.js",
           "tests/e2e/calculators/radiology/spleen-size.spec.js"
         ]
       }
@@ -1932,10 +1898,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/tirads.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1944,7 +1909,6 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/guideline-badges.spec.js",
           "tests/e2e/calculators/radiology/tirads.spec.js"
         ]
       }
@@ -1976,10 +1940,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/clinical/wells-dvt.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js"
+          "tests/e2e/calculators/clinical/wells-dvt.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -1988,8 +1951,7 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/clinical/wells-dvt.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js"
+          "tests/e2e/calculators/clinical/wells-dvt.spec.js"
         ]
       }
     },
@@ -2020,10 +1982,9 @@
       },
       "browser": {
         "specPaths": [
-          "tests/e2e/calculators/clinical/wells-pe.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js"
+          "tests/e2e/calculators/clinical/wells-pe.spec.js"
         ],
-        "specCount": 2
+        "specCount": 1
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -2032,8 +1993,7 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
-          "tests/e2e/calculators/clinical/wells-pe.spec.js",
-          "tests/e2e/calculators/guideline-badges.spec.js"
+          "tests/e2e/calculators/clinical/wells-pe.spec.js"
         ]
       }
     },

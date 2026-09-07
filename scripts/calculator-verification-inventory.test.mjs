@@ -3,8 +3,10 @@ import test from "node:test";
 import {
   buildInventory,
   collectInventory,
+  registryReviewScope,
   renderMarkdown,
   runCli,
+  specContainsCalculator,
   summarizeComputeFixtures,
 } from "./calculator-verification-inventory.mjs";
 
@@ -84,6 +86,40 @@ test("buildInventory records missing registry and canonical cases without invent
   assert.match(renderMarkdown(inventory), /not a clinical certification/i);
 });
 
+test("browser inventory associates specs only with actual navigation or routes", () => {
+  const calculator = { id: "alpha", name: "Alpha Calculator" };
+  assert.equal(
+    specContainsCalculator("// Alpha Calculator appears in a comment", calculator),
+    false,
+  );
+  assert.equal(
+    specContainsCalculator('await navigateToCalculator(page, "Alpha Calculator");', calculator),
+    true,
+  );
+  assert.equal(
+    specContainsCalculator("await navigateToCalculator(page, 'Alpha (2026) Calculator');", {
+      id: "alpha-2026",
+      name: "Alpha (2026) Calculator",
+    }),
+    true,
+  );
+  assert.equal(
+    specContainsCalculator('await page.goto("/#/alpha");', calculator),
+    true,
+  );
+});
+
+test("registry review scope renders claim and vector counts without dangling punctuation", () => {
+  assert.equal(
+    registryReviewScope({ implementation_evidence: { claims: [{}, {}], source_audit: { vector_ids: ["a", "b"] } } }),
+    "source-derived evidence (2 claim(s), 2 vector(s))",
+  );
+  assert.equal(
+    registryReviewScope({ implementation_evidence: { claims: [{}], source_audit: { vector_ids: [] } } }),
+    "source-derived evidence (1 claim(s))",
+  );
+});
+
 test("summarizeComputeFixtures derives counts from cases rather than stale declared coverage", () => {
   const summary = summarizeComputeFixtures([
     {
@@ -132,6 +168,8 @@ test("collectInventory reflects the checked-out source, registry, fixtures, and 
   assert.equal(albi.registry.lastVerified, "2026-08-29");
   assert.equal(albi.compute.caseCount, 6);
   assert.equal(albi.browser.specCount, 1);
+  assert.equal(albi.registry.implementationEvidence.sourceAuditVectorCount, 6);
+  assert.equal("vectorCount" in albi.registry.implementationEvidence, false);
   assert.ok(albi.registry.sourceReferences.some((source) => source.url.includes("PMC4322258")));
 });
 

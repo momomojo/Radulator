@@ -223,6 +223,8 @@ for (const filename of [
   "scripts/jsx-loader.mjs",
   "scripts/run-compute-tests.mjs",
   "scripts/register-jsx-loader.mjs",
+  "tests/kbrc-math.test.mjs",
+  "tests/meld-na-fixture-policy.test.mjs",
   "src/calculators/registry.js",
   "src/clinical/evidence.js",
 ]) {

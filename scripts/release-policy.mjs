@@ -41,6 +41,8 @@ const CLINICAL_EVIDENCE_FILES = new Set([
   "scripts/jsx-loader.mjs",
   "scripts/run-compute-tests.mjs",
   "scripts/register-jsx-loader.mjs",
+  "tests/kbrc-math.test.mjs",
+  "tests/meld-na-fixture-policy.test.mjs",
 ]);
 const CLINICAL_EVIDENCE_PREFIXES = [
   "docs/evidence/",
