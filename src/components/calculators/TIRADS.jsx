@@ -162,6 +162,8 @@ export const TIRADS = {
   info: {
     text: `ACR TI-RADS (Thyroid Imaging Reporting and Data System) is a standardized system for assessing thyroid nodules on ultrasound.
 
+For adult thyroid nodules; prior biopsy results and patient-specific clinical context can alter management.
+
 The system assigns points based on 5 ultrasound feature categories:
 • Composition (0-2 points)
 • Echogenicity (0-3 points)

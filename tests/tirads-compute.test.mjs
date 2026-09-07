@@ -209,3 +209,10 @@ test("reports group risk estimates instead of individual probabilities", () => {
   assert.equal(result["Source-reported group risk estimate"], "5% (source-reported group estimate; not an individual probability)");
   assert.equal(result["Estimated Malignancy Risk"], undefined);
 });
+
+test("states adult-nodule scope and clinical-context limitation in calculator metadata", () => {
+  assert.match(
+    TIRADS.info.text,
+    /For adult thyroid nodules; prior biopsy results and patient-specific clinical context can alter management\./,
+  );
+});
