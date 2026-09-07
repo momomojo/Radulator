@@ -74,7 +74,7 @@ test("ALBI grades from raw scores before three-decimal display rounding", () => 
       expectedDisplay: "-2.600",
     },
     {
-      albumin: 24.116470588235293,
+      albumin: 2.0499 / 0.085,
       expectedScore: -1.3899,
       expectedGrade: 3,
       expectedDisplay: "-1.390",
