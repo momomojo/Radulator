@@ -26,8 +26,6 @@ import {
 
 const CALCULATOR_NAME = "IV Contrast Dosing";
 
-test.use({ permissions: ["clipboard-read", "clipboard-write"] });
-
 test.describe("IV Contrast Dosing Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, CALCULATOR_NAME);
@@ -469,6 +467,7 @@ test.describe("IV Contrast Dosing Calculator", () => {
   test.describe("Volume Capping", () => {
     test("should report capped iodine from final volume in rendered and copied results", async ({
       page,
+      browserName,
     }) => {
       // CAPPED-TBW: 110 kg, 200 cm, hepatic, 300 mg I/mL, 18G.
       await page.getByText("Kilograms (kg)").click();
@@ -500,17 +499,31 @@ test.describe("IV Contrast Dosing Calculator", () => {
         "the cap reduces planned iodine below target",
       );
 
-      await page.getByRole("button", { name: "Copy results" }).click();
-      const clipboardText = await page.evaluate(() =>
-        navigator.clipboard.readText(),
-      );
-      expect(clipboardText).toContain(
-        "Total Iodine Dose: 45,000 mg I (409 mg I/kg Total Body Weight)",
-      );
-      expect(clipboardText).toContain(
-        "Uncapped Iodine Target: 60,500 mg I (550 mg I/kg Total Body Weight; before 150 mL cap)",
-      );
-      expect(clipboardText).toContain("the cap reduces planned iodine below target");
+      await expect(
+        page.getByRole("button", { name: "Copy results" }),
+      ).toBeVisible();
+
+      // Native clipboard read/write is covered only on Chromium; rendered
+      // result assertions above run on every configured browser.
+      if (browserName === "chromium") {
+        await page.context().grantPermissions([
+          "clipboard-read",
+          "clipboard-write",
+        ]);
+        await page.getByRole("button", { name: "Copy results" }).click();
+        const clipboardText = await page.evaluate(() =>
+          navigator.clipboard.readText(),
+        );
+        expect(clipboardText).toContain(
+          "Total Iodine Dose: 45,000 mg I (409 mg I/kg Total Body Weight)",
+        );
+        expect(clipboardText).toContain(
+          "Uncapped Iodine Target: 60,500 mg I (550 mg I/kg Total Body Weight; before 150 mL cap)",
+        );
+        expect(clipboardText).toContain(
+          "the cap reduces planned iodine below target",
+        );
+      }
     });
 
     test("should cap volume at 150 mL for large patients", async ({ page }) => {

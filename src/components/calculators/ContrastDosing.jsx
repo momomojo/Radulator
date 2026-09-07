@@ -289,7 +289,9 @@ Acute reactions require an emergency response protocol; use the official ACR adu
     if (volumeCapped) {
       contrastVolume = maxVolume;
     }
-    const plannedIodineDose = contrastVolume * concentration;
+    const plannedIodineDose = volumeCapped
+      ? contrastVolume * concentration
+      : totalIodineDose;
 
     // Determine flow rate based on IV access and study type
     const flowRateMap = {

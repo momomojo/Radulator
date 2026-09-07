@@ -49,6 +49,18 @@ test("UNCAPPED-TBW keeps the existing total-dose presentation without an uncappe
   assert.equal(result.WARNINGS, undefined);
 });
 
+test("UNCAPPED-TBW preserves the existing half-mg rounding boundary", () => {
+  const result = compute({
+    weight: "50.02125",
+    height: "175",
+    study_type: "routine",
+  });
+
+  assert.equal(result["Recommended Contrast Volume"], "67 mL");
+  assert.equal(result["Total Iodine Dose"], "20,009 mg I (400 mg I/kg Total Body Weight)");
+  assert.equal(result["Uncapped Iodine Target"], undefined);
+});
+
 test("CAP-EXACT does not treat a volume exactly at the cap as capped", () => {
   const result = compute({
     weight: "112.5",
