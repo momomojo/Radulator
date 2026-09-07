@@ -40,7 +40,7 @@ Root derived cases from energy balance, independently of the implementation. Unl
 | PR | P10, residual10% |144.2|3.58 (96.9)|16.0|injected3.22573429076GBq|
 | P1 | P10, TNR1 |309|6.91 (186.8)|34.3|normal/mean300.0Gy; equals uniform300Gy for any valid partition split|
 
-Additional cases: shunt0/10/20% must increase required activity; changing tumor fraction with TNR1 leaves activity unchanged. Changing residual must not double-correct lung dose. All missing/blank/nonfinite/unit-suffixed/array/boolean numeric inputs used by the model fail; unknown nonempty enum values fail. Irrelevant tumor/TNR values do not affect uniform results. Retain current visible numeric entry bounds as **software bounds pending applicability review**, not guideline limits. Test lung-dose30Gy flag just below/above using independent energy/shunt inputs; do not round before comparison.
+Additional cases: shunt0/10/20% must increase required activity; changing tumor fraction with TNR1 leaves activity unchanged. Changing residual must not double-correct lung dose. Missing/blank/nonfinite/unit-suffixed/array/boolean numeric inputs used by the model fail, except the explicitly documented inherited omitted-residual default below; unknown nonempty enum values fail. Irrelevant tumor/TNR values do not affect uniform results. Retain current visible numeric entry bounds as **software bounds pending applicability review**, not guideline limits. Test lung-dose30Gy flag just below/above using independent energy/shunt inputs; do not round before comparison.
 
 ## Y90-1: approved bounded implementation
 
@@ -57,6 +57,10 @@ This is one urgent correction with explicit restrictions, not a completed full a
 Pre-implementation independent check: six expected cases and source/conversion conventions independently confirmed. Accepted clarifications: visibly define T/N as **tumor-to-normal activity concentration (activity or corrected counts per unit mass), not the total tumor/normal counts ratio**. Replace the entire old information/interpretation safety prose with the prescribed limited scope/checks, including removal of `<10 Gy normal`, `10–20 Gy acceptable`, and positive `≥190 Gy threshold met` wording. This is replacement of unsupported guidance, not only suppression of the old dose-increase prompt. Assertions must reject those inherited claims wherever they appear in metadata or results.
 
 ## Remaining audit and acceptance
+
+Owner clarification after final-review input probe, 2026-09-07: preserve the inherited, visibly documented expected-residual default. Omitted/undefined `vial_residual` uses1%; explicitly blank, null, malformed or nonfinite residual fails. This is an application default awaiting product/applicability review, not a universal expected clinical residual. U10 with default1% yields2.33GBq treatment-time activity,2.30GBq expected injected activity,11.4Gy lung dose and reported1.0% residual. Add a regression for omission versus blank; other required model numerics and radios remain explicit. This corrects the plan's overly broad missing-input wording without silently changing the inherited default.
+
+Restore unaffected required-radio, missing-lung-shunt, missing/upper-bound T/N and invalid optional-BSA coverage when replacing wrong clinical expectations. Prove stale results disappear before recalculation after dose/model changes. No new eligibility or target-selection rule is authorized.
 
 - Y90-1 implementation, final independent review, full required CI, signed review and exact live proof pending.
 - Y90-2: review product-specific current guidance, every historical reference, numerical entry-bound applicability, lung mass choice and cumulative-dose scope; determine which additional clinical functions can be supported without false clearance. Restrictions beyond BI-RADS must return to the user before declaring the whole baseline complete.
