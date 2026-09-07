@@ -119,9 +119,27 @@ test("numeric inputs reject malformed values instead of parseFloat prefixes", ()
   }
 });
 
+test("partition numeric validation rejects hostile objects and symbols before conversion", () => {
+  for (const value of [
+    Symbol("invalid tumor volume"),
+    { valueOf() { throw new Error("coercion must not run"); } },
+  ]) {
+    assert.doesNotThrow(() => {
+      const result = compute({ dosimetry_model: "partition", tumor_volume: value, tn_ratio: "3" });
+      assert.ok(result.Error);
+    });
+  }
+  assert.doesNotThrow(() => {
+    const result = compute({ dosimetry_model: "partition", tumor_volume: "200", tn_ratio: Symbol("invalid T/N") });
+    assert.ok(result.Error);
+  });
+});
+
 test("lung reference check uses unrounded dose and does not claim treatment clearance", () => {
-  const below = compute({ segment_volume: "1000", target_dose: "115", lung_shunt: "20" });
-  const above = compute({ segment_volume: "1000", target_dose: "117", lung_shunt: "20" });
+  const below = compute({ segment_volume: "1000", target_dose: "116.5", lung_shunt: "20" });
+  const above = compute({ segment_volume: "1000", target_dose: "116.51", lung_shunt: "20" });
+  assert.equal(below["Estimated Lung Dose"], "30.0 Gy");
+  assert.equal(above["Estimated Lung Dose"], "30.0 Gy");
   assert.match(below["Single-Treatment Lung Dose Check"], /At or below 30 Gy reference/);
   assert.match(above["Single-Treatment Lung Dose Check"], /Above 30 Gy reference/);
   assert.equal(above["Treatment Suitability"], "Not assessed");

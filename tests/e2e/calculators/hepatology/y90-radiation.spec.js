@@ -7,8 +7,6 @@
 import { test, expect } from "@playwright/test";
 import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
-test.use({ permissions: ["clipboard-read", "clipboard-write"] });
-
 const calculatorName = "Y-90 Radioembolization Dosimetry";
 
 async function openCalculator(page) {
@@ -65,6 +63,19 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     await expect(page.locator('input[id="tn_ratio"]')).toHaveCount(0);
   });
 
+  test("retains radio controls and software-bound sublabels", async ({ page }) => {
+    await openCalculator(page);
+    await expect(page.locator('input[value="segmentectomy"]')).toBeVisible();
+    await expect(page.locator('input[value="lobectomy"]')).toBeVisible();
+    await expect(page.locator('input[value="glass"]')).toBeVisible();
+    await expect(page.locator('input[value="resin"]')).toBeVisible();
+    await expect(page.getByText("mL (10-2000)")).toBeVisible();
+    await expect(page.getByText("Gy (80-800)")).toBeVisible();
+    await expect(page.getByText("% (0-50)")).toBeVisible();
+    await expect(page.getByText("kg (for BSA calculation)")).toBeVisible();
+    await expect(page.getByText("cm (for BSA calculation)")).toBeVisible();
+  });
+
   test("calculates uniform 100 Gy at 10% shunt with injected and treatment-time activity", async ({ page }) => {
     await openCalculator(page);
     await fillUniform(page);
@@ -116,11 +127,11 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
 
   test("uses the unrounded lung-dose boundary and never presents clearance", async ({ page }) => {
     await openCalculator(page);
-    await fillUniform(page, { segment_volume: "1000", target_dose: "115", lung_shunt: "20" });
+    await fillUniform(page, { segment_volume: "1000", target_dose: "116.5", lung_shunt: "20" });
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByText("At or below 30 Gy reference — not treatment clearance")).toBeVisible();
 
-    await page.fill('input[id="target_dose"]', "117");
+    await page.fill('input[id="target_dose"]', "116.51");
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByText("Above 30 Gy reference — specialist review required")).toBeVisible();
     await expect(page.getByText("Treatment Suitability: Not assessed")).toBeVisible();
@@ -143,18 +154,106 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     await expect(page.getByText(/Target segment volume must be a finite number/)).toBeVisible();
   });
 
-  test("copies the complete scope and prints the current result layout", async ({ page }) => {
+  test("retains partition and numeric range validation", async ({ page }) => {
+    await openCalculator(page);
+    await fillUniform(page, { target_dose: "79" });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Target dose must be between 80-800 Gy")).toBeVisible();
+
+    await fillUniform(page, { lung_shunt: "51" });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Lung shunt fraction is required and must be between 0-50%")).toBeVisible();
+
+    await fillUniform(page, { vial_residual: "21" });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Vial residual must be between 0-20%")).toBeVisible();
+
+    await page.locator('input[value="partition"]').click();
+    await page.fill('input[id="segment_volume"]', "1000");
+    await page.fill('input[id="target_dose"]', "300");
+    await page.fill('input[id="lung_shunt"]', "10");
+    await page.fill('input[id="vial_residual"]', "0");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText(/Tumor volume must be positive/)).toBeVisible();
+
+    await page.fill('input[id="tumor_volume"]', "1001");
+    await page.fill('input[id="tn_ratio"]', "3");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText(/Tumor volume must be positive/)).toBeVisible();
+
+    await page.fill('input[id="tumor_volume"]', "200");
+    await page.fill('input[id="tn_ratio"]', "0");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText(/Tumor-to-normal ratio must be between 1-50/)).toBeVisible();
+  });
+
+  test("retains optional BSA omission behavior and boundary arithmetic", async ({ page }) => {
+    await openCalculator(page);
+    await fillUniform(page, { segment_volume: "10", target_dose: "80", lung_shunt: "0" });
+    await page.fill('input[id="patient_weight"]', "70");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Body Surface Area")).toHaveCount(0);
+
+    await fillUniform(page, { segment_volume: "2000", target_dose: "800", lung_shunt: "50" });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Activity at Treatment Time: 66.36 GBq (1793.5 mCi)")).toBeVisible();
+
+    await page.fill('input[id="lung_shunt"]', "0");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Estimated Lung Dose: 0.0 Gy")).toBeVisible();
+  });
+
+  test("retains reference links and organized result separators", async ({ page }) => {
+    await openCalculator(page);
+    await expect(page.getByRole("heading", { name: "References" })).toBeVisible();
+    await expect(page.getByText(/EANM procedure guideline for the treatment of liver cancer/)).toBeVisible();
+    await expect(page.getByText("TheraSphere Y-90 Glass Microspheres FDA eIFU P200029S011C")).toBeVisible();
+    await fillUniform(page);
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("═══ CALCULATED ACTIVITY ═══")).toBeVisible();
+    await expect(page.getByText("═══ DOSIMETRY RESULTS ═══")).toBeVisible();
+    await expect(page.getByText("═══ LUNG DOSE CHECK ═══")).toBeVisible();
+  });
+
+  test("keeps copy-button feedback available across browsers", async ({ page }) => {
+    await page.addInitScript(() => {
+      const writes = [];
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: async (value) => writes.push(value) },
+      });
+      window.__radulatorClipboardWrites = writes;
+    });
+    await openCalculator(page);
+    await fillUniform(page);
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await page.getByRole("button", { name: "Copy results" }).click();
+    await expect(page.getByRole("button", { name: "Results copied" })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.__radulatorClipboardWrites.length)).toBe(1);
+  });
+
+  test("copies the complete scope and validates the print layout", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "native clipboard readback is scoped to Chromium");
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await openCalculator(page);
     await fillUniform(page);
     await page.getByRole("button", { name: "Calculate" }).click();
 
     await page.getByRole("button", { name: "Copy results" }).click();
     const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
-    expect(clipboardText).toContain("Educational compartment dosimetry for clinician-selected targets.");
+    expect(clipboardText).toContain("Educational compartment dosimetry for clinician-selected targets. Assumes 1.0 kg lung mass and 1.03 g/mL liver density. Does not assess cumulative lung dose, hepatic reserve, extrahepatic deposition, product-specific eligibility, or treatment suitability. No calibration-to-treatment decay or vial-order calculation.");
     expect(clipboardText).toContain("Treatment Suitability");
     expect(clipboardText).not.toContain("Activity to Order");
     expect(clipboardText).not.toContain("Recommended Vial Size");
 
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByText("Treatment Suitability: Not assessed")).toBeVisible();
+    await expect(page.getByRole("status", { name: "Calculator results" })).toContainText("Educational compartment dosimetry for clinician-selected targets.");
+    await expect(page.locator("aside")).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Calculate" })).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Print Results" })).not.toBeVisible();
+
+    await page.emulateMedia({ media: "screen" });
     await page.evaluate(() => {
       window.__radulatorPrintCalls = 0;
       window.print = () => {

@@ -65,6 +65,8 @@ The partition T/N ratio is a tumor-to-normal activity concentration (activity or
 
 Activity at Treatment Time includes expected residual compensation. Expected Injected Activity is the activity entering the patient.
 
+Numeric ranges shown in the fields are application/software entry bounds pending applicability review; they are not product eligibility or treatment-selection guidance.
+
 ${GUIDANCE_SCOPE}`,
   },
 
@@ -206,17 +208,31 @@ ${GUIDANCE_SCOPE}`,
 
     const lsf = lungShuntPercent / 100;
     const residual = residualPercent / 100;
-    const tumVol = dosimetry_model === "partition" ? numericValue(tumor_volume) : 0;
-    const tnRatio = dosimetry_model === "partition" ? numericValue(tn_ratio) : 1;
+    let tumVol = 0;
+    let tnRatio = 1;
 
     if (dosimetry_model === "partition") {
-      if (!isNumericInput(tumor_volume) || tumVol <= 0 || tumVol > segVol) {
+      if (!isNumericInput(tumor_volume)) {
         return {
           Error:
             "Tumor volume must be positive and ≤ segment volume for partition model",
         };
       }
-      if (!isNumericInput(tn_ratio) || tnRatio < 1 || tnRatio > 50) {
+      if (!isNumericInput(tn_ratio)) {
+        return {
+          Error:
+            "Tumor-to-normal ratio must be between 1-50 for partition model",
+        };
+      }
+      tumVol = numericValue(tumor_volume);
+      tnRatio = numericValue(tn_ratio);
+      if (tumVol <= 0 || tumVol > segVol) {
+        return {
+          Error:
+            "Tumor volume must be positive and ≤ segment volume for partition model",
+        };
+      }
+      if (tnRatio < 1 || tnRatio > 50) {
         return {
           Error:
             "Tumor-to-normal ratio must be between 1-50 for partition model",
@@ -226,9 +242,6 @@ ${GUIDANCE_SCOPE}`,
 
     const hasWeight = patient_weight !== "" && patient_weight !== undefined;
     const hasHeight = patient_height !== "" && patient_height !== undefined;
-    if (hasWeight !== hasHeight) {
-      return { Error: "Patient weight and height must be provided together if either is entered" };
-    }
 
     let bsa = "";
     if (hasWeight && hasHeight) {
@@ -331,7 +344,7 @@ ${GUIDANCE_SCOPE}`,
 
   refs: [
     {
-      t: "Weber M et al. EANM guideline on the use of yttrium-90 microspheres for radioembolisation. Eur J Nucl Med Mol Imaging. 2022",
+      t: "Weber M et al. EANM procedure guideline for the treatment of liver cancer and liver metastases with intra-arterial radioactive compounds. Eur J Nucl Med Mol Imaging. 2022",
       u: "https://doi.org/10.1007/s00259-021-05600-z",
     },
     {
