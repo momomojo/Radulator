@@ -76,6 +76,24 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     await expect(page.getByText("cm (for BSA calculation)")).toBeVisible();
   });
 
+  test("retains required radio and blank lung-shunt validation", async ({ page }) => {
+    await openCalculator(page);
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Treatment intent must be a supported option")).toBeVisible();
+
+    await page.locator('input[value="lobectomy"]').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Dosimetry model must be a supported option")).toBeVisible();
+
+    await page.locator('input[value="mird"]').click();
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Microsphere type must be a supported option")).toBeVisible();
+
+    await fillUniform(page, { lung_shunt: "" });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Lung shunt fraction is required and must be between 0-50%")).toBeVisible();
+  });
+
   test("calculates uniform 100 Gy at 10% shunt with injected and treatment-time activity", async ({ page }) => {
     await openCalculator(page);
     await fillUniform(page);
@@ -185,12 +203,34 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     await page.fill('input[id="tn_ratio"]', "0");
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByText(/Tumor-to-normal ratio must be between 1-50/)).toBeVisible();
+
+    await page.fill('input[id="tn_ratio"]', "");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText(/Tumor-to-normal ratio must be between 1-50/)).toBeVisible();
+
+    await page.fill('input[id="tn_ratio"]', "51");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText(/Tumor-to-normal ratio must be between 1-50/)).toBeVisible();
   });
 
   test("retains optional BSA omission behavior and boundary arithmetic", async ({ page }) => {
     await openCalculator(page);
     await fillUniform(page, { segment_volume: "10", target_dose: "80", lung_shunt: "0" });
     await page.fill('input[id="patient_weight"]', "70");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Body Surface Area")).toHaveCount(0);
+
+    await page.fill('input[id="patient_weight"]', "501");
+    await page.fill('input[id="patient_height"]', "175");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Patient weight must be between 0-500 kg if provided")).toBeVisible();
+
+    await page.fill('input[id="patient_weight"]', "70");
+    await page.fill('input[id="patient_height"]', "301");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Patient height must be between 0-300 cm if provided")).toBeVisible();
+
+    await page.fill('input[id="patient_height"]', "");
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByText("Body Surface Area")).toHaveCount(0);
 
@@ -201,6 +241,19 @@ test.describe("Y-90 Radioembolization Dosimetry Calculator", () => {
     await page.fill('input[id="lung_shunt"]', "0");
     await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.getByText("Estimated Lung Dose: 0.0 Gy")).toBeVisible();
+  });
+
+  test("clears stale results before recalculation after model or dose changes", async ({ page }) => {
+    await openCalculator(page);
+    await fillUniform(page);
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(page.getByText("Activity at Treatment Time: 2.30 GBq (62.3 mCi)")).toBeVisible();
+
+    await page.fill('input[id="target_dose"]', "101");
+    await expect(page.getByRole("status", { name: "Calculator results" })).toHaveCount(0);
+    await page.locator('input[value="partition"]').click();
+    await expect(page.getByRole("status", { name: "Calculator results" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Copy results" })).toHaveCount(0);
   });
 
   test("retains reference links and organized result separators", async ({ page }) => {

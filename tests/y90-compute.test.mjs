@@ -44,6 +44,22 @@ test("uniform dosimetry uses the shunt denominator and injected activity for lun
   assert.equal(residual["Estimated Lung Dose"], "11.4 Gy");
 });
 
+test("retains the inherited 1% residual default while rejecting explicit blank residual", () => {
+  const omittedInputs = { ...base };
+  delete omittedInputs.vial_residual;
+  const omitted = Y90RadiationSegmentectomy.compute(omittedInputs);
+  const explicitUndefined = compute({ vial_residual: undefined });
+  const blank = compute({ vial_residual: "" });
+  const nullResidual = compute({ vial_residual: null });
+
+  assert.equal(omitted["Activity at Treatment Time"], "2.33 GBq (62.9 mCi)");
+  assert.equal(omitted["Expected Injected Activity"], "2.30 GBq (62.3 mCi)");
+  assert.equal(omitted["Expected Residual"], "1.0%");
+  assert.deepEqual(explicitUndefined, omitted);
+  assert.ok(blank.Error);
+  assert.ok(nullResidual.Error);
+});
+
 test("partition dosimetry mass-weights tumor and normal energy", () => {
   const partition = compute({
     dosimetry_model: "partition",
