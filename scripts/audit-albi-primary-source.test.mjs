@@ -21,6 +21,22 @@ assert.equal(
   `ALBI primary-source audit failed\nstdout:\n${run.stdout}\nstderr:\n${run.stderr}`,
 );
 
+const coreTests = spawnSync(
+  process.execPath,
+  [
+    "--import",
+    "./scripts/register-jsx-loader.mjs",
+    "--test",
+    "tests/albi-compute.test.mjs",
+  ],
+  { cwd: process.cwd(), encoding: "utf8" },
+);
+assert.equal(
+  coreTests.status,
+  0,
+  `ALBI modularity tests failed\nstdout:\n${coreTests.stdout}\nstderr:\n${coreTests.stderr}`,
+);
+
 const audit = JSON.parse(run.stdout);
 assert.equal(audit.schema, "radulator-albi-primary-source-audit/v1");
 assert.equal(audit.article_pmcid, "PMC4322258");

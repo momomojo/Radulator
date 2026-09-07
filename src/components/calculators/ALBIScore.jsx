@@ -13,6 +13,8 @@
 // - Bilirubin: mg/dL → μmol/L (multiply by 17.104)
 // - Albumin: g/dL → g/L (multiply by 10)
 
+import { calculateAlbi } from "../../clinical/albi.js";
+
 export const ALBIScore = {
   id: "albi-score",
   category: "Hepatology/Liver",
@@ -65,63 +67,36 @@ Scope: ALBI describes liver-function prognosis in studied cohorts. It does not i
     },
   ],
   compute: ({ unit_system = "SI", albumin = 0, bilirubin = 0 }) => {
-    // Parse input values
-    const albInput = parseFloat(albumin) || 0;
-    const biliInput = parseFloat(bilirubin) || 0;
+    const clinicalResult = calculateAlbi({ unit_system, albumin, bilirubin });
 
-    // Validate inputs
-    if (albInput <= 0 || biliInput <= 0) {
+    if (!clinicalResult.ok) {
+      if (clinicalResult.code === "INVALID_INPUT") {
+        return {
+          Error: "Please enter valid positive values for albumin and bilirubin.",
+        };
+      }
+      if (clinicalResult.code === "ALBUMIN_RANGE") {
+        return {
+          Error: `Albumin value ${clinicalResult.value.toFixed(1)} g/L is outside physiological range (5-60 g/L). Please check unit selection and input.`,
+        };
+      }
       return {
-        Error: "Please enter valid positive values for albumin and bilirubin.",
+        Error: `Bilirubin value ${clinicalResult.value.toFixed(1)} μmol/L is outside physiological range (1-1000 μmol/L). Please check unit selection and input.`,
       };
     }
 
-    // Convert to SI units (μmol/L for bilirubin, g/L for albumin)
-    let biliSI, albSI;
+    const { score: albiScore, grade: albiGrade, albuminSI: albSI, bilirubinSI: biliSI } = clinicalResult;
+    let gradeInterpretation, prognosis;
 
-    if (unit_system === "US") {
-      // Convert from US units to SI
-      biliSI = biliInput * 17.104; // mg/dL → μmol/L
-      albSI = albInput * 10; // g/dL → g/L
-    } else {
-      // Already in SI units
-      biliSI = biliInput;
-      albSI = albInput;
-    }
-
-    // Validate converted values are in reasonable physiological range
-    if (albSI < 5 || albSI > 60) {
-      return {
-        Error: `Albumin value ${albSI.toFixed(1)} g/L is outside physiological range (5-60 g/L). Please check unit selection and input.`,
-      };
-    }
-
-    if (biliSI < 1 || biliSI > 1000) {
-      return {
-        Error: `Bilirubin value ${biliSI.toFixed(1)} μmol/L is outside physiological range (1-1000 μmol/L). Please check unit selection and input.`,
-      };
-    }
-
-    // Calculate ALBI Score
-    // Formula printed by Johnson et al. 2015:
-    // (log₁₀ bilirubin [μmol/L] × 0.66) + (albumin [g/L] × −0.085)
-    const albiScore = Math.log10(biliSI) * 0.66 + albSI * -0.085;
-
-    // Determine ALBI Grade
-    let albiGrade, gradeInterpretation, prognosis;
-
-    if (albiScore <= -2.6) {
-      albiGrade = 1;
+    if (albiGrade === 1) {
       gradeInterpretation = "Lowest-risk group in the original ALBI model";
       prognosis =
         "Source-defined Grade 1 (linear predictor ≤ −2.60). ALBI describes liver-function prognosis in studied cohorts; it does not determine treatment eligibility for an individual patient.";
-    } else if (albiScore <= -1.39) {
-      albiGrade = 2;
+    } else if (albiGrade === 2) {
       gradeInterpretation = "Intermediate-risk group in the original ALBI model";
       prognosis =
         "Source-defined Grade 2 (linear predictor > −2.60 to ≤ −1.39). ALBI describes liver-function prognosis in studied cohorts; it does not determine treatment eligibility for an individual patient.";
     } else {
-      albiGrade = 3;
       gradeInterpretation = "Highest-risk group in the original ALBI model";
       prognosis =
         "Source-defined Grade 3 (linear predictor > −1.39). ALBI describes liver-function prognosis in studied cohorts; it does not determine treatment eligibility for an individual patient.";
@@ -136,7 +111,7 @@ Scope: ALBI describes liver-function prognosis in studied cohorts. It does not i
     };
 
     // Add converted SI values if US units were used
-    if (unit_system === "US") {
+    if (clinicalResult.usedUSUnits) {
       result["Converted Bilirubin (SI)"] = `${biliSI.toFixed(1)} μmol/L`;
       result["Converted Albumin (SI)"] = `${albSI.toFixed(1)} g/L`;
       result["Note"] = "Calculation performed using SI units (shown above)";
