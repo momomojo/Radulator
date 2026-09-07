@@ -7,7 +7,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Medical rows: 42; the Feedback category is excluded (feedback-form).
 - Registry claims: 10 verified, 32 seed-unverified, 0 missing; these labels are existing registry assertions, not a new independent clinical certification.
 - Canonical compute fixture inventory: 11 fixture files and 293 cases; counts do not establish that the tests passed or that all behavior is covered.
-- Browser spec presence: 42 calculator-specific files and 3 shared files; presence does not establish branch coverage, correct medicine, or a successful browser run.
+- Browser spec presence: 42 calculator-specific files and 3 shared files; associations are statically detected from actual navigation or routes, so indirect or parameterized helpers may be omitted. Presence does not establish branch coverage, correct medicine, or a successful browser run.
 - Clinical signoff: not established.
 - Release/proof: not established.
 
@@ -16,20 +16,20 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 | ID | Name | Category | Registry claim | Compute fixture cases | Browser spec presence | Clinical signoff | Release/proof |
 |---|---|---|---|---:|---|---|---|
 | `aast-trauma-grading` | AAST Trauma Grading | Trauma | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
-| `adrenal-ct` | Adrenal CT Washout | Radiology | seed-unverified (registry claim) | 0 | 4 file(s) | not established | not established |
-| `adrenal-mri` | Adrenal MRI Chemical Shift | Radiology | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
+| `adrenal-ct` | Adrenal CT Washout | Radiology | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
+| `adrenal-mri` | Adrenal MRI Chemical Shift | Radiology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `albi-score` | ALBI Score | Hepatology/Liver | verified (existing registry claim) | 6 | 1 file(s) | not established | not established |
 | `aspects-score` | ASPECTS Score | Neuroradiology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `avs-cortisol` | Adrenal Vein Sampling – Cortisol | Interventional | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `avs-hyperaldo` | Adrenal Vein Sampling – Aldosterone | Interventional | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `bclc-staging` | BCLC Staging (HCC) | Hepatology/Liver | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
-| `birads` | BI-RADS Assessment Calculator (Legacy 2013) | Breast Imaging | verified (existing registry claim) | 30 | 2 file(s) | not established | not established |
+| `birads` | BI-RADS Assessment Calculator (Legacy 2013) | Breast Imaging | verified (existing registry claim) | 30 | 1 file(s) | not established | not established |
 | `bosniak` | Bosniak Classification (Renal Cysts) | Radiology | verified (existing registry claim) | 35 | 2 file(s) | not established | not established |
 | `cac-mesa` | CAC/MESA Calculator | Cardiac Imaging | verified (existing registry claim) | 18 | 1 file(s) | not established | not established |
-| `cad-rads` | CAD-RADS 2.0 | Cardiac Imaging | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
-| `child-pugh` | Child-Pugh Score | Hepatology/Liver | seed-unverified (registry claim) | 0 | 4 file(s) | not established | not established |
+| `cad-rads` | CAD-RADS 2.0 | Cardiac Imaging | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
+| `child-pugh` | Child-Pugh Score | Hepatology/Liver | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
 | `cockcroft-gault` | Cockcroft-Gault eCrCl | Nephrology | verified (existing registry claim) | 16 | 1 file(s) | not established | not established |
-| `contrast-dosing` | IV Contrast Dosing | Radiology | verified (existing registry claim) | 11 | 2 file(s) | not established | not established |
+| `contrast-dosing` | IV Contrast Dosing | Radiology | verified (existing registry claim) | 11 | 1 file(s) | not established | not established |
 | `ct-pancreatitis` | CT Severity Index (CTSI) | Hepatology/Liver | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `dlp-dose` | DLP to Effective Dose | Radiology | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
 | `fleischner` | Fleischner 2017 Pulmonary Nodules | Radiology | verified (existing registry claim) | 113 | 1 file(s) | not established | not established |
@@ -37,25 +37,25 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 | `ipss` | Inferior Petrosal Sinus Sampling (IPSS) | Interventional | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `khoury-catheter-selector` | Khoury Catheter Selector | Interventional | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `kidney-biopsy-bleeding-risk` | Kidney Biopsy Major Bleeding Risk (KBRC) | Nephrology | verified (existing registry claim) | 6 | 1 file(s) | not established | not established |
-| `lirads` | LI-RADS v2018 | Hepatology/Liver | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
-| `lung-rads` | Lung-RADS v2022 | Radiology | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
-| `mehran-cin` | Mehran CIN Risk Score | Nephrology | seed-unverified (registry claim) | 0 | 3 file(s) | not established | not established |
-| `meld-na` | MELD-Na Score | Hepatology/Liver | verified (existing registry claim) | 36 | 2 file(s) | not established | not established |
+| `lirads` | LI-RADS v2018 | Hepatology/Liver | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
+| `lung-rads` | Lung-RADS v2022 | Radiology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
+| `mehran-cin` | Mehran CIN Risk Score | Nephrology | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
+| `meld-na` | MELD-Na Score | Hepatology/Liver | verified (existing registry claim) | 36 | 1 file(s) | not established | not established |
 | `milan-criteria` | Milan Criteria (HCC) | Hepatology/Liver | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `mr-elastography` | MR Elastography (Liver) | Hepatology/Liver | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
-| `nirads` | ACR NI-RADS | Neuroradiology | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
-| `orads` | ACR O-RADS | Women's Imaging | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
+| `nirads` | ACR NI-RADS | Neuroradiology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
+| `orads` | ACR O-RADS | Women's Imaging | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `pesi` | PESI Score | Clinical Decision | verified (existing registry claim) | 18 | 1 file(s) | not established | not established |
-| `pirads` | PI-RADS v2.1 | Urology | seed-unverified (registry claim) | 0 | 3 file(s) | not established | not established |
+| `pirads` | PI-RADS v2.1 | Urology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `prostate-volume` | Prostate Volume & PSA Density | Radiology | seed-unverified (registry claim) | 0 | 3 file(s) | not established | not established |
 | `radiation-dose-converter` | Radiation Dose Converter | Radiology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `renal-nephrometry` | RENAL Nephrometry Score | Urology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `shim` | IIEF-5 (SHIM Score) | Urology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
-| `spleen-size` | Spleen Size | Radiology | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
+| `spleen-size` | Spleen Size | Radiology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `thypro-39` | ThyPRO-39 | Interventional | seed-unverified (registry claim) | 4 | 1 file(s) | not established | not established |
-| `tirads` | ACR TI-RADS | Radiology | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
-| `wells-dvt` | Wells Criteria for DVT | Clinical Decision | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
-| `wells-pe` | Wells Criteria for PE | Clinical Decision | seed-unverified (registry claim) | 0 | 2 file(s) | not established | not established |
+| `tirads` | ACR TI-RADS | Radiology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
+| `wells-dvt` | Wells Criteria for DVT | Clinical Decision | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
+| `wells-pe` | Wells Criteria for PE | Clinical Decision | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `y90-radiation-segmentectomy` | Y-90 Radioembolization Dosimetry | Hepatology/Liver | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 
 ## Source pointers by calculator
@@ -81,7 +81,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [Adrenal masses: characterization with combined unenhanced and delayed enhanced CT](https://doi.org/10.2214/ajr.175.5.1751411) (Caoili et al.; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (4 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/radiology/adrenal-ct-washout.spec.js](../../tests/e2e/calculators/radiology/adrenal-ct-washout.spec.js), [tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js](../../tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js), [tests/e2e/calculators/radiology/prostate-volume.spec.js](../../tests/e2e/calculators/radiology/prostate-volume.spec.js).
+- Browser spec presence (2 file(s)): [tests/e2e/calculators/radiology/adrenal-ct-washout.spec.js](../../tests/e2e/calculators/radiology/adrenal-ct-washout.spec.js), [tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js](../../tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -93,14 +93,14 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [Characterization of adrenal lesions with chemical shift MRI](https://doi.org/10.2214/AJR.10.4547) (Mayo-Smith et al.; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js](../../tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js](../../tests/e2e/calculators/radiology/adrenal-mri-csi.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
 ### ALBI Score (`albi-score`)
 
 - Calculator export: [src/components/calculators/ALBIScore.jsx](../../src/components/calculators/ALBIScore.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-29**; review scope: source-derived evidence (3 claim(s), 6 vector(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-29**; review scope: source-derived evidence (3 claim(s), 6 vector(s)).
 - Public metadata guideline/version label: ALBI Grade (Johnson 2015).
 - Registry justification: The open primary publication confirms the printed two-variable ALBI equation, SI units, three inclusive/exclusive grade intervals, and HCC development population. Executable vectors bind the source coefficients and all grade boundaries; unsupported cohort-median and treatment-eligibility claims were removed.
 - Registry source references:
@@ -163,7 +163,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 ### BI-RADS Assessment Calculator (Legacy 2013) (`birads`)
 
 - Calculator export: [src/components/calculators/BIRADS.jsx](../../src/components/calculators/BIRADS.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-29**; review scope: source-derived evidence (6 claim(s), 28 vector(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-29**; review scope: source-derived evidence (6 claim(s), 28 vector(s)).
 - Public metadata guideline/version label: Legacy ACR BI-RADS 5th Ed. (2013) with public 2025 assessment-summary constraints.
 - Registry justification: Temporary rollback while the full sixth-edition manual is pending. The digest-pinned fifth-edition quick reference bounds selected descriptor groups; digest-pinned public v2025 modality summary forms independently constrain category structure, source-literal probability endpoints, and management wording. Descriptor-to-category inference and patient-specific probability calculation remain out of scope.
 - Registry source references:
@@ -173,14 +173,14 @@ Generated from the checked-out calculator exports, the guideline registry, canon
   - [BI-RADS v2025 Ultrasound Summary Form](https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf) (American College of Radiology; official-authority)
   - [BI-RADS v2025 MRI Summary Form](https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf) (American College of Radiology; official-authority)
 - Canonical compute fixture inventory (30 case(s)): [tests/fixtures/compute/birads.json](../../tests/fixtures/compute/birads.json).
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/breast/bi-rads.spec.js](../../tests/e2e/calculators/breast/bi-rads.spec.js), [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/breast/bi-rads.spec.js](../../tests/e2e/calculators/breast/bi-rads.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
 ### Bosniak Classification (Renal Cysts) (`bosniak`)
 
 - Calculator export: [src/components/calculators/RenalCystBosniak.jsx](../../src/components/calculators/RenalCystBosniak.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-26**; review scope: source-derived evidence (4 claim(s), 3 vector(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-26**; review scope: source-derived evidence (4 claim(s), 3 vector(s)).
 - Public metadata guideline/version label: Bosniak v2019.
 - Registry justification: The open primary version 2019 publication directly specifies the eligibility boundary, quantitative CT feature definitions, inclusive 70 HU and 4 mm equality cases, and categories exercised by the bound regression vectors. The peer-reviewed CUA 2023 guideline separately supplies the displayed Bosniak IIF follow-up interval, duration, and evidence grades.
 - Registry source references:
@@ -194,7 +194,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 ### CAC/MESA Calculator (`cac-mesa`)
 
 - Calculator export: [src/components/calculators/CACMesa.jsx](../../src/components/calculators/CACMesa.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (5 claim(s), 11 vector(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (5 claim(s), 11 vector(s)).
 - Public metadata guideline/version label: MESA reference values + CAC-DRS (SCCT 2018; AUC 2023 boundary).
 - Registry justification: The official MESA tool confirms the reference outputs used by Radulator; the original SCCT CAC-DRS publication supplies the score-only categories, and the 2023 multi-society appropriate-use criteria Table 1.2 supplies an accessible unambiguous 100-299 versus 300-or-greater boundary.
 - Registry source references:
@@ -217,7 +217,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [CAD-RADS 2.0 expert consensus document](https://doi.org/10.1016/j.jcmg.2022.01.008) (SCCT, ACC, ACR and NASCI; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/cardiac/cad-rads.spec.js](../../tests/e2e/calculators/cardiac/cad-rads.spec.js), [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/cardiac/cad-rads.spec.js](../../tests/e2e/calculators/cardiac/cad-rads.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -230,14 +230,14 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [Transection of the oesophagus for bleeding oesophageal varices](https://doi.org/10.1002/bjs.1800600817) (Pugh et al.; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (4 file(s)): [tests/e2e/calculators/copy-results.spec.js](../../tests/e2e/calculators/copy-results.spec.js), [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/hepatology/bclc-staging.spec.js](../../tests/e2e/calculators/hepatology/bclc-staging.spec.js), [tests/e2e/calculators/hepatology/child-pugh.spec.js](../../tests/e2e/calculators/hepatology/child-pugh.spec.js).
+- Browser spec presence (2 file(s)): [tests/e2e/calculators/copy-results.spec.js](../../tests/e2e/calculators/copy-results.spec.js), [tests/e2e/calculators/hepatology/child-pugh.spec.js](../../tests/e2e/calculators/hepatology/child-pugh.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
 ### Cockcroft-Gault eCrCl (`cockcroft-gault`)
 
 - Calculator export: [src/components/calculators/CockcroftGault.jsx](../../src/components/calculators/CockcroftGault.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (2 claim(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (2 claim(s)).
 - Public metadata guideline/version label: Cockcroft-Gault equation (1976) · Radulator V1.
 - Registry justification: The primary publication confirms the adult creatinine-clearance equation, derivation cohort, and historical 15 percent female adjustment implemented with explicit limitations.
 - Registry source references:
@@ -251,7 +251,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 ### IV Contrast Dosing (`contrast-dosing`)
 
 - Calculator export: [src/components/calculators/ContrastDosing.jsx](../../src/components/calculators/ContrastDosing.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-29**; review scope: source-derived evidence (6 claim(s), 10 vector(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-29**; review scope: source-derived evidence (6 claim(s), 10 vector(s)).
 - Public metadata guideline/version label: ACR Manual on Contrast Media 2026 (renal safety and warming context).
 - Registry justification: The exact ACR 2026 manual and official adult/pediatric reaction-card PDFs are byte-pinned and bound to executable renal-safety and warming vectors. Verification is deliberately limited to those claims and the official card links; the study-type iodine targets, volume cap, access-flow ranges, and saline-flush default remain locally encoded planning defaults rather than ACR-verified universal protocols.
 - Registry source references:
@@ -259,7 +259,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
   - [ACR Adult Contrast Reaction Card](https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Adult.pdf) (American College of Radiology; official-authority)
   - [ACR Pediatric Contrast Reaction Card](https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf) (American College of Radiology; official-authority)
 - Canonical compute fixture inventory (11 case(s)): [tests/fixtures/compute/contrast-dosing.json](../../tests/fixtures/compute/contrast-dosing.json).
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/radiology/contrast-dosing.spec.js](../../tests/e2e/calculators/radiology/contrast-dosing.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/radiology/contrast-dosing.spec.js](../../tests/e2e/calculators/radiology/contrast-dosing.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -292,7 +292,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 ### Fleischner 2017 Pulmonary Nodules (`fleischner`)
 
 - Calculator export: [src/components/calculators/Fleischner.jsx](../../src/components/calculators/Fleischner.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-31**; review scope: source-derived evidence (12 claim(s), 113 vector(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-31**; review scope: source-derived evidence (12 claim(s), 113 vector(s)).
 - Public metadata guideline/version label: Fleischner 2017.
 - Registry justification: Reviewed evidence separates 12 literal source facts and their reviewed clinical syntheses from four explicit Radulator product invariants while preserving exact coverage of all 113 executable vectors. CI retrieves hash-pinned RSNA-origin artifacts, parses page- and anchor-bounded text with a pinned parser, verifies a hash-bound Figure 1 transcription, and cross-checks exact NLM table fragments. Independent source review grants no release authority.
 - Registry source references:
@@ -345,7 +345,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 ### Kidney Biopsy Major Bleeding Risk (KBRC) (`kidney-biopsy-bleeding-risk`)
 
 - Calculator export: [src/components/calculators/KidneyBiopsyBleedingRisk.jsx](../../src/components/calculators/KidneyBiopsyBleedingRisk.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (3 claim(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (3 claim(s)).
 - Public metadata guideline/version label: Thorne et al. recalibrated major-bleeding model (2026).
 - Registry justification: The open primary publication confirms the adult diagnostic kidney-biopsy population and major-bleeding outcome; its direct supplementary PDF exposes the refit equation, predictor units, coefficients, and spline knots used by the executable source-model regression vectors.
 - Registry source references:
@@ -367,7 +367,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [LI-RADS version 2018: imaging of hepatocellular carcinoma in at-risk patients](https://doi.org/10.1148/radiol.2018181494) (American College of Radiology LI-RADS Steering Committee; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/hepatology/lirads.spec.js](../../tests/e2e/calculators/hepatology/lirads.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/hepatology/lirads.spec.js](../../tests/e2e/calculators/hepatology/lirads.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -380,7 +380,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [Lung CT Screening Reporting and Data System (Lung-RADS)](https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Lung-RADS) (American College of Radiology; official-authority)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/radiology/lung-rads.spec.js](../../tests/e2e/calculators/radiology/lung-rads.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/radiology/lung-rads.spec.js](../../tests/e2e/calculators/radiology/lung-rads.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -393,21 +393,21 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [A simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention](https://doi.org/10.1016/j.jacc.2004.06.034) (Mehran et al.; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (3 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/nephrology/cockcroft-gault.spec.js](../../tests/e2e/calculators/nephrology/cockcroft-gault.spec.js), [tests/e2e/calculators/nephrology/mehran-cin.spec.js](../../tests/e2e/calculators/nephrology/mehran-cin.spec.js).
+- Browser spec presence (2 file(s)): [tests/e2e/calculators/nephrology/cockcroft-gault.spec.js](../../tests/e2e/calculators/nephrology/cockcroft-gault.spec.js), [tests/e2e/calculators/nephrology/mehran-cin.spec.js](../../tests/e2e/calculators/nephrology/mehran-cin.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
 ### MELD-Na Score (`meld-na`)
 
 - Calculator export: [src/components/calculators/MELDNa.jsx](../../src/components/calculators/MELDNa.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (4 claim(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (4 claim(s)).
 - Public metadata guideline/version label: MELD 3.0 (OPTN Policy 9.1.D).
 - Registry justification: OPTN Policy 9.1.D specifies the MELD 3.0 equations, calculation bounds, dialysis handling, and score range; the official MELD and PELD Calculators User Guide separately specifies the accepted laboratory-entry domains. Both layers are bound to executable vectors.
 - Registry source references:
   - [OPTN Policies, Policy 9.1.D liver allocation score](https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf) (Health Resources and Services Administration and OPTN; official-authority)
   - [MELD and PELD Calculators User Guide](https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf) (Health Resources and Services Administration and OPTN; official-authority)
 - Canonical compute fixture inventory (36 case(s)): [tests/fixtures/compute/meld-na.json](../../tests/fixtures/compute/meld-na.json).
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/hepatology/meld-na.spec.js](../../tests/e2e/calculators/hepatology/meld-na.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/hepatology/meld-na.spec.js](../../tests/e2e/calculators/hepatology/meld-na.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -446,7 +446,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [Neck Imaging Reporting and Data System (NI-RADS)](https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/NI-RADS) (American College of Radiology; official-authority)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/neuroradiology/ni-rads.spec.js](../../tests/e2e/calculators/neuroradiology/ni-rads.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/neuroradiology/ni-rads.spec.js](../../tests/e2e/calculators/neuroradiology/ni-rads.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -459,14 +459,14 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [O-RADS Ultrasound](https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/O-RADS/Ultrasound) (American College of Radiology; official-authority)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/womens/o-rads.spec.js](../../tests/e2e/calculators/womens/o-rads.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/womens/o-rads.spec.js](../../tests/e2e/calculators/womens/o-rads.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
 ### PESI Score (`pesi`)
 
 - Calculator export: [src/components/calculators/PESI.jsx](../../src/components/calculators/PESI.jsx)
-- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (2 claim(s), ).
+- Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **verified (existing registry claim)**; last verified **2026-08-25**; review scope: source-derived evidence (2 claim(s)).
 - Public metadata guideline/version label: Original PESI (2005).
 - Registry justification: The primary study confirms the 11-variable original PESI model, all point increments, and the five source-defined risk classes.
 - Registry source references:
@@ -485,7 +485,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [PI-RADS Prostate Imaging - Reporting and Data System: 2019, version 2.1](https://doi.org/10.1016/j.eururo.2019.02.033) (PI-RADS Steering Committee; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (3 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/radiology/prostate-volume.spec.js](../../tests/e2e/calculators/radiology/prostate-volume.spec.js), [tests/e2e/calculators/urology/pirads.spec.js](../../tests/e2e/calculators/urology/pirads.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/urology/pirads.spec.js](../../tests/e2e/calculators/urology/pirads.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -548,7 +548,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [Spleen size reference data from healthy subjects](https://doi.org/10.1148/radiol.2015150887) (Chow et al.; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/radiology/hip-dysplasia.spec.js](../../tests/e2e/calculators/radiology/hip-dysplasia.spec.js), [tests/e2e/calculators/radiology/spleen-size.spec.js](../../tests/e2e/calculators/radiology/spleen-size.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/radiology/spleen-size.spec.js](../../tests/e2e/calculators/radiology/spleen-size.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -574,7 +574,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [ACR Thyroid Imaging, Reporting and Data System white paper](https://doi.org/10.1016/j.jacr.2017.01.046) (American College of Radiology; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js), [tests/e2e/calculators/radiology/tirads.spec.js](../../tests/e2e/calculators/radiology/tirads.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/radiology/tirads.spec.js](../../tests/e2e/calculators/radiology/tirads.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -587,7 +587,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [Evaluation of D-dimer in the diagnosis of suspected deep-vein thrombosis](https://doi.org/10.1056/NEJMoa023153) (Wells et al.; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/clinical/wells-dvt.spec.js](../../tests/e2e/calculators/clinical/wells-dvt.spec.js), [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/clinical/wells-dvt.spec.js](../../tests/e2e/calculators/clinical/wells-dvt.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
@@ -600,7 +600,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Registry source references:
   - [Derivation of a simple clinical model to categorize patients probability of pulmonary embolism](https://pubmed.ncbi.nlm.nih.gov/10744147/) (Wells et al.; primary-publication)
 - Canonical compute fixture inventory: none observed.
-- Browser spec presence (2 file(s)): [tests/e2e/calculators/clinical/wells-pe.spec.js](../../tests/e2e/calculators/clinical/wells-pe.spec.js), [tests/e2e/calculators/guideline-badges.spec.js](../../tests/e2e/calculators/guideline-badges.spec.js).
+- Browser spec presence (1 file(s)): [tests/e2e/calculators/clinical/wells-pe.spec.js](../../tests/e2e/calculators/clinical/wells-pe.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.
 
