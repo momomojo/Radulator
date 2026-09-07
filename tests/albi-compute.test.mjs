@@ -65,6 +65,34 @@ test("pure ALBI result preserves conversion, boundary grading, and raw precision
   assert.equal(calculateAlbi({ albumin: 24.10588235294118, bilirubin: 10 }).grade, 3);
 });
 
+test("ALBI grades from raw scores before three-decimal display rounding", () => {
+  const roundingAdjacentCases = [
+    {
+      albumin: 38.35176470588235,
+      expectedScore: -2.5999,
+      expectedGrade: 2,
+      expectedDisplay: "-2.600",
+    },
+    {
+      albumin: 24.116470588235293,
+      expectedScore: -1.3899,
+      expectedGrade: 3,
+      expectedDisplay: "-1.390",
+    },
+  ];
+
+  for (const testCase of roundingAdjacentCases) {
+    const result = calculateAlbi({ albumin: testCase.albumin, bilirubin: 10 });
+    assert.equal(result.ok, true);
+    assert.ok(Math.abs(result.score - testCase.expectedScore) < 1e-12);
+    assert.equal(result.grade, testCase.expectedGrade);
+
+    const displayed = ALBIScore.compute({ albumin: testCase.albumin, bilirubin: 10 });
+    assert.equal(displayed["ALBI Score"], testCase.expectedDisplay);
+    assert.equal(displayed["ALBI Grade"], `Grade ${testCase.expectedGrade}`);
+  }
+});
+
 test("pure ALBI validation is structured and retains parseFloat-or-zero behavior", () => {
   assert.deepEqual(calculateAlbi({ albumin: "not-a-number", bilirubin: 10 }), {
     ok: false,
