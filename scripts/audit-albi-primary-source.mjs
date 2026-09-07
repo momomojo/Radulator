@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import process from "node:process";
 import { ALBIScore } from "../src/components/calculators/ALBIScore.jsx";
+import { calculateAlbi } from "../src/clinical/albi.js";
 
 const SOURCE_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/";
 const SOURCE_HOST = "pmc.ncbi.nlm.nih.gov";
@@ -15,6 +16,7 @@ const EXPECTED_CANONICAL_SOURCE_SHA256 =
   "fccc2f40b9ae8a85fcd7dbc093886be078a554db8f425322db6cffc3bd2499b0";
 const FIXTURE_PATH = "tests/fixtures/compute/albi-score.json";
 const CALCULATOR_PATH = "src/components/calculators/ALBIScore.jsx";
+const CLINICAL_CORE_PATH = "src/clinical/albi.js";
 const BOUND_VECTOR_IDS = Object.freeze([
   "published-representative-grade-1",
   "grade-1-upper-boundary",
@@ -233,17 +235,18 @@ assert.ok(
 );
 
 const calculatorSource = await readFile(CALCULATOR_PATH, "utf8");
-const formula = calculatorSource.match(
-  /Math\.log10\(biliSI\)\s*\*\s*([0-9.]+)\s*\+\s*albSI\s*\*\s*(-[0-9.]+)/,
+const clinicalCoreSource = await readFile(CLINICAL_CORE_PATH, "utf8");
+const formula = clinicalCoreSource.match(
+  /Math\.log10\(bilirubinSI\)\s*\*\s*([0-9.]+)\s*\+\s*albuminSI\s*\*\s*(-[0-9.]+)/,
 );
-assert.ok(formula, "runtime ALBI formula could not be parsed");
-assert.equal(Number(formula[1]), 0.66, "runtime bilirubin coefficient drifted from source");
-assert.equal(Number(formula[2]), -0.085, "runtime albumin coefficient drifted from source");
-assert.match(calculatorSource, /if \(albiScore <= -2\.6\)/, "runtime Grade 1 boundary drifted");
+assert.ok(formula, "clinical ALBI formula could not be parsed");
+assert.equal(Number(formula[1]), 0.66, "clinical bilirubin coefficient drifted from source");
+assert.equal(Number(formula[2]), -0.085, "clinical albumin coefficient drifted from source");
+assert.match(clinicalCoreSource, /if \(score <= -2\.6\)/, "clinical Grade 1 boundary drifted");
 assert.match(
-  calculatorSource,
-  /else if \(albiScore <= -1\.39\)/,
-  "runtime Grade 2/3 boundary drifted",
+  clinicalCoreSource,
+  /else if \(score <= -1\.39\)/,
+  "clinical Grade 2/3 boundary drifted",
 );
 for (const unsupported of [
   "Median survival in original cohort",
@@ -265,6 +268,7 @@ assert.equal(casesById.size, fixture.cases.length, "ALBI fixture IDs must be uni
 for (const vectorId of BOUND_VECTOR_IDS) {
   const testCase = casesById.get(vectorId);
   assert.ok(testCase, `ALBI fixture lacks ${vectorId}`);
+  assert.equal(calculateAlbi({ ...testCase.inputs }).ok, true, `${vectorId}: clinical core result`);
   assertFixtureExpectation(ALBIScore.compute({ ...testCase.inputs }), testCase.expect, vectorId);
 }
 

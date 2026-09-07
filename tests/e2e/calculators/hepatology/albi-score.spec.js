@@ -30,6 +30,7 @@ async function expectAlbiGrade(page, grade) {
  */
 
 test.describe('ALBI Score Calculator', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, 'ALBI Score');
@@ -655,6 +656,30 @@ test.describe('ALBI Score Calculator', () => {
       // Check converted values are displayed
       await expectResultText(page, /Converted Albumin \(SI\):\s*35\.0 g\/L/);
       await expectResultText(page, /Converted Bilirubin \(SI\):\s*17\.1 μmol\/L/);
+    });
+
+    test('preserves formatted ALBI display and copy output', async ({ page }) => {
+      const siRadio = page.locator('input[type="radio"][value="SI"]');
+      if (await siRadio.isVisible()) {
+        await siRadio.check();
+      }
+
+      await page.locator('input[type="number"]').first().fill('40');
+      await page.locator('input[type="number"]').nth(1).fill('10');
+
+      const computeButton = page.locator('button:has-text("Compute"), button:has-text("Calculate")').first();
+      if (await computeButton.isVisible()) {
+        await computeButton.click();
+      }
+
+      await expectResultText(page, /ALBI Score:\s*-2\.740/);
+      await expectAlbiGrade(page, 1);
+      await page.getByRole('button', { name: 'Copy Results' }).click();
+
+      const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+      expect(clipboardText).toContain('ALBI Score: -2.740');
+      expect(clipboardText).toContain('ALBI Grade: Grade 1');
+      expect(clipboardText).not.toContain('_severity');
     });
   });
 });
