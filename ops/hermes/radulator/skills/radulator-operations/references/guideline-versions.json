@@ -2821,7 +2821,7 @@
       "basis_type": "classification-system",
       "verification_status": "seed-unverified",
       "last_verified": null,
-      "justification": "Implements ACR TI-RADS 2017; current ACR version status remains queued for authoritative review.",
+      "justification": "Bounded source review and deterministic compute vectors now cover the ACR TI-RADS 2017 scoring, additive echogenic-foci options, size thresholds, and schedules; clinical sign-off and whole-calculator certification remain unestablished.",
       "sources": [
         {
           "authority": "American College of Radiology",
