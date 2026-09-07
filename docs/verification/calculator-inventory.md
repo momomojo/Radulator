@@ -6,7 +6,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 
 - Medical rows: 42; the Feedback category is excluded (feedback-form).
 - Registry claims: 10 verified, 32 seed-unverified, 0 missing; these labels are existing registry assertions, not a new independent clinical certification.
-- Canonical compute fixture inventory: 11 fixture files and 293 cases; counts do not establish that the tests passed or that all behavior is covered.
+- Canonical compute fixture inventory: 12 fixture files and 313 cases; counts do not establish that the tests passed or that all behavior is covered.
 - Browser spec presence: 42 calculator-specific files and 3 shared files; associations are statically detected from actual navigation or routes, so indirect or parameterized helpers may be omitted. Presence does not establish branch coverage, correct medicine, or a successful browser run.
 - Clinical signoff: not established.
 - Release/proof: not established.
@@ -53,7 +53,7 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 | `shim` | IIEF-5 (SHIM Score) | Urology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `spleen-size` | Spleen Size | Radiology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `thypro-39` | ThyPRO-39 | Interventional | seed-unverified (registry claim) | 4 | 1 file(s) | not established | not established |
-| `tirads` | ACR TI-RADS | Radiology | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
+| `tirads` | ACR TI-RADS | Radiology | seed-unverified (registry claim) | 20 | 1 file(s) | not established | not established |
 | `wells-dvt` | Wells Criteria for DVT | Clinical Decision | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `wells-pe` | Wells Criteria for PE | Clinical Decision | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
 | `y90-radiation-segmentectomy` | Y-90 Radioembolization Dosimetry | Hepatology/Liver | seed-unverified (registry claim) | 0 | 1 file(s) | not established | not established |
@@ -570,10 +570,10 @@ Generated from the checked-out calculator exports, the guideline registry, canon
 - Calculator export: [src/components/calculators/TIRADS.jsx](../../src/components/calculators/TIRADS.jsx)
 - Guideline registry: [ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json); status **seed-unverified (registry claim)**; last verified **not recorded**; review scope: registry row only; no implementation_evidence block.
 - Public metadata guideline/version label: ACR TI-RADS 2017.
-- Registry justification: Implements ACR TI-RADS 2017; current ACR version status remains queued for authoritative review.
+- Registry justification: Bounded source review and deterministic compute vectors now cover the ACR TI-RADS 2017 scoring, additive echogenic-foci options, size thresholds, and schedules; clinical sign-off and whole-calculator certification remain unestablished.
 - Registry source references:
   - [ACR Thyroid Imaging, Reporting and Data System white paper](https://doi.org/10.1016/j.jacr.2017.01.046) (American College of Radiology; primary-publication)
-- Canonical compute fixture inventory: none observed.
+- Canonical compute fixture inventory (20 case(s)): [tests/fixtures/compute/tirads.json](../../tests/fixtures/compute/tirads.json).
 - Browser spec presence (1 file(s)): [tests/e2e/calculators/radiology/tirads.spec.js](../../tests/e2e/calculators/radiology/tirads.spec.js).
 - Clinical signoff: **not established**.
 - Release/proof: **not established**.

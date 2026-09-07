@@ -19,8 +19,8 @@
       "other": 0
     },
     "compute": {
-      "fixtureFiles": 11,
-      "cases": 293
+      "fixtureFiles": 12,
+      "cases": 313
     },
     "browser": {
       "allSpecFiles": 45,
@@ -1881,7 +1881,7 @@
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Implements ACR TI-RADS 2017; current ACR version status remains queued for authoritative review.",
+        "justification": "Bounded source review and deterministic compute vectors now cover the ACR TI-RADS 2017 scoring, additive echogenic-foci options, size thresholds, and schedules; clinical sign-off and whole-calculator certification remain unestablished.",
         "sourceReferences": [
           {
             "authority": "American College of Radiology",
@@ -1893,8 +1893,10 @@
         "implementationEvidence": null
       },
       "compute": {
-        "fixturePaths": [],
-        "caseCount": 0
+        "fixturePaths": [
+          "tests/fixtures/compute/tirads.json"
+        ],
+        "caseCount": 20
       },
       "browser": {
         "specPaths": [
@@ -1907,7 +1909,9 @@
       "sourcePointers": {
         "calculator": "src/components/calculators/TIRADS.jsx",
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
-        "computeFixtures": [],
+        "computeFixtures": [
+          "tests/fixtures/compute/tirads.json"
+        ],
         "browserSpecs": [
           "tests/e2e/calculators/radiology/tirads.spec.js"
         ]
