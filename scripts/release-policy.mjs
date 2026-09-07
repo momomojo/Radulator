@@ -2,7 +2,7 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
 
 export const ATTESTATION_SCHEMA = "radulator-clinical-attestation/v1";
-export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v5";
+export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v6";
 export const EXPLICIT_HIGH_RISK_MARKER = "<!-- radulator-risk: high -->";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
@@ -38,11 +38,15 @@ const CLINICAL_EVIDENCE_FILES = new Set([
   "ops/hermes/radulator/guideline-registry.test.mjs",
   "scripts/generate-mesa-cac-reference.mjs",
   "scripts/generate-mesa-cac-reference.test.mjs",
+  "scripts/calculator-verification-inventory.mjs",
+  "scripts/calculator-verification-inventory.test.mjs",
   "scripts/jsx-loader.mjs",
   "scripts/run-compute-tests.mjs",
   "scripts/register-jsx-loader.mjs",
   "tests/kbrc-math.test.mjs",
   "tests/meld-na-fixture-policy.test.mjs",
+  "docs/verification/calculator-inventory.json",
+  "docs/verification/calculator-inventory.md",
 ]);
 const CLINICAL_EVIDENCE_PREFIXES = [
   "docs/evidence/",

@@ -178,7 +178,7 @@ for (const filename of [
 }
 assert.equal(
   releasePolicy.RISK_CLASSIFIER_VERSION,
-  "radulator-clinical-risk/v5",
+  "radulator-clinical-risk/v6",
   "expanding the signed classifier to clinical evidence and prompt-harness files requires a new policy version",
 );
 
@@ -245,6 +245,33 @@ for (const filename of [
     false,
     `${filename} is clinical evidence, not executable release authority`,
   );
+}
+
+for (const file of [
+  {
+    filename: "scripts/calculator-verification-inventory.mjs",
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-old inventory\n+new inventory",
+  },
+  {
+    filename: "scripts/calculator-verification-inventory.test.mjs",
+    status: "added",
+    patch: "+new inventory regression",
+  },
+  {
+    filename: "docs/verification/calculator-inventory.json",
+    status: "deleted",
+  },
+  {
+    filename: "docs/verification/renamed-inventory.md",
+    previous_filename: "docs/verification/calculator-inventory.md",
+    status: "renamed",
+  },
+]) {
+  const inventoryRisk = classifyRisk([file]);
+  assert.equal(inventoryRisk.tier, "high", `${file.status} inventory paths must fail closed`);
+  assert.ok(inventoryRisk.reasonCodes.includes("CLINICAL_EVIDENCE_CHANGE"));
+  assert.equal(inventoryRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"), false);
 }
 
 for (const file of [
