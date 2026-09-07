@@ -15,12 +15,6 @@ export default class ErrorBoundary extends Component {
     return { hasError: true };
   }
 
-  componentDidCatch(error, info) {
-    if (import.meta.env.DEV) {
-      console.error("ErrorBoundary caught:", error, info);
-    }
-  }
-
   reset = () => this.setState({ hasError: false });
 
   render() {
