@@ -6,15 +6,22 @@ calculator and report; do not turn it into an autonomous treatment selector.
 
 ## Current acceptance record — supersedes historical checkpoints below
 
-Draft branch `codex/ipss-safety-2026-09-08`, base3cf6561. Bounded source contract
+Release branch `codex/ipss-safety-2026-09-08`, based on released main
+`dd915adb3d39c78a2b35fa36124c7d794dc2869f`. Bounded source contract
 and implementation are locally complete; independent code review found the
 decimal-comparison defect and confirmed its correction. Fresh21 computation
 groups,14 focused browser cases, nine deliberate mutations, complete
 `npm run test:compute` (including313 fixture cases plus supplemental suites),
 build, lint, invariants and registry validation pass. Owner inspected desktop,
 clean mobile and print-media captures; clipboard verified. Native printing
-was not tested. No full integrated suite, signed release quorum, deployment or
-live acceptance yet. Full IPSS audit remainders below remain explicit.
+was not tested. After rebasing onto that released base, fresh build, lint and
+invariants passed; the full integrated Playwright run on implementation revision
+`8875b1eeea2019b5e63d3587c757d872fef15ba2` passed1553 cases with zero failures,
+skips or flaky results (2026-09-08T13:23:20Z,297628ms). Receipt:
+`ipss-integrated-full-results.json` in the retained baseline proof directory.
+This acceptance-record update changes no runtime or test files. Signed release
+quorum, deployment and live acceptance remain pending. Full IPSS audit
+remainders below remain explicit; this is not whole-calculator certification.
 
 Tested file SHA-256 fingerprints:
 - IPSS.jsx: `38d0bea50304a940a1d371ee1f9e93b81ae9b48f9f5a0028b11e97da631ae4be`
