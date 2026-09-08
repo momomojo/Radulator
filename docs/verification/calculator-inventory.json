@@ -1673,19 +1673,37 @@
       "id": "radiation-dose-converter",
       "name": "Radiation Dose Converter",
       "category": "Radiology",
-      "guidelineVersion": null,
+      "guidelineVersion": "NIST unit conversions / AAPM96 CT reference / ICRP103 weighting",
       "sourcePath": "src/components/calculators/RadiationDoseConverter.jsx",
       "registry": {
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Uses radiation unit and protection references rather than a single guideline; all conversion factors remain queued for primary-authority audit.",
+        "justification": "Source-reviewed correction contract and independent cases: docs/verification/calculators/radiation-dose-converter.md. Same-quantity conversions, explicitly confirmed organ-equivalent relationship and historical AAPM96 age/region/phantom CT estimate; no patient-risk, prescribing or exposure-appropriateness assessment. Full baseline and live acceptance remain pending; no verification upgrade.",
         "sourceReferences": [
           {
             "authority": "International Commission on Radiological Protection",
             "title": "ICRP Publication 103",
             "role": "official-authority",
             "url": "https://www.icrp.org/publication.asp?id=ICRP+Publication+103"
+          },
+          {
+            "authority": "NIST",
+            "title": "SP811 Appendix B.9 radiology unit conversion factors",
+            "role": "official-authority",
+            "url": "https://www.nist.gov/pml/special-publication-811/nist-guide-si-appendix-b-conversion-factors/nist-guide-si-appendix-b9"
+          },
+          {
+            "authority": "AAPM",
+            "title": "Report 96 (2008), Table3 and Eq12, printed p13",
+            "role": "official-authority",
+            "url": "https://www.aapm.org/pubs/reports/RPT_96.pdf"
+          },
+          {
+            "authority": "IAEA",
+            "title": "Safety Reports Series115 (2023), Eq5.10/Table5.4, printed pp41–42",
+            "role": "official-authority",
+            "url": "https://www-pub.iaea.org/MTCD/Publications/PDF/PUB1987_web.pdf"
           }
         ],
         "implementationEvidence": null
