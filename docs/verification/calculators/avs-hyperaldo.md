@@ -139,3 +139,40 @@ provenance, so they must not be declared invented or overwritten solely because
 2025 guidance differs. Separate numerical validity, sample selectivity and
 protocol-specific interpretation. Verify underlying studies/current guidance
 before deciding the intended supported protocol and resolving equality cases.
+
+## Material interpretation-policy decision — physician input requested
+
+Owner read the complete main text of the
+[Australian/New Zealand working-group consensus](https://pmc.ncbi.nlm.nih.gov/articles/PMC11612544/),
+DOI10.1111/cen.15139 (online2024,2025 issue), including sections3.1–3.9 and
+4.1–4.3; figures not visually inspected. Local public source:
+`/tmp/radulator-avs-anz-2024.html`. This is expert consensus informed by a
+literature review, not a high-certainty comparative threshold trial.
+
+Section4.1 uses unstimulated SI≥2 and stimulated SI≥5. Section4.2 uses LI≥4
+after bilateral selective cannulation regardless of ACTH, with contextual
+assessment for LI2–4. Section3.8 separately discusses one-sided sampling and
+inconsistent validation of AV/IVC thresholds; it does not authorize bilateral
+lateralization from failed sampling. Section3.1 emphasizes sampling timing.
+
+Independent source reviewer confirmed these material differences:
+
+| Case | Source-specific consequence |
+| --- | --- |
+| Unstimulated LI3 | Naruse Table1 footnote's complementary >2 criterion is met; ANZ §4.2 standard ≥4 criterion is not. |
+| Stimulated SI5 | ANZ §4.1 ≥5 is met; Endocrine2025 Table9 and preceding prose >5 is not. |
+| LI4 | Endocrine2025 Table9 ≥4 includes it, but following prose >4 excludes it and treats3–4 contextually. |
+
+The last difference is internal source ambiguity; it is not resolved by ACTH
+status alone. Endocrine source locator:
+https://academic.oup.com/jcem/article/110/9/2453/8196671 , Implementation
+Strategies/Table9 and following paragraph. Reviewer independently checked these
+locators; no whole-calculator validation was asserted.
+
+Owner recommendation submitted to physician user: preserve useful numeric SI/LI
+and display separately named source/year/exact-operator criterion results with
+prerequisite and equality caveats, without selecting a single automatic
+disease/treatment conclusion. User input is required before choosing an operative
+institutional default or silently resolving the ambiguous equality. No threshold
+or interpretation replacement is implemented. Numerical-validity repair and
+other calculators remain in scope; this is not a blocker of the whole baseline.
