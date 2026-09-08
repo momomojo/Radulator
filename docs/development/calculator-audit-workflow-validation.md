@@ -1,4 +1,4 @@
-# Reusable calculator-audit reference — validation2026-09-08
+# Reusable calculator-audit reference — validation2026-09-08/09
 
 User requested capture of the ALBI audit workflow, explicit US-guideline checks
 and inspection of Hermes lifecycle consumers. This is a tooling-validation
@@ -61,3 +61,46 @@ Protected gates, reviewer identities/keys, schedules and production are unchange
 by the skill installation. Skill instructions are not deterministic enforcement.
 The lifecycle reference records the concrete integration gaps and smallest
 follow-up; it does not silently count them as fixed.
+
+## Selective installed-consumer repair, 2026-09-09
+
+The owner approved repairing the identified ALBI planning handoff. Added one
+maintained operations reference, `calculator-closure-preflight.md`, and installed
+it in the existing Mac mini profile. Targeted edits to its profile-owned
+operations skill/autonomy reference correct historical-first planning,
+forced top-three proposals, obsolete release mechanics and mandatory fictional
+Kanban history for owner-directed work. No Hermes core changes or new service.
+
+Four existing job prompts were updated through supported `hermes --profile
+radulator cron edit <id> --prompt ...`: guideline watcher3bf27f675c84,
+weekly digestb6f30e6d8019, seed converterc41b8448cce4 and Fleet Brain476a899ad661.
+Exact prompt readback succeeded. All other fields of those jobs were unchanged,
+including models, schedules and disabled/paused seed state. Configuration of the
+other14 profile jobs was compared unchanged; legitimate runtime timestamps were
+excluded from that untouched-job comparison. No judge, lifecycle or learning
+job was activated or reconfigured. This is explicit selective installation;
+`install.py` was not changed and no full overlay was run.
+
+Private backup: Mac mini profile `state/albi-planning-repair.o0H7Ye/`. Original
+job-file SHA-256:879f8bc19292ed34769bf346ef479ccbf7d8395e1170e6d2e8836ade09b631ad.
+Installed operations SHA-256:33f2ee4b35c55532cdb5d91e7ebc80ad6ee251ff495a77d08f8ebc313fe7f4ec;
+autonomy:ec294e97c408d84a1c608730a108f1d58a72529844c7fe5bf1296a5c9e686ec2;
+shared preflight:87cd063a9968edf57bc971f681867e049190e31daf8549c61607c577552902c4.
+Backup copies were independently hashed before installation. Restore selectively
+after checking for newer changes; never overwrite current whole jobs.json from
+the backup to undo four prompt edits.
+
+Independent synthetic probes before and after preserved all three decisions:
+pending owned work continues; accepted live scope does not restart from an old
+backlog; a real applicable source/output delta remains actionable. Baseline
+already chose correctly, so no measured intelligence/speed gain is claimed.
+Review caught four residual prose contradictions and a missing untouched-job/
+backup validation check; these were fixed before installation.
+
+The audit workflow now captures actual competitor browser testing, entered-value
+and debounce verification, raw-versus-displayed cutoff discrepancies, and the
+difference between inaccessible publisher full text and an accessible attributed
+update. It never treats competitor agreement as independent clinical truth.
+This consumer repair is not production ALBI release proof, a Hindsight retention
+acknowledgment or a guarantee against every future duplicate proposal. ALBI's
+registry row is synchronized only after its own protected release/readback.

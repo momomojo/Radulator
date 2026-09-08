@@ -71,3 +71,25 @@ planning consumers; correct contradictory prose; connect an explicitly requested
 lifecycle/learning handoff. Test consumer behavior on a completed scope and a new
 source delta before claiming duplicate prevention. Keep these control changes
 separate from the clinical PR and preserve customized judge prompts/schedules.
+
+## Selective planning repair inspected 2026-09-09
+
+The shared `radulator-operations/references/calculator-closure-preflight.md` is
+installed on the Mac mini, with the existing ALBI canonical record/receipt as
+the owner-directed handoff. The operations skill, autonomy reference and four
+actual planning-consumer prompts (watcher, digest, paused seed conversion and
+Fleet Brain) now route through that preflight. Stale owner-gate/batching/merge-
+equals-deploy prose was corrected. Models, schedules, enabled/state and all other
+non-prompt fields were read back unchanged; the other14 job configurations were
+also compared. Original copies and SHA-256 identities are retained privately.
+
+Three synthetic pending/completed/new-delta scenarios produced correct decisions
+before and after; independent review found and repaired remaining contradictory
+prose. This proves bounded instruction routing, not deterministic dedupe or
+future behavior guarantees. The source-access/comparator workflow also records
+raw-cutoff versus displayed-rounding differences and legitimate HTTPS fallbacks.
+
+Registry synchronization still follows the actual protected ALBI release. No
+ALBI managed-lifecycle event or retained-learning acknowledgment was fabricated;
+those paused systems remain separate from this owner-directed closure. The
+full profile overlay was not reinstalled, and judge jobs/keys were not changed.

@@ -53,6 +53,14 @@ Use these columns in the existing record:
   Check independent-review-host access early. Do not remove an unsupported
   warning or alter expected answers to satisfy the gate. Withhold unsupported
   outputs while preserving supported functionality and reporting restrictions.
+- Distinguish a web-reader failure from ordinary public HTTPS access, and an
+  attributed guideline update/summary from the complete publisher article.
+  Record exactly what was read; never infer unseen article content.
+- Compare bounded synthetic cases through an accessible competitor's actual
+  interface, including units and both sides of decision-changing cutoffs. Read
+  the entered values and settled output, not stale debounced results. Preserve
+  disagreements: rounded display values can conceal a different raw grade.
+  Resolve with source-derived expectations, not agreement as the acceptance rule.
 - Record reviewed claim/source fingerprints and retrieval identities. Reuse
   unchanged evidence within its scope; cached bytes do not preserve stale
   authorization. Do not commit full copyrighted sources or send patient data.
