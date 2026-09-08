@@ -140,6 +140,41 @@ tests; an adjacent pure helper is permitted only if it materially simplifies
 independent testing. No shared app or release-control changes. This approves
 numeric-validity work, not the still-pending threshold/presentation decision.
 
+### Independent contract review: additional required cases
+
+The existing read-only reviewer identified dependency cases that the first
+anchor set did not cover. Incorporate these before implementation acceptance:
+
+- Missing peripheral cortisol preserves independently valid adrenal A/C and
+  numerical LI, but leaves SI and peripheral-normalized outputs unavailable.
+- Missing adrenal aldosterone does not erase that side's available cortisol SI.
+  It does withhold that side's A/C and bilateral LI; keep the other side's
+  independently computable outputs.
+- Require met/not-met/unavailable criterion states. Unavailable is neither
+  failure nor success, cannot trigger a diagnostic conflict, and must never
+  enter JavaScript's `null < cutoff` coercion. Numerical asymmetry is distinct
+  from clinically interpretable dominance.
+- Validate conversion, aggregation, division and conversion back for display,
+  not just raw inputs. Finite-input overflow/underflow gets an explicit
+  computational-range reason, distinct from missing input.
+- Verify actual parsed CSV cells beside valid and unavailable values, including
+  both-protocol isolation, reciprocal ratios and compact comparison summaries.
+
+Peripheral selection and multiple-row handling must be explicit before the
+numeric runtime change. The UI must identify the selected reference site and
+must not silently fall back from an invalid provided value. If both peripheral
+sites are populated, require a deliberate common reference-site choice rather
+than invent a mixed pair or change clinical site preference implicitly.
+For multiple adrenal rows, distinguish entirely empty, time-only, partial and
+complete measurement rows; retain row identity and indicate missing prerequisites
+per analyte. Do not adopt a new aggregation policy merely to satisfy the one-row
+tests. Complete the source-based aggregation plan before replacing that behavior.
+
+The first implementation slice can safely address the single-pair numerical
+dependency calculation and its tests in an adjacent pure helper; it is not a
+finished repair until wired to the actual form/CSV and acceptance cases pass.
+No new helper may be counted as a live fix or a completed calculator audit.
+
 ## State-repair completion evidence
 
 State repair implemented locally2026-09-08. The15-case pre-fix run reproduced
