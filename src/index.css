@@ -328,10 +328,21 @@
     display: block !important;
   }
 
-  /* Force light mode for printing */
+  /* Printed text must not inherit dark-mode foregrounds or card backgrounds. */
   body {
     background: white !important;
     color: black !important;
+  }
+
+  body * {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+
+  /* Keep a warning and each result row intact across page boundaries. */
+  [aria-label="Calculator results"] > div {
+    break-inside: avoid;
   }
 
   /* Add disclaimer footer for print */
