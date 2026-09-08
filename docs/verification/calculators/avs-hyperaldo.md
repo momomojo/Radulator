@@ -50,7 +50,8 @@ The first is a small retrospective stimulated-AVS cohort; CSI/RASI research
 cutoffs must not be applied universally to pre-ACTH or nonselective sampling.
 Current guidance has protocol-dependent selectivity and a table/prose LI
 equality discrepancy requiring explicit reconciliation before a threshold edit.
-Naruse2021 full review and the complete clinical contract remain pending.
+The complete clinical contract remains pending. Naruse2021 main-text review is
+now complete as recorded below; its figures were not visually inspected.
 
 Required next tasks: paired peripheral-site selection; finite/missing/zero and
 overflow handling per output; sample aggregation and selectivity prerequisites;
@@ -75,8 +76,45 @@ The owner reread the complete three-location runtime diff: it changes stored
 result invalidation only, with no clinical rule or data-conversion modification.
 Existing tests passing does not validate their inherited clinical expectations.
 
-Remaining before release: independent code review, sample-action coverage across
-all protocols, actual CSV/current-data and mobile acceptance, final release-base
-checks, protected PR and signed reviews, deployment and live acceptance.
+Expanded acceptance passed20/20 cases with retries0: both-side sample addition
+and removal in pre/post/comparison modes preserve entered values; actual CSV
+contains current right sample200/100 and LI5, not prior LI10; downloading keeps
+the report available. A390px keyboard calculation/edit/recalculation has no page
+horizontal overflow; owner visually inspected the saved report screenshot.
+Receipt `avs-aldo-state-acceptance.json`; screenshot
+`avs-aldo-mobile-report.png` under that test's result directory. This is desktop
+Chromium mobile-viewport evidence, not native mobile-browser testing.
+
+Independent read-only reviewer found no introduced defect in state ownership or
+clinical-rule changes. Nonblocking untested edge: actual clicks on disabled
+minimum/maximum sample controls; source guards and disabled state were checked.
+Do not claim those clicks were exercised. Owner independently read test output.
+
+Remaining before release: finalized release-base checks, protected PR and signed
+reviews, deployment and live acceptance. Existing CSV parsing/escaping and
+clinical-rule correctness are not established by the bounded export test.
 The Infinity/clinical-interpretation repair and whole-calculator audit remain
 open; no registry status upgrade or live fix is claimed.
+
+## Source reconciliation: Naruse2021
+
+Owner read the complete main text, Table1 and discussion of
+[Naruse et al.,2021](https://pmc.ncbi.nlm.nih.gov/articles/PMC8566130/),
+DOI10.3803/EnM.2021.1192, through a normal public HTTPS download after the
+browsing service returned a challenge. Local source `/tmp/radulator-naruse-2021.html`.
+This is a review article, not a newly inspected primary validation dataset.
+
+Locators: “What are the criteria for successful AVS?” and “What are the criteria
+for lateralization?”, Table1 and its footnote. These support a named historical
+protocol using SI2 unstimulated/5 stimulated and LI>2/>4, with adjunct suppression
+rather than a standalone treatment decision. The article discusses uncertainty
+in one-sided AV/IVC prediction and failure to reproduce the original high PPV.
+Its narrative also uses inclusive0.5/5.5 where Table1 uses strict comparisons;
+do not silently collapse source differences. Cortisol cosecretion and ACTH
+discordance limit interpretation.
+
+Implication for next clinical task: existing pre/post thresholds have identifiable
+provenance, so they must not be declared invented or overwritten solely because
+2025 guidance differs. Separate numerical validity, sample selectivity and
+protocol-specific interpretation. Verify underlying studies/current guidance
+before deciding the intended supported protocol and resolving equality cases.
