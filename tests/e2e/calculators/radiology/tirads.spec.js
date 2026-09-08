@@ -25,6 +25,41 @@ test.describe("ACR TI-RADS Calculator", () => {
     await navigateToCalculator(page, "ACR TI-RADS");
   });
 
+  for (const width of [1280, 390]) {
+  test(`indeterminate descriptors retain assumptions and recover at viewport ${width}`, async ({ page, browserName }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.getByText("Cannot determine composition — score as solid (2 pts)", { exact: true }).click();
+    await page.getByText("Cannot determine echogenicity — score as isoechoic (1 pt)", { exact: true }).click();
+    await page.getByText("Wider-than-tall (0 pts)", { exact: true }).click();
+    await page.getByText("Smooth (0 pts)", { exact: true }).click();
+    await page.getByText("Punctate echogenic foci (3 pts)", { exact: true }).click();
+    await page.locator("#nodule_size").fill("1.2");
+    await page.getByRole("button", { name: "Calculate", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("TR4 - Moderately Suspicious", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath("indeterminate-report.png"), fullPage: true });
+    await expect(page.getByText(/Composition cannot be determined; scored as solid/)).toBeVisible();
+    await expect(page.getByText(/Echogenicity cannot be determined; scored as isoechoic/)).toBeVisible();
+    if (browserName === "chromium") {
+      await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+      await page.getByRole("button", { name: "Copy results" }).click();
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(copied).toMatch(/Composition cannot be determined; scored as solid/);
+      expect(copied).toMatch(/Echogenicity cannot be determined; scored as isoechoic/);
+      expect(copied).toMatch(/6 points/);
+    }
+    await page.getByText("Spongiform (0 pts)", { exact: true }).click();
+    await expect(page.getByRole("button", { name: "Copy results" })).not.toBeVisible();
+    await expect(page.getByText("Cannot determine echogenicity — score as isoechoic (1 pt)", { exact: true })).not.toBeVisible();
+    await page.getByRole("button", { name: "Calculate", exact: true }).click();
+    await expect(page.getByText("TR1 - Benign", { exact: true })).toBeVisible();
+    await page.getByText("Cannot determine composition — score as solid (2 pts)", { exact: true }).click();
+    await page.getByRole("button", { name: "Calculate", exact: true }).click();
+    await expect(page.getByText(/Please complete all ultrasound feature assessments/)).toBeVisible();
+  });
+  }
+
   test.describe("Visual and UI Tests", () => {
     test("should display calculator with correct title and description", async ({
       page,
@@ -329,28 +364,31 @@ test.describe("ACR TI-RADS Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should copy and print the corrected source-qualified result", async ({
+    test("should copy and print the scoped benign result", async ({
       page,
+      browserName,
     }) => {
-      await page.evaluate(() => {
-        Object.defineProperty(navigator, "clipboard", {
-          configurable: true,
-          value: { writeText: async (text) => { window.__radulatorClipboard = text; } },
-        });
-      });
-      await page.getByText("Solid or almost completely solid (2 pts)").click();
-      await page.getByText("Hyperechoic or isoechoic (1 pt)").click();
-      await page.getByText("Wider-than-tall (0 pts)").click();
-      await page.getByText("Smooth (0 pts)").click();
-      await page
-        .getByText("No scored echogenic foci / large comet-tail artifacts only (0 pts)")
-        .click();
+      await page.getByText("Cystic or almost completely cystic (0 pts)").click();
       await page.click('button:has-text("Calculate")');
 
-      await page.getByRole("button", { name: "Copy results" }).click();
-      const copied = await page.evaluate(() => window.__radulatorClipboard || "");
-      expect(copied).toContain("TR3 - Mildly Suspicious");
-      expect(copied).toContain("source-reported group estimate");
+      const guidanceScope = "Standard initial ACR TI-RADS guidance for an adult thyroid nodule. Prior biopsy or treatment, PET avidity, suspected invasive disease, and patient-specific clinical context may require a different approach. This calculator does not assess longitudinal growth or prioritize multiple nodules.";
+      await expect(page.getByText("TR1 - Benign")).toBeVisible();
+      await expect(page.getByText("No routine TI-RADS follow-up recommended")).toBeVisible();
+      await expect(
+        page.getByRole("status", { name: "Calculator results" }).getByText(guidanceScope),
+      ).toBeVisible();
+
+      // Native clipboard verification is Chromium-only; rendered and print assertions run for every project.
+      if (browserName === "chromium") {
+        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+        await page.getByRole("button", { name: "Copy results" }).click();
+        const copied = await page.evaluate(() => navigator.clipboard.readText());
+        expect(copied).toContain("TR1 - Benign");
+        expect(copied).toContain("source-reported group estimate");
+        expect(copied).toContain("not an individual probability");
+        expect(copied).toContain("No routine TI-RADS follow-up recommended");
+        expect(copied).toContain(guidanceScope);
+      }
 
       await page.evaluate(() => { window.__radulatorPrintCalls = 0; window.print = () => { window.__radulatorPrintCalls += 1; }; });
       await page.getByRole("button", { name: "Print Results" }).click();
@@ -483,7 +521,7 @@ test.describe("ACR TI-RADS Calculator", () => {
       }
 
       const acrLink = page.locator(
-        'a[href="https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/TI-RADS"]',
+        'a[href="https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/TI-RADS"]',
       );
       await expect(acrLink).toBeVisible();
       await expect(acrLink).toContainText("ACR");
