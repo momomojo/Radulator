@@ -5,6 +5,8 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
@@ -18,6 +20,246 @@ const DEFAULT_REGISTRY_PATH =
 const DEFAULT_COMPUTE_DIR = "tests/fixtures/compute";
 const DEFAULT_BROWSER_DIR = "tests/e2e/calculators";
 const FEEDBACK_CATEGORY = "Feedback";
+const BASELINE_APPLICABILITY = ["unassessed", "current", "legacy", "deferred"];
+const BASELINE_PHASE_STATUSES = ["pending", "recorded", "blocked", "deferred"];
+const BASELINE_PHASES = [
+  ["clinical_review", "clinicalReview"],
+  ["calculation_tests", "calculationTests"],
+  ["browser_review", "browserReview"],
+  ["release", "release"],
+];
+const BASELINE_REVIEW_KEYS = [
+  "plan_path",
+  "applicability",
+  "supported_scope",
+  "clinical_review",
+  "calculation_tests",
+  "browser_review",
+  "release",
+  "blockers",
+  "restrictions",
+];
+const BASELINE_PHASE_KEYS = ["status", "date", "reviewer", "revision", "evidence"];
+const BASELINE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const BASELINE_SHA_PATTERN = /^[0-9a-f]{40}$/;
+const BASELINE_URI_SCHEME_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:/;
+
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function baselineError(message, calculatorId) {
+  const suffix = calculatorId ? ` for ${calculatorId}` : "";
+  throw new Error(`baseline_review${suffix}: ${message}`);
+}
+
+function assertExactKeys(value, keys, label, calculatorId, { allow = [] } = {}) {
+  const allowed = new Set([...keys, ...allow]);
+  const missing = keys.filter((key) => !Object.hasOwn(value, key));
+  const unknown = Object.keys(value).filter((key) => !allowed.has(key));
+  if (missing.length > 0) {
+    baselineError(`${label} is missing ${missing.join(", ")}`, calculatorId);
+  }
+  if (unknown.length > 0) {
+    baselineError(`${label} has unknown field(s): ${unknown.join(", ")}`, calculatorId);
+  }
+}
+
+function assertNonEmptyString(value, label, calculatorId) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    baselineError(`${label} must be a non-empty string`, calculatorId);
+  }
+}
+
+function isUnsafeRepositoryPath(value) {
+  if (
+    value.startsWith("/") ||
+    value.startsWith("\\") ||
+    /^[A-Za-z]:[\\/]/.test(value) ||
+    value.startsWith("file://")
+  ) {
+    return true;
+  }
+  return value.split(/[\\/]/).some((segment) => segment === "..");
+}
+
+function validatePlanPath(value, calculatorId) {
+  if (value === null) return null;
+  assertNonEmptyString(value, "plan_path", calculatorId);
+  if (
+    BASELINE_URI_SCHEME_PATTERN.test(value) ||
+    value.includes("\u0000") ||
+    isUnsafeRepositoryPath(value) ||
+    !value.toLowerCase().endsWith(".md")
+  ) {
+    baselineError("plan_path must be a repository-relative .md path", calculatorId);
+  }
+  return value;
+}
+
+function validatePlanFile(value, root, calculatorId) {
+  if (value === null) return;
+  let valid = false;
+  try {
+    const repository = realpathSync(root);
+    const file = realpathSync(resolve(repository, value));
+    valid = file.startsWith(`${repository}${sep}`) && statSync(file).isFile();
+  } catch {
+    // Missing, dangling, or unreadable paths cannot back a review record.
+  }
+  if (!valid) {
+    baselineError("plan_path must reference an existing Markdown file within the repository", calculatorId);
+  }
+}
+
+function validateEvidenceReference(value, label, calculatorId) {
+  assertNonEmptyString(value, label, calculatorId);
+  if (isUnsafeRepositoryPath(value)) {
+    baselineError(`${label} must not be an absolute or traversing repository path`, calculatorId);
+  }
+  return value;
+}
+
+function validateDate(value, label, calculatorId) {
+  if (value === null) return null;
+  if (typeof value !== "string" || !BASELINE_DATE_PATTERN.test(value)) {
+    baselineError(`${label} must be YYYY-MM-DD or null`, calculatorId);
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    baselineError(`${label} must be a valid calendar date`, calculatorId);
+  }
+  return value;
+}
+
+function normalizeBaselinePhase(value, label, calculatorId, { clinical = false } = {}) {
+  if (!isObject(value)) baselineError(`${label} must be an object`, calculatorId);
+  assertExactKeys(value, BASELINE_PHASE_KEYS, label, calculatorId, {
+    allow: clinical ? ["scope"] : [],
+  });
+  if (!BASELINE_PHASE_STATUSES.includes(value.status)) {
+    baselineError(`${label}.status must be one of ${BASELINE_PHASE_STATUSES.join(", ")}`, calculatorId);
+  }
+  const date = validateDate(value.date, `${label}.date`, calculatorId);
+  let reviewer = null;
+  if (value.reviewer !== null) {
+    assertNonEmptyString(value.reviewer, `${label}.reviewer`, calculatorId);
+    reviewer = value.reviewer;
+  }
+  let revision = null;
+  if (value.revision !== null) {
+    if (typeof value.revision !== "string" || !BASELINE_SHA_PATTERN.test(value.revision)) {
+      baselineError(`${label}.revision must be a 40-character lowercase SHA or null`, calculatorId);
+    }
+    revision = value.revision;
+  }
+  if (!Array.isArray(value.evidence)) {
+    baselineError(`${label}.evidence must be an array`, calculatorId);
+  }
+  const evidence = value.evidence.map((reference, index) =>
+    validateEvidenceReference(reference, `${label}.evidence[${index}]`, calculatorId),
+  );
+  if (value.status === "recorded" && evidence.length === 0) {
+    baselineError(`${label}.evidence must be non-empty when status is recorded`, calculatorId);
+  }
+  const normalized = { status: value.status, date, reviewer, revision, evidence };
+  if (clinical) {
+    const scope = value.scope === undefined ? null : value.scope;
+    if (scope !== null) assertNonEmptyString(scope, `${label}.scope`, calculatorId);
+    if (value.status === "recorded" && scope === null) {
+      baselineError(`${label}.scope must be non-empty when status is recorded`, calculatorId);
+    }
+    normalized.scope = scope;
+  }
+  return normalized;
+}
+
+function validateStringArray(value, label, calculatorId) {
+  if (!Array.isArray(value)) baselineError(`${label} must be an array`, calculatorId);
+  return value.map((item, index) => {
+    assertNonEmptyString(item, `${label}[${index}]`, calculatorId);
+    return item;
+  });
+}
+
+export function defaultBaselineReview() {
+  const pending = () => ({
+    status: "pending",
+    date: null,
+    reviewer: null,
+    revision: null,
+    evidence: [],
+  });
+  return {
+    planPath: null,
+    applicability: "unassessed",
+    supportedScope: "not assessed",
+    clinicalReview: { ...pending(), scope: null },
+    calculationTests: pending(),
+    browserReview: pending(),
+    release: pending(),
+    blockers: [],
+    restrictions: [],
+  };
+}
+
+/**
+ * Validate and normalize one optional guideline-registry baseline_review record.
+ * An absent record is deliberately represented as pending/unassessed; an
+ * explicit malformed record fails closed instead of inheriting inventory hints.
+ */
+export function normalizeBaselineReview(value, { calculatorId } = {}) {
+  if (value === undefined) return defaultBaselineReview();
+  if (!isObject(value)) baselineError("must be an object when present", calculatorId);
+  assertExactKeys(value, BASELINE_REVIEW_KEYS, "record", calculatorId);
+  const planPath = validatePlanPath(value.plan_path, calculatorId);
+  if (!BASELINE_APPLICABILITY.includes(value.applicability)) {
+    baselineError(
+      `applicability must be one of ${BASELINE_APPLICABILITY.join(", ")}`,
+      calculatorId,
+    );
+  }
+  assertNonEmptyString(value.supported_scope, "supported_scope", calculatorId);
+  const normalized = {
+    planPath,
+    applicability: value.applicability,
+    supportedScope: value.supported_scope,
+    clinicalReview: normalizeBaselinePhase(value.clinical_review, "clinical_review", calculatorId, {
+      clinical: true,
+    }),
+    calculationTests: normalizeBaselinePhase(value.calculation_tests, "calculation_tests", calculatorId),
+    browserReview: normalizeBaselinePhase(value.browser_review, "browser_review", calculatorId),
+    release: normalizeBaselinePhase(value.release, "release", calculatorId),
+    blockers: validateStringArray(value.blockers, "blockers", calculatorId),
+    restrictions: validateStringArray(value.restrictions, "restrictions", calculatorId),
+  };
+  const hasDeferredOrBlocked =
+    normalized.applicability === "deferred" ||
+    BASELINE_PHASES.some(([, key]) => ["blocked", "deferred"].includes(normalized[key].status));
+  if (hasDeferredOrBlocked && normalized.blockers.length === 0 && normalized.restrictions.length === 0) {
+    baselineError("blocked/deferred records require a blocker or restriction", calculatorId);
+  }
+  if (normalized.clinicalReview.status === "recorded" && normalized.planPath === null) {
+    baselineError("plan_path must be set when clinical_review.status is recorded", calculatorId);
+  }
+  return normalized;
+}
+
+export function summarizeBaselineReviews(rows = []) {
+  const applicability = Object.fromEntries(BASELINE_APPLICABILITY.map((status) => [status, 0]));
+  const phases = Object.fromEntries(
+    BASELINE_PHASES.map(([, key]) => [
+      key,
+      Object.fromEntries(BASELINE_PHASE_STATUSES.map((status) => [status, 0])),
+    ]),
+  );
+  for (const row of rows) {
+    const baseline = row.registry.baselineReview;
+    applicability[baseline.applicability] += 1;
+    for (const [, key] of BASELINE_PHASES) phases[key][baseline[key].status] += 1;
+  }
+  return { calculators: rows.length, applicability, phases };
+}
 
 function walkFiles(directory, predicate) {
   if (!existsSync(directory)) return [];
@@ -222,6 +464,7 @@ function browserRowsById(browserSpecs) {
 }
 
 export function buildInventory({
+  root = process.cwd(),
   sources = [],
   registry = { records: [] },
   computeFixtures = [],
@@ -246,6 +489,10 @@ export function buildInventory({
     .sort((left, right) => left.id.localeCompare(right.id))
     .map((calculator) => {
       const registryRecord = registryById.get(calculator.id);
+      const baselineReview = normalizeBaselineReview(registryRecord?.baseline_review, {
+        calculatorId: calculator.id,
+      });
+      validatePlanFile(baselineReview.planPath, root, calculator.id);
       const coverage = compute.byCalculator[calculator.id] || {
         caseCount: 0,
         fixturePaths: [],
@@ -278,6 +525,7 @@ export function buildInventory({
                   : 0,
               }
             : null,
+          baselineReview,
         },
         compute: {
           fixturePaths: [...coverage.fixturePaths],
@@ -319,7 +567,7 @@ export function buildInventory({
       clinicalSignoff: "not established",
       releaseProof: "not established",
       limitations:
-        "Registry statuses are existing evidence claims. Fixture counts and browser-spec presence are inventory signals, not proof that tests passed, clinical review occurred, or a release is live.",
+        "Registry statuses are existing evidence claims. Fixture counts and browser-spec presence are inventory signals, not proof that tests passed, clinical review occurred, or a release is live. Baseline evidence is historical and must be rechecked for the exact subject and scope before reuse; this schema does not claim live freshness.",
     },
     summary: {
       calculators: rows.length,
@@ -331,6 +579,7 @@ export function buildInventory({
         cases: compute.cases,
       },
       browser: browserSummary,
+      baseline: summarizeBaselineReviews(rows),
     },
     rows,
     excluded,
@@ -352,6 +601,7 @@ export function collectInventory({ root, ...options } = {}) {
     sources,
   });
   return buildInventory({
+    root: projectRoot,
     sources,
     registry,
     computeFixtures,
@@ -375,6 +625,19 @@ function markdownPathLinks(paths) {
   return paths.map((path) => markdownPathLink(path)).join("<br>");
 }
 
+function baselinePhaseSummary(row) {
+  return [
+    `clinical ${row.registry.baselineReview.clinicalReview.status}`,
+    `calculation ${row.registry.baselineReview.calculationTests.status}`,
+    `browser ${row.registry.baselineReview.browserReview.status}`,
+    `release ${row.registry.baselineReview.release.status}`,
+  ].join("; ");
+}
+
+function baselineStatusCountsLabel(counts) {
+  return BASELINE_PHASE_STATUSES.map((status) => `${status} ${counts[status]}`).join(", ");
+}
+
 export function renderMarkdown(inventory) {
   const { summary } = inventory;
   const lines = [
@@ -388,21 +651,24 @@ export function renderMarkdown(inventory) {
     `- Registry claims: ${summary.registry.verified} verified, ${summary.registry.seedUnverified} seed-unverified, ${summary.registry.missing} missing; these labels are existing registry assertions, not a new independent clinical certification.`,
     `- Canonical compute fixture inventory: ${summary.compute.fixtureFiles} fixture files and ${summary.compute.cases} cases; counts do not establish that the tests passed or that all behavior is covered.`,
     `- Browser spec presence: ${summary.browser.calculatorSpecificSpecFiles} calculator-specific files and ${summary.browser.sharedSpecFiles} shared files; associations are statically detected from actual navigation or routes, so indirect or parameterized helpers may be omitted. Presence does not establish branch coverage, correct medicine, or a successful browser run.`,
+    `- Baseline applicability counts: ${BASELINE_APPLICABILITY.map((status) => `${status} ${summary.baseline.applicability[status]}`).join(", ")}.`,
+    `- Baseline phase counts are independent (each phase is counted separately): clinical ${baselineStatusCountsLabel(summary.baseline.phases.clinicalReview)}; calculation ${baselineStatusCountsLabel(summary.baseline.phases.calculationTests)}; browser ${baselineStatusCountsLabel(summary.baseline.phases.browserReview)}; release ${baselineStatusCountsLabel(summary.baseline.phases.release)}.`,
+    "- Baseline evidence is historical: exact subject and scope must be rechecked before reuse, and this schema does not claim live freshness. Clinical review is separate from calculation, browser, release, clinical-signoff, and live-proof state.",
     "- Clinical signoff: not established for any calculator in this inventory.",
     "- Release/proof: not established for any calculator in this inventory.",
-    `- Full row evidence remains in the [JSON snapshot](./${DEFAULT_JSON_PATH.split("/").pop()}) and the ${markdownPathLink(DEFAULT_REGISTRY_PATH, "canonical guideline registry")}.`,
+    `- Full row evidence remains in the [JSON snapshot](./${DEFAULT_JSON_PATH.split("/").pop()}), the [baseline record contract](./baseline-record-contract.md), and the ${markdownPathLink(DEFAULT_REGISTRY_PATH, "canonical guideline registry")}.`,
     "",
     "## Calculator index",
     "",
     "Each row links the calculator export, every observed canonical fixture, and every statically associated browser spec. Registry justifications, source references, and implementation evidence remain available in the linked JSON/registry rather than being duplicated here.",
     "",
-    "| ID | Calculator | Category | Guideline/version | Registry claim | Source export | Compute cases / fixtures | Browser specs |",
-    "|---|---|---|---|---|---|---|---|",
+    "| ID | Calculator | Category | Guideline/version | Registry claim | Baseline applicability | Baseline phases | Source export | Compute cases / fixtures | Browser specs |",
+    "|---|---|---|---|---|---|---|---|---|---|",
   ];
 
   for (const row of inventory.rows) {
     lines.push(
-      `| \`${row.id}\` | ${row.name} | ${row.category} | ${row.guidelineVersion || "not recorded"} | ${registryStatusLabel(row)}; last verified ${row.registry.lastVerified || "not recorded"} | ${markdownPathLink(row.sourcePointers.calculator)} | ${row.compute.caseCount} case(s) / ${markdownPathLinks(row.compute.fixturePaths)} | ${row.browser.specCount} file(s) / ${markdownPathLinks(row.browser.specPaths)} |`,
+      `| \`${row.id}\` | ${row.name} | ${row.category} | ${row.guidelineVersion || "not recorded"} | ${registryStatusLabel(row)}; last verified ${row.registry.lastVerified || "not recorded"} | ${row.registry.baselineReview.applicability} | ${baselinePhaseSummary(row)} | ${markdownPathLink(row.sourcePointers.calculator)} | ${row.compute.caseCount} case(s) / ${markdownPathLinks(row.compute.fixturePaths)} | ${row.browser.specCount} file(s) / ${markdownPathLinks(row.browser.specPaths)} |`,
     );
   }
 

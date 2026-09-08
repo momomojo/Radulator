@@ -6,7 +6,7 @@
     ],
     "clinicalSignoff": "not established",
     "releaseProof": "not established",
-    "limitations": "Registry statuses are existing evidence claims. Fixture counts and browser-spec presence are inventory signals, not proof that tests passed, clinical review occurred, or a release is live."
+    "limitations": "Registry statuses are existing evidence claims. Fixture counts and browser-spec presence are inventory signals, not proof that tests passed, clinical review occurred, or a release is live. Baseline evidence is historical and must be rechecked for the exact subject and scope before reuse; this schema does not claim live freshness."
   },
   "summary": {
     "calculators": 42,
@@ -26,6 +26,41 @@
       "allSpecFiles": 45,
       "calculatorSpecificSpecFiles": 42,
       "sharedSpecFiles": 3
+    },
+    "baseline": {
+      "calculators": 42,
+      "applicability": {
+        "unassessed": 42,
+        "current": 0,
+        "legacy": 0,
+        "deferred": 0
+      },
+      "phases": {
+        "clinicalReview": {
+          "pending": 42,
+          "recorded": 0,
+          "blocked": 0,
+          "deferred": 0
+        },
+        "calculationTests": {
+          "pending": 42,
+          "recorded": 0,
+          "blocked": 0,
+          "deferred": 0
+        },
+        "browserReview": {
+          "pending": 42,
+          "recorded": 0,
+          "blocked": 0,
+          "deferred": 0
+        },
+        "release": {
+          "pending": 42,
+          "recorded": 0,
+          "blocked": 0,
+          "deferred": 0
+        }
+      }
     }
   },
   "rows": [
@@ -48,7 +83,43 @@
             "url": "https://doi.org/10.1097/TA.0000000000002058"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -92,7 +163,43 @@
             "url": "https://doi.org/10.2214/ajr.175.5.1751411"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -136,7 +243,43 @@
             "url": "https://doi.org/10.2214/AJR.10.4547"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -184,6 +327,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 3,
           "sourceAuditVectorCount": 6
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -230,7 +409,43 @@
             "url": "https://doi.org/10.1016/S0140-6736(00)02237-6"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -272,7 +487,43 @@
             "url": "https://doi.org/10.1007/s00268-018-4788-2"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -314,7 +565,43 @@
             "url": "https://doi.org/10.3803/EnM.2021.1192"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -356,7 +643,43 @@
             "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8866082/"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -432,6 +755,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 6,
           "sourceAuditVectorCount": 28
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -490,6 +849,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 4,
           "sourceAuditVectorCount": 3
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -568,6 +963,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 5,
           "sourceAuditVectorCount": 11
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -614,7 +1045,43 @@
             "url": "https://doi.org/10.1016/j.jcmg.2022.01.008"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -656,7 +1123,43 @@
             "url": "https://doi.org/10.1002/bjs.1800600817"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -712,6 +1215,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 2,
           "sourceAuditVectorCount": 0
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -779,6 +1318,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 6,
           "sourceAuditVectorCount": 10
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -825,7 +1400,43 @@
             "url": "https://doi.org/10.1148/radiology.174.2.2296641"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -867,7 +1478,43 @@
             "url": "https://doi.org/10.1016/j.icrp.2007.10.003"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -939,6 +1586,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 12,
           "sourceAuditVectorCount": 113
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -985,7 +1668,43 @@
             "url": "https://pubmed.ncbi.nlm.nih.gov/954321/"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1027,7 +1746,43 @@
             "url": "https://doi.org/10.1056/NEJM199109263251301"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1069,7 +1824,43 @@
             "url": "https://www.terumoneuro.com/"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1136,6 +1927,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 3,
           "sourceAuditVectorCount": 0
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -1182,7 +2009,43 @@
             "url": "https://doi.org/10.1148/radiol.2018181494"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1224,7 +2087,43 @@
             "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Lung-RADS"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1266,7 +2165,43 @@
             "url": "https://doi.org/10.1016/j.jacc.2004.06.034"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1322,6 +2257,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 4,
           "sourceAuditVectorCount": 0
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -1368,7 +2339,43 @@
             "url": "https://pubmed.ncbi.nlm.nih.gov/8594428/"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1410,7 +2417,43 @@
             "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8495610/"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1452,7 +2495,43 @@
             "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/NI-RADS"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1494,7 +2573,43 @@
             "url": "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/O-RADS/Ultrasound"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1542,6 +2657,42 @@
           "testCommand": "npm run test:hermes-guideline-registry",
           "claimCount": 2,
           "sourceAuditVectorCount": 0
+        },
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
         }
       },
       "compute": {
@@ -1588,7 +2739,43 @@
             "url": "https://doi.org/10.1016/j.eururo.2019.02.033"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1630,7 +2817,43 @@
             "url": "https://doi.org/10.5489/cuaj.3236"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1676,7 +2899,43 @@
             "url": "https://www.icrp.org/publication.asp?id=ICRP+Publication+103"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1718,7 +2977,43 @@
             "url": "https://doi.org/10.1016/j.juro.2009.05.035"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1760,7 +3055,43 @@
             "url": "https://doi.org/10.1038/sj.ijir.3900472"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1802,7 +3133,43 @@
             "url": "https://doi.org/10.1148/radiol.2015150887"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1844,7 +3211,43 @@
             "url": "https://doi.org/10.1210/jc.2014-1322"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [
@@ -1890,7 +3293,43 @@
             "url": "https://doi.org/10.1016/j.jacr.2017.01.046"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [
@@ -1936,7 +3375,43 @@
             "url": "https://doi.org/10.1056/NEJMoa023153"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -1978,7 +3453,43 @@
             "url": "https://pubmed.ncbi.nlm.nih.gov/10744147/"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
@@ -2020,7 +3531,43 @@
             "url": "https://doi.org/10.1007/BF00949868"
           }
         ],
-        "implementationEvidence": null
+        "implementationEvidence": null,
+        "baselineReview": {
+          "planPath": null,
+          "applicability": "unassessed",
+          "supportedScope": "not assessed",
+          "clinicalReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": [],
+            "scope": null
+          },
+          "calculationTests": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "browserReview": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "release": {
+            "status": "pending",
+            "date": null,
+            "reviewer": null,
+            "revision": null,
+            "evidence": []
+          },
+          "blockers": [],
+          "restrictions": []
+        }
       },
       "compute": {
         "fixturePaths": [],
