@@ -69,11 +69,33 @@ features promised by the original ALBI calculator.
 |---|---|
 | [Johnson et al., JCO2015;33:550–558](https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/), DOI10.1200/JCO.2014.57.9151. Abstract Methods; Methods/cohorts; Results equation immediately before Table2 and intervals immediately after; Discussion | Original two-input model, units, grade boundaries, derivation1313 Japanese HCC patients, additional geographic/treatment cohorts and chronic-liver-disease cohort; transplant exclusion and population-level interpretation |
 | [AMA Manual of Style, Table2](https://academic.oup.com/amamanualofstyle/si-conversion-calculator), serum albumin and total bilirubin rows | Conversion factors10 and17.104; independently checked2026-09-08 |
+| [JAMA Network Open2020, Association of Residency Training With Metabolic Measures](https://pmc.ncbi.nlm.nih.gov/articles/PMC7193327/), DOI10.1001/jamanetworkopen.2020.5120, baseline-characteristics table: albumin/total-bilirubin rows and SI-conversion footnote | Independently accessible corroboration of g/dL→g/L ×10 and total bilirubin mg/dL→µmol/L ×17.104. This source supports unit conversion only, not ALBI validation |
 | [EASL HCC2025](https://easlcampus.eu/sites/default/files/2025-02/EASL_CPG_Management_HCC.pdf), printed p.335/Table4, pp.349–350 treatment-selection discussion/recommendation | ALBI as one component of broader assessment; prognosis is not evidence for choosing embolic versus systemic treatment. No new algorithm imported |
+| [AASLD HCC2023 Practice Guidance](https://pmc.ncbi.nlm.nih.gov/articles/PMC10663390/), DOI10.1097/HEP.0000000000000466, Staging, Surgical resection, TACE patient-selection discussion and Table5 | US-guidance cross-check2026-09-08: ALBI can inform broader liver-function assessment. Proposed TACE/Y90 unsuitability factors retain treatment-zone/context qualifiers; this tool does not turn ALBI grade into standalone eligibility advice |
 | [Ho et al., PLOS ONE2017](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0180408), citation/abstract | Supporting HCC/TACE prognostic bibliography; no additional calculation |
 | [Hiraoka et al., JGH2016](https://doi.org/10.1111/jgh.13250), author-institution citation/abstract | Supporting retrospective Japanese HCC bibliography. Inaccessible full methods not used for ALBI-T or new output |
 | [Pinato et al., J Hepatol2017](https://doi.org/10.1016/j.jhep.2016.09.008), [Cambridge manuscript](https://www.repository.cam.ac.uk/bitstreams/57b9d9f0-4841-4458-ad3c-9554a0e2becb/download) pp.7–19 | Additional cohort-level prognosis, variable discrimination across cohorts, transplant exclusion; no individual survival numbers imported |
 | [Ho, Hsu, Liu et al., DDS2021;66:1730–1738](https://doi.org/10.1007/s10620-020-06384-2), publisher/author-institution citation and abstract | Correct fifth-reference identity. Multivariable TACE nomogram explicitly not implemented; full subscription methods not required for the retained original-model scope |
+
+US current-version check: the [AASLD HCC page](https://www.aasld.org/practice-guidelines/management-hepatocellular-carcinoma)
+also links the 2025 Critical Update, DOI10.1097/HEP.0000000000001269,
+[PMID39992051](https://pubmed.ncbi.nlm.nih.gov/39992051/). Its publisher full text
+was not retrievable in this review; PubMed provides metadata, not an abstract.
+The [AASLD-participating guideline summary](https://www.guidelinecentral.com/guideline/10743/)
+exposes the revised statement32 on perioperative systemic therapy. No such
+treatment output exists here. This is an ALBI-scope US-guidance cross-check,
+not certification of the complete HCC pathway or a claim to have read the full
+2025 update. Original-model computation and applicability remain unchanged.
+
+Independent-review access repair2026-09-08: the signed primary judge for
+39873c5 could not retrieve AMA/OUP and returned NEEDS_FIX. The owner and a
+separate research reviewer then independently retrieved PMC7193327 with ordinary
+public HTTPS, including on the actual Mac mini (HTTP200), and read the stated
+table rows/footnote. Hermes can use its existing terminal tool with Python
+`urllib.request.urlopen` plus `html.parser.HTMLParser` to inspect this public
+article when the web extractor is challenged. No access control was bypassed;
+this is additional reviewable evidence, not a replacement signed approval.
+The new candidate still requires fresh exact-head CI and signed review.
 
 Fresh official NCBI metadata2026-09-08: PMID25512453, matching DOI/PMCID.
 Returned relationship is `CommentIn` PMID25512460 (editorial), not a correction
