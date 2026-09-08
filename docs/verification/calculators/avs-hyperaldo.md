@@ -83,6 +83,65 @@ unsupported outputs. The Infinity defect remains unresolved by state clearing.
 
 ## Completion record
 
+## Next owner-approved task: numerical prerequisites, before criteria policy
+
+Owner re-read computeSet, peripheral selection, warning construction and CSV
+serialization at ac54bbc. ANZ consensus sections4.1–4.2 explicitly define SI
+as adrenal/peripheral cortisol, LI as the ratio of adrenal A/C values, and
+suppression/AV-IVC as adrenal A/C divided by peripheral A/C. These definitions
+support the dependency matrix below independently of disputed diagnostic
+thresholds. Source: https://pmc.ncbi.nlm.nih.gov/articles/PMC11612544/ ,
+section IDs `cen15139-sec-0180` and `cen15139-sec-0190`. The owner inspected
+the retained public HTML when the browser service returned a challenge.
+
+| Output | Required numerical inputs | Missing/invalid-input consequence |
+|---|---|---|
+| Each side's SI | That adrenal cortisol and explicitly identified peripheral cortisol, finite and positive | Withhold that SI and its success assertion, not the other side's independently valid ratio. |
+| Each adrenal A/C | Paired adrenal aldosterone and cortisol from the same sample, positive and finite | Withhold that A/C; never substitute zero for a blank or average a partially entered row silently. |
+| LI | Two positive finite adrenal A/C values | Arithmetic may remain available without peripheral aldosterone; clinical lateralization additionally requires valid selectivity under the selected named criteria. |
+| Peripheral A/C | Positive finite aldosterone and cortisol from the same identified peripheral site | Withhold if the pair is absent; never combine suprarenal aldosterone with infrarenal cortisol. |
+| CR/CSI and AV-IVC/RASI | Appropriate adrenal A/C and positive finite peripheral A/C | Show unavailable with a specific reason; omit dependent interpretive claims. Never treat Infinity as a criterion met. |
+
+These are software-input requirements, not a claim that a biological zero cannot
+occur. A zero/below-assay-limit laboratory result needs explicit censoring handling;
+the current form has none, so it cannot be silently treated as an exact positive
+denominator. Do not manufacture detection-limit substitutions. Negative,
+nonfinite, malformed and overflowed values must never become clinical results.
+
+Independent standard-unit anchors (one paired sample per side): peripheral
+A10/C10, left A1000/C100, right A100/C100 gives SI10/10, adrenal A/C10/1,
+peripheral A/C1, LI10, CR/CSI1 and AV-IVC/RASI10. Clearing only peripheral
+aldosterone must preserve SI10/10 and numerical LI10 while withholding all
+peripheral-A/C-dependent outputs and claims. Right A200 gives LI5 and CR/CSI2,
+not a change to SI. Equal adrenal A/C values give numerical LI1 and no unique
+dominant side. Supra A20 with blank supra cortisol plus infra C10 with blank
+infra aldosterone must not manufacture peripheral A/C2. SI may use an explicitly
+identified cortisol baseline; report the actual source site.
+
+Execution steps within this existing lane:
+
+1. Add actual-control failing cases for the dependency anchors above, blank/zero/
+   negative/overflow values, partial sample rows and pre/post isolation. Retain
+   the red evidence; changing assertions to accept Infinity is prohibited.
+2. Separate parsing and per-output validity from clinical criteria. Preserve
+   protocol identity and report reasons alongside unavailable values. Avoid
+   whole-report rejection when independent outputs remain computable.
+3. Make UI and actual CSV agree on value, units, source site and unavailable
+   reason; no `.toFixed` call on an unavailable value. Dependent interpretations
+   must respect validity before evaluating any cutoff.
+4. Review sample aggregation/timing separately before generalizing the one-pair
+   anchors to multiple samples. The existing mean-of-all-rows behavior is not
+   clinically accepted by this numerical contract.
+5. Root reviews source, diff and actual-control results. Required full release
+   checks and signed reviews remain mandatory. No registry verification upgrade.
+
+Allowed scope: this record, the existing aldosterone component and its dedicated
+tests; an adjacent pure helper is permitted only if it materially simplifies
+independent testing. No shared app or release-control changes. This approves
+numeric-validity work, not the still-pending threshold/presentation decision.
+
+## State-repair completion evidence
+
 State repair implemented locally2026-09-08. The15-case pre-fix run reproduced
 14 stale-state failures (report remained after an actual edit) and passed the
 unchanged-focus control. After three scoped state-invalidation additions,
