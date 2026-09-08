@@ -15,12 +15,19 @@
 
 import { calculateAlbi } from "../../clinical/albi.js";
 
+// Preserve small positive measurements instead of displaying a false zero.
+const formatLabValue = (value) => {
+  const rounded = value.toFixed(1);
+  return Number(rounded) === 0 ? value.toPrecision(3) : rounded;
+};
+
 export const ALBIScore = {
   id: "albi-score",
   category: "Hepatology/Liver",
   name: "ALBI Score",
   desc: "Albumin-Bilirubin grade for liver function assessment in hepatocellular carcinoma (HCC).",
   guidelineVersion: "ALBI Grade (Johnson 2015)",
+  showReset: true,
   keywords: ["liver function", "HCC", "hepatocellular", "albumin", "bilirubin"],
   tags: ["Hepatology", "Oncology"],
   metaDesc:
@@ -33,7 +40,7 @@ export const ALBIScore = {
 • Produces a continuous linear predictor and three source-defined risk groups
 • Was evaluated across multiple HCC cohorts and clinical settings
 
-Scope: ALBI describes liver-function prognosis in studied cohorts. It does not include tumor burden, determine treatment eligibility, or replace individualized clinical assessment.`,
+Scope: ALBI describes liver-function prognosis in studied HCC and chronic-liver-disease cohorts. It does not include tumor burden, determine treatment eligibility, predict individual survival, or replace individualized clinical assessment. It is not a post-transplant outcome predictor.`,
     link: {
       label: "View Johnson et al. 2015 Original Study",
       url: "https://doi.org/10.1200/JCO.2014.57.9151",
@@ -43,6 +50,8 @@ Scope: ALBI describes liver-function prognosis in studied cohorts. It does not i
     {
       id: "unit_system",
       label: "Unit System",
+      subLabel: "Required: select SI or US before calculating; switching changes interpretation, not entered numbers",
+      required: true,
       type: "radio",
       opts: [
         { value: "SI", label: "SI units (μmol/L, g/L)" },
@@ -53,7 +62,7 @@ Scope: ALBI describes liver-function prognosis in studied cohorts. It does not i
       id: "albumin",
       label: "Serum Albumin",
       type: "number",
-      subLabel: "g/L (SI) or g/dL (US)",
+      subLabel: "g/L (SI) or g/dL (US); verify the laboratory units",
       step: 0.1,
       min: 0,
     },
@@ -61,27 +70,34 @@ Scope: ALBI describes liver-function prognosis in studied cohorts. It does not i
       id: "bilirubin",
       label: "Total Bilirubin",
       type: "number",
-      subLabel: "μmol/L (SI) or mg/dL (US)",
+      subLabel: "μmol/L (SI) or mg/dL (US); verify the laboratory units",
       step: 0.1,
       min: 0,
     },
   ],
-  compute: ({ unit_system = "SI", albumin = 0, bilirubin = 0 }) => {
-    const clinicalResult = calculateAlbi({ unit_system, albumin, bilirubin });
+  compute: (values = {}) => {
+    const hasExplicitUnitSystem =
+      values !== null &&
+      typeof values === "object" &&
+      !Array.isArray(values) &&
+      Object.prototype.hasOwnProperty.call(values, "unit_system");
+    const clinicalResult = hasExplicitUnitSystem
+      ? calculateAlbi(values)
+      : { ok: false, code: "INVALID_UNITS", value: null };
 
     if (!clinicalResult.ok) {
+      if (clinicalResult.code === "INVALID_UNITS") {
+        return {
+          Error: "Select SI or US units before calculating.",
+        };
+      }
       if (clinicalResult.code === "INVALID_INPUT") {
         return {
           Error: "Please enter valid positive values for albumin and bilirubin.",
         };
       }
-      if (clinicalResult.code === "ALBUMIN_RANGE") {
-        return {
-          Error: `Albumin value ${clinicalResult.value.toFixed(1)} g/L is outside physiological range (5-60 g/L). Please check unit selection and input.`,
-        };
-      }
       return {
-        Error: `Bilirubin value ${clinicalResult.value.toFixed(1)} μmol/L is outside physiological range (1-1000 μmol/L). Please check unit selection and input.`,
+        Error: "The entered values cannot produce a finite ALBI calculation in the selected units. Check the laboratory report and units.",
       };
     }
 
@@ -104,24 +120,32 @@ Scope: ALBI describes liver-function prognosis in studied cohorts. It does not i
 
     // Build output object
     const result = {
+      ...(clinicalResult.inputReviewRequired ? {
+        "Input Check": `Outside application review thresholds (albumin 5–60 g/L; bilirubin 1–1000 μmol/L). Entered albumin ${clinicalResult.albuminInput} ${clinicalResult.usedUSUnits ? "g/dL" : "g/L"} and bilirubin ${clinicalResult.bilirubinInput} ${clinicalResult.usedUSUnits ? "mg/dL" : "μmol/L"}; SI values: ${formatLabValue(albSI)} g/L and ${formatLabValue(biliSI)} μmol/L. Verify against the laboratory report and units. These are software input checks, not physiological or validated model boundaries. Numerical computability does not establish clinical applicability.`,
+      } : {}),
       "ALBI Score": albiScore.toFixed(3),
       "ALBI Grade": `Grade ${albiGrade}`,
+      "Score Precision": "Score displayed to three decimals; grade uses the unrounded score. A rounded score at a cutoff can therefore accompany the next grade.",
       Interpretation: gradeInterpretation,
       "Clinical Context": prognosis,
+      Applicability: "Original ALBI prognosis model studied in HCC and chronic liver disease; not a post-transplant outcome predictor. Does not determine treatment eligibility or predict individual survival.",
+      "Input Units": clinicalResult.usedUSUnits
+        ? "US (albumin g/dL; bilirubin mg/dL)"
+        : "SI (albumin g/L; bilirubin μmol/L)",
     };
 
     // Add converted SI values if US units were used
     if (clinicalResult.usedUSUnits) {
-      result["Converted Bilirubin (SI)"] = `${biliSI.toFixed(1)} μmol/L`;
-      result["Converted Albumin (SI)"] = `${albSI.toFixed(1)} g/L`;
+      result["Converted Bilirubin (SI)"] = `${formatLabValue(biliSI)} μmol/L`;
+      result["Converted Albumin (SI)"] = `${formatLabValue(albSI)} g/L`;
       result["Note"] = "Calculation performed using SI units (shown above)";
     } else {
-      result["Bilirubin (SI)"] = `${biliSI.toFixed(1)} μmol/L`;
-      result["Albumin (SI)"] = `${albSI.toFixed(1)} g/L`;
+      result["Bilirubin (SI)"] = `${formatLabValue(biliSI)} μmol/L`;
+      result["Albumin (SI)"] = `${formatLabValue(albSI)} g/L`;
     }
 
     result._severity =
-      albiGrade === 1 ? "success" : albiGrade === 2 ? "warning" : "danger";
+      albiGrade === 3 ? "danger" : clinicalResult.inputReviewRequired || albiGrade === 2 ? "warning" : "success";
     return result;
   },
   refs: [
@@ -142,8 +166,8 @@ Scope: ALBI describes liver-function prognosis in studied cohorts. It does not i
       u: "https://doi.org/10.1016/j.jhep.2016.09.008",
     },
     {
-      t: "Ho SY, Liu PH, Hsu CY, et al. Albumin-bilirubin (ALBI) grade-based nomogram for patients with hepatocellular carcinoma undergoing transarterial chemoembolization. Dig Liver Dis. 2018;50(6):600-606.",
-      u: "https://doi.org/10.1016/j.dld.2018.01.128",
+      t: "Ho SY, Hsu CY, Liu PH, et al. Albumin-bilirubin (ALBI) grade-based nomogram for patients with hepatocellular carcinoma undergoing transarterial chemoembolization. Digestive Diseases and Sciences. 2021;66(5):1730-1738. Supporting multivariable TACE nomogram research; the original two-input ALBI model implemented here does not implement that nomogram.",
+      u: "https://doi.org/10.1007/s10620-020-06384-2",
     },
   ],
 };

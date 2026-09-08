@@ -167,9 +167,9 @@
       "sourcePath": "src/components/calculators/ALBIScore.jsx",
       "registry": {
         "status": "verified",
-        "lastVerified": "2026-08-29",
+        "lastVerified": "2026-09-08",
         "reviewScope": "source-derived evidence (3 claim(s), 6 vector(s))",
-        "justification": "The open primary publication confirms the printed two-variable ALBI equation, SI units, three inclusive/exclusive grade intervals, and HCC development population. Executable vectors bind the source coefficients and all grade boundaries; unsupported cohort-median and treatment-eligibility claims were removed.",
+        "justification": "Original Johnson 2015 model reviewed: equation, units, raw grade intervals, population, strict inputs, software review warnings and reports. No individual survival, treatment eligibility, post-transplant or added nomogram output. Review date is not deployment proof. Sole clinical/completion record: docs/verification/calculators/albi-score.md; its linked exact-revision receipt establishes release/live acceptance. Historical drafts are superseded, not outstanding tasks.",
         "sourceReferences": [
           {
             "authority": "Johnson et al.",

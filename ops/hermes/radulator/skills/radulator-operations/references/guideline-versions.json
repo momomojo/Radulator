@@ -28,8 +28,8 @@
       "implemented_version": "ALBI Grade (Johnson 2015)",
       "basis_type": "primary-model",
       "verification_status": "verified",
-      "last_verified": "2026-08-29",
-      "justification": "The open primary publication confirms the printed two-variable ALBI equation, SI units, three inclusive/exclusive grade intervals, and HCC development population. Executable vectors bind the source coefficients and all grade boundaries; unsupported cohort-median and treatment-eligibility claims were removed.",
+      "last_verified": "2026-09-08",
+      "justification": "Original Johnson 2015 model reviewed: equation, units, raw grade intervals, population, strict inputs, software review warnings and reports. No individual survival, treatment eligibility, post-transplant or added nomogram output. Review date is not deployment proof. Sole clinical/completion record: docs/verification/calculators/albi-score.md; its linked exact-revision receipt establishes release/live acceptance. Historical drafts are superseded, not outstanding tasks.",
       "sources": [
         {
           "authority": "Johnson et al.",

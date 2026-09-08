@@ -166,7 +166,7 @@ test("collectInventory reflects the checked-out source, registry, fixtures, and 
 
   const albi = inventory.rows.find((row) => row.id === "albi-score");
   assert.equal(albi.registry.status, "verified");
-  assert.equal(albi.registry.lastVerified, "2026-08-29");
+  assert.equal(albi.registry.lastVerified, "2026-09-08");
   assert.equal(albi.compute.caseCount, 6);
   assert.equal(albi.browser.specCount, 1);
   assert.equal(albi.registry.implementationEvidence.sourceAuditVectorCount, 6);

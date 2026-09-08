@@ -559,7 +559,7 @@ function AppContent() {
       {/* Content wrapper for sidebar + main */}
       <div className="flex flex-1 overflow-hidden">
         {/* Mobile Header with Hamburger */}
-        <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border shadow-sm px-4 py-3 flex items-center justify-between">
+        <div className="no-print md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border shadow-sm px-4 py-3 flex items-center justify-between">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
