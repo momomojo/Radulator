@@ -69,6 +69,35 @@ test.describe("Kidney Biopsy Major Bleeding Risk (KBRC)", () => {
     ).toHaveAttribute("href", "https://doi.org/10.1177/20543581231205334");
   });
 
+  test("serves and hydrates the permanent static URL", async ({
+    page,
+  }) => {
+    test.skip(
+      test.info().config.metadata.serverMode !== "preview",
+      "requires a production-like preview so generated static pages are available",
+    );
+
+    const staticResponse = await page.request.get(
+      "/calculators/kidney-biopsy-bleeding-risk/",
+    );
+    expect(staticResponse.ok()).toBe(true);
+    const staticHtml = await staticResponse.text();
+    expect(staticHtml).toContain(
+      'data-static-calculator="kidney-biopsy-bleeding-risk"',
+    );
+    expect(staticHtml).toContain(
+      '<link rel="canonical" href="https://radulator.com/calculators/kidney-biopsy-bleeding-risk/"',
+    );
+
+    await page.goto("/calculators/kidney-biopsy-bleeding-risk/");
+    await expect(page.getByTestId("calculator-title").first()).toContainText(
+      CALCULATOR_NAME,
+    );
+    await expect(page).toHaveURL(
+      /\/calculators\/kidney-biopsy-bleeding-risk\/#\/kidney-biopsy-bleeding-risk$/,
+    );
+  });
+
   test("reproduces all four published display examples", async ({ page }) => {
     const examples = [
       [57, 81.7292, 170, 220, 107, 11.4, "native", "2.5%"],
@@ -137,6 +166,157 @@ test.describe("Kidney Biopsy Major Bleeding Risk (KBRC)", () => {
     await expect(result).not.toContainText(/low[- ]risk|moderate[- ]risk|high[- ]risk/i);
   });
 
+  test("clears stale estimates when kidney type or anthropometry changes", async ({
+    page,
+  }) => {
+    await fillProfile(page, {
+      age: 57,
+      weight: 81.7292,
+      height: 170,
+      platelets: 220,
+      hemoglobin: 107,
+      kidney_size: 11.4,
+      kidney_type: "native",
+    });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(resultRegion(page)).toContainText("2.5%");
+
+    await page.locator("#kidney_type-allograft").check();
+    await expect(resultRegion(page)).toHaveCount(0);
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(resultRegion(page)).toContainText("1.0%");
+
+    await page.locator("#weight").fill("40");
+    await expect(resultRegion(page)).toHaveCount(0);
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(resultRegion(page)).toContainText("4.0%");
+  });
+
+  test("recovers from keyboard correction of an invalid g/dL-style hemoglobin entry", async ({
+    page,
+  }) => {
+    await fillProfile(page, {
+      age: 57,
+      weight: 81.7292,
+      height: 170,
+      platelets: 220,
+      hemoglobin: 10,
+      kidney_size: 11.4,
+      kidney_type: "native",
+    });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(resultRegion(page)).toContainText(
+      "Hemoglobin must be 70–180 g/L",
+    );
+
+    const hemoglobin = page.locator("#hemoglobin");
+    await hemoglobin.focus();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.type("107");
+    await page.keyboard.press("Tab");
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(resultRegion(page)).toContainText("2.5%");
+  });
+
+  test("preserves the published equal-BMI estimate and clears the weight-review warning on recovery", async ({ page }) => {
+    await fillProfile(page, { age: 45, weight: 86.7, height: 170, platelets: 300, hemoglobin: 110, kidney_size: 12, kidney_type: "allograft" });
+    await page.getByRole("button", { name: "Calculate", exact: true }).click();
+    await expect(resultRegion(page)).toContainText("0.4%");
+    await expect(resultRegion(page)).not.toContainText("Input Review");
+    await page.locator("#weight").fill("132.3");
+    await page.locator("#height").fill("210");
+    await expect(resultRegion(page)).toHaveCount(0);
+    await page.getByRole("button", { name: "Calculate", exact: true }).click();
+    await expect(resultRegion(page)).toContainText("0.4%");
+    await expect(resultRegion(page)).toContainText("30.00 kg/m²");
+    await expect(resultRegion(page)).toContainText("Input Review");
+    await page.locator("#weight").fill("0");
+    await page.getByRole("button", { name: "Calculate", exact: true }).click();
+    await expect(resultRegion(page)).toContainText("Weight must be above zero");
+    await expect(resultRegion(page)).not.toContainText("0.4%");
+    await page.locator("#weight").fill("86.7");
+    await page.locator("#height").fill("170");
+    await page.getByRole("button", { name: "Calculate", exact: true }).click();
+    await expect(resultRegion(page)).toContainText("0.4%");
+    await expect(resultRegion(page)).not.toContainText("Input Review");
+  });
+
+  test("copies the current result and weight warning and exposes print layout without native printing", async ({
+    page,
+    browserName,
+  }) => {
+    await fillProfile(page, {
+      age: 45,
+      weight: 132.3,
+      height: 210,
+      platelets: 300,
+      hemoglobin: 110,
+      kidney_size: 12,
+      kidney_type: "allograft",
+    });
+    await page.getByRole("button", { name: "Calculate" }).click();
+    await expect(resultRegion(page)).toContainText("0.4%");
+    await expect(resultRegion(page)).toContainText("Input Review");
+
+    if (browserName === "chromium") {
+      await page.context().grantPermissions([
+        "clipboard-read",
+        "clipboard-write",
+      ]);
+    } else {
+      await page.evaluate(() => {
+        window.__radulatorClipboard = "";
+        Object.defineProperty(navigator, "clipboard", {
+          configurable: true,
+          value: {
+            writeText: async (text) => {
+              window.__radulatorClipboard = text;
+            },
+            readText: async () => window.__radulatorClipboard,
+          },
+        });
+      });
+    }
+
+    await page.getByRole("button", { name: "Copy results" }).click();
+    if (browserName === "chromium") {
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(copied).toContain(
+        "Kidney Biopsy Major Bleeding Risk (KBRC) — Radulator",
+      );
+      expect(copied).toContain(
+        "Estimated major bleeding risk after kidney biopsy: 0.4%",
+      );
+      expect(copied).toContain("Model Scope:");
+      expect(copied).toContain("Input Review:");
+      expect(copied).toContain("Check weight, height and units");
+      expect(copied).not.toContain("_probability");
+    } else {
+      await expect(
+        page.getByRole("button", { name: "Results copied" }),
+      ).toBeVisible();
+      await expect(page.getByText("Copied!", { exact: true })).toBeVisible();
+    }
+
+    await page.evaluate(() => {
+      window.__radulatorPrintCalls = 0;
+      window.print = () => {
+        window.__radulatorPrintCalls += 1;
+      };
+    });
+    await page.getByRole("button", { name: "Print Results" }).click();
+    await expect
+      .poll(() => page.evaluate(() => window.__radulatorPrintCalls))
+      .toBe(1);
+
+    await page.emulateMedia({ media: "print" });
+    await expect(page.locator("aside")).toBeHidden();
+    await expect(page.getByRole("button", { name: "Print Results" })).toBeHidden();
+    await expect(resultRegion(page)).toBeVisible();
+    await expect(page.getByText("0.4%", { exact: true })).toBeVisible();
+    await expect(resultRegion(page)).toContainText("Check weight, height and units");
+  });
+
   test("warns that valid estimates above 25% may be overpredicted", async ({
     page,
   }) => {
@@ -156,6 +336,15 @@ test.describe("Kidney Biopsy Major Bleeding Risk (KBRC)", () => {
     await expect(result).toContainText(
       "Estimates above 25% may overpredict major bleeding risk",
     );
+  });
+
+  test("does not round a finite upper-tail estimate to certainty", async ({ page }) => {
+    await fillProfile(page, { age: 90, weight: 400, height: 140, platelets: 50, hemoglobin: 70, kidney_size: 8, kidney_type: "native" });
+    await page.getByRole("button", { name: "Calculate", exact: true }).click();
+    await expect(resultRegion(page)).toContainText(">99.9%");
+    await expect(resultRegion(page)).not.toContainText("100.0%");
+    await expect(resultRegion(page)).toContainText("Input Review");
+    await expect(resultRegion(page)).toContainText("Calibration Warning");
   });
 
   test("fails closed for missing and out-of-range inputs", async ({
@@ -209,5 +398,14 @@ test.describe("Kidney Biopsy Major Bleeding Risk (KBRC)", () => {
       () => document.documentElement.scrollWidth > window.innerWidth,
     );
     expect(horizontalOverflow).toBe(false);
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.reload();
+    await expect(page.locator("aside")).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth,
+      ),
+    ).toBe(false);
   });
 });

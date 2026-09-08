@@ -23,8 +23,8 @@
       "cases": 313
     },
     "browser": {
-      "allSpecFiles": 45,
-      "calculatorSpecificSpecFiles": 42,
+      "allSpecFiles": 46,
+      "calculatorSpecificSpecFiles": 43,
       "sharedSpecFiles": 3
     }
   },
@@ -858,7 +858,7 @@
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Uses published radiation protection and conversion references rather than a single calculator guideline; factors remain queued for source audit.",
+        "justification": "Bounded risk-output and input-integrity correction planned in docs/verification/calculators/dlp-dose.md. ICRP147 informs interpretation limits; this is not individual cancer-risk prediction. Conversion-factor provenance, phantom applicability, reference ranges and full clinical acceptance remain unresolved. Keep seed-unverified until those scopes and release proof are reviewed.",
         "sourceReferences": [
           {
             "authority": "International Commission on Radiological Protection",
@@ -1012,14 +1012,26 @@
       "id": "ipss",
       "name": "Inferior Petrosal Sinus Sampling (IPSS)",
       "category": "Interventional",
-      "guidelineVersion": "IPSS (Oldfield 1991)",
+      "guidelineVersion": "IPSS sampling interpretation (SVIN 2026)",
       "sourcePath": "src/components/calculators/IPSS.jsx",
       "registry": {
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Implements published IPSS diagnostic ratios and sampling interpretation; current protocol context remains queued for expert source review.",
+        "justification": "Adult CRH sampling ratios with SVIN 2026 inclusive criteria and separately labeled basal/concurrent PRL normalization. Safety correction and evidence: docs/verification/calculators/ipss.md. No normalized diagnostic cutoff or tumor-side inference. Full source-scope audit and live acceptance remain incomplete; no verification upgrade.",
         "sourceReferences": [
+          {
+            "authority": "SVIN",
+            "title": "Consensus Guidelines on Inferior Petrosal Sinus Sampling (2026)",
+            "role": "official-authority",
+            "url": "https://doi.org/10.1161/SVIN.125.002309"
+          },
+          {
+            "authority": "Sharma et al.",
+            "title": "Prolactin as a marker of successful catheterization during IPSS (2011)",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1210/jc.2011-2149"
+          },
           {
             "authority": "Oldfield et al.",
             "title": "Petrosal sinus sampling with and without corticotropin-releasing hormone for the differential diagnosis of Cushing syndrome",
@@ -1102,7 +1114,7 @@
         "status": "verified",
         "lastVerified": "2026-08-25",
         "reviewScope": "source-derived evidence (3 claim(s))",
-        "justification": "The open primary publication confirms the adult diagnostic kidney-biopsy population and major-bleeding outcome; its direct supplementary PDF exposes the refit equation, predictor units, coefficients, and spline knots used by the executable source-model regression vectors.",
+        "justification": "Primary study and supplement support the adult diagnostic-biopsy major-bleeding refit, units, coefficients and spline tests, not full baseline acceptance. See docs/verification/calculators/kidney-biopsy-bleeding-risk.md for the weight-input correction, test/release evidence and unresolved other input-bound and extrapolation limits.",
         "sourceReferences": [
           {
             "authority": "Thorne et al.",
@@ -1257,13 +1269,13 @@
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Implements the original 2004 score while a 2021 update exists; the implemented-versus-current relationship must be resolved before verification.",
+        "justification": "Original 2004 PCI score, not Mehran 2 or general IV contrast clearance. Bounded input and unsafe-output repair: docs/verification/calculators/mehran-cin.md. Original-study rounding, rates, definitions, current applicability and full baseline acceptance remain unresolved; no verification upgrade.",
         "sourceReferences": [
           {
             "authority": "Mehran et al.",
             "title": "A simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention",
             "role": "primary-publication",
-            "url": "https://doi.org/10.1016/j.jacc.2004.06.034"
+            "url": "https://doi.org/10.1016/j.jacc.2004.06.068"
           }
         ],
         "implementationEvidence": null
@@ -1661,19 +1673,37 @@
       "id": "radiation-dose-converter",
       "name": "Radiation Dose Converter",
       "category": "Radiology",
-      "guidelineVersion": null,
+      "guidelineVersion": "NIST unit conversions / AAPM96 CT reference / ICRP103 weighting",
       "sourcePath": "src/components/calculators/RadiationDoseConverter.jsx",
       "registry": {
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Uses radiation unit and protection references rather than a single guideline; all conversion factors remain queued for primary-authority audit.",
+        "justification": "Source-reviewed correction contract and independent cases: docs/verification/calculators/radiation-dose-converter.md. Same-quantity conversions, explicitly confirmed organ-equivalent relationship and historical AAPM96 age/region/phantom CT estimate; no patient-risk, prescribing or exposure-appropriateness assessment. Full baseline and live acceptance remain pending; no verification upgrade.",
         "sourceReferences": [
           {
             "authority": "International Commission on Radiological Protection",
             "title": "ICRP Publication 103",
             "role": "official-authority",
             "url": "https://www.icrp.org/publication.asp?id=ICRP+Publication+103"
+          },
+          {
+            "authority": "NIST",
+            "title": "SP811 Appendix B.9 radiology unit conversion factors",
+            "role": "official-authority",
+            "url": "https://www.nist.gov/pml/special-publication-811/nist-guide-si-appendix-b-conversion-factors/nist-guide-si-appendix-b9"
+          },
+          {
+            "authority": "AAPM",
+            "title": "Report 96 (2008), Table3 and Eq12, printed p13",
+            "role": "official-authority",
+            "url": "https://www.aapm.org/pubs/reports/RPT_96.pdf"
+          },
+          {
+            "authority": "IAEA",
+            "title": "Safety Reports Series115 (2023), Eq5.10/Table5.4, printed pp41–42",
+            "role": "official-authority",
+            "url": "https://www-pub.iaea.org/MTCD/Publications/PDF/PUB1987_web.pdf"
           }
         ],
         "implementationEvidence": null
@@ -1921,19 +1951,37 @@
       "id": "wells-dvt",
       "name": "Wells Criteria for DVT",
       "category": "Clinical Decision",
-      "guidelineVersion": "Wells Criteria (2003)",
+      "guidelineVersion": "Modified Wells DVT / NICE NG158",
       "sourcePath": "src/components/calculators/WellsDVT.jsx",
       "registry": {
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Implements the published DVT clinical prediction rule rather than a versioned guideline; model and current-use context remain queued for audit.",
+        "justification": "Source-reviewed implementation contract and independent cases: docs/verification/calculators/wells-dvt.md. NICE-adapted modified Wells score with source-specific diagnostic context and separately labeled historical cohort prevalence. Not an individual risk estimate or treatment algorithm. Final review, integrated release tests and live acceptance remain pending; no verification upgrade.",
         "sourceReferences": [
           {
             "authority": "Wells et al.",
             "title": "Evaluation of D-dimer in the diagnosis of suspected deep-vein thrombosis",
             "role": "primary-publication",
             "url": "https://doi.org/10.1056/NEJMoa023153"
+          },
+          {
+            "authority": "NICE",
+            "title": "NG158 Table 1 and recommendations 1.1.1–1.1.14",
+            "role": "official-authority",
+            "url": "https://www.nice.org.uk/guidance/ng158/chapter/Recommendations"
+          },
+          {
+            "authority": "American Society of Hematology",
+            "title": "2018 diagnosis guideline, lower-extremity recommendations 5–8 and remarks",
+            "role": "official-authority",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6258916/"
+          },
+          {
+            "authority": "American College of Chest Physicians",
+            "title": "CHEST 2012 diagnosis guideline, section 3.1.1: historical probability estimates",
+            "role": "official-authority",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3278048/"
           }
         ],
         "implementationEvidence": null
@@ -2005,14 +2053,26 @@
       "id": "y90-radiation-segmentectomy",
       "name": "Y-90 Radioembolization Dosimetry",
       "category": "Hepatology/Liver",
-      "guidelineVersion": "MIRD Dosimetry (Ho 1996)",
+      "guidelineVersion": "EANM compartment dosimetry convention (49.67 J/GBq)",
       "sourcePath": "src/components/calculators/Y90RadiationSegmentectomy.jsx",
       "registry": {
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Uses published MIRD and radioembolization dosimetry models rather than a single current guideline; consensus status remains queued for review.",
+        "justification": "Bounded correction of uniform/partition energy balance, shunt and residual accounting, planned in docs/verification/calculators/y90-radiation-segmentectomy.md. Reports treatment-time activity and assumed-mass lung dose, not vial ordering, target selection or treatment eligibility. Source-based AI review of these rules does not complete the broader product, entry-limit or historical-reference audit; restrictions and final live proof remain separately tracked.",
         "sourceReferences": [
+          {
+            "authority": "EANM (Weber et al.)",
+            "title": "EANM procedure guideline for the treatment of liver cancer and liver metastases with intra-arterial radioactive compounds",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1007/s00259-021-05600-z"
+          },
+          {
+            "authority": "FDA-hosted TheraSphere instructions for use",
+            "title": "P200029S011C: pages 20-23 and Appendix page 29; model equations and treatment-time versus calibration-time distinction",
+            "role": "primary-publication",
+            "url": "https://www.accessdata.fda.gov/cdrh_docs/pdf20/P200029S011C.pdf"
+          },
           {
             "authority": "Ho et al.",
             "title": "Partition model for estimating radiation doses from yttrium-90 microspheres",

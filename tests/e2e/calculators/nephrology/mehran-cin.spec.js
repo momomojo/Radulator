@@ -28,6 +28,9 @@ import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js
 test.describe("Mehran CIN Risk Score Calculator", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, "Mehran CIN Risk Score");
+    // Explicit zero preserves legacy no-volume-contribution cases. Missing volume
+    // is tested separately and is never silently substituted by production code.
+    await page.locator("#contrast_volume").fill("0");
   });
 
   test.describe("Visual and UI Tests", () => {
@@ -568,107 +571,93 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
     });
   });
 
-  test.describe("Contrast Limits Guidance", () => {
-    test("should display contrast limits based on eGFR", async ({ page }) => {
-      await page.fill('input[id="egfr"]', "60");
-
-      await page.click("button:has-text('Calculate')");
-
-      // Target: <120 mL (60 * 2); Maximum: <180 mL (60 * 3)
-      const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        results.locator("> div:has-text('Contrast Limits:')"),
-      ).toContainText("Target: <120 mL");
-      await expect(
-        results.locator("> div:has-text('Contrast Limits:')"),
-      ).toContainText("Maximum: <180 mL");
+  test.describe("Safety output and recovery", () => {
+    test("report remains readable on mobile and in print media", async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const closeMenu = page.getByRole("button", { name: "Close menu", exact: true });
+      if (await closeMenu.isVisible()) await closeMenu.click();
+      await page.locator("#creatinine").fill("1");
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Individualize hydration");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.emulateMedia({ media: "print" });
+      await expect(results).toBeVisible();
+      await expect(results).toContainText("historical cohort estimates");
+      await expect(page.getByRole("button", { name: "Print Results", exact: true })).toBeHidden();
     });
 
-    test("should display lower contrast limits for impaired eGFR", async ({
-      page,
-    }) => {
-      await page.fill('input[id="egfr"]', "30");
-
-      await page.click("button:has-text('Calculate')");
-
-      // Target: <60 mL (30 * 2); Maximum: <90 mL (30 * 3)
-      const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        results.locator("> div:has-text('Contrast Limits:')"),
-      ).toContainText("Target: <60 mL");
-      await expect(
-        results.locator("> div:has-text('Contrast Limits:')"),
-      ).toContainText("Maximum: <90 mL");
-    });
-  });
-
-  test.describe("Prevention Recommendations", () => {
-    test("should show standard hydration for low risk", async ({ page }) => {
-      await page.fill('input[id="egfr"]', "80");
-
-      await page.click("button:has-text('Calculate')");
-
-      const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        results.locator("> div:has-text('Prevention Recommendations:')"),
-      ).toContainText("Standard hydration protocol");
+    test("does not invent eGFR or contrast limits from creatinine", async ({ page }) => {
+      await page.locator("#creatinine").fill("1");
+      await page.locator("#contrast_volume").fill("100");
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Renal Input Method:");
+      await expect(results).toContainText("no eGFR calculated");
+      await expect(results).not.toContainText("Estimated eGFR:");
+      await expect(results).not.toContainText("Contrast Limits:");
+      await expect(results).toContainText("historical cohort estimates");
     });
 
-    test("should show aggressive hydration for moderate risk", async ({
-      page,
-    }) => {
-      // Diabetes (3) + Anemia (3) = 6 pts
-      await page.locator('button[id="diabetes"]').click();
-      await page.locator('button[id="anemia"]').click();
-
-      await page.fill('input[id="egfr"]', "70");
-
-      await page.click("button:has-text('Calculate')");
-
-      const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        results.locator("> div:has-text('Prevention Recommendations:')"),
-      ).toContainText("Aggressive hydration");
-      await expect(
-        results.locator("> div:has-text('Prevention Recommendations:')"),
-      ).toContainText("iso-osmolar contrast");
+    test("severe-risk CHF result does not prescribe hydration or dialysis access", async ({ page }) => {
+      for (const id of ["chf", "iabp", "diabetes", "anemia"]) await page.locator("#" + id).click();
+      await page.locator("#egfr").fill("19");
+      await page.locator("#contrast_volume").fill("100");
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("Individualize hydration");
+      await expect(results).toContainText("severe heart failure");
+      await expect(results).not.toContainText("mL/kg/hr");
+      await expect(results).not.toContainText("Consider prophylactic");
+      await expect(results).not.toContainText("Hold metformin");
+      await expect(results).not.toContainText("Maximum:");
     });
 
-    test("should show nephrology consultation for very high risk", async ({
-      page,
-    }) => {
-      // CHF (5) + IABP (5) + Diabetes (3) + Anemia (3) = 16 pts
-      await page.locator('button[id="chf"]').click();
-      await page.locator('button[id="iabp"]').click();
-      await page.locator('button[id="diabetes"]').click();
-      await page.locator('button[id="anemia"]').click();
-
-      await page.fill('input[id="egfr"]', "70");
-
-      await page.click("button:has-text('Calculate')");
-
-      const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        results.locator("> div:has-text('Prevention Recommendations:')"),
-      ).toContainText("Nephrology consultation");
-      await expect(
-        results.locator("> div:has-text('Prevention Recommendations:')"),
-      ).toContainText("delaying non-emergent procedure");
+    test("supplied eGFR precedence is explicit without double-counting", async ({ page }) => {
+      await page.locator("#egfr").fill("60");
+      await page.locator("#creatinine").fill("3");
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("0 points");
+      await expect(results).toContainText("eGFR takes precedence");
     });
-  });
 
-  test.describe("eGFR Estimation", () => {
-    test("should estimate eGFR from creatinine when eGFR not provided", async ({
-      page,
-    }) => {
-      await page.fill('input[id="creatinine"]', "1.2");
+    test("unknown contrast volume cannot produce or retain a clinical report", async ({ page }) => {
+      await page.locator("#egfr").fill("60");
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Copy results", exact: true })).toBeVisible();
+      await page.locator("#contrast_volume").fill("");
+      await expect(page.getByRole("button", { name: "Copy results", exact: true })).toHaveCount(0);
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      await expect(page.getByRole("status", { name: "Calculator results" })).not.toContainText("CIN Risk:");
+      await page.locator("#contrast_volume").fill("100");
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      await expect(page.getByRole("status", { name: "Calculator results" })).toContainText("1 points");
+    });
 
-      await page.click("button:has-text('Calculate')");
+    test("invalid secondary renal field is not silently ignored", async ({ page }) => {
+      await page.locator("#egfr").fill("60");
+      await page.locator("#creatinine").fill("-1");
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results).toContainText("finite positive");
+      await expect(results).not.toContainText("CIN Risk:");
+      await page.locator("#creatinine").fill("");
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      await expect(results).toContainText("0 points");
+    });
 
-      const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(
-        results.locator("> div:has-text('Estimated eGFR:')"),
-      ).toBeVisible();
+    test("copied report retains prevention limits and excludes invented outputs", async ({ page, context }) => {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+      await page.locator("#creatinine").fill("1");
+      await page.getByRole("button", { name: "Calculate", exact: true }).click();
+      await page.getByRole("button", { name: "Copy results", exact: true }).click();
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(copied).toContain("Individualize hydration");
+      expect(copied).toContain("historical cohort estimates");
+      expect(copied).toContain("no eGFR calculated");
+      expect(copied).not.toContain("Estimated eGFR:");
+      expect(copied).not.toContain("Contrast Limits:");
     });
   });
 
@@ -730,6 +719,9 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
   });
 
   test.describe("References", () => {
+    test.beforeEach(async ({ page }) => {
+      await page.getByRole("button", { name: /Show .* more references/ }).click();
+    });
     test("should display Mehran study references", async ({ page }) => {
       await expect(
         page.getByRole("heading", { name: "References" }),
@@ -739,7 +731,7 @@ test.describe("Mehran CIN Risk Score Calculator", () => {
 
     test("should have primary source DOI link", async ({ page }) => {
       const mehranStudy = page.locator(
-        'a[href="https://doi.org/10.1016/j.jacc.2004.06.034"]',
+        'a[href="https://doi.org/10.1016/j.jacc.2004.06.068"]',
       );
       await expect(mehranStudy).toBeVisible();
     });

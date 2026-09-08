@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Current operating contract:** read [AGENTS.md](AGENTS.md) first. It is the single
+source for clinical-review ownership, testing, research access and protected
+publication. The material below is legacy architecture/reference context; its
+model roles, calculator counts and guideline snapshots must not override the
+current contract or generated verification inventory.
+
 ## Project Overview
 
 **Radulator** (RadCalc 2.0) is a comprehensive React-based medical calculator web application built with Vite. It provides **38 medical calculators** across 11 specialties (radiology, neuroradiology, trauma, cardiac imaging, breast imaging, women's imaging, clinical decision, hepatology/liver, urology, interventional, and nephrology) for various clinical measurements, classifications, and decision support.

@@ -99,7 +99,13 @@ Reference effective doses for context:
     const { dlp = "", body_region = "", age_group = "" } = vals;
 
     // Validate inputs
-    if (!dlp || parseFloat(dlp) <= 0) {
+    const decimal = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+    const dlpValue = typeof dlp === "number"
+      ? dlp
+      : typeof dlp === "string" && decimal.test(dlp.trim())
+        ? Number(dlp.trim())
+        : NaN;
+    if (!Number.isFinite(dlpValue) || dlpValue <= 0) {
       return {
         Error: "Please enter a valid DLP value (mGy·cm).",
       };
@@ -111,8 +117,10 @@ Reference effective doses for context:
       };
     }
 
-    const dlpValue = parseFloat(dlp);
-    const ageCategory = age_group || "adult";
+    if (!["adult", "child_10", "child_5", "child_1", "newborn"].includes(age_group)) {
+      return { Error: "Please select a valid patient age group." };
+    }
+    const ageCategory = age_group;
 
     // K-factors (mSv / mGy·cm) based on ICRP Publication 103 and European Commission data
     // Format: { region: { ageGroup: k-factor } }
@@ -197,15 +205,18 @@ Reference effective doses for context:
     };
 
     // Get appropriate k-factor
-    const regionFactors = kFactors[body_region];
-    if (!regionFactors) {
+    if (typeof body_region !== "string" || !Object.hasOwn(kFactors, body_region)) {
       return { Error: "Invalid body region selected." };
     }
+    const regionFactors = kFactors[body_region];
 
-    const kFactor = regionFactors[ageCategory] || regionFactors.adult;
+    const kFactor = regionFactors[ageCategory];
 
     // Calculate effective dose
     const effectiveDose = dlpValue * kFactor;
+    if (!Number.isFinite(effectiveDose) || effectiveDose <= 0) {
+      return { Error: "The effective dose cannot be represented reliably. Check the DLP value and units." };
+    }
 
     // Format region name
     const regionNames = {
@@ -254,16 +265,9 @@ Reference effective doses for context:
 
     result["Dose Context"] = contexts.join("; ");
 
-    // Risk assessment (linear no-threshold model estimate)
-    // Approximately 5% per Sievert lifetime cancer risk (ICRP)
-    const lifetimeRiskPercent = (effectiveDose / 1000) * 5 * 100;
-    if (lifetimeRiskPercent >= 0.01) {
-      result["Estimated Additional Lifetime Cancer Risk"] =
-        `~${lifetimeRiskPercent.toFixed(3)}% (population average, highly uncertain)`;
-    } else {
-      result["Estimated Additional Lifetime Cancer Risk"] =
-        "<0.01% (negligible at population level)";
-    }
+    // ICRP147: effective dose supports broad comparisons, not individual risk prediction.
+    result["Interpretation"] =
+      "Estimated effective dose supports broad radiation-dose comparisons. It does not determine an individual's cancer probability; individual risk assessment requires organ doses and age-, sex-, and population-specific factors.";
 
     // Typical reference values
     const typicalDLP = getTypicalDLP(body_region);
@@ -298,6 +302,10 @@ Reference effective doses for context:
   },
 
   refs: [
+    {
+      t: "ICRP Publication 147. Use of dose quantities in radiological protection. Ann ICRP. 2021;50(1). Executive summary (f)-(g): medical comparisons and individual-risk limitations.",
+      u: "https://www.icrp.org/publication.asp?id=ICRP+Publication+147",
+    },
     {
       t: "ICRP Publication 103. The 2007 Recommendations of the International Commission on Radiological Protection. Ann ICRP. 2007;37(2-4):1-332.",
       u: "https://doi.org/10.1016/j.icrp.2007.10.003",

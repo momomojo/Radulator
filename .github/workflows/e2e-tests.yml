@@ -73,10 +73,15 @@ jobs:
           node tests/roadmap-guideline-status.test.mjs
 
       - name: Build application
-        run: npm run build
+        run: npm run test:privacy:artifact
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+
+      - name: Run privacy browser and root-error checks
+        run: npm run test:privacy:browser
+        env:
+          CI: true
 
       - name: Run smoke tests
         run: npx playwright test tests/e2e/smoke.spec.js --project=chromium
@@ -142,6 +147,8 @@ jobs:
             ops/hermes/radulator/seed_convert_gate_dedupe.py \
             ops/hermes/radulator/install.py
           bash -n scripts/dev-local.sh
+          npm run test:qa-harness
+          npm run test:research
           npm run test:search-verification
           npm run test:calculator-helper
           npm run test:invariants
