@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
 // Source contract: docs/verification/calculators/radiation-dose-converter.md.
 // All expected conversions/CT cases are independent literals.
@@ -18,7 +19,7 @@ async function ctInputs(page, age = "adult", region = "head", phantom = "16") {
   await page.locator("#ct_phantom").selectOption(phantom);
 }
 test.beforeEach(async ({ page }) => {
-  await page.goto("/#/radiation-dose-converter");
+  await navigateToCalculator(page, "Radiation Dose Converter");
   await expect(page.getByTestId("calculator-title").first()).toHaveText("Radiation Dose Converter");
 });
 const unitCases = [

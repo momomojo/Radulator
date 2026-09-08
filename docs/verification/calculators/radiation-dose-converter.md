@@ -307,7 +307,9 @@ suite (313 fixtures plus supplemental suites), guideline registry validation
 and generated inventory check passed. Full integrated Playwright suite on the
 production preview passed1542, failed0, skipped0, flaky0, errors0, with retries
 disabled; duration289073.952ms, start2026-09-08T14:09:17.917Z.
-Receipt: `test-results/results.json` in this implementation workspace.
+Statistics were read from `test-results/results.json` and retained in this
+record and execution transcript. That default runner path is overwritten by
+later focused runs; it is not a permanent full-suite artifact.
 
 The prior main suite had1553 cases: this correction replaces39 legacy radiation
 browser cases with28 source-aligned cases; all other browser files are unchanged.
@@ -316,3 +318,16 @@ Owner re-read complete runtime/tests and registry diff after rebase; no shared
 runtime/control changes were introduced. This follow-up changes only this
 acceptance record. Required final-head CI, independent signed reviews, trusted
 merge, artifact verification and live QA remain pending.
+
+### CI discovery correction
+
+Targeted CI job102097367248 failed before running tests: `spec-map.js --check`
+could not associate a direct `page.goto` with the calculator. Reproduced the
+same failure locally. The existing shared `navigateToCalculator` helper resolves
+the same permanent route and adds readiness checks; using it in beforeEach
+restores actual discovery without a fake comment or a weakened selector.
+The coverage command now finds42/42 calculators and `--specs-for` selects this
+radiation spec. All28 focused cases passed with the helper, retries disabled,
+6853.161ms; lint and diff checks passed. No runtime, clinical rule, expected
+answer, shared helper or workflow changed. The historical integrated result
+above predates this test-only correction; new-head required CI must run again.
