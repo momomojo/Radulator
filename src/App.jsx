@@ -483,7 +483,7 @@ function AppContent() {
   }, [def?.id, out]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
+    <div className={`min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300${showDisclaimer || showWelcome ? " pt-16 md:pt-0" : ""}`}>
       <a href="#main-content" className="skip-link">
         Skip to calculator
       </a>
@@ -1406,27 +1406,6 @@ function AppContent() {
                     }
                   />
                   {/* Calculator-specific interpretive notes */}
-                  {def.id === "adrenal-ct" &&
-                    parseFloat(out["Absolute Washout (%)"]) >= 60 && (
-                      <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">
-                        <div className="flex items-center text-green-800 dark:text-green-300">
-                          <svg
-                            className="w-4 h-4 mr-2"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          <span className="font-medium">
-                            Absolute washout ≥60% indicates benign adenoma.
-                          </span>
-                        </div>
-                      </div>
-                    )}
                   {def.id === "prostate-volume" &&
                     prostateVolumeMl <= 30 && (
                       <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">
