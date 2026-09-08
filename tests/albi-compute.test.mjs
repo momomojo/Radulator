@@ -140,7 +140,7 @@ test("ALBI review thresholds are inclusive and operate on converted SI values", 
   }
   const us = ALBIScore.compute({ unit_system: "US", albumin: 6.5, bilirubin: 1 });
   assert.match(us["Input Check"], /6\.5 g\/dL/);
-  assert.match(us["Input Check"], /65 g\/L/);
+  assert.match(us["Input Check"], /65\.0 g\/L/);
   const usual = ALBIScore.compute({ unit_system: "SI", albumin: 40, bilirubin: 10 });
   assert.equal(usual["Input Check"], undefined);
   assert.match(usual.Applicability, /not a post-transplant outcome predictor/i);
@@ -273,6 +273,18 @@ test("adapter rejects malformed values instead of accepting numeric prefixes", (
     });
     assert.match(result.Error, /valid positive values/i, String(malformed));
   }
+});
+
+test("input-review warning formats converted SI values without changing calculation precision", () => {
+  const inputs = { unit_system: "US", albumin: "6.01", bilirubin: "1.01" };
+  const displayed = ALBIScore.compute(inputs);
+  assert.match(displayed["Input Check"], /Entered albumin 6\.01 g\/dL and bilirubin 1\.01 mg\/dL/);
+  assert.match(displayed["Input Check"], /SI values: 60\.1 g\/L and 17\.3 μmol\/L/);
+  assert.equal(displayed["Converted Albumin (SI)"], "60.1 g/L");
+  assert.equal(displayed["Converted Bilirubin (SI)"], "17.3 μmol/L");
+  assert.equal(calculateAlbi(inputs).bilirubinSI, 17.27504);
+  assert.equal(displayed["ALBI Score"], "-4.292");
+  assert.equal(displayed["ALBI Grade"], "Grade 1");
 });
 
 test("fifth reference identifies the supporting ALBI nomogram study without claiming its model", () => {

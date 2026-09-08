@@ -114,7 +114,7 @@ Scope: ALBI describes liver-function prognosis in studied HCC and chronic-liver-
     // Build output object
     const result = {
       ...(clinicalResult.inputReviewRequired ? {
-        "Input Check": `Outside application review thresholds (albumin 5–60 g/L; bilirubin 1–1000 μmol/L). Entered albumin ${clinicalResult.albuminInput} ${clinicalResult.usedUSUnits ? "g/dL" : "g/L"} and bilirubin ${clinicalResult.bilirubinInput} ${clinicalResult.usedUSUnits ? "mg/dL" : "μmol/L"}; SI values: ${albSI} g/L and ${biliSI} μmol/L. Verify against the laboratory report and units. These are software input checks, not physiological or validated model boundaries. Numerical computability does not establish clinical applicability.`,
+        "Input Check": `Outside application review thresholds (albumin 5–60 g/L; bilirubin 1–1000 μmol/L). Entered albumin ${clinicalResult.albuminInput} ${clinicalResult.usedUSUnits ? "g/dL" : "g/L"} and bilirubin ${clinicalResult.bilirubinInput} ${clinicalResult.usedUSUnits ? "mg/dL" : "μmol/L"}; SI values: ${albSI.toFixed(1)} g/L and ${biliSI.toFixed(1)} μmol/L. Verify against the laboratory report and units. These are software input checks, not physiological or validated model boundaries. Numerical computability does not establish clinical applicability.`,
       } : {}),
       "ALBI Score": albiScore.toFixed(3),
       "ALBI Grade": `Grade ${albiGrade}`,

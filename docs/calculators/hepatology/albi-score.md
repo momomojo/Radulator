@@ -56,18 +56,24 @@ The calculator supports both SI and US unit systems:
 ### 1. Unit System Selection
 - **Type**: Radio button group
 - **Options**:
-  - SI units (μmol/L, g/L) [Default]
+  - SI units (μmol/L, g/L)
   - US units (mg/dL, g/dL)
 - **Purpose**: Determines input/display unit system
+- **Required**: Explicitly select SI or US before calculating. Switching units
+  changes the interpretation of the entered numbers, not the numbers themselves,
+  and clears the previous result. The pure core's omitted-unit SI compatibility
+  default is not a browser default.
 
 ### 2. Serum Albumin
 - **Type**: Numeric input
 - **Units**: g/L (SI) or g/dL (US)
-- **Range**:
+- **Application review interval (not an eligibility boundary)**:
   - SI: 5-60 g/L
   - US: 0.5-6.0 g/dL
 - **Step**: 0.1
-- **Validation**: Must be positive; physiological range enforced
+- **Validation**: Must be positive and finite. Outside the application review
+  interval, valid arithmetic returns a numerical grade with an input-check
+  warning, not a physiological-range error.
 - **Clinical Notes**:
   - Normal range: 35-50 g/L (3.5-5.0 g/dL)
   - Hypoalbuminemia indicates impaired hepatic synthetic function
@@ -75,11 +81,13 @@ The calculator supports both SI and US unit systems:
 ### 3. Total Bilirubin
 - **Type**: Numeric input
 - **Units**: μmol/L (SI) or mg/dL (US)
-- **Range**:
+- **Application review interval (not an eligibility boundary)**:
   - SI: 1-1000 μmol/L
-  - US: 0.06-58.5 mg/dL
+  - US: approximately 0.0585–58.466 mg/dL; review is evaluated after full-precision SI conversion
 - **Step**: 0.1
-- **Validation**: Must be positive; physiological range enforced
+- **Validation**: Must be positive and finite. Outside the application review
+  interval, valid arithmetic returns a numerical grade with an input-check
+  warning, not a physiological-range error.
 - **Clinical Notes**:
   - Normal range: 5-20 μmol/L (0.3-1.2 mg/dL)
   - Hyperbilirubinemia indicates impaired hepatic excretory function
@@ -117,16 +125,27 @@ When US units are selected, displays SI conversions:
 ## Validation & Error Handling
 
 ### Input Validation
-1. **Positive Values**: Both albumin and bilirubin must be > 0
-2. **Physiological Ranges**:
-   - Albumin: 5-60 g/L (SI) or 0.5-6.0 g/dL (US)
-   - Bilirubin: 1-1000 μmol/L (SI) or 0.06-58.5 mg/dL (US)
-3. **Unit System**: Auto-detects unrealistic values suggesting wrong unit selection
+1. **Valid Numbers**: Both measurements must be positive finite numbers or complete
+   decimal numeric strings. Blank, malformed, zero, negative and non-finite
+   inputs fail. Converted SI values and the resulting score must also be finite;
+   converted measurements must remain positive.
+2. **Application Review Warning**: Albumin outside 5–60 g/L or bilirubin outside
+   1–1000 μmol/L triggers a warning, with inclusive endpoints. These software
+   review intervals are not physiological limits or validated model boundaries.
+   The numerical score and grade remain available when arithmetic is valid;
+   computability alone does not establish clinical applicability.
+3. **Explicit Units**: The browser requires SI or US selection. It does not infer
+   units or silently convert entered numbers when the selection changes.
+4. **Report**: The warning identifies entered values/units and SI conversions,
+   asks for laboratory-report verification, and accompanies copy/print output.
+   Converted display values use one decimal place; calculation and grading use
+   the full-precision values. Warning-bearing Grade 1 reports are not styled as
+   an unqualified green success.
 
 ### Error Messages
 - "Please enter valid positive values for albumin and bilirubin."
-- "Albumin value X.X g/L is outside physiological range (5-60 g/L). Please check unit selection and input."
-- "Bilirubin value X.X μmol/L is outside physiological range (1-1000 μmol/L). Please check unit selection and input."
+- "Select SI or US units before calculating."
+- "The entered values cannot produce a finite ALBI calculation in the selected units. Check the laboratory report and units."
 
 ## Test Cases
 
@@ -198,13 +217,13 @@ When US units are selected, displays SI conversions:
 - **Input**: Albumin 40, Bilirubin -10
 - **Expected**: Error message about positive values
 
-#### Test 13: Out of Range High
+#### Test 13: Outside Application Review Interval — High
 - **Input**: Albumin 100 g/L, Bilirubin 20 μmol/L
-- **Expected**: Error about physiological range
+- **Expected**: Numerical score/grade plus input-check warning; not a claim of validated applicability
 
-#### Test 14: Out of Range Low
+#### Test 14: Outside Application Review Interval — Low
 - **Input**: Albumin 3 g/L, Bilirubin 20 μmol/L
-- **Expected**: Error about physiological range
+- **Expected**: Numerical score/grade plus input-check warning; not a claim of validated applicability
 
 ## Clinical References
 
@@ -253,18 +272,18 @@ DOI: [10.1016/j.jhep.2016.09.008](https://doi.org/10.1016/j.jhep.2016.09.008)
 **Key Findings**:
 - ALBI grade subdivides each BCLC stage into prognostically distinct groups
 - Particularly useful for BCLC Stage B substratification
-- ALBI-modified BCLC improves treatment selection
+- This prognostic research does not supply a treatment-selection rule for this two-input calculator
 
 #### TACE Nomogram
-**Ho SY, Liu PH, Hsu CY, et al.**
+**Ho SY, Hsu CY, Liu PH, et al.**
 *Albumin-bilirubin (ALBI) grade-based nomogram for patients with hepatocellular carcinoma undergoing transarterial chemoembolization.*
-Dig Liver Dis. 2018;50(6):600-606.
-DOI: [10.1016/j.dld.2018.01.128](https://doi.org/10.1016/j.dld.2018.01.128)
+Digestive Diseases and Sciences. 2021;66(5):1730–1738.
+DOI: [10.1007/s10620-020-06384-2](https://doi.org/10.1007/s10620-020-06384-2)
 
-**Key Findings**:
-- ALBI-based nomogram predicts TACE outcomes
-- Incorporates tumor burden and ALBI grade
-- Validated prediction model for patient selection
+**Scope**: Supporting multivariable TACE nomogram research, not the original
+two-input ALBI model implemented here. The source review confirmed citation and
+abstract metadata, not inaccessible full-text methods. No nomogram, individual
+survival estimate or patient-selection algorithm is implemented from this source.
 
 ## Implementation Details
 
@@ -284,7 +303,7 @@ export const ALBIScore = {
 ### Calculation Logic
 1. Parse and validate input values
 2. Convert to SI units if US units selected
-3. Validate physiological ranges
+3. Require positive finite converted values; flag values outside the application review intervals without treating those intervals as physiological limits
 4. Calculate ALBI score: `(log10(bilirubin_SI) × 0.66) + (albumin_SI × -0.085)`
 5. Determine grade based on thresholds
 6. Generate interpretation and clinical context
@@ -336,14 +355,14 @@ export const ALBIScore = {
   - Formula accuracy
 
 ### Known Issues
-- None currently identified
+- Whole-calculator acceptance remains open. See the [clinical review and task record](../../verification/calculators/albi-score.md) for the exact reviewed scope, test evidence and remaining source/report/privacy/live checks.
 
-## Browser Compatibility
-- Chrome/Edge (Chromium): Full support
-- Firefox: Full support
-- Safari/WebKit: Full support
-- Mobile Chrome: Full support
-- Mobile Safari: Full support
+## Browser Verification Scope
+
+The current correction has focused Chromium desktop/mobile-width, keyboard,
+actual clipboard and print-media test evidence. This is not proof of native
+mobile-browser operation, native printing, all-browser accessibility or a
+complete cross-browser audit. See the task record for separately retained runs.
 
 ## Accessibility Features
 - Semantic HTML structure
@@ -365,11 +384,11 @@ export const ALBIScore = {
 ## Maintenance Notes
 
 ### Last Updated
-- **Code Version**: 2.0
-- **Documentation**: November 2025
-- **Last Formula Review**: November 2025
+- **Documentation reconciliation**: 2026-09-08
+- **Clinical source-review scope**: Recorded separately in the linked task record; not full clinical certification
 
 ### Change Log
+- Synchronized explicit units, software warnings, report presentation and corrected supporting bibliography with the approved ALBI baseline work
 - Initial implementation with full validation and clinical context
 - Comprehensive test coverage added
 - Documentation created

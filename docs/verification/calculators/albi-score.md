@@ -196,6 +196,39 @@ Full computation suite passed:313 canonical cases plus KBRC and supplementary
 tests. No runtime/test/build changes followed the integrated run. Final clinical
 release and live acceptance remain outstanding.
 
+### PR #265 review correction — 2026-09-08
+
+Review reproduced a presentation defect: US albumin6.01g/dL appeared as
+60.099999999999994g/L inside the input-check warning. Only the warning's SI
+display is now rounded to one decimal, matching the existing converted-value
+rows; entered measurements, full-precision conversion, score and grade are
+unchanged. The clinician/QA guide now matches the approved explicit-unit and
+application-warning contract instead of claiming a default selection or hard
+physiological exclusions.
+
+The new adapter regression failed on the unformatted warning, then all13
+computation tests passed. The new US6.01/1.01 case independently expects
+60.1g/L and17.3µmol/L in the displayed warning, with score−4.292/Grade1 and
+unrounded converted bilirubin17.27504µmol/L. Fresh build, lint and invariants
+passed; the invariant warning correctly requests clinical source/review evidence.
+The dedicated Chromium suite passed34, zero failed/skipped/flaky, workers2,
+retries0 on the freshly built worktree preview. It checks the actual clipboard
+and print-media warning presentation, not native printing. The full browser
+report is `test-results/results.json`; the earlier integrated results above
+apply to their historical candidate only. The changed PR head requires fresh
+required CI, independent signed review and protected deployment/live evidence.
+No full-calculator acceptance is asserted by this presentation correction.
+
+Fresh independent visual review of the same built adapter
+(`ALBIScore-D7MjKQ7n.js`) passed at1440px and390px: keyboard calculation,
+warning formatting, amber warning styling, stale-result clearing, invalid-input
+recovery and no horizontal overflow. Root also viewed the390px screenshot.
+Retained proofs: `test-results/albi-final-review.json`,
+`test-results/albi-final-review-1440.png` and
+`test-results/albi-final-review-390.png`. No page exceptions or failed requests
+were observed. The pre-existing CSP diagnostic that `frame-ancestors` is ignored
+in a meta tag remains; this is not a zero-console-diagnostics claim.
+
 - Clinical planning: partial source-based review recorded above; full supported-scope review pending.
 - ALBI-1 implementation/focused regression: committed in `b0a13e65f57f423bb3ec4e05535816d58cdfa616`; 5/5 focused tests passed, with the reverted-reference mutation correctly failing.
 - Independent ALBI-1 source/code review: accepted on 2026-09-07 by a separate GPT-6 Astra reviewer after checking the publisher and author-institution records. Root source/clinical planning is recorded above. This acceptance covers the citation repair only; final candidate browser/release checks and full-calculator acceptance remain pending.

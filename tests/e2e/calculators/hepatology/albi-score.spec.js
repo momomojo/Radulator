@@ -178,6 +178,22 @@ test.describe('ALBI Score Calculator', () => {
       await expectResultText(page, /does not establish clinical applicability/i);
     });
 
+    test('formatted US conversions are preserved in the warning, clipboard and print layout', async ({ page }) => {
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+      await page.locator('input[type="radio"][value="US"]').check();
+      await page.locator('#albumin').fill('6.01');
+      await page.locator('#bilirubin').fill('1.01');
+      await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+      const conversion = 'SI values: 60.1 g/L and 17.3 μmol/L';
+      await expectResultText(page, conversion);
+      await expectResultText(page, '-4.292');
+      await page.getByRole('button', { name: 'Copy results', exact: true }).click();
+      expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(conversion);
+      await page.emulateMedia({ media: 'print' });
+      await expect(resultsRegion(page).getByText(/Outside application review thresholds/)).toBeVisible();
+      await expectResultText(page, conversion);
+    });
+
     test('warning survives copy and print and clears through invalid recovery on mobile', async ({ page }) => {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
