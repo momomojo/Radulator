@@ -175,6 +175,31 @@ dependency calculation and its tests in an adjacent pure helper; it is not a
 finished repair until wired to the actual form/CSV and acceptance cases pass.
 No new helper may be counted as a live fix or a completed calculator audit.
 
+### Isolated arithmetic implementation checkpoint
+
+`avsAldosteroneIndices.js` now implements that single-pair, standard-unit
+dependency layer, with value/reason results and numerical higher-side identity.
+It is not imported by the form. It does not select sites, aggregate samples,
+convert units or issue clinical criteria/treatment decisions. Thus the live
+Infinity/site-mixing defects remain pending actual-form integration.
+
+The initial missing-module run was a setup failure, not behavioral evidence.
+After adding a minimal unavailable-result stub, all8 behavioral tests failed
+on expected values/reasons; the implementation then passed8. Independent
+read-only review found no correctness issue but requested final-division range
+coverage. The expanded9-test suite passes, including seven finite-constituent
+overflow/underflow examples. Test file `tests/avs-aldosterone-indices-compute.test.mjs`
+matches the existing computation-suite discovery pattern. Fresh build, whole-repo
+lint and invariants passed; dependencies and application imports are unchanged.
+
+The earlier paired integrated browser run completed1577 passed/1 failed, no
+skips/flakiness. Failure was the generated-page build-freshness check: adding
+the unimported helper under src changed the recursive source timestamp after
+the preview build. Owner caused and diagnosed this; the check is unchanged.
+Receipt `avs-paired-integrated-results.json` is retained, not represented as a
+pass. A fresh build completed afterward; freeze source/tests for the replacement
+integrated run and retain its separate receipt before any release claim.
+
 ## State-repair completion evidence
 
 State repair implemented locally2026-09-08. The15-case pre-fix run reproduced
