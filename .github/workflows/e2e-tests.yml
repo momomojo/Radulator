@@ -73,15 +73,10 @@ jobs:
           node tests/roadmap-guideline-status.test.mjs
 
       - name: Build application
-        run: npm run test:privacy:artifact
+        run: npm run build
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
-
-      - name: Run privacy browser and root-error checks
-        run: npm run test:privacy:browser
-        env:
-          CI: true
 
       - name: Run smoke tests
         run: npx playwright test tests/e2e/smoke.spec.js --project=chromium

@@ -289,9 +289,6 @@ Acute reactions require an emergency response protocol; use the official ACR adu
     if (volumeCapped) {
       contrastVolume = maxVolume;
     }
-    const plannedIodineDose = volumeCapped
-      ? contrastVolume * concentration
-      : totalIodineDose;
 
     // Determine flow rate based on IV access and study type
     const flowRateMap = {
@@ -408,7 +405,7 @@ Acute reactions require an emergency response protocol; use the official ACR adu
     // Additional warnings
     if (volumeCapped) {
       warnings.push(
-        `Volume capped at ${maxVolume} mL (uncapped target: ${Math.round(totalIodineDose / concentration)} mL; the cap reduces planned iodine below target). Confirm diagnostic adequacy against the local protocol. This is a planning value, not proof of an administered dose.`,
+        `Volume capped at ${maxVolume} mL (calculated: ${Math.round(totalIodineDose / concentration)} mL)`,
       );
     }
 
@@ -453,7 +450,7 @@ Acute reactions require an emergency response protocol; use the official ACR adu
 
     const result = {
       "Recommended Contrast Volume": `${Math.round(contrastVolume)} mL`,
-      "Total Iodine Dose": `${Math.round(plannedIodineDose).toLocaleString()} mg I (${Math.round(plannedIodineDose / dosingWeight)} mg I/kg ${dosingBasis})`,
+      "Total Iodine Dose": `${Math.round(totalIodineDose).toLocaleString()} mg I (${Math.round(totalIodineDose / dosingWeight)} mg I/kg ${dosingBasis})`,
       "Injection Rate": injectionRate,
       "Iodine Delivery Rate (IDR)": `${idr.toFixed(2)} g I/s - ${idrAssessment}`,
       "Injection Duration": `~${Math.round(injectionDuration)} seconds`,
@@ -462,10 +459,6 @@ Acute reactions require an emergency response protocol; use the official ACR adu
       "Acute Reaction Resources":
         "For a suspected acute reaction, activate the local emergency response and use the official ACR Adult or Pediatric Contrast Reaction Card linked in References; this dosing calculator is not a treatment algorithm.",
     };
-
-    if (volumeCapped) {
-      result["Uncapped Iodine Target"] = `${Math.round(totalIodineDose).toLocaleString()} mg I (${Math.round(totalIodineDose / dosingWeight)} mg I/kg ${dosingBasis}; before ${maxVolume} mL cap)`;
-    }
 
     // Add body composition info
     result["Body Composition"] =

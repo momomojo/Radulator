@@ -1,16 +1,44 @@
 /**
- * IPSS sampling interpretation for adult ACTH-dependent hypercortisolism.
- * Preserves raw ACTH ratios and separates basal/concurrent PRL normalization.
- * Sources and limits: docs/verification/calculators/ipss.md and refs below.
- * No autonomous diagnosis, procedural prescription or tumor-side selection.
+ * IPSS Calculator - Inferior Petrosal Sinus Sampling
+ *
+ * Diagnostic procedure for differentiating Cushing's disease (pituitary ACTH adenoma)
+ * from ectopic ACTH syndrome through bilateral catheterization of inferior petrosal sinuses.
+ *
+ * Clinical Indication:
+ * - ACTH-dependent Cushing's syndrome with negative/equivocal pituitary MRI
+ * - Need to distinguish pituitary vs ectopic ACTH source
+ * - Guide surgical approach for transsphenoidal surgery
+ *
+ * Sampling Protocol:
+ * - Bilateral catheterization of inferior petrosal sinuses (IPS)
+ * - Simultaneous sampling from left IPS, right IPS, and peripheral vein
+ * - CRH stimulation at time 0
+ * - Multiple time points: Basal (-10, -3, 0 min) and Post-CRH (+3, +6, +9, +15 min)
+ *
+ * Key Calculations:
+ * 1. Catheterization Success: PRL IPS/Periphery ratio >1.8 (basal)
+ * 2. Diagnosis:
+ *    - Basal ACTH IPS/Periphery >2 → Cushing's disease
+ *    - Peak ACTH IPS/Periphery >3 (post-CRH) → Cushing's disease
+ *    - Both ≤ threshold → Ectopic ACTH syndrome
+ * 3. Lateralization: ACTH ratio (higher/lower) ≥1.4
+ * 4. Normalized ACTH/PRL ratios for enhanced lateralization
+ *
+ * References:
+ * - Oldfield EH et al. N Engl J Med. 1991;325(13):897-905. DOI: 10.1056/NEJM199109263251301
+ * - Lefournier V et al. J Clin Endocrinol Metab. 2003;88(1):196-203. DOI: 10.1210/jc.2002-020374
+ * - Colao A et al. Eur J Endocrinol. 2001;144(5):499-507. DOI: 10.1530/eje.0.1440499
+ * - Nieman LK et al. J Clin Endocrinol Metab. 2008;93(5):1526-1540. DOI: 10.1210/jc.2008-0125
+ * - Wind JJ et al. J Clin Endocrinol Metab. 2013;98(6):2285-2293. DOI: 10.1210/jc.2013-1159
+ * - Machado MC et al. Eur J Endocrinol. 2007;157(1):29-39. DOI: 10.1530/EJE-07-0100
  */
 
 export const IPSS = {
   id: "ipss",
   category: "Interventional",
   name: "Inferior Petrosal Sinus Sampling (IPSS)",
-  desc: "Basal and post-CRH ACTH ratios with explicitly labeled prolactin normalization",
-  guidelineVersion: "IPSS sampling interpretation (SVIN 2026)",
+  desc: "Inferior Petrosal Sinus Sampling for Cushing's disease diagnosis and lateralization",
+  guidelineVersion: "IPSS (Oldfield 1991)",
   keywords: [
     "pituitary",
     "Cushing",
@@ -20,10 +48,10 @@ export const IPSS = {
   ],
   tags: ["Interventional", "Endocrinology", "Neuroradiology"],
   metaDesc:
-    "IPSS sampling calculator for adult ACTH-dependent hypercortisolism: basal and post-CRH ACTH ratios, optional prolactin and method-specific normalization. No automated surgical-side selection.",
+    "Free IPSS Calculator for Cushing's disease. Inferior Petrosal Sinus Sampling with CRH stimulation, ACTH/prolactin ratios, and lateralization for pituitary vs ectopic ACTH.",
 
   info: {
-    text: "Calculate basal and post-CRH ACTH ratios from simultaneous left IPS, right IPS and peripheral samples. Intended for adult ACTH-dependent hypercortisolism with active cortisol excess at sampling; IPSS does not establish hypercortisolism.\n\nA basal ACTH IPS/P ratio ≥2 or stimulated ratio ≥3 supports a central gradient. False-positive and false-negative results occur. Basal prolactin ratios ≥1.8 support sampling adequacy, but neither prove catheter position nor exclude a pituitary source when lower.\n\nProlactin is optional: enter a complete left/right/peripheral set or leave the whole set blank. Basal-PRL and concurrent-PRL normalized ratios are shown separately at a unique dominant unadjusted stimulated ACTH peak. They are not interchangeable diagnostic cutoffs or tumor-lateralization scores. Tied peaks require review.\n\nInterpret alongside venography, sampling protocol, endocrine assessment and imaging. This tool does not choose a surgical side, prescribe treatment or implement a desmopressin protocol.",
+    text: "Inferior Petrosal Sinus Sampling (IPSS) is an invasive diagnostic procedure used to differentiate Cushing's disease (pituitary ACTH adenoma) from ectopic ACTH syndrome.\\n\\nThe procedure involves bilateral catheterization of the inferior petrosal sinuses with simultaneous sampling from both sides and a peripheral vein. Samples are collected before and after CRH (corticotropin-releasing hormone) stimulation.\\n\\nKey diagnostic criteria:\\n• Basal ACTH IPS/Periphery ratio >2 indicates Cushing's disease\\n• Peak ACTH IPS/Periphery ratio >3 (post-CRH) indicates Cushing's disease (gold standard, 95-97% sensitivity/specificity)\\n• Both ratios below threshold suggest ectopic ACTH syndrome\\n\\nLateralization (when Cushing's disease confirmed):\\n• ACTH ratio ≥1.4 between sides suggests adenoma lateralization\\n• Helps guide surgical approach for transsphenoidal surgery\\n\\nProlactin measurements verify catheter position (IPS/Periphery ratio >1.8).",
   },
 
   // Dynamic rows pattern similar to MRElastography
@@ -128,209 +156,266 @@ export const IPSS = {
       ipssRows, // Dynamic rows from App.jsx state
     } = v;
 
-    const positiveDecimal = (value) => {
-      if (typeof value !== "number" && typeof value !== "string") return NaN;
-      if (typeof value === "string" && !/^[+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim())) return NaN;
-      const number = Number(value);
-      return Number.isFinite(number) && number > 0 ? number : NaN;
-    };
-    const absent = (value) => value === undefined || value === null || (typeof value === "string" && value.trim() === "");
-    // Compare validated decimal inputs exactly: binary division can put an
-    // exact 30.9/10.3 boundary just below 3, or hide a tie across sample times.
-    const decimalFraction = (value) => {
-      const [mantissa, exponent = "0"] = String(value).trim().replace(/^\+/, "").toLowerCase().split("e");
-      const [whole, fraction = ""] = mantissa.split(".");
-      const digits = BigInt((whole + fraction).replace(/^0+/, "") || "0");
-      const scale = fraction.length - Number(exponent);
-      return scale >= 0 ? [digits, 10n ** BigInt(scale)] : [digits * 10n ** BigInt(-scale), 1n];
-    };
-    const exactRatio = (numerator, denominator) => {
-      const [n, nd] = decimalFraction(numerator);
-      const [d, dd] = decimalFraction(denominator);
-      return [n * dd, nd * d];
-    };
-    const compareRatios = ([a, ad], [b, bd]) => {
-      const difference = a * bd - b * ad;
-      return difference < 0n ? -1 : difference > 0n ? 1 : 0;
-    };
-    const hasBasalPRL = ![basalLeftPRL, basalRightPRL, basalPeriphPRL].every(absent);
-    const basal = [basalLeftACTH, basalRightACTH, basalPeriphACTH, ...(hasBasalPRL ? [basalLeftPRL, basalRightPRL, basalPeriphPRL] : [])].map(positiveDecimal);
-    if (!basal.every(Number.isFinite)) {
+    // Validate basal inputs
+    if (
+      !basalLeftACTH ||
+      !basalRightACTH ||
+      !basalPeriphACTH ||
+      !basalLeftPRL ||
+      !basalRightPRL ||
+      !basalPeriphPRL
+    ) {
       return {
         Error:
-          "Enter all three basal ACTH concentrations as finite positive numbers in the displayed units. Prolactin is optional: enter all three finite positive values or leave the whole set blank.",
+          "Please enter all basal sample values (ACTH and Prolactin for both IPS sites and peripheral).",
       };
     }
 
-    const [bLA, bRA, bPA, bLP, bRP, bPP] = basal;
-    const basalRatios = [bLA / bPA, bRA / bPA, ...(hasBasalPRL ? [bLP / bPP, bRP / bPP] : [])];
-    if (!basalRatios.every((ratio) => Number.isFinite(ratio) && ratio > 0)) {
-      return { Error: "Basal ratios cannot be represented reliably. Check concentrations and units." };
-    }
-
-    if (ipssRows !== undefined && !Array.isArray(ipssRows)) {
-      return { Error: "Post-stimulation samples must be entered as rows." };
-    }
-    const samples = [];
-    const sampleFields = ["time", "leftACTH", "rightACTH", "periphACTH", "leftPRL", "rightPRL", "periphPRL"];
-    for (const [index, row] of (ipssRows ?? []).entries()) {
-      if (!row || typeof row !== "object" || Array.isArray(row)) {
-        return { Error: `Post-stimulation row ${index + 1} is invalid.` };
-      }
-      if (sampleFields.every((field) => absent(row[field]))) continue;
-      const sample = {};
-      const hasPRL = ![row.leftPRL, row.rightPRL, row.periphPRL].every(absent);
-      for (const field of sampleFields) {
-        if (field.endsWith("PRL") && !hasPRL) continue;
-        sample[field] = positiveDecimal(row[field]);
-        if (!Number.isFinite(sample[field])) {
-          return { Error: `Post-stimulation row ${index + 1}: enter complete positive finite ACTH values and time; any supplied prolactin must also be positive and finite.` };
-        }
-      }
-      if (![sample.leftACTH / sample.periphACTH, sample.rightACTH / sample.periphACTH].every((ratio) => Number.isFinite(ratio) && ratio > 0)) {
-        return { Error: `Post-stimulation row ${index + 1}: ratios cannot be represented reliably. Check concentrations and units.` };
-      }
-      sample.exactLeftACTH = exactRatio(row.leftACTH, row.periphACTH);
-      sample.exactRightACTH = exactRatio(row.rightACTH, row.periphACTH);
-      samples.push(sample);
-    }
+    // Parse values
+    const bLA = parseFloat(basalLeftACTH);
+    const bRA = parseFloat(basalRightACTH);
+    const bPA = parseFloat(basalPeriphACTH);
+    const bLP = parseFloat(basalLeftPRL);
+    const bRP = parseFloat(basalRightPRL);
+    const bPP = parseFloat(basalPeriphPRL);
 
     // STEP 1: Assess Catheterization Success (using basal PRL ratios)
-    const leftPRLRatio = hasBasalPRL ? bLP / bPP : null;
-    const rightPRLRatio = hasBasalPRL ? bRP / bPP : null;
+    const leftPRLRatio = bLP / bPP;
+    const rightPRLRatio = bRP / bPP;
 
-    const leftCathSuccess = hasBasalPRL && compareRatios(exactRatio(basalLeftPRL, basalPeriphPRL), [18n, 10n]) >= 0;
-    const rightCathSuccess = hasBasalPRL && compareRatios(exactRatio(basalRightPRL, basalPeriphPRL), [18n, 10n]) >= 0;
+    const leftCathSuccess = leftPRLRatio > 1.8;
+    const rightCathSuccess = rightPRLRatio > 1.8;
     const leftCathStatus =
-      leftCathSuccess ? "Supports adequate sampling" : "Sampling caution";
+      leftPRLRatio > 1.8
+        ? "✓ Successful"
+        : leftPRLRatio > 1.5
+          ? "⚠ Borderline"
+          : "✗ Failed";
     const rightCathStatus =
-      rightCathSuccess ? "Supports adequate sampling" : "Sampling caution";
+      rightPRLRatio > 1.8
+        ? "✓ Successful"
+        : rightPRLRatio > 1.5
+          ? "⚠ Borderline"
+          : "✗ Failed";
 
     const result = {
-      "Clinical Context": "Interpret only in established ACTH-dependent hypercortisolism with active cortisol excess at sampling. IPSS does not establish hypercortisolism. False-positive and false-negative localization results occur; correlate with sampling adequacy, endocrine testing and imaging.",
-      "Surgical Limitation": "IPSS right-left gradients alone are not sufficiently reliable to select a tumor side or surgical resection. This report does not prescribe treatment.",
       "═══ CATHETERIZATION SUCCESS ═══": "",
-      "Left IPS PRL Ratio": hasBasalPRL ? `${leftPRLRatio.toFixed(2)} — ${leftCathStatus}` : "Not available: basal prolactin not supplied",
-      "Right IPS PRL Ratio": hasBasalPRL ? `${rightPRLRatio.toFixed(2)} — ${rightCathStatus}` : "Not available: basal prolactin not supplied",
+      "Left IPS PRL Ratio": `${leftPRLRatio.toFixed(2)} — ${leftCathStatus}`,
+      "Right IPS PRL Ratio": `${rightPRLRatio.toFixed(2)} — ${rightCathStatus}`,
       "Catheterization Note":
-        !hasBasalPRL ? "Basal prolactin assessment not available; review venography and sampling adequacy separately." : leftCathSuccess && rightCathSuccess
-          ? "Bilateral basal PRL ratios ≥1.8 support adequate pituitary venous sampling; this is not proof of catheter position."
-          : "Sampling caution: at least one basal PRL ratio is <1.8. Review venography, sample handling and clinical context; low PRL alone does not establish catheter failure or erase the ACTH findings.",
+        leftCathSuccess && rightCathSuccess
+          ? "Both sides successfully catheterized (PRL ratios >1.8)"
+          : !leftCathSuccess && !rightCathSuccess
+            ? "❌ BOTH SIDES FAILED - Results unreliable"
+            : "One side failed - Diagnosis possible but lateralization limited",
     };
+
+    // If both sides failed, stop here
+    if (!leftCathSuccess && !rightCathSuccess) {
+      result["═══ DIAGNOSTIC INTERPRETATION ═══"] = "";
+      result["Final Interpretation"] =
+        "❌ INADEQUATE STUDY - Both catheterizations failed (PRL ratios <1.8). Repeat procedure recommended.";
+      return result;
+    }
 
     // STEP 2: Calculate Basal ACTH Ratios
     const leftBasalACTHRatio = bLA / bPA;
     const rightBasalACTHRatio = bRA / bPA;
     const maxBasalACTHRatio = Math.max(leftBasalACTHRatio, rightBasalACTHRatio);
-    const basalCriterionMet = compareRatios(exactRatio(basalLeftACTH, basalPeriphACTH), [2n, 1n]) >= 0 || compareRatios(exactRatio(basalRightACTH, basalPeriphACTH), [2n, 1n]) >= 0;
 
     result["═══ BASAL ACTH RATIOS ═══"] = "";
     result["Left IPS/Peripheral (Basal)"] = leftBasalACTHRatio.toFixed(2);
     result["Right IPS/Peripheral (Basal)"] = rightBasalACTHRatio.toFixed(2);
     result["Maximum Basal Ratio"] =
-      `${maxBasalACTHRatio.toFixed(2)} ${basalCriterionMet ? "(≥2 central gradient criterion met)" : "(<2)"}`;
+      `${maxBasalACTHRatio.toFixed(2)} ${maxBasalACTHRatio > 2 ? "(>2 ✓ Positive for Cushing's)" : "(≤2)"}`;
 
-    // Identify the dominant unadjusted stimulated peak before any normalization.
+    // STEP 3: Process Post-CRH Samples (if available)
     let maxPeakACTHRatio = 0;
-    let exactPeakACTHRatio = [0n, 1n];
-    let peakSamples = [];
-    for (const row of samples) {
-      for (const side of ["LEFT", "RIGHT"]) {
-        const ratio = (side === "LEFT" ? row.leftACTH : row.rightACTH) / row.periphACTH;
-        const exact = side === "LEFT" ? row.exactLeftACTH : row.exactRightACTH;
-        const comparison = compareRatios(exact, exactPeakACTHRatio);
-        if (comparison > 0) {
-          maxPeakACTHRatio = ratio;
-          exactPeakACTHRatio = exact;
-          peakSamples = [{ row, side }];
-        } else if (comparison === 0) {
-          peakSamples.push({ row, side });
+    let peakTimePoint = null;
+    let peakLeftACTH = 0;
+    let peakRightACTH = 0;
+    let peakLeftPRL = 0;
+    let peakRightPRL = 0;
+    let peakPeriphACTH = 0;
+    let peakPeriphPRL = 0;
+
+    if (ipssRows && ipssRows.length > 0) {
+      // Find peak post-CRH ratio
+      ipssRows.forEach((row) => {
+        const {
+          time,
+          leftACTH,
+          rightACTH,
+          periphACTH,
+          leftPRL,
+          rightPRL,
+          periphPRL,
+        } = row;
+
+        // Skip incomplete rows
+        if (!leftACTH || !rightACTH || !periphACTH) return;
+
+        const pLA = parseFloat(leftACTH);
+        const pRA = parseFloat(rightACTH);
+        const pPA = parseFloat(periphACTH);
+        const pLP = parseFloat(leftPRL || bLP); // Fallback to basal if missing
+        const pRP = parseFloat(rightPRL || bRP);
+        const pPP = parseFloat(periphPRL || bPP);
+
+        const leftRatio = pLA / pPA;
+        const rightRatio = pRA / pPA;
+        const maxRatio = Math.max(leftRatio, rightRatio);
+
+        if (maxRatio > maxPeakACTHRatio) {
+          maxPeakACTHRatio = maxRatio;
+          peakTimePoint = parseFloat(time);
+          peakLeftACTH = pLA;
+          peakRightACTH = pRA;
+          peakPeriphACTH = pPA;
+          peakLeftPRL = pLP;
+          peakRightPRL = pRP;
+          peakPeriphPRL = pPP;
         }
-      }
-    }
-    const stimulatedCriterionMet = compareRatios(exactPeakACTHRatio, [3n, 1n]) >= 0;
-    if (peakSamples.length > 0) {
+      });
+
       result["═══ POST-CRH ACTH RATIOS ═══"] = "";
-      result["Peak Time Point"] = [...new Set(peakSamples.map(({ row }) => `+${row.time} minutes`))].join("; ");
+      result["Peak Time Point"] = `+${peakTimePoint} minutes`;
       result["Peak IPS/Peripheral Ratio"] =
-        `${maxPeakACTHRatio.toFixed(2)} ${stimulatedCriterionMet ? "(≥3 central gradient criterion met)" : "(<3)"}`;
+        `${maxPeakACTHRatio.toFixed(2)} ${maxPeakACTHRatio > 3 ? "(>3 ✓ Positive for Cushing's)" : "(≤3)"}`;
     }
 
     // STEP 4: Diagnostic Interpretation
     result["═══ DIAGNOSTIC INTERPRETATION ═══"] = "";
 
-    const isCushings = basalCriterionMet || stimulatedCriterionMet;
+    const isCushings = maxBasalACTHRatio > 2 || maxPeakACTHRatio > 3;
 
     if (isCushings) {
-      result["Localization Pattern"] = "Central ACTH gradient present under the displayed criteria; supports a pituitary source in the appropriate clinical and sampling context, but is not a definitive diagnosis.";
+      result["Diagnosis"] = "🔵 CUSHING'S DISEASE (Pituitary ACTH Adenoma)";
+      result["Confidence"] = "HIGH (95-97% specificity with CRH stimulation)";
 
-      if (basalCriterionMet && stimulatedCriterionMet) {
+      if (maxBasalACTHRatio > 2 && maxPeakACTHRatio > 3) {
         result["Criteria Met"] =
-          "Both basal (≥2) AND stimulated peak (≥3) criteria met";
-      } else if (basalCriterionMet) {
-        result["Criteria Met"] = "Basal ratio ≥2";
+          "Both basal (>2) AND peak (>3) criteria positive";
+      } else if (maxBasalACTHRatio > 2) {
+        result["Criteria Met"] = "Basal ratio >2";
       } else {
-        result["Criteria Met"] = "Peak post-CRH ratio ≥3";
+        result["Criteria Met"] = "Peak post-CRH ratio >3 (Gold standard)";
       }
 
       result["Recommendation"] =
-        "Correlate the sampling pattern with endocrine assessment and imaging; do not choose surgery or a resection side from these ratios alone.";
+        "Transsphenoidal surgery indicated. Proceed to lateralization assessment.";
     } else {
-      result["Localization Pattern"] = samples.length > 0
-        ? "No central ACTH gradient demonstrated under the displayed basal and stimulated criteria. An ectopic source is possible, but false-negative pituitary sampling must be considered."
-        : "No central ACTH gradient demonstrated in the basal sample. No stimulated samples were entered; a basal-only result does not establish an ectopic source.";
+      result["Diagnosis"] = "🔴 ECTOPIC ACTH SYNDROME";
+      result["Confidence"] =
+        ipssRows && ipssRows.length > 0
+          ? "HIGH (Both basal and peak ratios below threshold)"
+          : "MODERATE (No post-CRH samples - basal only)";
       result["Criteria"] =
-        `Basal ratio <2 (${maxBasalACTHRatio.toFixed(2)})${samples.length > 0 ? ` AND peak ratio <3 (${maxPeakACTHRatio.toFixed(2)})` : ""}`;
+        `Basal ratio ≤2 (${maxBasalACTHRatio.toFixed(2)})${ipssRows && ipssRows.length > 0 ? ` AND peak ratio ≤3 (${maxPeakACTHRatio.toFixed(2)})` : ""}`;
       result["Recommendation"] =
-        "Review sampling adequacy, active cortisol excess, protocol and endocrine/imaging findings before further localization or treatment decisions.";
+        "Search for ectopic ACTH source: Chest/abdominal CT, octreotide scan. Medical management of hypercortisolism. Consider bilateral adrenalectomy if source not found.";
     }
 
-    // Method-specific descriptive arithmetic; no normalized diagnosis or tumor-side claim.
-    if (peakSamples.length === 1) {
-      const { row, side } = peakSamples[0];
-      result["Normalization sample"] = `${side} IPS at +${row.time} minutes; dominant unadjusted stimulated ACTH IPS/P ${maxPeakACTHRatio.toFixed(4)}`;
-      const basalDenominator = hasBasalPRL ? (side === "LEFT" ? bLP : bRP) / bPP : null;
-      const concurrentDenominator = row.periphPRL === undefined ? null : (side === "LEFT" ? row.leftPRL : row.rightPRL) / row.periphPRL;
-      for (const [label, denominator, method] of [
-        ["Basal PRL-normalized peak ACTH ratio", basalDenominator, "ipsilateral basal PRL IPS/P; Sharma 2011"],
-        ["Concurrent PRL-normalized peak ACTH ratio", concurrentDenominator, "ipsilateral concurrent PRL IPS/P; SVIN 2026 Figure 5"],
-      ]) {
-        if (denominator === null) {
-          result[label] = "Not available: required prolactin set not supplied; no substitution performed.";
-        } else {
-          const normalized = maxPeakACTHRatio / denominator;
-          if (!Number.isFinite(denominator) || denominator <= 0 || !Number.isFinite(normalized) || normalized <= 0) {
-            return { Error: "Normalized ratios cannot be represented reliably. Check concentrations and units." };
-          }
-          result[label] = `${normalized.toFixed(4)} — ${maxPeakACTHRatio.toFixed(4)} divided by ${denominator.toFixed(4)} (${method})`;
-        }
+    // STEP 5: Lateralization (only if Cushing's disease and both sides successful)
+    if (
+      isCushings &&
+      leftCathSuccess &&
+      rightCathSuccess &&
+      peakTimePoint !== null
+    ) {
+      result["═══ LATERALIZATION ASSESSMENT ═══"] = "";
+
+      // Simple ACTH lateralization (using peak time point)
+      const higher = Math.max(peakLeftACTH, peakRightACTH);
+      const lower = Math.min(peakLeftACTH, peakRightACTH);
+      const lateralizationRatio = higher / lower;
+      const lateralizedSide = peakLeftACTH > peakRightACTH ? "LEFT" : "RIGHT";
+
+      const isLateralized = lateralizationRatio >= 1.4;
+
+      result["Simple ACTH Method"] = "";
+      result["  Left IPS ACTH (peak)"] = `${peakLeftACTH.toFixed(1)} pg/mL`;
+      result["  Right IPS ACTH (peak)"] = `${peakRightACTH.toFixed(1)} pg/mL`;
+      result["  Lateralization Ratio"] =
+        `${lateralizationRatio.toFixed(2)} ${isLateralized ? "(≥1.4 ✓)" : "(<1.4)"}`;
+      result["  Simple Method Result"] = isLateralized
+        ? `🟢 Lateralizes to ${lateralizedSide} side`
+        : `⚪ Non-lateralizing (ratio <1.4)`;
+
+      // Normalized ACTH/PRL method
+      const leftNormalized =
+        peakLeftACTH / peakLeftPRL / (peakPeriphACTH / peakPeriphPRL);
+      const rightNormalized =
+        peakRightACTH / peakRightPRL / (peakPeriphACTH / peakPeriphPRL);
+      const normalizedRatio =
+        Math.max(leftNormalized, rightNormalized) /
+        Math.min(leftNormalized, rightNormalized);
+      const normalizedSide =
+        leftNormalized > rightNormalized ? "LEFT" : "RIGHT";
+      const normalizedLateralized = normalizedRatio >= 1.4;
+
+      result["Normalized ACTH/PRL Method"] = "";
+      result["  Left Normalized Ratio"] = leftNormalized.toFixed(2);
+      result["  Right Normalized Ratio"] = rightNormalized.toFixed(2);
+      result["  Normalized Lat. Ratio"] =
+        `${normalizedRatio.toFixed(2)} ${normalizedLateralized ? "(≥1.4 ✓)" : "(<1.4)"}`;
+      result["  Normalized Result"] = normalizedLateralized
+        ? `🟢 Lateralizes to ${normalizedSide} side`
+        : `⚪ Non-lateralizing (ratio <1.4)`;
+
+      // Concordance check
+      const concordant =
+        (isLateralized &&
+          normalizedLateralized &&
+          lateralizedSide === normalizedSide) ||
+        (!isLateralized && !normalizedLateralized);
+
+      result["═══ LATERALIZATION SUMMARY ═══"] = "";
+      result["Methods Concordance"] = concordant
+        ? "✓ Both methods AGREE - Higher confidence"
+        : "⚠ Methods DISAGREE - Use with caution";
+
+      if (
+        isLateralized &&
+        normalizedLateralized &&
+        lateralizedSide === normalizedSide
+      ) {
+        result["Final Lateralization"] =
+          `🎯 Strong lateralization to ${lateralizedSide} side (both methods agree)`;
+        result["Surgical Guidance"] =
+          `Transsphenoidal approach with focus on ${lateralizedSide} side of pituitary. Consider more aggressive ${lateralizedSide} hemihypophysectomy if no visible adenoma.`;
+      } else if (isLateralized || normalizedLateralized) {
+        const preferredSide = isLateralized ? lateralizedSide : normalizedSide;
+        result["Final Lateralization"] =
+          `⚠ Possible lateralization to ${preferredSide} side (methods disagree - lower confidence)`;
+        result["Surgical Guidance"] =
+          `Transsphenoidal surgery with bilateral exploration. Consider ${preferredSide} side preference but inspect both thoroughly.`;
+      } else {
+        result["Final Lateralization"] =
+          `⚪ Non-lateralizing study (both methods <1.4 threshold)`;
+        result["Surgical Guidance"] =
+          `Transsphenoidal surgery with thorough bilateral exploration. No side preference. Correlate with MRI findings and intraoperative inspection.`;
       }
-      result["Normalization limitation"] = "These are distinct method-specific ratios, not interchangeable diagnostic cutoffs or bilateral tumor-lateralization scores. Interpret with the cited method, sampling context and specialist judgment.";
-    } else if (peakSamples.length > 1) {
-      result["Normalization sample"] = "Tied dominant unadjusted ACTH peaks: " + peakSamples.map(({ row, side }) => `${side} +${row.time} minutes`).join("; ") + ". No single normalization sample selected; review the tied measurements.";
+    } else if (isCushings && (!leftCathSuccess || !rightCathSuccess)) {
+      result["═══ LATERALIZATION ═══"] = "";
+      result["Lateralization Status"] =
+        "Not assessed - Only one side successfully catheterized";
+      result["Surgical Guidance"] =
+        "Transsphenoidal surgery with bilateral exploration (no lateralization data available)";
+    } else if (isCushings && peakTimePoint === null) {
+      result["═══ LATERALIZATION ═══"] = "";
+      result["Lateralization Status"] =
+        "Not assessed - No post-CRH samples entered";
+      result["Note"] =
+        "For optimal lateralization, use ACTH values from peak post-CRH time point";
     }
 
-    result._severity = "info";
+    result._severity = isCushings ? "success" : "danger";
 
-    return {
-      "ACTH sampling summary": `Basal maximum ${maxBasalACTHRatio.toFixed(2)}; ${samples.length > 0 ? `post-CRH peak ${maxPeakACTHRatio.toFixed(2)}` : "no stimulated samples entered"}. ${isCushings ? "Central gradient criterion met" : "No central gradient demonstrated"}; interpret in clinical and sampling context.`,
-      ...result,
-    };
+    return result;
   },
 
   refs: [
-    {
-      t: "Siddiq F et al. Consensus Guidelines on Inferior Petrosal Sinus Sampling. SVIN 2026. Important Lab Values, Figure 5 and timing: inclusive ACTH/PRL criteria and concurrent normalization.",
-      u: "https://doi.org/10.1161/SVIN.125.002309",
-    },
-    {
-      t: "Sharma ST, Raff H, Nieman LK. Prolactin as a marker of successful catheterization during IPSS (2011). Study analysis: dominant post-CRH ACTH normalized by ipsilateral basal PRL.",
-      u: "https://doi.org/10.1210/jc.2011-2149",
-    },
-    {
-      t: "Fleseriu M et al. Consensus on diagnosis and management of Cushing's disease: a guideline update (2021). IPSS clinical context, false results and limits of right-left localization; accepted manuscript pp.13,16–18.",
-      u: "https://doi.org/10.1016/S2213-8587(21)00235-7",
-    },
     {
       t: "Oldfield EH et al. Petrosal sinus sampling with and without CRH for differential diagnosis of Cushing's syndrome. N Engl J Med. 1991;325(13):897-905.",
       u: "https://doi.org/10.1056/NEJM199109263251301",

@@ -1,12 +1,3 @@
-function finiteMeasurement(value) {
-  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
-  if (typeof value !== "string") return NaN;
-  const text = value.trim();
-  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return NaN;
-  const number = Number(text);
-  return Number.isFinite(number) ? number : NaN;
-}
-
 export const AdrenalCTWashout = {
   id: "adrenal-ct",
   category: "Radiology",
@@ -27,27 +18,13 @@ export const AdrenalCTWashout = {
     text: "Caveat: Washout measurements may be the same in adenomas and metastases from hypervascular extraadrenal primary tumors, e.g. renal cell carcinoma (RCC) or hepatocellular carcinoma (HCC).\n\nCaveat: Markedly decreased sensitivity (66.7%) of washout measurements in large adenomas (≥ 3 cm).",
   },
   fields: [
-    { id: "unenh", label: "Pre‑contrast HU", type: "number", required: true },
-    { id: "portal", label: "Post‑contrast HU (60‑75 s)", type: "number", required: true },
-    { id: "delayed", label: "Delayed HU (15 min)", type: "number", required: true },
+    { id: "unenh", label: "Pre‑contrast HU", type: "number" },
+    { id: "portal", label: "Post‑contrast HU (60‑75 s)", type: "number" },
+    { id: "delayed", label: "Delayed HU (15 min)", type: "number" },
   ],
-  compute: (inputs = {}) => {
-    const unenh = finiteMeasurement(inputs.unenh);
-    const portal = finiteMeasurement(inputs.portal);
-    const delayed = finiteMeasurement(inputs.delayed);
-    if (![unenh, portal, delayed].every(Number.isFinite)) {
-      return { Error: "Enter all three attenuation measurements as finite numbers in HU." };
-    }
-    const enhancement = portal - unenh;
-    const decrease = portal - delayed;
-    if (portal === 0 || enhancement === 0) {
-      return { Error: "Washout cannot be calculated when post-contrast HU is zero or equals pre-contrast HU. Check the phase measurements." };
-    }
-    const apw = (decrease / enhancement) * 100;
-    const rpw = (decrease / portal) * 100;
-    if (![enhancement, decrease, apw, rpw].every(Number.isFinite)) {
-      return { Error: "These measurements do not produce finite washout percentages. Check the entered values." };
-    }
+  compute: ({ unenh = 0, portal = 0, delayed = 0 }) => {
+    const apw = ((portal - delayed) / (portal - unenh)) * 100;
+    const rpw = ((portal - delayed) / portal) * 100;
     const result = {
       "Absolute Washout (%)": apw.toFixed(1),
       "Relative Washout (%)": rpw.toFixed(1),

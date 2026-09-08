@@ -57,8 +57,10 @@ Do not rewrite the application, add an agent platform/database, or provision a b
 - Public literature queries only. Never transmit patient text, inputs, results
   or secrets through research tools, analytics or diagnostics. Never print,
   search for, or copy credentials into prompts, logs or agent messages.
-- Use `npm run qa:local -- tests/e2e/<scope>.spec.js` for isolated production-
-  preview QA and compact receipts. Shared Playwright configurations use a strict
+- Use the existing build and focused Playwright commands for browser QA; set
+  `RADULATOR_QA_PREVIEW=1` to test the built preview. The compact `qa:local`
+  receipt runner is deferred until the control release is promoted. Shared
+  Playwright configurations use a strict
   worktree-specific port and no server reuse. Override only with
   `RADULATOR_QA_PORT`; client URL and server command must agree.
 - Preserve source/artifact identities and detailed logs on disk; read summaries
@@ -69,6 +71,11 @@ Do not rewrite the application, add an agent platform/database, or provision a b
   nested reviewers. Reassess after two material rework rounds.
 - Make routine decisions within approved scope. Ask only for a consequential
   unresolved clinical conflict, missing authority or meaningful scope expansion.
+- Before submission, classify the actual base-relative diff using the protected
+  base's release policy. Clinical/evidence and release-control changes must be
+  separate. For branch reconciliation, prove the controller's actual merge
+  topology preserves already-live runtime and privacy checks; matching local
+  source alone does not prove the future production merge.
 
 ## Protected publication — unchanged authority
 

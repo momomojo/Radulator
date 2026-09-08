@@ -50,10 +50,6 @@ assert.equal(audit.runtime_calibration_warning_match, true);
 assert.deepEqual(audit.input_limits, {
   provenance: "radulator-data-entry-guardrail",
   publication_derived: false,
-  enforcement: {
-    age: "reject", weight: "warn", height: "reject", platelets: "reject",
-    hemoglobin: "reject", kidney_size: "reject",
-  },
   values: {
     age: { min: 18, max: 90, unit: "years" },
     weight: { min: 30, max: 130, unit: "kg" },

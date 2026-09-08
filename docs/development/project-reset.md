@@ -5,12 +5,14 @@ checkpoint, not a new calculator tracker or clinical certification.
 
 ## Scope and outcomes
 
-1. Reconcile the existing delivery branch with current production, preserving
-   privacy checks and all signed/native release requirements. Do not activate
-   single-main, change protections, or provision a broker.
+1. Deliver a pure-control change relative to protected develop. Verify that its
+   controller-created squash and subsequent production promotion preserve the
+   already-live runtime and privacy checks. Do not activate single-main, change
+   protections, or provision a broker.
 2. Make the shared browser harness use the exact worktree and a strict dedicated
-   port without server reuse. Provide a compact production-preview QA command
-   with persistent logs and source/artifact identities.
+   port without server reuse. The compact production-preview receipt command is
+   implemented in the retained pre-split commit but deferred from this release
+   because it depends on main-only privacy build support.
 3. Add programmatic PubMed research retrieval and offline integrity verification:
    official APIs, exact identifiers, structured abstracts, correction/retraction
    relationships, legal full-text availability, immutable response hashes and
@@ -42,12 +44,17 @@ checkpoint, not a new calculator tracker or clinical certification.
 - A live public research lookup and repeat offline verification succeed without
   a key; access failures remain accurately labeled.
 - Browser configuration rejects invalid/occupied ports and cannot reuse a
-  different checkout. A production-preview smoke saves a concise receipt.
+  different checkout. The compact receipt runner has separate later acceptance.
 - Build, lint, invariants, focused control/privacy tests and independent review
   cover the final local changes. Required remote checks and signed reviews are
   still separate publication requirements.
 
-## Checkpoint
+## Historical pre-split checkpoint
+
+The following results describe retained commit
+`f79c684cb586251263672a44918d82ac83f091b2`, not the narrowed candidate below.
+That mixed clinical/control candidate is not eligible for release. Its files and
+local receipts remain recoverable from the commit and worktree evidence paths.
 
 - Current production incorporated locally: `941d67b95af5aadd6875bc9e7dd5f807a139d23f`.
 - Active release mode is unset: existing release-train remains authoritative.
@@ -83,3 +90,44 @@ checkpoint, not a new calculator tracker or clinical certification.
 - Exact-head remote CI/signed reviews, protected merge, rollback rehearsal and
   single-main activation/canary are still outstanding. No production deployment,
   reviewer configuration or native protection was changed by this reset.
+
+## Pure-control release split — 2026-09-08
+
+The actual ready-gate check rejected the pre-split PR with
+`MIXED_TRUST_DOMAIN_CHANGE`: its main import mixed already-live clinical changes
+with new release controls relative to develop. Readiness was withdrawn. The
+current candidate restores those imported runtime/evidence/privacy files to
+exact develop `e3682c844e436c266ba49ae55132ef3b0d2927cd`; it does not revert them
+on production. The existing trusted controller squashes a develop PR before
+the promoter merges current main with develop. Recheck that topology and the
+actual promotion tree before release; never manually merge this feature branch
+straight to main.
+
+Retained here: release controls, strict worktree-aware Playwright configuration,
+seven configuration tests, the research CLI and15 research tests, and concise
+instructions. Deferred from this candidate: `qa:local`, its runner/two tests,
+and the accompanying clinical-spec port corrections. Main-only privacy package
+commands, scripts, runtime and workflow steps must remain in the production
+merge. Restore the deferred receipt runner in a later control-only PR after the
+protected migration makes that existing production support the normal base.
+
+Independent planning simulated the squash/promotion and preserved the entire
+current-main source tree, clinical tests/evidence and privacy build/runtime.
+The coordinating owner repeated that proof on the actual narrowed tree against
+main `be969cc11191a1d8767d08e30560b525a788b19c`: the trusted develop classifier
+reported only `RELEASE_CONTROL_CHANGE`, and the clean simulated promotion kept
+those source/evidence/privacy paths unchanged, including all four privacy
+commands and both workflow steps. Refresh this proof if either branch changes.
+Fresh15 research tests, seven QA configuration tests, build, lint, invariants,
+release-policy, merge, workflow-permission, authorization, artifact, marker,
+smoke and rollback tests passed. Independent narrowing review found no blocker.
+This is local/simulated evidence, not signed authorization or a live rollback
+rehearsal. The active main/develop
+rulesets already require signed clinical authorization and strict checks; those
+settings were read, not changed. Release mode remains unset/release-train.
+
+Signed review also has a separate operational blocker: the unchanged primary
+Hermes reviewer failed before reviewing because its Codex refresh token is
+invalid. Reconnect that existing provider on the Mac mini; do not replace its
+signature with owner/subagent approval or weaken the gate. No model, key,
+credential, scheduler, native-protection or production changes were made.

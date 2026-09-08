@@ -24,6 +24,7 @@ import {
   trackCalculation,
   trackOutboundLink,
   trackCSVDownload,
+  trackSearch,
   trackResultViewed,
   trackResultsCopied,
   trackOnboarding,
@@ -285,6 +286,35 @@ function AppContent() {
   // Page meta tags
   usePageMeta(selectedDef);
 
+  // Track initial page view (GA4 config has send_page_view: false for SPA)
+  useEffect(() => {
+    const sendPageView = (eventName, params) => {
+      if (import.meta.env.DEV) {
+        console.log("[GA4 Dev]", eventName, params);
+        return;
+      }
+      if (typeof window !== "undefined" && typeof window.gtag === "function") {
+        window.gtag("event", eventName, params);
+      }
+    };
+    sendPageView("page_view", {
+      page_title: document.title,
+      page_location: window.location.href,
+    });
+  }, []);
+
+  // Debounced search tracking
+  const searchTimerRef = useRef(null);
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (searchQuery.trim()) {
+      searchTimerRef.current = setTimeout(() => {
+        trackSearch(searchQuery.trim());
+      }, 500);
+    }
+    return () => clearTimeout(searchTimerRef.current);
+  }, [searchQuery]);
+
   // Sync MRE rows into compute values
   useEffect(() => {
     if (def?.id === "mr-elastography") {
@@ -316,9 +346,9 @@ function AppContent() {
     let result;
     try {
       result = def.compute(vals);
-    } catch {
+    } catch (error) {
       if (import.meta.env.DEV) {
-        console.error("RADULATOR_COMPUTE_ERROR");
+        console.error("Calculator compute failed:", error);
       }
       setResults(null);
       setCopied(false);
@@ -483,7 +513,7 @@ function AppContent() {
   }, [def?.id, out]);
 
   return (
-    <div className={`min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300${showDisclaimer || showWelcome ? " pt-16 md:pt-0" : ""}`}>
+    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
       <a href="#main-content" className="skip-link">
         Skip to calculator
       </a>
@@ -1216,14 +1246,12 @@ function AppContent() {
                     Post-CRH Stimulation Samples
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Enter actual post-CRH sampling times and simultaneous left,
-                    right and peripheral ACTH in pg/mL; optional prolactin in ng/mL.
-                    Use the same units for each analyte across all samples. Enter
-                    all three prolactin values or leave that set blank. Samples
-                    identify the measured ACTH peak, not a surgical side.
+                    Add time-series samples after CRH administration (typically
+                    at +3, +6, +9, +15 minutes). These help identify peak ACTH
+                    response and improve lateralization accuracy.
                   </p>
-                  <div className="overflow-x-auto print:overflow-visible">
-                    <div className="grid grid-cols-8 gap-2 font-medium text-xs min-w-[56rem] text-foreground print:min-w-0 print:grid-cols-7">
+                  <div className="overflow-x-auto">
+                    <div className="grid grid-cols-8 gap-2 font-medium text-xs min-w-max text-foreground">
                       <div>Time</div>
                       <div>Lt ACTH</div>
                       <div>Rt ACTH</div>
@@ -1231,12 +1259,12 @@ function AppContent() {
                       <div>Lt PRL</div>
                       <div>Rt PRL</div>
                       <div>Per PRL</div>
-                      <div className="print:hidden">Action</div>
+                      <div>Action</div>
                     </div>
                     {ipssRows.map((r, i) => (
                       <div
                         key={i}
-                        className="grid grid-cols-8 gap-2 items-center min-w-[56rem] [&>input]:min-w-0 print:min-w-0 print:grid-cols-7"
+                        className="grid grid-cols-8 gap-2 items-center min-w-max"
                       >
                         <Input
                           placeholder="+3"
@@ -1408,6 +1436,27 @@ function AppContent() {
                     }
                   />
                   {/* Calculator-specific interpretive notes */}
+                  {def.id === "adrenal-ct" &&
+                    parseFloat(out["Absolute Washout (%)"]) >= 60 && (
+                      <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-center text-green-800 dark:text-green-300">
+                          <svg
+                            className="w-4 h-4 mr-2"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span className="font-medium">
+                            Absolute washout ≥60% indicates benign adenoma.
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   {def.id === "prostate-volume" &&
                     prostateVolumeMl <= 30 && (
                       <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">

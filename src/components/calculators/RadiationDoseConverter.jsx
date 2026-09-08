@@ -19,12 +19,11 @@ export const RadiationDoseConverter = {
   id: "radiation-dose-converter",
   category: "Radiology",
   name: "Radiation Dose Converter",
-  guidelineVersion: "NIST unit conversions / AAPM96 CT reference / ICRP103 weighting",
   desc: "Convert between radiation dose units (Gy, Sv, Bq, etc.) with CT dose estimation",
   keywords: ["Gy", "rad", "Sv", "rem", "radiation units"],
   tags: ["Radiology", "Safety", "Radiation"],
   metaDesc:
-    "Convert radiation units within absorbed dose, Sv/rem or activity. Optional organ-dose relationship and historical AAPM96 CT reference estimates with explicit age, region and phantom basis.",
+    "Free Radiation Dose Unit Converter. Convert between Gray, Sievert, Becquerel, rad, rem, and Curie. Includes CT effective dose calculator with DLP to mSv conversion using ICRP 103 standards.",
 
   info: {
     text: `This comprehensive radiation dose converter supports three categories of radiation measurements:
@@ -38,11 +37,12 @@ Key relationships:
 • 1 Sv = 100 rem = 1000 mSv
 • 1 Ci = 37 GBq = 3.7 × 10¹⁰ Bq
 
-Absorbed dose, organ-equivalent dose and effective dose are distinct quantities. H = wR × organ-mean absorbed dose for one radiation type; effective dose additionally needs tissue weighting. Optional H/wR arithmetic requires explicit organ-equivalent input confirmation. It is not an effective-dose or patient-risk conversion.
+For photons (X-rays, gamma): 1 Gy = 1 Sv
+For alpha particles: 1 Gy = 20 Sv (wR = 20)
 
-CT section: CTDIvol × length estimates DLP. Historical AAPM96 Table3 factors depend on reference age, region and CTDI phantom basis. Unknown or mismatched phantom basis returns DLP without an effective-dose estimate. No individualized dose, normal/abnormal assessment or age interpolation is provided.
+CT Dose Section: Calculates effective dose from CTDIvol and scan length using AAPM/European Commission k-factors.
 
-Unit factors: NIST SP811. Radiation weighting: ICRP103 as reproduced in IAEA115 (2023). Activity conversion does not assess an administered activity or prescribe a radiopharmaceutical.`,
+All conversions follow ICRP Publication 103 (2007) standards.`,
     link: {
       label: "ICRP Publication 103",
       url: "https://www.icrp.org/publication.asp?id=ICRP+Publication+103",
@@ -57,7 +57,7 @@ Unit factors: NIST SP811. Radiation weighting: ICRP103 as reproduced in IAEA115 
       type: "radio",
       opts: [
         { value: "absorbed", label: "Absorbed Dose (Gy, rad)" },
-        { value: "equivalent", label: "Sv / rem Unit Conversion" },
+        { value: "equivalent", label: "Equivalent Dose (Sv, rem)" },
         { value: "activity", label: "Activity (Bq, Ci)" },
       ],
     },
@@ -116,34 +116,22 @@ Unit factors: NIST SP811. Radiation weighting: ICRP103 as reproduced in IAEA115 
       showIf: (vals) => vals.conversion_mode === "activity",
     },
 
-    // Optional organ-equivalent relationship, never inferred from the Sv unit.
-    {
-      id: "input_is_organ_equivalent",
-      label: "Calculate Organ-Mean Absorbed Dose",
-      type: "checkbox",
-      subLabel: "I confirm the input is organ-equivalent dose from one radiation type, not effective dose",
-      showIf: (vals) => vals.conversion_mode === "equivalent",
-    },
+    // SECTION 6: RADIATION TYPE (for equivalent dose)
     {
       id: "radiation_type",
       label: "Radiation Type",
       type: "select",
-      subLabel: "For D = organ-equivalent H / wR; no mixed-spectrum or RBE calculation",
+      subLabel: "For absorbed → equivalent dose relationship (wR factor)",
       opts: [
         { value: "photon", label: "X-rays / Gamma rays (wR = 1)" },
         { value: "beta", label: "Beta particles / Electrons (wR = 1)" },
         { value: "proton", label: "Protons (wR = 2)" },
         { value: "alpha", label: "Alpha particles (wR = 20)" },
-        { value: "neutron", label: "Neutrons — enter incident energy" },
+        { value: "neutron_low", label: "Neutrons < 10 keV (wR ≈ 5)" },
+        { value: "neutron_med", label: "Neutrons 100 keV - 2 MeV (wR ≈ 20)" },
+        { value: "neutron_high", label: "Neutrons > 20 MeV (wR ≈ 5)" },
       ],
-      showIf: (vals) => vals.conversion_mode === "equivalent" && vals.input_is_organ_equivalent === true,
-    },
-    {
-      id: "neutron_energy_mev",
-      label: "Incident Neutron Energy (MeV)",
-      type: "number",
-      subLabel: "Positive incident energy; ICRP103 piecewise weighting, not spectrum integration",
-      showIf: (vals) => vals.conversion_mode === "equivalent" && vals.input_is_organ_equivalent === true && vals.radiation_type === "neutron",
+      showIf: (vals) => vals.conversion_mode === "equivalent",
     },
 
     // SECTION 7: CT DOSE CALCULATOR
@@ -176,12 +164,12 @@ Unit factors: NIST SP811. Radiation weighting: ICRP103 as reproduced in IAEA115 
       type: "select",
       subLabel: "For k-factor selection",
       opts: [
-        { value: "head", label: "Head" },
-        { value: "neck", label: "Neck" },
-        { value: "chest", label: "Chest" },
-        { value: "abdomen", label: "Abdomen (published abdomen/pelvis factor)" },
-        { value: "pelvis", label: "Pelvis (published abdomen/pelvis factor)" },
-        { value: "trunk", label: "Trunk" },
+        { value: "head", label: "Head (k = 0.0021)" },
+        { value: "neck", label: "Neck (k = 0.0059)" },
+        { value: "chest", label: "Chest (k = 0.014)" },
+        { value: "abdomen", label: "Abdomen (k = 0.015)" },
+        { value: "pelvis", label: "Pelvis (k = 0.015)" },
+        { value: "trunk", label: "Trunk/CAP (k = 0.015)" },
       ],
       showIf: (vals) => vals.include_ct_dose === true,
     },
@@ -190,25 +178,13 @@ Unit factors: NIST SP811. Radiation weighting: ICRP103 as reproduced in IAEA115 
       id: "patient_age",
       label: "Patient Age Category",
       type: "select",
-      subLabel: "Select the AAPM96 reference age; no interpolation or universal age multiplier",
+      subLabel: "Pediatric patients receive higher effective doses",
       opts: [
-        { value: "adult", label: "Adult" },
-        { value: "10yr", label: "10 years" },
-        { value: "5yr", label: "5 years" },
-        { value: "1yr", label: "1 year" },
-        { value: "0yr", label: "Newborn" },
-      ],
-      showIf: (vals) => vals.include_ct_dose === true,
-    },
-    {
-      id: "ct_phantom",
-      label: "Scanner CTDI Phantom Basis",
-      type: "select",
-      subLabel: "Read the scanner dose report; patient size alone does not establish the phantom basis",
-      opts: [
-        { value: "16", label: "16 cm" },
-        { value: "32", label: "32 cm" },
-        { value: "unknown", label: "Unknown — calculate DLP only" },
+        { value: "adult", label: "Adult (1.0x)" },
+        { value: "10yr", label: "10 years (1.2x)" },
+        { value: "5yr", label: "5 years (1.5x)" },
+        { value: "1yr", label: "1 year (1.9x)" },
+        { value: "0yr", label: "Newborn (2.25x)" },
       ],
       showIf: (vals) => vals.include_ct_dose === true,
     },
@@ -227,170 +203,468 @@ Unit factors: NIST SP811. Radiation weighting: ICRP103 as reproduced in IAEA115 
       scan_length = "",
       body_region = "",
       patient_age = "",
-      ct_phantom = "",
     } = vals;
 
     const result = {};
 
-    const finiteDecimal = (value) => {
-      if (typeof value !== "number" && typeof value !== "string") return NaN;
-      const text = String(value).trim();
-      if (!/^[+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return NaN;
-      const number = Number(text);
-      if (!Number.isFinite(number) || number < 0) return NaN;
-      // A positive decimal too small for Number must not become a known zero.
-      if (number === 0 && /[1-9]/.test(text.split(/[eE]/)[0])) return NaN;
-      return number;
-    };
-    const unitFactors = {
-      absorbed: { Gy: 1, mGy: 0.001, cGy: 0.01, rad: 0.01 },
-      equivalent: { Sv: 1, mSv: 0.001, uSv: 0.000001, rem: 0.01, mrem: 0.00001 },
-      activity: { Bq: 1, kBq: 1e3, MBq: 1e6, GBq: 1e9, Ci: 3.7e10, mCi: 3.7e7, uCi: 3.7e4 },
-    };
-    if (typeof include_ct_dose !== "boolean") {
-      return { Error: "Select CT calculation using the checkbox." };
-    }
-    if (typeof conversion_mode !== "string" || (conversion_mode !== "" && !Object.hasOwn(unitFactors, conversion_mode))) {
-      return { Error: "Select a supported conversion mode." };
-    }
-    if (!conversion_mode && (input_value !== "" || !include_ct_dose)) {
-      return { Error: "Select a conversion mode and value, or select CT calculation alone." };
-    }
-    const inputVal = finiteDecimal(input_value);
-    if (conversion_mode) {
-      const units = unitFactors[conversion_mode];
-      const unit = { absorbed: absorbed_unit, equivalent: equivalent_unit, activity: activity_unit }[conversion_mode];
-      if (typeof unit !== "string" || !Object.hasOwn(units, unit) || !Number.isFinite(inputVal)) {
-        return { Error: "Enter a complete finite non-negative conversion value and select a supported input unit." };
-      }
-      const base = inputVal * units[unit];
-      if (Object.values(units).some((factor) => !Number.isFinite(base / factor) || (inputVal > 0 && base / factor === 0))) {
-        return { Error: "Converted values cannot be represented reliably. Check the value and units." };
-      }
-    }
-    if (include_ct_dose) {
-      const dose = finiteDecimal(ctdi_vol);
-      const length = finiteDecimal(scan_length);
-      if (!(dose > 0) || !(length > 0) ||
-          !["head", "neck", "chest", "abdomen", "pelvis", "trunk"].includes(body_region) ||
-          !["0yr", "1yr", "5yr", "10yr", "adult"].includes(patient_age) ||
-          !["16", "32", "unknown"].includes(ct_phantom)) {
-        return { Error: "Enter finite positive CTDIvol and scan length; select age, region and scanner CTDI phantom basis." };
-      }
-      if (!Number.isFinite(dose * length) || dose * length === 0) {
-        return { Error: "DLP cannot be represented reliably. Check CTDIvol and scan length." };
-      }
+    // Validate required fields for unit conversion
+    if (!conversion_mode && input_value !== "" && !include_ct_dose) {
+      return {
+        Error: "Please select a conversion mode to begin.",
+      };
     }
 
-    const formatValue = (value, unit) => {
-      if (value === 0) return `0 ${unit}`;
-      if (Math.abs(value) >= 1e6 || Math.abs(value) < .0001) return `${value.toExponential(4)} ${unit}`;
-      return `${Number(value.toFixed(value < 1 ? 6 : 4))} ${unit}`;
-    };
-    if (conversion_mode) {
-      const units = unitFactors[conversion_mode];
-      const unit = { absorbed: absorbed_unit, equivalent: equivalent_unit, activity: activity_unit }[conversion_mode];
-      const base = inputVal * units[unit];
-      const labels = {
-        Gy: "Gray (Gy)", mGy: "milligray (mGy)", cGy: "centigray (cGy)", rad: "rad",
-        Sv: "Sievert (Sv)", mSv: "millisievert (mSv)", uSv: "microsievert (μSv)", rem: "rem", mrem: "millirem (mrem)",
-        Bq: "Becquerel (Bq)", kBq: "kilobecquerel (kBq)", MBq: "megabecquerel (MBq)", GBq: "gigabecquerel (GBq)",
-        Ci: "Curie (Ci)", mCi: "millicurie (mCi)", uCi: "microcurie (μCi)",
-      };
-      for (const [target, factor] of Object.entries(units)) {
-        result[labels[target]] = formatValue(base / factor, target.replace("uSv", "μSv").replace("uCi", "μCi"));
+    const inputVal = parseFloat(input_value);
+
+    // Helper function to format values with appropriate precision
+    const formatValue = (val, unit) => {
+      if (val === 0) return `0 ${unit}`;
+      if (Math.abs(val) >= 1e6) return `${val.toExponential(4)} ${unit}`;
+      let str;
+      if (Math.abs(val) >= 1) {
+        str = val.toFixed(4);
+      } else if (Math.abs(val) >= 0.0001) {
+        str = val.toFixed(6);
+      } else {
+        return `${val.toExponential(4)} ${unit}`;
       }
+      // Strip trailing zeros for clean display
+      str = str.replace(/\.?0+$/, "");
+      return `${str} ${unit}`;
+    };
+
+    // Process unit conversions if input value provided
+    if (!isNaN(inputVal) && inputVal >= 0) {
+      // ABSORBED DOSE CONVERSIONS
       if (conversion_mode === "absorbed") {
-        result["Quantity limitation"] = "Absorbed dose is energy per mass. Organ-equivalent dose H = wR × organ-mean absorbed dose; effective dose additionally requires tissue weighting. A Gy input alone does not establish effective dose or patient risk.";
-      } else if (conversion_mode === "activity") {
-        result["Activity limitation"] = "Activity alone does not determine absorbed dose or whether an administered activity is appropriate. Tracer, indication, patient and protocol details are required; no prescribing recommendation is made.";
-        result["Quick Reference"] = "1 mCi = 37 MBq | 1 Ci = 37 GBq";
-      } else {
-        result["Quantity limitation"] = "Sv/rem conversion preserves the entered quantity. Organ-equivalent and effective dose are not interchangeable; these unit conversions do not infer patient risk or compare patient exposure with occupational limits.";
-        const confirmed = vals.input_is_organ_equivalent === undefined ? false : vals.input_is_organ_equivalent;
-        if (typeof confirmed !== "boolean") return { Error: "Confirm the organ-equivalent input assumption using the checkbox." };
-        if (confirmed) {
-          if (typeof radiation_type !== "string") return { Error: "Select a supported radiation type for the organ-dose relationship." };
-          const fixed = { photon: 1, beta: 1, proton: 2, alpha: 20 };
-          let weight;
-          if (Object.hasOwn(fixed, radiation_type)) {
-            weight = fixed[radiation_type];
-          } else if (radiation_type === "neutron") {
-            const energy = finiteDecimal(vals.neutron_energy_mev);
-            if (!(energy > 0)) return { Error: "Enter a finite positive incident neutron energy in MeV." };
-            const logEnergy = Math.log(energy);
-            weight = energy < 1
-              ? 2.5 + 18.2 * Math.exp(-(logEnergy ** 2) / 6)
-              : energy <= 50
-                ? 5 + 17 * Math.exp(-((logEnergy + Math.LN2) ** 2) / 6)
-                : 2.5 + 3.25 * Math.exp(-((logEnergy + Math.log(.04)) ** 2) / 6);
+        if (!absorbed_unit) {
+          result["Error"] = "Please select an input unit.";
+        } else {
+          // Convert to base unit (Gy)
+          let valueInGy;
+          switch (absorbed_unit) {
+            case "Gy":
+              valueInGy = inputVal;
+              break;
+            case "mGy":
+              valueInGy = inputVal * 0.001;
+              break;
+            case "cGy":
+              valueInGy = inputVal * 0.01;
+              break;
+            case "rad":
+              valueInGy = inputVal * 0.01;
+              break;
+            default:
+              valueInGy = inputVal;
+          }
+
+          result["Absorbed Dose Conversions"] = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+          result["Gray (Gy)"] = formatValue(valueInGy, "Gy");
+          result["milligray (mGy)"] = formatValue(valueInGy * 1000, "mGy");
+          result["centigray (cGy)"] = formatValue(valueInGy * 100, "cGy");
+          result["rad"] = formatValue(valueInGy * 100, "rad");
+
+          // Add equivalent dose note for photons
+          result["Equivalent Dose (X-rays/gamma)"] =
+            "━━━━━━━━━━━━━━━━━━━━━━━━━";
+          result["Note (wR = 1)"] =
+            `For X-rays/gamma: ${formatValue(valueInGy, "Gy")} = ${formatValue(valueInGy, "Sv")}`;
+          result["Note (wR = 20)"] =
+            `For alpha particles: ${formatValue(valueInGy, "Gy")} = ${formatValue(valueInGy * 20, "Sv")}`;
+        }
+      }
+
+      // EQUIVALENT DOSE CONVERSIONS
+      if (conversion_mode === "equivalent") {
+        if (!equivalent_unit) {
+          result["Error"] = "Please select an input unit.";
+        } else {
+          // Convert to base unit (Sv)
+          let valueInSv;
+          switch (equivalent_unit) {
+            case "Sv":
+              valueInSv = inputVal;
+              break;
+            case "mSv":
+              valueInSv = inputVal * 0.001;
+              break;
+            case "uSv":
+              valueInSv = inputVal * 0.000001;
+              break;
+            case "rem":
+              valueInSv = inputVal * 0.01;
+              break;
+            case "mrem":
+              valueInSv = inputVal * 0.00001;
+              break;
+            default:
+              valueInSv = inputVal;
+          }
+
+          result["Equivalent Dose Conversions"] = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+          result["Sievert (Sv)"] = formatValue(valueInSv, "Sv");
+          result["millisievert (mSv)"] = formatValue(valueInSv * 1000, "mSv");
+          result["microsievert (μSv)"] = formatValue(
+            valueInSv * 1000000,
+            "μSv",
+          );
+          result["rem"] = formatValue(valueInSv * 100, "rem");
+          result["millirem (mrem)"] = formatValue(valueInSv * 100000, "mrem");
+
+          // Radiation weighting factor info
+          if (radiation_type) {
+            let wR, wRNote;
+            switch (radiation_type) {
+              case "photon":
+                wR = 1;
+                wRNote = "X-rays, gamma rays";
+                break;
+              case "beta":
+                wR = 1;
+                wRNote = "Beta particles, electrons";
+                break;
+              case "proton":
+                wR = 2;
+                wRNote = "Protons (> 2 MeV)";
+                break;
+              case "alpha":
+                wR = 20;
+                wRNote = "Alpha particles";
+                break;
+              case "neutron_low":
+                wR = 5;
+                wRNote = "Neutrons < 10 keV";
+                break;
+              case "neutron_med":
+                wR = 20;
+                wRNote = "Neutrons 100 keV - 2 MeV";
+                break;
+              case "neutron_high":
+                wR = 5;
+                wRNote = "Neutrons > 20 MeV";
+                break;
+              default:
+                wR = 1;
+                wRNote = "Default";
+            }
+
+            result["Radiation Weighting Factor"] = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+            result["wR Factor"] = `${wR} (${wRNote})`;
+            result["Formula"] = `H (Sv) = D (Gy) × wR`;
+
+            // Show absorbed dose equivalent
+            const absorbedDose = valueInSv / wR;
+            result["Corresponding Absorbed Dose"] = formatValue(
+              absorbedDose,
+              "Gy",
+            );
+          }
+
+          // Reference doses for context
+          const valueInMSv = valueInSv * 1000;
+          result["Dose Context"] = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+
+          // Calculate chest X-ray equivalents (0.02 mSv per PA chest X-ray)
+          const chestXrayEq = valueInMSv / 0.02;
+          // Background radiation ~3 mSv/year = 0.00822 mSv/day
+          const backgroundDaysEq = valueInMSv / (3 / 365);
+
+          result["Equivalent Background Radiation"] =
+            `${backgroundDaysEq.toFixed(1)} days of natural background`;
+          result["Equivalent Chest X-rays (PA)"] =
+            `≈ ${chestXrayEq.toFixed(0)} chest X-rays`;
+
+          // Contextual comparisons
+          const comparisons = [];
+          if (valueInMSv < 0.02)
+            comparisons.push("Less than a chest X-ray (0.02 mSv)");
+          else if (valueInMSv < 0.1)
+            comparisons.push("Similar to a chest X-ray");
+          else if (valueInMSv < 1)
+            comparisons.push("Similar to a few chest X-rays");
+          else if (valueInMSv < 3)
+            comparisons.push("Similar to 1 year of background radiation");
+          else if (valueInMSv < 8)
+            comparisons.push("Similar to CT chest range (4-8 mSv)");
+          else if (valueInMSv < 15)
+            comparisons.push("Similar to CT abdomen/pelvis range");
+          else if (valueInMSv < 50)
+            comparisons.push("Approaching annual occupational limit (50 mSv)");
+          else comparisons.push("Exceeds annual occupational limit (50 mSv)");
+
+          if (comparisons.length > 0) {
+            result["Context"] = comparisons.join("; ");
+          }
+        }
+      }
+
+      // ACTIVITY CONVERSIONS
+      if (conversion_mode === "activity") {
+        if (!activity_unit) {
+          result["Error"] = "Please select an input unit.";
+        } else {
+          // Convert to base unit (Bq)
+          let valueInBq;
+          switch (activity_unit) {
+            case "Bq":
+              valueInBq = inputVal;
+              break;
+            case "kBq":
+              valueInBq = inputVal * 1e3;
+              break;
+            case "MBq":
+              valueInBq = inputVal * 1e6;
+              break;
+            case "GBq":
+              valueInBq = inputVal * 1e9;
+              break;
+            case "Ci":
+              valueInBq = inputVal * 3.7e10;
+              break;
+            case "mCi":
+              valueInBq = inputVal * 3.7e7;
+              break;
+            case "uCi":
+              valueInBq = inputVal * 3.7e4;
+              break;
+            default:
+              valueInBq = inputVal;
+          }
+
+          result["Activity Conversions (SI Units)"] =
+            "━━━━━━━━━━━━━━━━━━━━━━━━━";
+          result["Becquerel (Bq)"] =
+            valueInBq >= 1e6
+              ? `${valueInBq.toExponential(4)} Bq`
+              : formatValue(valueInBq, "Bq");
+          result["kilobecquerel (kBq)"] = formatValue(valueInBq / 1e3, "kBq");
+          result["megabecquerel (MBq)"] = formatValue(valueInBq / 1e6, "MBq");
+          result["gigabecquerel (GBq)"] = formatValue(valueInBq / 1e9, "GBq");
+
+          result["Activity Conversions (Legacy Units)"] =
+            "━━━━━━━━━━━━━━━━━━━━━━━━━";
+          result["Curie (Ci)"] = formatValue(valueInBq / 3.7e10, "Ci");
+          result["millicurie (mCi)"] = formatValue(valueInBq / 3.7e7, "mCi");
+          result["microcurie (μCi)"] = formatValue(valueInBq / 3.7e4, "μCi");
+
+          // Common nuclear medicine context
+          const valueInMBq = valueInBq / 1e6;
+          result["Nuclear Medicine Context"] = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+
+          const nmComparisons = [];
+          if (valueInMBq >= 370 && valueInMBq <= 555) {
+            nmComparisons.push(
+              "Typical FDG PET dose range (370-555 MBq / 10-15 mCi)",
+            );
+          }
+          if (valueInMBq >= 740 && valueInMBq <= 925) {
+            nmComparisons.push(
+              "Typical Tc-99m MDP bone scan range (740-925 MBq / 20-25 mCi)",
+            );
+          }
+          if (valueInMBq >= 740 && valueInMBq <= 1110) {
+            nmComparisons.push("Typical Tc-99m sestamibi cardiac stress range");
+          }
+          if (valueInMBq >= 1110 && valueInMBq <= 7400) {
+            nmComparisons.push("Therapeutic I-131 range (30-200 mCi)");
+          }
+
+          if (nmComparisons.length > 0) {
+            result["Clinical Context"] = nmComparisons.join("; ");
+          } else if (valueInMBq < 370) {
+            result["Clinical Context"] =
+              "Below typical diagnostic nuclear medicine doses";
           } else {
-            return { Error: "Select a supported radiation type for the organ-dose relationship." };
+            result["Clinical Context"] =
+              "Common diagnostic activities: 370-925 MBq (10-25 mCi)";
           }
-          const dose = base / weight;
-          if (!Number.isFinite(dose) || (inputVal > 0 && dose === 0)) {
-            return { Error: "Organ-mean absorbed dose cannot be represented reliably. Check the input and units." };
-          }
-          result["wR Factor"] = `${Number(weight.toFixed(6))} (${radiation_type}; ICRP103 / IAEA115)`;
-          result["Organ dose formula"] = "D (Gy) = organ-equivalent H (Sv) / wR";
-          result["Corresponding Absorbed Dose"] = formatValue(dose, "Gy");
-          result["Organ dose assumptions"] = "Input is organ-equivalent dose from one radiation type, not effective dose. Neutron weighting assumes the stated incident energy; this is not spectrum integration, operational dosimeter conversion or radiotherapy RBE.";
-          if (radiation_type === "neutron") result["Incident neutron energy"] = formatValue(finiteDecimal(vals.neutron_energy_mev), "MeV");
+
+          // Quick reference
+          result["Quick Reference"] = "1 mCi = 37 MBq | 1 Ci = 37 GBq";
         }
       }
+    } else if (input_value !== "" && !include_ct_dose) {
+      result["Error"] =
+        "Please enter a valid non-negative number for conversion.";
     }
 
-    // AAPM Report 96, Table 3, printed p.13: age-specific reference factors.
+    // CT DOSE CALCULATION
     if (include_ct_dose) {
-      const dlp = finiteDecimal(ctdi_vol) * finiteDecimal(scan_length);
-      const table = {
-        head: [.011, .0067, .0040, .0032, .0021],
-        neck: [.017, .012, .011, .0079, .0059],
-        chest: [.039, .026, .018, .013, .014],
-        abdomen: [.049, .030, .020, .015, .015],
-        pelvis: [.049, .030, .020, .015, .015],
-        trunk: [.044, .028, .019, .014, .015],
-      };
-      const ageIndex = ["0yr", "1yr", "5yr", "10yr", "adult"].indexOf(patient_age);
-      const requiredPhantom = patient_age !== "adult" || ["head", "neck"].includes(body_region) ? "16" : "32";
-      result["CT Dose Calculation"] = "AAPM Report 96 (2008), Table 3 reference estimate";
-      result["Input - CTDIvol"] = formatValue(finiteDecimal(ctdi_vol), "mGy");
-      result["Input - Scan Length"] = formatValue(finiteDecimal(scan_length), "cm");
-      result["DLP (Dose Length Product)"] = dlp >= .1 && dlp < 1e6 ? `${dlp.toFixed(1)} mGy·cm` : formatValue(dlp, "mGy·cm");
-      result["CT reference scope"] = `${body_region}; ${patient_age}; scanner phantom ${ct_phantom} cm. Abdomen/pelvis share the published combined-region factor. DLP here is CTDIvol × length, not a replacement for scanner-reported series DLP.`;
-      if (ct_phantom !== requiredPhantom) {
-        result["CT estimate limitation"] = `Effective-dose estimate withheld: this age/region table requires the ${requiredPhantom} cm CTDI phantom basis. Confirm the scanner basis; no phantom conversion is assumed.`;
-      } else {
-        const kFactor = table[body_region][ageIndex];
-        const effectiveDose = dlp * kFactor;
-        if (!Number.isFinite(effectiveDose) || effectiveDose === 0) {
-          return { Error: "Estimated effective dose cannot be represented reliably. Check CTDIvol and scan length." };
+      const ctdiVolVal = parseFloat(ctdi_vol);
+      const scanLengthVal = parseFloat(scan_length);
+
+      if (
+        !isNaN(ctdiVolVal) &&
+        !isNaN(scanLengthVal) &&
+        ctdiVolVal > 0 &&
+        scanLengthVal > 0 &&
+        body_region
+      ) {
+        // Calculate DLP
+        const dlp = ctdiVolVal * scanLengthVal;
+
+        // Get k-factor based on body region (AAPM Report 96 / European Commission)
+        let kFactor;
+        let phantomSize;
+        switch (body_region) {
+          case "head":
+            kFactor = 0.0021;
+            phantomSize = "16 cm";
+            break;
+          case "neck":
+            kFactor = 0.0059;
+            phantomSize = "16 cm";
+            break;
+          case "chest":
+            kFactor = 0.014;
+            phantomSize = "32 cm";
+            break;
+          case "abdomen":
+            kFactor = 0.015;
+            phantomSize = "32 cm";
+            break;
+          case "pelvis":
+            kFactor = 0.015;
+            phantomSize = "32 cm";
+            break;
+          case "trunk":
+            kFactor = 0.015;
+            phantomSize = "32 cm";
+            break;
+          default:
+            kFactor = 0.015;
+            phantomSize = "32 cm";
         }
-        result["k-factor"] = `${kFactor} mSv/(mGy·cm) [${requiredPhantom} cm phantom]`;
-        result["CT Formula"] = "E (mSv) = DLP × k";
-        result["Estimated Effective Dose"] = formatValue(effectiveDose, "mSv");
+
+        // Get age multiplier for pediatric patients
+        let ageMultiplier;
+        let ageDesc;
+        switch (patient_age) {
+          case "0yr":
+            ageMultiplier = 2.25;
+            ageDesc = "Newborn";
+            break;
+          case "1yr":
+            ageMultiplier = 1.9;
+            ageDesc = "1 year";
+            break;
+          case "5yr":
+            ageMultiplier = 1.5;
+            ageDesc = "5 years";
+            break;
+          case "10yr":
+            ageMultiplier = 1.2;
+            ageDesc = "10 years";
+            break;
+          case "adult":
+          default:
+            ageMultiplier = 1.0;
+            ageDesc = "Adult";
+        }
+
+        // Calculate effective dose
+        const effectiveDoseAdult = dlp * kFactor;
+        const effectiveDose = effectiveDoseAdult * ageMultiplier;
+
+        result["CT Dose Calculation"] = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+        result["Input - CTDIvol"] = `${ctdiVolVal.toFixed(2)} mGy`;
+        result["Input - Scan Length"] = `${scanLengthVal.toFixed(1)} cm`;
+        result["DLP (Dose Length Product)"] = `${dlp.toFixed(1)} mGy·cm`;
+        result["k-factor"] =
+          `${kFactor} mSv/(mGy·cm) [${body_region}, ${phantomSize} phantom]`;
+        result["Formula"] = "E (mSv) = DLP × k";
+
+        if (patient_age && patient_age !== "adult") {
+          result["Age Adjustment"] =
+            `${ageMultiplier}× multiplier for ${ageDesc}`;
+          result["Adult Effective Dose"] =
+            `${effectiveDoseAdult.toFixed(2)} mSv`;
+        }
+
+        result["Estimated Effective Dose"] = `${effectiveDose.toFixed(2)} mSv`;
+
+        // Context comparisons
+        const chestXrays = effectiveDose / 0.02;
+        const backgroundDays = effectiveDose / (3 / 365);
+        result["Equivalent Chest X-rays"] = `≈ ${Math.round(chestXrays)}`;
+        result["Equivalent Background Days"] =
+          `≈ ${Math.round(backgroundDays)} days`;
+
+        // Typical dose range comparison by body region
+        result["Dose Assessment"] = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+        let doseContext = "";
+        let typicalRange = "";
+
+        if (body_region === "head") {
+          typicalRange = "Typical head CT: 1.5-2.5 mSv";
+          if (effectiveDose < 1.5) doseContext = "Below typical range";
+          else if (effectiveDose <= 2.5) doseContext = "Within typical range";
+          else doseContext = "Above typical range";
+        } else if (body_region === "neck") {
+          typicalRange = "Typical neck CT: 1.5-3.0 mSv";
+          if (effectiveDose < 1.5) doseContext = "Below typical range";
+          else if (effectiveDose <= 3.0) doseContext = "Within typical range";
+          else doseContext = "Above typical range";
+        } else if (body_region === "chest") {
+          typicalRange = "Typical chest CT: 4-8 mSv";
+          if (effectiveDose < 4) doseContext = "Below typical range";
+          else if (effectiveDose <= 8) doseContext = "Within typical range";
+          else doseContext = "Above typical range";
+        } else if (body_region === "abdomen" || body_region === "pelvis") {
+          typicalRange = "Typical abdomen/pelvis CT: 6-15 mSv";
+          if (effectiveDose < 6) doseContext = "Below typical range";
+          else if (effectiveDose <= 15) doseContext = "Within typical range";
+          else doseContext = "Above typical range";
+        } else if (body_region === "trunk") {
+          typicalRange = "Typical CAP CT: 8-15 mSv";
+          if (effectiveDose < 8) doseContext = "Below typical range";
+          else if (effectiveDose <= 15) doseContext = "Within typical range";
+          else doseContext = "Above typical range";
+        }
+
+        result["Typical Range"] = typicalRange;
+        result["Assessment"] = doseContext;
+
+        // Important limitations
+        result["Important Limitations"] =
+          "k-factors provide population-average estimates only. Actual patient dose varies significantly with body habitus. Consider Size-Specific Dose Estimates (SSDE) for individual patients.";
+      } else if (include_ct_dose) {
+        result["CT Dose Input Required"] =
+          "Enter CTDIvol (mGy), scan length (cm), and select body region.";
       }
-      result["Important Limitations"] = "Historical AAPM96 population/reference estimate, not individualized organ dose, patient risk, or a judgment of exposure appropriateness. Age and region factors are not universal multipliers; no interpolation or protocol optimization is performed.";
     }
 
+    // Add reference dose table if no specific calculation was done
+    if (
+      Object.keys(result).length === 0 ||
+      (input_value === "" && !include_ct_dose)
+    ) {
+      result["Common Reference Doses"] = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+      result["Chest X-ray (PA)"] = "0.02 mSv";
+      result["Chest X-ray (PA + Lat)"] = "0.1 mSv";
+      result["Mammography (bilateral)"] = "0.4 mSv";
+      result["Lumbar Spine X-ray"] = "1.5 mSv";
+      result["CT Head"] = "1.5-2.5 mSv";
+      result["CT Chest"] = "4-8 mSv";
+      result["CT Abdomen/Pelvis"] = "8-15 mSv";
+      result["Bone Scan (Tc-99m MDP)"] = "4-5 mSv";
+      result["PET/CT (F-18 FDG)"] = "7-14 mSv";
 
-    result._severity = "info";
-    if (include_ct_dose && !conversion_mode) {
-      const primary = result["Estimated Effective Dose"] ? "Estimated Effective Dose" : "DLP (Dose Length Product)";
-      return { [primary]: result[primary], ...result };
+      result["Dose Limits (ICRP)"] = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+      result["Annual Background (US avg)"] = "~3 mSv/year";
+      result["Public Annual Limit"] = "1 mSv/year";
+      result["Occupational Annual Limit"] = "50 mSv/year";
+      result["Occupational 5-Year Limit"] = "100 mSv (20 mSv/year average)";
+
+      result["Instructions"] =
+        "Select a conversion mode and enter a value to see unit conversions.";
     }
+
     return result;
   },
 
   refs: [
-    {
-      t: "NIST SP811 Appendix B.9, radiology conversion factors: Gy/rad, Sv/rem and Bq/Ci.",
-      u: "https://www.nist.gov/pml/special-publication-811/nist-guide-si-appendix-b-conversion-factors/nist-guide-si-appendix-b9",
-    },
-    {
-      t: "IAEA Safety Reports Series115 (2023), Neutron Monitoring for Radiation Protection, printed pp41–42, Eq5.10/Table5.4: ICRP103 radiation weighting.",
-      u: "https://www-pub.iaea.org/MTCD/Publications/PDF/PUB1987_web.pdf",
-    },
     {
       t: "ICRP Publication 103 (2007). The 2007 Recommendations of the International Commission on Radiological Protection. Ann ICRP 37(2-4).",
       u: "https://www.icrp.org/publication.asp?id=ICRP+Publication+103",

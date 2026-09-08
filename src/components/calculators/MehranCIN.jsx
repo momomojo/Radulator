@@ -7,14 +7,14 @@
  *
  * Primary Sources:
  * - Mehran R, et al. J Am Coll Cardiol. 2004;44(7):1393-1399
- * - Developed in a PCI population; not a general contrast-clearance tool
+ * - Validated in PCI population; applicable to other contrast procedures
  */
 
 export const MehranCIN = {
   id: "mehran-cin",
   category: "Nephrology",
   name: "Mehran CIN Risk Score",
-  desc: "Original 2004 PCI contrast-associated kidney injury risk score",
+  desc: "Predicts risk of contrast-induced nephropathy after angiography/PCI",
   guidelineVersion: "Mehran Score (2004)",
   keywords: [
     "contrast nephropathy",
@@ -25,7 +25,7 @@ export const MehranCIN = {
   ],
   tags: ["Nephrology", "Cardiology", "Safety"],
   metaDesc:
-    "Original 2004 Mehran PCI risk score with historical cohort-rate context. Not a general IV contrast clearance or treatment calculator.",
+    "Free Mehran CIN Risk Score Calculator. Predict contrast-induced nephropathy and dialysis risk after PCI or angiography with evidence-based risk stratification.",
 
   info: {
     text: `The Mehran Contrast-Induced Nephropathy (CIN) Risk Score predicts the risk of acute kidney injury following contrast administration during percutaneous coronary intervention.
@@ -41,12 +41,16 @@ Risk Categories:
 • High Risk (11-15 points): 26.1% CIN risk, 1.09% dialysis risk
 • Very High Risk (≥16 points): 57.3% CIN risk, 12.6% dialysis risk
 
-Prevention is not determined by this score alone. Assess renal function, acute kidney injury, contrast exposure route and volume status; individualize hydration, especially in severe heart failure. This tool does not prescribe hydration doses, medication holds, dialysis access or a safe contrast maximum.
+Prevention strategies include:
+• Adequate hydration (isotonic saline preferred)
+• Minimize contrast volume (target <3-4 mL/kg/eGFR)
+• Hold nephrotoxic medications
+• Consider iso-osmolar or low-osmolar contrast
 
-Scope: original PCI model, not a general IV CT contrast risk calculator or the newer Mehran 2 model. Rates are historical cohort estimates, not an individualized guarantee. Anticipated procedural inputs give a conditional estimate; update them after the procedure.`,
+Note: Score was developed for PCI; risk may differ for CT contrast.`,
     link: {
       label: "View Original Mehran Study",
-      url: "https://doi.org/10.1016/j.jacc.2004.06.068",
+      url: "https://doi.org/10.1016/j.jacc.2004.06.034",
     },
   },
 
@@ -99,7 +103,7 @@ Scope: original PCI model, not a general IV CT contrast risk calculator or the n
       id: "egfr",
       label: "eGFR (mL/min/1.73m²)",
       subLabel:
-        "Supply a measured-report eGFR; takes precedence if both renal fields are entered. No eGFR is calculated here.",
+        "Estimated glomerular filtration rate; if not provided, will estimate from creatinine",
       type: "number",
     },
 
@@ -107,9 +111,8 @@ Scope: original PCI model, not a general IV CT contrast risk calculator or the n
     {
       id: "contrast_volume",
       label: "Contrast Volume (mL)",
-      subLabel: "Required total anticipated or administered volume; blank is unknown, not zero",
+      subLabel: "Total anticipated or administered volume",
       type: "number",
-      required: true,
     },
   ],
 
@@ -126,34 +129,12 @@ Scope: original PCI model, not a general IV CT contrast risk calculator or the n
       contrast_volume = "",
     } = vals;
 
-    const absent = (value) => value === undefined || value === null || (typeof value === "string" && value.trim() === "");
-    const decimal = (value) => {
-      if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
-      if (typeof value !== "string" || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim())) return NaN;
-      const number = Number(value.trim());
-      return Number.isFinite(number) ? number : NaN;
-    };
-    if (absent(creatinine) && absent(egfr)) {
+    // Validate required fields
+    if (!creatinine && !egfr) {
       return {
         Error:
           "Please provide either serum creatinine or eGFR to calculate the risk score.",
       };
-    }
-
-    const directEGFR = absent(egfr) ? null : decimal(egfr);
-    const creatValue = absent(creatinine) ? null : decimal(creatinine);
-    if ((directEGFR !== null && (!Number.isFinite(directEGFR) || directEGFR <= 0)) ||
-        (creatValue !== null && (!Number.isFinite(creatValue) || creatValue <= 0))) {
-      return { Error: "Every supplied renal measurement must be a finite positive number in the displayed units." };
-    }
-    const volume = absent(contrast_volume) ? NaN : decimal(contrast_volume);
-    if (!Number.isFinite(volume) || volume < 0) {
-      return { Error: "Enter a finite nonnegative contrast volume in mL; blank volume is unknown, not zero." };
-    }
-    for (const value of [hypotension, iabp, chf, age_over_75, anemia, diabetes]) {
-      if (value !== "" && typeof value !== "boolean") {
-        return { Error: "Clinical risk factors must be selected with the checkboxes." };
-      }
     }
 
     // Calculate points
@@ -187,6 +168,7 @@ Scope: original PCI model, not a general IV CT contrast risk calculator or the n
     }
 
     // Contrast volume scoring (1 point per 100 mL)
+    const volume = parseFloat(contrast_volume) || 0;
     if (volume > 0) {
       const volumePoints = Math.floor(volume / 100);
       score += volumePoints;
@@ -195,6 +177,20 @@ Scope: original PCI model, not a general IV CT contrast risk calculator or the n
 
     // Renal function scoring
     // Per Mehran 2004: use EITHER eGFR-based tiered scoring OR creatinine >1.5, not both
+    const directEGFR = parseFloat(egfr) || 0;
+    const creatValue = parseFloat(creatinine) || 0;
+    let estimatedEGFR = directEGFR;
+
+    // Estimate eGFR from creatinine if not directly provided (for contrast limit guidance)
+    if (!directEGFR && creatValue > 0) {
+      // Simplified CKD-EPI approximation (assume 70 year old, non-Black)
+      estimatedEGFR =
+        141 *
+        Math.pow(Math.min(creatValue / 0.9, 1), -0.411) *
+        Math.pow(Math.max(creatValue / 0.9, 1), -1.209) *
+        0.993;
+      estimatedEGFR = Math.round(estimatedEGFR);
+    }
 
     // Scoring strategy:
     // - If eGFR directly provided: use modern eGFR-based tiered scoring (more granular)
@@ -222,23 +218,28 @@ Scope: original PCI model, not a general IV CT contrast risk calculator or the n
     let riskCategory = "";
     let cinRisk = "";
     let dialysisRisk = "";
+    let riskLevel = "";
 
     if (score <= 5) {
       riskCategory = "Low Risk";
       cinRisk = "7.5%";
       dialysisRisk = "0.04%";
+      riskLevel = "low";
     } else if (score <= 10) {
       riskCategory = "Moderate Risk";
       cinRisk = "14.0%";
       dialysisRisk = "0.12%";
+      riskLevel = "moderate";
     } else if (score <= 15) {
       riskCategory = "High Risk";
       cinRisk = "26.1%";
       dialysisRisk = "1.09%";
+      riskLevel = "high";
     } else {
       riskCategory = "Very High Risk";
       cinRisk = "57.3%";
       dialysisRisk = "12.6%";
+      riskLevel = "very-high";
     }
 
     // Build result
@@ -249,18 +250,69 @@ Scope: original PCI model, not a general IV CT contrast risk calculator or the n
       "Dialysis Risk": dialysisRisk,
     };
 
-    result["Renal Input Method"] = directEGFR !== null
-      ? `Supplied eGFR ${directEGFR} mL/min/1.73m²; eGFR takes precedence over creatinine, without double-counting.`
-      : `Supplied creatinine ${creatValue} mg/dL; no eGFR calculated.`;
+    if (estimatedEGFR > 0) {
+      result["Estimated eGFR"] = `${estimatedEGFR} mL/min/1.73m²`;
+    }
 
     if (breakdown.length > 0) {
       result["Score Breakdown"] = breakdown.join("; ");
     }
 
-    result["Prevention Context"] =
-      "Assess renal function, acute kidney injury, contrast exposure route and volume status separately. Individualize hydration, especially in severe heart failure. This score does not prescribe hydration doses, medication holds, dialysis access or a safe contrast maximum.";
-    result["Model Scope"] =
-      "Original 2004 PCI score; displayed rates are historical cohort estimates, not an individual guarantee or general IV CT contrast clearance. Anticipated procedural inputs make the estimate conditional; update after the procedure.";
+    // Prevention recommendations
+    const recommendations = [];
+
+    if (riskLevel === "low") {
+      recommendations.push(
+        "Standard hydration protocol (1 mL/kg/hr isotonic saline for 6-12 hours)",
+      );
+      recommendations.push("Limit contrast to minimum necessary volume");
+    } else if (riskLevel === "moderate") {
+      recommendations.push(
+        "Aggressive hydration (1.5 mL/kg/hr isotonic saline starting 3-12 hours pre-procedure)",
+      );
+      recommendations.push("Target contrast volume <3× eGFR (mL)");
+      recommendations.push("Consider iso-osmolar contrast agent");
+      recommendations.push(
+        "Hold nephrotoxins (NSAIDs, aminoglycosides) 24-48 hours before and after",
+      );
+    } else if (riskLevel === "high") {
+      recommendations.push(
+        "Aggressive IV hydration (isotonic saline 1.5 mL/kg/hr starting 12 hours pre-procedure)",
+      );
+      recommendations.push("Target contrast volume <2× eGFR (mL)");
+      recommendations.push("Use iso-osmolar contrast agent (iodixanol)");
+      recommendations.push("Hold metformin, nephrotoxins, ACE inhibitors/ARBs");
+      recommendations.push(
+        "Consider staged procedure to minimize contrast load",
+      );
+      recommendations.push(
+        "Monitor creatinine at 24, 48, and 72 hours post-procedure",
+      );
+    } else {
+      recommendations.push("Strongly consider delaying non-emergent procedure");
+      recommendations.push(
+        "If proceeding, minimize contrast (<1.5× eGFR or <100 mL total)",
+      );
+      recommendations.push(
+        "Maximize pre-procedure hydration (1.5-3 mL/kg/hr × 6-12 hours)",
+      );
+      recommendations.push("Use iso-osmolar contrast agent");
+      recommendations.push("Nephrology consultation recommended");
+      recommendations.push(
+        "Consider prophylactic renal replacement therapy access",
+      );
+      recommendations.push("Intensive post-procedure monitoring");
+    }
+
+    result["Prevention Recommendations"] = recommendations.join("; ");
+
+    // Maximum safe contrast volume guidance
+    if (estimatedEGFR > 0) {
+      const maxContrast = Math.round(estimatedEGFR * 3);
+      const targetContrast = Math.round(estimatedEGFR * 2);
+      result["Contrast Limits"] =
+        `Target: <${targetContrast} mL; Maximum: <${maxContrast} mL (based on eGFR × 2-3)`;
+    }
 
     result._severity =
       score <= 5 ? "success" : score <= 10 ? "warning" : "danger";
@@ -271,15 +323,7 @@ Scope: original PCI model, not a general IV CT contrast risk calculator or the n
   refs: [
     {
       t: "Mehran R, Aymong ED, Nikolsky E, et al. A simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention. J Am Coll Cardiol. 2004;44(7):1393-1399.",
-      u: "https://doi.org/10.1016/j.jacc.2004.06.068",
-    },
-    {
-      t: "ESUR Guidelines on Contrast Media, renal adverse reactions: B.2.2 individualized hydration, B.2.3 exposure-specific contrast guidance, B.4.1 metformin and B.5 dialysis.",
-      u: "https://esur-cm.org/index.php/en/b-renal-adverse-reactions",
-    },
-    {
-      t: "KDIGO 2012 AKI guideline, Section 4: Table 15 PCI risk model; recommendation 4.5.1 against prophylactic dialysis solely for contrast removal.",
-      u: "https://pmc.ncbi.nlm.nih.gov/articles/PMC4089629/",
+      u: "https://doi.org/10.1016/j.jacc.2004.06.034",
     },
     {
       t: "ACR Manual on Contrast Media, Version 2024. American College of Radiology Committee on Drugs and Contrast Media.",

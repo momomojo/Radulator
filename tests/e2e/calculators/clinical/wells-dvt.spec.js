@@ -1,60 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
-test.describe("Wells DVT reviewed report workflow", () => {
-  test.beforeEach(async ({ page }) => {
-    await navigateToCalculator(page, "Wells Criteria for DVT");
-  });
-  test("inclusive calf criterion crosses the likely boundary and clears stale results", async ({ page }) => {
-    const report = page.getByRole("status", { name: "Calculator results" });
-    await page.locator("#previous_dvt").click();
-    await page.getByRole("button", { name: "Calculate", exact: true }).click();
-    await expect(report).toContainText("DVT Unlikely");
-    await page.getByText("Calf swelling at least 3 cm compared to asymptomatic leg", { exact: true }).click();
-    await expect(report).toHaveCount(0);
-    await page.getByRole("button", { name: "Calculate", exact: true }).click();
-    await expect(report).toContainText("2 points");
-    await expect(report).toContainText("DVT Likely");
-    await expect(report).toContainText("negative proximal scan and positive D-dimer");
-    await page.locator("#calf_swelling").click();
-    await expect(report).toHaveCount(0);
-    await page.getByRole("button", { name: "Calculate", exact: true }).click();
-    await expect(report).toContainText("1 points");
-    await expect(report).toContainText("DVT Unlikely");
-  });
-  test("actual copy preserves scope, source-specific pathway and cohort caveat; print retains report", async ({ page, context }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await page.locator("#bedridden_surgery").click();
-    await page.locator("#previous_dvt").click();
-    await page.getByRole("button", { name: "Calculate", exact: true }).click();
-    await page.getByRole("button", { name: "Copy results", exact: true }).click();
-    const copied = await page.evaluate(() => navigator.clipboard.readText());
-    for (const expected of ["2 points", "NICE NG158", "ASH", "not individual probabilities", "at least 3 days", "6–8 days"]) expect(copied).toContain(expected);
-    expect(copied).not.toContain("DVT is effectively excluded");
-    await page.emulateMedia({ media: "print" });
-    await expect(page.getByRole("status", { name: "Calculator results" })).toBeVisible();
-  });
-  test.describe("fresh mobile report", () => {
-    test.use({ viewport: { width: 390, height: 844 } });
-    test("keyboard calculation and complete report remain within bounds", async ({ page }, testInfo) => {
-      await page.locator("#alternative_diagnosis").click();
-      await page.getByRole("button", { name: "Calculate", exact: true }).focus();
-      await page.keyboard.press("Enter");
-      const report = page.getByRole("status", { name: "Calculator results" });
-      await expect(report).toContainText("-2 points");
-      await expect(report).toContainText("does not diagnose or exclude DVT");
-      await expect.poll(() => report.evaluate(el => {
-        const bounds = el.getBoundingClientRect();
-        return [...el.querySelectorAll("span")].filter(span => {
-          const rect = span.getBoundingClientRect();
-          return rect.left < bounds.left - 1 || rect.right > bounds.right + 1 || span.scrollWidth > span.clientWidth + 1;
-        }).map(span => span.textContent);
-      })).toEqual([]);
-      await page.screenshot({ path: testInfo.outputPath("wells-dvt-mobile.png"), fullPage: true });
-    });
-  });
-});
-
 /**
  * E2E Tests for Wells DVT Calculator
  * Wells Criteria for Deep Vein Thrombosis
@@ -84,14 +30,14 @@ test.describe("Wells Criteria for DVT Calculator", () => {
         page.getByText("Paralysis, paresis, or recent plaster immobilization"),
       ).toBeVisible();
       await expect(
-        page.getByText("Recently bedridden at least 3 days or major surgery"),
+        page.getByText("Recently bedridden >3 days or major surgery"),
       ).toBeVisible();
       await expect(
         page.getByText("Localized tenderness along deep venous system"),
       ).toBeVisible();
       await expect(page.getByText("Entire leg swollen")).toBeVisible();
       await expect(
-        page.getByText("Calf swelling at least 3 cm compared to asymptomatic leg"),
+        page.getByText("Calf swelling >3 cm compared to asymptomatic leg"),
       ).toBeVisible();
       await expect(
         page.getByText("Pitting edema confined to symptomatic leg"),
@@ -410,7 +356,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
       ).toContainText("Negative score");
     });
 
-    test("high score does not prescribe anticoagulation from uncollected treatment inputs", async ({
+    test("should display note about empiric anticoagulation for high risk", async ({
       page,
     }) => {
       // Get to score of 3+
@@ -422,10 +368,9 @@ test.describe("Wells Criteria for DVT Calculator", () => {
 
       await expect(
         page.locator(
-          "section[aria-live='polite'] > div:has-text('Decision boundary:')",
+          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
         ),
-      ).toContainText("does not issue start/stop or dosing instructions");
-      await expect(page.getByRole("status", { name: "Calculator results" })).not.toContainText("empiric anticoagulation");
+      ).toContainText("empiric anticoagulation");
     });
 
     test("should display note about prior DVT", async ({ page }) => {
@@ -451,7 +396,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
         page.locator(
           "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
         ),
-      ).toContainText("Cancer-associated presentations");
+      ).toContainText("Cancer-associated thrombosis");
     });
 
     test("should display common alternatives when alternative diagnosis selected", async ({
@@ -479,7 +424,7 @@ test.describe("Wells Criteria for DVT Calculator", () => {
         page.locator(
           "section[aria-live='polite'] > div:has-text('Score Breakdown:')",
         ),
-      ).toContainText("No positive findings selected");
+      ).toContainText("No risk factors selected");
     });
 
     test("should show breakdown of selected criteria", async ({ page }) => {

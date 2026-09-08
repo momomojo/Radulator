@@ -3,7 +3,7 @@ const KBRC_CALIBRATION_WARNING_THRESHOLD = 0.25;
 
 const KBRC_INPUT_LIMITS = {
   age: { label: "Age", min: 18, max: 90, unit: "years" },
-  weight: { label: "Weight", min: 30, max: 130, unit: "kg", action: "warn" },
+  weight: { label: "Weight", min: 30, max: 130, unit: "kg" },
   height: { label: "Height", min: 140, max: 210, unit: "cm" },
   platelets: {
     label: "Platelet count",
@@ -21,17 +21,16 @@ const KBRC_INPUT_LIMITS = {
 };
 
 function parseFiniteNumber(value) {
-  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
-  if (typeof value !== "string") return NaN;
-  const text = value.trim();
-  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return NaN;
+  if (value === null || value === undefined) return NaN;
+  const text = String(value).trim();
+  if (!text) return NaN;
   const parsed = Number(text);
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
 function validateNumericInput(id, value) {
   const range = KBRC_INPUT_LIMITS[id];
-  if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) {
+  if (value === null || value === undefined || String(value).trim() === "") {
     return { error: `${range.label} is required.` };
   }
 
@@ -42,11 +41,7 @@ function validateNumericInput(id, value) {
     };
   }
 
-  if (id === "weight" && parsed <= 0) {
-    return { error: "Weight must be above zero in kg." };
-  }
-
-  if (range.action !== "warn" && (parsed < range.min || parsed > range.max)) {
+  if (parsed < range.min || parsed > range.max) {
     return {
       error: `${range.label} must be ${range.min}–${range.max} ${range.unit}; values outside Radulator input limits are not accepted. These data-entry guardrails are not publication-derived model-validation bounds.`,
     };
@@ -106,17 +101,15 @@ export function calculateKbrcMajorBleedingProbability({
 export function calculateBmi(weightKg, heightCm) {
   const weight = parseFiniteNumber(weightKg);
   const height = parseFiniteNumber(heightCm);
-  if (!Number.isFinite(weight) || weight <= 0 || !Number.isFinite(height) || height <= 0) {
+  if (!Number.isFinite(weight) || !Number.isFinite(height) || height <= 0) {
     return NaN;
   }
-  const bmi = weight / (height / 100) ** 2;
-  return Number.isFinite(bmi) && bmi > 0 ? bmi : NaN;
+  return weight / (height / 100) ** 2;
 }
 
 function formatProbabilityPercent(probability) {
   const percent = probability * 100;
   const rounded = percent.toFixed(1);
-  if (probability < 1 && rounded === "100.0") return ">99.9%";
   return probability > 0 && rounded === "0.0" ? "<0.1%" : `${rounded}%`;
 }
 
@@ -154,9 +147,9 @@ export function computeKidneyBiopsyBleedingRisk(values) {
       native: values.kidney_type === "native",
     });
 
-  if (!Number.isFinite(linearPredictor) || !Number.isFinite(probability) || probability <= 0 || probability >= 1) {
+  if (!Number.isFinite(probability)) {
     return {
-      Error: "The calculation cannot represent this estimate reliably. Check all entries and units.",
+      Error: "The calculation did not produce a finite probability. Check all entries.",
     };
   }
 
@@ -164,12 +157,6 @@ export function computeKidneyBiopsyBleedingRisk(values) {
     "Estimated major bleeding risk after kidney biopsy":
       formatProbabilityPercent(probability),
     "Calculated BMI": `${bmi.toFixed(2)} kg/m²`,
-    ...(validated.weight < KBRC_INPUT_LIMITS.weight.min || validated.weight > KBRC_INPUT_LIMITS.weight.max
-      ? {
-          "Input Review":
-            "Weight is outside the 30–130 kg Radulator entry-review interval. Check weight, height and units. This interval is not a validated model domain; applicability of the estimate still requires clinical judgment.",
-        }
-      : {}),
     "Outcome Definition":
       "Biopsy-related bleeding requiring transfusion, surgery or embolization, or resulting in death.",
     "Model Scope":
@@ -220,8 +207,6 @@ Intended scope: adults undergoing an imaging-guided diagnostic percutaneous biop
 
 The numeric entry limits shown below are conservative Radulator data-entry guardrails, not ranges published as the model's validated domain.
 
-Weight must be positive. Values outside 30–130 kg prompt an input-review warning rather than rejection; BMI, not weight alone, is the model predictor. Check weight, height and units and assess clinical applicability. The other numeric entry limits remain enforced.
-
 The model was developed and validated in adult Canadian cohorts with few major-bleeding events. Technique, needle size, medication practices, prophylaxis, case mix, and follow-up differed between cohorts and centers. The estimate complements rather than replaces patient-specific assessment and local protocols.`,
     link: {
       label: "View the 2026 external validation and recalibration study",
@@ -252,8 +237,9 @@ The model was developed and validated in adult Canadian cohorts with few major-b
       id: "weight",
       label: "Weight",
       type: "number",
-      subLabel: "kg; positive; review weight, height and units outside 30–130 kg",
-      min: 0,
+      subLabel: "kg; Radulator input limit 30–130",
+      min: 30,
+      max: 130,
       step: "any",
       inputMode: "decimal",
     },

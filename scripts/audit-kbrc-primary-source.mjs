@@ -445,9 +445,6 @@ async function main() {
     input_limits: {
       provenance: KBRC_INPUT_LIMIT_PROVENANCE,
       publication_derived: false,
-      enforcement: Object.fromEntries(
-        Object.entries(KBRC_INPUT_LIMITS).map(([field, { action }]) => [field, action || "reject"]),
-      ),
       values: inputLimitValues,
     },
     runtime_input_limit_claims_match: true,

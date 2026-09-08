@@ -7,15 +7,12 @@ supplement with:
 npm run test:kbrc-source
 ```
 
-The audit requires Node.js 20 or newer. It retrieves the publisher PDF first,
-falls back to the Europe PMC supplementary archive when the publisher
-endpoint is unavailable, and parses the verified PDF bytes with the installed
-`pdfjs-dist` library in memory. No Poppler executable or temporary source
-directory is part of the audit path.
+The audit requires Node.js 20 or newer and Poppler's `pdftotext` command on
+`PATH`.
 
-The audit downloads the Europe PMC full-text XML and the supplement for PMCID
-`PMC13156734`, verifies the `mmc1.pdf` member before parsing it, and retains
-the source bytes only in memory:
+The audit downloads the Europe PMC full-text XML and supplementary ZIP for
+PMCID `PMC13156734`, extracts only `mmc1.pdf` into a mode-0600 temporary
+directory, and verifies the member before reading it:
 
 - Member: `mmc1.pdf`
 - Bytes: `3696579`
@@ -25,21 +22,14 @@ the source bytes only in memory:
 The script derives all 22 signed equation terms and spline knots from Item S1,
 derives the four published examples from the article XML and Table 1, and then
 compares those source-derived values independently with both the executable
-calculator and the canonical compute fixtures. The math regression also checks
-representative neighborhoods immediately below, at, and above every spline
-knot. A same-commit manifest is not used as the equation or vector oracle.
-
-The verification record includes deliberate mutation checks against a
-temporary working copy of the calculator source. A representative equation
-sign change, spline-knot change, and native-indicator change must each make the
-source-derived math regression fail; every mutation is restored before the
-final checks and no mutation is retained in the worktree.
+calculator and the canonical compute fixtures. A same-commit manifest is not
+used as the equation or vector oracle.
 
 The article and supplement are licensed CC BY-NC-ND 4.0. Radulator does not
 vendor or modify either source artifact. The downloaded bytes remain only in
-memory for the audit process; the repository stores the primary URLs,
-immutable member digest, extraction code, and source-derived numeric facts
-needed for reproducibility.
+the temporary audit directory and are deleted in a `finally` block; the
+repository stores the primary URLs, immutable member digest, extraction code,
+and source-derived numeric facts needed for reproducibility.
 
 Primary endpoints:
 
