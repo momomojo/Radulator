@@ -23,8 +23,8 @@
       "cases": 313
     },
     "browser": {
-      "allSpecFiles": 46,
-      "calculatorSpecificSpecFiles": 43,
+      "allSpecFiles": 48,
+      "calculatorSpecificSpecFiles": 45,
       "sharedSpecFiles": 3
     }
   },
@@ -263,7 +263,7 @@
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Uses published cortisol AVS ratios and protocols rather than a versioned society guideline; source fidelity remains queued for review.",
+        "justification": "Review and task record: docs/verification/calculators/avs-cortisol.md. Bounded current-input report/export repair has local evidence; underlying cortisol AVS clinical source review, numeric prerequisites and aggregation remain pending. No verification upgrade. Signed release and live acceptance remain pending.",
         "sourceReferences": [
           {
             "authority": "Acharya et al.",
@@ -280,9 +280,10 @@
       },
       "browser": {
         "specPaths": [
+          "tests/e2e/calculators/interventional/avs-cortisol-state.spec.js",
           "tests/e2e/calculators/interventional/avs-cortisol.spec.js"
         ],
-        "specCount": 1
+        "specCount": 2
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -291,6 +292,7 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
+          "tests/e2e/calculators/interventional/avs-cortisol-state.spec.js",
           "tests/e2e/calculators/interventional/avs-cortisol.spec.js"
         ]
       }
@@ -305,7 +307,7 @@
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Combines published AVS protocols and consensus material; no current-version claim is made until the named authorities are rechecked.",
+        "justification": "Review and task record: docs/verification/calculators/avs-hyperaldo.md. Bounded current-input report/export and selected-unit label repairs have local evidence. Numeric validity, sample pairing/aggregation and source-dependent clinical interpretation remain unresolved; no current-version or full-verification claim. An isolated tested numeric helper is not yet connected to the form. Signed release and live acceptance remain pending.",
         "sourceReferences": [
           {
             "authority": "Korean Endocrine Society",
@@ -322,9 +324,10 @@
       },
       "browser": {
         "specPaths": [
+          "tests/e2e/calculators/interventional/avs-hyperaldo-state.spec.js",
           "tests/e2e/calculators/interventional/avs-hyperaldo.spec.js"
         ],
-        "specCount": 1
+        "specCount": 2
       },
       "clinicalSignoff": "not established",
       "releaseProof": "not established",
@@ -333,6 +336,7 @@
         "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
         "computeFixtures": [],
         "browserSpecs": [
+          "tests/e2e/calculators/interventional/avs-hyperaldo-state.spec.js",
           "tests/e2e/calculators/interventional/avs-hyperaldo.spec.js"
         ]
       }
