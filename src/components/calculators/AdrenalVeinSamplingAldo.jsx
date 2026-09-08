@@ -110,12 +110,14 @@ export const AVSHyperaldo = {
     // Helper functions for managing samples
     const addSample = (setter, samples, maxCount) => {
       if (samples.length < maxCount) {
+        setResults(null);
         setter([...samples, { time: "", aldosterone: "", cortisol: "" }]);
       }
     };
 
     const removeSample = (setter, samples, index) => {
       if (samples.length > 1) {
+        setResults(null);
         setter(samples.filter((_, i) => i !== index));
       }
     };
@@ -877,7 +879,7 @@ export const AVSHyperaldo = {
     );
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" onChangeCapture={() => setResults(null)}>
         {/* Patient Metadata */}
         <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
           <h3 className="font-semibold mb-3">Patient Information</h3>
