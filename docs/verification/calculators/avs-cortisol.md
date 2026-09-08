@@ -45,6 +45,14 @@ by this UI-state task. Both cited primary-study URLs remain unchanged.
 
 ## Local state-repair evidence — 2026-09-08
 
+Final paired integrated run at55fb392aa1fc6b9b6623385911b6f875be950886 passed
+1578/1578 with no failures/skips/flakiness, retries0, production preview,
+four workers,2026-09-08T15:31:48.232Z, duration302478.758ms. Retained receipt:
+`avs-paired-integrated-final-results.json`. The earlier1577/1 run failed source
+freshness after an unimported helper was added during execution; it is retained
+separately. The replacement followed a fresh build and a frozen source tree.
+This remains bounded state-repair evidence, not full clinical acceptance.
+
 The runtime change only invalidates stored results when a native field changes
 or a permitted add/remove action changes sample structure. It does not change
 the clinical calculations or their interpretation. Before the fix, all14 state

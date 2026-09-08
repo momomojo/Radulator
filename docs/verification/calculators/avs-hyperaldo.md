@@ -202,6 +202,24 @@ integrated run and retain its separate receipt before any release claim.
 
 ## State-repair completion evidence
 
+Final frozen-candidate integrated run at55fb392aa1fc6b9b6623385911b6f875be950886
+passed1578/1578, no failures/skips/flakiness, retries0, production preview,
+four workers; started2026-09-08T15:31:48.232Z, duration302478.758ms. Receipt
+`avs-paired-integrated-final-results.json` is separate from the retained earlier
+build-freshness failure. This verifies the bounded state/unit changes and
+cross-catalog regression suite, not the inherited clinical interpretation or
+the unconnected helper's future integration. Signed gates, protected release
+and live acceptance remain pending.
+
+Final evidence follow-up links both AVS records from the existing registry and
+regenerates inventory without upgrading either status. The full computation
+command passed after replacing its stale43-file inventory assertion with a
+filesystem-derived count and explicit membership checks for both new AVS specs.
+The preceding failure was45 actual versus43 expected, not a calculator failure.
+Inventory freshness, registry validation,42/42 spec mapping and changed-test lint
+passed. Runtime, browser tests, build inputs and dependencies are unchanged from
+the1578-pass candidate; fresh remote exact-head CI is still required.
+
 State repair implemented locally2026-09-08. The15-case pre-fix run reproduced
 14 stale-state failures (report remained after an actual edit) and passed the
 unchanged-focus control. After three scoped state-invalidation additions,

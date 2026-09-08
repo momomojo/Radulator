@@ -189,7 +189,7 @@
       "basis_type": "consensus-statement",
       "verification_status": "seed-unverified",
       "last_verified": null,
-      "justification": "Combines published AVS protocols and consensus material; no current-version claim is made until the named authorities are rechecked.",
+      "justification": "Review and task record: docs/verification/calculators/avs-hyperaldo.md. Bounded current-input report/export and selected-unit label repairs have local evidence. Numeric validity, sample pairing/aggregation and source-dependent clinical interpretation remain unresolved; no current-version or full-verification claim. An isolated tested numeric helper is not yet connected to the form. Signed release and live acceptance remain pending.",
       "sources": [
         {
           "authority": "Korean Endocrine Society",
@@ -206,7 +206,7 @@
       "basis_type": "measurement-reference",
       "verification_status": "seed-unverified",
       "last_verified": null,
-      "justification": "Uses published cortisol AVS ratios and protocols rather than a versioned society guideline; source fidelity remains queued for review.",
+      "justification": "Review and task record: docs/verification/calculators/avs-cortisol.md. Bounded current-input report/export repair has local evidence; underlying cortisol AVS clinical source review, numeric prerequisites and aggregation remain pending. No verification upgrade. Signed release and live acceptance remain pending.",
       "sources": [
         {
           "authority": "Acharya et al.",
