@@ -5,6 +5,40 @@ Owner source-based review started2026-09-08; incomplete, not certification.
 
 ## Latest acceptance checkpoint
 
+### Signed-review rework: reproducible source access — 2026-09-08
+
+PR263 primary review at `b74587affcff0c29a0e5aee186672bd2862f99ff`
+returned NEEDS_FIX: the reviewer could not open the calf measurement source or
+directly establish the original-study attribution through its PubMed retrieval.
+That verdict remains authoritative for that head. Green CI did not authorize
+release. This rework supplies independently retrievable evidence, not a request
+to waive review or accept the owner's assertion.
+
+Owner repeated the following public retrievals after reading the full verdict:
+
+| Claim | Source and exact locator | Retrieval and evidence scope |
+|---|---|---|
+| Calf measurement location | [NHS Borders ambulatory DVT plan](https://www.rightdecisions.scot.nhs.uk/nhs-borders-clinical-guidelines/acute-services/ambulatory-care/deep-venous-thrombosis-ambulatory-care-plan/), Diagnosis → Initial Assessment → lower-limb examination; repeated in the calf row of the Wells clinical score table | Ordinary HTTPS returned the actual HTML despite the browsing service's 403. Both locations specify circumference measurement 10 cm distal to the tibial tuberosity. This corroborates measurement technique only, not adoption of the page's different prior-PE scoring item or management pathway. |
+| Historical three-band prevalence | [Wells et al., JAMA 2006, PMID16403932](https://pubmed.ncbi.nlm.nih.gov/16403932/), abstract → Study selection and Data synthesis | PubMed opened directly on this retry. Fourteen outpatient studies, more than 8,000 participants; pooled low/moderate/high prevalences 5%/17%/53%. This directly supports the attributed historical cohort context, not patient-specific calibration or a claim of full-article review. |
+| Original 2003 trial attribution | [Europe PMC record MED/14507948](https://europepmc.org/article/MED/14507948), indexed original abstract, Methods and Results; DOI10.1056/NEJMoa023153 | Public Europe PMC core-record API returned the original abstract. Outpatient lower-extremity evaluation; 530 control and 566 D-dimer participants; ultrasound omitted in the study's unlikely/negative-D-dimer branch. Publisher full text remains unreviewed. No additional exclusions, measurement definition or modern management rule is inferred from this abstract. |
+
+Reproduction when the browser service returns a cookie/error page (no login,
+credentials, alternate identity, access-control bypass or special headers):
+
+```sh
+curl --fail --location --max-time 25 'https://www.rightdecisions.scot.nhs.uk/nhs-borders-clinical-guidelines/acute-services/ambulatory-care/deep-venous-thrombosis-ambulatory-care-plan/'
+curl --fail --location --max-time 25 'https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:14507948%20AND%20SRC:MED&format=json&resultType=core'
+```
+
+Retained owner retrievals: `/tmp/radulator-wells-borders-review.html`
+(SHA256 `b7c0bc540c18df2acc3a881516b68aea7cdc250079fb51a995a93e241dce509f`)
+and `/tmp/radulator-wells-2003-europepmc.json`
+(SHA256 `aed599ca0383060ea7d91eee2a86d24ba45c4dbf08860cbc8abaa868ece91388`).
+These identify this retrieval, not immutable upstream documents; public locators
+and independently opened content govern review. The changed record adds no
+clinical rule and does not upgrade audit status. A new head requires new
+exact-head CI and independent signed review before merge and live acceptance.
+
 The entries below retain the source-review and implementation chronology; this
 checkpoint supersedes their earlier pending local-test statements. At commit
 `6abd5a9d226a8ddc780c86fc1f5fbeb4ea646730`, on released main
