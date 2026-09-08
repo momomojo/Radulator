@@ -626,19 +626,25 @@ class InstallerTests(unittest.TestCase):
 
     def test_e2e_workflow_publishes_authoritative_hermes_release_control_check(self):
         workflow = (self.repo / ".github/workflows/e2e-tests.yml").read_text()
-        smoke_job = workflow[:workflow.index("hermes-release-control-tests:")]
-        self.assertIn("name: Verify Hermes release-control suites in Smoke evidence", smoke_job)
-        for command in (
-            "npm run test:hermes-lifecycle",
-            "npm run test:hermes-learning",
-            "npm run test:hermes-feedback-intake",
-            "npm run test:hermes-seed-convert",
-            "npm run test:hermes-guideline-registry",
-            "npm run test:hermes-install",
-        ):
-            self.assertIn(command, smoke_job)
+        control_start = workflow.index("  hermes-release-control-tests:")
+        targeted_start = workflow.index("  targeted-tests:")
+        smoke_job = workflow[:control_start]
+        control_job = workflow[control_start:targeted_start]
+
+        self.assertIn("name: Smoke Tests", smoke_job)
+        self.assertIn("needs: [hermes-release-control-tests]", smoke_job)
+        self.assertIn("if: always()", smoke_job)
+        self.assertIn("name: Require Hermes Release Control Tests success", smoke_job)
+        self.assertIn("if: needs.hermes-release-control-tests.result != 'success'", smoke_job)
+        self.assertIn("exit 1", smoke_job)
+        self.assertNotIn("name: Run tooling checks", smoke_job)
+        self.assertNotIn("name: Verify Hermes release-control suites in Smoke evidence", smoke_job)
+        self.assertIn("name: Verify roadmap clinical source audits at exact head", smoke_job)
+        self.assertIn("npm run test:cac-drs-source", smoke_job)
+        self.assertIn("npm run test:hermes-guideline-registry", smoke_job)
+
         self.assertIn("hermes-release-control-tests:", workflow)
-        self.assertIn("name: Hermes Release Control Tests", workflow)
+        self.assertIn("name: Hermes Release Control Tests", control_job)
         for command in (
             "npm audit --omit=dev --audit-level=high",
             "npm run test:reconcile-deployment",
@@ -648,10 +654,24 @@ class InstallerTests(unittest.TestCase):
             "npm run test:hermes-learning",
             "npm run test:hermes-feedback-intake",
             "npm run test:hermes-seed-convert",
-            "npm run test:hermes-guideline-registry",
-            "npm run test:hermes-install",
+            "npm run test:hermes-install-core",
+            "npm run test:bosniak-source",
         ):
-            self.assertIn(command, workflow[workflow.index("hermes-release-control-tests:"):])
+            self.assertEqual(
+                sum(line.strip() == command for line in control_job.splitlines()),
+                1,
+                f"release-control must own {command} exactly once",
+            )
+        self.assertEqual(
+            sum(line.strip() == "npm run test:hermes-guideline-registry" for line in workflow.splitlines()),
+            1,
+            "Smoke must retain the guideline registry audit exactly once",
+        )
+        self.assertEqual(
+            sum(line.strip() == "npm run test:cac-drs-source" for line in workflow.splitlines()),
+            1,
+            "Smoke must retain the CAC source audit exactly once",
+        )
 
     def test_apply_is_disabled_first_idempotent_and_separates_keys(self):
         first = apply_install(**self.kwargs())

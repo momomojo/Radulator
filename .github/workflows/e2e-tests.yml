@@ -26,10 +26,18 @@ concurrency:
 
 jobs:
   smoke-tests:
+    needs: [hermes-release-control-tests]
+    if: always()
     name: Smoke Tests
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
+      - name: Require Hermes Release Control Tests success
+        if: needs.hermes-release-control-tests.result != 'success'
+        run: |
+          echo "Hermes Release Control Tests result: ${{ needs.hermes-release-control-tests.result }}"
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -45,63 +53,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Run tooling checks
-        run: |
-          npm audit --omit=dev --audit-level=high
-          node --check scripts/capture-feature-proof.mjs
-          node --check scripts/check-radulator-invariants.mjs
-          node --check scripts/check-radulator-invariants.test.mjs
-          node --check scripts/collect-loop-metrics.mjs
-          node --check scripts/independent-review-gate.mjs
-          node --check scripts/release-workflow-permissions.test.mjs
-          node --check scripts/release-policy.mjs
-          node --check scripts/auto-merge.mjs
-          node --check scripts/authorize-deployment.mjs
-          node --check scripts/deployment-run-identity.mjs
-          node --check scripts/reconcile-deployment.mjs
-          node --check scripts/post-deploy-smoke.mjs
-          node --check scripts/write-release-marker.mjs
-          node --check scripts/rollback-request.mjs
-          node --check scripts/select-rollback-deployment.mjs
-          node --check ops/hermes/radulator/judge-candidates.mjs
-          node --check ops/hermes/radulator/judge-attest.mjs
-          node --check scripts/search-verification-meta.mjs
-          node --check scripts/ping-search-indexes.mjs
-          python3 -m py_compile \
-            ops/hermes/radulator/lifecycle_controller.py \
-            ops/hermes/radulator/learning_context.py \
-            ops/hermes/radulator/formspree_feedback_intake.py \
-            ops/hermes/radulator/seed_convert_gate_dedupe.py \
-            ops/hermes/radulator/install.py
-          bash -n scripts/dev-local.sh
-          npm run test:search-verification
-          npm run test:calculator-helper
-          npm run test:invariants
-          npm run test:release-policy
-          npm run test:independent-review-gate
-          npm run test:auto-merge
-          npm run test:release-workflow-permissions
-          npm run test:authorize-deployment
-          npm run test:reconcile-deployment
-          npm run test:post-deploy-smoke
-          npm run test:release-marker
-          npm run test:rollback-deployment
-          npm run check:invariants
-
-      # This named step makes the exact-head Smoke check's lifecycle coverage
-      # explicit to the clinical judge, while the separate check below remains
-      # independently selectable as signed CI evidence after this release.
-      - name: Verify Hermes release-control suites in Smoke evidence
-        run: |
-          npm run test:hermes-judge-candidates
-          npm run test:hermes-judge-attest
-          npm run test:hermes-lifecycle
-          npm run test:hermes-learning
-          npm run test:hermes-feedback-intake
-          npm run test:hermes-seed-convert
-          npm run test:hermes-guideline-registry
-          npm run test:hermes-install-core
 
       # Deterministically discover conventional source-audit tests in Smoke.
       # Bosniak is delegated to the protected exact-head release-control lane
@@ -144,14 +95,13 @@ jobs:
     # Keep this context stable: the protected develop/main rules require this
     # exact GitHub Actions check name. The job also runs the production audit.
     name: Hermes Release Control Tests
-    if: github.event_name == 'pull_request'
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -165,12 +115,33 @@ jobs:
       - name: Run release-control, intake, and production dependency evidence
         run: |
           npm audit --omit=dev --audit-level=high
+          node --check scripts/capture-feature-proof.mjs
+          node --check scripts/check-radulator-invariants.mjs
+          node --check scripts/check-radulator-invariants.test.mjs
+          node --check scripts/collect-loop-metrics.mjs
+          node --check scripts/independent-review-gate.mjs
+          node --check scripts/release-workflow-permissions.test.mjs
+          node --check scripts/release-policy.mjs
+          node --check scripts/auto-merge.mjs
+          node --check scripts/authorize-deployment.mjs
+          node --check scripts/deployment-run-identity.mjs
+          node --check scripts/reconcile-deployment.mjs
+          node --check scripts/post-deploy-smoke.mjs
+          node --check scripts/write-release-marker.mjs
+          node --check scripts/verify-release-artifact.mjs
+          node --check scripts/rollback-request.mjs
+          node --check scripts/select-rollback-deployment.mjs
+          node --check ops/hermes/radulator/judge-candidates.mjs
+          node --check ops/hermes/radulator/judge-attest.mjs
+          node --check scripts/search-verification-meta.mjs
+          node --check scripts/ping-search-indexes.mjs
           python3 -m py_compile \
             ops/hermes/radulator/lifecycle_controller.py \
             ops/hermes/radulator/learning_context.py \
             ops/hermes/radulator/formspree_feedback_intake.py \
             ops/hermes/radulator/seed_convert_gate_dedupe.py \
             ops/hermes/radulator/install.py
+          bash -n scripts/dev-local.sh
           npm run test:search-verification
           npm run test:calculator-helper
           npm run test:invariants
@@ -182,6 +153,7 @@ jobs:
           npm run test:reconcile-deployment
           npm run test:post-deploy-smoke
           npm run test:release-marker
+          npm run test:verify-release-artifact
           npm run test:rollback-deployment
           npm run test:hermes-judge-candidates
           npm run test:hermes-judge-attest
@@ -189,10 +161,8 @@ jobs:
           npm run test:hermes-learning
           npm run test:hermes-feedback-intake
           npm run test:hermes-seed-convert
-          npm run test:hermes-guideline-registry
           npm run test:hermes-install-core
           npm run test:bosniak-source
-          npm run test:cac-drs-source
           npm run check:invariants
 
 

@@ -40,6 +40,7 @@
     "test:release-workflow-permissions": "node scripts/release-workflow-permissions.test.mjs",
     "test:post-deploy-smoke": "node scripts/post-deploy-smoke.test.mjs",
     "test:release-marker": "node scripts/write-release-marker.test.mjs",
+    "test:verify-release-artifact": "node scripts/verify-release-artifact.test.mjs",
     "test:authorize-deployment": "node scripts/authorize-deployment.test.mjs",
     "test:reconcile-deployment": "node scripts/reconcile-deployment.test.mjs",
     "test:rollback-deployment": "node scripts/rollback-request.test.mjs && node scripts/select-rollback-deployment.test.mjs",

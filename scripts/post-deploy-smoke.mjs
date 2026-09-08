@@ -9,6 +9,7 @@ const CHECKS = [
   { name: "sitemap", path: "/sitemap.xml", expected: /\/calculators\/meld-na\//i },
 ];
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
+const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 
 function sha256(value) {
   return createHash("sha256").update(value, "utf8").digest("hex");
@@ -18,7 +19,7 @@ function wait(delayMs) {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-async function smokeAttempt(baseUrl, fetchImpl, expectedSha) {
+async function smokeAttempt(baseUrl, fetchImpl, expectedSha, expectedSourceTreeSha, expectedPayloadDigest) {
   const checks = [];
   if (expectedSha) {
     const markerUrl = new URL(`/releases/${expectedSha}.json`, `${baseUrl}/`).toString();
@@ -44,12 +45,24 @@ async function smokeAttempt(baseUrl, fetchImpl, expectedSha) {
     } catch {
       marker = null;
     }
-    if (!response.ok || marker?.schema !== "radulator-release/v1" || marker?.sha !== expectedSha) {
+    const identityMatches = marker?.schema === "radulator-release/v1" && marker?.sha === expectedSha;
+    const bindingMatches = (expectedSourceTreeSha === null || marker?.sourceTreeSha === expectedSourceTreeSha) &&
+      (expectedPayloadDigest === null || marker?.payloadDigest === expectedPayloadDigest);
+    if (!response.ok || !identityMatches) {
       return {
         ok: false,
         reasonCode: "RELEASE_SHA_MISMATCH",
         failedCheck: "release-sha",
         summary: `Production does not yet prove deployed SHA ${expectedSha}.`,
+        checks,
+      };
+    }
+    if (!bindingMatches) {
+      return {
+        ok: false,
+        reasonCode: "RELEASE_BINDING_MISMATCH",
+        failedCheck: "release-sha",
+        summary: `Production release marker ${expectedSha} does not match its expected source tree or payload digest.`,
         checks,
       };
     }
@@ -95,7 +108,12 @@ async function smokeAttempt(baseUrl, fetchImpl, expectedSha) {
 }
 
 export async function smokeSite(baseUrl, {
-  fetchImpl = fetch, attempts = 6, delayMs = 10_000, expectedSha = null,
+  fetchImpl = fetch,
+  attempts = 6,
+  delayMs = 10_000,
+  expectedSha = null,
+  expectedSourceTreeSha = null,
+  expectedPayloadDigest = null,
 } = {}) {
   if (!Number.isSafeInteger(attempts) || attempts < 1) throw new Error("attempts must be a positive integer.");
   if (!Number.isFinite(delayMs) || delayMs < 0) throw new Error("delayMs must be non-negative.");
@@ -103,10 +121,19 @@ export async function smokeSite(baseUrl, {
   const parsed = new URL(normalized);
   if (!new Set(["http:", "https:"]).has(parsed.protocol)) throw new Error("baseUrl must use HTTP or HTTPS.");
   if (expectedSha !== null && !SHA_PATTERN.test(expectedSha)) throw new Error("expectedSha must be an immutable 40-character SHA.");
+  if ((expectedSourceTreeSha !== null || expectedPayloadDigest !== null) && expectedSha === null) {
+    throw new Error("expectedSourceTreeSha and expectedPayloadDigest require expectedSha.");
+  }
+  if (expectedSourceTreeSha !== null && !SHA_PATTERN.test(expectedSourceTreeSha)) {
+    throw new Error("expectedSourceTreeSha must be an immutable 40-character SHA.");
+  }
+  if (expectedPayloadDigest !== null && !DIGEST_PATTERN.test(expectedPayloadDigest)) {
+    throw new Error("expectedPayloadDigest must be a lowercase 64-character SHA-256 digest.");
+  }
 
   let result;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    result = await smokeAttempt(normalized, fetchImpl, expectedSha);
+    result = await smokeAttempt(normalized, fetchImpl, expectedSha, expectedSourceTreeSha, expectedPayloadDigest);
     result.attempt = attempt;
     if (result.ok) break;
     if (attempt < attempts && delayMs) await wait(delayMs);
@@ -114,6 +141,9 @@ export async function smokeSite(baseUrl, {
   return {
     ...result,
     baseUrl: normalized,
+    expectedSha,
+    expectedSourceTreeSha,
+    expectedPayloadDigest,
     attemptsConfigured: attempts,
     verifiedAt: new Date().toISOString(),
   };
@@ -131,7 +161,15 @@ async function run() {
   const output = argument("--output");
   const expectedSha = argument("--expected-sha");
   if (!expectedSha) throw new Error("--expected-sha is required for production smoke verification.");
-  const result = await smokeSite(baseUrl, { attempts, delayMs, expectedSha });
+  const expectedSourceTreeSha = argument("--expected-source-tree-sha");
+  const expectedPayloadDigest = argument("--expected-payload-digest");
+  const result = await smokeSite(baseUrl, {
+    attempts,
+    delayMs,
+    expectedSha,
+    expectedSourceTreeSha,
+    expectedPayloadDigest,
+  });
   const serialized = `${JSON.stringify(result, null, 2)}\n`;
   if (output) await writeFile(output, serialized, "utf8");
   console.log(serialized.trimEnd());

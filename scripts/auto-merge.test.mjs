@@ -139,6 +139,17 @@ function productionLaneApi(overrides = {}) {
   };
 }
 
+function singleMainLaneFixture(overrides = {}) {
+  return productionLaneFixture({
+    pr: prFixture({ baseRef: "main", baseSha: MAIN }),
+    developRef: null,
+    comparison: null,
+    deployRun: { ...productionLaneFixture().deployRun, run_attempt: 1 },
+    deployJobsRunAttempt: 1,
+    ...overrides,
+  });
+}
+
 {
   const result = evaluateAutoMerge(decisionFixture());
   assert.deepEqual(result, {
@@ -212,6 +223,96 @@ function productionLaneApi(overrides = {}) {
       data: { schema: "radulator-release/v1", sha: "0".repeat(40) },
     },
   })).reasonCode, "CURRENT_MAIN_MARKER_MISMATCH");
+  assert.equal(evaluateProductionSingleFlight(productionLaneFixture({
+    deployRun: { ...productionLaneFixture().deployRun, conclusion: "failure" },
+  })).reasonCode, "PRODUCTION_LANE_OPEN", "release-train preserves ancillary deployment failure behavior");
+  assert.equal(evaluateProductionSingleFlight(productionLaneFixture({
+    deployRun: { ...productionLaneFixture().deployRun, conclusion: "failure" },
+  }), "release-train").reasonCode, "PRODUCTION_LANE_OPEN");
+}
+
+{
+  const open = evaluateProductionSingleFlight(singleMainLaneFixture(), "single-main");
+  assert.deepEqual(open, {
+    ok: true,
+    reasonCode: "PRODUCTION_LANE_OPEN",
+    mainSha: MAIN,
+    deployRunId: 8001,
+    deployRunAttempt: 1,
+  });
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    pr: prFixture({ baseRef: "main", baseSha: BASE }),
+  }), "single-main").reasonCode, "SINGLE_MAIN_BASE_DRIFT");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    pr: prFixture({ baseRef: "develop", baseSha: BASE }),
+  }), "single-main").reasonCode, "SINGLE_MAIN_BASE_DRIFT");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({ deployRun: null }), "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_MISSING");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    pr: prFixture({ baseRef: "main", baseSha: MAIN, labels: ["release-remediation"] }),
+    deployRun: null,
+  }), "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_MISSING", "remediation labels do not waive single-main proof");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    deployRun: { ...singleMainLaneFixture().deployRun, status: "completed", conclusion: "failure" },
+  }), "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_NOT_SUCCESS");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    deployRun: { ...singleMainLaneFixture().deployRun, run_attempt: 0 },
+  }), "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_ATTEMPT_MALFORMED");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    deployRun: { ...singleMainLaneFixture().deployRun, run_attempt: "1" },
+  }), "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_ATTEMPT_MALFORMED");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    deployJobsRunAttempt: 2,
+  }), "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_ATTEMPT_MISMATCH");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    deployRun: { ...singleMainLaneFixture().deployRun, status: "in_progress", conclusion: null },
+  }), "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_NOT_COMPLETE");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    deployJobs: [{ steps: [
+      { name: "Authorize immutable deployment source", conclusion: "failure" },
+      { name: "Deploy to GitHub Pages", conclusion: "success" },
+      { name: "Verify deployed site", conclusion: "success" },
+    ] }],
+  }), "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_NOT_AUTHORIZED");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    deployJobs: [{ steps: [
+      { name: "Authorize immutable deployment source", conclusion: "success" },
+      { name: "Deploy to GitHub Pages", conclusion: "success" },
+      { name: "Verify deployed site", conclusion: "failure" },
+    ] }],
+  }), "single-main").reasonCode, "CURRENT_MAIN_LIVE_SMOKE_NOT_PASSING");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({ marker: null }), "single-main").reasonCode, "CURRENT_MAIN_MARKER_MISMATCH");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture({
+    marker: { ok: true, status: 200, data: { schema: "radulator-release/v1", sha: BASE } },
+  }), "single-main").reasonCode, "CURRENT_MAIN_MARKER_MISMATCH");
+  assert.equal(evaluateProductionSingleFlight(singleMainLaneFixture(), "unexpected").reasonCode, "INVALID_RELEASE_MODE");
+}
+
+{
+  const reauthorizedJobs = [{ steps: [
+    { name: "Re-authorize original deployment event", conclusion: "success" },
+    { name: "Deploy to GitHub Pages", conclusion: "success" },
+    { name: "Verify deployed site", conclusion: "success" },
+  ] }];
+  assert.equal(
+    evaluateProductionSingleFlight(singleMainLaneFixture({ deployJobs: reauthorizedJobs }), "single-main").reasonCode,
+    "PRODUCTION_LANE_OPEN",
+    "a deploy-only rerun must accept successful same-attempt re-authorization",
+  );
+  assert.equal(
+    evaluateProductionSingleFlight(singleMainLaneFixture({ deployJobs: reauthorizedJobs, deployJobsRunAttempt: 2 }), "single-main").reasonCode,
+    "CURRENT_MAIN_DEPLOYMENT_ATTEMPT_MISMATCH",
+    "deploy-only proof must remain bound to the captured run attempt",
+  );
+  for (const conclusion of [undefined, "skipped", "failure"]) {
+    const steps = conclusion === undefined
+      ? reauthorizedJobs[0].steps.filter((step) => step.name !== "Re-authorize original deployment event")
+      : reauthorizedJobs[0].steps.map((step) => step.name === "Re-authorize original deployment event" ? { ...step, conclusion } : step);
+    assert.equal(
+      evaluateProductionSingleFlight(singleMainLaneFixture({ deployJobs: [{ steps }] }), "single-main").reasonCode,
+      "CURRENT_MAIN_DEPLOYMENT_NOT_AUTHORIZED",
+      `missing or ${conclusion || "absent"} re-authorization must fail closed`,
+    );
+  }
 }
 
 {
@@ -249,10 +350,69 @@ function productionLaneApi(overrides = {}) {
     "an older success cannot hide a newer incomplete deployment",
   );
 }
+
+{
+  const older = { ...singleMainLaneFixture().deployRun, id: 8000, created_at: "2026-08-23T20:00:00Z" };
+  const newer = {
+    ...singleMainLaneFixture().deployRun,
+    id: 8002,
+    created_at: "2026-08-23T20:05:00Z",
+    status: "completed",
+    conclusion: "failure",
+  };
+  const requestedRefs = [];
+  const jobReads = [];
+  const evidence = await loadProductionSingleFlightEvidence({
+    async getRef(branch) {
+      requestedRefs.push(branch);
+      if (branch !== "main") throw new Error(`single-main must not request ${branch}`);
+      return { object: { sha: MAIN } };
+    },
+    async getDeployWorkflow() { return singleMainLaneFixture().deployWorkflow; },
+    async compare() { throw new Error("single-main must not compare main and develop"); },
+    async listDeployRuns() { return [older, newer]; },
+    async getReleaseMarker() { return singleMainLaneFixture().marker; },
+    async getRunJobs(runId, runAttempt) {
+      jobReads.push({ runId, runAttempt });
+      return singleMainLaneFixture().deployJobs;
+    },
+  }, singleMainLaneFixture().pr, "single-main");
+  assert.deepEqual(requestedRefs, ["main"]);
+  assert.equal(evidence.developRef, null);
+  assert.equal(evidence.comparison, null);
+  assert.equal(evidence.deployRun.id, 8002, "a newer failed exact-main deployment supersedes an older success");
+  assert.deepEqual(jobReads, [{ runId: 8002, runAttempt: 1 }], "single-main reads jobs for the exact deployment attempt");
+  assert.equal(evaluateProductionSingleFlight(evidence, "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_NOT_SUCCESS");
+}
+
+{
+  let jobReads = 0;
+  const evidence = await loadProductionSingleFlightEvidence({
+    async getRef(branch) {
+      if (branch !== "main") throw new Error(`single-main must not request ${branch}`);
+      return { object: { sha: MAIN } };
+    },
+    async getDeployWorkflow() { return singleMainLaneFixture().deployWorkflow; },
+    async listDeployRuns() {
+      return [{ ...singleMainLaneFixture().deployRun, run_attempt: undefined }];
+    },
+    async getReleaseMarker() { return singleMainLaneFixture().marker; },
+    async getRunJobs() {
+      jobReads += 1;
+      return singleMainLaneFixture().deployJobs;
+    },
+  }, singleMainLaneFixture().pr, "single-main");
+  assert.equal(jobReads, 0, "single-main must not fall back to an unbound jobs read");
+  assert.equal(evaluateProductionSingleFlight(evidence, "single-main").reasonCode, "CURRENT_MAIN_DEPLOYMENT_ATTEMPT_MALFORMED");
+}
 assert.equal(evaluateAutoMerge(decisionFixture({ pr: { merged: true, state: "closed" } })).reasonCode, "ALREADY_MERGED");
 assert.equal(evaluateAutoMerge(decisionFixture({ pr: { state: "closed" } })).reasonCode, "PR_NOT_OPEN_READY");
 assert.equal(evaluateAutoMerge(decisionFixture({ pr: { draft: true } })).reasonCode, "PR_NOT_OPEN_READY");
 assert.equal(evaluateAutoMerge(decisionFixture({ pr: { baseRef: "feature" } })).reasonCode, "UNSUPPORTED_BASE");
+assert.equal(
+  evaluateAutoMerge({ ...decisionFixture(), releaseMode: "single-main" }).reasonCode,
+  "SINGLE_MAIN_REQUIRES_MAIN_BASE",
+);
 assert.equal(evaluateAutoMerge(decisionFixture({ gateResult: { conclusion: "failure", eligible: false } })).reasonCode, "LIVE_GATE_NOT_PASSING");
 assert.equal(evaluateAutoMerge(decisionFixture({ gateResult: { headSha: "d".repeat(40) } })).reasonCode, "GATE_STATE_MISMATCH");
 assert.equal(evaluateAutoMerge(decisionFixture({ gateResult: { baseSha: "d".repeat(40) } })).reasonCode, "GATE_STATE_MISMATCH");
@@ -429,6 +589,144 @@ console.log("approval-bound automatic merge tests passed");
   });
   assert.deepEqual(deploymentDispatches, [{ ref: mergeSha, prNumber: 123, sourceHeadSha: HEAD }]);
   assert.equal(result[0].deploymentDispatched, true);
+}
+
+{
+  const mergeSha = "e".repeat(40);
+  const state = {
+    pr: prFixture({ baseRef: "main", baseSha: MAIN }),
+    requiredCi: ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"],
+    ci: { ok: true, evidence: [] },
+    files: [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }],
+    reviews: [],
+    publicKeys: {},
+  };
+  let productionBarriers = 0;
+  const deploymentDispatches = [];
+  const result = await runAutoMerge({
+    env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_RELEASE_MODE: "single-main" },
+    api: {
+      async findPullNumbers() { return [123]; },
+      async loadGateState() { return structuredClone(state); },
+      async getBranchRules() { return decisionFixture().branchRules; },
+      async listCheckRuns() { return [checkFixture()]; },
+      async listCommitStatuses() { return [statusFixture()]; },
+      async loadProductionSingleFlightEvidence() {
+        productionBarriers += 1;
+        return singleMainLaneFixture({ pr: state.pr });
+      },
+      async merge(number, payload) {
+        assert.equal(number, 123);
+        assert.equal(payload.merge_method, "merge");
+        return { merged: true, sha: mergeSha };
+      },
+      async getMergeability() { return { mergeable: true, mergeable_state: "clean", head: { sha: HEAD } }; },
+      async getPr() { return { merged: true, state: "closed", merge_commit_sha: mergeSha }; },
+      async dispatchDeployment(payload) {
+        deploymentDispatches.push(payload);
+        return { accepted: true, eventType: "radulator-auto-merge-deploy" };
+      },
+    },
+    evaluateGateImpl: () => gateFixture({ baseSha: MAIN }),
+    fingerprintImpl: () => "stable",
+  });
+  assert.equal(result[0].merged, true, "a normal main PR may merge in single-main mode");
+  assert.equal(productionBarriers, 2, "single-main validates production before and immediately before merge");
+  assert.deepEqual(deploymentDispatches, [{ ref: mergeSha, prNumber: 123, sourceHeadSha: HEAD }]);
+}
+
+{
+  let observedApiCalls = 0;
+  const result = await runAutoMerge({
+    env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_RELEASE_MODE: "unexpected" },
+    api: {
+      async findPullNumbers() { observedApiCalls += 1; return [123]; },
+    },
+  });
+  assert.equal(result[0].reasonCode, "INVALID_RELEASE_MODE");
+  assert.equal(observedApiCalls, 0, "invalid trusted mode fails closed before controller reads state");
+}
+
+{
+  const state = {
+    pr: prFixture({ baseRef: "main", baseSha: MAIN }),
+    requiredCi: ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"],
+    ci: { ok: true, evidence: [] },
+    files: [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }],
+    reviews: [],
+    publicKeys: {},
+  };
+  let productionBarriers = 0;
+  let merged = false;
+  const result = await runAutoMerge({
+    env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_RELEASE_MODE: "single-main" },
+    api: {
+      async findPullNumbers() { return [123]; },
+      async loadGateState() { return structuredClone(state); },
+      async getBranchRules() { return decisionFixture().branchRules; },
+      async listCheckRuns() { return [checkFixture()]; },
+      async listCommitStatuses() { return [statusFixture()]; },
+      async loadProductionSingleFlightEvidence() {
+        productionBarriers += 1;
+        return productionBarriers === 1
+          ? singleMainLaneFixture({ pr: state.pr })
+          : singleMainLaneFixture({ pr: state.pr, deployRun: null });
+      },
+      async merge() { merged = true; return { merged: true, sha: "e".repeat(40) }; },
+      async getMergeability() { return { mergeable: true, mergeable_state: "clean", head: { sha: HEAD } }; },
+      async getPr() { return { merged: true, state: "closed", merge_commit_sha: "e".repeat(40) }; },
+    },
+    evaluateGateImpl: () => gateFixture({ baseSha: MAIN }),
+    fingerprintImpl: () => "stable",
+  });
+  assert.equal(result[0].reasonCode, "CURRENT_MAIN_DEPLOYMENT_MISSING", "proof drift must stop the merge");
+  assert.equal(productionBarriers, 2);
+  assert.equal(merged, false);
+}
+
+{
+  const mergeSha = "e".repeat(40);
+  const state = {
+    pr: prFixture({ baseRef: "main", baseSha: MAIN }),
+    requiredCi: ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"],
+    ci: { ok: true, evidence: [] },
+    files: [{ filename: "README.md", status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" }],
+    reviews: [],
+    publicKeys: {},
+  };
+  let productionBarriers = 0;
+  let merged = false;
+  let deployments = 0;
+  const result = await runAutoMerge({
+    env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_RELEASE_MODE: "single-main" },
+    api: {
+      async findPullNumbers() { return [123]; },
+      async loadGateState() { return structuredClone(state); },
+      async getBranchRules() { return decisionFixture().branchRules; },
+      async listCheckRuns() { return [checkFixture()]; },
+      async listCommitStatuses() { return [statusFixture()]; },
+      async loadProductionSingleFlightEvidence() {
+        productionBarriers += 1;
+        return productionBarriers === 1
+          ? singleMainLaneFixture({ pr: state.pr })
+          : singleMainLaneFixture({
+            pr: state.pr,
+            deployRun: { ...singleMainLaneFixture().deployRun, run_attempt: 2 },
+            deployJobsRunAttempt: 2,
+          });
+      },
+      async merge() { merged = true; return { merged: true, sha: mergeSha }; },
+      async getMergeability() { return { mergeable: true, mergeable_state: "clean", head: { sha: HEAD } }; },
+      async getPr() { return { merged: true, state: "closed", merge_commit_sha: mergeSha }; },
+      async dispatchDeployment() { deployments += 1; return { accepted: true, eventType: "radulator-auto-merge-deploy" }; },
+    },
+    evaluateGateImpl: () => gateFixture({ baseSha: MAIN }),
+    fingerprintImpl: () => "stable",
+  });
+  assert.equal(result[0].reasonCode, "CONCURRENT_PRODUCTION_STATE_CHANGE");
+  assert.equal(productionBarriers, 2);
+  assert.equal(merged, false);
+  assert.equal(deployments, 0);
 }
 
 {

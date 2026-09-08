@@ -50,6 +50,7 @@ const CLINICAL_EVIDENCE_FILES = new Set([
 ]);
 const CLINICAL_EVIDENCE_PREFIXES = [
   "docs/evidence/",
+  "docs/verification/calculators/",
   "tests/fixtures/",
   "tests/data/",
   "tests/test-data/",
@@ -87,6 +88,7 @@ const RELEASE_CONTROL_PREFIXES = [
   "scripts/rollback-request",
   "scripts/select-rollback-deployment",
   "scripts/spec-map",
+  "scripts/verify-release-artifact",
   "scripts/write-release-marker",
   "vite.config.",
 ];

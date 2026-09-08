@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 
 import * as releasePolicy from "./release-policy.mjs";
+import { validateCiPolicy } from "./independent-review-gate.mjs";
 import {
   ATTESTATION_SCHEMA,
   canonicalJson,
@@ -158,6 +159,7 @@ for (const filename of [
   "scripts/select-rollback-deployment.mjs",
   "scripts/spec-map.js",
   "scripts/write-release-marker.mjs",
+  "scripts/verify-release-artifact.mjs",
   "ops/hermes/radulator/judge-candidates.mjs",
   "ops/hermes/radulator/judge-attest.mjs",
   ".npmrc",
@@ -176,6 +178,44 @@ for (const filename of [
   assert.equal(releaseControlRisk.tier, "high", `${filename} can weaken trusted release evidence`);
   assert.ok(releaseControlRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"));
 }
+
+for (const filename of ["scripts/verify-release-artifact.mjs", "scripts/verify-release-artifact.test.mjs"]) {
+  const verifierRisk = classifyRisk([{
+    filename,
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-old verifier\n+new verifier",
+  }]);
+  assert.equal(verifierRisk.tier, "high", `${filename} must be protected release-control code`);
+  assert.ok(verifierRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"));
+  assert.deepEqual(requiredJudgeRoles(verifierRisk.tier), ["primary", "verification"]);
+}
+
+const mixedVerifierClinicalFiles = [
+  {
+    filename: "scripts/verify-release-artifact.mjs",
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-old verifier\n+new verifier",
+  },
+  {
+    filename: "src/components/calculators/MELDNa.jsx",
+    status: "modified",
+    patch: "@@ -1 +1 @@\n-old score\n+new score",
+  },
+];
+const mixedVerifierClinicalRisk = classifyRisk(mixedVerifierClinicalFiles);
+assert.equal(mixedVerifierClinicalRisk.tier, "high");
+assert.ok(mixedVerifierClinicalRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"));
+assert.ok(mixedVerifierClinicalRisk.reasonCodes.includes("CLINICAL_RUNTIME_CHANGE"));
+assert.equal(
+  validateCiPolicy({
+    pr: { baseRef: "develop" },
+    files: mixedVerifierClinicalFiles,
+    requiredCi: [],
+    ci: null,
+  }).reasonCode,
+  "MIXED_TRUST_DOMAIN_CHANGE",
+  "artifact verifier and clinical runtime edits must be rejected as a mixed trust-domain PR",
+);
 assert.equal(
   releasePolicy.RISK_CLASSIFIER_VERSION,
   "radulator-clinical-risk/v6",
@@ -208,6 +248,7 @@ for (const filename of [
   "ops/hermes/radulator/guideline-registry.test.mjs",
   "ops/hermes/radulator/cac-drs-auc-boundary.test.mjs",
   "docs/evidence/fleischner-2017-reviewed-evidence.json",
+  "docs/verification/calculators/tirads.md",
   "tests/fixtures/compute/meld-na.json",
   "tests/data/avs-hyperaldo-test-cases.json",
   "tests/test-data/y90-radiation-test-cases.json",
@@ -275,6 +316,15 @@ for (const file of [
 }
 
 for (const file of [
+  {
+    filename: "docs/verification/calculators/albi-score.md",
+    status: "deleted",
+  },
+  {
+    filename: "docs/archive/y90-review.md",
+    previous_filename: "docs/verification/calculators/y90-radiation-segmentectomy.md",
+    status: "renamed",
+  },
   {
     filename: "docs/evidence/removed-source.json",
     previous_filename: "docs/evidence/removed-source.json",

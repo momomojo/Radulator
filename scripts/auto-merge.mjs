@@ -24,6 +24,9 @@ import {
 } from "./select-rollback-deployment.mjs";
 
 const ALLOWED_BASE_REFS = new Set(["develop", "main"]);
+const RELEASE_TRAIN_MODE = "release-train";
+const SINGLE_MAIN_MODE = "single-main";
+const RELEASE_MODES = new Set([RELEASE_TRAIN_MODE, SINGLE_MAIN_MODE]);
 const ACTIONS_BOT_ID = 41898282;
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 const RELEASE_MARKER_SCHEMA = "radulator-release/v1";
@@ -31,6 +34,18 @@ const PRODUCTION_BASE_URL = "https://radulator.com";
 
 function blocked(reasonCode, summary) {
   return { ok: false, reasonCode, summary };
+}
+
+function resolveReleaseMode(value) {
+  const mode = value == null || value === "" ? RELEASE_TRAIN_MODE : value;
+  return RELEASE_MODES.has(mode) ? mode : null;
+}
+
+function invalidReleaseMode() {
+  return blocked(
+    "INVALID_RELEASE_MODE",
+    "RADULATOR_RELEASE_MODE must be empty, release-train, or single-main.",
+  );
 }
 
 function checkSort(left, right) {
@@ -48,6 +63,62 @@ function deploymentRunSort(left, right) {
   return time || (right.id || 0) - (left.id || 0);
 }
 
+function evaluateCurrentMainDeploymentProof({
+  mainSha,
+  deployWorkflow,
+  deployRun,
+  deployJobs,
+  deployJobsRunAttempt,
+  marker,
+  releaseMode = RELEASE_TRAIN_MODE,
+}) {
+  if (
+    !Number.isSafeInteger(deployWorkflow?.id) || deployWorkflow.id <= 0 ||
+    deployWorkflow.path !== DEPLOY_WORKFLOW_PATH ||
+    deployWorkflow.state !== "active"
+  ) {
+    return blocked("DEPLOY_WORKFLOW_IDENTITY_MISMATCH", "Trusted deployment workflow identity is unavailable.");
+  }
+  if (
+    !deployRun ||
+    !isTrustedDeploymentRun(deployRun, deployWorkflow.id) ||
+    deploymentSourceRef(deployRun) !== mainSha
+  ) {
+    return blocked("CURRENT_MAIN_DEPLOYMENT_MISSING", "No trusted deployment attempt binds the exact current main SHA.");
+  }
+  if (deployRun.status !== "completed") {
+    return blocked("CURRENT_MAIN_DEPLOYMENT_NOT_COMPLETE", "The newest exact-main deployment attempt is not complete.");
+  }
+  if (releaseMode === SINGLE_MAIN_MODE && deployRun.conclusion !== "success") {
+    return blocked("CURRENT_MAIN_DEPLOYMENT_NOT_SUCCESS", "The newest exact-main deployment attempt did not succeed.");
+  }
+  if (releaseMode === SINGLE_MAIN_MODE) {
+    if (!Number.isSafeInteger(deployRun.run_attempt) || deployRun.run_attempt <= 0) {
+      return blocked("CURRENT_MAIN_DEPLOYMENT_ATTEMPT_MALFORMED", "The exact-main deployment attempt identity is missing or malformed.");
+    }
+    if (deployJobsRunAttempt !== deployRun.run_attempt) {
+      return blocked("CURRENT_MAIN_DEPLOYMENT_ATTEMPT_MISMATCH", "Deployment jobs are not bound to the exact-main deployment attempt.");
+    }
+  }
+  if (!deploymentAuthorizationSucceeded(deployJobs)) {
+    return blocked("CURRENT_MAIN_DEPLOYMENT_NOT_AUTHORIZED", "The newest exact-main deployment lacks successful authorization.");
+  }
+  if (!liveSmokePassed(deployJobs)) {
+    return blocked("CURRENT_MAIN_LIVE_SMOKE_NOT_PASSING", "The newest exact-main deployment lacks successful Pages and live smoke proof.");
+  }
+  if (
+    marker?.ok !== true || marker.status !== 200 ||
+    marker.data?.schema !== RELEASE_MARKER_SCHEMA || marker.data?.sha !== mainSha
+  ) {
+    return blocked("CURRENT_MAIN_MARKER_MISMATCH", "Production does not serve the exact current-main release marker.");
+  }
+  return {
+    ok: true,
+    deployRunId: deployRun.id,
+    ...(releaseMode === SINGLE_MAIN_MODE ? { deployRunAttempt: deployRun.run_attempt } : {}),
+  };
+}
+
 export function evaluateProductionSingleFlight({
   pr,
   mainRef,
@@ -56,9 +127,34 @@ export function evaluateProductionSingleFlight({
   deployWorkflow,
   deployRun,
   deployJobs,
+  deployJobsRunAttempt,
   marker,
-}) {
+  releaseMode: evidenceReleaseMode,
+}, releaseMode = evidenceReleaseMode) {
+  const mode = resolveReleaseMode(releaseMode);
+  if (!mode) return invalidReleaseMode();
   const mainSha = mainRef?.object?.sha;
+
+  if (mode === SINGLE_MAIN_MODE) {
+    if (!SHA_PATTERN.test(mainSha || "")) {
+      return blocked("PRODUCTION_REF_MALFORMED", "Current main ref is unavailable or malformed.");
+    }
+    if (pr?.baseRef !== "main" || pr.baseSha !== mainSha) {
+      return blocked("SINGLE_MAIN_BASE_DRIFT", "Pull request is not based on the exact current main head.");
+    }
+    const proof = evaluateCurrentMainDeploymentProof({
+      mainSha, deployWorkflow, deployRun, deployJobs, deployJobsRunAttempt, marker, releaseMode: mode,
+    });
+    if (!proof.ok) return proof;
+    return {
+      ok: true,
+      reasonCode: "PRODUCTION_LANE_OPEN",
+      mainSha,
+      deployRunId: proof.deployRunId,
+      deployRunAttempt: proof.deployRunAttempt,
+    };
+  }
+
   const developSha = developRef?.object?.sha;
   if (!SHA_PATTERN.test(mainSha || "") || !SHA_PATTERN.test(developSha || "")) {
     return blocked("PRODUCTION_REF_MALFORMED", "Current main/develop refs are unavailable or malformed.");
@@ -78,35 +174,10 @@ export function evaluateProductionSingleFlight({
       "Current develop is not contained in current main; finish the active production release first.",
     );
   }
-  if (
-    !Number.isSafeInteger(deployWorkflow?.id) || deployWorkflow.id <= 0 ||
-    deployWorkflow.path !== DEPLOY_WORKFLOW_PATH ||
-    deployWorkflow.state !== "active"
-  ) {
-    return blocked("DEPLOY_WORKFLOW_IDENTITY_MISMATCH", "Trusted deployment workflow identity is unavailable.");
-  }
-  if (
-    !deployRun ||
-    !isTrustedDeploymentRun(deployRun, deployWorkflow.id) ||
-    deploymentSourceRef(deployRun) !== mainSha
-  ) {
-    return blocked("CURRENT_MAIN_DEPLOYMENT_MISSING", "No trusted deployment attempt binds the exact current main SHA.");
-  }
-  if (deployRun.status !== "completed") {
-    return blocked("CURRENT_MAIN_DEPLOYMENT_NOT_COMPLETE", "The newest exact-main deployment attempt is not complete.");
-  }
-  if (!deploymentAuthorizationSucceeded(deployJobs)) {
-    return blocked("CURRENT_MAIN_DEPLOYMENT_NOT_AUTHORIZED", "The newest exact-main deployment lacks successful authorization.");
-  }
-  if (!liveSmokePassed(deployJobs)) {
-    return blocked("CURRENT_MAIN_LIVE_SMOKE_NOT_PASSING", "The newest exact-main deployment lacks successful Pages and live smoke proof.");
-  }
-  if (
-    marker?.ok !== true || marker.status !== 200 ||
-    marker.data?.schema !== RELEASE_MARKER_SCHEMA || marker.data?.sha !== mainSha
-  ) {
-    return blocked("CURRENT_MAIN_MARKER_MISMATCH", "Production does not serve the exact current-main release marker.");
-  }
+  const proof = evaluateCurrentMainDeploymentProof({
+    mainSha, deployWorkflow, deployRun, deployJobs, marker, releaseMode: mode,
+  });
+  if (!proof.ok) return proof;
   return {
     ok: true,
     reasonCode: developReleased
@@ -114,42 +185,75 @@ export function evaluateProductionSingleFlight({
       : "PRODUCTION_REMEDIATION_LANE_OPEN",
     mainSha,
     developSha,
-    deployRunId: deployRun.id,
+    deployRunId: proof.deployRunId,
   };
 }
 
-export async function loadProductionSingleFlightEvidence(api, pr) {
-  const [mainRef, developRef, deployWorkflow] = await Promise.all([
-    api.getRef("main"),
-    api.getRef("develop"),
-    api.getDeployWorkflow(),
-  ]);
-  const mainSha = mainRef?.object?.sha;
-  const developSha = developRef?.object?.sha;
-  if (!SHA_PATTERN.test(mainSha || "") || !SHA_PATTERN.test(developSha || "")) {
+export async function loadProductionSingleFlightEvidence(api, pr, releaseMode = RELEASE_TRAIN_MODE) {
+  const mode = resolveReleaseMode(releaseMode);
+  if (!mode) {
     return {
-      pr, mainRef, developRef, deployWorkflow,
+      pr, releaseMode,
+      mainRef: null, developRef: null, deployWorkflow: null,
       comparison: null, deployRun: null, deployJobs: [], marker: null,
     };
   }
-  const [comparison, deployRuns, marker] = await Promise.all([
-    api.compare(developSha, mainSha),
-    api.listDeployRuns(mainSha),
-    api.getReleaseMarker(mainSha),
-  ]);
+  let mainRef;
+  let developRef = null;
+  let deployWorkflow;
+  if (mode === SINGLE_MAIN_MODE) {
+    [mainRef, deployWorkflow] = await Promise.all([
+      api.getRef("main"),
+      api.getDeployWorkflow(),
+    ]);
+  } else {
+    [mainRef, developRef, deployWorkflow] = await Promise.all([
+      api.getRef("main"),
+      api.getRef("develop"),
+      api.getDeployWorkflow(),
+    ]);
+  }
+  const mainSha = mainRef?.object?.sha;
+  const developSha = developRef?.object?.sha;
+  if (!SHA_PATTERN.test(mainSha || "") || (mode === RELEASE_TRAIN_MODE && !SHA_PATTERN.test(developSha || ""))) {
+    return {
+      pr, releaseMode: mode, mainRef, developRef, deployWorkflow,
+      comparison: null, deployRun: null, deployJobs: [], marker: null,
+    };
+  }
+  const [comparison, deployRuns, marker] = mode === SINGLE_MAIN_MODE
+    ? [null, ...(await Promise.all([
+      api.listDeployRuns(mainSha),
+      api.getReleaseMarker(mainSha),
+    ]))]
+    : await Promise.all([
+      api.compare(developSha, mainSha),
+      api.listDeployRuns(mainSha),
+      api.getReleaseMarker(mainSha),
+    ]);
   const trustedRuns = (deployRuns || []).filter((run) =>
     isTrustedDeploymentRun(run, deployWorkflow?.id) &&
     deploymentSourceRef(run) === mainSha).sort(deploymentRunSort);
   const deployRun = trustedRuns[0] || null;
-  const deployJobs = deployRun ? await api.getRunJobs(deployRun.id) : [];
+  const deployJobsRunAttempt = mode === SINGLE_MAIN_MODE && deployRun &&
+    Number.isSafeInteger(deployRun.run_attempt) && deployRun.run_attempt > 0
+    ? deployRun.run_attempt
+    : null;
+  let deployJobs = [];
+  if (deployRun && mode === RELEASE_TRAIN_MODE) {
+    deployJobs = await api.getRunJobs(deployRun.id);
+  } else if (deployRun && deployJobsRunAttempt !== null) {
+    deployJobs = await api.getRunJobs(deployRun.id, deployJobsRunAttempt);
+  }
   return {
-    pr,
+    pr, releaseMode: mode,
     mainRef,
     developRef,
     comparison,
     deployWorkflow,
     deployRun,
     deployJobs,
+    deployJobsRunAttempt,
     marker,
   };
 }
@@ -169,10 +273,23 @@ async function requestBaseRefresh(client, prNumber, headSha, extras = {}) {
   };
 }
 
-export function evaluateAutoMerge({ pr, gateResult, checkRuns, commitStatuses, branchRules, expectedGateAppId }) {
+export function evaluateAutoMerge({
+  pr,
+  gateResult,
+  checkRuns,
+  commitStatuses,
+  branchRules,
+  expectedGateAppId,
+  releaseMode = RELEASE_TRAIN_MODE,
+}) {
+  const mode = resolveReleaseMode(releaseMode);
+  if (!mode) return invalidReleaseMode();
   if (pr?.merged) return blocked("ALREADY_MERGED", "Pull request is already merged.");
   if (!pr || pr.state !== "open" || pr.draft) return blocked("PR_NOT_OPEN_READY", "Pull request is not open and ready.");
   if (!ALLOWED_BASE_REFS.has(pr.baseRef)) return blocked("UNSUPPORTED_BASE", "Pull request base is outside develop/main.");
+  if (mode === SINGLE_MAIN_MODE && pr.baseRef !== "main") {
+    return blocked("SINGLE_MAIN_REQUIRES_MAIN_BASE", "Single-main mode only permits pull requests targeting main.");
+  }
   if (!gateResult?.eligible || gateResult.conclusion !== "success" || gateResult.reasonCode !== "PASS") {
     return blocked("LIVE_GATE_NOT_PASSING", "Fresh in-process clinical gate evaluation did not pass.");
   }
@@ -276,7 +393,13 @@ function defaultApi(env) {
       `/repos/${owner}/${repo}/actions/workflows/deploy.yml/runs?head_sha=${headSha}`,
       "workflow_runs",
     ),
-    getRunJobs: (runId) => paged(token, `/repos/${owner}/${repo}/actions/runs/${runId}/jobs`, "jobs"),
+    getRunJobs: (runId, runAttempt = null) => paged(
+      token,
+      runAttempt == null
+        ? `/repos/${owner}/${repo}/actions/runs/${runId}/jobs`
+        : `/repos/${owner}/${repo}/actions/runs/${runId}/attempts/${runAttempt}/jobs`,
+      "jobs",
+    ),
     getReleaseMarker: async (sha) => {
       try {
         const response = await fetch(new URL(`/releases/${sha}.json`, `${PRODUCTION_BASE_URL}/`), {
@@ -306,8 +429,12 @@ function defaultApi(env) {
       return { accepted: true, eventType: "radulator-auto-merge-deploy" };
     },
   };
-  api.loadProductionSingleFlightEvidence = (pr) => loadProductionSingleFlightEvidence(api, pr);
+  api.loadProductionSingleFlightEvidence = (pr, releaseMode) => loadProductionSingleFlightEvidence(api, pr, releaseMode);
   return api;
+}
+
+function productionBarrierRequired(pr, releaseMode) {
+  return releaseMode === SINGLE_MAIN_MODE ? pr?.baseRef === "main" : pr?.baseRef === "develop";
 }
 
 export async function runAutoMerge({
@@ -316,6 +443,8 @@ export async function runAutoMerge({
   evaluateGateImpl = evaluateGate,
   fingerprintImpl = gateStateFingerprint,
 } = {}) {
+  const releaseMode = resolveReleaseMode(env.RADULATOR_RELEASE_MODE);
+  if (!releaseMode) return [invalidReleaseMode()];
   const client = api || defaultApi(env);
   const prNumbers = await client.findPullNumbers();
   const results = [];
@@ -343,19 +472,23 @@ export async function runAutoMerge({
       commitStatuses: statuses,
       branchRules,
       expectedGateAppId: Number(env.RADULATOR_CI_APP_ID || 15368),
+      releaseMode,
     });
     if (!decision.ok) {
       results.push(decision);
       continue;
     }
-    if (current.pr.baseRef === "develop") {
+    let preflightProductionLane = null;
+    if (productionBarrierRequired(current.pr, releaseMode)) {
       const lane = evaluateProductionSingleFlight(
-        await client.loadProductionSingleFlightEvidence(current.pr),
+        await client.loadProductionSingleFlightEvidence(current.pr, releaseMode),
+        releaseMode,
       );
       if (!lane.ok) {
         results.push(lane);
         continue;
       }
+      preflightProductionLane = lane;
     }
     if (env.RADULATOR_AUTO_MERGE_ENABLED !== "true") {
       results.push({ ...decision, dryRun: true });
@@ -380,6 +513,7 @@ export async function runAutoMerge({
       commitStatuses: finalStatuses,
       branchRules: finalBranchRules,
       expectedGateAppId: Number(env.RADULATOR_CI_APP_ID || 15368),
+      releaseMode,
     });
     if (!decision.ok) {
       results.push(decision);
@@ -394,12 +528,25 @@ export async function runAutoMerge({
       results.push(await requestBaseRefresh(client, prNumber, finalState.pr.headSha));
       continue;
     }
-    if (finalState.pr.baseRef === "develop") {
+    if (productionBarrierRequired(finalState.pr, releaseMode)) {
       const lane = evaluateProductionSingleFlight(
-        await client.loadProductionSingleFlightEvidence(finalState.pr),
+        await client.loadProductionSingleFlightEvidence(finalState.pr, releaseMode),
+        releaseMode,
       );
       if (!lane.ok) {
         results.push(lane);
+        continue;
+      }
+      if (
+        releaseMode === SINGLE_MAIN_MODE &&
+        (lane.mainSha !== preflightProductionLane?.mainSha ||
+          lane.deployRunId !== preflightProductionLane?.deployRunId ||
+          lane.deployRunAttempt !== preflightProductionLane?.deployRunAttempt)
+      ) {
+        results.push(blocked(
+          "CONCURRENT_PRODUCTION_STATE_CHANGE",
+          "Current-main refs or deployment proof changed immediately before merge.",
+        ));
         continue;
       }
     }
