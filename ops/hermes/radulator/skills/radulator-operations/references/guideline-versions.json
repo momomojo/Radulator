@@ -948,7 +948,7 @@
       "basis_type": "measurement-reference",
       "verification_status": "seed-unverified",
       "last_verified": null,
-      "justification": "Uses published radiation protection and conversion references rather than a single calculator guideline; factors remain queued for source audit.",
+      "justification": "Bounded risk-output and input-integrity correction planned in docs/verification/calculators/dlp-dose.md. ICRP147 informs interpretation limits; this is not individual cancer-risk prediction. Conversion-factor provenance, phantom applicability, reference ranges and full clinical acceptance remain unresolved. Keep seed-unverified until those scopes and release proof are reviewed.",
       "sources": [
         {
           "authority": "International Commission on Radiological Protection",
