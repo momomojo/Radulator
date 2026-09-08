@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { after } from "node:test";
 import process from "node:process";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   buildInventory,
   collectInventory,
@@ -31,6 +34,12 @@ const sourceRecords = [
 ];
 
 const BASELINE_SHA = "a".repeat(40);
+const syntheticRoot = mkdtempSync(join(tmpdir(), "radulator-inventory-fixtures-"));
+after(() => rmSync(syntheticRoot, { recursive: true, force: true }));
+mkdirSync(join(syntheticRoot, "docs/verification/plans"), { recursive: true });
+for (const id of ["alpha", "birads"]) {
+  writeFileSync(join(syntheticRoot, `docs/verification/plans/${id}.md`), "# Synthetic contract-test plan\n");
+}
 
 function phase(status = "pending", overrides = {}) {
   return {
@@ -66,12 +75,34 @@ function baselineReview(overrides = {}) {
 
 function inventoryWithBaseline(record) {
   return buildInventory({
+    root: syntheticRoot,
     sources: [sourceRecords[0]],
     registry: { records: [record] },
     computeFixtures: [],
     browserSpecs: [],
   });
 }
+
+test("inventory rejects recorded review plans that are missing, directories, or outside the repository", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "radulator-plan-reference-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const repo = join(root, "repo");
+  mkdirSync(repo);
+  writeFileSync(join(repo, "review.md"), "# Reviewed clinical scope\n");
+  mkdirSync(join(repo, "directory.md"));
+  writeFileSync(join(root, "outside.md"), "# Outside the repository\n");
+  symlinkSync(join(root, "outside.md"), join(repo, "outside-link.md"));
+  const inventory = (planPath) => buildInventory({
+    root: repo,
+    sources: [sourceRecords[0]],
+    registry: { records: [{ calculator_id: "alpha", baseline_review: baselineReview({ plan_path: planPath }) }] },
+  });
+
+  for (const path of ["missing.md", "directory.md", "outside-link.md"]) {
+    assert.throws(() => inventory(path), /baseline_review.*plan_path.*existing.*file.*repository/i, path);
+  }
+  assert.equal(inventory("review.md").rows[0].registry.baselineReview.clinicalReview.status, "recorded");
+});
 
 test("buildInventory excludes Feedback while preserving medical calculator rows", () => {
   const inventory = buildInventory({
@@ -342,6 +373,7 @@ test("baseline counts distinguish pending, blocked, deferred, and recorded phase
   ];
   const inventory = buildInventory({
     sources: [sourceRecords[0], { ...sourceRecords[0], id: "beta", name: "Beta Calculator" }],
+    root: syntheticRoot,
     registry: { records },
     computeFixtures: [],
     browserSpecs: [],

@@ -49,8 +49,12 @@ The registry record may contain one `baseline_review` object with these fields:
 }
 ```
 
-`plan_path` is either `null` or a repository-relative Markdown path. It may
-not be absolute or traverse outside the repository. `applicability` is one of
+`plan_path` is either `null` or a repository-relative Markdown path. Inventory
+generation requires every non-null path to resolve to an existing regular file
+inside the selected repository, including after symlink resolution. Missing
+files, directory paths, absolute paths and repository escapes are rejected.
+This checks the artifact's existence, not the clinical adequacy of its content.
+`applicability` is one of
 `unassessed`, `current`, `legacy`, or `deferred`. `supported_scope` is a
 non-empty string. Each phase has a status of `pending`, `recorded`, `blocked`,
 or `deferred`; a date is `YYYY-MM-DD` or `null`; a reviewer is a string or

@@ -5,6 +5,8 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
@@ -93,6 +95,21 @@ function validatePlanPath(value, calculatorId) {
     baselineError("plan_path must be a repository-relative .md path", calculatorId);
   }
   return value;
+}
+
+function validatePlanFile(value, root, calculatorId) {
+  if (value === null) return;
+  let valid = false;
+  try {
+    const repository = realpathSync(root);
+    const file = realpathSync(resolve(repository, value));
+    valid = file.startsWith(`${repository}${sep}`) && statSync(file).isFile();
+  } catch {
+    // Missing, dangling, or unreadable paths cannot back a review record.
+  }
+  if (!valid) {
+    baselineError("plan_path must reference an existing Markdown file within the repository", calculatorId);
+  }
 }
 
 function validateEvidenceReference(value, label, calculatorId) {
@@ -447,6 +464,7 @@ function browserRowsById(browserSpecs) {
 }
 
 export function buildInventory({
+  root = process.cwd(),
   sources = [],
   registry = { records: [] },
   computeFixtures = [],
@@ -474,6 +492,7 @@ export function buildInventory({
       const baselineReview = normalizeBaselineReview(registryRecord?.baseline_review, {
         calculatorId: calculator.id,
       });
+      validatePlanFile(baselineReview.planPath, root, calculator.id);
       const coverage = compute.byCalculator[calculator.id] || {
         caseCount: 0,
         fixturePaths: [],
@@ -582,6 +601,7 @@ export function collectInventory({ root, ...options } = {}) {
     sources,
   });
   return buildInventory({
+    root: projectRoot,
     sources,
     registry,
     computeFixtures,
