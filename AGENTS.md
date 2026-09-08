@@ -25,6 +25,11 @@ Do not rewrite the application, add an agent platform/database, or provision a b
 
 ## Working cycle
 
+For a whole-calculator audit or closeout, read the reusable
+[calculator-audit skill](ops/hermes/radulator/skills/radulator-calculator-audit/SKILL.md).
+It supplies the source/output matrix, US-guideline cross-check, report QA and
+Hermes-consumer reconciliation without creating another calculator tracker.
+
 1. Read the current task record, exact checkout/base, relevant implementation and
    tests. Do not scan the entire repository or reload historical session logs.
 2. Before clinical edits, define population, outputs, exclusions, version and
