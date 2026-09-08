@@ -292,3 +292,21 @@ At implementation commit `be3cc4f`, `npm run test:compute` completed with exit0:
 discovered supplemental compute suites, including the eight Wells groups.
 This is cross-catalog computation regression evidence, not the still-pending
 full Playwright release suite or independent validation of every fixture.
+
+## Final-base integrated check and shared badge correction
+
+Rebased cleanly onto radiation release `ce67c278239389c88a14c37d14010a19d65646dd`.
+Fresh build, lint, invariants, generated-inventory freshness and42/42 dedicated
+spec discovery passed. The first full production-preview run at90df332, retries0,
+completed1544 passed/1 failed/0 skipped/0 flaky in294447 ms. Retained receipt:
+`wells-dvt-integrated-full-results.json` in the baseline proof directory.
+
+The only failure was the shared guideline-badge test's old `Wells Criteria (2003)`
+expectation. The captured actual page displayed the owner-approved
+`Modified Wells DVT / NICE NG158` label. Repository search found no other stale
+badge expectation. The owner expanded the bounded test scope to
+`tests/e2e/calculators/guideline-badges.spec.js` and changed only that expected
+string; the exact-text assertion remains. Focused reproduction now passes1/1
+with retries0; changed-file lint and diff whitespace checks pass. No clinical
+runtime or expected score changed. The corrected final-head full suite is still
+required; no Wells release or complete clinical audit is claimed here.
