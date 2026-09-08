@@ -30,8 +30,6 @@ async function expectAlbiGrade(page, grade) {
  */
 
 test.describe('ALBI Score Calculator', () => {
-  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
-
   test.beforeEach(async ({ page }) => {
     await navigateToCalculator(page, 'ALBI Score');
     await expect(page.getByTestId('calculator-title').first()).toBeVisible();
@@ -80,8 +78,20 @@ test.describe('ALBI Score Calculator', () => {
 
   test.describe('Unit System Selection', () => {
 
+    test('requires an explicit unit selection before calculation', async ({ page }) => {
+      const siRadio = page.locator('input[type="radio"][value="SI"]');
+      const usRadio = page.locator('input[type="radio"][value="US"]');
+      await expect(siRadio).not.toBeChecked();
+      await expect(usRadio).not.toBeChecked();
+      await expect(page.getByRole('radiogroup', { name: 'Unit System' })).toHaveAttribute('aria-required', 'true');
+
+      await page.locator('input[type="number"]').first().fill('40');
+      await page.locator('input[type="number"]').nth(1).fill('10');
+      await page.getByRole('button', { name: 'Calculate' }).click();
+      await expectResultText(page, /select SI or US units before calculating/i);
+    });
+
     test('should allow switching between SI and US units', async ({ page }) => {
-      // Default should be SI units
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       const usRadio = page.locator('input[type="radio"][value="US"]');
 
@@ -96,6 +106,26 @@ test.describe('ALBI Score Calculator', () => {
         await usRadio.check();
         await expect(usRadio).toBeChecked();
       }
+    });
+
+    test('clears a result when unit interpretation changes', async ({ page }) => {
+      const siRadio = page.locator('input[type="radio"][value="SI"]');
+      const usRadio = page.locator('input[type="radio"][value="US"]');
+      await siRadio.check();
+      await page.locator('input[type="number"]').first().fill('40');
+      await page.locator('input[type="number"]').nth(1).fill('10');
+      await page.getByRole('button', { name: 'Calculate' }).click();
+      await expectResultText(page, /ALBI Score:\s*-2\.740/);
+
+      await usRadio.check();
+      await expect(resultsRegion(page)).toHaveCount(0);
+      await expect(page.locator('input[type="number"]').first()).toHaveValue('40');
+      await expect(page.locator('input[type="number"]').nth(1)).toHaveValue('10');
+      await page.locator('input[type="number"]').first().fill('4');
+      await page.locator('input[type="number"]').nth(1).fill('1');
+      await page.getByRole('button', { name: 'Calculate' }).click();
+      await expectResultText(page, /ALBI Score:\s*-2\.586/);
+      await expectResultText(page, /Input Units:\s*US \(albumin g\/dL; bilirubin mg\/dL\)/);
     });
   });
 
@@ -115,6 +145,7 @@ test.describe('ALBI Score Calculator', () => {
     });
 
     test('should reject negative values', async ({ page }) => {
+      await page.locator('input[type="radio"][value="SI"]').check();
       const albuminInput = page.locator('input[type="number"]').first();
       const bilirubinInput = page.locator('input[type="number"]').nth(1);
 
@@ -132,22 +163,59 @@ test.describe('ALBI Score Calculator', () => {
       await expectResultText(page, /valid positive values|positive/i);
     });
 
-    test('should validate physiological ranges', async ({ page }) => {
+    test('retains the numerical grade with an input review warning outside software thresholds', async ({ page }) => {
+      await page.locator('input[type="radio"][value="SI"]').check();
       const albuminInput = page.locator('input[type="number"]').first();
       const bilirubinInput = page.locator('input[type="number"]').nth(1);
 
-      // Enter values outside physiological range (albumin > 60 g/L)
+      // Software review thresholds are not model eligibility exclusions.
       await albuminInput.fill('100');
       await bilirubinInput.fill('20');
 
-      // Trigger calculation
-      const computeButton = page.locator('button:has-text("Compute"), button:has-text("Calculate")').first();
-      if (await computeButton.isVisible()) {
-        await computeButton.click();
-      }
+      await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+      await expectResultText(page, /application review thresholds/i);
+      await expectAlbiGrade(page, 1);
+      await expectResultText(page, /does not establish clinical applicability/i);
+    });
 
-      // Should show range error
-      await expectResultText(page, /physiological range|outside.*range/i);
+    test('warning survives copy and print and clears through invalid recovery on mobile', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+      await page.locator('input[type="radio"][value="SI"]').check();
+      const albumin = page.locator('#albumin');
+      const bilirubin = page.locator('#bilirubin');
+      const calculate = page.getByRole('button', { name: 'Calculate', exact: true });
+      await albumin.fill('40');
+      await bilirubin.fill('10');
+      await calculate.click();
+      await expectAlbiGrade(page, 1);
+      await expect(resultsRegion(page)).not.toContainText('Input Check');
+      await albumin.fill('65');
+      await expect(resultsRegion(page)).toHaveCount(0);
+      await calculate.focus();
+      await page.keyboard.press('Enter');
+      await expectResultText(page, /-4\.865/);
+      await expectResultText(page, /Input Check/);
+      await expect(resultsRegion(page).getByText('Grade 1', { exact: true })).toHaveClass(/result-warning/);
+      await expect(resultsRegion(page).getByText(/Source-defined Grade 1/)).toHaveClass(/result-warning/);
+      await page.getByRole('button', { name: 'Copy results', exact: true }).click();
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(copied).toContain('Input Check');
+      expect(copied).toContain('65 g/L');
+      expect(copied).toContain('does not establish clinical applicability');
+      await page.emulateMedia({ media: 'print' });
+      await expectResultText(page, /Input Check/);
+      await page.emulateMedia({ media: 'screen' });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await albumin.fill('0');
+      await expect(resultsRegion(page)).toHaveCount(0);
+      await calculate.click();
+      await expectResultText(page, /valid positive values/i);
+      await expect(resultsRegion(page)).not.toContainText('ALBI Grade');
+      await albumin.fill('40');
+      await calculate.click();
+      await expectAlbiGrade(page, 1);
+      await expect(resultsRegion(page)).not.toContainText('Input Check');
     });
   });
 
@@ -393,6 +461,7 @@ test.describe('ALBI Score Calculator', () => {
   test.describe('Edge Cases & Error Handling', () => {
 
     test('should handle zero values', async ({ page }) => {
+      await page.locator('input[type="radio"][value="SI"]').check();
       const albuminInput = page.locator('input[type="number"]').first();
       const bilirubinInput = page.locator('input[type="number"]').nth(1);
 
@@ -658,7 +727,7 @@ test.describe('ALBI Score Calculator', () => {
       await expectResultText(page, /Converted Bilirubin \(SI\):\s*17\.1 μmol\/L/);
     });
 
-    test('preserves formatted ALBI display and copy output', async ({ page }) => {
+    test('preserves formatted ALBI display, copy feedback, and print layout', async ({ page, browserName }) => {
       const siRadio = page.locator('input[type="radio"][value="SI"]');
       if (await siRadio.isVisible()) {
         await siRadio.check();
@@ -674,12 +743,43 @@ test.describe('ALBI Score Calculator', () => {
 
       await expectResultText(page, /ALBI Score:\s*-2\.740/);
       await expectAlbiGrade(page, 1);
-      await page.getByRole('button', { name: 'Copy Results' }).click();
+      if (browserName === 'chromium') {
+        await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+      } else {
+        await page.evaluate(() => {
+          window.__radulatorClipboard = '';
+          Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: {
+              writeText: async (text) => { window.__radulatorClipboard = text; },
+              readText: async () => window.__radulatorClipboard,
+            },
+          });
+        });
+      }
 
-      const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
-      expect(clipboardText).toContain('ALBI Score: -2.740');
-      expect(clipboardText).toContain('ALBI Grade: Grade 1');
-      expect(clipboardText).not.toContain('_severity');
+      await page.getByRole('button', { name: /Copy results/i }).click();
+      if (browserName === 'chromium') {
+        const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+        expect(clipboardText).toContain('ALBI Score: -2.740');
+        expect(clipboardText).toContain('ALBI Grade: Grade 1');
+        expect(clipboardText).toContain('Input Units: SI (albumin g/L; bilirubin μmol/L)');
+        expect(clipboardText).toContain('does not determine treatment eligibility');
+        expect(clipboardText).not.toContain('_severity');
+      } else {
+        await expect(page.getByRole('button', { name: 'Results copied' })).toBeVisible();
+        await expect(page.getByText('Copied!', { exact: true })).toBeVisible();
+      }
+
+      await page.evaluate(() => {
+        window.__radulatorPrintCalls = 0;
+        window.print = () => { window.__radulatorPrintCalls += 1; };
+      });
+      await page.getByRole('button', { name: 'Print Results' }).click();
+      await expect.poll(() => page.evaluate(() => window.__radulatorPrintCalls)).toBe(1);
+      await page.emulateMedia({ media: 'print' });
+      await expect(page.getByRole('button', { name: 'Print Results' })).toBeHidden();
+      await expect(resultsRegion(page)).toBeVisible();
     });
   });
 });

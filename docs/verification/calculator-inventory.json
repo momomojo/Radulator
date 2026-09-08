@@ -169,7 +169,7 @@
         "status": "verified",
         "lastVerified": "2026-08-29",
         "reviewScope": "source-derived evidence (3 claim(s), 6 vector(s))",
-        "justification": "The open primary publication confirms the printed two-variable ALBI equation, SI units, three inclusive/exclusive grade intervals, and HCC development population. Executable vectors bind the source coefficients and all grade boundaries; unsupported cohort-median and treatment-eligibility claims were removed.",
+        "justification": "Primary-source equation, SI units, grade intervals and HCC population are bound to executable vectors. Unsupported individual prognosis/treatment claims are excluded. The legacy verified label covers that recorded scope, not full baseline acceptance. Source review, strict inputs/units, software review thresholds, report checks and remaining release evidence: docs/verification/calculators/albi-score.md.",
         "sourceReferences": [
           {
             "authority": "Johnson et al.",
