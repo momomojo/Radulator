@@ -39,6 +39,75 @@ await withServer({
   [`/releases/${"a".repeat(40)}.json`]: {
     status: 200,
     type: "application/json",
+    body: JSON.stringify({
+      schema: "radulator-release/v1",
+      sha: "a".repeat(40),
+      sourceTreeSha: "b".repeat(40),
+      payloadDigest: "c".repeat(64),
+    }),
+  },
+  "/": { status: 200, body: "Radulator" },
+  "/calculators/meld-na/": { status: 200, body: "MELD-Na Score Calculator" },
+  "/sitemap.xml": { status: 200, body: "/calculators/meld-na/" },
+}, async (site) => {
+  const result = await smokeSite(site, {
+    attempts: 1,
+    delayMs: 0,
+    expectedSha: "a".repeat(40),
+    expectedSourceTreeSha: "b".repeat(40),
+    expectedPayloadDigest: "c".repeat(64),
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.expectedSourceTreeSha, "b".repeat(40));
+  assert.equal(result.expectedPayloadDigest, "c".repeat(64));
+});
+
+for (const [label, marker, expectedTree, expectedDigest] of [
+  ["wrong tree", { sourceTreeSha: "d".repeat(40), payloadDigest: "c".repeat(64) }, "b".repeat(40), "c".repeat(64)],
+  ["wrong payload digest", { sourceTreeSha: "b".repeat(40), payloadDigest: "e".repeat(64) }, "b".repeat(40), "c".repeat(64)],
+  ["missing bindings", {}, "b".repeat(40), "c".repeat(64)],
+]) {
+  await withServer({
+    [`/releases/${"a".repeat(40)}.json`]: {
+      status: 200,
+      type: "application/json",
+      body: JSON.stringify({ schema: "radulator-release/v1", sha: "a".repeat(40), ...marker }),
+    },
+    "/": { status: 200, body: "Radulator" },
+  }, async (site) => {
+    const result = await smokeSite(site, {
+      attempts: 1,
+      delayMs: 0,
+      expectedSha: "a".repeat(40),
+      expectedSourceTreeSha: expectedTree,
+      expectedPayloadDigest: expectedDigest,
+    });
+    assert.equal(result.ok, false, label);
+    assert.equal(result.reasonCode, "RELEASE_BINDING_MISMATCH", label);
+    assert.equal(result.failedCheck, "release-sha", label);
+  });
+}
+
+await assert.rejects(
+  () => smokeSite("https://radulator.example", { expectedSourceTreeSha: "b".repeat(40), attempts: 1, delayMs: 0 }),
+  /expectedSha/i,
+  "source tree binding requires expected SHA",
+);
+await assert.rejects(
+  () => smokeSite("https://radulator.example", { expectedSha: "a".repeat(40), expectedSourceTreeSha: "tree", attempts: 1, delayMs: 0 }),
+  /expectedSourceTreeSha/i,
+  "source tree binding format is validated",
+);
+await assert.rejects(
+  () => smokeSite("https://radulator.example", { expectedSha: "a".repeat(40), expectedPayloadDigest: "digest", attempts: 1, delayMs: 0 }),
+  /expectedPayloadDigest/i,
+  "payload digest binding format is validated",
+);
+
+await withServer({
+  [`/releases/${"a".repeat(40)}.json`]: {
+    status: 200,
+    type: "application/json",
     body: JSON.stringify({ schema: "radulator-release/v1", sha: "b".repeat(40) }),
   },
   "/": { status: 200, body: "Radulator" },

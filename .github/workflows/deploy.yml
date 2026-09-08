@@ -24,12 +24,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ref: ${{ steps.authorize.outputs.ref }}
+      source_tree_sha: ${{ steps.authorize.outputs.source_tree_sha }}
+      reviewed_head_sha: ${{ steps.authorize.outputs.reviewed_head_sha }}
       mode: ${{ steps.authorize.outputs.mode }}
+      controller_sha: ${{ steps.capture-controller.outputs.controller_sha }}
     steps:
       - name: Checkout trusted deployment authorizer
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
+
+      - name: Capture immutable controller SHA
+        id: capture-controller
+        run: |
+          set -eu
+          CONTROLLER_SHA=$(git rev-parse HEAD)
+          test "${#CONTROLLER_SHA}" -eq 40
+          echo "controller_sha=$CONTROLLER_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Authorize immutable deployment source
         id: authorize
@@ -42,18 +53,42 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ref: ${{ needs.authorize.outputs.ref }}
+      source_tree_sha: ${{ needs.authorize.outputs.source_tree_sha }}
+      reviewed_head_sha: ${{ needs.authorize.outputs.reviewed_head_sha }}
+      mode: ${{ needs.authorize.outputs.mode }}
+      controller_sha: ${{ needs.authorize.outputs.controller_sha }}
+      build_run_id: ${{ steps.capture-build-identity.outputs.build_run_id }}
+      build_attempt: ${{ steps.capture-build-identity.outputs.build_attempt }}
+      artifact_id: ${{ steps.upload-pages.outputs.artifact_id }}
+      artifact_name: ${{ steps.capture-build-identity.outputs.artifact_name }}
+      payload_digest: ${{ steps.write-marker.outputs.payload_digest }}
     steps:
-      - name: Checkout
+      - name: Checkout authorized source
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.authorize.outputs.ref }}
-        
+
+      - name: Capture build identity
+        id: capture-build-identity
+        env:
+          BUILD_RUN_ID: ${{ github.run_id }}
+          BUILD_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -eu
+          case "$BUILD_RUN_ID" in ''|*[!0-9]*) exit 1;; esac
+          case "$BUILD_ATTEMPT" in ''|*[!0-9]*) exit 1;; esac
+          test "$BUILD_RUN_ID" -gt 0
+          test "$BUILD_ATTEMPT" -gt 0
+          echo "build_run_id=$BUILD_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "build_attempt=$BUILD_ATTEMPT" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=radulator-pages-$BUILD_RUN_ID-$BUILD_ATTEMPT" >> "$GITHUB_OUTPUT"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          
+
       - name: Install dependencies
         run: npm ci
 
@@ -68,21 +103,88 @@ jobs:
           VITE_BING_SITE_VERIFICATION: ${{ secrets.VITE_BING_SITE_VERIFICATION }}
           VITE_SEARCH_VERIFICATION_META: ${{ secrets.VITE_SEARCH_VERIFICATION_META }}
 
-      - name: Checkout trusted release marker writer
+      - name: Checkout pinned release controller
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ needs.authorize.outputs.controller_sha }}
           path: .radulator-controller
 
-      - name: Bind artifact to authorized immutable SHA
-        run: node .radulator-controller/scripts/write-release-marker.mjs --dist dist --sha ${{ needs.authorize.outputs.ref }}
-        
+      - name: Write release marker
+        id: write-marker
+        env:
+          DEPLOYMENT_MODE: ${{ needs.authorize.outputs.mode }}
+          SOURCE_SHA: ${{ needs.authorize.outputs.ref }}
+          SOURCE_TREE_SHA: ${{ needs.authorize.outputs.source_tree_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.authorize.outputs.reviewed_head_sha }}
+        run: |
+          set -eu
+          if [ "$DEPLOYMENT_MODE" = "verified-rollback" ]; then
+            node .radulator-controller/scripts/write-release-marker.mjs \
+              --dist dist \
+              --sha "$SOURCE_SHA" \
+              --source-tree-sha "$SOURCE_TREE_SHA" \
+              --rollback
+          else
+            node .radulator-controller/scripts/write-release-marker.mjs \
+              --dist dist \
+              --sha "$SOURCE_SHA" \
+              --source-tree-sha "$SOURCE_TREE_SHA" \
+              --reviewed-head-sha "$REVIEWED_HEAD_SHA"
+          fi
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run built preview smoke
+        id: build-smoke
+        run: npx playwright test tests/e2e/smoke.spec.js --project=chromium
+        env:
+          CI: true
+
+      - name: Upload build smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
-        
-      - name: Upload artifact
+
+      - name: Verify release marker
+        id: verify-marker
+        env:
+          DEPLOYMENT_MODE: ${{ needs.authorize.outputs.mode }}
+          SOURCE_SHA: ${{ needs.authorize.outputs.ref }}
+          SOURCE_TREE_SHA: ${{ needs.authorize.outputs.source_tree_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.authorize.outputs.reviewed_head_sha }}
+        run: |
+          set -eu
+          if [ "$DEPLOYMENT_MODE" = "verified-rollback" ]; then
+            node .radulator-controller/scripts/write-release-marker.mjs \
+              --verify \
+              --dist dist \
+              --sha "$SOURCE_SHA" \
+              --source-tree-sha "$SOURCE_TREE_SHA" \
+              --rollback
+          else
+            node .radulator-controller/scripts/write-release-marker.mjs \
+              --verify \
+              --dist dist \
+              --sha "$SOURCE_SHA" \
+              --source-tree-sha "$SOURCE_TREE_SHA" \
+              --reviewed-head-sha "$REVIEWED_HEAD_SHA"
+          fi
+
+      - name: Upload Pages artifact
+        id: upload-pages
         uses: actions/upload-pages-artifact@v3
         with:
+          name: ${{ steps.capture-build-identity.outputs.artifact_name }}
           path: ./dist
 
   deploy:
@@ -94,31 +196,117 @@ jobs:
     outputs:
       rollback_required: ${{ steps.rollback-classification.outputs.required }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: Checkout indexing scripts
+      - name: Checkout pinned deployment controller
         uses: actions/checkout@v4
         with:
-          # Controller scripts always come from trusted current main, while the
-          # Pages artifact may intentionally be an older immutable rollback ref.
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ needs.authorize.outputs.controller_sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      - name: Re-authorize original deployment event
+        id: re-authorize
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/authorize-deployment.mjs
+
+      - name: Compare authorized and built source identity
+        id: compare-build-identity
+        env:
+          AUTH_REF: ${{ steps.re-authorize.outputs.ref }}
+          AUTH_SOURCE_TREE_SHA: ${{ steps.re-authorize.outputs.source_tree_sha }}
+          AUTH_REVIEWED_HEAD_SHA: ${{ steps.re-authorize.outputs.reviewed_head_sha }}
+          AUTH_MODE: ${{ steps.re-authorize.outputs.mode }}
+          EXPECTED_REF: ${{ needs.authorize.outputs.ref }}
+          EXPECTED_SOURCE_TREE_SHA: ${{ needs.authorize.outputs.source_tree_sha }}
+          EXPECTED_REVIEWED_HEAD_SHA: ${{ needs.authorize.outputs.reviewed_head_sha }}
+          EXPECTED_MODE: ${{ needs.authorize.outputs.mode }}
+          CONTROLLER_SHA: ${{ needs.authorize.outputs.controller_sha }}
+        run: |
+          set -eu
+          compare() {
+            if [ "$1" != "$2" ]; then
+              echo "deployment source identity changed"
+              exit 1
+            fi
+          }
+          compare "$AUTH_REF" "$EXPECTED_REF"
+          compare "$AUTH_SOURCE_TREE_SHA" "$EXPECTED_SOURCE_TREE_SHA"
+          compare "$AUTH_REVIEWED_HEAD_SHA" "$EXPECTED_REVIEWED_HEAD_SHA"
+          compare "$AUTH_MODE" "$EXPECTED_MODE"
+          if [ "$AUTH_MODE" != "verified-rollback" ]; then
+            compare "$AUTH_REF" "$CONTROLLER_SHA"
+          fi
+
+      - name: Verify native Pages artifact
+        id: verify-artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ needs.build.outputs.artifact_id }}
+          ARTIFACT_NAME: ${{ needs.build.outputs.artifact_name }}
+          BUILD_RUN_ID: ${{ needs.build.outputs.build_run_id }}
+          BUILD_ATTEMPT: ${{ needs.build.outputs.build_attempt }}
+          SOURCE_SHA: ${{ needs.build.outputs.ref }}
+          SOURCE_TREE_SHA: ${{ needs.build.outputs.source_tree_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.build.outputs.reviewed_head_sha }}
+          DEPLOYMENT_MODE: ${{ needs.build.outputs.mode }}
+          PAYLOAD_DIGEST: ${{ needs.build.outputs.payload_digest }}
+        run: |
+          set -eu
+          common_args=(
+            --artifact-id "$ARTIFACT_ID"
+            --artifact-name "$ARTIFACT_NAME"
+            --build-run-id "$BUILD_RUN_ID"
+            --build-attempt "$BUILD_ATTEMPT"
+            --source-sha "$SOURCE_SHA"
+            --source-tree-sha "$SOURCE_TREE_SHA"
+            --payload-digest "$PAYLOAD_DIGEST"
+            --output artifact-receipt.json
+          )
+          if [ "$DEPLOYMENT_MODE" = "verified-rollback" ]; then
+            node scripts/verify-release-artifact.mjs "${common_args[@]}" --rollback
+          else
+            node scripts/verify-release-artifact.mjs "${common_args[@]}" --reviewed-head-sha "$REVIEWED_HEAD_SHA"
+          fi
+
+      - name: Upload artifact receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifact-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ needs.build.outputs.artifact_name }}
+
       - name: Verify deployed site
         id: smoke
-        run: node scripts/post-deploy-smoke.mjs --base-url https://radulator.com --expected-sha ${{ needs.build.outputs.ref }} --attempts 12 --delay-ms 10000 --output production-smoke.json
+        env:
+          SOURCE_SHA: ${{ needs.build.outputs.ref }}
+          SOURCE_TREE_SHA: ${{ needs.build.outputs.source_tree_sha }}
+          PAYLOAD_DIGEST: ${{ needs.build.outputs.payload_digest }}
+        run: |
+          node scripts/post-deploy-smoke.mjs \
+            --base-url https://radulator.com \
+            --expected-sha "$SOURCE_SHA" \
+            --expected-source-tree-sha "$SOURCE_TREE_SHA" \
+            --expected-payload-digest "$PAYLOAD_DIGEST" \
+            --attempts 12 \
+            --delay-ms 10000 \
+            --output production-smoke.json
 
       - name: Upload production smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: production-smoke-${{ github.run_id }}
+          name: production-smoke-${{ github.run_id }}-${{ github.run_attempt }}
           path: production-smoke.json
           if-no-files-found: warn
           retention-days: 30
@@ -143,10 +331,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout trusted rollback requester
+      - name: Checkout pinned rollback requester
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ needs.authorize.outputs.controller_sha }}
 
       - name: Request exact failed-run rollback evaluation
         env:

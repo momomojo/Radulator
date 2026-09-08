@@ -38,7 +38,8 @@ export function liveSmokePassed(jobs) {
 export function deploymentAuthorizationSucceeded(jobs) {
   const steps = (jobs || []).flatMap((job) => job.steps || []);
   return steps.some((step) =>
-    step.name === "Authorize immutable deployment source" && step.conclusion === "success");
+    ["Authorize immutable deployment source", "Re-authorize original deployment event"].includes(step.name) &&
+    step.conclusion === "success");
 }
 
 export function selectLastGoodDeployment(failedRun, runs, failedJobs = null, deployWorkflowId = null) {

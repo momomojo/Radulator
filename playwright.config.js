@@ -1,4 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
+import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
 
 /**
  * Playwright Configuration for Radulator Medical Calculator Testing
@@ -8,12 +10,18 @@ import { defineConfig, devices } from "@playwright/test";
 const isCI = !!process.env.CI;
 const isLocalSmokeScript = process.env.npm_lifecycle_event === "test:smoke";
 // CI and npm-run local smoke both build first, then serve dist through preview.
-const usePreviewServer = isCI || isLocalSmokeScript;
-const baseURL = usePreviewServer
-  ? "http://localhost:4173"
-  : "http://localhost:5173";
+const usePreviewServer = isCI || isLocalSmokeScript || process.env.RADULATOR_QA_PREVIEW === "1";
+const root = fileURLToPath(new URL(".", import.meta.url));
+// Stable per worktree; a collision fails closed instead of silently switching ports.
+const localPort = 20000 + createHash("sha256").update(root).digest().readUInt16BE(0) % 30000;
+const port = process.env.RADULATOR_QA_PORT ?? String(isCI ? 4173 : localPort);
+if (!/^[1-9]\d{0,4}$/.test(port) || Number(port) > 65535) {
+  throw new Error("RADULATOR_QA_PORT must be an integer port from 1 to 65535.");
+}
+const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
+  metadata: { serverMode: usePreviewServer ? "preview" : "dev" },
   testDir: "./tests/e2e",
 
   /* Run tests in files in parallel */
@@ -70,9 +78,10 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: usePreviewServer ? "npm run preview" : "npm run dev",
+    command: `npm run ${usePreviewServer ? "preview" : "dev"} -- --host 127.0.0.1 --port ${port} --strictPort`,
+    cwd: root,
     url: baseURL,
-    reuseExistingServer: !isCI,
+    reuseExistingServer: false,
     timeout: 120000,
   },
 });

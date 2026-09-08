@@ -1,65 +1,125 @@
-# AGENTS.md — coding harness for Radulator
+# Radulator: clinical baseline and delivery contract
 
-You are working on **radulator.com** — free medical calculators used by real clinicians. Push to `main` = production deploy within minutes, which is why feature work never targets it directly. Work like a careful engineer at a medical device company: small, verified, reversible steps.
+Radulator is a React/Vite medical-calculator site. Preserve its modular calculator
+definitions, permanent IDs, public URLs and existing supported functionality.
+Do not rewrite the application, add an agent platform/database, or provision a broker.
 
-**Branch model (release train).** Feature/fix PRs target **`develop`** (integration branch; smoke + targeted CI required, with the full suite required when the trusted risk classifier marks the change high risk). Batches are promoted develop→main by an automated promotion PR that runs the **full Playwright suite** and gets a fresh production-gate review of the whole batch — only then does anything deploy. The ONLY PRs that may target `main` directly are hotfixes for live production breakage, and they also require the full suite. If you are unsure which base to use: `develop`.
+## Ownership and completion
 
-## Agent harness
+- GPT-6 Astra owns source-based clinical planning, direct implementation and final
+  acceptance. Do not start more Luna clinical implementation tasks. Delegate only
+  independent, bounded research or review that reduces total completion effort.
+- Keep one calculator implementation active. The acceptance unit is the **whole
+  agreed supported scope**, not a single correction. Small commits and urgent
+  safety hotfixes are allowed; return to the same calculator's remaining gaps.
+- Reconcile 42 calculator records; substantively audit the 41 outside deferred
+  BI-RADS. Do not claim a sixth-edition BI-RADS implementation without its material.
+- Distinguish source review, computation tests, browser/report QA, signed release
+  approval, merged source, deployed artifact and live acceptance. Neither passing
+  tests nor old "verified" labels prove completed clinical review.
+- The existing guideline registry links each calculator's review-and-task record;
+  inventory is generated from it. Reuse that record; do not add another tracker.
+  Restrictions/source gaps stay explicit and prevent unsupported closure claims.
+- Keep legacy `radulator-seed-convert` job `c41b8448cce4` paused unless the owner
+  authorizes resumption. Preserve independent signed reviewers and existing drafts.
 
-Use GPT-6 Astra as the coordinating owner. Implementation agents use GPT-5.6 Luna at xhigh reasoning unless the owner explicitly selects another supported setting; independent reviewers must remain separate from the implementation agent and use the signed risk-tiered review path. Delegate genuinely independent work in parallel with isolated scopes, and keep one owner responsible for integration. A direct owner task is valid even when it did not arrive through a seed or strategist routine.
+## Working cycle
 
-Infer routine details from the task and prior approvals, preserve ongoing authorization, and ask only when an unresolved choice would materially change scope, safety, or an external irreversible action. Do not repeat a plan, spawn a boilerplate planning loop, or rerun passing checks without a relevant change, a failed concern, or a required gate. Keep output concise and state assumptions and outcome evidence clearly.
+For a whole-calculator audit or closeout, read the reusable
+[calculator-audit skill](ops/hermes/radulator/skills/radulator-calculator-audit/SKILL.md).
+It supplies the source/output matrix, US-guideline cross-check, report QA and
+Hermes-consumer reconciliation without creating another calculator tracker.
 
-Never print, search for, or copy token contents into prompts, logs, review records, or agent messages. The supervised host CLI is an approved execution path; Hermes queue/tracker requirements apply only to an explicitly Hermes-managed worker task and are documented separately below.
+1. Read the current task record, exact checkout/base, relevant implementation and
+   tests. Do not scan the entire repository or reload historical session logs.
+2. Before clinical edits, define population, outputs, exclusions, version and
+   independent expected cases from primary evidence. Record the gap and tasks.
+   Never change formulas, thresholds, units, interpretation/management text or
+   expected answers without authorized scope and adequate source evidence.
+3. Implement directly in the isolated worktree; use test-first regression cases.
+   Review actual sources and code, not just another agent's summary. These are
+   source-based AI reviews, not professional certification.
+4. Use focused checks during editing. Before first push/handoff run `npm ci`,
+   production build, lint, invariants and meaningful behavioral tests. Reuse a
+   successful dependency install while its lockfile/runtime are unchanged; a
+   broken toolchain requires `npm ci`, never skipped verification.
+5. Clinical PRs still require the finalized full suite through required CI. Do
+   not duplicate passing full runs on an unchanged subject; changed heads,
+   relevant bases, failures or new concerns invalidate the applicable evidence.
+6. Complete protected release and live QA, update the calculator record, then
+   move on. Report whole-calculator completions, restrictions and rework—not PR
+   counts or agent-hours. A bounded hotfix does not close the broader audit.
 
-## Local-first CI policy
+## Tools and context
 
-Before handoff or the first push, run the canonical local gate: `npm ci`, `npm run build`, `npm run lint`, and `npm run check:invariants`, plus the task's meaningful focused or behavioral test. Batch deterministic fixes locally instead of using Actions as a debugger. Run broader checks only when the change, a failure, or an unresolved concern justifies them; required PR checks and the promotion full suite are never skipped or waived. Do not manually dispatch the full suite for ordinary iterations.
+- Use `rg`/Git for local inspection, batched `gh --json` for repository state,
+  and GitHub MCP when its structured response helps. Do not fetch the same data
+  through both without a reason. Use completion events, not continuous polling.
+- Use `npm run research -- ...` for retained PubMed/PMC evidence; see
+  [research access](docs/development/research-access.md). PubMed MCP is a discovery
+  aid. Check exact IDs, versions, locators and correction notices yourself.
+  Cached bytes passing a hash check are **not** verified clinical claims.
+- Public literature queries only. Never transmit patient text, inputs, results
+  or secrets through research tools, analytics or diagnostics. Never print,
+  search for, or copy credentials into prompts, logs or agent messages.
+- Use the existing build and focused Playwright commands for browser QA; set
+  `RADULATOR_QA_PREVIEW=1` to test the built preview. The compact `qa:local`
+  receipt runner is deferred until the control release is promoted. Shared
+  Playwright configurations use a strict
+  worktree-specific port and no server reuse. Override only with
+  `RADULATOR_QA_PORT`; client URL and server command must agree.
+- Preserve source/artifact identities and detailed logs on disk; read summaries
+  and failures first. Copy/print/mobile claims must match actual tests. Print-media
+  rendering is not native printing. Use synthetic inputs for browser checks.
+- Give reviewers only calculator ID, exact revision, record path, allowed scope,
+  accepted evidence and specific question. No full-session-history forks or
+  nested reviewers. Reassess after two material rework rounds.
+- Make routine decisions within approved scope. Ask only for a consequential
+  unresolved clinical conflict, missing authority or meaningful scope expansion.
+- Before submission, classify the actual base-relative diff using the protected
+  base's release policy. Clinical/evidence and release-control changes must be
+  separate. For branch reconciliation, prove the controller's actual merge
+  topology preserves already-live runtime and privacy checks; matching local
+  source alone does not prove the future production merge.
 
-## The lifecycle — every task, in order
+## Protected publication — unchanged authority
 
-**1. RESEARCH (before any edit).** Read the task and applicable instructions completely. Read only the files your change touches plus their tests — not the tree. Check how the registry contract applies (below). Make reasonable routine assumptions from the task context; pause only for a material scope, safety, or authorization conflict.
+Read trusted `RADULATOR_RELEASE_MODE` before publishing. Missing/empty or
+`release-train` means feature PR → protected `develop` → protected promotion to
+`main`; only confirmed live hotfixes may target main directly. `single-main`
+permits normal feature PRs to protected main. Unknown values fail closed.
+Only the owner activates migration after the control release, protection
+readback and rollback rehearsal; prove a clinical canary live before disabling
+promotion. Retain historical branches and rollback configuration. See the
+[artifact contract](docs/development/release-artifact-contract.md).
 
-**2. PLAN.** For non-trivial work, keep one compact note of the change, main break risk, and **outcome test** — the observable result that proves success. Reuse an existing reviewed plan or task card instead of repeating it in new boilerplate.
+- PR-only; never directly push protected branches, force-publish, merge manually,
+  self-sign reviews, bypass protection, or run manual deployment commands.
+- Coordinator publishes isolated feature branches. `ready-for-gate` is added
+  only after required CI succeeds on the finalized head. Standard risk requires
+  primary signed PASS; formula/threshold/management or other high-risk changes
+  require independent primary and verification PASSes. Changed head/base or
+  authority requires fresh applicable evidence and reviews. `NEEDS_FIX` means
+  exact-SHA rework. Only the trusted controller merges the authorized SHA.
+- Host supervision uses configured `gh` credentials without exposing them.
+  Hermes-managed workers use their approved credential-free publisher and must
+  bootstrap/read back their release tracker with `lifecycle_controller.py`
+  before completing the implementation task. Ordinary owner-directed work does
+  not have to move into Hermes.
+- Build with production configuration, test and deploy the same artifact, retain
+  source/artifact identity and live evidence. Failed production smoke uses the
+  existing last-good rollback; permanent revert still goes through a gated PR.
 
-**3. EXECUTE.** Small, single-purpose commits with conventional messages (`fix:`, `feat:`, `docs:`, `test:`). Match the surrounding code's style exactly. Never edit generated artifacts (`dist/`). Never commit secrets, tokens, or `.env` content.
+## Repository invariants
 
-**4. TEST.** Minimum for every implementation change: `npm ci && npm run build && npm run lint && npm run check:invariants`, plus a meaningful regression or behavioral test. Lint/invariants must match main's baseline — zero NEW errors. Calculator logic changes additionally require the full Playwright suite (`npm test`) — not just smoke. UI/product changes need feature proof per `docs/development/feature-verification.md`: start `scripts/dev-local.sh up` or `preview`, drive the app, and record screenshot/trace/proof paths. Do not repeat checks that already passed unless code, dependencies, or the failure concern changed.
-
-**5. CLEAN UP.** Re-read your full diff as a hostile reviewer: stray debug output, commented-out code, accidental file touches, scope creep — remove them. Your diff should contain nothing you cannot justify in one sentence.
-
-**6. HANDOFF.** Push your branch, open a PR explaining what/why/how-verified, then apply the `ready-for-gate` label **only when CI smoke is green**. The signed clinical gate judges that exact head automatically: standard risk needs one primary PASS; formula/threshold/management or other high-risk work needs independent primary and verification PASSes. `NEEDS_FIX` creates one exact-SHA rework task; correct it on the same PR and push a new head, which invalidates every old approval. The trusted merge controller merges only the currently approved exact SHA after all branch rules pass.
-
-If you are a Hermes Kanban implementation worker, create/read back the separate release tracker before completing the implementation task: `python3 ops/hermes/radulator/lifecycle_controller.py bootstrap --apply --parent-task-id "$HERMES_KANBAN_TASK" --pr <PR> --head-sha <HEAD_SHA>`. Then `kanban_complete` the implementation task with the PR URL, exact SHA, and release-tracker id. The tracker—not the implementation task—stays open through clinical review, merge, deployment smoke, retained learning, and final completion. Use `kanban_block` only for a concrete missing prerequisite, never merely because review is pending.
-
-## Hard rules
-
-- **Medical content is sacred.** Never change formulas, thresholds, score boundaries, units, interpretation text, management recommendations, or guideline versions unless the task explicitly authorizes it and provides primary-source evidence. Include citations and regression vectors in the PR. Do not self-approve: uncertainty is a `NEEDS_FIX` verdict. Clinical release authority belongs to the signed risk-tiered judge quorum, not an informal owner wait or a worker assertion.
-- **PR-only.** Never push to `main` or `develop` directly. PRs target `develop` (hotfix-to-`main` only for live production breakage). Never merge manually; only the trusted controller may merge the exact SHA authorized by the clinical gate and branch protection.
-- **The roadmap is not yours.** `docs/ROADMAP.md` is written EXCLUSIVELY by the Strategist routine and the owner. Workers never edit it — if your task seems to require a roadmap change, note it in the task or PR description. Work may arrive through a seed or directly from the owner; follow the authorized task body and record material assumptions rather than inventing roadmap scope.
-- **The registry contract.** The static calculator metadata definition/adaptor remains a `.jsx` in `src/components/calculators/` exporting `id`, `name`, and `category` (double-quoted string literals — build tooling parses them statically). Pure clinical helpers may live in adjacent modules when authorized; the metadata definition remains the registry source and calculator IDs never move. The registry, README counts, sitemap, and static pages all derive from this metadata. Renaming/removing an `id` breaks deep links (`#/<id>`) and static pages (`/calculators/<id>/`) — treat ids as permanent.
-- **GitHub auth.** Supervised host work uses the configured `gh` credential store and non-secret identity checks. Hermes workers use the approved credential-free publisher path; never extract, print, or pass token contents through the shell, prompts, logs, or review records.
-
-## Error classes to think about (these have actually bitten this repo)
-
-- **Env-dependent builds:** CI sets secrets (e.g. `VITE_GA4_MEASUREMENT_ID`) that local builds lack — a transform that runs only in CI once consumed another step's regex anchor and shipped 38 broken pages while local builds looked perfect. For any build-pipeline change, reason explicitly: *what is different in CI?* And make generators **fail loudly** — a thrown error beats a silent no-op every time.
-- **Stale-base work:** workspace clones can lag origin. Always `git fetch` + rebase onto the real `origin/develop` (or `origin/main` for hotfixes) before opening a PR.
-- **Derived-data drift:** counts, lists, and inventories in docs must be derived from source (registry metadata), never hand-typed.
-- **Accessibility erosion:** keep explicit `type` on buttons, labels on inputs, focus management in dialogs. WCAG compliance is an active investment here.
-- **Partial toolchains:** if `node_modules` is broken, run `npm ci` — do not work around missing tools or skip verification because the environment is inconvenient. If the environment blocks verification (sandbox, network), say so explicitly in your handoff instead of claiming success.
-
-## Commands
-
-```bash
-npm ci            # always this, never bare npm install, for clean state
-npm run dev       # local dev server
-npm run build     # production build — also generates registry-derived static calculator pages + sitemap
-npm run lint      # must match main's baseline (no NEW errors)
-npm run check:invariants  # Radulator-specific metadata/guardrail checks
-npm test          # full Playwright suite (required for calculator-logic changes)
-npm run test:smoke
-scripts/dev-local.sh up    # local app-driving QA server in tmux
-npm run proof:feature -- --route '/#/tirads' --expect-text 'TI-RADS'
-```
-
-Failed production smoke automatically redeploys the last verified good `main` SHA without rewriting history. Permanent code rollback still uses a revert branch (`git revert -m 1 <sha>`) → PR → risk-tiered gate → exact-head automatic merge.
+- Work in the existing isolated worktree. Fetch and reconcile the true target;
+  preserve unrelated edits/historical worktrees. Never edit generated `dist`.
+- Static calculator metadata stays in a `.jsx` under `src/components/calculators/`,
+  exporting `id`, `name`, `category` as double-quoted literals. IDs never move;
+  registry/counts/sitemap/static pages are generated, not hand-maintained.
+- Roadmap changes belong to the owner/Strategist, not implementation workers.
+- Keep input labels, button types, keyboard behavior and accessible reports.
+- Account for CI-only production configuration; generators must fail loudly.
+- Commands: `npm run build`, `npm run lint`, `npm run check:invariants`,
+  `npm run test:qa-harness`, `npm run test:research`; focused computation/browser
+  checks per task. Full CI and signed gates remain required where applicable.

@@ -13,7 +13,7 @@ const nodeFiles = [
 const testFiles = ['tests/**/*.js']
 
 export default defineConfig([
-  globalIgnores(['dist', 'playwright-report', 'test-results', '.claude', '.worktrees']),
+  globalIgnores(['dist', 'playwright-report', 'test-results', '.claude', '.worktrees', '.superpowers']),
   {
     files: ['**/*.{js,jsx,mjs}'],
     extends: [
