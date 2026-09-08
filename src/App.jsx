@@ -1216,12 +1216,14 @@ function AppContent() {
                     Post-CRH Stimulation Samples
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Add time-series samples after CRH administration (typically
-                    at +3, +6, +9, +15 minutes). These help identify peak ACTH
-                    response and improve lateralization accuracy.
+                    Enter actual post-CRH sampling times and simultaneous left,
+                    right and peripheral ACTH in pg/mL; optional prolactin in ng/mL.
+                    Use the same units for each analyte across all samples. Enter
+                    all three prolactin values or leave that set blank. Samples
+                    identify the measured ACTH peak, not a surgical side.
                   </p>
-                  <div className="overflow-x-auto">
-                    <div className="grid grid-cols-8 gap-2 font-medium text-xs min-w-max text-foreground">
+                  <div className="overflow-x-auto print:overflow-visible">
+                    <div className="grid grid-cols-8 gap-2 font-medium text-xs min-w-[56rem] text-foreground print:min-w-0 print:grid-cols-7">
                       <div>Time</div>
                       <div>Lt ACTH</div>
                       <div>Rt ACTH</div>
@@ -1229,12 +1231,12 @@ function AppContent() {
                       <div>Lt PRL</div>
                       <div>Rt PRL</div>
                       <div>Per PRL</div>
-                      <div>Action</div>
+                      <div className="print:hidden">Action</div>
                     </div>
                     {ipssRows.map((r, i) => (
                       <div
                         key={i}
-                        className="grid grid-cols-8 gap-2 items-center min-w-max"
+                        className="grid grid-cols-8 gap-2 items-center min-w-[56rem] [&>input]:min-w-0 print:min-w-0 print:grid-cols-7"
                       >
                         <Input
                           placeholder="+3"
