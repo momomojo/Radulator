@@ -1102,7 +1102,7 @@
         "status": "verified",
         "lastVerified": "2026-08-25",
         "reviewScope": "source-derived evidence (3 claim(s))",
-        "justification": "The open primary publication confirms the adult diagnostic kidney-biopsy population and major-bleeding outcome; its direct supplementary PDF exposes the refit equation, predictor units, coefficients, and spline knots used by the executable source-model regression vectors. This evidence scope does not establish full baseline acceptance. See docs/verification/calculators/kidney-biopsy-bleeding-risk.md for the bounded weight-input correction, final test/release state, and unresolved other software-bound and extrapolation applicability decisions.",
+        "justification": "Primary study and supplement support the adult diagnostic-biopsy major-bleeding refit, units, coefficients and spline tests, not full baseline acceptance. See docs/verification/calculators/kidney-biopsy-bleeding-risk.md for the weight-input correction, test/release evidence and unresolved other input-bound and extrapolation limits.",
         "sourceReferences": [
           {
             "authority": "Thorne et al.",
