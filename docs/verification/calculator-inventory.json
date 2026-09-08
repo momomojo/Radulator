@@ -1951,19 +1951,37 @@
       "id": "wells-dvt",
       "name": "Wells Criteria for DVT",
       "category": "Clinical Decision",
-      "guidelineVersion": "Wells Criteria (2003)",
+      "guidelineVersion": "Modified Wells DVT / NICE NG158",
       "sourcePath": "src/components/calculators/WellsDVT.jsx",
       "registry": {
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Implements the published DVT clinical prediction rule rather than a versioned guideline; model and current-use context remain queued for audit.",
+        "justification": "Source-reviewed implementation contract and independent cases: docs/verification/calculators/wells-dvt.md. NICE-adapted modified Wells score with source-specific diagnostic context and separately labeled historical cohort prevalence. Not an individual risk estimate or treatment algorithm. Final review, integrated release tests and live acceptance remain pending; no verification upgrade.",
         "sourceReferences": [
           {
             "authority": "Wells et al.",
             "title": "Evaluation of D-dimer in the diagnosis of suspected deep-vein thrombosis",
             "role": "primary-publication",
             "url": "https://doi.org/10.1056/NEJMoa023153"
+          },
+          {
+            "authority": "NICE",
+            "title": "NG158 Table 1 and recommendations 1.1.1–1.1.14",
+            "role": "official-authority",
+            "url": "https://www.nice.org.uk/guidance/ng158/chapter/Recommendations"
+          },
+          {
+            "authority": "American Society of Hematology",
+            "title": "2018 diagnosis guideline, lower-extremity recommendations 5–8 and remarks",
+            "role": "official-authority",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6258916/"
+          },
+          {
+            "authority": "American College of Chest Physicians",
+            "title": "CHEST 2012 diagnosis guideline, section 3.1.1: historical probability estimates",
+            "role": "official-authority",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3278048/"
           }
         ],
         "implementationEvidence": null
