@@ -286,3 +286,9 @@ test, finding no remaining actionable issues within that scope. The owner also
 read the runtime/test/registry diff. This is not a signed release authorization.
 Focused browser receipt: retained baseline proof directory,
 `wells-dvt-focused-results.json`; mutation receipt: `wells-dvt-mutation-results.json`.
+
+At implementation commit `be3cc4f`, `npm run test:compute` completed with exit0:
+313 fixture cases across12 fixture files, KBRC supplemental checks and all
+discovered supplemental compute suites, including the eight Wells groups.
+This is cross-catalog computation regression evidence, not the still-pending
+full Playwright release suite or independent validation of every fixture.
