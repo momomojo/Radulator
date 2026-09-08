@@ -25,6 +25,7 @@ export const AdrenalMRICSI = {
   info: {
     text:
       "Adrenal MRI chemical-shift imaging helps characterize adrenal lesions by detecting intracellular lipid signal loss on opposed-phase images.\n\n" +
+      "Enter magnitude-image ROI signal intensities, not signed phase, real/imaginary, or background-subtracted values. Use technically adequate matched ROIs; defined arithmetic does not establish reliable interpretation of near-zero or noisy signals.\n\n" +
       "Key Points:\n" +
       "• Signal-intensity index compares adrenal in-phase and opposed-phase signal\n" +
       "• Adrenal-to-spleen CSI ratio normalizes adrenal signal change to splenic signal\n" +

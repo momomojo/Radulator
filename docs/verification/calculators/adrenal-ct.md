@@ -16,6 +16,12 @@ Required bounded correction: retain actual absolute/relative washout computation
 
 ## Independent expected cases and allowed work
 
+### Review rework: directly accessible primary evidence
+
+Primary signed review of531f0bf returned NEEDS_FIX because Oxford blocked retrieval, not because the guard arithmetic failed. The [University of Sheffield deposit record](https://eprints.whiterose.ac.uk/id/eprint/208070/) identifies the published ESE/ENSAT2023 version, DOI and CC-BY license. Its [full published PDF](https://eprints.whiterose.ac.uk/id/eprint/208070/1/lvad066.pdf) is directly accessible: SHA256 `70faac5423838b806d5be7abe489a8bd35b7ae12714d32d821fcdc083f80d47f`, matching independent downloads on this workstation and the review host2026-09-08. This is source accessibility/identity evidence, not signed approval or a new deterministic source-audit gate.
+
+Exact locators with the deposit cover sheet included: printedG9/PDFpage10, section2.3, gives both washout equations and MRI chemical-shift context; printedG13/PDFpage14, section4.1.1 Washout-CT, describes limitations of the conventional cutoffs; printedG19/PDFpage20, Table4 and footnotes, limits imaging criteria to appropriate lesion/ROI contexts and cautions about the alternative cutoff's evidence. Owner read these passages. The preserved60/40 cutoffs are not newly certified. No additional source-audit infrastructure or clinical threshold change is part of this rework.
+
 1. U10/P100/D40 → APW66.7%, RPW60.0%; U20/P80/D70 →16.7%,12.5%; U−20/P100/D40 →50.0%,60.0%. Derive these independently by differences/division; preserve existing defined outputs.
 2. Omitted/blank/null/boolean/array/object, numeric suffixes/hexadecimal and nonfinite measurements → meaningful Error only, no percentage or diagnostic interpretation. Ordinary finite decimal/scientific strings are accepted.
 3. P=U (including10/10/0) or P=0 → Error only. Finite inputs whose subtraction or quotient overflows → Error only. Do not display `NaN`/`Infinity` or false positive/negative guidance.

@@ -5,6 +5,11 @@ import { AdrenalMRICSI as MRI } from "../src/components/calculators/AdrenalMRICS
 
 const ct = { unenh: "10", portal: "100", delayed: "40" };
 const mri = { a_ip: "100", a_op: "50", s_ip: "100", s_op: "100" };
+test("MRI explicitly requests magnitude-image ROI signals, not signed phase data", () => {
+  assert.match(MRI.info.text, /magnitude-image ROI signal intensities/);
+  assert.match(MRI.info.text, /not signed phase/);
+  assert.match(MRI.info.text, /technically adequate/);
+});
 function rejects(def, inputs) {
   const result = def.compute(inputs);
   assert.equal(typeof result.Error, "string", JSON.stringify(inputs));
