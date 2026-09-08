@@ -3,6 +3,24 @@
 Permanent ID `wells-dvt`; source `src/components/calculators/WellsDVT.jsx`.
 Owner source-based review started2026-09-08; incomplete, not certification.
 
+## Latest acceptance checkpoint
+
+The entries below retain the source-review and implementation chronology; this
+checkpoint supersedes their earlier pending local-test statements. At commit
+`6abd5a9d226a8ddc780c86fc1f5fbeb4ea646730`, on released main
+`ce67c278239389c88a14c37d14010a19d65646dd`, the final production-preview
+Playwright run passed all1545 tests, with0 failures/skips/flaky cases and no
+runner errors, retries0. It started2026-09-08T14:54:36.112Z and completed in
+293396.934ms. Receipt: `wells-dvt-integrated-final-results.json` in the retained
+baseline proof directory. The earlier1544/1 failed run remains retained too.
+
+Owner reread the complete candidate diff against the approved source-specific
+contract. This evidence-only update does not alter the tested runtime, tests,
+dependencies or build configuration. Required final-head CI, independent signed
+primary and verification reviews, protected merge, exact deployment readback
+and live browser acceptance remain outstanding. Registry status remains
+seed-unverified; this is not whole-calculator audit completion.
+
 ## Current state
 
 Owner read the entire implementation and exercised the public route. Selecting
