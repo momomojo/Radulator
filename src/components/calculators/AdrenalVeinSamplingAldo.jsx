@@ -709,7 +709,7 @@ export const AVSHyperaldo = {
                 className="text-xs"
                 title="Aldosterone level from adrenal vein sample. Should be elevated compared to IVC if sampling successful."
               >
-                Aldosterone <span className="text-gray-500">(ng/dL)</span>
+                Aldosterone <span className="text-gray-500">({aldoUnits})</span>
               </Label>
               <Input
                 type="number"
@@ -733,7 +733,7 @@ export const AVSHyperaldo = {
                 className="text-xs"
                 title="Cortisol level from adrenal vein sample. Used to verify cannulation (SI ≥2 without ACTH, ≥5 with ACTH) and normalize aldosterone (A:C ratio)."
               >
-                Cortisol <span className="text-gray-500">(µg/dL)</span>
+                Cortisol <span className="text-gray-500">({cortUnits})</span>
               </Label>
               <Input
                 type="number"
@@ -805,7 +805,7 @@ export const AVSHyperaldo = {
                 title="Peripheral vein baseline aldosterone level. Used to calculate A:C ratio for comparison with adrenal vein samples."
               >
                 Infrarenal IVC Aldosterone{" "}
-                <span className="text-gray-500">(ng/dL)</span>
+                <span className="text-gray-500">({aldoUnits})</span>
               </Label>
               <Input
                 type="number"
@@ -822,7 +822,7 @@ export const AVSHyperaldo = {
                 title="Peripheral vein baseline cortisol level. Used to verify cannulation (Selectivity Index = AV Cortisol / IVC Cortisol)."
               >
                 Infrarenal IVC Cortisol{" "}
-                <span className="text-gray-500">(µg/dL)</span>
+                <span className="text-gray-500">({cortUnits})</span>
               </Label>
               <Input
                 type="number"
@@ -836,7 +836,7 @@ export const AVSHyperaldo = {
             <div className="space-y-1">
               <Label className="text-xs">
                 Suprarenal IVC Aldosterone{" "}
-                <span className="text-gray-500">(ng/dL)</span>
+                <span className="text-gray-500">({aldoUnits})</span>
               </Label>
               <Input
                 type="number"
@@ -848,7 +848,7 @@ export const AVSHyperaldo = {
             <div className="space-y-1">
               <Label className="text-xs">
                 Suprarenal IVC Cortisol{" "}
-                <span className="text-gray-500">(µg/dL)</span>
+                <span className="text-gray-500">({cortUnits})</span>
               </Label>
               <Input
                 type="number"

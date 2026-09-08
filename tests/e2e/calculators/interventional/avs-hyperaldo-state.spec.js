@@ -120,6 +120,34 @@ test.describe("AVS aldosterone current-input report ownership", () => {
     await expect(download(page)).toBeVisible();
   });
 
+  test("each concentration field labels the units actually selected for calculation", async ({ page }) => {
+    await page.getByLabel("Both (comparison view)", { exact: true }).check();
+    await page.getByLabel("Aldosterone Units", { exact: true }).selectOption("pg/mL");
+    await page.getByLabel("Cortisol Units", { exact: true }).selectOption("nmol/L");
+    for (const input of await page.getByRole("spinbutton").all()) {
+      const name = await input.getAttribute("aria-label");
+      const units = name.endsWith("cortisol") ? "nmol/L" : "pg/mL";
+      await expect(input.locator("..")).toContainText(`(${units})`);
+    }
+    for (const prefix of ["Pre", "Post"]) for (const [name, value] of [
+      [`${prefix} infrarenal IVC aldosterone`, "100"],
+      [`${prefix} infrarenal IVC cortisol`, "275.9"],
+      [`${prefix} Left Adrenal Vein sample 1 aldosterone`, "10000"],
+      [`${prefix} Left Adrenal Vein sample 1 cortisol`, "2759"],
+      [`${prefix} Right Adrenal Vein sample 1 aldosterone`, "1000"],
+      [`${prefix} Right Adrenal Vein sample 1 cortisol`, "2759"],
+    ]) await page.getByRole("spinbutton", { name, exact: true }).fill(value);
+    await calculate(page);
+    await expect(report(page).locator("p").filter({ hasText: /^LI:\s*10\.00/ })).toHaveCount(2);
+    const pending = page.waitForEvent("download");
+    await download(page).click();
+    const csv = await readFile(await (await pending).path(), "utf8");
+    expect(csv).toContain("Left AV 1,—,10000.00,2759.00");
+    expect(csv).toContain("Right AV 1,—,1000.00,2759.00");
+    expect(csv).toContain("Left SI:,10.00,");
+    expect(csv).toContain("Right SI:,10.00,");
+  });
+
   test.describe("mobile report recovery", () => {
     test.use({ viewport: { width: 390, height: 844 } });
     test("keyboard recalculation uses edited values and stays within the viewport", async ({ page }, testInfo) => {

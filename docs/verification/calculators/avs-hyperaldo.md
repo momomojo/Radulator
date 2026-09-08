@@ -42,6 +42,27 @@ report nor CSV action may remain. After recalculation, the report must return
 using the new data. Also test every category of control and successful sample
 add/remove in each protocol; all results must disappear before recalculation.
 
+### Additional owner-approved input-label correction
+
+Changing either laboratory-unit selector already changes how the runtime reads
+all concentrations, but hormone-field labels remain hardcoded to standard units.
+Correct those labels to reflect the existing selected units in every pre/post
+IVC and adrenal row. This changes no conversion constant, formula or threshold.
+Test label/selection agreement first against the current broken form, then verify
+equivalent concentrations (ng/dL to pg/mL times10, µg/dL to nmol/L times27.59)
+retain the independent SI10/LI10 result and selected-unit CSV values. Runtime
+conversion validation beyond these equivalence anchors remains in the clinical
+audit. This is within the existing calculator/test/doc scope, not a new feature.
+
+Label regression failed before the correction: selecting pg/mL still displayed
+ng/dL on the actual IVC field. Six shared-renderer label spans now use the
+existing unit selections. All41 focused browser cases passed afterward with
+retries0; receipt `avs-aldo-units-focused.json`. Equivalent-unit assertions verify
+both protocol reports and actual CSV, not merely selected dropdown text. Fresh
+build/lint/invariants passed. Independent read-only review found no introduced
+issue. Existing standard-unit placeholder/range examples remain outside this
+label-only correction and require review with the broader clinical input contract.
+
 ## Broader clinical review and outstanding work
 
 Owner has read Chow2024 main text/tables/discussion (PMC11619738) and the
