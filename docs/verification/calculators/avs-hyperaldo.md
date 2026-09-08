@@ -202,6 +202,28 @@ integrated run and retain its separate receipt before any release claim.
 
 ## State-repair completion evidence
 
+### Updated production base and source-access rework
+
+After the source-access correction, candidate e389e07 incorporated production
+941d67b95af5aadd6875bc9e7dd5f807a139d23f (the accepted Wells release). Fresh
+build, lint and invariants passed. The frozen production-preview run started
+2026-09-08T16:03:21.378Z and completed in302434.782ms:1579 passed,2 skipped,
+zero unexpected failures or flaky tests, four workers and retries0.
+Receipt: `test-results/avs-rebased-results.json`, also preserved at
+`/tmp/radulator-avs-rebased-results-preserved.json` before the focused run.
+
+Both skips were explicit preview-port guards: the generated calculator HTML
+smoke test recognizes4173, and the KBRC permanent-static-URL test recognizes
+4173/4192; this isolated integrated preview used4198. Both unchanged tests were
+then run with the canonical CI preview on4173, retries0:2 passed,0 skipped
+(2.1seconds). Receipt: `test-results/results.json`. This is split-run evidence,
+not a claim that the integrated run itself had zero skips. Runtime and expected
+answers were not modified to obtain these passes.
+
+The source-access correction still requires a fresh signed review of the new
+PR head. This does not resolve the clinical-policy decision, wire the numeric
+helper into the form, or establish live deployment of the state repair.
+
 Final frozen-candidate integrated run at55fb392aa1fc6b9b6623385911b6f875be950886
 passed1578/1578, no failures/skips/flakiness, retries0, production preview,
 four workers; started2026-09-08T15:31:48.232Z, duration302478.758ms. Receipt
