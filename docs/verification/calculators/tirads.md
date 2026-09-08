@@ -2,6 +2,14 @@
 
 Permanent ID: `tirads`; route `/#/tirads`. Owner: GPT-6 Astra. Review: 2026-09-07, source revision `2ce23862442e6f6e644533341d81fe1a9facf9ac`. Source-based AI review, not professional certification. Reuse [the earlier scoring review](../../evidence/tirads-source-review.md); do not rebuild the calculator or repeat completed work without a changed rule or evidence gap.
 
+Revision reconciliation (2026-09-08): the starting revision above is publicly
+resolvable and has the same tree as protected develop
+`e3682c844e436c266ba49ae55132ef3b0d2927cd`. The assembled TI-2/TI-3 implementation
+is published at [candidate 24fb84b](https://github.com/momomojo/Radulator/commit/24fb84b2ba3b2e8c74c496949b7d51fd3a913a90)
+in [PR #267](https://github.com/momomojo/Radulator/pull/267). The older TI-2
+revision below is retained local history, not an independently retrievable
+GitHub release artifact. Review the published candidate for current code.
+
 ## Current state and required scope
 
 The implementation supplies real feature-based classification, optional maximum diameter in cm, points, group-risk context and size-based recommendations. Additive foci, benign-composition handling, strict size validation and threshold neighborhoods were already repaired and tested. The owner re-read the actual implementation, focused tests, current official resources and relevant original-paper passages for this baseline.
@@ -72,8 +80,9 @@ Existing `tests/tirads-compute.test.mjs` and `tests/fixtures/compute/tirads.json
   portability issue; the test now guards native clipboard assertions by
   browser while retaining rendered disclosure/recovery for all browsers.
   The two Chromium viewport tests passed again after that correction. Native
-  printing and native mobile-browser operation are not claimed. Full integrated
-  checks, final release review and live acceptance remain pending.
+  printing and native mobile-browser operation are not claimed. At this initial
+  checkpoint, integrated testing was pending; its later result is recorded below.
+  Final signed release review and live acceptance remain pending.
   The Firefox attempt initially failed before application launch because its
   Playwright browser binary was absent. After installing that test dependency,
   both1280px/390px disclosure, keyboard and recovery cases passed in Firefox
@@ -84,5 +93,16 @@ Existing `tests/tirads-compute.test.mjs` and `tests/fixtures/compute/tirads.json
 - Earlier scoring repair and production evidence are reusable only for their exact unchanged scope; pointers are in the earlier source review and owner baseline execution record.
 - TI-2 implementation at `8d7e9b77aaf469a873bed3cb89df1b1a99d37232` is locally accepted by the owner for the prescribed report-only scope after actual source/diff review and the independent review correction. Eleven focused computation tests and the scoped Chromium clipboard/print test passed on that revision; earlier TI-2 Chromium/WebKit checks are retained for unchanged behavior. It is not published. The owner verified the correction preserves copied group-risk qualifications and groups the exact approved scope text without changing points or thresholds. The full revision string was corrected on 2026-09-07 by reading the worktree's Git HEAD; the earlier matching-prefix transcription did not identify an existing commit. This record correction does not change code or acceptance scope.
 - A later default-port rerun failed because its captured network trace loaded another concurrent worktree's old TI-RADS asset. That run was rejected as target-mismatched evidence. After rebuilding this exact candidate, a dedicated strict-port4190 preview rerun passed the scoped real-clipboard/print-button test (1/1); the pure computation rerun passed11/11. This proves button invocation, not native printing. Operator evidence: `tirads-isolated.config.mjs`, `tirads-isolated-results.json` under the owner's ignored `2026-09-07-verified-baseline` evidence directory. Parallel task instructions now require distinct strict ports and exact server cwd.
-- This renewed clinical review and remaining-task plan remains partial. TI-3 and TI-4, integrated release tests and live acceptance remain pending.
+- TI-2/TI-3 implementation is complete on candidate `24fb84b2ba3b2e8c74c496949b7d51fd3a913a90`.
+  Its integrated local Playwright run passed 1568, with zero failures, skips or
+  flaky cases (4 workers, retries 0; started 2026-09-08T16:26:04.894Z,
+  296872 ms; terminal handle 57172). The JSON went to stdout, so no retained
+  local full-report file is claimed. Exact-head required CI also passed in
+  [run 34251942031](https://github.com/momomojo/Radulator/actions/runs/34251942031).
+  This documentation reconciliation does not change runtime or expected answers;
+  the new PR head still requires its own CI and applicable signed authority.
+- This renewed clinical review remains partial. TI-4's remaining source-to-output,
+  mutation, report/privacy and final acceptance evidence, protected production
+  release and artifact-bound live QA remain open. TI-3 is not an outstanding
+  implementation task.
 - Clinical, browser/report, privacy and final live-baseline acceptance remain pending. No promotion from `seed-unverified` is authorized by writing this plan.
