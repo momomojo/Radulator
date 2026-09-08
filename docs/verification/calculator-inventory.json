@@ -23,8 +23,8 @@
       "cases": 313
     },
     "browser": {
-      "allSpecFiles": 45,
-      "calculatorSpecificSpecFiles": 42,
+      "allSpecFiles": 46,
+      "calculatorSpecificSpecFiles": 43,
       "sharedSpecFiles": 3
     }
   },
