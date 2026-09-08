@@ -306,6 +306,38 @@ https://academic.oup.com/jcem/article/110/9/2453/8196671 , Implementation
 Strategies/Table9 and following paragraph. Reviewer independently checked these
 locators; no whole-calculator validation was asserted.
 
+### Reproducible primary-source access after signed review NEEDS_FIX
+
+Signed primary review comment5588064564 could not retrieve OUP and therefore
+did not accept this evidence claim. No runtime threshold has been changed.
+On2026-09-08 the owner retrieved the original typeset guideline from the public
+[SOCHOB-hosted copy](https://www.sochob.cl/web1/wp-content/uploads/2025/08/Primary-Aldosteronism-An-Endocrine-Society-Clinical-Practice-Guideline-1.pdf).
+This is the original paper, not a comparator calculator or clinical summary:
+Adler et al., JCEM2025;110:2453–2495, DOI10.1210/clinem/dgaf284, typeset14July2025.
+The Endocrine Society's guideline page independently identifies this publication:
+https://www.endocrine.org/clinical-practice-guidelines/primary-aldosteronism-2 .
+
+Exact locators, checked in extracted text and rendered original PDF pages:
+
+- PDF page15 / printed2467, Table9: stimulated SI strictly greater than5;
+  unstimulated or stimulated LI greater than or equal to4.
+- PDF page26 / printed2478, right column, last two paragraphs of Implementation
+  Strategies: stimulated SI strictly greater than5; unstimulated or continuous
+  cosyntropin LI strictly greater than4, with3–4 requiring contextual assessment.
+- Thus SI5 is an **inter-source** difference from ANZ's inclusive threshold,
+  not an internal table/prose SI disagreement. LI4 is the internal table/prose
+  ambiguity. This clarifies the review verdict's combined phrasing; it does not
+  resolve the physician presentation decision or prescribe new code behavior.
+
+Ordinary unauthenticated HTTPS download succeeded; SHA-256:
+`163d3d1779b818378f111c18e426c7adc6c7223282a02e559e34cad016744c28`.
+Private retained copy: `/tmp/radulator-endo2025-society.pdf`. Reproduce extraction
+with `pdftotext -f 15 -l 15 -layout <downloaded-pdf> -` and similarly page26;
+render those pages to inspect operators and column context. The PDF is not
+committed or redistributed in this repository. A recorded digest is provenance,
+not a claim that a deterministic source audit ran in CI. Independent reviewers
+must open the primary material; owner assertions alone are not release approval.
+
 Owner recommendation submitted to physician user: preserve useful numeric SI/LI
 and display separately named source/year/exact-operator criterion results with
 prerequisite and equality caveats, without selecting a single automatic
