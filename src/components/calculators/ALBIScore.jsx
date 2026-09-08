@@ -15,12 +15,19 @@
 
 import { calculateAlbi } from "../../clinical/albi.js";
 
+// Preserve small positive measurements instead of displaying a false zero.
+const formatLabValue = (value) => {
+  const rounded = value.toFixed(1);
+  return Number(rounded) === 0 ? value.toPrecision(3) : rounded;
+};
+
 export const ALBIScore = {
   id: "albi-score",
   category: "Hepatology/Liver",
   name: "ALBI Score",
   desc: "Albumin-Bilirubin grade for liver function assessment in hepatocellular carcinoma (HCC).",
   guidelineVersion: "ALBI Grade (Johnson 2015)",
+  showReset: true,
   keywords: ["liver function", "HCC", "hepatocellular", "albumin", "bilirubin"],
   tags: ["Hepatology", "Oncology"],
   metaDesc:
@@ -114,10 +121,11 @@ Scope: ALBI describes liver-function prognosis in studied HCC and chronic-liver-
     // Build output object
     const result = {
       ...(clinicalResult.inputReviewRequired ? {
-        "Input Check": `Outside application review thresholds (albumin 5–60 g/L; bilirubin 1–1000 μmol/L). Entered albumin ${clinicalResult.albuminInput} ${clinicalResult.usedUSUnits ? "g/dL" : "g/L"} and bilirubin ${clinicalResult.bilirubinInput} ${clinicalResult.usedUSUnits ? "mg/dL" : "μmol/L"}; SI values: ${albSI.toFixed(1)} g/L and ${biliSI.toFixed(1)} μmol/L. Verify against the laboratory report and units. These are software input checks, not physiological or validated model boundaries. Numerical computability does not establish clinical applicability.`,
+        "Input Check": `Outside application review thresholds (albumin 5–60 g/L; bilirubin 1–1000 μmol/L). Entered albumin ${clinicalResult.albuminInput} ${clinicalResult.usedUSUnits ? "g/dL" : "g/L"} and bilirubin ${clinicalResult.bilirubinInput} ${clinicalResult.usedUSUnits ? "mg/dL" : "μmol/L"}; SI values: ${formatLabValue(albSI)} g/L and ${formatLabValue(biliSI)} μmol/L. Verify against the laboratory report and units. These are software input checks, not physiological or validated model boundaries. Numerical computability does not establish clinical applicability.`,
       } : {}),
       "ALBI Score": albiScore.toFixed(3),
       "ALBI Grade": `Grade ${albiGrade}`,
+      "Score Precision": "Score displayed to three decimals; grade uses the unrounded score. A rounded score at a cutoff can therefore accompany the next grade.",
       Interpretation: gradeInterpretation,
       "Clinical Context": prognosis,
       Applicability: "Original ALBI prognosis model studied in HCC and chronic liver disease; not a post-transplant outcome predictor. Does not determine treatment eligibility or predict individual survival.",
@@ -128,12 +136,12 @@ Scope: ALBI describes liver-function prognosis in studied HCC and chronic-liver-
 
     // Add converted SI values if US units were used
     if (clinicalResult.usedUSUnits) {
-      result["Converted Bilirubin (SI)"] = `${biliSI.toFixed(1)} μmol/L`;
-      result["Converted Albumin (SI)"] = `${albSI.toFixed(1)} g/L`;
+      result["Converted Bilirubin (SI)"] = `${formatLabValue(biliSI)} μmol/L`;
+      result["Converted Albumin (SI)"] = `${formatLabValue(albSI)} g/L`;
       result["Note"] = "Calculation performed using SI units (shown above)";
     } else {
-      result["Bilirubin (SI)"] = `${biliSI.toFixed(1)} μmol/L`;
-      result["Albumin (SI)"] = `${albSI.toFixed(1)} g/L`;
+      result["Bilirubin (SI)"] = `${formatLabValue(biliSI)} μmol/L`;
+      result["Albumin (SI)"] = `${formatLabValue(albSI)} g/L`;
     }
 
     result._severity =

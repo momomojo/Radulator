@@ -94,7 +94,16 @@ test("ALBI grades from raw scores before three-decimal display rounding", () => 
     });
     assert.equal(displayed["ALBI Score"], testCase.expectedDisplay);
     assert.equal(displayed["ALBI Grade"], `Grade ${testCase.expectedGrade}`);
+    assert.match(displayed["Score Precision"], /grade uses the unrounded score/i);
   }
+});
+
+test("positive laboratory values are not displayed as zero after rounding", () => {
+  const report = ALBIScore.compute({ unit_system: "SI", albumin: 40, bilirubin: 0.01 });
+  assert.equal(report["ALBI Score"], "-4.720");
+  assert.equal(report["ALBI Grade"], "Grade 1");
+  assert.equal(report["Bilirubin (SI)"], "0.0100 μmol/L");
+  assert.match(report["Input Check"], /SI values: 40\.0 g\/L and 0\.0100 μmol\/L/);
 });
 
 test("pure ALBI validation retains structured invalid-input errors", () => {
