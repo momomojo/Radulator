@@ -22,12 +22,13 @@ const COMPOSITION_ONLY_FIELDS = [
   "echogenic_foci_punctate",
 ];
 
-const COMPOSITION_VALUES = ["cystic", "spongiform", "mixed", "solid"];
+const COMPOSITION_VALUES = ["cystic", "spongiform", "mixed", "solid", "cannot_determine"];
 const ECHOGENICITY_VALUES = [
   "anechoic",
   "hyperechoic",
   "hypoechoic",
   "very_hypoechoic",
+  "cannot_determine",
 ];
 const SHAPE_VALUES = ["wider", "taller"];
 const MARGIN_VALUES = ["smooth", "ill_defined", "lobulated", "ete"];
@@ -37,6 +38,9 @@ const ECHOGENIC_FOCI_FIELDS = [
   "echogenic_foci_peripheral",
   "echogenic_foci_punctate",
 ];
+
+const GUIDANCE_SCOPE =
+  "Standard initial ACR TI-RADS guidance for an adult thyroid nodule. Prior biopsy or treatment, PET avidity, suspected invasive disease, and patient-specific clinical context may require a different approach. This calculator does not assess longitudinal growth or prioritize multiple nodules.";
 
 const isCompositionOnly = (composition) =>
   composition === "cystic" || composition === "spongiform";
@@ -130,6 +134,7 @@ function buildResult({
     "Total Points": `${totalScore} points`,
     "Point Breakdown": pointBreakdown,
     "Source-reported group risk estimate": `${groupRisk} (source-reported group estimate; not an individual probability)`,
+    "Guidance Scope": GUIDANCE_SCOPE,
     "FNA Recommendation": fnaRecommendation,
   };
 
@@ -162,7 +167,7 @@ export const TIRADS = {
   info: {
     text: `ACR TI-RADS (Thyroid Imaging Reporting and Data System) is a standardized system for assessing thyroid nodules on ultrasound.
 
-For adult thyroid nodules; prior biopsy results and patient-specific clinical context can alter management.
+For adult thyroid nodules; prior biopsy results and patient-specific clinical context can alter management. ${GUIDANCE_SCOPE}
 
 The system assigns points based on 5 ultrasound feature categories:
 • Composition (0-2 points)
@@ -195,6 +200,7 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
         { value: "spongiform", label: "Spongiform (0 pts)" },
         { value: "mixed", label: "Mixed cystic and solid (1 pt)" },
         { value: "solid", label: "Solid or almost completely solid (2 pts)" },
+        { value: "cannot_determine", label: "Cannot determine composition — score as solid (2 pts)" },
       ],
     },
 
@@ -212,6 +218,7 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
         },
         { value: "hypoechoic", label: "Hypoechoic (2 pts)" },
         { value: "very_hypoechoic", label: "Very hypoechoic (3 pts)" },
+        { value: "cannot_determine", label: "Cannot determine echogenicity — score as isoechoic (1 pt)" },
       ],
     },
 
@@ -343,6 +350,7 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
         totalScore: 0,
         pointBreakdown: "Composition: 0 | Echogenicity: 0 | Shape: 0 | Margin: 0 | Echogenic Foci: 0",
         fnaRecommendation: "No FNA recommended",
+        followUpRecommendation: "No routine TI-RADS follow-up recommended",
         size,
         notes:
           composition === "spongiform"
@@ -377,11 +385,12 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
     const fociResult = validateEchogenicFoci(vals || {});
     if (fociResult.error) return { Error: fociResult.error };
 
-    const compositionPts = { mixed: 1, solid: 2 }[composition];
+    const compositionPts = { mixed: 1, solid: 2, cannot_determine: 2 }[composition];
     const echogenicityPts = {
       hyperechoic: 1,
       hypoechoic: 2,
       very_hypoechoic: 3,
+      cannot_determine: 1,
     }[echogenicity];
     const shapePts = shape === "taller" ? 3 : 0;
     const marginPts =
@@ -414,7 +423,10 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
       TR5: { fna: 1.0, follow: 0.5, schedule: "Annual follow-up for up to 5 years" },
     };
     let fnaRecommendation = "No FNA recommended";
-    let followUpRecommendation = "";
+    let followUpRecommendation =
+      category.id === "TR1" || category.id === "TR2"
+        ? "No routine TI-RADS follow-up recommended"
+        : "";
     if (thresholds[category.id]) {
       const { fna, follow, schedule } = thresholds[category.id];
       const fnaLabel = fna.toFixed(1);
@@ -434,6 +446,12 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
     }
 
     const notes = [];
+    if (composition === "cannot_determine") {
+      notes.push("Composition cannot be determined; scored as solid (2 points) per ACR guidance, not an observed solid appearance");
+    }
+    if (echogenicity === "cannot_determine") {
+      notes.push("Echogenicity cannot be determined; scored as isoechoic (1 point) per ACR guidance, not an observed isoechoic appearance");
+    }
     if (margin === "ete") {
       notes.push("Extrathyroidal extension is highly suspicious for malignancy");
     }
@@ -487,7 +505,7 @@ This calculator follows the 2017 ACR TI-RADS guidelines.`,
     },
     {
       t: "ACR TI-RADS Calculator and Resources - American College of Radiology",
-      u: "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/TI-RADS",
+      u: "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/TI-RADS",
     },
   ],
 };

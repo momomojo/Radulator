@@ -1881,7 +1881,7 @@
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Bounded source review and deterministic compute vectors now cover the ACR TI-RADS 2017 scoring, additive echogenic-foci options, size thresholds, and schedules; clinical sign-off and whole-calculator certification remain unestablished.",
+        "justification": "Bounded ACR TI-RADS 2017 scoring, additive foci, size thresholds and schedules are source-reviewed. Baseline scope, explicit indeterminate descriptors and remaining acceptance work: docs/verification/calculators/tirads.md. Clinical sign-off and whole-calculator certification remain unestablished.",
         "sourceReferences": [
           {
             "authority": "American College of Radiology",
