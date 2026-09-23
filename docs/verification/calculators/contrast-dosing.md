@@ -61,3 +61,36 @@ Allowed files: `src/components/calculators/ContrastDosing.jsx`, a focused `tests
 - Corrected live release: pending; the old inconsistent report remains on the starting live revision.
 - Full supported-scope clinical audit: pending; dosing research, access limits and bibliography gaps listed above remain open.
 - Expansion excluded: acute reaction treatment, pediatric dosing, new premedication or periprocedural algorithms.
+
+## Official reaction-card resource refresh, 2026-09-23
+
+The unchanged accepted production source failed fresh PR272 Smoke because the
+official pediatric reaction card changed from 54,773 to 55,452 bytes. Owner
+retrieved the same public ACR HTTPS URL and inspected both rendered pages before
+changing the binding. It remains the ACR pediatric reaction reference, with
+reaction/emergency and premedication content outside this calculator's supported
+treatment scope. This refresh validates the existing resource link only; it does
+not approve or implement pediatric dosing or a reaction-treatment algorithm.
+
+- URL: https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf
+- Previous SHA256: `4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f`.
+- Reviewed replacement SHA256: `3980e786cc9ae9f3d5edc8008b2ab48fb8ab0b7861d52fb7cd51cd43f5033b84`.
+- Replacement: 55,452 bytes, two pages; PDF creation/modification metadata says
+  2026-09-15. Metadata is not asserted as an official clinical revision date.
+- The prior PDF was not available for a content comparison. No assertion that
+  the two versions are clinically identical is made or needed for link-only scope.
+- Required change: replace only the pediatric artifact pin and expected identity,
+  regenerate inventory, retain exact-byte failure on future changes and verify
+  the unchanged manual, adult card, 13 manual claims and 10 renal/warming cases.
+- A local rerun also detected the adult card changing from 50,299 to 50,931
+  bytes. Owner retrieved its unchanged official HTTPS URL and inspected both
+  rendered pages for the same link-only scope. Previous adult SHA256:
+  `8e01c557097de36dd38706f1ce9bc540797bdee5e43534db3f6123bfabb963fb`;
+  reviewed replacement:
+  `6c3d1225c05038659d83e001b49c3b04e6460bb99dace6823f6ca95c9b4cbc99`.
+  Its two-page PDF metadata also says 2026-09-15. Update its pin and expected
+  identity under the same rule; do not assert clinical equivalence to the old
+  unavailable PDF or implement its adult treatment/premedication regimens.
+- Unchanged: all runtime code, clinical expected values and manual pin,
+  resource URLs and full-scope audit restrictions above. This section does not
+  supersede pending whole-calculator acceptance or authorize release.
