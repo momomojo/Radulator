@@ -626,12 +626,16 @@ function markdownPathLinks(paths) {
 }
 
 function baselinePhaseSummary(row) {
-  return [
-    `clinical ${row.registry.baselineReview.clinicalReview.status}`,
-    `calculation ${row.registry.baselineReview.calculationTests.status}`,
-    `browser ${row.registry.baselineReview.browserReview.status}`,
-    `release ${row.registry.baselineReview.release.status}`,
-  ].join("; ");
+  const phases = [
+    ["clinical", row.registry.baselineReview.clinicalReview.status],
+    ["calculation", row.registry.baselineReview.calculationTests.status],
+    ["browser", row.registry.baselineReview.browserReview.status],
+    ["release", row.registry.baselineReview.release.status],
+  ];
+  if (phases.every(([, status]) => status === phases[0][1])) {
+    return `${phases.map(([label]) => label).join("/")}: ${phases[0][1]}`;
+  }
+  return phases.map(([label, status]) => `${label} ${status}`).join("; ");
 }
 
 function baselineStatusCountsLabel(counts) {

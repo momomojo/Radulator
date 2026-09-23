@@ -17,6 +17,15 @@ function ResultDisplay({ results, calculatorId, onDownload }) {
       return "error";
     }
 
+    // A computable ALBI grade must not visually override its input-review warning.
+    if (
+      calculatorId === "albi-score" && results["Input Check"] &&
+      (key === "ALBI Grade" || key === "Clinical Context") &&
+      (results._severity === "warning" || results._severity === "danger")
+    ) {
+      return results._severity;
+    }
+
     // Info patterns (non-diagnostic, incomplete data)
     if (
       lowerValue.includes("non-diagnostic") ||

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { after } from "node:test";
 import process from "node:process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -492,14 +492,23 @@ test("collectInventory reflects the checked-out source, registry, fixtures, and 
   assert.equal(inventory.summary.registry.seedUnverified, 32);
   assert.equal(inventory.summary.compute.fixtureFiles, 12);
   assert.equal(inventory.summary.compute.cases, 313);
-  assert.equal(inventory.summary.browser.calculatorSpecificSpecFiles, 42);
+  const dedicatedFiles = readdirSync("tests/e2e/calculators", { recursive: true })
+    .filter(path => path.endsWith(".spec.js") && path.includes("/"));
+  assert.equal(inventory.summary.browser.calculatorSpecificSpecFiles, dedicatedFiles.length);
   assert.equal(inventory.summary.browser.sharedSpecFiles, 3);
   assert.ok(inventory.rows.every((row) => row.clinicalSignoff === "not established"));
   assert.ok(inventory.rows.every((row) => row.releaseProof === "not established"));
+  for (const [id, file] of [
+    ["avs-hyperaldo", "avs-hyperaldo-state.spec.js"],
+    ["avs-cortisol", "avs-cortisol-state.spec.js"],
+  ]) {
+    const row = inventory.rows.find(item => item.id === id);
+    assert.ok(row.browser.specPaths.includes(`tests/e2e/calculators/interventional/${file}`));
+  }
 
   const albi = inventory.rows.find((row) => row.id === "albi-score");
   assert.equal(albi.registry.status, "verified");
-  assert.equal(albi.registry.lastVerified, "2026-08-29");
+  assert.equal(albi.registry.lastVerified, "2026-09-08");
   assert.equal(albi.compute.caseCount, 6);
   assert.equal(albi.browser.specCount, 1);
   assert.equal(albi.registry.implementationEvidence.sourceAuditVectorCount, 6);
