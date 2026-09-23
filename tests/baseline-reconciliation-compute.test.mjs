@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import process from "node:process";
 import test from "node:test";
 import { collectInventory } from "../scripts/calculator-verification-inventory.mjs";
 
