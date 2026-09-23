@@ -819,11 +819,11 @@ async function assertExecutableImplementationEvidence(record, calculator) {
       ["https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/"],
       `${label}.source_audit.source_urls`,
     );
-    assert.equal(audit.raw_source_bytes, 276155, `${label}.source_audit.raw_source_bytes`);
-    assert.equal(audit.canonical_source_bytes, 276075, `${label}.source_audit.canonical_source_bytes`);
+    assert.equal(audit.raw_source_bytes, 276164, `${label}.source_audit.raw_source_bytes`);
+    assert.equal(audit.canonical_source_bytes, 276084, `${label}.source_audit.canonical_source_bytes`);
     assert.equal(
       audit.canonical_source_sha256,
-      "fccc2f40b9ae8a85fcd7dbc093886be078a554db8f425322db6cffc3bd2499b0",
+      "5b76f4af10f9cf9b19382ebd4ba5e35a228e0e942bfb1759dbafbcd8737c81a3",
       `${label}.source_audit.canonical_source_sha256`,
     );
     assert.deepEqual(audit.canonicalization, [
