@@ -516,6 +516,20 @@ test("collectInventory reflects the checked-out source, registry, fixtures, and 
   assert.ok(albi.registry.sourceReferences.some((source) => source.url.includes("PMC4322258")));
 });
 
+test("renderMarkdown exposes a pending review's next action and canonical record", () => {
+  const inventory = inventoryWithBaseline({
+    calculator_id: "alpha",
+    baseline_review: baselineReview({
+      clinical_review: phase("pending"),
+      restrictions: ["Next action: Review the target population before accepting management advice."],
+    }),
+  });
+  const markdown = renderMarkdown(inventory);
+  assert.ok(markdown.includes("Review the target population before accepting management advice."));
+  assert.ok(markdown.includes("../../docs/verification/plans/alpha.md)"));
+  assert.match(markdown, /Release\/proof: not independently revalidated by this inventory/);
+});
+
 test("renderMarkdown is a compact linked index without hiding row evidence", () => {
   const inventory = collectInventory({ root: process.cwd() });
   const markdown = renderMarkdown(inventory);
@@ -524,7 +538,7 @@ test("renderMarkdown is a compact linked index without hiding row evidence", () 
   assert.match(markdown, /\[JSON snapshot\]\(\.\/calculator-inventory\.json\)/);
   assert.match(markdown, /canonical guideline registry/);
   assert.match(markdown, /Clinical signoff: not established for any calculator/);
-  assert.match(markdown, /Release\/proof: not established for any calculator/);
+  assert.match(markdown, /Release\/proof: not independently revalidated by this inventory/);
   assert.match(markdown, /## Calculator index/);
   assert.doesNotMatch(markdown, /## Source pointers by calculator/);
   assert.doesNotMatch(markdown, /Registry justification:/);

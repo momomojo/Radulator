@@ -7,6 +7,45 @@
   "records": [
     {
       "calculator_id": "aast-trauma-grading",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): AAST-OIS solid organ injury grading for liver, spleen, kidney, and pancreas trauma",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reconcile organ-specific scale versions, multiple-injury rules and switching/report behavior."
+        ]
+      },
       "title": "AAST Trauma Grading",
       "implemented_version": "AAST OIS 2018/2025",
       "basis_type": "classification-system",
@@ -24,6 +63,55 @@
     },
     {
       "calculator_id": "albi-score",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/albi-score.md",
+        "applicability": "current",
+        "supported_scope": "Original Johnson2015 ALBI: HCC liver-function score/grade, SI/US inputs, raw-score classification and scope-qualified screen/copy/print reports; no individual survival or treatment eligibility.",
+        "clinical_review": {
+          "status": "recorded",
+          "date": "2026-09-09",
+          "reviewer": "GPT-6 Astra owner source-based review; signed independent reviews in receipt",
+          "revision": "d2ce877263bb762c8a1cf8e4f7c27eeb4547f5e5",
+          "evidence": [
+            "https://github.com/momomojo/Radulator/pull/265#issuecomment-5591825061",
+            "docs/verification/calculators/albi-score.md"
+          ],
+          "scope": "Original equation, units, raw boundaries, population and input/report limits accepted September9; historical evidence, not a new full review September23."
+        },
+        "calculation_tests": {
+          "status": "recorded",
+          "date": "2026-09-09",
+          "reviewer": "GPT-6 Astra owner source-based review; signed independent reviews in receipt",
+          "revision": "d2ce877263bb762c8a1cf8e4f7c27eeb4547f5e5",
+          "evidence": [
+            "https://github.com/momomojo/Radulator/pull/265#issuecomment-5591825061",
+            "https://github.com/momomojo/Radulator/actions/runs/34377196918"
+          ]
+        },
+        "browser_review": {
+          "status": "recorded",
+          "date": "2026-09-09",
+          "reviewer": "GPT-6 Astra owner source-based review; signed independent reviews in receipt",
+          "revision": "d2ce877263bb762c8a1cf8e4f7c27eeb4547f5e5",
+          "evidence": [
+            "https://github.com/momomojo/Radulator/pull/265#issuecomment-5591825061"
+          ]
+        },
+        "release": {
+          "status": "recorded",
+          "date": "2026-09-09",
+          "reviewer": "GPT-6 Astra owner source-based review; signed independent reviews in receipt",
+          "revision": "d2ce877263bb762c8a1cf8e4f7c27eeb4547f5e5",
+          "evidence": [
+            "https://github.com/momomojo/Radulator/pull/265#issuecomment-5591825061",
+            "https://github.com/momomojo/Radulator/actions/runs/34380776692"
+          ]
+        },
+        "blockers": [],
+        "restrictions": [
+          "No new ALBI variants, individual prognosis, treatment eligibility or HCC management algorithm. Reuse historical evidence only for unchanged scope; source-artifact refresh does not reopen accepted model."
+        ]
+      },
       "title": "ALBI Score",
       "implemented_version": "ALBI Grade (Johnson 2015)",
       "basis_type": "primary-model",
@@ -133,6 +221,45 @@
     },
     {
       "calculator_id": "aspects-score",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Alberta Stroke Program Early CT Score for acute MCA stroke assessment",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review regional scoring/exclusions separately from treatment/time-window statements."
+        ]
+      },
       "title": "ASPECTS Score",
       "implemented_version": "ASPECTS (Barber 2000)",
       "basis_type": "primary-model",
@@ -150,6 +277,45 @@
     },
     {
       "calculator_id": "adrenal-ct",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/adrenal-ct.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Absolute & relative washout percentages to differentiate adenoma vs. non‑adenoma.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR257 safety repair; review washout timing, eligibility, thresholds and interpretation."
+        ]
+      },
       "title": "Adrenal CT Washout",
       "implemented_version": "Published adrenal CT washout equations",
       "basis_type": "measurement-reference",
@@ -167,6 +333,45 @@
     },
     {
       "calculator_id": "adrenal-mri",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/adrenal-mri.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Signal‑intensity index and adrenal‑to‑spleen CSI ratio.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR257 guards; review CSI/SII equations, reference tissue and technical applicability."
+        ]
+      },
       "title": "Adrenal MRI Chemical Shift",
       "implemented_version": "Published adrenal chemical-shift MRI measurements",
       "basis_type": "measurement-reference",
@@ -184,6 +389,45 @@
     },
     {
       "calculator_id": "avs-hyperaldo",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/avs-hyperaldo.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Comprehensive primary aldosteronism AVS with CSI/RASI, multi-sample support, and pre/post-ACTH comparison.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR264 units/report repair; reconcile selectivity/lateralization operators and stimulated/unstimulated scope."
+        ]
+      },
       "title": "Adrenal Vein Sampling - Aldosterone",
       "implemented_version": "Published AVS selectivity and lateralization protocols",
       "basis_type": "consensus-statement",
@@ -201,6 +445,45 @@
     },
     {
       "calculator_id": "avs-cortisol",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/avs-cortisol.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Comprehensive adrenal vein sampling interpretation for ACTH-independent hypercortisolism with multi-sample support.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR264 state repair; review sampling, denominators and interpretation across sample modes."
+        ]
+      },
       "title": "Adrenal Vein Sampling - Cortisol",
       "implemented_version": "Published cortisol AVS protocols",
       "basis_type": "measurement-reference",
@@ -218,6 +501,45 @@
     },
     {
       "calculator_id": "bclc-staging",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Barcelona Clinic Liver Cancer staging for hepatocellular carcinoma with treatment recommendations.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review staging version and every treatment recommendation; distinguish stage from individualized eligibility."
+        ]
+      },
       "title": "BCLC Staging",
       "implemented_version": "BCLC 2022",
       "basis_type": "clinical-guideline",
@@ -235,6 +557,46 @@
     },
     {
       "calculator_id": "birads",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "deferred",
+        "supported_scope": "Existing legacy2013 mammography/ultrasound/MRI assistant; current-edition rebuild deferred, not verified.",
+        "clinical_review": {
+          "status": "deferred",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "deferred",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "deferred",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "deferred",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [
+          "Requested BI-RADS material unavailable; owner deferred rebuilding."
+        ],
+        "restrictions": [
+          "Existing legacy2013 scope is not accepted sixth-edition implementation. Historical verified label cannot promote it."
+        ]
+      },
       "title": "BI-RADS Assessment Calculator (Temporary Legacy)",
       "implemented_version": "Legacy ACR BI-RADS Fifth Edition (2013) temporary rollback with public 2025 assessment-summary constraints",
       "basis_type": "classification-system",
@@ -467,6 +829,45 @@
     },
     {
       "calculator_id": "cac-mesa",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Agatston coronary calcium band, CAC-DRS, and MESA reference context",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse MESA/CAC-DRS/AUC evidence; review percentile population, risk context and management claims."
+        ]
+      },
       "title": "CAC/MESA Calculator",
       "implemented_version": "MESA reference values with CAC-DRS (SCCT 2018; 2023 AUC boundary)",
       "basis_type": "reference-dataset",
@@ -656,6 +1057,45 @@
     },
     {
       "calculator_id": "cad-rads",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Coronary Artery Disease Reporting and Data System for coronary CTA",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review2.0 categories, modifiers and recommendations; verify discordant inputs and complete reports."
+        ]
+      },
       "title": "CAD-RADS",
       "implemented_version": "CAD-RADS 2.0 (2022)",
       "basis_type": "classification-system",
@@ -673,6 +1113,45 @@
     },
     {
       "calculator_id": "ct-pancreatitis",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Balthazar score with necrosis grading for acute pancreatitis severity",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Resolve advertised/implemented CTSI version, necrosis boundaries and interpretation."
+        ]
+      },
       "title": "CT Severity Index",
       "implemented_version": "Balthazar CTSI and modified CTSI",
       "basis_type": "primary-model",
@@ -690,6 +1169,45 @@
     },
     {
       "calculator_id": "child-pugh",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Classification and prognosis of chronic liver disease and cirrhosis",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review definitions, units and class boundaries; separately review prognosis/treatment text."
+        ]
+      },
       "title": "Child-Pugh Score",
       "implemented_version": "Child-Pugh (Pugh 1973)",
       "basis_type": "primary-model",
@@ -707,6 +1225,45 @@
     },
     {
       "calculator_id": "cockcroft-gault",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Adult legacy-label estimated creatinine clearance using Cockcroft-Gault.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse equation vectors; reconcile weight selection, stable adult renal function and legacy-label applicability."
+        ]
+      },
       "title": "Cockcroft-Gault Estimated Creatinine Clearance",
       "implemented_version": "Cockcroft-Gault equation (1976) - Radulator V1",
       "basis_type": "published-formula",
@@ -775,6 +1332,45 @@
     },
     {
       "calculator_id": "contrast-dosing",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/contrast-dosing.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Iodinated contrast protocol-planning aid for CT with renal-safety context",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR253 capped-iodine fix; complete protocol, renal-safety and bibliography review. Pin refresh is not full acceptance."
+        ]
+      },
       "title": "IV Contrast Dosing",
       "implemented_version": "Local dosing model with ACR Manual on Contrast Media 2026 renal-safety and warming context",
       "basis_type": "clinical-guideline",
@@ -943,6 +1539,45 @@
     },
     {
       "calculator_id": "dlp-dose",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/dlp-dose.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Convert CT Dose Length Product to estimated effective radiation dose",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR258 risk removal; review conversion coefficients, age/body region and uncertainty."
+        ]
+      },
       "title": "DLP to Effective Dose",
       "implemented_version": "ICRP Publication 103 (2007) context",
       "basis_type": "measurement-reference",
@@ -970,6 +1605,47 @@
     },
     {
       "calculator_id": "fleischner",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Source-locked 2017 follow-up guidance for eligible incidental solid and subsolid pulmonary nodules",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [
+          "2026-09-23: NLM table requests returned HTTP200 CAPTCHA HTML, not source tables. Exact checks remain fail-closed; release held."
+        ],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Restore lawful table access without weakening pins; reconcile population/exclusions and follow-up using existing vectors."
+        ]
+      },
       "title": "Fleischner Pulmonary Nodule Guidance",
       "implemented_version": "Fleischner 2017",
       "basis_type": "clinical-guideline",
@@ -1903,6 +2579,45 @@
     },
     {
       "calculator_id": "hip-dysplasia",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Calculate migration indices and normal values in hip dysplasia",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review source populations and measurements, age-dependent interpretation and invalid geometry."
+        ]
+      },
       "title": "Hip Dysplasia Indices",
       "implemented_version": "Published pediatric hip measurement references",
       "basis_type": "measurement-reference",
@@ -1920,6 +2635,45 @@
     },
     {
       "calculator_id": "ipss",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/ipss.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Basal and post-CRH ACTH ratios with explicitly labeled prolactin normalization",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR261 ratios/reports; complete sampling, stimulation, normalization and lateralization review."
+        ]
+      },
       "title": "Inferior Petrosal Sinus Sampling",
       "implemented_version": "IPSS sampling interpretation (SVIN 2026)",
       "basis_type": "primary-model",
@@ -1949,6 +2703,45 @@
     },
     {
       "calculator_id": "khoury-catheter-selector",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Interactive microcatheter selection tool for interventional procedures based on embolic agent, device size, and clinical requirements",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review device/embolic compatibility against current manufacturer sources; prevent unsupported compatibility claims."
+        ]
+      },
       "title": "Khoury Catheter Selector",
       "implemented_version": "Manufacturer specification reference set",
       "basis_type": "manufacturer-reference",
@@ -1966,6 +2759,45 @@
     },
     {
       "calculator_id": "kidney-biopsy-bleeding-risk",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/kidney-biopsy-bleeding-risk.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Estimates major bleeding probability after diagnostic percutaneous native- or transplant-kidney biopsy.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR259 BMI/weight repair and source audit; resolve app bounds, extrapolation and report cases."
+        ]
+      },
       "title": "Kidney Biopsy Major Bleeding Risk",
       "implemented_version": "Thorne et al. recalibrated major-bleeding model (2026)",
       "basis_type": "primary-model",
@@ -2208,6 +3040,45 @@
     },
     {
       "calculator_id": "lirads",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Liver Imaging Reporting and Data System for hepatocellular carcinoma risk stratification",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review eligible population, category logic and CT/MRI technique/version; separate classification from management."
+        ]
+      },
       "title": "LI-RADS",
       "implemented_version": "LI-RADS v2018",
       "basis_type": "classification-system",
@@ -2225,6 +3096,45 @@
     },
     {
       "calculator_id": "lung-rads",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Lung cancer screening CT classification and management recommendations",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review screening version, nodule type/size/growth rules, exclusions and management."
+        ]
+      },
       "title": "Lung-RADS",
       "implemented_version": "Lung-RADS v2022",
       "basis_type": "classification-system",
@@ -2242,6 +3152,45 @@
     },
     {
       "calculator_id": "meld-na",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): MELD 3.0 current OPTN allocation score with a temporary legacy MELD-Na option",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reconcile MELD3.0/legacy modes, allocation applicability, caps/units and naming."
+        ]
+      },
       "title": "MELD Score",
       "implemented_version": "MELD 3.0 (OPTN Policy 9.1.D)",
       "basis_type": "primary-model",
@@ -2363,6 +3312,45 @@
     },
     {
       "calculator_id": "mr-elastography",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Area-weighted mean liver stiffness across ROIs/slices.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review weighted averaging, technical validity, ROI exclusions, units and etiology-specific interpretation."
+        ]
+      },
       "title": "Liver MR Elastography",
       "implemented_version": "MRE consensus (Manduca 2020)",
       "basis_type": "consensus-statement",
@@ -2380,6 +3368,45 @@
     },
     {
       "calculator_id": "mehran-cin",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/mehran-cin.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Original 2004 PCI contrast-associated kidney injury risk score",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR260 safety repair; review original PCI population, historical risk and visibility of input definitions."
+        ]
+      },
       "title": "Mehran Contrast-Associated Kidney Injury Risk Score",
       "implemented_version": "Original Mehran score (2004)",
       "basis_type": "primary-model",
@@ -2397,6 +3424,45 @@
     },
     {
       "calculator_id": "milan-criteria",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Liver transplant eligibility criteria for hepatocellular carcinoma patients",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review tumor number/size and exclusions; distinguish criteria from full transplant eligibility."
+        ]
+      },
       "title": "Milan Criteria",
       "implemented_version": "Milan Criteria (Mazzaferro 1996)",
       "basis_type": "primary-model",
@@ -2414,6 +3480,45 @@
     },
     {
       "calculator_id": "nirads",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Neck Imaging Reporting and Data System for post-treatment head and neck cancer surveillance",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review surveillance category logic, primary/nodal distinctions, modality and management."
+        ]
+      },
       "title": "NI-RADS",
       "implemented_version": "ACR NI-RADS 2018",
       "basis_type": "classification-system",
@@ -2431,6 +3536,45 @@
     },
     {
       "calculator_id": "orads",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Ovarian-Adnexal Reporting and Data System for US and MRI",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reconcile US/MRI versions separately; review descriptors, population and management."
+        ]
+      },
       "title": "O-RADS",
       "implemented_version": "ACR O-RADS 2020 implementation",
       "basis_type": "classification-system",
@@ -2448,6 +3592,45 @@
     },
     {
       "calculator_id": "pesi",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Adult acute pulmonary embolism 30-day mortality risk classification using the original PESI.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse primary attribution/vectors; review original adult PE population, classes and limits on disposition inference."
+        ]
+      },
       "title": "Pulmonary Embolism Severity Index",
       "implemented_version": "Original PESI (2005)",
       "basis_type": "primary-model",
@@ -2518,6 +3701,45 @@
     },
     {
       "calculator_id": "pirads",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Prostate MRI risk stratification for clinically significant cancer",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review2.1 zone rules, sequence interactions, technical limitations and reports."
+        ]
+      },
       "title": "PI-RADS",
       "implemented_version": "PI-RADS v2.1 (2019)",
       "basis_type": "classification-system",
@@ -2535,6 +3757,45 @@
     },
     {
       "calculator_id": "prostate-volume",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Ellipsoid volume estimation (MRI/US) and PSA‑Density.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Preserve/reconcile dirty prostate work in kbrc-baseline-verification; review dimensions, volume/PSAD units and interpretation."
+        ]
+      },
       "title": "Prostate Volume and PSA Density",
       "implemented_version": "Published ellipsoid volume and PSA-density measurements",
       "basis_type": "measurement-reference",
@@ -2552,6 +3813,45 @@
     },
     {
       "calculator_id": "radiation-dose-converter",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/radiation-dose-converter.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Convert between radiation dose units (Gy, Sv, Bq, etc.) with CT dose estimation",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR262 repair; review unit/dimension compatibility and CT assumptions, distinguishing dose from activity."
+        ]
+      },
       "title": "Radiation Dose Converter",
       "implemented_version": "NIST unit conversions / AAPM96 CT reference / ICRP103 weighting",
       "basis_type": "measurement-reference",
@@ -2587,6 +3887,45 @@
     },
     {
       "calculator_id": "bosniak",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Classify cystic renal masses using Bosniak Classification, version 2019 CT criteria.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse source/boundary evidence; reconcile2019 CT eligibility, classes and management/report scope."
+        ]
+      },
       "title": "Bosniak Classification",
       "implemented_version": "Bosniak version 2019",
       "basis_type": "classification-system",
@@ -2795,6 +4134,45 @@
     },
     {
       "calculator_id": "renal-nephrometry",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Quantifies anatomical characteristics of renal tumours for surgical planning and risk assessment.",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review each definition, suffix, threshold and indeterminate anatomy; verify rationale."
+        ]
+      },
       "title": "R.E.N.A.L. Nephrometry Score",
       "implemented_version": "R.E.N.A.L. score (Kutikov 2009)",
       "basis_type": "primary-model",
@@ -2812,6 +4190,45 @@
     },
     {
       "calculator_id": "shim",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Sexual Health Inventory for Men (IIEF-5) - Erectile Dysfunction Assessment",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review IIEF-5 version/scoring, missing answers and interpretation; no unsupported diagnosis."
+        ]
+      },
       "title": "IIEF-5 and SHIM Score",
       "implemented_version": "IIEF-5 (Rosen 1999)",
       "basis_type": "primary-model",
@@ -2829,6 +4246,45 @@
     },
     {
       "calculator_id": "spleen-size",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Gender- and height-adjusted upper limits of normal spleen length and volume",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review sex/height populations and units; distinguish reference limits from diagnosis."
+        ]
+      },
       "title": "Spleen Size Upper Limit",
       "implemented_version": "Chow et al. 2016 measurement reference",
       "basis_type": "measurement-reference",
@@ -2846,6 +4302,45 @@
     },
     {
       "calculator_id": "tirads",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Thyroid Imaging Reporting and Data System for thyroid nodule risk stratification",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Finish PR267: source-to-output scope, mutation, PDF/privacy and artifact-bound live acceptance; do not repeat descriptor implementation."
+        ]
+      },
       "title": "ACR TI-RADS",
       "implemented_version": "ACR TI-RADS 2017",
       "basis_type": "classification-system",
@@ -2863,6 +4358,45 @@
     },
     {
       "calculator_id": "thypro-39",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Thyroid-Related Patient-Reported Outcome - Quality of Life Assessment",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review version/domains/transformations/missing answers; no invented clinical cutoffs."
+        ]
+      },
       "title": "ThyPRO-39",
       "implemented_version": "ThyPRO-39 (Watt 2014)",
       "basis_type": "primary-model",
@@ -2880,6 +4414,45 @@
     },
     {
       "calculator_id": "wells-dvt",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/wells-dvt.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Clinical decision rule for deep vein thrombosis probability assessment",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR263 definitions/report repair; reconcile full modified rule/population and US management separately from NICE."
+        ]
+      },
       "title": "Wells Criteria for DVT",
       "implemented_version": "Modified Wells DVT / NICE NG158",
       "basis_type": "primary-model",
@@ -2915,6 +4488,45 @@
     },
     {
       "calculator_id": "wells-pe",
+      "baseline_review": {
+        "plan_path": null,
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Clinical decision rule for pulmonary embolism probability assessment",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Review rule version, definitions, probability schemes and separately sourced US diagnostic pathways."
+        ]
+      },
       "title": "Wells Criteria for PE",
       "implemented_version": "Wells Criteria (2000)",
       "basis_type": "primary-model",
@@ -2932,6 +4544,45 @@
     },
     {
       "calculator_id": "y90-radiation-segmentectomy",
+      "baseline_review": {
+        "plan_path": "docs/verification/calculators/y90-radiation-segmentectomy.md",
+        "applicability": "unassessed",
+        "supported_scope": "Observed implementation claim (not baseline acceptance): Dosimetry calculator for Y-90 radioembolization using MIRD and partition models",
+        "clinical_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": [],
+          "scope": null
+        },
+        "calculation_tests": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "browser_review": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "release": {
+          "status": "pending",
+          "date": null,
+          "reviewer": null,
+          "revision": null,
+          "evidence": []
+        },
+        "blockers": [],
+        "restrictions": [
+          "Full-scope acceptance is not established by reconciliation; preserve prior bounded repairs/evidence.",
+          "Next action: Reuse PR256 and retained note93b1907; resolve product guidance, bounds and lung/cumulative-dose scope."
+        ]
+      },
       "title": "Y-90 Radioembolization Dosimetry",
       "implemented_version": "EANM 2022 compartment arithmetic (49.67 J/GBq); clinician-selected targets",
       "basis_type": "consensus-statement",

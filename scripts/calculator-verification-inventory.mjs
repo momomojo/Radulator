@@ -9,7 +9,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, relative, resolve, sep } from "node:path";
+import { basename, dirname, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const DEFAULT_MARKDOWN_PATH = "docs/verification/calculator-inventory.md";
@@ -610,13 +610,11 @@ export function collectInventory({ root, ...options } = {}) {
   });
 }
 
-function markdownPathLink(path, label = path) {
+function markdownPathLink(path, label = basename(path)) {
   return `[${label}](../../${path})`;
 }
 
 function registryStatusLabel(row) {
-  if (row.registry.status === "verified") return "verified (existing registry claim)";
-  if (row.registry.status === "seed-unverified") return "seed-unverified (registry claim)";
   return row.registry.status;
 }
 
@@ -642,6 +640,18 @@ function baselineStatusCountsLabel(counts) {
   return BASELINE_PHASE_STATUSES.map((status) => `${status} ${counts[status]}`).join(", ");
 }
 
+function baselineNextAction(row) {
+  const review = row.registry.baselineReview;
+  const task = review.restrictions.find((text) => text.startsWith("Next action:"));
+  const detail = task || review.blockers[0] || (
+    review.release.status === "recorded"
+      ? "Recorded release evidence; consult receipt and scope limitations."
+      : "Reconcile supported scope and evidence."
+  );
+  const record = review.planPath ? `${markdownPathLink(review.planPath, "Record")}<br>` : "";
+  return `${record}${detail.replace(/^Next action: /, "").replaceAll("|", "\\|").replaceAll("\n", " ")}`;
+}
+
 export function renderMarkdown(inventory) {
   const { summary } = inventory;
   const lines = [
@@ -659,20 +669,20 @@ export function renderMarkdown(inventory) {
     `- Baseline phase counts are independent (each phase is counted separately): clinical ${baselineStatusCountsLabel(summary.baseline.phases.clinicalReview)}; calculation ${baselineStatusCountsLabel(summary.baseline.phases.calculationTests)}; browser ${baselineStatusCountsLabel(summary.baseline.phases.browserReview)}; release ${baselineStatusCountsLabel(summary.baseline.phases.release)}.`,
     "- Baseline evidence is historical: exact subject and scope must be rechecked before reuse, and this schema does not claim live freshness. Clinical review is separate from calculation, browser, release, clinical-signoff, and live-proof state.",
     "- Clinical signoff: not established for any calculator in this inventory.",
-    "- Release/proof: not established for any calculator in this inventory.",
+    "- Release/proof: not independently revalidated by this inventory; recorded release phases link historical evidence and do not prove current live freshness.",
     `- Full row evidence remains in the [JSON snapshot](./${DEFAULT_JSON_PATH.split("/").pop()}), the [baseline record contract](./baseline-record-contract.md), and the ${markdownPathLink(DEFAULT_REGISTRY_PATH, "canonical guideline registry")}.`,
     "",
     "## Calculator index",
     "",
     "Each row links the calculator export, every observed canonical fixture, and every statically associated browser spec. Registry justifications, source references, and implementation evidence remain available in the linked JSON/registry rather than being duplicated here.",
     "",
-    "| ID | Calculator | Category | Guideline/version | Registry claim | Baseline applicability | Baseline phases | Source export | Compute cases / fixtures | Browser specs |",
-    "|---|---|---|---|---|---|---|---|---|---|",
+    "| ID | Calculator | Category | Guideline/version | Registry claim / date | Baseline applicability | Baseline phases | Source export | Compute cases / fixtures | Browser specs | Next action / record |",
+    "|---|---|---|---|---|---|---|---|---|---|---|",
   ];
 
   for (const row of inventory.rows) {
     lines.push(
-      `| \`${row.id}\` | ${row.name} | ${row.category} | ${row.guidelineVersion || "not recorded"} | ${registryStatusLabel(row)}; last verified ${row.registry.lastVerified || "not recorded"} | ${row.registry.baselineReview.applicability} | ${baselinePhaseSummary(row)} | ${markdownPathLink(row.sourcePointers.calculator)} | ${row.compute.caseCount} case(s) / ${markdownPathLinks(row.compute.fixturePaths)} | ${row.browser.specCount} file(s) / ${markdownPathLinks(row.browser.specPaths)} |`,
+      `| \`${row.id}\` | ${row.name} | ${row.category} | ${row.guidelineVersion || "not recorded"} | ${registryStatusLabel(row)}; ${row.registry.lastVerified || "undated"} | ${row.registry.baselineReview.applicability} | ${baselinePhaseSummary(row)} | ${markdownPathLink(row.sourcePointers.calculator)} | ${row.compute.caseCount} case(s) / ${markdownPathLinks(row.compute.fixturePaths)} | ${row.browser.specCount} file(s) / ${markdownPathLinks(row.browser.specPaths)} | ${baselineNextAction(row)} |`,
     );
   }
 
