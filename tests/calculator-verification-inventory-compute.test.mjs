@@ -152,14 +152,14 @@ test("summarizeComputeFixtures derives counts from cases rather than stale decla
 test("collectInventory reflects the checked-out source, registry, fixtures, and browser specs", () => {
   const inventory = collectInventory({ root: process.cwd() });
 
-  assert.equal(inventory.rows.length, 42);
+  assert.equal(inventory.rows.length, 43);
   assert.equal(inventory.excluded.length, 1);
   assert.equal(inventory.excluded[0].id, "feedback-form");
   assert.equal(inventory.summary.registry.verified, 10);
   assert.equal(inventory.summary.registry.seedUnverified, 32);
-  assert.equal(inventory.summary.compute.fixtureFiles, 12);
-  assert.equal(inventory.summary.compute.cases, 313);
-  assert.equal(inventory.summary.browser.calculatorSpecificSpecFiles, 42);
+  assert.equal(inventory.summary.compute.fixtureFiles, 13);
+  assert.equal(inventory.summary.compute.cases, 317);
+  assert.equal(inventory.summary.browser.calculatorSpecificSpecFiles, 43);
   assert.equal(inventory.summary.browser.sharedSpecFiles, 3);
   assert.ok(inventory.rows.every((row) => row.clinicalSignoff === "not established"));
   assert.ok(inventory.rows.every((row) => row.releaseProof === "not established"));

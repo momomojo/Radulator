@@ -124,13 +124,16 @@ test.describe("RECIST 1.1 calculator", () => {
         name: "Calculate RECIST 1.1 time-point response",
       })
       .click();
-    await expect(page.getByRole("alert")).toContainText(
-      "Resolve the following before classification",
-    );
+    // Scope to RECIST's own validation alert: the site-wide medical disclaimer
+    // banner is also role="alert".
+    const validationAlert = page
+      .getByRole("alert")
+      .filter({ hasText: "Resolve the following before classification" });
+    await expect(validationAlert).toBeVisible();
 
     await page.getByRole("button", { name: "Switch to dark mode" }).first().click();
     await expect(page.locator("html")).toHaveClass(/\bdark\b/);
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(validationAlert).toBeVisible();
     await expect
       .poll(() =>
         page.evaluate(

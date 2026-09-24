@@ -9,22 +9,22 @@
     "limitations": "Registry statuses are existing evidence claims. Fixture counts and browser-spec presence are inventory signals, not proof that tests passed, clinical review occurred, or a release is live."
   },
   "summary": {
-    "calculators": 42,
-    "medicalCalculators": 42,
+    "calculators": 43,
+    "medicalCalculators": 43,
     "excludedCalculators": 1,
     "registry": {
       "verified": 10,
       "seedUnverified": 32,
-      "missing": 0,
+      "missing": 1,
       "other": 0
     },
     "compute": {
-      "fixtureFiles": 12,
-      "cases": 313
+      "fixtureFiles": 13,
+      "cases": 317
     },
     "browser": {
-      "allSpecFiles": 45,
-      "calculatorSpecificSpecFiles": 42,
+      "allSpecFiles": 46,
+      "calculatorSpecificSpecFiles": 43,
       "sharedSpecFiles": 3
     }
   },
@@ -1696,6 +1696,45 @@
         "computeFixtures": [],
         "browserSpecs": [
           "tests/e2e/calculators/radiology/radiation-dose-converter.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "recist-1-1",
+      "name": "RECIST 1.1 Tumor Response",
+      "category": "Oncology",
+      "guidelineVersion": "RECIST 1.1 (2009; official clarifications current through 2026-08-25)",
+      "sourcePath": "src/components/calculators/RECIST11.jsx",
+      "registry": {
+        "status": "missing",
+        "lastVerified": null,
+        "reviewScope": "no registry row",
+        "justification": null,
+        "sourceReferences": [],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/recist-1-1.json"
+        ],
+        "caseCount": 4
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/oncology/recist-1-1.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/RECIST11.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/recist-1-1.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/oncology/recist-1-1.spec.js"
         ]
       }
     },
