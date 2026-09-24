@@ -25,6 +25,7 @@ SCHEMA = "radulator-release-learning/v1"
 RECEIPT_SCHEMA = "radulator-release-learning-receipt/v1"
 STRATEGY = "kanban_closure"
 MAX_RESPONSE_BYTES = 1024 * 1024
+MAX_READBACK_CHUNKS = 16
 REQUIRED_FIELDS = (
     "feedback_symptom",
     "root_cause",
@@ -88,7 +89,7 @@ def _request_json(
         raise RetentionError("Hindsight response exceeded the bounded response limit.")
     try:
         decoded = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+    except (UnicodeDecodeError, ValueError, RecursionError) as error:
         raise RetentionError("Hindsight returned malformed JSON.") from error
     if not isinstance(decoded, dict):
         raise RetentionError("Hindsight response must be a JSON object.")
@@ -146,7 +147,11 @@ def retain_learning(
     ):
         raise RetentionError("Hindsight did not synchronously accept exactly one learning record.")
 
-    query = urllib.parse.urlencode({"document_id": document_id, "state": "valid", "limit": 2})
+    query = urllib.parse.urlencode({
+        "document_id": document_id,
+        "state": "valid",
+        "limit": MAX_READBACK_CHUNKS,
+    })
     readback_request = urllib.request.Request(
         f"{memories_url}/list?{query}", headers=headers, method="GET",
     )
@@ -155,31 +160,46 @@ def retain_learning(
     if not isinstance(items, list):
         raise RetentionError("Hindsight readback did not return a memory list.")
     total = readback.get("total")
-    if len(items) != 1 or (
-        total is not None
-        and (not isinstance(total, int) or isinstance(total, bool) or total != 1)
+    count = readback.get("count")
+    if (
+        not 1 <= len(items) <= MAX_READBACK_CHUNKS
+        or any(not isinstance(value, int) or isinstance(value, bool) for value in (total, count))
+        or total != len(items)
+        or count != len(items)
     ):
-        raise RetentionError("Hindsight exact-document readback did not yield exactly one valid record.")
-    matching = [
-        item for item in items
-        if isinstance(item, dict)
-        and item.get("text") == content
-        and item.get("context") == retention_id
-        and item.get("document_id") == document_id
-        and item.get("state") == "valid"
-        and set(item.get("tags") or ()) == set(tags)
-        and isinstance(item.get("id"), str)
-        and item["id"].strip()
-    ]
-    if len(matching) != 1:
-        raise RetentionError("Hindsight exact-document readback did not yield one valid matching receipt.")
+        raise RetentionError("Hindsight exact-document readback did not yield exact bounded chunk counts.")
+
+    chunk_indexes = []
+    for item in items:
+        if not isinstance(item, dict):
+            raise RetentionError("Hindsight exact-document readback contained an invalid chunk.")
+        chunk_id = item.get("id")
+        chunk_match = isinstance(chunk_id, str) and re.fullmatch(r".+_([0-9]+)", chunk_id)
+        item_tags = item.get("tags")
+        if (
+            not chunk_match
+            or not isinstance(item.get("text"), str)
+            or item.get("context") != retention_id
+            or item.get("document_id") != document_id
+            or item.get("state") != "valid"
+            or not isinstance(item_tags, list)
+            or len(item_tags) != len(tags)
+            or any(not isinstance(tag, str) for tag in item_tags)
+            or set(item_tags) != set(tags)
+        ):
+            raise RetentionError("Hindsight exact-document readback contained an invalid matching chunk.")
+        chunk_indexes.append(chunk_match.group(1))
+    if chunk_indexes != [str(index) for index in range(len(items))]:
+        raise RetentionError("Hindsight exact-document readback chunk ids were not contiguous and ordered.")
+    if "\n".join(item["text"] for item in items) != content:
+        raise RetentionError("Hindsight exact-document readback chunk text did not exactly match submitted content.")
 
     return {
         "schema": RECEIPT_SCHEMA,
         "bank_id": bank_id.strip(),
         "document_id": document_id,
         "readback_state": "valid",
-        "receipt_id": matching[0]["id"],
+        "receipt_id": items[0]["id"],
         "released_sha": candidate["released_sha"],
         "retention_id": retention_id,
         "strategy": STRATEGY,
