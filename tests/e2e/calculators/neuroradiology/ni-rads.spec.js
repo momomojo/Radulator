@@ -31,8 +31,25 @@ const CALCULATOR_NAME = "ACR NI-RADS";
  * @param {string} labelText - The exact label text of the radio option
  */
 async function selectRadioOption(page, labelText) {
-  // Target radio labels within the main content area (not sidebar)
+  // Target the radio's own label in the main content area. On mobile a section
+  // summary can repeat the selected value (e.g. "2018 CT/PET-CT"), so prefer the
+  // <label> element and fall back to any exact text match inside main.
+  const label = page.locator("main label").getByText(labelText, { exact: true });
+  if ((await label.count()) === 1) {
+    await label.click();
+    return;
+  }
   await page.locator("main").getByText(labelText, { exact: true }).click();
+}
+
+/**
+ * Start again from a clean form. NI-RADS does not enable the shared Reset
+ * button (its definition leaves showReset off), so reload the calculator page.
+ * @param {import('@playwright/test').Page} page
+ */
+async function resetCalculator(page) {
+  await page.reload();
+  await expect(page.getByTestId("calculator-title").first()).toContainText("ACR NI-RADS");
 }
 
 test.describe("ACR NI-RADS Calculator", () => {
@@ -913,7 +930,7 @@ test.describe("ACR NI-RADS Calculator", () => {
         page.getByRole("status", { name: "Calculator results" }).getByText("P-unknown primary"),
       ).toBeVisible();
 
-      await page.getByRole("button", { name: "Reset" }).click();
+      await resetCalculator(page);
       await selectRadioOption(page, "2025 MRI");
       await selectRadioOption(page, "No — post-treatment surveillance");
       await selectRadioOption(page, "Primary Site");
@@ -925,7 +942,7 @@ test.describe("ACR NI-RADS Calculator", () => {
         page.getByRole("status", { name: "Calculator results" }).getByText("P-x"),
       ).toBeVisible();
 
-      await page.getByRole("button", { name: "Reset" }).click();
+      await resetCalculator(page);
       await selectRadioOption(page, "2025 MRI");
       await selectRadioOption(page, "No — post-treatment surveillance");
       await selectRadioOption(page, "Neck Nodes");
@@ -981,7 +998,7 @@ test.describe("ACR NI-RADS Calculator", () => {
       await expect(lowPattern).not.toBeChecked();
       await expect(highPattern).toBeChecked();
 
-      await page.getByRole("button", { name: "Reset" }).click();
+      await resetCalculator(page);
       await selectRadioOption(page, "2025 MRI");
       await selectRadioOption(page, "No — post-treatment surveillance");
       await selectRadioOption(page, "Neck Nodes");
