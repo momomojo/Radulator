@@ -1,0 +1,138 @@
+{
+  "calculatorId": "recist-1-1",
+  "calculatorName": "RECIST 1.1 Tumor Response",
+  "cases": [
+    {
+      "id": "exact-pr-boundary-from-lesion-state",
+      "inputs": {
+        "mode": "measurable",
+        "targetLesions": [
+          {
+            "id": "target-1",
+            "organ": "Liver",
+            "kind": "non_nodal",
+            "modality": "CT",
+            "plane": "axial",
+            "sliceThicknessMm": "5",
+            "baselineMeasurementMm": "100",
+            "currentStatus": "measured",
+            "currentMeasurementMm": "70"
+          }
+        ],
+        "priorNadirSumMm": "100",
+        "nonTargetStatus": "none",
+        "newLesionStatus": "none",
+        "priorConfirmedTargetResponse": "none",
+        "priorConfirmedOverallResponse": "none",
+        "studyDesign": "randomized",
+        "endpoint": "other",
+        "reappearance": { "confirmed": false }
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "target_response", "equals": "PR" },
+          { "key": "overall_response", "equals": "PR" },
+          { "key": "baseline_change_pct", "equals": "-30" }
+        ]
+      }
+    },
+    {
+      "id": "missing-subset-independently-proves-pd",
+      "inputs": {
+        "mode": "measurable",
+        "targetLesions": [
+          {
+            "id": "target-1",
+            "organ": "Liver",
+            "kind": "non_nodal",
+            "modality": "CT",
+            "plane": "axial",
+            "sliceThicknessMm": "5",
+            "baselineMeasurementMm": "50",
+            "currentStatus": "measured",
+            "currentMeasurementMm": "25"
+          },
+          {
+            "id": "target-2",
+            "organ": "Lung",
+            "kind": "non_nodal",
+            "modality": "CT",
+            "plane": "axial",
+            "sliceThicknessMm": "5",
+            "baselineMeasurementMm": "50",
+            "currentStatus": "missing",
+            "currentMeasurementMm": ""
+          }
+        ],
+        "priorNadirSumMm": "20",
+        "nonTargetStatus": "none",
+        "newLesionStatus": "none",
+        "priorConfirmedTargetResponse": "none",
+        "priorConfirmedOverallResponse": "none",
+        "studyDesign": "randomized",
+        "endpoint": "other",
+        "reappearance": { "confirmed": false }
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "target_response", "equals": "PD" },
+          { "key": "pd_driver", "equals": "measured_subset_definite_pd" }
+        ]
+      }
+    },
+    {
+      "id": "non-target-only-persistent-copy-state",
+      "inputs": {
+        "mode": "non_target_only",
+        "targetLesions": [],
+        "nonTargetStatus": "non_cr_non_pd",
+        "newLesionStatus": "none",
+        "priorConfirmedOverallResponse": "none",
+        "studyDesign": "randomized",
+        "endpoint": "other",
+        "reappearance": { "confirmed": false }
+      },
+      "expect": {
+        "noError": true,
+        "fields": [
+          { "key": "overall_response", "equals": "NON_CR_NON_PD" }
+        ]
+      }
+    },
+    {
+      "id": "reject-thick-slice-nonmeasurable-target",
+      "inputs": {
+        "mode": "measurable",
+        "targetLesions": [
+          {
+            "id": "target-1",
+            "organ": "Liver",
+            "kind": "non_nodal",
+            "modality": "CT",
+            "plane": "axial",
+            "sliceThicknessMm": "6",
+            "baselineMeasurementMm": "11.999",
+            "currentStatus": "measured",
+            "currentMeasurementMm": "11"
+          }
+        ],
+        "priorNadirSumMm": "11.999",
+        "nonTargetStatus": "none",
+        "newLesionStatus": "none",
+        "priorConfirmedTargetResponse": "none",
+        "priorConfirmedOverallResponse": "none",
+        "studyDesign": "randomized",
+        "endpoint": "other",
+        "reappearance": { "confirmed": false }
+      },
+      "expect": {
+        "noError": false,
+        "fields": [
+          { "key": "Error", "includes": "non-measurable" }
+        ]
+      }
+    }
+  ]
+}
