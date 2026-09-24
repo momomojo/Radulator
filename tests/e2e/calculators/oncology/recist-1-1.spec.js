@@ -1,13 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
 test.describe("RECIST 1.1 calculator", () => {
   test.use({ permissions: ["clipboard-read", "clipboard-write"] });
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/#/recist-1-1");
-    await expect(page.getByTestId("calculator-title").first()).toContainText(
-      "RECIST 1.1 Tumor Response",
-    );
+    // The shared helper opens /#/recist-1-1 and waits for the title; using it
+    // also registers this spec with scripts/spec-map.js coverage.
+    await navigateToCalculator(page, "RECIST 1.1 Tumor Response");
   });
 
   test("classifies the exact PR boundary and copies the complete measurable-disease impression", async ({
