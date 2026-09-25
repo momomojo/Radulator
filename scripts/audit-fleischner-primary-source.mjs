@@ -25,6 +25,8 @@ const SOLID_TABLE_URL =
   "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly";
 const SUBSOLID_TABLE_URL =
   "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly";
+export const PINNED_NLM_TABLES_PATH =
+  "docs/evidence/fleischner-2017-nlm-table-pins.json";
 
 const EXPECTED_PAYLOAD_SHA256 =
   "e6446ba442742e612bc55b12f8f3f3f46c9d004cc326131013762f1e62b68811";
@@ -33,6 +35,10 @@ const EXPECTED_REVIEWED_VECTORS_SHA256 =
 const EXPECTED_REVIEWER_REVISION =
   "fleischner-source-review/2026-08-31-r10";
 const EXPECTED_REVIEWED_AT = "2026-08-31T01:21:01Z";
+// Canonical-JSON digest of PINNED_NLM_TABLES_PATH; any edit to the pinned
+// copy, its provenance or its comparison must update this reviewed constant.
+const EXPECTED_PINNED_NLM_TABLES_SHA256 =
+  "9b6afdb68a3fef320333320f07e5267f4c3d8b495a500a9de135b8dcfa41446f";
 
 const EXPECTED_INVARIANT_IDS = [
   "fleischner-input-completeness-fail-closed",
@@ -224,24 +230,70 @@ const EXPECTED_LITERAL_SOURCE_VERIFICATION = {
   trusted_exact_head_check: "Smoke Tests",
 };
 
-const EXPECTED_TABLES = {
-  solid: {
+export const EXPECTED_TABLES = Object.freeze({
+  solid: Object.freeze({
     sourceId: "nlm-fleischner-solid-table",
+    label: "solid table",
     url: SOLID_TABLE_URL,
     objectId: "ch5.Tab1",
     bytes: 3153,
     sha256:
       "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
-  },
-  subsolid: {
+    locatorTextSha256:
+      "5a9a7516677d89bebaacb9febb486dad0946ab8170a5047d52a20ab623648c5e",
+    expectedHtmlSnippets: Object.freeze([
+      "No routine follow-up",
+      "Optional CT at 12 months",
+      "CT at 6&#x02013;12 months, then consider CT at 18&#x02013;24 months",
+      "CT at 6&#x02013;12 months, then CT at 18&#x02013;24 months",
+      "Consider CT, PET/CT or tissue sampling at 3 months",
+      "CT at 3&#x02013;6 months, then consider CT at 18&#x02013;24 months",
+      "CT at 3&#x02013;6 months, then CT at 18&#x02013;24 months",
+    ]),
+  }),
+  subsolid: Object.freeze({
     sourceId: "nlm-fleischner-subsolid-table",
+    label: "subsolid table",
     url: SUBSOLID_TABLE_URL,
     objectId: "ch5.Tab2",
     bytes: 1912,
     sha256:
       "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
-  },
-};
+    locatorTextSha256:
+      "fee89cdab0d0498ac55ecb9bb6f655fe555ca9a857fd662636dd5304447ae3e9",
+    expectedHtmlSnippets: Object.freeze([
+      "CT at 6&#x02013;12 months to confirm persistence, then CT every 2 years until 5 years",
+      "If unchanged and solid component remains &#x0003c;6 mm, annual CT should be performed for 5 years",
+      "CT at 3&#x02013;6 months. If stable, consider CT at 2 and 4 years",
+      "CT at 3&#x02013;6 months. Subsequent management based on the most suspicious nodule(s)",
+    ]),
+  }),
+});
+
+// NLM Bookshelf answers automated table requests with this reCAPTCHA
+// interstitial (HTTP 200, text/html, unchanged URL, no <table>). All signals
+// are required; anything else without the table still fails closed.
+const NLM_BOT_CHALLENGE_STATUS = "challenged-by-nlm-bot-protection";
+const NLM_BOT_CHALLENGE_TITLE = "Checking your browser - reCAPTCHA";
+const NLM_BOT_CHALLENGE_MARKERS = Object.freeze([
+  "https://www.google.com/recaptcha/challengepage",
+  'class="g-recaptcha"',
+]);
+
+// Qualifiers whose presence changes a follow-up recommendation's meaning;
+// compared cells must agree on these and on every interval token.
+const FOLLOW_UP_QUALIFIERS = Object.freeze([
+  ["no routine", /\bno routine\b/i],
+  ["optional", /\boptional\b/i],
+  ["consider", /\bconsider\b/i],
+  ["then", /\bthen\b/i],
+  ["persistence", /\bpersistence\b/i],
+  ["annual", /\bannual\b/i],
+  ["every", /\bevery\b/i],
+  ["most suspicious", /\bmost suspicious\b/i],
+  ["PET/CT", /\bPET\/CT\b/i],
+  ["tissue sampling", /\btissue sampling\b/i],
+]);
 
 const RETRYABLE_HTTP_STATUSES = new Set([
   408,
@@ -1115,7 +1167,7 @@ async function loadCrossref(doi) {
   return crossrefMetadata(body.message);
 }
 
-async function loadNlmTable(url, objectId) {
+export async function loadNlmTable(url, objectId, { fetchImpl, sleepImpl } = {}) {
   const expectedPath = `/books/NBK553863/table/${objectId}/`;
   const { body } = await fetchParsedResource(url, {
     label: `NLM ${objectId}`,
@@ -1127,9 +1179,350 @@ async function loadNlmTable(url, objectId) {
       assert.equal(finalUrl.pathname, expectedPath);
       assert.equal(finalUrl.searchParams.get("report"), "objectonly");
     },
+    fetchImpl,
+    sleepImpl,
   });
   assert.ok(body.length > 500, `NLM ${objectId}: implausibly short HTML`);
   return body;
+}
+
+/**
+ * Recognise the NLM reCAPTCHA interstitial. A page that contains any table, or
+ * lacks any part of the signature, is not a challenge and takes the ordinary
+ * fail-closed table path.
+ */
+export function detectNlmBotChallenge(html) {
+  const text = String(html ?? "");
+  const titles = [...text.matchAll(/<title\b[^>]*>([\s\S]*?)<\/title>/gi)].map(
+    (match) => normalizeWhitespace(match[1]),
+  );
+  const markers = NLM_BOT_CHALLENGE_MARKERS.filter((marker) =>
+    text.includes(marker),
+  );
+  const challenged =
+    !/<table/i.test(text) &&
+    titles.length === 1 &&
+    titles[0] === NLM_BOT_CHALLENGE_TITLE &&
+    markers.length === NLM_BOT_CHALLENGE_MARKERS.length;
+  return { challenged, title: titles[0] ?? null, markers };
+}
+
+function pinnedTableText(table) {
+  return normalizeLiteralText(
+    [...table.header_cells, ...table.body_rows.flat()].join(" "),
+  );
+}
+
+/**
+ * Verify the committed, independently compared copy of NLM Tables 5.1/5.2.
+ * The record digest is pinned in this script, and the pinned cells must
+ * reproduce the exact reviewed locator-text SHA-256 of each table.
+ */
+export function verifyPinnedNlmTables(
+  record,
+  {
+    expectedRecordSha256 = EXPECTED_PINNED_NLM_TABLES_SHA256,
+    expectedTables = EXPECTED_TABLES,
+  } = {},
+) {
+  const label = "pinned NLM table record";
+  const recordSha256 = sha256(record);
+  assert.equal(recordSha256, expectedRecordSha256, `${label}: SHA-256 mismatch`);
+  assertExactKeys(
+    record,
+    [
+      "schema",
+      "calculator_id",
+      "guideline_version",
+      "use",
+      "authorization",
+      "attribution",
+      "tables",
+      "independent_comparison",
+    ],
+    label,
+  );
+  assert.equal(record.schema, "radulator-pinned-secondary-table-evidence/v1");
+  assert.equal(record.calculator_id, "fleischner");
+  assert.equal(record.guideline_version, "Fleischner 2017");
+  assert.equal(record.authorization?.decision, "Approve the pinned copy");
+  const primary = record.independent_comparison?.primary_publication;
+  assert.equal(primary?.artifact_id, "guideline-vor-pdf", `${label}: primary artifact`);
+  assert.equal(
+    primary?.artifact_sha256,
+    EXPECTED_RSNA_ARTIFACTS.guideline.content_sha256,
+    `${label}: primary artifact SHA-256`,
+  );
+  assert.match(primary?.locator ?? "", /^pdf-page:\d+$/, `${label}: primary locator`);
+
+  const expectedList = Object.values(expectedTables);
+  assert.ok(
+    Array.isArray(record.tables) && record.tables.length === expectedList.length,
+    `${label}: table count`,
+  );
+  const pinnedTables = new Map();
+  for (const [index, expected] of expectedList.entries()) {
+    const table = record.tables[index];
+    const tableLabel = `pinned NLM ${expected.objectId}`;
+    assertExactKeys(
+      table,
+      [
+        "source_id",
+        "object_id",
+        "label",
+        "caption",
+        "live_url",
+        "reviewed_html_fragment",
+        "normalized_text_sha256",
+        "header_cells",
+        "body_rows",
+        "primary_comparison",
+      ],
+      tableLabel,
+    );
+    assert.equal(table.source_id, expected.sourceId, `${tableLabel}: source ID`);
+    assert.equal(table.object_id, expected.objectId, `${tableLabel}: object ID`);
+    assert.equal(table.live_url, expected.url, `${tableLabel}: live URL`);
+    assert.deepEqual(
+      table.reviewed_html_fragment,
+      {
+        content_bytes: expected.bytes,
+        content_sha256: expected.sha256,
+        rederivable_from_pinned_cells: false,
+      },
+      `${tableLabel}: reviewed HTML fragment identity`,
+    );
+    assertUniqueStrings(table.header_cells, `${tableLabel}: header cells`);
+    assert.ok(
+      Array.isArray(table.body_rows) && table.body_rows.length > 0,
+      `${tableLabel}: body rows`,
+    );
+    for (const row of [table.header_cells, ...table.body_rows]) {
+      assert.ok(
+        Array.isArray(row) && row.length === table.header_cells.length,
+        `${tableLabel}: every row must have one cell per column`,
+      );
+      for (const cell of row) {
+        assert.ok(
+          typeof cell === "string" &&
+            cell.length > 0 &&
+            cell === normalizeLiteralText(cell),
+          `${tableLabel}: cells must be non-empty normalized text`,
+        );
+      }
+    }
+    const normalizedText = pinnedTableText(table);
+    const normalizedTextSha256 = sha256(normalizedText);
+    assert.equal(
+      normalizedTextSha256,
+      table.normalized_text_sha256,
+      `${tableLabel}: normalized text SHA-256`,
+    );
+    assert.equal(
+      normalizedTextSha256,
+      expected.locatorTextSha256,
+      `${tableLabel}: pinned cells must reproduce the reviewed locator text SHA-256`,
+    );
+    pinnedTables.set(expected.objectId, {
+      objectId: expected.objectId,
+      recordSha256,
+      normalizedText,
+      normalizedTextSha256,
+      primaryLocatorKey: `${primary.artifact_id}:${primary.locator}`,
+      table,
+    });
+  }
+  return pinnedTables;
+}
+
+/**
+ * Resolve one NLM table response. A served table takes the unchanged live path
+ * (exact fragment bytes, SHA-256 and snippets). Only a recognised bot
+ * challenge falls back to the verified pinned copy, and says so.
+ */
+export function verifyNlmTableEvidence(html, expected, pinnedTables) {
+  const challenge = detectNlmBotChallenge(html);
+  if (!challenge.challenged) {
+    const fragment = extractTable(html, expected.label);
+    assertFragment(fragment, expected, expected.label);
+    assertExpectedText(fragment, expected.expectedHtmlSnippets, expected.label);
+    return {
+      mode: "live",
+      fragment,
+      locatorText: extractHtmlLiteralText(fragment),
+    };
+  }
+
+  const pinned = pinnedTables?.get?.(expected.objectId);
+  assert.ok(
+    pinned,
+    `${expected.label}: live source challenged by NLM bot protection and no verified pinned copy is available`,
+  );
+  assert.equal(
+    pinned.normalizedTextSha256,
+    expected.locatorTextSha256,
+    `${expected.label}: pinned copy locator text SHA-256`,
+  );
+  assertExpectedText(
+    pinned.normalizedText,
+    expected.expectedHtmlSnippets.map((snippet) => extractHtmlLiteralText(snippet)),
+    `${expected.label} pinned copy`,
+  );
+  return {
+    mode: "pinned",
+    locatorText: pinned.normalizedText,
+    message: `NLM ${expected.objectId} (${expected.label}): live source challenged by NLM bot protection; verified against pinned copy ${pinned.recordSha256}`,
+  };
+}
+
+function withoutTerminalPeriod(value) {
+  return String(value).replace(/\.$/, "");
+}
+
+function intervalTokens(value) {
+  return String(value).match(/\d+(?:-\d+)?/g) ?? [];
+}
+
+function followUpQualifiers(value) {
+  return FOLLOW_UP_QUALIFIERS.filter(([, pattern]) => pattern.test(value)).map(
+    ([name]) => name,
+  );
+}
+
+/**
+ * Re-check the pinned copy's recorded comparison against the hash-pinned RSNA
+ * version-of-record page text: every RSNA row must occur once, in order, and
+ * every NLM recommendation cell must map to exactly one RSNA cell with the
+ * same intervals and follow-up qualifiers.
+ */
+export function verifyPinnedNlmPrimaryComparison(pinnedTables, locatorTexts) {
+  assert.ok(
+    pinnedTables instanceof Map && pinnedTables.size > 0,
+    "primary comparison: pinned tables",
+  );
+  assert.equal(locatorTexts instanceof Map, true, "primary comparison: locator map");
+  const agreements = new Set([
+    "identical",
+    "equivalent-wording",
+    "identical-except-text-layer-glyph",
+  ]);
+  return [...pinnedTables.values()].map((pinned) => {
+    const label = `pinned NLM ${pinned.objectId} primary comparison`;
+    const comparison = pinned.table.primary_comparison;
+    assertExactKeys(
+      comparison,
+      ["rsna_table", "rsna_size_columns", "size_category_agreement", "rsna_rows", "cells"],
+      label,
+    );
+    const pageText = locatorTexts.get(pinned.primaryLocatorKey);
+    assert.ok(
+      typeof pageText === "string" && pageText.length > 0,
+      `${label}: missing ${pinned.primaryLocatorKey}`,
+    );
+
+    let previousIndex = -1;
+    for (const row of comparison.rsna_rows) {
+      assertExactKeys(row, ["row", "text_layer_label", "cells"], `${label}: RSNA row`);
+      const rowText = [row.text_layer_label, ...row.cells].join(" ");
+      const index = pageText.indexOf(rowText);
+      assert.ok(
+        index >= 0,
+        `${label}: RSNA row "${row.row}" not found in ${pinned.primaryLocatorKey}`,
+      );
+      assert.equal(
+        pageText.indexOf(rowText, index + 1),
+        -1,
+        `${label}: RSNA row "${row.row}" is ambiguous`,
+      );
+      assert.ok(index > previousIndex, `${label}: RSNA rows must follow page order`);
+      previousIndex = index;
+    }
+
+    const counts = {};
+    const nlmCells = new Set();
+    const rsnaCells = new Set();
+    for (const cell of comparison.cells) {
+      assertExactKeys(
+        cell,
+        [
+          "nlm_row",
+          "nlm_column",
+          "rsna_row",
+          "rsna_column",
+          "agreement",
+          ...(cell.agreement === "identical" ? [] : ["note"]),
+        ],
+        `${label}: cell mapping`,
+      );
+      assert.ok(agreements.has(cell.agreement), `${label}: agreement ${cell.agreement}`);
+      const position = `NLM [${cell.nlm_row}, ${cell.nlm_column}] / RSNA [${cell.rsna_row}, ${cell.rsna_column}]`;
+      const nlmText =
+        cell.nlm_column >= 1
+          ? pinned.table.body_rows[cell.nlm_row]?.[cell.nlm_column]
+          : undefined;
+      const rsnaText = comparison.rsna_rows[cell.rsna_row]?.cells[cell.rsna_column];
+      assert.ok(typeof nlmText === "string", `${label}: ${position}: NLM recommendation cell`);
+      assert.ok(typeof rsnaText === "string", `${label}: ${position}: RSNA cell`);
+      nlmCells.add(`${cell.nlm_row}:${cell.nlm_column}`);
+      rsnaCells.add(`${cell.rsna_row}:${cell.rsna_column}`);
+      if (cell.agreement === "identical") {
+        assert.equal(
+          withoutTerminalPeriod(nlmText),
+          withoutTerminalPeriod(rsnaText),
+          `${label}: ${position}: cells recorded as identical differ`,
+        );
+      } else {
+        assert.ok(
+          typeof cell.note === "string" && cell.note.length > 0,
+          `${label}: ${position}: a non-identical agreement needs a note`,
+        );
+      }
+      assert.deepEqual(
+        intervalTokens(nlmText),
+        intervalTokens(rsnaText),
+        `${label}: ${position}: intervals differ`,
+      );
+      assert.deepEqual(
+        followUpQualifiers(nlmText),
+        followUpQualifiers(rsnaText),
+        `${label}: ${position}: follow-up qualifiers differ`,
+      );
+      counts[cell.agreement] = (counts[cell.agreement] ?? 0) + 1;
+    }
+    const expectedNlmCells = pinned.table.body_rows.flatMap((row, rowIndex) =>
+      row.slice(1).map((_, columnIndex) => `${rowIndex}:${columnIndex + 1}`),
+    );
+    const expectedRsnaCells = comparison.rsna_rows.flatMap((row, rowIndex) =>
+      row.cells.map((_, columnIndex) => `${rowIndex}:${columnIndex}`),
+    );
+    assert.equal(
+      nlmCells.size,
+      comparison.cells.length,
+      `${label}: duplicate NLM cell mapping`,
+    );
+    assert.equal(
+      rsnaCells.size,
+      comparison.cells.length,
+      `${label}: duplicate RSNA cell mapping`,
+    );
+    assert.deepEqual(
+      [...nlmCells].sort(),
+      expectedNlmCells.sort(),
+      `${label}: every NLM recommendation cell must be compared exactly once`,
+    );
+    assert.deepEqual(
+      [...rsnaCells].sort(),
+      expectedRsnaCells.sort(),
+      `${label}: every RSNA cell must be compared exactly once`,
+    );
+    return {
+      object_id: pinned.objectId,
+      rsna_table: comparison.rsna_table,
+      locator: pinned.primaryLocatorKey,
+      compared_cells: comparison.cells.length,
+      agreement_counts: counts,
+    };
+  });
 }
 
 function extractTable(html, label) {
@@ -1142,6 +1535,33 @@ function extractTable(html, label) {
     `${label}: expected exactly one table`,
   );
   return html.slice(start, end + "</table>".length);
+}
+
+function secondaryCrossCheck(expected, evidence, pinnedTables) {
+  const check = {
+    role: "secondary-open-table-reproduction",
+    url: expected.url,
+    object_id: expected.objectId,
+  };
+  if (evidence.mode === "live") {
+    return {
+      ...check,
+      table_fragment_bytes: Buffer.byteLength(evidence.fragment),
+      table_fragment_sha256: sha256(evidence.fragment),
+    };
+  }
+  const pinned = pinnedTables.get(expected.objectId);
+  return {
+    ...check,
+    live_source_status: NLM_BOT_CHALLENGE_STATUS,
+    verified_against: "pinned-record",
+    pinned_record_path: PINNED_NLM_TABLES_PATH,
+    pinned_record_sha256: pinned.recordSha256,
+    normalized_text_sha256: pinned.normalizedTextSha256,
+    reviewed_table_fragment_bytes: expected.bytes,
+    reviewed_table_fragment_sha256: expected.sha256,
+    message: evidence.message,
+  };
 }
 
 function assertFragment(fragment, expected, label) {
@@ -1827,6 +2247,9 @@ export async function runAudit() {
   const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
   const registry = JSON.parse(readFileSync(REGISTRY_PATH, "utf8"));
   const calculatorSource = readFileSync(CALCULATOR_PATH, "utf8");
+  const pinnedTables = verifyPinnedNlmTables(
+    JSON.parse(readFileSync(PINNED_NLM_TABLES_PATH, "utf8")),
+  );
 
   assertExactKeys(
     fixture,
@@ -1911,33 +2334,15 @@ export async function runAudit() {
     published: "2017-11",
   });
 
-  const solidFragment = extractTable(solidHtml, "solid table");
-  const subsolidFragment = extractTable(subsolidHtml, "subsolid table");
-  assertFragment(solidFragment, EXPECTED_TABLES.solid, "solid table");
-  assertFragment(subsolidFragment, EXPECTED_TABLES.subsolid, "subsolid table");
-
-  assertExpectedText(
-    solidFragment,
-    [
-      "No routine follow-up",
-      "Optional CT at 12 months",
-      "CT at 6&#x02013;12 months, then consider CT at 18&#x02013;24 months",
-      "CT at 6&#x02013;12 months, then CT at 18&#x02013;24 months",
-      "Consider CT, PET/CT or tissue sampling at 3 months",
-      "CT at 3&#x02013;6 months, then consider CT at 18&#x02013;24 months",
-      "CT at 3&#x02013;6 months, then CT at 18&#x02013;24 months",
-    ],
-    "solid table",
+  const solidTable = verifyNlmTableEvidence(
+    solidHtml,
+    EXPECTED_TABLES.solid,
+    pinnedTables,
   );
-  assertExpectedText(
-    subsolidFragment,
-    [
-      "CT at 6&#x02013;12 months to confirm persistence, then CT every 2 years until 5 years",
-      "If unchanged and solid component remains &#x0003c;6 mm, annual CT should be performed for 5 years",
-      "CT at 3&#x02013;6 months. If stable, consider CT at 2 and 4 years",
-      "CT at 3&#x02013;6 months. Subsequent management based on the most suspicious nodule(s)",
-    ],
-    "subsolid table",
+  const subsolidTable = verifyNlmTableEvidence(
+    subsolidHtml,
+    EXPECTED_TABLES.subsolid,
+    pinnedTables,
   );
 
   const assertionBindings = manifest.payload.claims.flatMap(
@@ -2030,11 +2435,11 @@ export async function runAudit() {
     ...measurementLocatorTexts,
     [
       `nlm-fleischner-solid-table:html-table:${EXPECTED_TABLES.solid.objectId}`,
-      extractHtmlLiteralText(solidFragment),
+      solidTable.locatorText,
     ],
     [
       `nlm-fleischner-subsolid-table:html-table:${EXPECTED_TABLES.subsolid.objectId}`,
-      extractHtmlLiteralText(subsolidFragment),
+      subsolidTable.locatorText,
     ],
   ]);
   const literalBindings = verifyLiteralSourceBindings(
@@ -2067,6 +2472,10 @@ export async function runAudit() {
     ),
     requiredSnippetCount,
     "exact emitted required snippet count",
+  );
+  const pinnedPrimaryComparison = verifyPinnedNlmPrimaryComparison(
+    pinnedTables,
+    locatorTexts,
   );
 
   const figureArtifact = verifyPinnedFigureArtifact(
@@ -2152,20 +2561,23 @@ export async function runAudit() {
       })),
     })),
     secondary_cross_checks: {
-      solid: {
-        role: "secondary-open-table-reproduction",
-        url: SOLID_TABLE_URL,
-        object_id: EXPECTED_TABLES.solid.objectId,
-        table_fragment_bytes: Buffer.byteLength(solidFragment),
-        table_fragment_sha256: sha256(solidFragment),
-      },
-      subsolid: {
-        role: "secondary-open-table-reproduction",
-        url: SUBSOLID_TABLE_URL,
-        object_id: EXPECTED_TABLES.subsolid.objectId,
-        table_fragment_bytes: Buffer.byteLength(subsolidFragment),
-        table_fragment_sha256: sha256(subsolidFragment),
-      },
+      solid: secondaryCrossCheck(EXPECTED_TABLES.solid, solidTable, pinnedTables),
+      subsolid: secondaryCrossCheck(
+        EXPECTED_TABLES.subsolid,
+        subsolidTable,
+        pinnedTables,
+      ),
+    },
+    pinned_secondary_table_record: {
+      path: PINNED_NLM_TABLES_PATH,
+      sha256: EXPECTED_PINNED_NLM_TABLES_SHA256,
+      used_for_object_ids: [
+        [EXPECTED_TABLES.solid, solidTable],
+        [EXPECTED_TABLES.subsolid, subsolidTable],
+      ]
+        .filter(([, evidence]) => evidence.mode === "pinned")
+        .map(([expected]) => expected.objectId),
+      primary_comparison: pinnedPrimaryComparison,
     },
     source_text_verification: {
       schema: "radulator-literal-source-bindings/v1",
@@ -2217,11 +2629,19 @@ const isMain =
 
 if (isMain) {
   const audit = await runAudit();
+  const challengeNotices = Object.values(audit.secondary_cross_checks)
+    .map((check) => check.message)
+    .filter(Boolean);
+  for (const notice of challengeNotices) process.stderr.write(`${notice}\n`);
   if (process.argv.includes("--json")) {
     process.stdout.write(`${JSON.stringify(audit)}\n`);
   } else {
+    const nlmSummary =
+      challengeNotices.length === 0
+        ? "2 hashed live table fragments"
+        : `2 NLM tables (${2 - challengeNotices.length} hashed live, ${challengeNotices.length} verified against the pinned copy after an NLM bot challenge)`;
     console.log(
-      `Fleischner source audit passed: 3 byte-pinned RSNA-origin Mementos, ${audit.source_text_verification.locator_assertion_count} literal locator assertions with ${audit.source_text_verification.required_snippet_count} required snippets across ${audit.claim_ids.length} reviewed claims, ${audit.implementation_invariant_ids.length} implementation invariants, ${audit.executed_vector_count} executable vectors, primary DOI identities, and 2 hashed live table fragments.`,
+      `Fleischner source audit passed: 3 byte-pinned RSNA-origin Mementos, ${audit.source_text_verification.locator_assertion_count} literal locator assertions with ${audit.source_text_verification.required_snippet_count} required snippets across ${audit.claim_ids.length} reviewed claims, ${audit.implementation_invariant_ids.length} implementation invariants, ${audit.executed_vector_count} executable vectors, primary DOI identities, and ${nlmSummary}.`,
     );
   }
 }

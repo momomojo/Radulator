@@ -1160,21 +1160,82 @@ assert.deepEqual(audit.rsna_source_transport, [
   },
 ]);
 
-assert.deepEqual(audit.secondary_cross_checks.solid, {
-  role: "secondary-open-table-reproduction",
-  url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
-  object_id: "ch5.Tab1",
-  table_fragment_bytes: 3153,
-  table_fragment_sha256:
-    "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
-});
-assert.deepEqual(audit.secondary_cross_checks.subsolid, {
-  role: "secondary-open-table-reproduction",
-  url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
-  object_id: "ch5.Tab2",
-  table_fragment_bytes: 1912,
-  table_fragment_sha256:
-    "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
+const PINNED_NLM_TABLES_PATH = "docs/evidence/fleischner-2017-nlm-table-pins.json";
+const PINNED_NLM_TABLES_SHA256 =
+  "9b6afdb68a3fef320333320f07e5267f4c3d8b495a500a9de135b8dcfa41446f";
+const EXPECTED_SECONDARY_TABLES = {
+  solid: {
+    url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+    object_id: "ch5.Tab1",
+    label: "solid table",
+    bytes: 3153,
+    sha256: "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
+    normalized_text_sha256:
+      "5a9a7516677d89bebaacb9febb486dad0946ab8170a5047d52a20ab623648c5e",
+  },
+  subsolid: {
+    url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+    object_id: "ch5.Tab2",
+    label: "subsolid table",
+    bytes: 1912,
+    sha256: "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
+    normalized_text_sha256:
+      "fee89cdab0d0498ac55ecb9bb6f655fe555ca9a857fd662636dd5304447ae3e9",
+  },
+};
+const challengeNotices = [];
+const challengedObjectIds = [];
+for (const [key, expected] of Object.entries(EXPECTED_SECONDARY_TABLES)) {
+  const check = audit.secondary_cross_checks[key];
+  if (check.live_source_status === undefined) {
+    // Live table served: the exact reviewed fragment identity, as before.
+    assert.deepEqual(check, {
+      role: "secondary-open-table-reproduction",
+      url: expected.url,
+      object_id: expected.object_id,
+      table_fragment_bytes: expected.bytes,
+      table_fragment_sha256: expected.sha256,
+    });
+    continue;
+  }
+  // Only a recognised NLM bot challenge may fall back, and it must say so.
+  const message = `NLM ${expected.object_id} (${expected.label}): live source challenged by NLM bot protection; verified against pinned copy ${PINNED_NLM_TABLES_SHA256}`;
+  assert.deepEqual(check, {
+    role: "secondary-open-table-reproduction",
+    url: expected.url,
+    object_id: expected.object_id,
+    live_source_status: "challenged-by-nlm-bot-protection",
+    verified_against: "pinned-record",
+    pinned_record_path: PINNED_NLM_TABLES_PATH,
+    pinned_record_sha256: PINNED_NLM_TABLES_SHA256,
+    normalized_text_sha256: expected.normalized_text_sha256,
+    reviewed_table_fragment_bytes: expected.bytes,
+    reviewed_table_fragment_sha256: expected.sha256,
+    message,
+  });
+  challengeNotices.push(message);
+  challengedObjectIds.push(expected.object_id);
+}
+assert.deepEqual(audit.pinned_secondary_table_record, {
+  path: PINNED_NLM_TABLES_PATH,
+  sha256: PINNED_NLM_TABLES_SHA256,
+  used_for_object_ids: challengedObjectIds,
+  primary_comparison: [
+    {
+      object_id: "ch5.Tab1",
+      rsna_table: "Table 1A (solid nodules)",
+      locator: "guideline-vor-pdf:pdf-page:3",
+      compared_cells: 12,
+      agreement_counts: { identical: 8, "equivalent-wording": 4 },
+    },
+    {
+      object_id: "ch5.Tab2",
+      rsna_table: "Table 1B (subsolid nodules)",
+      locator: "guideline-vor-pdf:pdf-page:3",
+      compared_cells: 6,
+      agreement_counts: { identical: 5, "identical-except-text-layer-glyph": 1 },
+    },
+  ],
 });
 
 assert.equal(audit.calculator_id, "fleischner");
@@ -1199,6 +1260,16 @@ assert.equal(audit.known_wrong_measurement_doi_absent, true);
 assert.equal(audit.calculator_content_invariants_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
+for (const notice of challengeNotices) {
+  console.log(notice);
+  if (process.env.GITHUB_ACTIONS === "true") {
+    console.log(`::warning title=Fleischner NLM source challenged::${notice}`);
+  }
+}
 console.log(
-  "Fleischner source audit verified 3 byte-pinned RSNA-origin Mementos, 27 literal locator assertions with 37 required snippets across 12 claims, 4 implementation invariants, all 113 executable vectors, primary DOI identities, and live NLM fragments.",
+  `Fleischner source audit verified 3 byte-pinned RSNA-origin Mementos, 27 literal locator assertions with 37 required snippets across 12 claims, 4 implementation invariants, all 113 executable vectors, primary DOI identities, and ${
+    challengeNotices.length === 0
+      ? "live NLM fragments"
+      : `NLM tables (${2 - challengeNotices.length} live, ${challengeNotices.length} verified against the pinned copy after an NLM bot challenge)`
+  }.`,
 );
