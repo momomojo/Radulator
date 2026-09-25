@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import process from "node:process";
+import { readFileSync } from "node:fs";
+import "./fleischner-table-snapshot.test.mjs";
 import * as auditModule from "./audit-fleischner-primary-source.mjs";
 import { digest } from "./release-policy.mjs";
 
@@ -1137,15 +1139,15 @@ assert.deepEqual(audit.rsna_source_transport, [
         origin_url:
           "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
         retrieval_url:
-          "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+          "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
         final_url:
-          "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+          "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
         retrieval_host: "web.archive.org",
-        memento_datetime: "2020-10-21T01:25:28Z",
+        memento_datetime: "2022-01-19T11:06:01Z",
         rel_original_verified: true,
         origin_headers_verified: true,
         origin_last_modified: "Thu, 15 Mar 2018 16:55:54 GMT",
-        origin_etag: '"/4Dkotn4rPc"',
+        origin_etag: '"36aed1d449f2d313"',
         media_type: "image/gif",
         content_scope: "publisher-figure-1",
         content_bytes: 62198,
@@ -1160,22 +1162,28 @@ assert.deepEqual(audit.rsna_source_transport, [
   },
 ]);
 
-assert.deepEqual(audit.secondary_cross_checks.solid, {
-  role: "secondary-open-table-reproduction",
-  url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
-  object_id: "ch5.Tab1",
-  table_fragment_bytes: 3153,
-  table_fragment_sha256:
-    "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
-});
-assert.deepEqual(audit.secondary_cross_checks.subsolid, {
-  role: "secondary-open-table-reproduction",
-  url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
-  object_id: "ch5.Tab2",
-  table_fragment_bytes: 1912,
-  table_fragment_sha256:
-    "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
-});
+const tableSnapshots = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")).table_snapshots;
+for (const [kind, n, liveBytes, liveDigest] of [
+  ["solid", 1, 3153, "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9"],
+  ["subsolid", 2, 1912, "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997"],
+]) {
+  const evidence = audit.secondary_cross_checks[kind];
+  assert.equal(evidence.role, "secondary-open-table-reproduction");
+  assert.equal(evidence.object_id, `ch5.Tab${n}`);
+  assert.ok(["live", "reviewed-snapshot"].includes(evidence.mode));
+  if (evidence.mode === "live") {
+    assert.equal(evidence.table_fragment_bytes, liveBytes);
+    assert.equal(evidence.table_fragment_sha256, liveDigest);
+    assert.equal(evidence.source_url, evidence.url);
+  } else {
+    assert.equal(evidence.table_fragment_bytes, n === 1 ? 1586 : 1053);
+    assert.equal(evidence.table_fragment_sha256, n === 1 ? "fbae89fb9c8a9fdd91fa767fc15b0617ce978f1d74ef8481557b4caf202c4c06" : "f109012079057aff8ea2a3ecd26f030945a1a9a3e8510e7fd46c554fc43cc26a");
+    assert.equal(evidence.source_url, `https://link.springer.com/chapter/10.1007/978-3-030-11149-6_5/tables/${n}`);
+    assert.equal(evidence.locator, `Springer Table 5.${n}`);
+    assert.equal(evidence.revalidate_by, tableSnapshots[kind].review.revalidate_by);
+    assert.notEqual(evidence.table_fragment_sha256, liveDigest);
+  }
+}
 
 assert.equal(audit.calculator_id, "fleischner");
 assert.equal(audit.guideline_version, "Fleischner 2017");
@@ -1197,8 +1205,8 @@ assert.equal(audit.correct_guideline_doi_present, true);
 assert.equal(audit.correct_measurement_doi_present, true);
 assert.equal(audit.known_wrong_measurement_doi_absent, true);
 assert.equal(audit.calculator_content_invariants_match, true);
-assert.equal(audit.source_bytes_committed, false);
+assert.equal(audit.source_bytes_committed, true);
 
 console.log(
-  "Fleischner source audit verified 3 byte-pinned RSNA-origin Mementos, 27 literal locator assertions with 37 required snippets across 12 claims, 4 implementation invariants, all 113 executable vectors, primary DOI identities, and live NLM fragments.",
+  "Fleischner source audit verified primary artifacts and bindings, 113 executable vectors, and explicitly attributed live/snapshot secondary tables.",
 );
