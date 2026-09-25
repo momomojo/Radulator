@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import process from "node:process";
 import * as auditModule from "./audit-fleischner-primary-source.mjs";
 import { digest } from "./release-policy.mjs";
@@ -877,6 +878,131 @@ await assert.rejects(
   "the capture timestamp must match the manifest",
 );
 
+// Transport-only Memento re-pins: a new capture timestamp is accepted only for
+// byte-identical payloads, and the reviewed SHA-256 still gates the bytes.
+const { applyMementoRecapture, MEMENTO_RECAPTURES } = auditModule;
+const recaptureUrl =
+  "https://web.archive.org/web/20230102030405id_/https://publisher.example/article";
+const syntheticRecapture = {
+  retrieval_url: recaptureUrl,
+  memento_datetime: "2023-01-02T03:04:05Z",
+  origin_etag: '"recaptured"',
+  content_bytes: syntheticArtifact.content_bytes,
+  content_sha256: syntheticArtifact.content_sha256,
+  repinned_on: "2026-09-24",
+  reason: "Synthetic re-pin to an identical-payload capture.",
+};
+function recaptureResponse(bytes) {
+  return fakeResponse({
+    contentType: "text/html; charset=UTF-8",
+    url: recaptureUrl,
+    bytesValue: bytes,
+    extraHeaders: {
+      link: `<${syntheticArtifact.origin_url}>; rel="original"`,
+      "memento-datetime": "Mon, 02 Jan 2023 03:04:05 GMT",
+      "x-archive-orig-date": "Mon, 02 Jan 2023 03:04:06 GMT",
+      "x-archive-orig-etag": '"recaptured"',
+    },
+  });
+}
+const recapturedArtifact = applyMementoRecapture(
+  syntheticArtifact,
+  syntheticRecapture,
+);
+assert.deepEqual(
+  recapturedArtifact,
+  {
+    ...syntheticArtifact,
+    retrieval_url: recaptureUrl,
+    memento_datetime: "2023-01-02T03:04:05Z",
+    origin_etag: '"recaptured"',
+  },
+  "a re-pin changes only the capture locator",
+);
+const recapturedVerification = await verifyMementoArtifact(recapturedArtifact, {
+  fetchImpl: async () => recaptureResponse(archivedHtml),
+});
+assert.equal(recapturedVerification.final_url, recaptureUrl);
+assert.equal(recapturedVerification.memento_datetime, "2023-01-02T03:04:05Z");
+assert.equal(
+  recapturedVerification.content_sha256,
+  syntheticArtifact.content_sha256,
+  "identical bytes under a new capture timestamp must pass",
+);
+const sameLengthDifferentBytes = Buffer.from(
+  archivedHtml.toString("utf8").replace("verified text", "Verified text"),
+);
+assert.equal(sameLengthDifferentBytes.length, archivedHtml.length);
+for (const bytes of [
+  sameLengthDifferentBytes,
+  Buffer.concat([archivedHtml, Buffer.from("!")]),
+]) {
+  await assert.rejects(
+    verifyMementoArtifact(recapturedArtifact, {
+      fetchImpl: async () => recaptureResponse(bytes),
+    }),
+    /bytes|SHA-256/,
+    "different bytes under a re-pinned capture must still fail",
+  );
+}
+for (const [override, error] of [
+  [{ content_sha256: "0".repeat(64) }, /payload SHA-256 must be identical/],
+  [
+    { content_bytes: syntheticArtifact.content_bytes + 1 },
+    /payload bytes must be identical/,
+  ],
+  [
+    {
+      retrieval_url:
+        "https://web.archive.org/web/20230102030405id_/https://attacker.example/article",
+    },
+    /same publisher origin/,
+  ],
+  [
+    {
+      retrieval_url:
+        "https://archive.example/web/20230102030405id_/https://publisher.example/article",
+    },
+    /raw-capture id_ URL/,
+  ],
+  [
+    { memento_datetime: "2023-01-02T03:04:06Z" },
+    /URL timestamp must match Memento-Datetime/,
+  ],
+  [
+    {
+      retrieval_url: syntheticArtifact.retrieval_url,
+      memento_datetime: syntheticArtifact.memento_datetime,
+    },
+    /must name a different capture/,
+  ],
+]) {
+  assert.throws(
+    () =>
+      applyMementoRecapture(syntheticArtifact, {
+        ...syntheticRecapture,
+        ...override,
+      }),
+    error,
+  );
+}
+assert.equal(
+  applyMementoRecapture(syntheticArtifact),
+  syntheticArtifact,
+  "an artifact without a re-pin is used exactly as reviewed",
+);
+const reviewedFigure = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"))
+  .payload.sources.flatMap((source) => source.artifacts ?? [])
+  .find((artifact) => artifact.id === "measurement-figure-1");
+assert.deepEqual(Object.keys(MEMENTO_RECAPTURES), ["measurement-figure-1"]);
+assert.deepEqual(applyMementoRecapture(reviewedFigure), {
+  ...reviewedFigure,
+  retrieval_url:
+    "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+  memento_datetime: "2022-01-19T11:06:01Z",
+  origin_etag: '"36aed1d449f2d313"',
+});
+
 const duplicateMarkerBytes = Buffer.from(
   `${fragmentStart}first${fragmentEnd}${fragmentStart}second${fragmentEnd}`,
 );
@@ -1137,15 +1263,15 @@ assert.deepEqual(audit.rsna_source_transport, [
         origin_url:
           "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
         retrieval_url:
-          "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+          "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
         final_url:
-          "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+          "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
         retrieval_host: "web.archive.org",
-        memento_datetime: "2020-10-21T01:25:28Z",
+        memento_datetime: "2022-01-19T11:06:01Z",
         rel_original_verified: true,
         origin_headers_verified: true,
         origin_last_modified: "Thu, 15 Mar 2018 16:55:54 GMT",
-        origin_etag: '"/4Dkotn4rPc"',
+        origin_etag: '"36aed1d449f2d313"',
         media_type: "image/gif",
         content_scope: "publisher-figure-1",
         content_bytes: 62198,
@@ -1155,6 +1281,18 @@ assert.deepEqual(audit.rsna_source_transport, [
         fragment: null,
         direct_origin_fetch_attempted_by_ci: false,
         manifest_recorded_direct_origin_status: 403,
+        reviewed_capture: {
+          retrieval_url:
+            "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+          memento_datetime: "2020-10-21T01:25:28Z",
+          origin_etag: '"/4Dkotn4rPc"',
+        },
+        recapture: {
+          repinned_on: "2026-09-24",
+          reason:
+            "The archive redirects the reviewed 2020-10-21 capture to this capture, whose payload has the identical SHA-256.",
+          payload_sha256_unchanged: true,
+        },
       },
     ],
   },

@@ -203,6 +203,34 @@ const EXPECTED_RSNA_ARTIFACTS = {
   },
 };
 
+// Transport-only re-pins of reviewed Memento captures. The reviewed manifest
+// keeps the capture it reviewed. When the archive stops serving that capture
+// and redirects to another capture of the same bytes, only the capture locator
+// (retrieval URL, Memento-Datetime, origin ETag) may be re-pinned here:
+// applyMementoRecapture() rejects a re-pin whose payload bytes or SHA-256
+// differ from the reviewed artifact, and verifyMementoArtifact() still checks
+// the downloaded bytes against that reviewed SHA-256.
+export const MEMENTO_RECAPTURES = Object.freeze({
+  "measurement-figure-1": Object.freeze({
+    retrieval_url:
+      "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+    memento_datetime: "2022-01-19T11:06:01Z",
+    origin_etag: '"36aed1d449f2d313"',
+    content_bytes: 62198,
+    content_sha256:
+      "5ec3df4bb0491f3d0eca1d84b85bd77882161d9c5628c0151b24f7e5a8f070a9",
+    repinned_on: "2026-09-24",
+    reason:
+      "The archive redirects the reviewed 2020-10-21 capture to this capture, whose payload has the identical SHA-256.",
+  }),
+});
+
+function mementoRecapture(artifactId) {
+  return Object.hasOwn(MEMENTO_RECAPTURES, artifactId)
+    ? MEMENTO_RECAPTURES[artifactId]
+    : undefined;
+}
+
 const EXPECTED_REVIEWED_TRANSCRIPTION = {
   id: "fleischner-measurement-figure1-solid-component",
   claim_id: "fleischner-2017-measurement-contract",
@@ -504,6 +532,72 @@ function isoFromHttpDate(value, label) {
   const milliseconds = Date.parse(value);
   assert.ok(Number.isFinite(milliseconds), `${label}: invalid HTTP date`);
   return new Date(milliseconds).toISOString().replace(".000Z", "Z");
+}
+
+/**
+ * Apply a transport-only re-pin to a reviewed Memento artifact. Only the
+ * capture locator changes; the re-pin must declare the reviewed payload
+ * bytes and SHA-256, the same publisher origin, and a URL timestamp that
+ * matches its Memento-Datetime. Artifacts without a re-pin are unchanged.
+ */
+export function applyMementoRecapture(
+  artifact,
+  recapture = mementoRecapture(artifact?.id),
+) {
+  assert.ok(artifact && typeof artifact === "object", "Memento artifact: object");
+  if (recapture === undefined) return artifact;
+  const label = `Memento ${artifact.id} re-pin`;
+  assertExactKeys(
+    recapture,
+    [
+      "retrieval_url",
+      "memento_datetime",
+      "origin_etag",
+      "content_bytes",
+      "content_sha256",
+      "repinned_on",
+      "reason",
+    ],
+    label,
+  );
+  assert.equal(
+    recapture.content_sha256,
+    artifact.content_sha256,
+    `${label}: payload SHA-256 must be identical to the reviewed capture`,
+  );
+  assert.equal(
+    recapture.content_bytes,
+    artifact.content_bytes,
+    `${label}: payload bytes must be identical to the reviewed capture`,
+  );
+  const capture = /^https:\/\/web\.archive\.org\/web\/(\d{14})id_\/(.+)$/.exec(
+    String(recapture.retrieval_url),
+  );
+  assert.ok(capture, `${label}: exact raw-capture id_ URL`);
+  assert.equal(capture[2], artifact.origin_url, `${label}: same publisher origin`);
+  const stamp = capture[1];
+  assert.equal(
+    `${stamp.slice(0, 4)}-${stamp.slice(4, 6)}-${stamp.slice(6, 8)}T${stamp.slice(8, 10)}:${stamp.slice(10, 12)}:${stamp.slice(12, 14)}Z`,
+    recapture.memento_datetime,
+    `${label}: URL timestamp must match Memento-Datetime`,
+  );
+  assert.notEqual(
+    recapture.retrieval_url,
+    artifact.retrieval_url,
+    `${label}: must name a different capture`,
+  );
+  assert.ok(
+    recapture.origin_etag === null || typeof recapture.origin_etag === "string",
+    `${label}: origin ETag`,
+  );
+  assert.match(recapture.repinned_on, /^\d{4}-\d{2}-\d{2}$/, `${label}: date`);
+  assertUniqueStrings([recapture.reason], `${label}: reason`);
+  return {
+    ...artifact,
+    retrieval_url: recapture.retrieval_url,
+    memento_datetime: recapture.memento_datetime,
+    origin_etag: recapture.origin_etag,
+  };
 }
 
 /**
@@ -2289,6 +2383,16 @@ export async function runAudit() {
     );
   }
 
+  const reviewedArtifactIds = Object.values(EXPECTED_RSNA_ARTIFACTS).map(
+    (artifact) => artifact.id,
+  );
+  for (const artifactId of Object.keys(MEMENTO_RECAPTURES)) {
+    assert.ok(
+      reviewedArtifactIds.includes(artifactId),
+      `Memento re-pin for unknown artifact ${artifactId}`,
+    );
+  }
+
   const [
     guidelineMetadata,
     measurementMetadata,
@@ -2302,11 +2406,11 @@ export async function runAudit() {
     loadCrossref(MEASUREMENT_DOI),
     loadNlmTable(SOLID_TABLE_URL, EXPECTED_TABLES.solid.objectId),
     loadNlmTable(SUBSOLID_TABLE_URL, EXPECTED_TABLES.subsolid.objectId),
-    verifyMementoArtifact(EXPECTED_RSNA_ARTIFACTS.guideline, {
+    verifyMementoArtifact(applyMementoRecapture(EXPECTED_RSNA_ARTIFACTS.guideline), {
       byteSignature: "%PDF-",
     }),
-    verifyMementoArtifact(EXPECTED_RSNA_ARTIFACTS.measurement),
-    verifyMementoArtifact(EXPECTED_RSNA_ARTIFACTS.figure1, {
+    verifyMementoArtifact(applyMementoRecapture(EXPECTED_RSNA_ARTIFACTS.measurement)),
+    verifyMementoArtifact(applyMementoRecapture(EXPECTED_RSNA_ARTIFACTS.figure1), {
       byteSignature: "GIF",
     }),
   ]);
@@ -2558,6 +2662,20 @@ export async function runAudit() {
         direct_origin_fetch_attempted_by_ci: false,
         manifest_recorded_direct_origin_status:
           artifact.direct_origin_fetch_status,
+        ...(mementoRecapture(artifact.id) === undefined
+          ? {}
+          : {
+              reviewed_capture: {
+                retrieval_url: artifact.retrieval_url,
+                memento_datetime: artifact.memento_datetime,
+                origin_etag: artifact.origin_etag,
+              },
+              recapture: {
+                repinned_on: mementoRecapture(artifact.id).repinned_on,
+                reason: mementoRecapture(artifact.id).reason,
+                payload_sha256_unchanged: true,
+              },
+            }),
       })),
     })),
     secondary_cross_checks: {
