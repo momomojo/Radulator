@@ -38,6 +38,7 @@
     "test:release-policy": "node scripts/release-policy.test.mjs",
     "test:auto-merge": "node scripts/auto-merge.test.mjs",
     "test:release-workflow-permissions": "node scripts/release-workflow-permissions.test.mjs",
+    "test:ci-scope": "node scripts/ci-scope.test.mjs",
     "test:post-deploy-smoke": "node scripts/post-deploy-smoke.test.mjs",
     "test:release-marker": "node scripts/write-release-marker.test.mjs",
     "test:authorize-deployment": "node scripts/authorize-deployment.test.mjs",
