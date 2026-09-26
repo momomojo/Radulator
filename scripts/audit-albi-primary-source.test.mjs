@@ -45,11 +45,11 @@ assert.equal(
   audit.source_url,
   "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/",
 );
-assert.equal(audit.source_bytes, 276_155);
-assert.equal(audit.canonical_source_bytes, 276_075);
+assert.equal(audit.source_bytes, 276_164);
+assert.equal(audit.canonical_source_bytes, 276_084);
 assert.equal(
   audit.canonical_source_sha256,
-  "fccc2f40b9ae8a85fcd7dbc093886be078a554db8f425322db6cffc3bd2499b0",
+  "5b76f4af10f9cf9b19382ebd4ba5e35a228e0e942bfb1759dbafbcd8737c81a3",
 );
 assert.deepEqual(audit.canonicalization, [
   "replace ncbi_phid value with [volatile]",
