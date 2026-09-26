@@ -67,7 +67,8 @@ jobs:
           if [ "$EVENT_NAME" = "pull_request" ] \
             && git show "$BASE_SHA:scripts/ci-scope.mjs" > "$trusted/ci-scope.mjs" 2>/dev/null \
             && git show "$BASE_SHA:scripts/release-policy.mjs" > "$trusted/release-policy.mjs" 2>/dev/null \
-            && node "$trusted/ci-scope.mjs" "$trusted/release-policy.mjs"; then
+            && node "$trusted/ci-scope.mjs" "$trusted/release-policy.mjs" \
+            && grep -q '^clinical=' "$GITHUB_OUTPUT"; then
             :
           else
             printf 'clinical=true\ndeps=true\n' >> "$GITHUB_OUTPUT"

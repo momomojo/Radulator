@@ -14,9 +14,9 @@
 //   node ci-scope.mjs <path to release-policy.mjs>
 //   env: EVENT_NAME, BASE_SHA, HEAD_SHA (pull_request only), GITHUB_OUTPUT
 import { execFileSync } from "node:child_process";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, realpathSync } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const SCOPE_RULE_FILES = ["scripts/ci-scope.mjs", "scripts/release-policy.mjs"];
 const ALL = (why) => ({ clinical: true, deps: true, why });
@@ -63,6 +63,6 @@ async function main() {
   console.log(`clinical source audits: ${result.clinical}; dependency audit: ${result.deps} (${result.why})`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   await main();
 }
