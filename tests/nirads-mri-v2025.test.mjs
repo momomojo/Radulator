@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   NIRADS,
+  MRI_2025_MANAGEMENT,
   MRI_2025_PATTERN_DEFINITIONS,
   classifyNiradsMri2025,
 } from "../src/components/calculators/NIRADS.jsx";
@@ -140,6 +141,13 @@ for (const [id, inputs, expected] of preserved2018Cases) {
     `${id} explicit 2018 dispatch`,
   );
 }
+
+// ACR NI-RADS MRI v2025 management caveats (assessment-categories table and primary-site algorithm).
+assert.match(MRI_2025_MANAGEMENT["primary.2b"], /MRI is preferred for perineural or skull-base concern/);
+assert.match(MRI_2025_MANAGEMENT["primary.3"], /^Image-guided or clinical biopsy if clinically indicated;/);
+assert.match(MRI_2025_MANAGEMENT["primary.3"], /multidisciplinary discussion can guide next steps when perineural biopsy is infeasible/);
+assert.equal(MRI_2025_MANAGEMENT["neck.3"], "Image-guided or clinical biopsy if clinically indicated.");
+assert.equal(MRI_2025_MANAGEMENT["neck.2"], "Short-interval MRI or PET.");
 
 console.log(
   `NI-RADS tests OK: ${vectors.length} reviewed MRI vectors, ${Object.keys(expectedPatternCategories).length} source patterns, ${preserved2018Cases.length} legacy regressions`,

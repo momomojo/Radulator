@@ -188,17 +188,18 @@ export const MRI_2025_PATTERN_DEFINITIONS = Object.freeze({
   },
 });
 
-const MRI_2025_MANAGEMENT = Object.freeze({
+export const MRI_2025_MANAGEMENT = Object.freeze({
   "primary.0": "Add the score in an addendum when the known prior imaging becomes available.",
   "primary.1": "Routine surveillance.",
   "primary.2a": "Direct visual inspection.",
-  "primary.2b": "Short-interval MRI or PET.",
-  "primary.3": "Image-guided or clinical biopsy if clinically indicated.",
+  "primary.2b": "Short-interval MRI or PET; MRI is preferred for perineural or skull-base concern.",
+  "primary.3":
+    "Image-guided or clinical biopsy if clinically indicated; multidisciplinary discussion can guide next steps when perineural biopsy is infeasible.",
   "primary.4": "Clinical management or treatment of disease, with or without biopsy.",
   "neck.0": "Add the score in an addendum when the known prior imaging becomes available.",
   "neck.1": "Routine surveillance.",
   "neck.2": "Short-interval MRI or PET.",
-  "neck.3": "Biopsy.",
+  "neck.3": "Image-guided or clinical biopsy if clinically indicated.",
   "neck.4": "Clinical management or treatment of disease, with or without biopsy.",
 });
 

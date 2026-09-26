@@ -40,7 +40,7 @@ The archived MRI table from 2021 included primary `1f` and `2f`, but those label
 - **0 — Incomplete:** the same new-baseline plus known-pending-prior condition used for the primary site.[1]
 - **1 — No evidence of recurrence:** no abnormal node, or hypoenhancing residual treated nodal tissue without FDG uptake. Management: routine surveillance.[1][3]
 - **2 — Low suspicion:** residual tissue with heterogeneous enhancement or mild/moderate FDG uptake; a new/enlarging node without high-suspicion morphology; or PET/MRI discordance when the original tumor was FDG avid. Management: short-interval MRI or PET.[1][3]
-- **3 — High suspicion:** residual tissue with intense FDG uptake, definite enlargement, or increased enhancement; or a new/enlarging node with necrosis/cystic change, irregular border/gross extranodal extension, or intense focal FDG uptake. Management: biopsy.[1][3]
+- **3 — High suspicion:** residual tissue with intense FDG uptake, definite enlargement, or increased enhancement; or a new/enlarging node with necrosis/cystic change, irregular border/gross extranodal extension, or intense focal FDG uptake. Management: image-guided or clinical biopsy if clinically indicated.[1][3]
 - **4 — Definitive recurrence:** pathologic proof or definite radiologic and clinical progression. Management: clinical treatment planning, with or without biopsy.[1][3]
 
 ### Fail-closed boundaries
