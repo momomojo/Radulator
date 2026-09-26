@@ -75,7 +75,17 @@ features promised by the original ALBI calculator.
 | [Ho et al., PLOS ONE2017](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0180408), citation/abstract | Supporting HCC/TACE prognostic bibliography; no additional calculation |
 | [Hiraoka et al., JGH2016](https://doi.org/10.1111/jgh.13250), author-institution citation/abstract | Supporting retrospective Japanese HCC bibliography. Inaccessible full methods not used for ALBI-T or new output |
 | [Pinato et al., J Hepatol2017](https://doi.org/10.1016/j.jhep.2016.09.008), [Cambridge manuscript](https://www.repository.cam.ac.uk/bitstreams/57b9d9f0-4841-4458-ad3c-9554a0e2becb/download) pp.7–19 | Additional cohort-level prognosis, variable discrimination across cohorts, transplant exclusion; no individual survival numbers imported |
-| [Ho, Hsu, Liu et al., DDS2021;66:1730–1738](https://doi.org/10.1007/s10620-020-06384-2), publisher/author-institution citation and abstract | Correct fifth-reference identity. Multivariable TACE nomogram explicitly not implemented; full subscription methods not required for the retained original-model scope |
+| [Ho, Hsu, Liu et al., DDS2021;66(5):1730–1738](https://doi.org/10.1007/s10620-020-06384-2), [author-institution record](https://scholar.nycu.edu.tw/en/publications/albuminbilirubin-albi-grade-based-nomogram-for-patients-with-hepa/): title/byline, bibliographic fields and Cite this → Vancouver/RIS; Abstract → Methods/Results | Correct fifth-reference identity, also indexed as PMID32548811. The abstract describes a multivariate TACE survival nomogram using ALBI grade plus five other predictors, not the original two-laboratory ALBI calculation. This nomogram is not implemented; unseen subscription methods or coefficients are not claimed as reviewed |
+
+Production-review access repair2026-09-09: PR271's primary judge could not
+authenticate the fifth bibliography entry through the challenged publisher.
+The owner and a separate read-only reviewer independently read the linked
+NYCU author-institution record. Ordinary public HTTPS from the actual Mac mini
+also returned HTTP200. The citation and abstract locators above resolve that
+specific evidence-access gap; they do not validate new clinical outputs.
+No runtime code, expected answer, formula or threshold changes in this repair.
+The new production candidate requires fresh CI and both signed reviews; the
+previous NEEDS_FIX remains part of the release receipt's history.
 
 US current-version check: the [AASLD HCC page](https://www.aasld.org/practice-guidelines/management-hepatocellular-carcinoma)
 also links the 2025 Critical Update, DOI10.1097/HEP.0000000000001269,
@@ -114,6 +124,28 @@ boundaries/population and six executable vectors. A matching hash alone is not
 clinical review. Raw copyrighted source files are not committed.
 
 ## Verification evidence and limits
+
+### Source-artifact refresh, 2026-09-23 (not a reopened clinical baseline)
+
+Fresh required source verification found a changed PMC HTML artifact: 276,164
+raw bytes / 276,084 canonical bytes, canonical SHA256
+`5b76f4af10f9cf9b19382ebd4ba5e35a228e0e942bfb1759dbafbcd8737c81a3`.
+The preceding September 8 identity remains historical evidence, not the current
+pin. Owner retrieved the full article via ordinary direct HTTPS using the audit
+request, then re-read Abstract Patients and Methods and Results around Table 2:
+the original population, equation, units and raw grade boundaries still support
+the existing source-bound claims and independently prescribed expectations.
+Some other ordinary request clients returned a browser challenge; no challenge
+was bypassed. Only the full article response was used for this refresh.
+
+The prior complete HTML was not retained for a byte diff. The nine-byte size
+difference is not proof of a cosmetic-only change; no such assertion is made.
+Update the exact artifact identities only, keeping DOI/PMCID, section locators,
+claim assertions, six protected vectors and the two existing volatile-field
+normalizations unchanged. No new treatment guidance, model variant, computation,
+UI or accepted clinical scope is introduced. The accepted September 9 release
+receipt still closes the original-model baseline. This refresh needs its own
+required checks and signed review; it does not self-authorize publication.
 
 - `tests/fixtures/compute/albi-score.json`: six protected source-bound vectors.
 - `tests/albi-compute.test.mjs`: raw boundaries/rounding, SI/US equivalence,

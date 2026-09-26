@@ -193,12 +193,13 @@ test.describe("Adrenal MRI Chemical Shift Calculator - Edge Cases & Validation",
 
     await page.click('button:has-text("Calculate")');
 
-    // Division by zero in SII calculation - should show NaN or Infinity
+    // Zero in-phase adrenal signal makes the SII undefined.
     const results = page.getByRole('status', { name: 'Calculator results' });
     await expect(results).toBeVisible();
 
-    // Should still display results (even if mathematically undefined)
-    await expect(results).toContainText("Signal Intensity Index");
+    // Undefined ratios must not be displayed with a clinical interpretation.
+    await expect(results).toContainText(/must be above zero/i);
+    await expect(results).not.toContainText(/Signal Intensity Index|NaN|Infinity|adenoma/i);
   });
 
   test("should handle very large values", async ({ page }) => {

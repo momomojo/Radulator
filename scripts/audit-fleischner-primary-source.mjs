@@ -230,6 +230,7 @@ const EXPECTED_TABLES = {
     url: SOLID_TABLE_URL,
     objectId: "ch5.Tab1",
     bytes: 3153,
+    text_sha256: "5a9a7516677d89bebaacb9febb486dad0946ab8170a5047d52a20ab623648c5e",
     sha256:
       "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
   },
@@ -238,6 +239,7 @@ const EXPECTED_TABLES = {
     url: SUBSOLID_TABLE_URL,
     objectId: "ch5.Tab2",
     bytes: 1912,
+    text_sha256: "fee89cdab0d0498ac55ecb9bb6f655fe555ca9a857fd662636dd5304447ae3e9",
     sha256:
       "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
   },
@@ -1115,21 +1117,87 @@ async function loadCrossref(doi) {
   return crossrefMetadata(body.message);
 }
 
-async function loadNlmTable(url, objectId) {
-  const expectedPath = `/books/NBK553863/table/${objectId}/`;
-  const { body } = await fetchParsedResource(url, {
-    label: `NLM ${objectId}`,
-    parseAs: "text",
-    expectedContentType: "text/html",
-    validateFinalUrl(finalUrl) {
-      assert.equal(finalUrl.protocol, "https:");
-      assert.equal(finalUrl.hostname, "www.ncbi.nlm.nih.gov");
-      assert.equal(finalUrl.pathname, expectedPath);
-      assert.equal(finalUrl.searchParams.get("report"), "objectonly");
-    },
-  });
-  assert.ok(body.length > 500, `NLM ${objectId}: implausibly short HTML`);
-  return body;
+export async function resolveNlmTableEvidence({
+  expected, snapshot, bindings, now = Date.now(),
+  fetchImpl = globalThis.fetch, sleepImpl = delay,
+  readArtifact = (path) => readFileSync(resolve(path)),
+  literalText = extractHtmlLiteralText,
+}) {
+  let unavailable;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let response;
+    try {
+      response = await fetchImpl(expected.url, {
+        headers: { accept: "text/html", "user-agent": "Radulator-Fleischner-source-audit/3" },
+        redirect: "follow", signal: AbortSignal.timeout(15_000),
+      });
+    } catch {
+      unavailable = "network failure";
+      if (attempt === 0) await sleepImpl(250);
+      continue;
+    }
+    assert.equal(response.url, expected.url, "NLM unexpected final URL");
+    if (!response.ok) {
+      await response.body?.cancel?.();
+      assert.ok(RETRYABLE_HTTP_STATUSES.has(response.status), `NLM HTTP ${response.status}`);
+      unavailable = `HTTP ${response.status}`;
+      if (attempt === 0) await sleepImpl(retryDelayMilliseconds(response, 1, 250, 2_000));
+      continue;
+    }
+    assert.match(response.headers.get("content-type") ?? "", /text\/html/i, "NLM content type");
+    let body;
+    try { body = await response.text(); } catch {
+      unavailable = "network body failure";
+      if (attempt === 0) await sleepImpl(250);
+      continue;
+    }
+    // Only an explicit challenge without a table is unavailable. Malformed or
+    // changed source content is not eligible for fallback.
+    if (!/<table\b/i.test(body) && /RecaptchaChallengePageUi|Checking your browser[^<]*reCAPTCHA/i.test(body)) {
+      unavailable = "CAPTCHA";
+      break;
+    }
+    const fragment = extractTable(body, "NLM table");
+    assert.equal(Buffer.byteLength(fragment), expected.bytes, "NLM source drift: bytes");
+    assert.equal(sha256(fragment), expected.sha256, "NLM source drift: digest");
+    return { fragment, mode: "live", source_url: expected.url, locator: `NCBI Bookshelf object ${expected.objectId}` };
+  }
+  assert.ok(snapshot, `NLM ${unavailable}: no approved snapshot`);
+  const n = expected.objectId === "ch5.Tab1" ? 1 : expected.objectId === "ch5.Tab2" ? 2 : 0;
+  assert.ok(n, "snapshot unknown table");
+  assert.equal(snapshot.schema, "radulator-fleischner-table-snapshot/v1", "snapshot schema");
+  assert.equal(snapshot.object_id, expected.objectId, "snapshot object");
+  assert.equal(snapshot.original_url, expected.url, "snapshot original URL");
+  assert.equal(snapshot.publisher_url, `https://link.springer.com/chapter/10.1007/978-3-030-11149-6_5/tables/${n}`, "snapshot publisher URL");
+  assert.equal(snapshot.locator, `Springer Table 5.${n}`, "snapshot locator");
+  assert.equal(snapshot.artifact_path, `docs/evidence/source-snapshots/fleischner-table${n}.html`, "snapshot path");
+  assert.equal(snapshot.parser_version, "fleischner-html-literal/v1", "snapshot parser");
+  assert.equal(snapshot.claim_id, `nlm-fleischner-${n === 1 ? "solid" : "subsolid"}-table-cross-check`, "snapshot claim");
+  assert.deepEqual(snapshot.bindings, bindings, "snapshot bindings changed; review affected scope");
+  for (const value of Object.values(bindings)) assert.match(value, /^[a-f0-9]{64}$/, "snapshot binding digest");
+  assert.match(snapshot.retrieval_sha256, /^[a-f0-9]{64}$/, "snapshot retrieval provenance");
+  assert.ok(Number.isSafeInteger(snapshot.retrieval_bytes) && snapshot.retrieval_bytes >= snapshot.bytes, "snapshot retrieval bytes");
+  const review = snapshot.review;
+  assert.ok(review && review.disposition === "PASS", "snapshot missing independent approval");
+  assert.ok(typeof review.reference === "string" && review.reference.trim(), "snapshot review reference");
+  assert.ok(typeof review.reviewer === "string" && review.reviewer.trim(), "snapshot independent reviewer");
+  assert.equal(review.release_authority, false, "snapshot review is not release authority");
+  const retrieved = Date.parse(snapshot.retrieved_at);
+  const reviewed = Date.parse(review.reviewed_at);
+  const expires = Date.parse(review.revalidate_by);
+  assert.ok(Number.isFinite(now) && retrieved <= reviewed && reviewed <= now && reviewed < expires && expires - reviewed <= 30 * 86400_000, "snapshot review dates");
+  assert.ok(now < expires, "snapshot expired; revalidate source currency");
+  const bytes = readArtifact(snapshot.artifact_path);
+  assert.equal(bytes.length, snapshot.bytes, "snapshot bytes");
+  assert.equal(sha256(bytes), snapshot.sha256, "snapshot digest");
+  const fragment = extractTable(bytes.toString("utf8"), "snapshot table");
+  assert.ok(bytes.toString("utf8") === fragment || bytes.toString("utf8") === `${fragment}\n`, "snapshot must be exactly the extracted table with optional final newline");
+  assert.equal(snapshot.text_sha256, expected.text_sha256, "snapshot expected text binding");
+  assert.equal(sha256(literalText(fragment)), expected.text_sha256, "snapshot text drift");
+  return { fragment, mode: "reviewed-snapshot", source_url: snapshot.publisher_url,
+    locator: snapshot.locator, snapshot_sha256: snapshot.sha256,
+    review_reference: review.reference, revalidate_by: review.revalidate_by,
+    live_retrieval_status: unavailable };
 }
 
 function extractTable(html, label) {
@@ -1142,11 +1210,6 @@ function extractTable(html, label) {
     `${label}: expected exactly one table`,
   );
   return html.slice(start, end + "</table>".length);
-}
-
-function assertFragment(fragment, expected, label) {
-  assert.equal(Buffer.byteLength(fragment), expected.bytes, `${label}: bytes`);
-  assert.equal(sha256(fragment), expected.sha256, `${label}: SHA-256`);
 }
 
 function assertExpectedText(fragment, snippets, label) {
@@ -1251,7 +1314,8 @@ export function verifyClaimSourceProvenance(claims, sources) {
 }
 
 function validateManifest(manifest, fixture, registry) {
-  assertExactKeys(manifest, ["schema", "payload", "review"], "manifest");
+  assertExactKeys(manifest, ["schema", "payload", "review", "table_snapshots"], "manifest");
+  assertExactKeys(manifest.table_snapshots, ["solid", "subsolid"], "table snapshots");
   assert.equal(manifest.schema, "radulator-reviewed-source-evidence/v3");
   assertExactKeys(
     manifest.payload,
@@ -1869,21 +1933,35 @@ export async function runAudit() {
   const [
     guidelineMetadata,
     measurementMetadata,
-    solidHtml,
-    subsolidHtml,
+    solidEvidence,
+    subsolidEvidence,
     guidelineArtifactVerification,
     measurementArtifactVerification,
     figure1ArtifactVerification,
   ] = await Promise.all([
     loadCrossref(GUIDELINE_DOI),
     loadCrossref(MEASUREMENT_DOI),
-    loadNlmTable(SOLID_TABLE_URL, EXPECTED_TABLES.solid.objectId),
-    loadNlmTable(SUBSOLID_TABLE_URL, EXPECTED_TABLES.subsolid.objectId),
+    ...["solid", "subsolid"].map((kind) => resolveNlmTableEvidence({
+      expected: EXPECTED_TABLES[kind],
+      snapshot: manifest.table_snapshots[kind],
+      bindings: {
+        runtime: sha256(readFileSync(resolve(CALCULATOR_PATH))),
+        vectors: sha256(readFileSync(resolve(FIXTURE_PATH))),
+        parser: sha256(readFileSync(new URL(import.meta.url))),
+      },
+    })),
     verifyMementoArtifact(EXPECTED_RSNA_ARTIFACTS.guideline, {
       byteSignature: "%PDF-",
     }),
     verifyMementoArtifact(EXPECTED_RSNA_ARTIFACTS.measurement),
-    verifyMementoArtifact(EXPECTED_RSNA_ARTIFACTS.figure1, {
+    // Archive routing changed; retain the original RSNA URL and every byte pin.
+    // This single explicit capture refresh is not general redirect permission.
+    verifyMementoArtifact({
+      ...EXPECTED_RSNA_ARTIFACTS.figure1,
+      retrieval_url: "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+      memento_datetime: "2022-01-19T11:06:01Z",
+      origin_etag: '"36aed1d449f2d313"',
+    }, {
       byteSignature: "GIF",
     }),
   ]);
@@ -1911,31 +1989,29 @@ export async function runAudit() {
     published: "2017-11",
   });
 
-  const solidFragment = extractTable(solidHtml, "solid table");
-  const subsolidFragment = extractTable(subsolidHtml, "subsolid table");
-  assertFragment(solidFragment, EXPECTED_TABLES.solid, "solid table");
-  assertFragment(subsolidFragment, EXPECTED_TABLES.subsolid, "subsolid table");
+  const solidFragment = solidEvidence.fragment;
+  const subsolidFragment = subsolidEvidence.fragment;
 
   assertExpectedText(
-    solidFragment,
+    extractHtmlLiteralText(solidFragment),
     [
       "No routine follow-up",
       "Optional CT at 12 months",
-      "CT at 6&#x02013;12 months, then consider CT at 18&#x02013;24 months",
-      "CT at 6&#x02013;12 months, then CT at 18&#x02013;24 months",
+      "CT at 6-12 months, then consider CT at 18-24 months",
+      "CT at 6-12 months, then CT at 18-24 months",
       "Consider CT, PET/CT or tissue sampling at 3 months",
-      "CT at 3&#x02013;6 months, then consider CT at 18&#x02013;24 months",
-      "CT at 3&#x02013;6 months, then CT at 18&#x02013;24 months",
+      "CT at 3-6 months, then consider CT at 18-24 months",
+      "CT at 3-6 months, then CT at 18-24 months",
     ],
     "solid table",
   );
   assertExpectedText(
-    subsolidFragment,
+    extractHtmlLiteralText(subsolidFragment),
     [
-      "CT at 6&#x02013;12 months to confirm persistence, then CT every 2 years until 5 years",
-      "If unchanged and solid component remains &#x0003c;6 mm, annual CT should be performed for 5 years",
-      "CT at 3&#x02013;6 months. If stable, consider CT at 2 and 4 years",
-      "CT at 3&#x02013;6 months. Subsequent management based on the most suspicious nodule(s)",
+      "CT at 6-12 months to confirm persistence, then CT every 2 years until 5 years",
+      "If unchanged and solid component remains <6 mm, annual CT should be performed for 5 years",
+      "CT at 3-6 months. If stable, consider CT at 2 and 4 years",
+      "CT at 3-6 months. Subsequent management based on the most suspicious nodule(s)",
     ],
     "subsolid table",
   );
@@ -2153,6 +2229,7 @@ export async function runAudit() {
     })),
     secondary_cross_checks: {
       solid: {
+        ...Object.fromEntries(Object.entries(solidEvidence).filter(([key]) => key !== "fragment")),
         role: "secondary-open-table-reproduction",
         url: SOLID_TABLE_URL,
         object_id: EXPECTED_TABLES.solid.objectId,
@@ -2160,6 +2237,7 @@ export async function runAudit() {
         table_fragment_sha256: sha256(solidFragment),
       },
       subsolid: {
+        ...Object.fromEntries(Object.entries(subsolidEvidence).filter(([key]) => key !== "fragment")),
         role: "secondary-open-table-reproduction",
         url: SUBSOLID_TABLE_URL,
         object_id: EXPECTED_TABLES.subsolid.objectId,
@@ -2207,7 +2285,8 @@ export async function runAudit() {
     correct_measurement_doi_present: true,
     known_wrong_measurement_doi_absent: true,
     calculator_content_invariants_match: true,
-    source_bytes_committed: false,
+    source_bytes_committed: true,
+    committed_source_scope: "CC-BY-4.0 publisher table fragments only; no RSNA primary artifacts",
   };
 }
 
@@ -2221,7 +2300,7 @@ if (isMain) {
     process.stdout.write(`${JSON.stringify(audit)}\n`);
   } else {
     console.log(
-      `Fleischner source audit passed: 3 byte-pinned RSNA-origin Mementos, ${audit.source_text_verification.locator_assertion_count} literal locator assertions with ${audit.source_text_verification.required_snippet_count} required snippets across ${audit.claim_ids.length} reviewed claims, ${audit.implementation_invariant_ids.length} implementation invariants, ${audit.executed_vector_count} executable vectors, primary DOI identities, and 2 hashed live table fragments.`,
+      `Fleischner source audit passed: 3 byte-pinned RSNA-origin Mementos, ${audit.source_text_verification.locator_assertion_count} literal locator assertions with ${audit.source_text_verification.required_snippet_count} required snippets across ${audit.claim_ids.length} reviewed claims, ${audit.implementation_invariant_ids.length} implementation invariants, ${audit.executed_vector_count} executable vectors, primary DOI identities; secondary table modes: ${audit.secondary_cross_checks.solid.mode}, ${audit.secondary_cross_checks.subsolid.mode}.`,
     );
   }
 }

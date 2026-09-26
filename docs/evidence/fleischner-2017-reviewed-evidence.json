@@ -1,4 +1,64 @@
 {
+  "table_snapshots": {
+    "solid": {
+      "schema": "radulator-fleischner-table-snapshot/v1",
+      "object_id": "ch5.Tab1",
+      "original_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+      "publisher_url": "https://link.springer.com/chapter/10.1007/978-3-030-11149-6_5/tables/1",
+      "locator": "Springer Table 5.1",
+      "artifact_path": "docs/evidence/source-snapshots/fleischner-table1.html",
+      "bytes": 1587,
+      "sha256": "465a1c18ee172655c8b4c2a55d3c630020fe1b7d90b14e8b2508b8f7bbc8c74e",
+      "text_sha256": "5a9a7516677d89bebaacb9febb486dad0946ab8170a5047d52a20ab623648c5e",
+      "parser_version": "fleischner-html-literal/v1",
+      "retrieved_at": "2026-09-25T02:26:09Z",
+      "retrieval_bytes": 186642,
+      "retrieval_sha256": "39ae3e635dd732a9bf4cc8a6158c65e25fdfa9cb9c53b59e1db9d1cd3282c1b4",
+      "claim_id": "nlm-fleischner-solid-table-cross-check",
+      "bindings": {
+        "runtime": "fe28b38dce038d4055a280b8e2b25751817954baf69d3a552582d609f8998d25",
+        "vectors": "016b725ef0f69effa89667d3b4829dff3e94d15c9d46f82c94bf6cc892731af8",
+        "parser": "1941d4b38b43f1623a694fb55c2c4d2824dd6db0e41333bb5b279f93159a32f1"
+      },
+      "review": {
+        "disposition": "PASS",
+        "reference": "docs/evidence/source-snapshots/README.md#independent-source-review",
+        "reviewer": "/root/nlm_snapshot_provenance",
+        "reviewed_at": "2026-09-25T02:29:00Z",
+        "revalidate_by": "2026-10-25T02:29:00Z",
+        "release_authority": false
+      }
+    },
+    "subsolid": {
+      "schema": "radulator-fleischner-table-snapshot/v1",
+      "object_id": "ch5.Tab2",
+      "original_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+      "publisher_url": "https://link.springer.com/chapter/10.1007/978-3-030-11149-6_5/tables/2",
+      "locator": "Springer Table 5.2",
+      "artifact_path": "docs/evidence/source-snapshots/fleischner-table2.html",
+      "bytes": 1054,
+      "sha256": "4f3f7d2dc5f1873a187721044a5bd6566fc31b30ed82e4796e1d534f98915160",
+      "text_sha256": "fee89cdab0d0498ac55ecb9bb6f655fe555ca9a857fd662636dd5304447ae3e9",
+      "parser_version": "fleischner-html-literal/v1",
+      "retrieved_at": "2026-09-25T02:26:11Z",
+      "retrieval_bytes": 186112,
+      "retrieval_sha256": "2c8c5c2d04150745112ce8ce4be08f9cecf424e9adeb84270d6b241c0a4b7001",
+      "claim_id": "nlm-fleischner-subsolid-table-cross-check",
+      "bindings": {
+        "runtime": "fe28b38dce038d4055a280b8e2b25751817954baf69d3a552582d609f8998d25",
+        "vectors": "016b725ef0f69effa89667d3b4829dff3e94d15c9d46f82c94bf6cc892731af8",
+        "parser": "1941d4b38b43f1623a694fb55c2c4d2824dd6db0e41333bb5b279f93159a32f1"
+      },
+      "review": {
+        "disposition": "PASS",
+        "reference": "docs/evidence/source-snapshots/README.md#independent-source-review",
+        "reviewer": "/root/nlm_snapshot_provenance",
+        "reviewed_at": "2026-09-25T02:29:00Z",
+        "revalidate_by": "2026-10-25T02:29:00Z",
+        "release_authority": false
+      }
+    }
+  },
   "schema": "radulator-reviewed-source-evidence/v3",
   "payload": {
     "calculator_id": "fleischner",

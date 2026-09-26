@@ -308,6 +308,7 @@
   /* Hide navigation and non-essential elements */
   aside,
   nav,
+  .skip-link,
   .no-print,
   button:not(.print-button),
   footer {

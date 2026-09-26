@@ -26,6 +26,25 @@ Never run a candidate-declared source-audit command from the judge checkout: tha
 
 Hardcoded claim flags are not source evidence. Independently inspect the retrieval restrictions, parser, page assertions, runtime/vector binding, source URL, digest, CI workflow identity, run identity, and head SHA. Open the official source to confirm its identity when possible. A viewer that renders only a PDF head/tail does not invalidate a qualifying deterministic audit, but it also does not supply omitted claims. If any condition is absent, the audit is not fully reviewable, or the trusted check did not run it at the exact head, return `NEEDS_FIX`.
 
+### Bounded Fleischner secondary-table snapshot exception
+
+For the two NLM Bookshelf table cross-checks only, unchanged reviewed clinical
+claims may use an independently reviewed, explicitly attributed publisher
+snapshot when live NLM retrieval is unavailable. The RSNA primary evidence remains
+required. Inspect original/publisher identities, retrieval provenance, permitted
+storage, raw bytes and complete normalized table-text digests, exact locators,
+runtime/vector/parser fingerprints, independent review reference and date, and a
+revalidation deadline no more than 30 days after review. The candidate must verify
+these at the exact head and report snapshot mode honestly. Source review is not
+release authorization; a worker-authored approval flag alone is insufficient.
+
+Missing provenance/review, expired review, corrupt bytes, changed covered claims
+or bindings, or valid live content differing from the approved content requires
+`NEEDS_FIX`. A CAPTCHA is retrieval unavailability, not evidence of unchanged live
+guidance. Do not infer current source currency from an unexpired snapshot. This
+exception does not waive CI, exact-revision signatures, reviewer independence,
+quorum, or production authorization, and does not extend to other source audits.
+
 Create one decision JSON per candidate:
 
 ```json
