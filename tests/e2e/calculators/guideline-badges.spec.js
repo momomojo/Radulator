@@ -28,7 +28,7 @@ test.describe("Guideline Version Badges", () => {
       { name: "ACR O-RADS", expected: "ACR O-RADS 2020" },
       { name: "Fleischner 2017", expected: "Fleischner 2017" },
       { name: "Wells Criteria for PE", expected: "Wells Criteria (2000)" },
-      { name: "Wells Criteria for DVT", expected: "Wells Criteria (2003)" },
+      { name: "Wells Criteria for DVT", expected: "Modified Wells DVT / NICE NG158" },
       { name: "Child-Pugh Score", expected: "Child-Pugh (Pugh 1973)" },
       {
         name: "MELD-Na Score",

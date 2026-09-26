@@ -86,6 +86,7 @@ export const AVSCortisol = {
 
     const addLeftSample = () => {
       if (leftSamples.length < 2) {
+        setResults(null);
         setLeftSamples([
           ...leftSamples,
           { time: "", cortisol: "", epinephrine: "" },
@@ -95,6 +96,7 @@ export const AVSCortisol = {
 
     const addRightSample = () => {
       if (rightSamples.length < 4) {
+        setResults(null);
         setRightSamples([
           ...rightSamples,
           { time: "", cortisol: "", epinephrine: "" },
@@ -104,12 +106,14 @@ export const AVSCortisol = {
 
     const removeLeftSample = (index) => {
       if (leftSamples.length > 1) {
+        setResults(null);
         setLeftSamples(leftSamples.filter((_, i) => i !== index));
       }
     };
 
     const removeRightSample = (index) => {
       if (rightSamples.length > 1) {
+        setResults(null);
         setRightSamples(rightSamples.filter((_, i) => i !== index));
       }
     };
@@ -436,7 +440,7 @@ export const AVSCortisol = {
     };
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" onChangeCapture={() => setResults(null)}>
         {/* Patient Metadata */}
         <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
           <h3 className="font-semibold mb-3">Patient Information</h3>
