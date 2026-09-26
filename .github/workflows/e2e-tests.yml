@@ -153,7 +153,7 @@ jobs:
             fi
             node "$audit"
           done
-          npm run test:cac-drs-source
+          # CAC runs only in the protected exact-head lane (test:cac-drs-source) to avoid duplicate live-source fetches.
           npm run test:hermes-guideline-registry
           node tests/roadmap-guideline-status.test.mjs
 

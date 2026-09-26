@@ -118,6 +118,11 @@ assert.match(
   /(?:^|\n)\s*npm run test:cac-drs-source\s*(?:\n|$)/,
   "the protected exact-head check must execute the CAC primary-source audit",
 );
+assert.equal(
+  (releaseControlEvidence.run.match(/npm run test:cac-drs-source/g) ?? []).length,
+  1,
+  "the protected exact-head check must run the CAC primary-source audit exactly once",
+);
 const protectedBosniakCommandLines = releaseControlEvidence.run
   .split(/\r?\n/)
   .filter((line) => line.trim() === "npm run test:bosniak-source");
@@ -144,7 +149,7 @@ const expectedSourceAuditBody = [
   "  fi",
   '  node "$audit"',
   "done",
-  "npm run test:cac-drs-source",
+  "# CAC runs only in the protected exact-head lane (test:cac-drs-source) to avoid duplicate live-source fetches.",
   "npm run test:hermes-guideline-registry",
   "node tests/roadmap-guideline-status.test.mjs",
 ].join("\n");
@@ -163,6 +168,13 @@ assert.doesNotMatch(
   /^\s*(?:node\s+.*audit-bosniak-primary-source\.test\.mjs|npm run\s+test:bosniak-source)\s*$/m,
   "Smoke must not invoke the Bosniak live audit a second time",
 );
+for (const step of e2e.jobs["smoke-tests"].steps) {
+  assert.doesNotMatch(
+    step.run ?? "",
+    /^\s*(?:node\s+.*cac-drs-auc-boundary\.test\.mjs|npm run\s+test:cac-drs-source)\s*$/m,
+    `Smoke step "${step.name}" must not invoke the CAC live audit; the protected exact-head lane owns it`,
+  );
+}
 assert.match(
   clinicalJudgeSkill,
   /Never run a candidate-declared source-audit command from the judge checkout/,
