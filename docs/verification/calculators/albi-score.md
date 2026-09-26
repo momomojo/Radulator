@@ -115,6 +115,28 @@ clinical review. Raw copyrighted source files are not committed.
 
 ## Verification evidence and limits
 
+### Source-artifact refresh, 2026-09-23 (not a reopened clinical baseline)
+
+Fresh required source verification found a changed PMC HTML artifact: 276,164
+raw bytes / 276,084 canonical bytes, canonical SHA256
+`5b76f4af10f9cf9b19382ebd4ba5e35a228e0e942bfb1759dbafbcd8737c81a3`.
+The preceding September 8 identity remains historical evidence, not the current
+pin. Owner retrieved the full article via ordinary direct HTTPS using the audit
+request, then re-read Abstract Patients and Methods and Results around Table 2:
+the original population, equation, units and raw grade boundaries still support
+the existing source-bound claims and independently prescribed expectations.
+Some other ordinary request clients returned a browser challenge; no challenge
+was bypassed. Only the full article response was used for this refresh.
+
+The prior complete HTML was not retained for a byte diff. The nine-byte size
+difference is not proof of a cosmetic-only change; no such assertion is made.
+Update the exact artifact identities only, keeping DOI/PMCID, section locators,
+claim assertions, six protected vectors and the two existing volatile-field
+normalizations unchanged. No new treatment guidance, model variant, computation,
+UI or accepted clinical scope is introduced. The accepted September 9 release
+receipt still closes the original-model baseline. This refresh needs its own
+required checks and signed review; it does not self-authorize publication.
+
 - `tests/fixtures/compute/albi-score.json`: six protected source-bound vectors.
 - `tests/albi-compute.test.mjs`: raw boundaries/rounding, SI/US equivalence,
   strict parser/units, warning boundaries/anchors, nonrepresentable arithmetic,
