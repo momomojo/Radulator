@@ -31,14 +31,14 @@ const SOURCES = Object.freeze([
   {
     key: "adult_card",
     url: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Adult.pdf",
-    bytes: 50299,
-    sha256: "8e01c557097de36dd38706f1ce9bc540797bdee5e43534db3f6123bfabb963fb",
+    bytes: 50931,
+    sha256: "6c3d1225c05038659d83e001b49c3b04e6460bb99dace6823f6ca95c9b4cbc99",
   },
   {
     key: "pediatric_card",
     url: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf",
-    bytes: 54773,
-    sha256: "4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f",
+    bytes: 55452,
+    sha256: "3980e786cc9ae9f3d5edc8008b2ab48fb8ab0b7861d52fb7cd51cd43f5033b84",
   },
 ]);
 const BOUND_VECTOR_IDS = Object.freeze([
