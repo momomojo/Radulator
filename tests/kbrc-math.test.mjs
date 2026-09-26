@@ -160,6 +160,7 @@ const splineKnots = {
   hemoglobin: [79, 107, 141],
   kidneySize: [9.5, 11.4, 13.4],
 };
+const splineNeighborhoodOffsets = [-0.001, 0, 0.001];
 const knotBaseline = {
   age: 52,
   bmi: 26,
@@ -170,9 +171,15 @@ const knotBaseline = {
 };
 for (const [variable, knots] of Object.entries(splineKnots)) {
   for (const knot of knots) {
-    const vector = { ...knotBaseline, [variable]: knot };
-    const actual = calculateKbrcMajorBleedingProbability(vector).probability;
-    assertClose(actual, referenceProbability(vector), `${variable} knot ${knot}`);
+    for (const offset of splineNeighborhoodOffsets) {
+      const vector = { ...knotBaseline, [variable]: knot + offset };
+      const actual = calculateKbrcMajorBleedingProbability(vector).probability;
+      assertClose(
+        actual,
+        referenceProbability(vector),
+        `${variable} knot ${knot} offset ${offset}`,
+      );
+    }
   }
 }
 
@@ -198,6 +205,12 @@ for (const [field, range] of Object.entries(NUMERIC_RANGES)) {
     ["below range", range.min - 0.01],
     ["above range", range.max + 0.01],
   ]) {
+    if (field === "weight" && (state === "below range" || state === "above range")) {
+      const result = computeKidneyBiopsyBleedingRisk({ ...validInputs, weight: value });
+      assert.equal(result.Error, undefined);
+      assert.match(result["Input Review"], /weight, height and units/i);
+      continue;
+    }
     const result = computeKidneyBiopsyBleedingRisk({
       ...validInputs,
       [field]: value,
@@ -305,5 +318,5 @@ for (let index = 0; index < 600; index += 1) {
 }
 
 console.log(
-  "KBRC math regression passed: 4 source examples, 15 knots, validation/boundary matrix, <0.1% formatting, native/allograft pair, and 600 seeded differential vectors",
+  "KBRC math regression passed: 4 source examples, 45 spline-neighborhood vectors, validation/boundary matrix, <0.1% formatting, native/allograft pair, and 600 seeded differential vectors",
 );

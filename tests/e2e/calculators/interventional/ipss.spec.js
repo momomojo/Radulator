@@ -1,501 +1,172 @@
-/**
- * E2E Tests for IPSS Calculator (Inferior Petrosal Sinus Sampling)
- *
- * Tests comprehensive scenarios including:
- * - Cushing's Disease with lateralization
- * - Ectopic ACTH Syndrome
- * - Failed catheterization
- * - Non-lateralizing Cushing's
- * - Dynamic row functionality
- * - Input validation
- * - UI elements and accessibility
- */
-
 import { test, expect } from "@playwright/test";
 import { navigateToCalculator } from "../../../helpers/calculator-test-helper.js";
 
-test.describe("IPSS Calculator - Inferior Petrosal Sinus Sampling", () => {
-  test.beforeEach(async ({ page }) => {
+const results = page => page.getByRole("status", { name: "Calculator results" });
+const rows = page => page.locator('[aria-label="Post-CRH Sample Table"] .grid.items-center');
+async function basal(page, values = {}) {
+  for (const [id, value] of Object.entries({ basalLeftACTH:"100", basalRightACTH:"50", basalPeriphACTH:"20", basalLeftPRL:"30", basalRightPRL:"30", basalPeriphPRL:"10", ...values })) {
+    await page.locator("#" + id).fill(value);
+  }
+}
+async function sample(page, values, index = 0) {
+  const inputs = rows(page).nth(index).locator("input");
+  for (const [i, value] of values.entries()) await inputs.nth(i).fill(value);
+}
+async function calculate(page) {
+  await page.getByRole("button", { name:"Calculate", exact:true }).click();
+}
+test.describe("IPSS reviewed sampling workflow", () => {
+  test.beforeEach(async ({page}) => {
     await navigateToCalculator(page, "Inferior Petrosal Sinus Sampling (IPSS)");
   });
-
-  test("Test 1: Cushing's Disease with Left Lateralization", async ({
-    page,
-  }) => {
-    // Fill basal samples - use more specific selectors
-    await page
-      .getByLabel("Basal Left IPS ACTH")
-      .fill("200");
-    await page
-      .getByLabel("Basal Right IPS ACTH")
-      .fill("180");
-    await page
-      .getByLabel("Basal Peripheral ACTH")
-      .fill("50");
-
-    // Basal PRL values
-    await page
-      .getByLabel("Basal Left IPS Prolactin")
-      .fill("40");
-    await page
-      .getByLabel("Basal Right IPS Prolactin")
-      .fill("38");
-    await page
-      .getByLabel("Basal Peripheral Prolactin")
-      .fill("18");
-
-    // Add post-CRH sample at +6 minutes
-    // Use aria-label to target the dynamic table specifically
-    const postCrhTable = page.locator(
-      'div[aria-label="Post-CRH Sample Table"]',
-    );
-
-    // Get inputs from the first data row (items-center class distinguishes data rows from header)
-    const firstRow = postCrhTable
-      .locator("div.grid.grid-cols-8.items-center")
-      .first();
-    const inputs = firstRow.locator("input");
-
-    await inputs.nth(0).fill("6"); // time
-    await inputs.nth(1).fill("850"); // leftACTH
-    await inputs.nth(2).fill("420"); // rightACTH
-    await inputs.nth(3).fill("55"); // periphACTH
-    // Leave PRL values empty (should use basal)
-
-    // Click Calculate
-    await page.click('button:has-text("Calculate")');
-
-    // Verify catheterization success
-    await expect(
-      page.locator("text=Both sides successfully catheterized"),
-    ).toBeVisible();
-    await expect(page.locator("text=2.22 — ✓ Successful")).toBeVisible(); // Left PRL ratio
-    await expect(page.locator("text=2.11 — ✓ Successful")).toBeVisible(); // Right PRL ratio
-
-    // Verify basal ratios
-    await expect(
-      page.locator("text=4.00 (>2 ✓ Positive for Cushing's)"),
-    ).toBeVisible();
-
-    // Verify peak ratio
-    await expect(
-      page.locator("text=15.45 (>3 ✓ Positive for Cushing's)"),
-    ).toBeVisible();
-
-    // Verify diagnosis - use more specific selector to avoid strict mode violation
-    await expect(page.locator("text=🔵 CUSHING'S DISEASE")).toBeVisible();
-
-    // Verify lateralization to LEFT - use .first() since both simple and normalized methods show same result
-    await expect(
-      page.locator("text=🟢 Lateralizes to LEFT side").first(),
-    ).toBeVisible();
-
-    // Take screenshot
-    await page.screenshot({
-      path: "test-results/ipss-cushings-left-lateralization.png",
-      fullPage: true,
-    });
+  test("basal-only calculation ignores the empty default stimulated row", async ({page}) => {
+    await basal(page); await calculate(page);
+    await expect(page).toHaveURL(/#\/ipss$/);
+    await expect(results(page)).toContainText("5.00");
+    await expect(results(page)).toContainText("2.50");
+    await expect(results(page)).not.toContainText("Peak Time Point");
+    await expect(results(page)).not.toContainText("95-97%");
+    await expect(results(page)).not.toContainText("surgery indicated");
   });
-
-  test("Test 2: Ectopic ACTH Syndrome", async ({ page }) => {
-    // Fill basal samples
-    await page
-      .getByLabel("Basal Left IPS ACTH")
-      .fill("80");
-    await page
-      .getByLabel("Basal Right IPS ACTH")
-      .fill("75");
-    await page
-      .getByLabel("Basal Peripheral ACTH")
-      .fill("60");
-
-    // Basal PRL values
-    await page
-      .getByLabel("Basal Left IPS Prolactin")
-      .fill("35");
-    await page
-      .getByLabel("Basal Right IPS Prolactin")
-      .fill("33");
-    await page
-      .getByLabel("Basal Peripheral Prolactin")
-      .fill("16");
-
-    // Add post-CRH sample at +6 minutes (still low ratios)
-    const postCrhTable = page.locator(
-      'div[aria-label="Post-CRH Sample Table"]',
-    );
-    const firstRow = postCrhTable
-      .locator("div.grid.grid-cols-8.items-center")
-      .first();
-    const inputs = firstRow.locator("input");
-
-    await inputs.nth(0).fill("6");
-    await inputs.nth(1).fill("90");
-    await inputs.nth(2).fill("85");
-    await inputs.nth(3).fill("65");
-
-    // Click Calculate
-    await page.click('button:has-text("Calculate")');
-
-    // Verify catheterization success
-    await expect(
-      page.locator("text=Both sides successfully catheterized"),
-    ).toBeVisible();
-
-    // Verify basal ratio is below threshold (key and value render in
-    // separate spans, so match the value string the compute() emits).
-    await expect(page.locator("text=1.33 (≤2)")).toBeVisible();
-
-    // Verify peak ratio is below threshold
-    await expect(page.locator("text=1.38 (≤3)")).toBeVisible();
-
-    // Verify diagnosis
-    await expect(page.locator("text=🔴 ECTOPIC ACTH SYNDROME")).toBeVisible();
-    await expect(
-      page.locator("text=Search for ectopic ACTH source"),
-    ).toBeVisible();
-
-    // Take screenshot
-    await page.screenshot({
-      path: "test-results/ipss-ectopic-acth.png",
-      fullPage: true,
-    });
+  test("sample-entry help explains units and optional PRL without surgical-side claims", async ({page}) => {
+    const table = page.getByLabel("Post-CRH Sample Table", {exact:true});
+    await expect(table).toContainText("ACTH in pg/mL");
+    await expect(table).toContainText("prolactin in ng/mL");
+    await expect(table).toContainText("same units");
+    await expect(table).not.toContainText("improve lateralization accuracy");
   });
-
-  test("Test 3: Failed Catheterization", async ({ page }) => {
-    // Fill basal samples with LOW PRL ratios (failed catheterization)
-    await page
-      .getByLabel("Basal Left IPS ACTH")
-      .fill("200");
-    await page
-      .getByLabel("Basal Right IPS ACTH")
-      .fill("180");
-    await page
-      .getByLabel("Basal Peripheral ACTH")
-      .fill("50");
-
-    // Basal PRL values (FAILED - ratios < 1.5)
-    await page
-      .getByLabel("Basal Left IPS Prolactin")
-      .fill("20");
-    await page
-      .getByLabel("Basal Right IPS Prolactin")
-      .fill("22");
-    await page
-      .getByLabel("Basal Peripheral Prolactin")
-      .fill("18");
-
-    // Click Calculate
-    await page.click('button:has-text("Calculate")');
-
-    // Verify failed catheterization
-    await expect(page.locator("text=1.11 — ✗ Failed")).toBeVisible(); // Left PRL ratio
-    await expect(page.locator("text=1.22 — ✗ Failed")).toBeVisible(); // Right PRL ratio
-    await expect(page.locator("text=BOTH SIDES FAILED")).toBeVisible();
-
-    // Verify inadequate study message
-    await expect(page.locator("text=INADEQUATE STUDY")).toBeVisible();
-    await expect(
-      page.locator("text=Repeat procedure recommended"),
-    ).toBeVisible();
-
-    // Take screenshot
-    await page.screenshot({
-      path: "test-results/ipss-failed-catheterization.png",
-      fullPage: true,
-    });
+  test("sample columns align with their headers and all seven values fit the print width", async ({page}) => {
+    const table = page.getByLabel("Post-CRH Sample Table", {exact:true});
+    const headers = table.locator(".grid.font-medium > div");
+    const inputs = rows(page).first().locator("input");
+    for (let i=0;i<7;i++) {
+      const header = await headers.nth(i).boundingBox();
+      const input = await inputs.nth(i).boundingBox();
+      expect(Math.abs(header.x-input.x)).toBeLessThan(2);
+    }
+    await sample(page,["3","200","100","20","60","30","10"]);
+    await page.setViewportSize({width:800,height:1000});
+    await page.emulateMedia({media:"print"});
+    const parent = await table.boundingBox();
+    for (let i=0;i<7;i++) {
+      const input = await inputs.nth(i).boundingBox();
+      expect(input.x).toBeGreaterThanOrEqual(parent.x);
+      expect(input.x+input.width).toBeLessThanOrEqual(parent.x+parent.width+1);
+    }
   });
-
-  test("Test 4: Non-lateralizing Cushing's Disease", async ({ page }) => {
-    // Fill basal samples
-    await page
-      .getByLabel("Basal Left IPS ACTH")
-      .fill("150");
-    await page
-      .getByLabel("Basal Right IPS ACTH")
-      .fill("145");
-    await page
-      .getByLabel("Basal Peripheral ACTH")
-      .fill("45");
-
-    // Basal PRL values
-    await page
-      .getByLabel("Basal Left IPS Prolactin")
-      .fill("40");
-    await page
-      .getByLabel("Basal Right IPS Prolactin")
-      .fill("38");
-    await page
-      .getByLabel("Basal Peripheral Prolactin")
-      .fill("18");
-
-    // Add post-CRH sample at +6 minutes (high ratios but similar between sides)
-    const postCrhTable = page.locator(
-      'div[aria-label="Post-CRH Sample Table"]',
-    );
-    const firstRow = postCrhTable
-      .locator("div.grid.grid-cols-8.items-center")
-      .first();
-    const inputs = firstRow.locator("input");
-
-    await inputs.nth(0).fill("6");
-    await inputs.nth(1).fill("500");
-    await inputs.nth(2).fill("480");
-    await inputs.nth(3).fill("50");
-
-    // Click Calculate
-    await page.click('button:has-text("Calculate")');
-
-    // Verify catheterization success
-    await expect(
-      page.locator("text=Both sides successfully catheterized"),
-    ).toBeVisible();
-
-    // Verify diagnosis is Cushing's - use more specific selector
-    await expect(page.locator("text=🔵 CUSHING'S DISEASE")).toBeVisible();
-
-    // Verify non-lateralizing - use .first() since it appears in multiple results
-    await expect(
-      page.locator("text=⚪ Non-lateralizing").first(),
-    ).toBeVisible();
-    await expect(page.locator("text=bilateral exploration")).toBeVisible();
-
-    // Take screenshot
-    await page.screenshot({
-      path: "test-results/ipss-non-lateralizing.png",
-      fullPage: true,
-    });
+  test("separate normalization methods retain their measured denominators in actual copy", async ({page,context}) => {
+    await basal(page);
+    await sample(page, ["3","200","100","20","60","30","10"]);
+    await calculate(page);
+    await expect(results(page)).toContainText("3.3333");
+    await expect(results(page)).toContainText("1.6667");
+    await expect(results(page)).toContainText("LEFT IPS at +3");
+    await expect(results(page)).not.toContainText("Strong lateralization");
+    await context.grantPermissions(["clipboard-read","clipboard-write"]);
+    await page.getByRole("button",{name:"Copy results",exact:true}).click();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain("Basal PRL-normalized");
+    expect(copied).toContain("Concurrent PRL-normalized");
+    expect(copied).toContain("3.3333");
+    expect(copied).toContain("1.6667");
+    expect(copied).toContain("does not prescribe treatment");
   });
-
-  test("Test 5: Dynamic Row Add/Remove Functionality", async ({ page }) => {
-    const postCrhTable = page.locator(
-      'div[aria-label="Post-CRH Sample Table"]',
-    );
-
-    // Count data rows (items-center class only on data rows, not header)
-    const dataRows = postCrhTable.locator("div.grid.grid-cols-8.items-center");
-
-    // Initially should have 1 row
-    const initialCount = await dataRows.count();
-    expect(initialCount).toBe(1);
-
-    // Click "Add Sample Time Point" button (correct button text)
-    await page.click('button:has-text("Add Sample Time Point")');
-    await expect(dataRows).toHaveCount(2);
-
-    // Add another row
-    await page.click('button:has-text("Add Sample Time Point")');
-    await expect(dataRows).toHaveCount(3);
-
-    // Remove a row
-    const removeButtons = postCrhTable.locator('button:has-text("Remove")');
-    await removeButtons.first().click();
-    await expect(dataRows).toHaveCount(2);
-
-    // Try to remove down to the last row
-    await removeButtons.first().click();
-    await expect(dataRows).toHaveCount(1);
-
-    // Last remove button should be disabled
-    const lastRemoveButton = removeButtons.first();
-    await expect(lastRemoveButton).toBeDisabled();
+  test("absent prolactin preserves ACTH and reports unavailable normalization", async ({page}) => {
+    await basal(page,{basalLeftPRL:"",basalRightPRL:"",basalPeriphPRL:""});
+    await sample(page,["3","200","100","20"]);
+    await calculate(page);
+    await expect(results(page)).toContainText("10.00");
+    await expect(results(page)).toContainText("Not available: required prolactin");
+    await expect(results(page)).not.toContainText("NaN");
   });
-
-  test("Test 6: Multiple Post-CRH Time Points (Peak Selection)", async ({
-    page,
-  }) => {
-    // Fill basal samples
-    await page
-      .getByLabel("Basal Left IPS ACTH")
-      .fill("150");
-    await page
-      .getByLabel("Basal Right IPS ACTH")
-      .fill("145");
-    await page
-      .getByLabel("Basal Peripheral ACTH")
-      .fill("50");
-    await page
-      .getByLabel("Basal Left IPS Prolactin")
-      .fill("40");
-    await page
-      .getByLabel("Basal Right IPS Prolactin")
-      .fill("38");
-    await page
-      .getByLabel("Basal Peripheral Prolactin")
-      .fill("18");
-
-    const postCrhTable = page.locator(
-      'div[aria-label="Post-CRH Sample Table"]',
-    );
-    const dataRows = postCrhTable.locator("div.grid.grid-cols-8.items-center");
-
-    // Fill first row: +3 minutes
-    let inputs = dataRows.nth(0).locator("input");
-    await inputs.nth(0).fill("3");
-    await inputs.nth(1).fill("300");
-    await inputs.nth(2).fill("290");
-    await inputs.nth(3).fill("55");
-
-    // Add second row: +6 minutes (PEAK)
-    await page.click('button:has-text("Add Sample Time Point")');
-    await expect(dataRows).toHaveCount(2);
-    inputs = dataRows.nth(1).locator("input");
-    await inputs.nth(0).fill("6");
-    await inputs.nth(1).fill("600");
-    await inputs.nth(2).fill("580");
-    await inputs.nth(3).fill("52");
-
-    // Add third row: +15 minutes (declining)
-    await page.click('button:has-text("Add Sample Time Point")');
-    await expect(dataRows).toHaveCount(3);
-    inputs = dataRows.nth(2).locator("input");
-    await inputs.nth(0).fill("15");
-    await inputs.nth(1).fill("400");
-    await inputs.nth(2).fill("390");
-    await inputs.nth(3).fill("50");
-
-    // Click Calculate
-    await page.click('button:has-text("Calculate")');
-
-    // Verify peak is at +6 minutes (highest ratio ~11.54)
-    await expect(page.locator("text=+6 minutes")).toBeVisible();
-    await expect(page.locator("text=11.54")).toBeVisible(); // Peak ratio
-
-    // Take screenshot
-    await page.screenshot({
-      path: "test-results/ipss-multiple-timepoints.png",
-      fullPage: true,
-    });
+  test("partial prolactin is rejected and recovery restores the methods", async ({page}) => {
+    await basal(page);
+    await sample(page,["3","200","100","20","60","","10"]);
+    await calculate(page);
+    await expect(results(page)).toContainText("row 1");
+    await expect(results(page)).not.toContainText("Localization Pattern");
+    await sample(page,["3","200","100","20","60","30","10"]);
+    await calculate(page);
+    await expect(results(page)).toContainText("1.6667");
   });
-
-  test("Test 7: Input Validation - Missing Basal Values", async ({ page }) => {
-    // Fill only some basal values
-    await page
-      .getByLabel("Basal Left IPS ACTH")
-      .fill("200");
-    await page
-      .getByLabel("Basal Right IPS ACTH")
-      .fill("180");
-    // Leave Peripheral ACTH and all PRL values empty
-
-    // Click Calculate
-    await page.click('button:has-text("Calculate")');
-
-    // Verify error message
-    await expect(
-      page.locator("text=Please enter all basal sample values"),
-    ).toBeVisible();
+  test("invalid denominator clears the old result and copy action", async ({page}) => {
+    await basal(page); await calculate(page);
+    await page.locator("#basalPeriphACTH").fill("0");
+    await expect(results(page)).toHaveCount(0);
+    await calculate(page);
+    await expect(results(page)).toContainText("finite positive");
+    await expect(page.getByRole("button",{name:"Copy results",exact:true})).toHaveCount(0);
+    await page.locator("#basalPeriphACTH").fill("20");
+    await calculate(page);
+    await expect(results(page)).toContainText("5.00");
   });
-
-  test("Test 8: UI Elements and Info Text", async ({ page }) => {
-    // Verify calculator title
-    await expect(
-      page.getByTestId('calculator-title').first(),
-    ).toBeVisible();
-
-    // Verify info text is visible (it's in a blue info box) - use .first() to avoid strict mode
-    await expect(
-      page.locator("text=Inferior Petrosal Sinus Sampling").first(),
-    ).toBeVisible();
-    await expect(
-      page.locator("text=differentiate Cushing's disease").first(),
-    ).toBeVisible();
-
-    // Verify all basal field labels are present
-    await expect(
-      page.locator('label:has-text("Basal Left IPS ACTH")'),
-    ).toBeVisible();
-    await expect(
-      page.locator('label:has-text("Basal Right IPS ACTH")'),
-    ).toBeVisible();
-    await expect(
-      page.locator('label:has-text("Basal Peripheral ACTH")'),
-    ).toBeVisible();
-    await expect(
-      page.locator('label:has-text("Basal Left IPS Prolactin")'),
-    ).toBeVisible();
-    await expect(
-      page.locator('label:has-text("Basal Right IPS Prolactin")'),
-    ).toBeVisible();
-    await expect(
-      page.locator('label:has-text("Basal Peripheral Prolactin")'),
-    ).toBeVisible();
-
-    // Verify dynamic row headers
-    await expect(
-      page.locator("text=Post-CRH Stimulation Samples"),
-    ).toBeVisible();
-    await expect(page.locator("text=Lt ACTH")).toBeVisible();
-    await expect(page.locator("text=Rt ACTH")).toBeVisible();
-    await expect(page.locator("text=Per ACTH")).toBeVisible();
-    await expect(page.locator("text=Lt PRL")).toBeVisible();
-    await expect(page.locator("text=Rt PRL")).toBeVisible();
-    await expect(page.locator("text=Per PRL")).toBeVisible();
-
-    // Verify Calculate button
-    await expect(page.getByRole('button', { name: 'Calculate' })).toBeVisible();
-
-    // Verify Add button (correct text)
-    await expect(
-      page.locator('button:has-text("Add Sample Time Point")'),
-    ).toBeVisible();
+  test("low prolactin warns without suppressing ACTH results", async ({page}) => {
+    await basal(page,{basalLeftPRL:"10",basalRightPRL:"10"});
+    await calculate(page);
+    await expect(results(page)).toContainText("Sampling caution");
+    await expect(results(page)).toContainText("5.00");
+    await expect(results(page)).not.toContainText("BOTH SIDES FAILED");
   });
-
-  test("Test 9: References Section", async ({ page }) => {
-    // Scroll to bottom to see references
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-
-    // Verify references section exists (use the heading to avoid matching the
-    // "Show N more references" expand button)
-    await expect(
-      page.getByRole("heading", { name: "References" }),
-    ).toBeVisible();
-
-    // Verify key references are present (Oldfield is the first, always-visible
-    // reference even while the list is collapsed)
-    await expect(page.locator("text=Oldfield EH")).toBeVisible();
-    await expect(page.locator("text=N Engl J Med")).toBeVisible();
-
-    // Take screenshot of references
-    await page.screenshot({
-      path: "test-results/ipss-references.png",
-      fullPage: true,
-    });
+  test("inclusive basal and stimulated boundaries use unrounded values", async ({page}) => {
+    await basal(page,{basalLeftACTH:"40",basalRightACTH:"20",basalLeftPRL:"18",basalRightPRL:"18"});
+    await calculate(page);
+    await expect(results(page)).toContainText("Basal ratio ≥2");
+    await expect(results(page)).toContainText("support adequate");
+    await page.locator("#basalLeftACTH").fill("39.99");
+    await sample(page,["3","60","20","20"]);
+    await calculate(page);
+    await expect(results(page)).toContainText("Peak post-CRH ratio ≥3");
   });
-
-  test("Test 10: Borderline Catheterization (1.5-1.8)", async ({ page }) => {
-    // Fill basal samples with BORDERLINE PRL ratios
-    await page
-      .getByLabel("Basal Left IPS ACTH")
-      .fill("150");
-    await page
-      .getByLabel("Basal Right IPS ACTH")
-      .fill("145");
-    await page
-      .getByLabel("Basal Peripheral ACTH")
-      .fill("50");
-
-    // Borderline PRL values (1.67 and 1.78 ratios)
-    await page
-      .getByLabel("Basal Left IPS Prolactin")
-      .fill("30");
-    await page
-      .getByLabel("Basal Right IPS Prolactin")
-      .fill("32");
-    await page
-      .getByLabel("Basal Peripheral Prolactin")
-      .fill("18");
-
-    // Click Calculate
-    await page.click('button:has-text("Calculate")');
-
-    // Verify borderline status is shown - use .first() since both left and right show borderline
-    await expect(page.locator("text=⚠ Borderline").first()).toBeVisible();
-
-    // Take screenshot
-    await page.screenshot({
-      path: "test-results/ipss-borderline-catheterization.png",
-      fullPage: true,
-    });
+  test("negative basal-only pattern does not establish an ectopic source", async ({page}) => {
+    await basal(page,{basalLeftACTH:"20",basalRightACTH:"20"});
+    await calculate(page);
+    await expect(results(page)).toContainText("basal-only result does not establish an ectopic source");
+    await expect(results(page)).not.toContainText("ECTOPIC ACTH SYNDROME");
+  });
+  test("partial stimulated row cannot masquerade as an absent sample", async ({page}) => {
+    await basal(page);
+    await sample(page,["3","200"]);
+    await calculate(page);
+    await expect(results(page)).toContainText("row 1");
+    await sample(page,["3","200","100","20"]);
+    await calculate(page);
+    await expect(results(page)).toContainText("10.00");
+  });
+  test("peak selection uses the unadjusted ratio across added rows", async ({page}) => {
+    await basal(page);
+    await sample(page,["3","100","80","20","10","10","10"]);
+    await page.getByRole("button",{name:"Add Sample Time Point"}).click();
+    await sample(page,["6","200","100","20","60","30","10"],1);
+    await calculate(page);
+    await expect(results(page)).toContainText("LEFT IPS at +6");
+    await expect(results(page)).toContainText("1.6667");
+    await rows(page).nth(1).getByRole("button",{name:"Remove"}).click();
+    await expect(results(page)).toHaveCount(0);
+    await expect(rows(page)).toHaveCount(1);
+    await expect(rows(page).first().getByRole("button",{name:"Remove"})).toBeDisabled();
+  });
+  test("tied peaks expose ambiguity instead of arbitrarily choosing a side", async ({page}) => {
+    await basal(page);
+    await sample(page,["3","200","200","20","60","30","10"]);
+    await calculate(page);
+    await expect(results(page)).toContainText("Tied dominant");
+    await expect(results(page)).not.toContainText("Basal PRL-normalized peak ACTH ratio");
+  });
+  test("scope, references, keyboard and mobile print layout remain usable", async ({page}) => {
+    await expect(page.getByTestId("calculator-info")).toContainText("Prolactin is optional");
+    await page.getByRole("button",{name:/Show .* more references/}).click();
+    await expect(page.locator('a[href="https://doi.org/10.1161/SVIN.125.002309"]')).toBeVisible();
+    await expect(page.locator('a[href="https://doi.org/10.1210/jc.2011-2149"]')).toBeVisible();
+    await basal(page);
+    await page.locator("#basalLeftACTH").focus();
+    await page.keyboard.press("Tab");
+    await expect(page.locator("#basalRightACTH")).toBeFocused();
+    await calculate(page);
+    await page.setViewportSize({width:390,height:844});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await page.emulateMedia({media:"print"});
+    await expect(results(page)).toBeVisible();
+    await expect(results(page)).toContainText("Surgical Limitation");
+    await expect(page.getByRole("button",{name:"Print Results",exact:true})).toBeHidden();
   });
 });
