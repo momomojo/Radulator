@@ -156,7 +156,7 @@ test("collectInventory reflects the checked-out source, registry, fixtures, and 
   assert.equal(inventory.excluded.length, 1);
   assert.equal(inventory.excluded[0].id, "feedback-form");
   assert.equal(inventory.summary.registry.verified, 10);
-  assert.equal(inventory.summary.registry.seedUnverified, 32);
+  assert.equal(inventory.summary.registry.seedUnverified, 33);
   assert.equal(inventory.summary.compute.fixtureFiles, 13);
   assert.equal(inventory.summary.compute.cases, 317);
   assert.equal(inventory.summary.browser.calculatorSpecificSpecFiles, 43);
