@@ -32,11 +32,29 @@ function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+// Upstream archives (Europe PMC, publisher CDNs) return short 429/5xx bursts;
+// three attempts 0.5-1 s apart failed together in E2E run 32960482810. Retry
+// with exponential backoff, honour Retry-After, and still fail loudly at the end.
+const SOURCE_FETCH_ATTEMPTS = 5;
+const SOURCE_FETCH_MAX_DELAY_MS = 30_000;
+
+function retryDelayMs(response, attempt) {
+  const retryAfter = response?.headers.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds)) return seconds * 1_000;
+    const date = Date.parse(retryAfter);
+    if (Number.isFinite(date)) return date - Date.now();
+  }
+  return 2 ** (attempt - 1) * 1_000;
+}
+
 async function fetchBuffer(url) {
   let lastFailure = "unknown retrieval failure";
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  for (let attempt = 1; attempt <= SOURCE_FETCH_ATTEMPTS; attempt += 1) {
+    let response;
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         headers: { "user-agent": "Radulator-KBRC-primary-source-audit/1" },
         redirect: "follow",
         signal: AbortSignal.timeout(30_000),
@@ -48,11 +66,14 @@ async function fetchBuffer(url) {
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error);
     }
-    if (attempt < 3) {
-      await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+    if (attempt < SOURCE_FETCH_ATTEMPTS) {
+      const delay = Math.min(Math.max(retryDelayMs(response, attempt), 0), SOURCE_FETCH_MAX_DELAY_MS);
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
-  assert.fail(`${url}: primary-source retrieval failed after 3 attempts (${lastFailure})`);
+  assert.fail(
+    `${url}: primary-source retrieval failed after ${SOURCE_FETCH_ATTEMPTS} attempts (${lastFailure})`,
+  );
 }
 
 async function fetchSupplement(artifact) {
