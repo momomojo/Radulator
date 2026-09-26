@@ -41,6 +41,7 @@ export { NIRADS } from "./NIRADS";
 export { BIRADS } from "./BIRADS";
 export { ORADS } from "./ORADS";
 export { ThyPRO39 } from "./ThyPRO39";
+export { RECIST11 } from "./RECIST11";
 
 // Auto-discovered registry
 export {
