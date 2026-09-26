@@ -190,6 +190,21 @@ class RetainLearningTests(unittest.TestCase):
                         opener=self._opener_for_readback(self._chunk_readback(chunks)),
                     )
 
+    def test_rejects_chunks_from_different_memory_ids(self):
+        content = self._retained_content()
+        split_at = content.index("\nReleased SHA:")
+        readback = self._chunk_readback([(0, content[:split_at]), (1, content[split_at + 1:])])
+        readback["items"][0]["id"] = "memoryA_0"
+        readback["items"][1]["id"] = "memoryB_1"
+
+        with self.assertRaisesRegex(RetentionError, "did not share one memory id"):
+            retain_learning(
+                CANDIDATE,
+                api_url="http://hindsight.test:8890",
+                bank_id="hermes-radulator",
+                opener=self._opener_for_readback(readback),
+            )
+
     def test_rejects_out_of_order_or_mismatched_multi_chunk_readback(self):
         content = self._retained_content()
         split_at = content.index("\nReleased SHA:")

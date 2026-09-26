@@ -169,12 +169,13 @@ def retain_learning(
     ):
         raise RetentionError("Hindsight exact-document readback did not yield exact bounded chunk counts.")
 
+    chunk_prefixes = set()
     chunk_indexes = []
     for item in items:
         if not isinstance(item, dict):
             raise RetentionError("Hindsight exact-document readback contained an invalid chunk.")
         chunk_id = item.get("id")
-        chunk_match = isinstance(chunk_id, str) and re.fullmatch(r".+_([0-9]+)", chunk_id)
+        chunk_match = isinstance(chunk_id, str) and re.fullmatch(r"(.+)_([0-9]+)", chunk_id)
         item_tags = item.get("tags")
         if (
             not chunk_match
@@ -188,7 +189,11 @@ def retain_learning(
             or set(item_tags) != set(tags)
         ):
             raise RetentionError("Hindsight exact-document readback contained an invalid matching chunk.")
-        chunk_indexes.append(chunk_match.group(1))
+        chunk_prefixes.add(chunk_match.group(1))
+        chunk_indexes.append(chunk_match.group(2))
+    # Every chunk must come from one memory record: <id>_0, <id>_1, ... with one shared <id>.
+    if len(chunk_prefixes) != 1:
+        raise RetentionError("Hindsight exact-document readback chunk ids did not share one memory id.")
     if chunk_indexes != [str(index) for index in range(len(items))]:
         raise RetentionError("Hindsight exact-document readback chunk ids were not contiguous and ordered.")
     if "\n".join(item["text"] for item in items) != content:
