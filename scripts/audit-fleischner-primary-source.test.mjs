@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import process from "node:process";
 import * as auditModule from "./audit-fleischner-primary-source.mjs";
 import { digest } from "./release-policy.mjs";
@@ -877,6 +878,131 @@ await assert.rejects(
   "the capture timestamp must match the manifest",
 );
 
+// Transport-only Memento re-pins: a new capture timestamp is accepted only for
+// byte-identical payloads, and the reviewed SHA-256 still gates the bytes.
+const { applyMementoRecapture, MEMENTO_RECAPTURES } = auditModule;
+const recaptureUrl =
+  "https://web.archive.org/web/20230102030405id_/https://publisher.example/article";
+const syntheticRecapture = {
+  retrieval_url: recaptureUrl,
+  memento_datetime: "2023-01-02T03:04:05Z",
+  origin_etag: '"recaptured"',
+  content_bytes: syntheticArtifact.content_bytes,
+  content_sha256: syntheticArtifact.content_sha256,
+  repinned_on: "2026-09-24",
+  reason: "Synthetic re-pin to an identical-payload capture.",
+};
+function recaptureResponse(bytes) {
+  return fakeResponse({
+    contentType: "text/html; charset=UTF-8",
+    url: recaptureUrl,
+    bytesValue: bytes,
+    extraHeaders: {
+      link: `<${syntheticArtifact.origin_url}>; rel="original"`,
+      "memento-datetime": "Mon, 02 Jan 2023 03:04:05 GMT",
+      "x-archive-orig-date": "Mon, 02 Jan 2023 03:04:06 GMT",
+      "x-archive-orig-etag": '"recaptured"',
+    },
+  });
+}
+const recapturedArtifact = applyMementoRecapture(
+  syntheticArtifact,
+  syntheticRecapture,
+);
+assert.deepEqual(
+  recapturedArtifact,
+  {
+    ...syntheticArtifact,
+    retrieval_url: recaptureUrl,
+    memento_datetime: "2023-01-02T03:04:05Z",
+    origin_etag: '"recaptured"',
+  },
+  "a re-pin changes only the capture locator",
+);
+const recapturedVerification = await verifyMementoArtifact(recapturedArtifact, {
+  fetchImpl: async () => recaptureResponse(archivedHtml),
+});
+assert.equal(recapturedVerification.final_url, recaptureUrl);
+assert.equal(recapturedVerification.memento_datetime, "2023-01-02T03:04:05Z");
+assert.equal(
+  recapturedVerification.content_sha256,
+  syntheticArtifact.content_sha256,
+  "identical bytes under a new capture timestamp must pass",
+);
+const sameLengthDifferentBytes = Buffer.from(
+  archivedHtml.toString("utf8").replace("verified text", "Verified text"),
+);
+assert.equal(sameLengthDifferentBytes.length, archivedHtml.length);
+for (const bytes of [
+  sameLengthDifferentBytes,
+  Buffer.concat([archivedHtml, Buffer.from("!")]),
+]) {
+  await assert.rejects(
+    verifyMementoArtifact(recapturedArtifact, {
+      fetchImpl: async () => recaptureResponse(bytes),
+    }),
+    /bytes|SHA-256/,
+    "different bytes under a re-pinned capture must still fail",
+  );
+}
+for (const [override, error] of [
+  [{ content_sha256: "0".repeat(64) }, /payload SHA-256 must be identical/],
+  [
+    { content_bytes: syntheticArtifact.content_bytes + 1 },
+    /payload bytes must be identical/,
+  ],
+  [
+    {
+      retrieval_url:
+        "https://web.archive.org/web/20230102030405id_/https://attacker.example/article",
+    },
+    /same publisher origin/,
+  ],
+  [
+    {
+      retrieval_url:
+        "https://archive.example/web/20230102030405id_/https://publisher.example/article",
+    },
+    /raw-capture id_ URL/,
+  ],
+  [
+    { memento_datetime: "2023-01-02T03:04:06Z" },
+    /URL timestamp must match Memento-Datetime/,
+  ],
+  [
+    {
+      retrieval_url: syntheticArtifact.retrieval_url,
+      memento_datetime: syntheticArtifact.memento_datetime,
+    },
+    /must name a different capture/,
+  ],
+]) {
+  assert.throws(
+    () =>
+      applyMementoRecapture(syntheticArtifact, {
+        ...syntheticRecapture,
+        ...override,
+      }),
+    error,
+  );
+}
+assert.equal(
+  applyMementoRecapture(syntheticArtifact),
+  syntheticArtifact,
+  "an artifact without a re-pin is used exactly as reviewed",
+);
+const reviewedFigure = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"))
+  .payload.sources.flatMap((source) => source.artifacts ?? [])
+  .find((artifact) => artifact.id === "measurement-figure-1");
+assert.deepEqual(Object.keys(MEMENTO_RECAPTURES), ["measurement-figure-1"]);
+assert.deepEqual(applyMementoRecapture(reviewedFigure), {
+  ...reviewedFigure,
+  retrieval_url:
+    "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+  memento_datetime: "2022-01-19T11:06:01Z",
+  origin_etag: '"36aed1d449f2d313"',
+});
+
 const duplicateMarkerBytes = Buffer.from(
   `${fragmentStart}first${fragmentEnd}${fragmentStart}second${fragmentEnd}`,
 );
@@ -1137,15 +1263,15 @@ assert.deepEqual(audit.rsna_source_transport, [
         origin_url:
           "https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
         retrieval_url:
-          "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+          "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
         final_url:
-          "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+          "https://web.archive.org/web/20220119110601id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
         retrieval_host: "web.archive.org",
-        memento_datetime: "2020-10-21T01:25:28Z",
+        memento_datetime: "2022-01-19T11:06:01Z",
         rel_original_verified: true,
         origin_headers_verified: true,
         origin_last_modified: "Thu, 15 Mar 2018 16:55:54 GMT",
-        origin_etag: '"/4Dkotn4rPc"',
+        origin_etag: '"36aed1d449f2d313"',
         media_type: "image/gif",
         content_scope: "publisher-figure-1",
         content_bytes: 62198,
@@ -1155,26 +1281,99 @@ assert.deepEqual(audit.rsna_source_transport, [
         fragment: null,
         direct_origin_fetch_attempted_by_ci: false,
         manifest_recorded_direct_origin_status: 403,
+        reviewed_capture: {
+          retrieval_url:
+            "https://web.archive.org/web/20201021012528id_/https://pubs.rsna.org/cms/10.1148/radiol.2017162894/asset/images/medium/radiol.2017162894.fig1.gif",
+          memento_datetime: "2020-10-21T01:25:28Z",
+          origin_etag: '"/4Dkotn4rPc"',
+        },
+        recapture: {
+          repinned_on: "2026-09-24",
+          reason:
+            "The archive redirects the reviewed 2020-10-21 capture to this capture, whose payload has the identical SHA-256.",
+          payload_sha256_unchanged: true,
+        },
       },
     ],
   },
 ]);
 
-assert.deepEqual(audit.secondary_cross_checks.solid, {
-  role: "secondary-open-table-reproduction",
-  url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
-  object_id: "ch5.Tab1",
-  table_fragment_bytes: 3153,
-  table_fragment_sha256:
-    "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
-});
-assert.deepEqual(audit.secondary_cross_checks.subsolid, {
-  role: "secondary-open-table-reproduction",
-  url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
-  object_id: "ch5.Tab2",
-  table_fragment_bytes: 1912,
-  table_fragment_sha256:
-    "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
+const PINNED_NLM_TABLES_PATH = "docs/evidence/fleischner-2017-nlm-table-pins.json";
+const PINNED_NLM_TABLES_SHA256 =
+  "9b6afdb68a3fef320333320f07e5267f4c3d8b495a500a9de135b8dcfa41446f";
+const EXPECTED_SECONDARY_TABLES = {
+  solid: {
+    url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+    object_id: "ch5.Tab1",
+    label: "solid table",
+    bytes: 3153,
+    sha256: "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
+    normalized_text_sha256:
+      "5a9a7516677d89bebaacb9febb486dad0946ab8170a5047d52a20ab623648c5e",
+  },
+  subsolid: {
+    url: "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+    object_id: "ch5.Tab2",
+    label: "subsolid table",
+    bytes: 1912,
+    sha256: "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
+    normalized_text_sha256:
+      "fee89cdab0d0498ac55ecb9bb6f655fe555ca9a857fd662636dd5304447ae3e9",
+  },
+};
+const challengeNotices = [];
+const challengedObjectIds = [];
+for (const [key, expected] of Object.entries(EXPECTED_SECONDARY_TABLES)) {
+  const check = audit.secondary_cross_checks[key];
+  if (check.live_source_status === undefined) {
+    // Live table served: the exact reviewed fragment identity, as before.
+    assert.deepEqual(check, {
+      role: "secondary-open-table-reproduction",
+      url: expected.url,
+      object_id: expected.object_id,
+      table_fragment_bytes: expected.bytes,
+      table_fragment_sha256: expected.sha256,
+    });
+    continue;
+  }
+  // Only a recognised NLM bot challenge may fall back, and it must say so.
+  const message = `NLM ${expected.object_id} (${expected.label}): live source challenged by NLM bot protection; verified against pinned copy ${PINNED_NLM_TABLES_SHA256}`;
+  assert.deepEqual(check, {
+    role: "secondary-open-table-reproduction",
+    url: expected.url,
+    object_id: expected.object_id,
+    live_source_status: "challenged-by-nlm-bot-protection",
+    verified_against: "pinned-record",
+    pinned_record_path: PINNED_NLM_TABLES_PATH,
+    pinned_record_sha256: PINNED_NLM_TABLES_SHA256,
+    normalized_text_sha256: expected.normalized_text_sha256,
+    reviewed_table_fragment_bytes: expected.bytes,
+    reviewed_table_fragment_sha256: expected.sha256,
+    message,
+  });
+  challengeNotices.push(message);
+  challengedObjectIds.push(expected.object_id);
+}
+assert.deepEqual(audit.pinned_secondary_table_record, {
+  path: PINNED_NLM_TABLES_PATH,
+  sha256: PINNED_NLM_TABLES_SHA256,
+  used_for_object_ids: challengedObjectIds,
+  primary_comparison: [
+    {
+      object_id: "ch5.Tab1",
+      rsna_table: "Table 1A (solid nodules)",
+      locator: "guideline-vor-pdf:pdf-page:3",
+      compared_cells: 12,
+      agreement_counts: { identical: 8, "equivalent-wording": 4 },
+    },
+    {
+      object_id: "ch5.Tab2",
+      rsna_table: "Table 1B (subsolid nodules)",
+      locator: "guideline-vor-pdf:pdf-page:3",
+      compared_cells: 6,
+      agreement_counts: { identical: 5, "identical-except-text-layer-glyph": 1 },
+    },
+  ],
 });
 
 assert.equal(audit.calculator_id, "fleischner");
@@ -1199,6 +1398,16 @@ assert.equal(audit.known_wrong_measurement_doi_absent, true);
 assert.equal(audit.calculator_content_invariants_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
+for (const notice of challengeNotices) {
+  console.log(notice);
+  if (process.env.GITHUB_ACTIONS === "true") {
+    console.log(`::warning title=Fleischner NLM source challenged::${notice}`);
+  }
+}
 console.log(
-  "Fleischner source audit verified 3 byte-pinned RSNA-origin Mementos, 27 literal locator assertions with 37 required snippets across 12 claims, 4 implementation invariants, all 113 executable vectors, primary DOI identities, and live NLM fragments.",
+  `Fleischner source audit verified 3 byte-pinned RSNA-origin Mementos, 27 literal locator assertions with 37 required snippets across 12 claims, 4 implementation invariants, all 113 executable vectors, primary DOI identities, and ${
+    challengeNotices.length === 0
+      ? "live NLM fragments"
+      : `NLM tables (${2 - challengeNotices.length} live, ${challengeNotices.length} verified against the pinned copy after an NLM bot challenge)`
+  }.`,
 );

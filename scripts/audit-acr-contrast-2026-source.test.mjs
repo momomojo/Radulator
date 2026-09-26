@@ -26,13 +26,13 @@ assert.equal(audit.schema, "radulator-acr-contrast-2026-source-audit/v1");
 assert.equal(audit.source_authority, "American College of Radiology");
 assert.deepEqual(audit.source_bytes, {
   manual: 1765419,
-  adult_card: 50299,
-  pediatric_card: 54773,
+  adult_card: 50931,
+  pediatric_card: 55452,
 });
 assert.deepEqual(audit.source_sha256, {
   manual: "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
-  adult_card: "8e01c557097de36dd38706f1ce9bc540797bdee5e43534db3f6123bfabb963fb",
-  pediatric_card: "4891a24be169991168b9b0aa2524ee9f8b6e381cf31fef3ee47b4c7fb0807d1f",
+  adult_card: "6c3d1225c05038659d83e001b49c3b04e6460bb99dace6823f6ca95c9b4cbc99",
+  pediatric_card: "3980e786cc9ae9f3d5edc8008b2ab48fb8ab0b7861d52fb7cd51cd43f5033b84",
 });
 assert.deepEqual(audit.source_text_verification, {
   engine: "pdfjs-dist@4.10.38",
