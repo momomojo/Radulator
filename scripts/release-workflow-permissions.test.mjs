@@ -24,6 +24,12 @@ assert.deepEqual(
   ["opened", "reopened", "synchronize", "edited"],
   "editing the canonical high-risk marker must launch a fresh exact-head E2E run",
 );
+const scopeStep = e2e.jobs["smoke-tests"].steps.find((step) => step.id === "scope");
+assert.ok(scopeStep, "Smoke keeps its trust-domain scope step");
+assert.match(scopeStep.run, /git show "\$BASE_SHA:scripts\/ci-scope\.mjs"/, "scope rules come from the base commit");
+assert.match(scopeStep.run, /git show "\$BASE_SHA:scripts\/release-policy\.mjs"/, "the classifier comes from the base commit");
+assert.doesNotMatch(scopeStep.run, /\.\/scripts\/(release-policy|ci-scope)\.mjs/, "the PR head never decides its own scope");
+assert.match(scopeStep.run, /clinical=true\\ndeps=true/, "any failure runs every world-state check");
 const fullSuite = e2e.jobs["full-tests"];
 assert.equal(fullSuite.name, "Full Test Suite", "the signed CI context name must stay stable");
 assert.equal(
