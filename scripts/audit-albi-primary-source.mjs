@@ -10,10 +10,10 @@ import { calculateAlbi } from "../src/clinical/albi.js";
 const SOURCE_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/";
 const SOURCE_HOST = "pmc.ncbi.nlm.nih.gov";
 const ARTICLE_DOI = "10.1200/JCO.2014.57.9151";
-const EXPECTED_SOURCE_BYTES = 276_155;
-const EXPECTED_CANONICAL_SOURCE_BYTES = 276_075;
+const EXPECTED_SOURCE_BYTES = 276_164;
+const EXPECTED_CANONICAL_SOURCE_BYTES = 276_084;
 const EXPECTED_CANONICAL_SOURCE_SHA256 =
-  "fccc2f40b9ae8a85fcd7dbc093886be078a554db8f425322db6cffc3bd2499b0";
+  "5b76f4af10f9cf9b19382ebd4ba5e35a228e0e942bfb1759dbafbcd8737c81a3";
 const FIXTURE_PATH = "tests/fixtures/compute/albi-score.json";
 const CALCULATOR_PATH = "src/components/calculators/ALBIScore.jsx";
 const CLINICAL_CORE_PATH = "src/clinical/albi.js";
