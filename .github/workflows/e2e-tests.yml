@@ -36,6 +36,8 @@ jobs:
           # PR checks are associated with the source head by GitHub, so execute
           # that exact SHA instead of the synthetic merge ref.
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          # Full history so the scope step can diff the PR against its merge base.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -46,9 +48,58 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Dependency advisories and live clinical-source drift are properties of the
+      # outside world, not of a PR's diff. A PR whose files are all release-control
+      # cannot change a clinical source, and one whose files are all clinical cannot
+      # change the dependency tree, so each skips only the other domain's world-state
+      # check. Without this, two independent external breakages deadlock develop: the
+      # fix for each needs the other's CI, and one PR may not mix both trust domains.
+      # Both checks always run on push and manual runs, and for any PR touching more
+      # than one domain; any error runs everything.
+      - name: Scope world-state checks to the PR's trust domain
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node --input-type=module -e '
+          import { execFileSync } from "node:child_process";
+          import { appendFileSync } from "node:fs";
+          import { analyzeRisk } from "./scripts/release-policy.mjs";
+          const put = (clinical, deps, why) => {
+            appendFileSync(process.env.GITHUB_OUTPUT, `clinical=${clinical}\ndeps=${deps}\n`);
+            console.log(`clinical source audits: ${clinical}; dependency audit: ${deps} (${why})`);
+          };
+          if (process.env.EVENT_NAME !== "pull_request") {
+            put(true, true, "not a pull request");
+          } else {
+            try {
+              const { BASE_SHA, HEAD_SHA } = process.env;
+              const base = execFileSync("git", ["merge-base", BASE_SHA, HEAD_SHA]).toString().trim();
+              const files = execFileSync("git", ["diff", "--name-only", base, HEAD_SHA]).toString().split("\n").filter(Boolean);
+              const domain = (filename) => {
+                const codes = analyzeRisk([{ filename, status: "modified", patch: "" }], {}).risk.reasonCodes;
+                const release = codes.includes("RELEASE_CONTROL_CHANGE");
+                const clinical = codes.some((code) => code.startsWith("CLINICAL_"));
+                return release && !clinical ? "release" : clinical && !release ? "clinical" : "other";
+              };
+              const domains = new Set(files.map(domain));
+              const only = (name) => files.length > 0 && domains.size === 1 && domains.has(name);
+              put(!only("release"), !only("clinical"), `${files.length} changed file(s): ${[...domains].join(", ") || "none"}`);
+            } catch (error) {
+              put(true, true, `scope failed, running everything: ${error.message}`);
+            }
+          }
+          '
+
       - name: Run tooling checks
         run: |
-          npm audit --omit=dev --audit-level=high
+          if [ "${{ steps.scope.outputs.deps }}" = "false" ]; then
+            echo "Dependency audit skipped: this PR changes only clinical files (it runs on every push)."
+          else
+            npm audit --omit=dev --audit-level=high
+          fi
           node --check scripts/capture-feature-proof.mjs
           node --check scripts/check-radulator-invariants.mjs
           node --check scripts/check-radulator-invariants.test.mjs
@@ -107,6 +158,7 @@ jobs:
       # Bosniak is delegated to the protected exact-head release-control lane
       # because that lane owns its live fetch; remaining network audits stay here.
       - name: Verify roadmap clinical source audits at exact head
+        if: steps.scope.outputs.clinical != 'false'
         run: |
           export LC_ALL=C
           for audit in scripts/audit-*-source.test.mjs; do
