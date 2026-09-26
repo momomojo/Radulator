@@ -1,0 +1,357 @@
+{
+  "schema": "radulator-pinned-secondary-table-evidence/v1",
+  "calculator_id": "fleischner",
+  "guideline_version": "Fleischner 2017",
+  "use": "Offline evidence for the reviewed claims nlm-fleischner-solid-table-cross-check and nlm-fleischner-subsolid-table-cross-check. scripts/audit-fleischner-primary-source.mjs uses it only when the live NLM table page is a recognised bot-challenge page; every other live failure still fails closed.",
+  "authorization": {
+    "decision": "Approve the pinned copy",
+    "decided_on": "2026-09-24",
+    "decided_by_role": "repository-owner",
+    "scope": "Keep an independently compared copy of NLM Tables 5.1 and 5.2 as the evidence and make the live check recognise the challenge. Clinical claims, test vectors and fail-closed checks are unchanged."
+  },
+  "attribution": {
+    "chapter": "Abbott GF, Vlahos I. CT Diagnosis and Management of Focal Lung Disease. In: Hodler J, Kubik-Huch RA, von Schulthess GK, editors. Diseases of the Chest, Breast, Heart and Vessels 2019-2022: Diagnostic and Interventional Imaging. Cham (CH): Springer; 2019. p. 47-55.",
+    "chapter_doi": "10.1007/978-3-030-11149-6_5",
+    "nlm_bookshelf_id": "NBK553863",
+    "license": "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+    "tables_credit": "MacMahon H, Naidich DP, Goo JM, et al. Radiology 2017;284(1):228-243. DOI 10.1148/radiol.2017161659",
+    "changes": "Only cell text is kept. Markup, captions and credit lines are removed; cell line breaks become spaces; dashes, comparison signs and whitespace are normalized by extractHtmlLiteralText in scripts/audit-fleischner-primary-source.mjs."
+  },
+  "tables": [
+    {
+      "source_id": "nlm-fleischner-solid-table",
+      "object_id": "ch5.Tab1",
+      "label": "Table 5.1",
+      "caption": "Revised Fleischner guidelines (2017) for solid nodules",
+      "live_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly",
+      "reviewed_html_fragment": {
+        "content_bytes": 3153,
+        "content_sha256": "d9cec9955406cd10d6ec93298dd61f1215dbdd18a38815a33d1af93407c1dbb9",
+        "rederivable_from_pinned_cells": false
+      },
+      "normalized_text_sha256": "5a9a7516677d89bebaacb9febb486dad0946ab8170a5047d52a20ab623648c5e",
+      "header_cells": [
+        "Nodule type",
+        "Low risk",
+        "High risk"
+      ],
+      "body_rows": [
+        [
+          "Single <6 mm",
+          "No routine follow-up",
+          "Optional CT at 12 months"
+        ],
+        [
+          "Single 6-8 mm",
+          "CT at 6-12 months, then consider CT at 18-24 months",
+          "CT at 6-12 months, then CT at 18-24 months"
+        ],
+        [
+          "Single >8 mm",
+          "Consider CT, PET/CT or tissue sampling at 3 months",
+          "Consider CT, PET/CT, or tissue sampling at 3 months"
+        ],
+        [
+          "Multiple <6 mm",
+          "No routine follow-up",
+          "Optional CT at 12 months"
+        ],
+        [
+          "Multiple 6-8 mm",
+          "CT at 3-6 months, then consider CT at 18-24 months",
+          "CT at 3-6 months, then CT at 18-24 months"
+        ],
+        [
+          "Multiple >8 mm",
+          "CT at 3-6 months, then consider CT at 18-24 months",
+          "CT at 3-6 months, then CT at 18-24 months"
+        ]
+      ],
+      "primary_comparison": {
+        "rsna_table": "Table 1A (solid nodules)",
+        "rsna_size_columns": [
+          "<6 mm (<100 mm3)",
+          "6-8 mm (100-250 mm3)",
+          ">8 mm (>250 mm3)"
+        ],
+        "size_category_agreement": "NLM row sizes <6 mm, 6-8 mm and >8 mm equal the RSNA size columns; RSNA also gives volume equivalents. Reviewed by reading the table because the PDF text layer does not preserve the < and > glyphs.",
+        "rsna_rows": [
+          {
+            "row": "Single, low risk",
+            "text_layer_label": "Single Low risk",
+            "cells": [
+              "No routine follow-up",
+              "CT at 6-12 months, then consider CT at 18-24 months",
+              "Consider CT at 3 months, PET/CT, or tissue sampling"
+            ]
+          },
+          {
+            "row": "Single, high risk",
+            "text_layer_label": "High risk",
+            "cells": [
+              "Optional CT at 12 months",
+              "CT at 6-12 months, then CT at 18-24 months",
+              "Consider CT at 3 months, PET/CT, or tissue sampling"
+            ]
+          },
+          {
+            "row": "Multiple, low risk",
+            "text_layer_label": "Multiple Low risk",
+            "cells": [
+              "No routine follow-up",
+              "CT at 3-6 months, then consider CT at 18-24 months",
+              "CT at 3-6 months, then consider CT at 18-24 months"
+            ]
+          },
+          {
+            "row": "Multiple, high risk",
+            "text_layer_label": "High risk",
+            "cells": [
+              "Optional CT at 12 months",
+              "CT at 3-6 months, then at 18-24 months",
+              "CT at 3-6 months, then at 18-24 months"
+            ]
+          }
+        ],
+        "cells": [
+          {
+            "nlm_row": 0,
+            "nlm_column": 1,
+            "rsna_row": 0,
+            "rsna_column": 0,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 0,
+            "nlm_column": 2,
+            "rsna_row": 1,
+            "rsna_column": 0,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 1,
+            "nlm_column": 1,
+            "rsna_row": 0,
+            "rsna_column": 1,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 1,
+            "nlm_column": 2,
+            "rsna_row": 1,
+            "rsna_column": 1,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 2,
+            "nlm_column": 1,
+            "rsna_row": 0,
+            "rsna_column": 2,
+            "agreement": "equivalent-wording",
+            "note": "Same options (CT, PET/CT, tissue sampling) and 3-month timing. RSNA attaches 'at 3 months' to CT; NLM places it after the list and omits the serial comma."
+          },
+          {
+            "nlm_row": 2,
+            "nlm_column": 2,
+            "rsna_row": 1,
+            "rsna_column": 2,
+            "agreement": "equivalent-wording",
+            "note": "Same options (CT, PET/CT, tissue sampling) and 3-month timing. RSNA attaches 'at 3 months' to CT; NLM places it after the list."
+          },
+          {
+            "nlm_row": 3,
+            "nlm_column": 1,
+            "rsna_row": 2,
+            "rsna_column": 0,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 3,
+            "nlm_column": 2,
+            "rsna_row": 3,
+            "rsna_column": 0,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 4,
+            "nlm_column": 1,
+            "rsna_row": 2,
+            "rsna_column": 1,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 4,
+            "nlm_column": 2,
+            "rsna_row": 3,
+            "rsna_column": 1,
+            "agreement": "equivalent-wording",
+            "note": "NLM repeats 'CT' in the second step ('then CT at 18-24 months'); same modality, intervals and required follow-up."
+          },
+          {
+            "nlm_row": 5,
+            "nlm_column": 1,
+            "rsna_row": 2,
+            "rsna_column": 2,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 5,
+            "nlm_column": 2,
+            "rsna_row": 3,
+            "rsna_column": 2,
+            "agreement": "equivalent-wording",
+            "note": "NLM repeats 'CT' in the second step ('then CT at 18-24 months'); same modality, intervals and required follow-up."
+          }
+        ]
+      }
+    },
+    {
+      "source_id": "nlm-fleischner-subsolid-table",
+      "object_id": "ch5.Tab2",
+      "label": "Table 5.2",
+      "caption": "Revised Fleischner guidelines (2017) for subsolid nodules",
+      "live_url": "https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly",
+      "reviewed_html_fragment": {
+        "content_bytes": 1912,
+        "content_sha256": "7e28fe2305cd1ce68afbd6bbd25e092f8301082085c7f8c6efec16d2b5b21997",
+        "rederivable_from_pinned_cells": false
+      },
+      "normalized_text_sha256": "fee89cdab0d0498ac55ecb9bb6f655fe555ca9a857fd662636dd5304447ae3e9",
+      "header_cells": [
+        "Nodule type",
+        "<6 mm",
+        ">=6 mm"
+      ],
+      "body_rows": [
+        [
+          "Single Ground glass",
+          "No routine follow-up",
+          "CT at 6-12 months to confirm persistence, then CT every 2 years until 5 years"
+        ],
+        [
+          "Single Part solid",
+          "No routine follow-up",
+          "CT at 3-6 months to confirm persistence. If unchanged and solid component remains <6 mm, annual CT should be performed for 5 years"
+        ],
+        [
+          "Multiple",
+          "CT at 3-6 months. If stable, consider CT at 2 and 4 years",
+          "CT at 3-6 months. Subsequent management based on the most suspicious nodule(s)"
+        ]
+      ],
+      "primary_comparison": {
+        "rsna_table": "Table 1B (subsolid nodules)",
+        "rsna_size_columns": [
+          "<6 mm (<100 mm3)",
+          ">=6 mm (>=100 mm3)"
+        ],
+        "size_category_agreement": "NLM columns <6 mm and >=6 mm equal the RSNA size columns; RSNA also gives volume equivalents. Reviewed by reading the table because the PDF text layer does not preserve the < and >= glyphs.",
+        "rsna_rows": [
+          {
+            "row": "Single, ground glass",
+            "text_layer_label": "Single Ground glass",
+            "cells": [
+              "No routine follow-up",
+              "CT at 6-12 months to confirm persistence, then CT every 2 years until 5 years"
+            ]
+          },
+          {
+            "row": "Single, part solid",
+            "text_layer_label": "Part solid",
+            "cells": [
+              "No routine follow-up",
+              "CT at 3-6 months to confirm persistence. If unchanged and solid component remains, 6 mm, annual CT should be performed for 5 years."
+            ]
+          },
+          {
+            "row": "Multiple",
+            "text_layer_label": "Multiple",
+            "cells": [
+              "CT at 3-6 months. If stable, consider CT at 2 and 4 years.",
+              "CT at 3-6 months. Subsequent management based on the most suspicious nodule(s)."
+            ]
+          }
+        ],
+        "cells": [
+          {
+            "nlm_row": 0,
+            "nlm_column": 1,
+            "rsna_row": 0,
+            "rsna_column": 0,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 0,
+            "nlm_column": 2,
+            "rsna_row": 0,
+            "rsna_column": 1,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 1,
+            "nlm_column": 1,
+            "rsna_row": 1,
+            "rsna_column": 0,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 1,
+            "nlm_column": 2,
+            "rsna_row": 1,
+            "rsna_column": 1,
+            "agreement": "identical-except-text-layer-glyph",
+            "note": "The PDF text layer extracts the printed '<' as ',' ('remains, 6 mm'); the printed RSNA cell reads 'remains <6 mm', as NLM does."
+          },
+          {
+            "nlm_row": 2,
+            "nlm_column": 1,
+            "rsna_row": 2,
+            "rsna_column": 0,
+            "agreement": "identical"
+          },
+          {
+            "nlm_row": 2,
+            "nlm_column": 2,
+            "rsna_row": 2,
+            "rsna_column": 1,
+            "agreement": "identical"
+          }
+        ]
+      }
+    }
+  ],
+  "independent_comparison": {
+    "compared_at": "2026-09-25T03:16:43Z",
+    "second_retrieval_path": {
+      "channel": "NLM Bookshelf open-access subset bulk package (not served through the challenged web page)",
+      "file_list_url": "https://ftp.ncbi.nlm.nih.gov/pub/litarch/file_list.csv",
+      "package_url": "https://ftp.ncbi.nlm.nih.gov/pub/litarch/91/f2/spr9783030111496_NBK553871.tar.gz",
+      "package_last_modified": "2021-05-06T06:37:55Z",
+      "package_bytes": 30472787,
+      "package_sha256": "23a328634f8d1dcf3535c91a51f12be44e8f9f665afa4eed78c7a27783f4a810",
+      "member": "spr9783030111496_NBK553871/ch5.nxml",
+      "member_bytes": 89723,
+      "member_sha256": "ecd20d249e3d04492cc5ba5409375154dbb3d225728b4c0f1dd61ae8bfd99c02",
+      "retrieved_at": "2026-09-25T03:15:41Z",
+      "method": "Take the <table> element of table-wrap ch5.Tab1 and ch5.Tab2, normalize it with extractHtmlLiteralText, and SHA-256 the UTF-8 text.",
+      "result": "Both normalized texts equal the pinned cells joined in document order and reproduce the reviewed locator_text_sha256 values of docs/evidence/fleischner-2017-reviewed-evidence.json exactly."
+    },
+    "primary_publication": {
+      "citation": "MacMahon H, Naidich DP, Goo JM, et al. Guidelines for Management of Incidental Pulmonary Nodules Detected on CT Images: From the Fleischner Society 2017. Radiology 2017;284(1):228-243.",
+      "doi": "10.1148/radiol.2017161659",
+      "artifact_id": "guideline-vor-pdf",
+      "artifact_sha256": "f5bb64d6e8d64dfd49f798b586435dc78e4f22d1174e0aee701bb9cd0f8f80b1",
+      "locator": "pdf-page:3",
+      "method": "Map every NLM recommendation cell to its Table 1A or 1B cell in the text layer of the hash-pinned version-of-record PDF. The audit re-checks each mapping on every run.",
+      "result": "All 18 NLM recommendation cells agree with Table 1: 13 identical, 4 equivalent wording and 1 identical apart from a PDF text-layer glyph. No interval, size category or optional-versus-required qualifier differs."
+    },
+    "live_page_challenge": {
+      "observed_at": "2026-09-25T03:16:32Z",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "final_url_unchanged": true,
+      "title": "Checking your browser - reCAPTCHA",
+      "table_elements": 0
+    }
+  }
+}
