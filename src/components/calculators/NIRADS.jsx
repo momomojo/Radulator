@@ -134,7 +134,7 @@ export const MRI_2025_PATTERN_DEFINITIONS = Object.freeze({
   n1_residual_hypo_no_fdg: {
     site: "neck",
     category: "1",
-    label: "Residual treated nodal tissue is hypoenhancing with no FDG uptake",
+    label: "Residual treated nodal tissue is hypoenhancing, with no FDG uptake if PET is available",
   },
   n2_residual_heterogeneous: {
     site: "neck",

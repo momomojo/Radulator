@@ -142,6 +142,17 @@ for (const [id, inputs, expected] of preserved2018Cases) {
   );
 }
 
+// ACR NI-RADS MRI v2025 neck 1: hypoenhancing residual nodal tissue, with no FDG uptake *if PET is
+// available*; MRI-only surveillance without PET still reaches neck 1 (verification judge, a26fd24).
+assert.match(
+  MRI_2025_PATTERN_DEFINITIONS.n1_residual_hypo_no_fdg.label,
+  /hypoenhancing, with no FDG uptake if PET is available/,
+);
+assert.deepEqual(
+  classifyNiradsMri2025({ ...neck, pattern_ids: ["n1_residual_hypo_no_fdg"], node_temporal_status: "residual" }),
+  { status: "classified", category: "1", management_key: "neck.1" },
+);
+
 // ACR NI-RADS MRI v2025 management caveats (assessment-categories table and primary-site algorithm).
 assert.match(MRI_2025_MANAGEMENT["primary.2b"], /MRI is preferred for perineural or skull-base concern/);
 assert.match(MRI_2025_MANAGEMENT["primary.3"], /^Image-guided or clinical biopsy if clinically indicated;/);
