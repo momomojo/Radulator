@@ -49,13 +49,12 @@ jobs:
         run: npm ci
 
       # Dependency advisories and live clinical-source drift are properties of the
-      # outside world, not of a PR's diff. A PR whose files are all release-control
-      # cannot change a clinical source, and one whose files are all clinical cannot
-      # change the dependency tree, so each skips only the other domain's world-state
-      # check. Without this, two independent external breakages deadlock develop: the
-      # fix for each needs the other's CI, and one PR may not mix both trust domains.
-      # Both checks always run on push and manual runs, and for any PR touching more
-      # than one domain; any error runs everything.
+      # outside world, not of a PR's diff, so a PR confined to one trust domain skips
+      # only the other domain's world-state check (rules and rationale: scripts/ci-scope.mjs).
+      # The rules and the risk classifier are read from the PR's BASE commit, never the
+      # PR head, so a PR cannot choose which of its own checks are skipped. Push and
+      # manual runs, a PR touching either file, a missing base copy, or any error run
+      # every check.
       - name: Scope world-state checks to the PR's trust domain
         id: scope
         env:
@@ -63,35 +62,17 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          node --input-type=module -e '
-          import { execFileSync } from "node:child_process";
-          import { appendFileSync } from "node:fs";
-          import { analyzeRisk } from "./scripts/release-policy.mjs";
-          const put = (clinical, deps, why) => {
-            appendFileSync(process.env.GITHUB_OUTPUT, `clinical=${clinical}\ndeps=${deps}\n`);
-            console.log(`clinical source audits: ${clinical}; dependency audit: ${deps} (${why})`);
-          };
-          if (process.env.EVENT_NAME !== "pull_request") {
-            put(true, true, "not a pull request");
-          } else {
-            try {
-              const { BASE_SHA, HEAD_SHA } = process.env;
-              const base = execFileSync("git", ["merge-base", BASE_SHA, HEAD_SHA]).toString().trim();
-              const files = execFileSync("git", ["diff", "--name-only", base, HEAD_SHA]).toString().split("\n").filter(Boolean);
-              const domain = (filename) => {
-                const codes = analyzeRisk([{ filename, status: "modified", patch: "" }], {}).risk.reasonCodes;
-                const release = codes.includes("RELEASE_CONTROL_CHANGE");
-                const clinical = codes.some((code) => code.startsWith("CLINICAL_"));
-                return release && !clinical ? "release" : clinical && !release ? "clinical" : "other";
-              };
-              const domains = new Set(files.map(domain));
-              const only = (name) => files.length > 0 && domains.size === 1 && domains.has(name);
-              put(!only("release"), !only("clinical"), `${files.length} changed file(s): ${[...domains].join(", ") || "none"}`);
-            } catch (error) {
-              put(true, true, `scope failed, running everything: ${error.message}`);
-            }
-          }
-          '
+          trusted="$RUNNER_TEMP/scope-trusted"
+          mkdir -p "$trusted"
+          if [ "$EVENT_NAME" = "pull_request" ] \
+            && git show "$BASE_SHA:scripts/ci-scope.mjs" > "$trusted/ci-scope.mjs" 2>/dev/null \
+            && git show "$BASE_SHA:scripts/release-policy.mjs" > "$trusted/release-policy.mjs" 2>/dev/null \
+            && node "$trusted/ci-scope.mjs" "$trusted/release-policy.mjs"; then
+            :
+          else
+            printf 'clinical=true\ndeps=true\n' >> "$GITHUB_OUTPUT"
+            echo "clinical source audits: true; dependency audit: true (not a pull request, or no trusted base copy of the scope rules)"
+          fi
 
       - name: Run tooling checks
         run: |
@@ -102,6 +83,7 @@ jobs:
           fi
           node --check scripts/capture-feature-proof.mjs
           node --check scripts/check-radulator-invariants.mjs
+          node --check scripts/ci-scope.mjs
           node --check scripts/check-radulator-invariants.test.mjs
           node --check scripts/collect-loop-metrics.mjs
           node --check scripts/independent-review-gate.mjs
@@ -133,6 +115,7 @@ jobs:
           npm run test:independent-review-gate
           npm run test:auto-merge
           npm run test:release-workflow-permissions
+          npm run test:ci-scope
           npm run test:authorize-deployment
           npm run test:reconcile-deployment
           npm run test:post-deploy-smoke
