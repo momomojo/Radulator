@@ -95,6 +95,7 @@
     { "id": "a45-caliper-exact-10", "operation": "validate_baseline_target", "input": { "kind": "non_nodal", "modality": "clinical_caliper", "measurement_mm": 10 }, "expected": { "classification": "measurable_target_candidate" } },
     { "id": "a46-chest-xray-exact-20", "operation": "validate_baseline_target", "input": { "kind": "non_nodal", "modality": "chest_xray", "measurement_mm": 20 }, "expected": { "classification": "measurable_target_candidate" } },
     { "id": "a47-node-exact-10-is-pathologic-nontarget", "operation": "validate_baseline_target", "input": { "kind": "node", "modality": "CT", "measurement_mm": 10 }, "expected": { "classification": "non_target_pathologic" } },
-    { "id": "a48-node-below-10-is-nonpathologic", "operation": "validate_baseline_target", "input": { "kind": "node", "modality": "CT", "measurement_mm": "9.999" }, "expected": { "classification": "non_pathologic" } }
+    { "id": "a48-node-below-10-is-nonpathologic", "operation": "validate_baseline_target", "input": { "kind": "node", "modality": "CT", "measurement_mm": "9.999" }, "expected": { "classification": "non_pathologic" } },
+    { "id": "a49-target-reappearance-with-zero-current-sum-rejected", "input": { "baseline_sum_mm": 40, "prior_nadir_sum_mm": 0, "current_sum_mm": 0, "prior_confirmed_target_response": "CR", "prior_confirmed_overall_response": "CR", "reappeared_malignant_lesion": true, "reappearing_lesion_compartment": "target", "reappearing_lesion_is_node": false }, "expectedError": "target reappearance requires a present target lesion (current target sum is 0 mm)" }
   ]
 }

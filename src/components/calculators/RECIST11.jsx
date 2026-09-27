@@ -477,6 +477,11 @@ export function classifyRecistTimePoint(caseData) {
     priorOverall,
     "measurable",
   );
+  if (reappearance.compartment === "target" && current.isZero()) {
+    throw new Error(
+      "target reappearance requires a present target lesion (current target sum is 0 mm)",
+    );
+  }
 
   const result = {
     baseline_change_pct: percentageString(current, baseline),
@@ -589,13 +594,22 @@ function deriveReappearanceInput(reappearance, targetLesions, mode) {
     const targetId = source.slice("target:".length);
     const lesion = targetLesions.find((item) => item.id === targetId);
     if (!lesion) throw new Error("Select the reappearing target lesion.");
+    // A reappeared lesion is present now: a disappeared, missing or 0 mm target cannot drive PD.
+    if (
+      lesion.currentStatus === "disappeared" ||
+      lesion.currentStatus === "missing"
+    ) {
+      throw new Error(
+        "A reappearing target lesion must be present at this assessment: record its current measurement, or mark it present but too small to measure.",
+      );
+    }
     const currentMeasurement = parseCurrentLesionMeasurement(
       lesion,
       targetLesions.indexOf(lesion),
     );
-    if (!currentMeasurement) {
+    if (!currentMeasurement || currentMeasurement.isZero()) {
       throw new Error(
-        "A reappearing target lesion requires a current measurement or disappeared/too-small state.",
+        "A reappearing target lesion cannot measure 0 mm: record its current measurement, or mark it present but too small to measure.",
       );
     }
     return {

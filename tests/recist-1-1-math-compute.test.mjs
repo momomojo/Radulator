@@ -12,7 +12,7 @@ const fixture = JSON.parse(
 );
 
 assert.equal(fixture.sealedVectors.length, 29);
-assert.equal(fixture.adversarialVectors.length, 48);
+assert.equal(fixture.adversarialVectors.length, 49);
 
 function executeVector(vector) {
   const operation = vector.operation || "classify";
@@ -174,6 +174,34 @@ const liverReappearance = computeRecist11(
   }),
 );
 assert.equal(liverReappearance.overall_response, "PD");
+
+// A reappeared target is present now (judge finding on 0ef4562): a disappeared, missing or
+// 0 mm target must never drive PD after CR; "present but too small to measure" still does.
+const reappearanceWith = (lesion) =>
+  measurableInputs({
+    targetLesions: [targetLesion({ baselineMeasurementMm: "40", ...lesion })],
+    priorNadirSumMm: "0",
+    priorConfirmedTargetResponse: "CR",
+    priorConfirmedOverallResponse: "CR",
+    reappearance: { confirmed: true, source: "target:target-1" },
+  });
+assert.throws(
+  () => computeRecist11(reappearanceWith({ currentStatus: "disappeared", currentMeasurementMm: "" })),
+  /must be present at this assessment/,
+);
+assert.throws(
+  () => computeRecist11(reappearanceWith({ currentStatus: "missing", currentMeasurementMm: "" })),
+  /must be present at this assessment/,
+);
+assert.throws(
+  () => computeRecist11(reappearanceWith({ currentStatus: "measured", currentMeasurementMm: "0" })),
+  /cannot measure 0 mm/,
+);
+const tooSmallReappearance = computeRecist11(
+  reappearanceWith({ currentStatus: "too_small_to_measure", currentMeasurementMm: "" }),
+);
+assert.equal(tooSmallReappearance.overall_response, "PD");
+assert.equal(tooSmallReappearance.current_sum_mm, "5");
 assert.equal(liverReappearance.reappearance_caution, "confirm_reappearance");
 assert.match(
   buildRecistImpression(liverReappearance),
@@ -280,5 +308,5 @@ assert.match(indeterminateCopy, /reassessment is required/i);
 assert.doesNotMatch(indeterminateCopy, /Target-lesion sum/);
 
 console.log(
-  `RECIST 1.1 tests PASS: ${fixture.sealedVectors.length}/29 sealed vectors, ${fixture.adversarialVectors.length}/48 adversarial vectors, and lesion-derived workflow safeguards`,
+  `RECIST 1.1 tests PASS: ${fixture.sealedVectors.length}/29 sealed vectors, ${fixture.adversarialVectors.length}/49 adversarial vectors, and lesion-derived workflow safeguards`,
 );

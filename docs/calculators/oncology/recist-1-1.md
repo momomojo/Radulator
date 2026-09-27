@@ -18,7 +18,7 @@ Evidence reviewed: 2026-08-25. The independently reviewed Stage-1 pack passed so
 - The calculator derives target CR from individual lesion states. It does not expose an unchecked `all_target_cr` shortcut.
 - A required missing target makes the target compartment NE unless the measured subset alone satisfies both target-PD conditions.
 - Prior confirmed target response is separate from prior confirmed overall response. Only prior confirmed target PR controls continuing target PR; only prior confirmed overall CR controls malignant-reappearance progression.
-- Reappearance scope is selected through a lesion-level workflow. Target scope is tied to a target row; nodal reappearance must be at least 10 mm short axis; non-target reappearance must be explicitly judged unequivocal; unknown compartment requires an explicit overall-only override.
+- Reappearance scope is selected through a lesion-level workflow. Target scope is tied to a target row; the reappearing target must be present at this assessment (a disappeared, missing or 0 mm target is rejected; present but too small to measure is allowed); nodal reappearance must be at least 10 mm short axis; non-target reappearance must be explicitly judged unequivocal; unknown compartment requires an explicit overall-only override.
 - After confirmed overall CR, qualifying reappearance is PD with no target-sum test (Eisenhauer 2009 response-assessment notes and FAQ; Schwartz 2016 Q9). A node back at 10 mm or more short axis counts as reappeared even when the sum change is under 5 mm. The sum test for reappearance applies only after PR or SD. The result carries the 2016 clarification's caution without changing the category: weigh the whole tumor burden and any change in imaging before recording PD on one reappearing lesion, and when a single pathologic node drives PD, consider confirmation on a subsequent exam. If it is confirmed, PD dates from the node's first documentation.
 
 ## Exact arithmetic and response rules
@@ -64,4 +64,4 @@ Rules and tables are paraphrased; no source tables, journal prose, logos, or mar
 - Corrected pack `ROOT-MANIFEST.sha256`: `9b9cca7b229ddddb5378f8c40426b9526b8bdc9bea4a1c9213703f261624a704`.
 - Corrected Stage-1 brief SHA-256: `1d20457c25497224258162df74da5de21dcad4ec634bb81f602509decb16e760`.
 - Fresh independent PASS report SHA-256: `8c35e119a34c58f5d5bf7987706318bb4be2164f50ae8a5767d4805ec1784ad2`.
-- Durable JavaScript fixtures: 29 sealed vectors plus 48 independent adversarial classes, including repaired longitudinal vectors v23–v25.
+- Durable JavaScript fixtures: 29 sealed vectors plus 49 independent adversarial classes, including repaired longitudinal vectors v23–v25.
