@@ -24,7 +24,7 @@ test.describe("Guideline Version Badges", () => {
           "Legacy ACR BI-RADS 5th Ed. (2013) with public 2025 assessment-summary constraints",
       },
       { name: "CAD-RADS 2.0", expected: "CAD-RADS 2.0 (2022)" },
-      { name: "ACR NI-RADS", expected: "ACR NI-RADS 2018" },
+      { name: "ACR NI-RADS", expected: "ACR NI-RADS 2018 / MRI v2025" },
       { name: "ACR O-RADS", expected: "ACR O-RADS 2020" },
       { name: "Fleischner 2017", expected: "Fleischner 2017" },
       { name: "Wells Criteria for PE", expected: "Wells Criteria (2000)" },
