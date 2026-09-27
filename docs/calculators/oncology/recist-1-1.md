@@ -19,6 +19,7 @@ Evidence reviewed: 2026-08-25. The independently reviewed Stage-1 pack passed so
 - A required missing target makes the target compartment NE unless the measured subset alone satisfies both target-PD conditions.
 - Prior confirmed target response is separate from prior confirmed overall response. Only prior confirmed target PR controls continuing target PR; only prior confirmed overall CR controls malignant-reappearance progression.
 - Reappearance scope is selected through a lesion-level workflow. Target scope is tied to a target row; nodal reappearance must be at least 10 mm short axis; non-target reappearance must be explicitly judged unequivocal; unknown compartment requires an explicit overall-only override.
+- After confirmed overall CR, qualifying reappearance is PD with no target-sum test (Eisenhauer 2009 response-assessment notes and FAQ; Schwartz 2016 Q9). A node back at 10 mm or more short axis counts as reappeared even when the sum change is under 5 mm. The sum test for reappearance applies only after PR or SD. The result carries the 2016 clarification's caution without changing the category: weigh the whole tumor burden and any change in imaging before recording PD on one reappearing lesion, and when a single pathologic node drives PD, consider confirmation on a subsequent exam. If it is confirmed, PD dates from the node's first documentation.
 
 ## Exact arithmetic and response rules
 

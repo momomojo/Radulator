@@ -154,6 +154,51 @@ const targetNodalReappearance = computeRecist11(
 assert.equal(targetNodalReappearance.target_response, "PD");
 assert.equal(targetNodalReappearance.overall_response, "PD");
 assert.equal(targetNodalReappearance.pd_driver, "reappearance_after_cr");
+// Schwartz 2016 Q9: after CR a node back at >= 10 mm is PD (no sum test), but one pathologic node
+// driving PD warrants considering confirmation on a subsequent exam; the note never changes the category.
+assert.equal(targetNodalReappearance.reappearance_caution, "single_node");
+assert.match(
+  buildRecistImpression(targetNodalReappearance),
+  /Driver: reappearance after confirmed overall CR\. If this single pathologic node is the only evidence of progression, .*confirmation on a subsequent exam; if confirmed, PD dates from when the node was first documented\.$/,
+);
+
+const liverReappearance = computeRecist11(
+  measurableInputs({
+    targetLesions: [
+      targetLesion({ baselineMeasurementMm: "40", currentMeasurementMm: "6" }),
+    ],
+    priorNadirSumMm: "0",
+    priorConfirmedTargetResponse: "CR",
+    priorConfirmedOverallResponse: "CR",
+    reappearance: { confirmed: true, source: "target:target-1" },
+  }),
+);
+assert.equal(liverReappearance.overall_response, "PD");
+assert.equal(liverReappearance.reappearance_caution, "confirm_reappearance");
+assert.match(
+  buildRecistImpression(liverReappearance),
+  /weigh the whole tumor burden and any change in imaging technique or quality \(2016 RECIST clarification\)\.$/,
+);
+
+assert.equal(exactPr.reappearance_caution, undefined);
+assert.doesNotMatch(buildRecistImpression(exactPr), /2016 RECIST clarification/);
+const reappearanceAfterPr = computeRecist11(
+  measurableInputs({
+    targetLesions: [
+      targetLesion({
+        kind: "node",
+        baselineMeasurementMm: "15",
+        currentMeasurementMm: "10",
+      }),
+    ],
+    priorNadirSumMm: "8",
+    priorConfirmedTargetResponse: "CR",
+    priorConfirmedOverallResponse: "PR",
+    reappearance: { confirmed: true, source: "target:target-1" },
+  }),
+);
+assert.notEqual(reappearanceAfterPr.overall_response, "PD");
+assert.equal(reappearanceAfterPr.reappearance_caution, undefined);
 
 assert.throws(
   () =>
@@ -201,6 +246,30 @@ const nonTargetCopy = buildRecistImpression(nonTargetOnly);
 assert.equal(nonTargetOnly.overall_response, "NON_CR_NON_PD");
 assert.match(nonTargetCopy, /Non-CR\/non-PD/);
 assert.doesNotMatch(nonTargetCopy, /target sum|baseline|nadir|%/i);
+
+const nonTargetNodeAfterCr = computeRecist11({
+  mode: "non_target_only",
+  targetLesions: [],
+  nonTargetStatus: "cr",
+  newLesionStatus: "none",
+  priorConfirmedOverallResponse: "CR",
+  studyDesign: "randomized",
+  endpoint: "other",
+  reappearance: {
+    confirmed: true,
+    source: "non_target",
+    lesionKind: "node",
+    nodeShortAxisMm: "12",
+    unequivocal: true,
+  },
+});
+assert.equal(nonTargetNodeAfterCr.overall_response, "PD");
+assert.equal(nonTargetNodeAfterCr.pd_driver, "reappearance_after_cr");
+assert.equal(nonTargetNodeAfterCr.reappearance_caution, "single_node");
+assert.match(
+  buildRecistImpression(nonTargetNodeAfterCr),
+  /confirmation on a subsequent exam/,
+);
 
 const indeterminate = computeRecist11(
   measurableInputs({ newLesionStatus: "equivocal" }),

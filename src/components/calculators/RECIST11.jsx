@@ -337,7 +337,16 @@ function deriveReappearanceState(caseData, priorOverall, mode) {
     afterPriorOverallCr: priorOverall === "CR",
     compartment,
     overallOnly: compartment === "unknown" && explicitOverallOnly,
+    node: Boolean(caseData.reappearing_lesion_is_node),
   };
+}
+
+// RECIST 1.1 update and clarification (Schwartz 2016, Q9): reappearance after CR is generally PD,
+// but the whole tumor burden and any change in imaging must be weighed before calling PD on one
+// lesion, and when a single pathologic node drives PD, confirmation on a subsequent exam should be
+// contemplated (if confirmed, PD dates from the node's first documentation). Never changes the category.
+function reappearanceCaution(reappearance) {
+  return reappearance.node ? "single_node" : "confirm_reappearance";
 }
 
 function baseOverallResponse(target, nonTarget) {
@@ -388,6 +397,7 @@ function classifyNonTargetOnly(caseData) {
     return {
       overall_response: "PD",
       pd_driver: "reappearance_after_cr",
+      reappearance_caution: reappearanceCaution(reappearance),
       ...(reappearance.overallOnly
         ? { reappearance_scope: "overall_only" }
         : {}),
@@ -513,6 +523,7 @@ export function classifyRecistTimePoint(caseData) {
   if (reappearance.afterPriorOverallCr) {
     result.overall_response = "PD";
     result.pd_driver = "reappearance_after_cr";
+    result.reappearance_caution = reappearanceCaution(reappearance);
     if (reappearance.overallOnly) {
       result.reappearance_scope = "overall_only";
     }
@@ -827,6 +838,13 @@ const PD_DRIVER_LABELS = {
   reappearance_after_cr: "reappearance after confirmed overall CR",
 };
 
+const REAPPEARANCE_CAUTION_TEXT = {
+  single_node:
+    "If this single pathologic node is the only evidence of progression, the 2016 RECIST clarification advises considering confirmation on a subsequent exam; if confirmed, PD dates from when the node was first documented.",
+  confirm_reappearance:
+    "Before recording PD on a reappearing lesion, weigh the whole tumor burden and any change in imaging technique or quality (2016 RECIST clarification).",
+};
+
 function withSign(value, suffix = "") {
   if (value === null || value === undefined) return "not calculable";
   const prefix = !String(value).startsWith("-") && Number(value) > 0 ? "+" : "";
@@ -857,16 +875,19 @@ export function buildRecistImpression(result) {
   const driver = result.pd_driver
     ? ` Driver: ${PD_DRIVER_LABELS[result.pd_driver]}.`
     : "";
+  const caution = result.reappearance_caution
+    ? ` ${REAPPEARANCE_CAUTION_TEXT[result.reappearance_caution]}`
+    : "";
 
   if (result.mode === "non_target_only") {
-    return `RECIST 1.1 time-point response: ${category}. Non-target lesions: ${NON_TARGET_LABELS[result.non_target_status]}. New lesions: ${NEW_LESION_LABELS[result.new_lesion_status]}.${driver}`;
+    return `RECIST 1.1 time-point response: ${category}. Non-target lesions: ${NON_TARGET_LABELS[result.non_target_status]}. New lesions: ${NEW_LESION_LABELS[result.new_lesion_status]}.${driver}${caution}`;
   }
 
   const nadirChange =
     result.display_nadir_change_1dp === null
       ? "percentage not calculable"
       : withSign(result.display_nadir_change_1dp, "%");
-  return `RECIST 1.1 time-point response: ${category}. Target-lesion sum ${result.current_sum_mm} mm (${withSign(result.display_baseline_change_1dp, "%")} vs baseline ${result.baseline_sum_mm} mm; ${nadirChange} / ${withSign(result.absolute_nadir_change_mm, " mm")} vs prior nadir ${result.prior_nadir_sum_mm} mm). Non-target lesions: ${NON_TARGET_LABELS[result.non_target_status]}. New lesions: ${NEW_LESION_LABELS[result.new_lesion_status]}.${driver}`;
+  return `RECIST 1.1 time-point response: ${category}. Target-lesion sum ${result.current_sum_mm} mm (${withSign(result.display_baseline_change_1dp, "%")} vs baseline ${result.baseline_sum_mm} mm; ${nadirChange} / ${withSign(result.absolute_nadir_change_mm, " mm")} vs prior nadir ${result.prior_nadir_sum_mm} mm). Non-target lesions: ${NON_TARGET_LABELS[result.non_target_status]}. New lesions: ${NEW_LESION_LABELS[result.new_lesion_status]}.${driver}${caution}`;
 }
 
 function initialLesion(id) {
@@ -1591,6 +1612,14 @@ function Recist11Calculator() {
             {result.pd_driver ? (
               <p className="text-sm text-foreground">
                 Progression driver: {PD_DRIVER_LABELS[result.pd_driver]}
+              </p>
+            ) : null}
+            {result.reappearance_caution ? (
+              <p
+                className="text-sm text-muted-foreground"
+                data-testid="recist-reappearance-caution"
+              >
+                {REAPPEARANCE_CAUTION_TEXT[result.reappearance_caution]}
               </p>
             ) : null}
             {result.overall_response === "INDETERMINATE" ? (
