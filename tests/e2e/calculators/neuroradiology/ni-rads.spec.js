@@ -31,8 +31,25 @@ const CALCULATOR_NAME = "ACR NI-RADS";
  * @param {string} labelText - The exact label text of the radio option
  */
 async function selectRadioOption(page, labelText) {
-  // Target radio labels within the main content area (not sidebar)
+  // Target the radio's own label in the main content area. On mobile a section
+  // summary can repeat the selected value (e.g. "2018 CT/PET-CT"), so prefer the
+  // <label> element and fall back to any exact text match inside main.
+  const label = page.locator("main label").getByText(labelText, { exact: true });
+  if ((await label.count()) === 1) {
+    await label.click();
+    return;
+  }
   await page.locator("main").getByText(labelText, { exact: true }).click();
+}
+
+/**
+ * Start again from a clean form. NI-RADS does not enable the shared Reset
+ * button (its definition leaves showReset off), so reload the calculator page.
+ * @param {import('@playwright/test').Page} page
+ */
+async function resetCalculator(page) {
+  await page.reload();
+  await expect(page.getByTestId("calculator-title").first()).toContainText("ACR NI-RADS");
 }
 
 test.describe("ACR NI-RADS Calculator", () => {
@@ -813,6 +830,230 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       // Reset to desktop
       await page.setViewportSize({ width: 1280, height: 720 });
+    });
+  });
+
+  test.describe("MRI v2025 reviewed pathway", () => {
+    test("exposes an accessible modality/version selector and switches paths", async ({
+      page,
+    }) => {
+      const selector = page.getByRole("radiogroup", {
+        name: "NI-RADS Modality / Version",
+      });
+      await expect(selector).toBeVisible();
+      await expect(selector.getByRole("radio", { name: "2018 CT/PET-CT" })).toBeVisible();
+      await expect(selector.getByRole("radio", { name: "2025 MRI" })).toBeVisible();
+      await expect(page.getByRole("radiogroup", { name: "Imaging Modality" })).toBeVisible();
+
+      await selector.getByRole("radio", { name: "2025 MRI" }).check();
+      await expect(page.getByRole("radiogroup", { name: "Imaging Modality" })).toBeHidden();
+      await expect(
+        page.getByRole("radiogroup", {
+          name: "Is imaging being performed during active treatment?",
+        }),
+      ).toBeVisible();
+
+      await selector.getByRole("radio", { name: "2018 CT/PET-CT" }).check();
+      await expect(page.getByRole("radiogroup", { name: "Imaging Modality" })).toBeVisible();
+    });
+
+    test("classifies primary 2a, shows management/provenance, and copies versioned output", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Primary Site");
+      await selectRadioOption(page, "Known primary site");
+      await selectRadioOption(page, "Yes — assessable");
+      await selectRadioOption(page, "Available now");
+      await selectRadioOption(
+        page,
+        "NI-RADS 2a: Focal reduced diffusion at a superficial or mucosal site",
+      );
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results.getByText("2025 MRI")).toBeVisible();
+      await expect(results.getByText("2a - Low Suspicion")).toBeVisible();
+      await expect(results.getByText("Direct visual inspection.")).toBeVisible();
+      await expect(results.getByText("ACR source-provided; ungraded.")).toBeVisible();
+      await expect(results.getByText(/no numeric ADC cutoff/i)).toBeVisible();
+
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, "clipboard", {
+          configurable: true,
+          value: {
+            writeText: async (text) => {
+              window.__niradsCopiedText = text;
+            },
+          },
+        });
+      });
+      await page.getByRole("button", { name: "Copy results" }).click();
+      await expect(page.getByRole("button", { name: "Results copied" })).toBeVisible();
+      const copied = await page.evaluate(() => window.__niradsCopiedText);
+      expect(copied).toContain("Modality / Version: 2025 MRI");
+      expect(copied).toContain("Primary Site NI-RADS: 2a - Low Suspicion");
+      expect(copied).toContain("Management: Direct visual inspection.");
+    });
+
+    test("enforces the category-0 new-baseline guard", async ({ page }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Primary Site");
+      await selectRadioOption(page, "Known primary site");
+      await selectRadioOption(page, "Yes — assessable");
+      await selectRadioOption(page, "Known to exist and pending");
+      await selectRadioOption(page, "New post-treatment baseline");
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      let results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results.getByText("0 - Incomplete")).toBeVisible();
+      await expect(results.getByText(/add the score in an addendum/i)).toBeVisible();
+
+      await selectRadioOption(page, "Subsequent post-treatment study");
+      await page.getByRole("button", { name: "Calculate" }).click();
+      results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results.getByText(/requires a new baseline/i)).toBeVisible();
+      await expect(results.getByText("category_0_requires_new_baseline")).toBeVisible();
+    });
+
+    test("keeps P-unknown primary, P-x, and N-x distinct from category 0", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Primary Site");
+      await selectRadioOption(page, "Unknown primary (P-unknown primary)");
+      await page.getByRole("button", { name: "Calculate" }).click();
+      await expect(
+        page.getByRole("status", { name: "Calculator results" }).getByText("P-unknown primary"),
+      ).toBeVisible();
+
+      await resetCalculator(page);
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Primary Site");
+      await selectRadioOption(page, "Known primary site");
+      await selectRadioOption(page, "No — technically not assessed");
+      await selectRadioOption(page, "Artifact");
+      await page.getByRole("button", { name: "Calculate" }).click();
+      await expect(
+        page.getByRole("status", { name: "Calculator results" }).getByText("P-x"),
+      ).toBeVisible();
+
+      await resetCalculator(page);
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Neck Nodes");
+      await selectRadioOption(page, "No — technically not assessed");
+      await selectRadioOption(page, "Outside field of view");
+      await page.getByRole("button", { name: "Calculate" }).click();
+      await expect(
+        page.getByRole("status", { name: "Calculator results" }).getByText("N-x"),
+      ).toBeVisible();
+    });
+
+    test("keeps a new/enlarging node without high-suspicion morphology at neck 2", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Neck Nodes");
+      await selectRadioOption(page, "Yes — assessable");
+      await selectRadioOption(page, "Available now");
+      await selectRadioOption(page, "New or enlarging node");
+      await selectRadioOption(
+        page,
+        "NI-RADS 2: New/enlarging node without high-suspicion morphology",
+      );
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results.getByText("2 - Low Suspicion")).toBeVisible();
+      await expect(results.getByText("Short-interval MRI or PET.")).toBeVisible();
+    });
+
+    test("fails closed for insufficient inputs and FDG avidity while preventing conflicts", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Primary Site");
+      await selectRadioOption(page, "Known primary site");
+      await selectRadioOption(page, "Yes — assessable");
+      await selectRadioOption(page, "Available now");
+      await page.getByRole("button", { name: "Calculate" }).click();
+      let results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results.getByText("insufficient_pattern")).toBeVisible();
+
+      const lowPattern = page.getByRole("radio", {
+        name: "NI-RADS 2b: Deep ill-defined nonnodular soft tissue",
+      });
+      const highPattern = page.getByRole("radio", {
+        name: "NI-RADS 3: Discrete new/enlarging mass matching the original tumor's MRI features",
+      });
+      await lowPattern.check();
+      await highPattern.check();
+      await expect(lowPattern).not.toBeChecked();
+      await expect(highPattern).toBeChecked();
+
+      await resetCalculator(page);
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Neck Nodes");
+      await selectRadioOption(page, "Yes — assessable");
+      await selectRadioOption(page, "Available now");
+      await selectRadioOption(page, "No temporal qualifier needed");
+      await selectRadioOption(
+        page,
+        "NI-RADS 2: PET/MRI discordance when the original tumor was FDG avid",
+      );
+
+      await page.getByRole("button", { name: "Calculate" }).click();
+      results = page.getByRole("status", { name: "Calculator results" });
+      await expect(
+        results.getByText("discordance_rule_requires_original_fdg_avid"),
+      ).toBeVisible();
+
+      await selectRadioOption(page, "No — not FDG avid");
+      await page.getByRole("button", { name: "Calculate" }).click();
+      await expect(
+        results.getByText("discordance_rule_requires_original_fdg_avid"),
+      ).toBeVisible();
+
+      await selectRadioOption(page, "Unknown");
+      await page.getByRole("button", { name: "Calculate" }).click();
+      await expect(
+        results.getByText("discordance_rule_requires_original_fdg_avid"),
+      ).toBeVisible();
+    });
+
+    test("does not expose archived 1f/2f categories or a numeric ADC cutoff", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      const formText = await page.locator("main").innerText();
+      expect(formText).not.toMatch(/NI-RADS\s+(?:1f|2f)\b/);
+      expect(formText).not.toMatch(/ADC\s*(?:<|>|≤|≥|=)|\b\d+(?:\.\d+)?\s*mm²/i);
+    });
+
+    test("preserves the explicit 2018 CT/PET-CT result on mobile", async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 667 });
+      await selectRadioOption(page, "2018 CT/PET-CT");
+      await selectRadioOption(page, "Contrast-Enhanced CT");
+      await selectRadioOption(page, "Yes - prior available");
+      await selectRadioOption(
+        page,
+        "Expected post-treatment changes only (distortion, scar, diffuse linear enhancement)",
+      );
+      await selectRadioOption(page, "No abnormal lymph nodes");
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(results.getByText("1 - No Evidence of Recurrence").first()).toBeVisible();
+      await expect(results.getByText("~4%")).toBeVisible();
+      await expect(results).not.toContainText("2025 MRI");
     });
   });
 });
