@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   NIRADS,
+  LEGACY_2018_MRI_ERROR,
   MRI_2025_MANAGEMENT,
   MRI_2025_PATTERN_DEFINITIONS,
   classifyNiradsMri2025,
@@ -155,6 +156,18 @@ for (const [id, inputs] of [
     !Object.values(result).some((value) => typeof value === "string" && /~\d+%/.test(value)),
     `${id} shows no legacy percentage`,
   );
+}
+
+// The 2018 CT/PET-CT classifier never accepts MRI (Bunch 2025: the 2018 paradigm is CT/FDG PET-CT only).
+const legacyModality = NIRADS.fields.find((field) => field.id === "modality");
+assert.deepEqual(legacyModality.opts.map((option) => option.value), ["cect", "pet_ct"], "legacy modality offers CT and PET/CT only");
+for (const [id, inputs] of [
+  ["legacy-implicit-mri", { modality: "mri", prior_available: "yes", primary_ct_finding: "expected", neck_ct_finding: "no_abnormal" }],
+  ["legacy-explicit-mri", { nirads_version: "ct_pet_2018", modality: "mri", prior_available: "yes", primary_ct_finding: "discrete_mass", neck_ct_finding: "new_necrosis" }],
+  ["legacy-unknown-modality", { modality: "ultrasound", prior_available: "yes", primary_ct_finding: "expected", neck_ct_finding: "no_abnormal" }],
+]) {
+  const result = NIRADS.compute(inputs);
+  assert.deepEqual(result, { Error: LEGACY_2018_MRI_ERROR }, `${id} fails closed without 2018 categories or risk`);
 }
 
 // ACR NI-RADS MRI v2025 neck 1: hypoenhancing residual nodal tissue, with no FDG uptake *if PET is

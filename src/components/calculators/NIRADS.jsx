@@ -15,6 +15,10 @@
  * UI wording. Categories and management are bound to the reviewed ACR packet;
  * the public source does not define a numeric ADC cutoff.
  */
+const LEGACY_2018_MODALITIES = new Set(["cect", "pet_ct"]);
+export const LEGACY_2018_MRI_ERROR =
+  "The 2018 NI-RADS system covers CT and PET/CT only. For MRI, choose 2025 MRI under NI-RADS Modality / Version.";
+
 export const MRI_2025_PATTERN_DEFINITIONS = Object.freeze({
   p0_known_pending_prior: {
     site: "primary",
@@ -547,10 +551,11 @@ Note: Management text is source-provided and ungraded; NI-RADS supports, but doe
       label: "Imaging Modality",
       type: "radio",
       section: "2018 CT/PET-CT",
+      // The 2018 ACR NI-RADS paradigm covers CT and FDG PET/CT only; MRI is assessed with MRI v2025.
+      subLabel: "CT or PET/CT only. For MRI, choose 2025 MRI under NI-RADS Modality / Version.",
       showIf: (vals) => vals.nirads_version !== "mri_2025",
       opts: [
         { value: "cect", label: "Contrast-Enhanced CT" },
-        { value: "mri", label: "MRI" },
         { value: "pet_ct", label: "PET/CT" },
       ],
     },
@@ -913,6 +918,12 @@ Note: Management text is source-provided and ungraded; NI-RADS supports, but doe
       neck_ct_finding = "",
       neck_pet_finding = "",
     } = vals;
+
+    // The 2018 ACR NI-RADS paradigm is specific to CT and FDG PET/CT; MRI never gets 2018
+    // categories or recurrence rates (fails closed, including saved or linked MRI state).
+    if (modality && !LEGACY_2018_MODALITIES.has(modality)) {
+      return { Error: LEGACY_2018_MRI_ERROR };
+    }
 
     // NI-RADS 0: Incomplete
     if (prior_available === "no_pending") {
