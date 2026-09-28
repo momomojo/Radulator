@@ -274,12 +274,34 @@ function gateFixture(options = {}) {
   };
 }
 
+const TARGET = { html_url: "https://github.com/momomojo/Radulator/runs/5001" };
+
 function expectBlocked(reasonCode, options = {}) {
   const result = evaluateGate(gateFixture(options));
   assert.equal(result.context, REQUIRED_CONTEXT);
   assert.equal(result.conclusion, "failure");
   assert.equal(result.eligible, false);
   assert.equal(result.reasonCode, reasonCode);
+  assert.equal(checkCompletionPayload(result).output.title, "Clinical release gate blocked");
+  assert.equal(independentGate.authorizationStatusPayload(result, TARGET).state, "failure");
+  return result;
+}
+
+// Parked or in-flight states: a neutral check and a pending required authorization, so the PR still
+// cannot merge (the ruleset needs Authorization to be success) but is not reported as failing.
+function expectWaiting(reasonCode, options = {}) {
+  const result = evaluateGate(gateFixture(options));
+  assert.equal(result.context, REQUIRED_CONTEXT);
+  assert.equal(result.conclusion, "neutral");
+  assert.equal(result.eligible, false);
+  assert.equal(result.reasonCode, reasonCode);
+  const check = checkCompletionPayload(result);
+  assert.equal(check.conclusion, "neutral");
+  assert.equal(check.output.title, "Clinical release gate waiting");
+  assert.equal(JSON.parse(check.output.text).eligible, false);
+  const authorization = independentGate.authorizationStatusPayload(result, TARGET);
+  assert.equal(authorization.state, "pending", `${reasonCode} must never publish a success authorization`);
+  assert.equal(authorization.description, `${reasonCode} ${result.fingerprint}`);
   return result;
 }
 
@@ -703,13 +725,19 @@ function expectBlocked(reasonCode, options = {}) {
 
 expectBlocked("UNSUPPORTED_BASE", { pr: { baseRef: "feature" } });
 expectBlocked("PR_NOT_OPEN_READY", { pr: { state: "closed" } });
-expectBlocked("PR_NOT_OPEN_READY", { pr: { draft: true } });
-expectBlocked("READY_LABEL_MISSING", { pr: { labels: [] } });
+expectWaiting("PR_NOT_OPEN_READY", { pr: { draft: true } });
+expectWaiting("PR_NOT_OPEN_READY", { pr: { draft: true, labels: ["ready-for-gate", "hold"] } });
+expectBlocked("PR_NOT_OPEN_READY", { pr: { state: "closed", draft: true } });
+expectWaiting("READY_LABEL_MISSING", { pr: { labels: [] } });
 expectBlocked("HOLD_PRESENT", { pr: { labels: ["ready-for-gate", "hold"] } });
 expectBlocked("CI_NOT_EXACT_SUCCESS", { ci: { ok: false, summary: "latest run failed", evidence: [] } });
+expectWaiting("CI_NOT_EXACT_SUCCESS", {
+  ci: { ok: false, pending: true, summary: "Latest exact-head E2E run 1001 is in_progress/none.", evidence: [] },
+});
+expectBlocked("CI_NOT_EXACT_SUCCESS", { ci: { ok: false, pending: "true", summary: "not a boolean", evidence: [] } });
 expectBlocked("INCOMPLETE_FILE_LIST", { pr: { changedFiles: 2 } });
 expectBlocked("INCOMPLETE_FILE_LIST", { pr: { changedFiles: 3001 } });
-expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
+expectWaiting("MISSING_JUDGE_ROLE", { reviews: [] });
 
 {
   const base = gateFixture();
@@ -728,14 +756,20 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     clinical_analysis: "Evidence does not support the clinical wording.",
     reviewed_at: "2026-08-23T20:02:00Z",
   });
-  assert.equal(evaluateGate({ ...base, reviews: [carrier(pass), carrier(needsFix, 813)] }).reasonCode, "NEEDS_FIX");
+  const sentBack = evaluateGate({ ...base, reviews: [carrier(pass), carrier(needsFix, 813)] });
+  assert.equal(sentBack.reasonCode, "NEEDS_FIX");
+  assert.equal(sentBack.conclusion, "failure", "a NEEDS_FIX verdict stays red: someone has to act on it");
+  assert.equal(independentGate.authorizationStatusPayload(sentBack, TARGET).state, "failure");
 }
 
 {
   const base = gateFixture();
   const state = exactState(base.pr, base.ci, base.files);
   const stale = signedRecord(PRIMARY, state, { reviewed_at: "2026-08-23T19:59:00Z" });
-  assert.equal(evaluateGate({ ...base, reviews: [carrier(stale)] }).reasonCode, "STALE_ATTESTATION");
+  const staleResult = evaluateGate({ ...base, reviews: [carrier(stale)] });
+  assert.equal(staleResult.reasonCode, "STALE_ATTESTATION");
+  assert.equal(staleResult.conclusion, "neutral", "a review older than the current evidence waits for re-review");
+  assert.equal(independentGate.authorizationStatusPayload(staleResult, TARGET).state, "pending");
 }
 
 {
@@ -936,6 +970,24 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     expectedCiAppId: CI_APP_ID,
     expectedRepositoryFullName: REPOSITORY,
   }).ok, false);
+  const ciFor = (workflowRuns) => resolveRequiredCi({
+    pr,
+    workflowRuns,
+    checkRuns: setup.checkRuns,
+    attemptJobs: setup.attemptJobs,
+    requiredCi: setup.requiredCi,
+    expectedWorkflowId: WORKFLOW_ID,
+    expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
+  });
+  // A finished run that failed is not pending; a run still queued or running, or none yet, is.
+  assert.equal(ciFor([setup.workflowRuns[0], failedLatest]).pending, false);
+  for (const status of ["queued", "in_progress", "waiting"]) {
+    const running = workflowRun(pr, { id: 1003, check_suite_id: 702, created_at: "2026-08-23T20:04:00Z", status, conclusion: null });
+    const result = ciFor([setup.workflowRuns[0], running]);
+    assert.deepEqual([result.ok, result.pending], [false, true], `${status} latest run is pending`);
+  }
+  assert.deepEqual([ciFor([]).ok, ciFor([]).pending], [false, true], "no exact-head run yet is pending");
 
   const supplemental = checkRun(pr, "Hermes Release Control Tests", 3);
   const supplementalJob = workflowJob(pr, "Hermes Release Control Tests", 3);

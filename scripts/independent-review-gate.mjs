@@ -74,6 +74,29 @@ function failure(headSha, baseSha, summary, reasonCode, details = {}) {
   return result;
 }
 
+// A PR that is parked or still in flight is waiting, not failing: an open draft, no ready-for-gate
+// label, exact-head CI that has not started or finished, or a judge review that is missing or older
+// than the current evidence. The check concludes neutral and the required authorization status stays
+// pending, so the ruleset blocks merging exactly as it does on failure, while the check stays red only
+// for states someone must act on (a NEEDS_FIX verdict, finished CI that failed, a hold label, a closed
+// PR, malformed or inconsistent evidence, an evaluation error or a revoked PASS).
+function waiting(headSha, baseSha, summary, reasonCode, details = {}) {
+  const result = {
+    context: REQUIRED_CONTEXT,
+    conclusion: "neutral",
+    eligible: false,
+    reasonCode,
+    headSha,
+    baseSha,
+    summary,
+    ...details,
+  };
+  result.fingerprint = digest(result);
+  return result;
+}
+
+const WAITING_ATTESTATION_CODES = new Set(["MISSING_JUDGE_ROLE"]);
+
 function success(pr, risk, quorum) {
   const result = {
     context: REQUIRED_CONTEXT,
@@ -146,6 +169,7 @@ export function validateCiPolicy({ pr, files, requiredCi, ci }) {
       ok: false,
       reasonCode: "CI_NOT_EXACT_SUCCESS",
       summary: `Required CI is not exact green: ${ci?.summary || "missing evidence"}`,
+      pending: ci?.pending === true,
       risk,
       requiredCi: policyRequiredCi,
     };
@@ -221,9 +245,17 @@ function selectRequiredCiRun({ pr, workflowRuns, expectedWorkflowId }) {
 
   exactRuns.sort(runSort);
   const run = exactRuns[0];
-  if (!run) return { ok: false, summary: "No exact-head E2E workflow run matches the current PR head/base.", evidence: [] };
+  // No run yet, or one still queued or running, is pending; a finished run that did not succeed is not.
+  if (!run) {
+    return { ok: false, pending: true, summary: "No exact-head E2E workflow run matches the current PR head/base.", evidence: [] };
+  }
   if (run.status !== "completed" || run.conclusion !== "success") {
-    return { ok: false, summary: `Latest exact-head E2E run ${run.id} is ${run.status}/${run.conclusion || "none"}.`, evidence: [] };
+    return {
+      ok: false,
+      pending: run.status !== "completed",
+      summary: `Latest exact-head E2E run ${run.id} is ${run.status}/${run.conclusion || "none"}.`,
+      evidence: [],
+    };
   }
   return { ok: true, run };
 }
@@ -441,7 +473,8 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
     return failure(pr?.headSha || "", pr?.baseSha || "", "Malformed PR/repository identity or head/base SHA; refusing PASS.", "MALFORMED_PR");
   }
   if (!ALLOWED_BASE_REFS.has(pr.baseRef)) return failure(pr.headSha, pr.baseSha, "PR base is outside develop/main; refusing PASS.", "UNSUPPORTED_BASE");
-  if (pr.state !== "open" || pr.draft) return failure(pr.headSha, pr.baseSha, "PR is not open and ready; refusing PASS.", "PR_NOT_OPEN_READY");
+  if (pr.state !== "open") return failure(pr.headSha, pr.baseSha, "PR is not open and ready; refusing PASS.", "PR_NOT_OPEN_READY");
+  if (pr.draft) return waiting(pr.headSha, pr.baseSha, "PR is a draft (parked); refusing PASS until it is ready for review.", "PR_NOT_OPEN_READY");
   if (!completeFileList(pr, files)) {
     return failure(
       pr.headSha,
@@ -455,19 +488,23 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
   }
 
   const labels = new Set((pr.labels || []).map((label) => `${label}`.toLowerCase()));
-  if (!labels.has("ready-for-gate")) return failure(pr.headSha, pr.baseSha, "ready-for-gate is absent.", "READY_LABEL_MISSING");
+  if (!labels.has("ready-for-gate")) return waiting(pr.headSha, pr.baseSha, "ready-for-gate is absent.", "READY_LABEL_MISSING");
   const hold = [...labels].find((label) => HOLD_LABELS.has(label));
   if (hold) return failure(pr.headSha, pr.baseSha, `A hold label is present (${hold}); refusing PASS.`, "HOLD_PRESENT");
 
   const ciPolicy = validateCiPolicy({ pr, files, requiredCi, ci });
   if (!ciPolicy.ok) {
-    return failure(pr.headSha, pr.baseSha, ciPolicy.summary, ciPolicy.reasonCode, ciPolicy.risk ? { risk: ciPolicy.risk } : {});
+    const blocked = ciPolicy.pending === true ? waiting : failure;
+    return blocked(pr.headSha, pr.baseSha, ciPolicy.summary, ciPolicy.reasonCode, ciPolicy.risk ? { risk: ciPolicy.risk } : {});
   }
   const risk = ciPolicy.risk;
   const state = exactState(pr, ci, risk);
   const carriers = attestationRecords(reviews);
   const quorum = evaluateAttestationQuorum(carriers, publicKeys, state);
-  if (!quorum.ok) return failure(pr.headSha, pr.baseSha, quorum.summary, quorum.reasonCode, { risk });
+  if (!quorum.ok) {
+    const blocked = WAITING_ATTESTATION_CODES.has(quorum.reasonCode) ? waiting : failure;
+    return blocked(pr.headSha, pr.baseSha, quorum.summary, quorum.reasonCode, { risk });
+  }
 
   const roles = requiredJudgeRoles(risk.tier);
   const selected = newestRequiredRecords(carriers, roles, state, publicKeys);
@@ -478,7 +515,7 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
   for (const role of roles) {
     const record = selected.get(role);
     if (!record || Date.parse(record.reviewed_at) < newestEvidenceAt) {
-      return failure(pr.headSha, pr.baseSha, `${role} attestation predates current PR/CI evidence.`, "STALE_ATTESTATION", { risk });
+      return waiting(pr.headSha, pr.baseSha, `${role} attestation predates current PR/CI evidence.`, "STALE_ATTESTATION", { risk });
     }
   }
   return success(pr, risk, quorum);
@@ -682,7 +719,9 @@ export function checkCompletionPayload(result) {
     conclusion: result.conclusion,
     external_id: `radulator-clinical-gate/v1/${result.fingerprint}`,
     output: {
-      title: result.eligible ? "Clinical release gate passed" : "Clinical release gate blocked",
+      title: result.eligible
+        ? "Clinical release gate passed"
+        : result.conclusion === "neutral" ? "Clinical release gate waiting" : "Clinical release gate blocked",
       summary: result.summary,
       text: JSON.stringify({
         schema: RECORD_SCHEMA,
@@ -701,7 +740,7 @@ export function checkCompletionPayload(result) {
 
 export function authorizationStatusPayload(result, check) {
   return {
-    state: result.conclusion === "success" ? "success" : "failure",
+    state: result.conclusion === "success" ? "success" : result.conclusion === "neutral" ? "pending" : "failure",
     context: ENFORCEMENT_CONTEXT,
     description: `${result.reasonCode} ${result.fingerprint}`,
     target_url: check.html_url,
