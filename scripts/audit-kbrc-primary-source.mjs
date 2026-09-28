@@ -384,39 +384,80 @@ function assertRuntimeAndFixtures(vectors, fixture) {
   }
 }
 
+// Every retrieved artifact is pinned by exact byte length and SHA-256, and verified before any
+// parsing. A drifted HTTP 200 fails at once: verification runs after retrieval returns, so content
+// drift is never retried.
+function verifyPinnedBytes(bytes, pin, label) {
+  assert.ok(
+    Number.isSafeInteger(pin?.bytes) && pin.bytes > 0,
+    `${label}: the registry lacks a pinned byte length`,
+  );
+  assert.match(String(pin?.sha256 ?? ""), /^[0-9a-f]{64}$/, `${label}: the registry lacks a pinned SHA-256`);
+  assert.equal(
+    bytes.length,
+    pin.bytes,
+    `${label}: byte length drifted from the pin (${bytes.length} bytes, pinned ${pin.bytes})`,
+  );
+  const digest = sha256(bytes);
+  assert.equal(digest, pin.sha256, `${label}: SHA-256 drifted from the pin (${digest})`);
+  return bytes;
+}
+
 // Weight-input evidence for the runtime "Input Review" output and info text. The source models
 // BMI (kg/m2), not weight, as a continuous restricted-cubic-spline predictor with no cutoffs,
 // mentions weight only where it lists weight and height as collected variables, and reports BMI
 // only as a median (IQR). It publishes no weight or BMI validity domain, so the 30-130 kg interval
-// is a Radulator entry-review aid, not a model claim. Each statement below must appear verbatim at
-// its locator; the runtime is then bound at the old weight limits against an oracle evaluated from
-// the Item S1 terms, and the binding must detect representative regressions.
+// is a Radulator entry-review aid, not a model claim. Source prose is not reproduced here: each
+// statement is located by paragraph (or supplement page) and key terms, and bound to the SHA-256
+// of its text inside the byte-pinned artifact (XML tags removed and whitespace collapsed, or all
+// whitespace removed for the PDF text layer). The runtime is then bound at the old weight limits
+// against an oracle evaluated from the Item S1 terms, and the binding must detect representative
+// regressions.
 const WEIGHT_XML_STATEMENTS = [
   {
     id: "derivation-variables-weight-height",
     paragraph: "p0030",
-    text: "Variables used in the derivation of the bleeding risk prediction model included age, weight, height",
+    terms: ["derivation", "weight", "height"],
+    sha256: "51c44ab46c16785b204b67277337c04aeee46665820d43573981d00e0c583b2a",
   },
   {
     id: "bmi-continuous-spline",
     paragraph: "p0050",
-    text: "All continuous predictors (age, kidney length, preprocedural hemoglobin, platelet count, and BMI) were modeled as continuous variables using restricted cubic splines with 3 knots",
+    terms: ["BMI", "restricted cubic splines", "3 knots"],
+    sha256: "38eb635fa905e18639037a3ffc09702a44fbdee015ddc4c26ab20a27657183c4",
   },
   {
     id: "no-arbitrary-cutoffs",
     paragraph: "p0050",
-    text: "No variables were dichotomized or categorized, and no arbitrary cutoffs were applied.",
+    terms: ["dichotomized", "categorized", "arbitrary cutoffs"],
+    sha256: "3edc662aad097233d73509c1d4111eb0f28d5361396717cae485847fc5056767",
   },
 ];
-const WEIGHT_PDF_STATEMENTS = [
-  { id: "item-s1-bmi-unit", page: 5, text: "BMI (body mass index) is expressed in kg/m2." },
-  { id: "table-s1-title", page: 6, text: "Table S1: Predictor Modeling Approach" },
-  {
-    id: "table-s1-bmi-spline",
-    page: 6,
-    text: "Body mass index (kg/m2) Continuous, restricted cubic spline (3 knots)",
+// Item S1 footnote (supplement page 5): the unit statement for the BMI input.
+const ITEM_S1_BMI_UNIT = {
+  id: "item-s1-bmi-unit",
+  page: 5,
+  terms: ["BMI", "kg/m2"],
+  sha256: "7c026216f9f696ce042003f6faa8585c1c558ed9dbe32058b68a2536b1efa0ab",
+};
+// Table S1, Predictor Modeling Approach (supplement page 6): every modeled predictor label, with
+// whitespace removed, and its modeling approach. Weight and height are not predictors.
+const TABLE_S1 = {
+  id: "table-s1-predictors",
+  page: 6,
+  approaches: new Map([
+    ["Continuous,restrictedcubicspline(3knots)", "continuous restricted cubic spline, 3 knots"],
+    ["Binary,reference:allograft", "binary, reference allograft"],
+  ]),
+  predictors: {
+    "Age(years)": "continuous restricted cubic spline, 3 knots",
+    "Kidneylength(cm)": "continuous restricted cubic spline, 3 knots",
+    "Pre-procedurehemoglobin(g/L)": "continuous restricted cubic spline, 3 knots",
+    "Plateletcount(x109/L)": "continuous restricted cubic spline, 3 knots",
+    "Bodymassindex(kg/m2)": "continuous restricted cubic spline, 3 knots",
+    "Targetkidney(Nativevs.Allograft)": "binary, reference allograft",
   },
-];
+};
 const ANTHROPOMETRIC_TERM = String.raw`\bweigh\w*|\b(?:obes\w*|overweight|underweight)\b|\bkg\b(?!\s*\/\s*m)`;
 const SUPPLEMENT_PAGE_COUNT = 7;
 const WEIGHT_REVIEW_INTERVAL_KG = [30, 130];
@@ -429,13 +470,27 @@ function xmlParagraph(xml, id) {
   return decodeXmlText(paragraph);
 }
 
+// The one segment that contains every key term must hash to the pinned statement digest.
+function assertPinnedStatement(segments, { id, terms, sha256: pinned }, locator) {
+  const matches = segments.filter((segment) => terms.every((term) => segment.includes(term)));
+  assert.equal(
+    matches.length,
+    1,
+    `${locator} ${id}: expected exactly one statement containing ${terms.join(" + ")}, found ${matches.length}`,
+  );
+  const digest = sha256(matches[0]);
+  assert.equal(digest, pinned, `${locator} ${id}: statement digest ${digest} does not match the pin`);
+  return { id, locator, sha256: digest };
+}
+
 function assertXmlWeightEvidence(xml) {
-  for (const { id, paragraph, text } of WEIGHT_XML_STATEMENTS) {
-    assert.ok(
-      xmlParagraph(xml, paragraph).includes(text),
-      `full-text XML paragraph ${paragraph} lacks the ${id} statement: "${text}"`,
-    );
-  }
+  const statements = WEIGHT_XML_STATEMENTS.map((statement) =>
+    assertPinnedStatement(
+      xmlParagraph(xml, statement.paragraph).split(/(?<=\.)\s+(?=[A-Z])/),
+      statement,
+      `full-text XML paragraph ${statement.paragraph}`,
+    ),
+  );
 
   // Closed world over the whole article (text, tables, captions and references): body weight,
   // obesity and kilogram values appear only where weight and height are listed as collected
@@ -495,10 +550,11 @@ function assertXmlWeightEvidence(xml) {
   );
   assert.match(
     footnote,
-    /Continuous variables are expressed as median \(IQR\)/,
+    /\bContinuous variables\b.*\bmedian \(IQR\)/,
     "Table 1 footnote no longer reports continuous variables as median (IQR)",
   );
   return {
+    statements,
     weightMentions,
     table1Bmi: { median: Number(combined[1]), iqr: [Number(combined[2]), Number(combined[3])] },
     anthropometricRows: anthropometricRows.length,
@@ -509,12 +565,35 @@ function assertPdfWeightEvidence(supplementText, sourceTerms) {
   const pages = supplementText.split("\n");
   assert.equal(pages.length, SUPPLEMENT_PAGE_COUNT, "supplement PDF page count");
   const compact = (value) => value.replace(/\s+/g, "");
-  for (const { id, page, text } of WEIGHT_PDF_STATEMENTS) {
-    assert.ok(
-      compact(pages[page - 1]).includes(compact(text)),
-      `supplement PDF page ${page} lacks the ${id} statement: "${text}"`,
-    );
+
+  const itemS1Footnote = compact(pages[ITEM_S1_BMI_UNIT.page - 1]).split("Footnote:")[1];
+  assert.ok(itemS1Footnote, `supplement PDF page ${ITEM_S1_BMI_UNIT.page} lacks the Item S1 footnote`);
+  const statements = [
+    assertPinnedStatement(
+      itemS1Footnote.split("."),
+      ITEM_S1_BMI_UNIT,
+      `mmc1.pdf page ${ITEM_S1_BMI_UNIT.page} Item S1 footnote`,
+    ),
+  ];
+
+  const tableS1 = compact(pages[TABLE_S1.page - 1]);
+  const title = "TableS1:PredictorModelingApproach";
+  assert.ok(tableS1.includes(title), `supplement PDF page ${TABLE_S1.page} lacks Table S1`);
+  const cells = tableS1
+    .slice(tableS1.lastIndexOf("Approach") + "Approach".length)
+    .split(/(Continuous,restrictedcubicspline\(3knots\)|Binary,reference:allograft)/);
+  assert.equal(cells.at(-1), "", "Table S1 has content after its last predictor row");
+  const predictors = {};
+  for (let index = 0; index + 1 < cells.length; index += 2) {
+    predictors[cells[index]] = TABLE_S1.approaches.get(cells[index + 1]);
   }
+  assert.deepEqual(
+    predictors,
+    TABLE_S1.predictors,
+    "Table S1 predictors or modeling approaches drifted; weight must not be a modeled predictor",
+  );
+  statements.push({ id: TABLE_S1.id, locator: `mmc1.pdf page ${TABLE_S1.page} Table S1`, predictors });
+
   for (const page of [5, 6]) {
     assert.doesNotMatch(
       pages[page - 1],
@@ -528,7 +607,7 @@ function assertPdfWeightEvidence(supplementText, sourceTerms) {
     ["age", "bmi", "constant", "hemoglobin", "kidneySize", "native", "platelets"],
     "Item S1 predictors changed; weight must enter the model only through BMI",
   );
-  return inputs.filter((input) => input !== "constant");
+  return { statements, modelInputs: inputs.filter((input) => input !== "constant") };
 }
 
 // Oracle evaluated directly from the parsed Item S1 terms, independent of the runtime function.
@@ -690,8 +769,14 @@ async function main() {
   const artifact = record?.implementation_evidence?.source_artifact;
   assert.ok(artifact, "KBRC registry lacks source_artifact metadata");
 
+  // The article XML comes from NCBI E-utilities efetch, whose response is byte-stable (the OAI-PMH
+  // envelope carries a per-request responseDate). Its pinned length and digest are verified before
+  // the bytes are decoded or parsed.
+  const xmlPin = { bytes: artifact.full_text_xml_bytes, sha256: artifact.full_text_xml_sha256 };
   const [xmlBytes, supplement] = await Promise.all([
-    fetchBuffer(artifact.full_text_xml_url),
+    fetchBuffer(artifact.full_text_xml_url).then((bytes) =>
+      verifyPinnedBytes(bytes, xmlPin, "article XML"),
+    ),
     fetchSupplement(artifact),
   ]);
   const xml = xmlBytes.toString("utf8");
@@ -716,7 +801,7 @@ async function main() {
     calculatorBytes.toString("utf8"),
     fixture,
   );
-  const modelInputs = assertPdfWeightEvidence(supplementText, sourceTerms);
+  const pdfWeightEvidence = assertPdfWeightEvidence(supplementText, sourceTerms);
   const xmlWeightEvidence = assertXmlWeightEvidence(xml);
   const lowerRiskExample = vectors.find(({ id }) => id === "paper-lower-risk-allograft");
   const reviewFlags = assertWeightReviewBinding(
@@ -739,6 +824,9 @@ async function main() {
   const audit = {
     schema: "radulator-kbrc-primary-source-audit/v1",
     article_pmcid: "PMC13156734",
+    article_xml_url: artifact.full_text_xml_url,
+    article_xml_bytes: xmlBytes.length,
+    article_xml_sha256: sha256(xmlBytes),
     archive_member: artifact.archive_member,
     direct_pdf_url: artifact.direct_pdf_url,
     supplement_retrieval: supplement.retrieval,
@@ -759,9 +847,9 @@ async function main() {
     },
     runtime_input_limit_claims_match: true,
     weight_input_evidence: {
-      model_inputs: modelInputs,
-      xml_statements: WEIGHT_XML_STATEMENTS.map(({ paragraph, id }) => `${paragraph}:${id}`),
-      pdf_statements: WEIGHT_PDF_STATEMENTS.map(({ page, id }) => `mmc1.pdf page ${page}:${id}`),
+      model_inputs: pdfWeightEvidence.modelInputs,
+      xml_statements: xmlWeightEvidence.statements,
+      pdf_statements: pdfWeightEvidence.statements,
       weight_mentions: xmlWeightEvidence.weightMentions,
       table1_bmi_combined: xmlWeightEvidence.table1Bmi,
       table1_weight_or_height_rows: xmlWeightEvidence.anthropometricRows,

@@ -13,14 +13,27 @@ endpoint is unavailable, and parses the verified PDF bytes with the installed
 `pdfjs-dist` library in memory. No Poppler executable or temporary source
 directory is part of the audit path.
 
-The audit downloads the PMC full-text XML named in the registry (NCBI PMC
-OAI-PMH) and the supplement for PMCID `PMC13156734`, verifies the `mmc1.pdf`
-member before parsing it, and retains the source bytes only in memory:
+Every retrieved artifact is pinned by exact byte length and SHA-256 in the
+KBRC registry record. The audit verifies both before it decodes or parses the
+bytes, and it retains the source bytes only in memory:
 
-- Member: `mmc1.pdf`
-- Bytes: `3696579`
-- SHA-256: `d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5`
-- Locator: Item S1, equation for the refit model on the combined dataset
+- Article XML for PMCID `PMC13156734`, retrieved from NCBI E-utilities
+  (`efetch`): `60058` bytes, SHA-256
+  `b7610352254424f1da36127082993ff981abb72cf090acff624b0e5b993209c7`
+  (`full_text_xml_bytes` and `full_text_xml_sha256`). The efetch response was
+  byte-identical across five fetches spaced 75 seconds apart. The OAI-PMH copy
+  used before cannot be pinned because each response carries its own
+  `responseDate`.
+- Supplement member `mmc1.pdf`: `3696579` bytes, SHA-256
+  `d05d344c32a94e797587c5cb79896117026199d0dacd36ea1c0f28856848f6f5`. The
+  locator is Item S1, the equation for the refit model on the combined dataset.
+
+Verification runs after retrieval returns. A response that arrives as HTTP 200
+with drifted bytes therefore fails at once and is never retried; only network
+errors, HTTP 429 and HTTP 5xx are retried. The audit test proves this offline:
+a preloaded fake fetch serves same-length, one-byte-short and one-byte-long
+article XML, and each run must fail with the matching pin error, print no
+result, and request the XML exactly once.
 
 The script derives all 22 signed equation terms and spline knots from Item S1,
 derives the four published examples from the article XML and Table 1, and then
@@ -40,10 +53,15 @@ final checks and no mutation is retained in the worktree.
 The calculator reviews, rather than rejects, weights outside 30–130 kg (the
 `Input Review` output), and its information text says BMI, not weight alone, is
 the model predictor. The audit binds both to the primary source at the exact
-head. The literal statements it asserts are kept in `WEIGHT_XML_STATEMENTS` and
-`WEIGHT_PDF_STATEMENTS` in `scripts/audit-kbrc-primary-source.mjs`.
+head. It does not reproduce source prose. Each statement is found by its
+locator and key terms, and the statement text must hash to the SHA-256 pinned
+in `WEIGHT_XML_STATEMENTS` or `ITEM_S1_BMI_UNIT` in
+`scripts/audit-kbrc-primary-source.mjs`. The hash covers the sentence with XML
+tags removed and whitespace collapsed, or, for the PDF text layer, with all
+whitespace removed. Table S1 is bound as its full list of predictor labels and
+modeling approaches.
 
-Source statements, each asserted verbatim at its locator:
+Source statements, each bound at its locator:
 
 - Article XML paragraph `p0030` (Methods, Cohort Generation): weight and height
   are listed among the variables collected for the derivation model.
@@ -98,8 +116,8 @@ needed for reproducibility.
 
 Primary endpoints:
 
-- Full-text XML used by the audit (the registry's `full_text_xml_url`): https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc
-- Full-text XML, Europe PMC copy with the same paragraph ids: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML
+- Full-text XML used by the audit (the registry's `full_text_xml_url`, byte-pinned): https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=13156734&retmode=xml&tool=radulator-kbrc-source-audit
+- Full-text XML, Europe PMC copy with the same paragraph ids (for reading; not pinned or used by the audit): https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML
 - Supplement PDF (publisher): https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf
 - Supplement archive: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/supplementaryFiles
 - Human-readable article: https://europepmc.org/article/PMC/13156734
