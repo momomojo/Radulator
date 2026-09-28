@@ -1,26 +1,31 @@
 #!/usr/bin/env node
 
-// Exact-head primary-source audit for the AAST grade-advance modifiers in
+// Exact-head primary-source audit for the AAST grade-advance modifiers and related wording in
 // src/components/calculators/AASTTraumaGrading.jsx.
 //
-// Retrieves (1) the AAST-hosted PDF of Kozar et al., "Organ injury scaling 2018 update:
-// Spleen, liver, and kidney" (J Trauma Acute Care Surg 2018;85:1119-1122), a static PDF pinned
-// by byte length and SHA-256, and (2) the PubMed records of Kozar 2018, Keihani 2025 (kidney
-// 2025 update) and Notrica 2025 (pancreas 2024 revision) from NCBI E-utilities. PubMed XML
-// also carries indexing data that changes after publication, so its raw bytes are not pinned;
-// the enforced pin is the SHA-256 of each record's normalized citation fields and abstract.
+// Every retrieved artifact is pinned by its exact byte length and SHA-256, and both pins are
+// verified before anything is parsed. A served artifact (HTTP 2xx) that misses its URL, media
+// type, provenance, length or digest pin is a changed source: it fails at once and is never
+// retried or replaced by another host. Transport failures (network errors, HTTP 429 and 5xx, a
+// Cloudflare challenge or block page and, for NCBI only, HTTP 400) are retried with 1/2/4/8 s
+// backoff or Retry-After (capped); after the last attempt on the last host the audit fails loudly.
+// No path passes without verifying the pinned bytes.
 //
-// Each source statement is pinned by the SHA-256 and length of its exact normalized span
-// between two short anchors at its locator, so the audit verifies literal source text at head
-// without committing the copyrighted passages; `paraphrase` is Radulator's own summary. The
-// statements are then bound to the calculator runtime: which organ/version shows and applies
-// each modifier, the grade I-II trigger with the grade III ceiling, stale hidden values, the
-// reworded subLabels and the reference list. Any drift exits non-zero.
+// Artifacts:
+// - Kozar et al., "Organ injury scaling 2018 update: Spleen, liver, and kidney" (J Trauma Acute
+//   Care Surg 2018;85:1119-1122): the AAST-hosted PDF. The Internet Archive capture of that same
+//   AAST file (identical pinned bytes) is used only after the AAST host's transport retries are
+//   exhausted.
+// - The AAST's own injury scoring scale page as served by aast.org on 2020-11-01 (Internet
+//   Archive capture; the live page no longer carries the tables): pancreas table note.
+// - PubMed plain-text abstracts (efetch rettype=abstract, retmode=text, tool parameter, no email)
+//   for Kozar 2018, Keihani 2025 and Notrica 2025. This form carries no retrieval metadata, so it
+//   changes only when the record changes.
 //
-// If aast.org answers with a recognised Cloudflare bot-protection page (challenge or block, not
-// a content change), the Kozar statements cannot be re-read in that run: the audit says so,
-// still enforces every runtime binding and the PubMed pins, and exits 0 unless --require-live
-// is given.
+// Each source statement is pinned by the SHA-256 and length of its exact normalized span between
+// two anchors of at most six words at its locator; `paraphrase` is Radulator's own summary and no
+// source passage is committed. The statements are bound to the calculator runtime. Any drift
+// exits non-zero.
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -31,12 +36,38 @@ import { pathToFileURL } from "node:url";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 export const CALCULATOR_PATH = "src/components/calculators/AASTTraumaGrading.jsx";
-const USER_AGENT = "Radulator-AAST-injury-modifier-source-audit/1";
-const MAX_ATTEMPTS = 5;
+const USER_AGENT = "Radulator-AAST-injury-modifier-source-audit/2";
+export const MAX_ATTEMPTS = 5;
 const MAX_RETRY_DELAY_MS = 20_000;
-const CLOUDFLARE_CHALLENGE_STATUS = "challenged-by-cloudflare-bot-protection";
+const EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi";
+export const NCBI_TOOL = "radulator-aast-audit";
 
-export const SOURCES = Object.freeze({
+const KOZAR_STATIC_URL =
+  "https://www.aast.org/static/journal_pdf_1ea6c353-e5b1-40d7-85ab-2a7cb76e886a/1ea6c353-e5b1-40d7-85ab-2a7cb76e886a.pdf";
+const AAST_SCALE_PAGE_URL = "https://www.aast.org/resources-detail/injury-scoring-scale";
+
+function pubmedArtifact(pmid, bytes, sha256, document) {
+  return Object.freeze({
+    key: `pubmed${pmid}`,
+    authority: "U.S. National Library of Medicine (PubMed plain-text abstract, NCBI E-utilities)",
+    document,
+    pmid,
+    media_type: "text/plain",
+    bytes,
+    sha256,
+    hosts: Object.freeze([
+      Object.freeze({
+        key: "ncbi",
+        url: `${EFETCH}?db=pubmed&id=${pmid}&rettype=abstract&retmode=text&tool=${NCBI_TOOL}`,
+        final_url_exact: true,
+        // NCBI answers valid E-utilities requests with a transient HTTP 400 at times.
+        retry_http_400: true,
+      }),
+    ]),
+  });
+}
+
+export const ARTIFACTS = Object.freeze({
   kozar2018: Object.freeze({
     key: "kozar2018",
     authority: "American Association for the Surgery of Trauma (AAST-hosted copy of the journal article)",
@@ -44,32 +75,65 @@ export const SOURCES = Object.freeze({
       "Kozar RA, Crandall M, Shanmuganathan K, et al. Organ injury scaling 2018 update: Spleen, liver, and kidney. J Trauma Acute Care Surg. 2018;85(6):1119-1122",
     doi: "10.1097/TA.0000000000002058",
     pmid: "30462622",
-    url: "https://www.aast.org/asset/1EDF1B04-6B52-4E7B-9130ACA30413089D/",
-    // The AAST asset link redirects into AAST's static store. The store path is checked by
-    // pattern (the asset id is the stable AAST identifier); the bytes are pinned exactly.
-    final_host: "www.aast.org",
-    final_path_pattern: "^/static/journal_pdf_[0-9a-f-]{36}/[0-9a-f-]{36}\\.pdf$",
     media_type: "application/pdf",
     bytes: 174_748,
     sha256: "bcd66906506efee3757ce1ea39e0da66bf30e39ffa7ccf3c33cc2678b3430965",
-    pin: "raw-bytes",
     pages: 4,
+    hosts: Object.freeze([
+      Object.freeze({
+        key: "aast",
+        // The AAST asset link redirects into AAST's static store; the store path is checked by
+        // pattern (the asset id is the stable AAST identifier), the bytes exactly.
+        url: "https://www.aast.org/asset/1EDF1B04-6B52-4E7B-9130ACA30413089D/",
+        final_host: "www.aast.org",
+        final_path_pattern: "^/static/journal_pdf_[0-9a-f-]{36}/[0-9a-f-]{36}\\.pdf$",
+      }),
+      Object.freeze({
+        key: "internet-archive",
+        // Same AAST file, captured 2026-04-19; immutable, identical bytes.
+        url: `https://web.archive.org/web/20260419100016id_/${KOZAR_STATIC_URL}`,
+        final_url_exact: true,
+        memento_datetime: "Sun, 19 Apr 2026 10:00:16 GMT",
+        memento_original: KOZAR_STATIC_URL,
+      }),
+    ]),
   }),
-  pubmed: Object.freeze({
-    key: "pubmed",
-    authority: "U.S. National Library of Medicine (PubMed, NCBI E-utilities efetch)",
-    document: "PubMed records 30462622 (Kozar 2018), 39836096 (Keihani 2025), 39898876 (Notrica 2025)",
-    url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=30462622,39836096,39898876&retmode=xml&tool=radulator-aast-audit",
-    media_type: "text/xml",
-    // NCBI answers valid E-utilities requests with a transient HTTP 400 at times.
-    retry_http_400: true,
-    pin: "pubmed-record-fields",
-    pin_rationale:
-      "PubMed XML carries MeSH, history and status data that change after publication; only the citation fields and abstract are pinned",
-    content_digest_basis:
-      "per PMID: title, authors (LastName + Initials or CollectiveName), ISO journal, year, volume, issue, pages, DOI and abstract paragraphs; entities decoded, tags removed, NFKC, quote/dash folding, whitespace collapsed; canonical JSON sorted by PMID",
-    records_sha256: "20638d0a63f3574ea7a5b7c07640233d9ab8ab2c9b721b111342954f9366bca7",
+  aastScalePage2020: Object.freeze({
+    key: "aastScalePage2020",
+    authority: "American Association for the Surgery of Trauma (injury scoring scale page, archived)",
+    document:
+      "AAST Injury Scoring Scale page with the organ injury scale tables, as served by aast.org on 2020-11-01",
+    media_type: "text/html",
+    bytes: 274_891,
+    sha256: "e60dd713368a7ceddf61d368cf9d8ac9dc70d183d64096753c93cb218816481b",
+    hosts: Object.freeze([
+      Object.freeze({
+        key: "internet-archive",
+        url: `https://web.archive.org/web/20201101034458id_/${AAST_SCALE_PAGE_URL}`,
+        final_url_exact: true,
+        memento_datetime: "Sun, 01 Nov 2020 03:44:58 GMT",
+        memento_original: AAST_SCALE_PAGE_URL,
+      }),
+    ]),
   }),
+  pubmed30462622: pubmedArtifact(
+    "30462622",
+    1_474,
+    "da35009c9ef5910296f34614591307c25c4b1d2b6ca4deeae109932ae7a5eec8",
+    "PubMed 30462622 (Kozar 2018, organ injury scaling 2018 update)",
+  ),
+  pubmed39836096: pubmedArtifact(
+    "39836096",
+    2_069,
+    "909f136488d4777571f78604db5b9183751e88f61fc338a54f70ee45f0f723ec",
+    "PubMed 39836096 (Keihani 2025, kidney organ injury scaling 2025 update)",
+  ),
+  pubmed39898876: pubmedArtifact(
+    "39898876",
+    3_705,
+    "fad50e9dcbc52c90879d1d7fdf6100de46cd94481ce9c1e2a27c9bf7f4d62911",
+    "PubMed 39898876 (Notrica 2025, pancreatic organ injury scale 2024 revision)",
+  ),
 });
 
 // Kozar 2018 PDF statements. `start`/`end` bound the locator on the named PDF page
@@ -77,7 +141,7 @@ export const SOURCES = Object.freeze({
 // lower-casing and removing whitespace and hyphens, so typeset line breaks and end-of-line
 // hyphenation do not matter and every other character must match. `must_contain` pairs are
 // mutation checks run on the real span at audit time: replacing the first token with the second
-// must change the pinned digest, which also proves the span holds the rule's trigger and ceiling.
+// must change the pinned digest, which also proves the span holds that token.
 export const KOZAR_STATEMENTS = Object.freeze([
   Object.freeze({
     id: "kozar2018-identity",
@@ -137,6 +201,17 @@ export const KOZAR_STATEMENTS = Object.freeze([
     must_not_contain: ["Advance one grade for bilateral"],
   }),
   Object.freeze({
+    id: "kozar2018-table2-liver-grade-ii-laceration-length",
+    pdf_page: 3,
+    printed_page: 1121,
+    locator: "Table 2, grade II row, Imaging Criteria (CT Findings), laceration item",
+    start: "ii 2 - subcapsular hematoma 10-50%",
+    end: "length - subcapsular hematoma",
+    paraphrase: "On the 2018 liver scale, a grade II laceration is 1-3 cm deep and no more than 10 cm long (≤10 cm).",
+    spans: [{ from: "Laceration 1-3 cm in depth", to: "≤ 10 cm", length: 29, sha256: "7fadb0444b9ddd8503b61f3e45cdf342f7b6eeeedda4625ba46ac8826328f63e" }],
+    must_contain: [["≤10cm", "<10cm"]],
+  }),
+  Object.freeze({
     id: "kozar2018-table3-kidney-notes",
     pdf_page: 3,
     printed_page: 1121,
@@ -189,7 +264,31 @@ export const KOZAR_STATEMENTS = Object.freeze([
   }),
 ]);
 
-// PubMed abstract statements (case-preserving folded text of the named abstract).
+// Statements on the AAST scale page (case-preserving folded text of the page with scripts,
+// styles and tags removed). `start`/`end` bound the locator region.
+export const AAST_PAGE_STATEMENTS = Object.freeze([
+  Object.freeze({
+    id: "aast-scale-page-pancreas-multiple-injury-note",
+    locator: "AAST Injury Scoring Scale page, Table 10 (Pancreas Injury Scale), table note",
+    start: "Table 10 Pancreas Injury Scale",
+    end: "Back to Top",
+    paraphrase:
+      "The AAST's pancreas injury scale table (the pre-2024 scale) notes that multiple injuries raise the grade by one, to at most grade III.",
+    spans: [{ from: "*Advance one grade for multiple", to: "up to grade III.", length: 57, sha256: "939484753d687225e497a3ee438eb597c0601b067a8f28bb080a90da75ecc2c4" }],
+    must_contain: [["multiple", "bilateral"], ["grade III", "grade IV"]],
+  }),
+  Object.freeze({
+    id: "aast-scale-page-pancreas-table-credit",
+    locator: "AAST Injury Scoring Scale page, Table 10 (Pancreas Injury Scale), credit line",
+    start: "Table 10 Pancreas Injury Scale",
+    end: "Back to Top",
+    paraphrase: "The AAST credits its pancreas table to Moore et al. (the original AAST organ injury scaling series), reprinted with permission.",
+    spans: [{ from: "From Moore et al.", to: "with permission.", length: 39, sha256: "6f5d493a025d0e1e31e25b07c3d77c46a06a62d981599d859664f64a2220764c" }],
+    must_contain: [["Moore", "Kozar"]],
+  }),
+]);
+
+// PubMed abstract statements (folded text of the parsed abstract block).
 export const PUBMED_STATEMENTS = Object.freeze([
   Object.freeze({
     id: "notrica2025-abstract-grade-v",
@@ -199,9 +298,27 @@ export const PUBMED_STATEMENTS = Object.freeze([
       "In the 2024 pancreas revision, grade V is a destructive pancreatic-head injury with nonviable tissue, further subgraded by ductal injury.",
     spans: [{ from: "Grade V injuries are destructive", to: "with nonviable parenchyma.", length: 91, sha256: "127e7eacbe699a3f8cf81115ac9a1fcc1cdc45440e17692c89365fd048959981" }],
   }),
+  Object.freeze({
+    id: "notrica2025-abstract-duct-location",
+    pmid: "39898876",
+    locator: "PubMed abstract, sentences on grade III and grade IV duct injuries",
+    paraphrase:
+      "In the 2024 revision a duct injury in the neck, body or tail stays grade III (subclassified as no ductal interrogation, partial, or complete transection), while the same injury located right of the portal vein/SMV, in the head, is grade IV. The grade therefore depends on the location.",
+    spans: [
+      { from: "Injuries to the duct in", to: "complete ductal transection.", length: 231, sha256: "9faf71e7e381594585e50b298613b78e5dfa487cdc5ecd71a10bc27af4ddb774" },
+      { from: "Grade IV injuries follow the", to: "superior mesenteric vein.", length: 124, sha256: "a78807cbc064ef6bb0d10e7a0e0f9ee9a93ff7229d28b4db5aadef6033777c4a" },
+    ],
+  }),
+  Object.freeze({
+    id: "notrica2025-abstract-original-1990",
+    pmid: "39898876",
+    locator: "PubMed abstract, first sentence",
+    paraphrase: "The AAST OIS committee published the original pancreatic scale in 1990; the 2024 revision replaces it.",
+    spans: [{ from: "published the original pancreatic OIS", to: "in 1990", length: 45, sha256: "c8f32dbbd30785e396f4a2282c8288dfeb9e6286dcd5b85f3b16938729bba9b3" }],
+  }),
 ]);
 
-// PubMed identities: identifiers only (title, first authors, journal citation, DOI).
+// PubMed identities: identifiers only (title, first authors, journal citation, DOI, linked errata).
 export const PUBMED_IDENTITIES = Object.freeze([
   Object.freeze({
     id: "kozar2018-pubmed-identity",
@@ -214,6 +331,8 @@ export const PUBMED_IDENTITIES = Object.freeze([
     issue: "6",
     pages: "1119-1122",
     doi: "10.1097/TA.0000000000002058",
+    // The only linked erratum (author-name correction; its text is not openly retrievable).
+    errata: ["J Trauma Acute Care Surg. 2019 Aug;87(2):512. doi: 10.1097/TA.0000000000002419."],
   }),
   Object.freeze({
     id: "keihani2025-pubmed-identity",
@@ -226,6 +345,7 @@ export const PUBMED_IDENTITIES = Object.freeze([
     issue: "3",
     pages: "448-451",
     doi: "10.1097/TA.0000000000004509",
+    errata: [],
   }),
   Object.freeze({
     id: "notrica2025-pubmed-identity",
@@ -238,6 +358,7 @@ export const PUBMED_IDENTITIES = Object.freeze([
     issue: "3",
     pages: "442-447",
     doi: "10.1097/TA.0000000000004522",
+    errata: [],
   }),
 ]);
 
@@ -251,6 +372,13 @@ export const RUNTIME_TEXT = Object.freeze({
     "Excreted contrast leaking outside the collecting system on delayed (excretory) phase → Grade IV",
   pancreas_destructive_sublabel:
     "Pancreatic head destruction with nonviable parenchyma (2024 revision) → Grade V",
+  liver_grade_ii_laceration_label: "1-3 cm parenchymal depth, ≤10 cm length (Grade II)",
+  duct_location_error:
+    "Select the Location of Duct Injury (neck/body/tail or head) to grade this pancreatic duct injury: it is Grade III in the neck, body or tail and Grade IV in the head.",
+  kidney_2025_note:
+    "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path because the revision's full text could not be verified for one. Clinical judgment applies.",
+  pancreas_2024_note:
+    "No grade-advance modifier for multiple injuries is applied on the 2024 pancreas OIS path because the revision's full text could not be verified for one. The earlier 1990 AAST pancreas scale raised the grade by one, to at most Grade III, when multiple injuries were present. Clinical judgment applies.",
   multiple_finding: "Multiple injuries (+1 grade)",
   bilateral_finding: "Bilateral renal injuries (+1 grade)",
   info_lines: [
@@ -265,6 +393,8 @@ export const RUNTIME_TEXT = Object.freeze({
     "Keihani S, Tominaga GT, Matta R, et al. Kidney organ injury scaling: 2025 update. J Trauma Acute Care Surg. 2025;98(3):448-451.",
   keihani_reference_url: "https://pubmed.ncbi.nlm.nih.gov/39836096/",
   notrica_reference_url: "https://doi.org/10.1097/TA.0000000000004522",
+  aast_reference_text: "AAST Official Website - Organ Injury Scale",
+  aast_dead_reference_url_part: "resources-detail/injury-scoring-scale",
 });
 
 // One single-finding input per base grade for every organ/version path.
@@ -323,27 +453,38 @@ export const OWNED_MODIFIER = Object.freeze({
   pancreas: null,
 });
 const MODIFIER_FIELDS = Object.freeze(["multiple_injuries", "kidney_2018_bilateral"]);
+const NOTE_BY_PATH = Object.freeze({
+  kidney2025: RUNTIME_TEXT.kidney_2025_note,
+  kidneyDefault: RUNTIME_TEXT.kidney_2025_note,
+  pancreas: RUNTIME_TEXT.pancreas_2024_note,
+});
+const DUCT_SUBGRADES = Object.freeze(["deep_no_interrogation", "partial", "complete_transection"]);
 
 export const CLAIM_BINDINGS = Object.freeze([
   Object.freeze({
     claim_id: "liver-2018-multiple-injury-advance",
-    runtime: "liver: multiple_injuries shown; base grade I/II +1, grade III-V unchanged",
+    runtime: "liver: multiple_injuries shown; base grade I/II +1 (ceiling III), described at the final grade",
     source_statement_ids: ["kozar2018-intro-multiple-grade-i-ii", "kozar2018-table2-liver-notes"],
   }),
   Object.freeze({
     claim_id: "spleen-2018-multiple-injury-advance",
-    runtime: "spleen: multiple_injuries shown; base grade I/II +1, grade III-V unchanged",
+    runtime: "spleen: multiple_injuries shown; base grade I/II +1 (ceiling III), described at the final grade",
     source_statement_ids: ["kozar2018-intro-multiple-grade-i-ii", "kozar2018-table1-spleen-notes"],
   }),
   Object.freeze({
     claim_id: "kidney-2018-bilateral-advance",
-    runtime: "kidney 2018: kidney_2018_bilateral shown; base grade I/II +1, grade III-V unchanged",
+    runtime: "kidney 2018: kidney_2018_bilateral shown; base grade I/II +1 (ceiling III), described at the final grade",
     source_statement_ids: ["kozar2018-table3-kidney-notes"],
   }),
   Object.freeze({
     claim_id: "kidney-2018-no-multiple-injury-advance",
     runtime: "kidney 2018: multiple_injuries hidden and never applied",
     source_statement_ids: ["kozar2018-table3-kidney-notes"],
+  }),
+  Object.freeze({
+    claim_id: "liver-2018-grade-ii-laceration-length",
+    runtime: "liver_laceration 1_3cm option says ≤10 cm length; grade II kept",
+    source_statement_ids: ["kozar2018-table2-liver-grade-ii-laceration-length"],
   }),
   Object.freeze({
     claim_id: "kidney-2018-urinary-extravasation-sublabel",
@@ -360,6 +501,20 @@ export const CLAIM_BINDINGS = Object.freeze([
     source_statement_ids: ["notrica2025-abstract-grade-v"],
   }),
   Object.freeze({
+    claim_id: "pancreas-2024-duct-location-required",
+    runtime: "a duct injury grades III (neck/body/tail) or IV (head); without a location compute returns only an Error",
+    source_statement_ids: ["notrica2025-abstract-duct-location"],
+  }),
+  Object.freeze({
+    claim_id: "pancreas-2024-no-modifier-note-1990-sentence",
+    runtime: "pancreas grade I-II note states the 1990 scale's multiple-injury advance (ceiling III)",
+    source_statement_ids: [
+      "aast-scale-page-pancreas-multiple-injury-note",
+      "aast-scale-page-pancreas-table-credit",
+      "notrica2025-abstract-original-1990",
+    ],
+  }),
+  Object.freeze({
     claim_id: "reference-list-identities",
     runtime: "Kozar 2018 and Keihani 2025 reference strings and links, Notrica 2025 DOI link",
     source_statement_ids: [
@@ -372,7 +527,8 @@ export const CLAIM_BINDINGS = Object.freeze([
 ]);
 
 // App-owned fail-safe policy (provenance only, not a source claim): where no modifier is
-// verified, none is shown or applied, and stale hidden values never change a grade.
+// verified, none is shown or applied, stale hidden values never change a grade, and grade I-II
+// results say so.
 export const FAIL_SAFE_PATHS = Object.freeze(["kidney2025", "kidneyDefault", "pancreas"]);
 
 // ---------------------------------------------------------------------------------------------
@@ -402,6 +558,18 @@ export function foldText(value) {
 
 export function compact(value) {
   return foldText(value).toLowerCase().replace(/[\s\-­]+/g, "");
+}
+
+export function htmlText(html) {
+  return foldText(
+    decodeEntities(
+      String(html)
+        .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+        .replace(/<!--[\s\S]*?-->/g, " ")
+        .replace(/<[^>]+>/g, " "),
+    ),
+  );
 }
 
 export function spanText(text, from, to, label) {
@@ -443,14 +611,30 @@ export function paragraphSlice(pageText, statement) {
   return pageText.slice(start, end);
 }
 
+// Runs a statement's span checks, its absent-anchor checks and its mutation checks on `slice`.
+function verifyStatement(statement, slice, normalize, mismatches, mutationChecks) {
+  for (const absent of statement.must_not_contain ?? []) {
+    assert.equal(slice.includes(normalize(absent)), false, `${statement.id}: locator unexpectedly contains ${JSON.stringify(absent)}`);
+  }
+  const spans = checkSpans(statement, slice, normalize, mismatches);
+  for (const [token, replacement] of statement.must_contain ?? []) {
+    const span = spans.find((candidate) => candidate.value.includes(token));
+    assert.ok(span, `${statement.id}: no pinned span contains ${JSON.stringify(token)}`);
+    const rejected = sha256(span.value.replace(token, replacement)) !== span.sha256;
+    assert.ok(rejected, `${statement.id}: replacing ${JSON.stringify(token)} did not change the span digest`);
+    mutationChecks.push({ statement_id: statement.id, replaced: token, with: replacement, rejected });
+  }
+  return spans.map(({ from, to, length, sha256: digest }) => ({ from, to, length, sha256: digest }));
+}
+
 // ---------------------------------------------------------------------------------------------
-// Retrieval
+// Retrieval: exact bytes first, nothing is parsed from bytes that miss a pin.
 
 /**
- * Recognise a page generated by Cloudflare's bot protection (challenge interstitial or block
- * page) rather than by AAST. It needs a 403/429/503 status, at least two signals, and at least
- * one Cloudflare page marker: a Cloudflare-served origin error alone is not enough, so any
- * other failure takes the ordinary fail-closed path.
+ * Recognise a page generated by Cloudflare's bot protection (challenge or block page) rather
+ * than by the origin. It needs a 403/429/503 status, at least two signals and at least one
+ * Cloudflare page marker. A recognised page is a transport failure (retried, then fatal); it
+ * is never a pass.
  */
 export function detectCloudflareChallenge({ status, headers, body }) {
   const text = String(body ?? "");
@@ -477,88 +661,124 @@ export function retryDelayMs(response, attempt) {
   return Math.min(wanted, MAX_RETRY_DELAY_MS);
 }
 
-function isRetryableStatus(source, status) {
-  return status === 429 || status >= 500 || (source.retry_http_400 === true && status === 400);
+function isTransientStatus(host, status) {
+  return status === 429 || status >= 500 || (host.retry_http_400 === true && status === 400);
 }
 
-// Retries transport failures only (network errors, HTTP 429, HTTP 5xx and, for NCBI, HTTP 400).
-// A served artifact that misses a pin is a changed source and fails at once.
-export async function retrieve(source, { fetchImpl = fetch, sleepImpl = delay, allowChallenge = false } = {}) {
-  let lastFailure = "unknown retrieval failure";
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    let response;
-    try {
-      response = await fetchImpl(source.url, {
-        headers: { "user-agent": USER_AGENT },
-        redirect: "follow",
-        signal: AbortSignal.timeout(45_000),
-      });
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error);
-    }
-    if (response?.ok) {
-      return {
-        mode: "live",
-        bytes: Buffer.from(await response.arrayBuffer()),
-        finalUrl: new URL(response.url),
-        contentType: response.headers.get("content-type") ?? "",
-      };
-    }
-    if (response) {
-      if (allowChallenge && [403, 429, 503].includes(response.status)) {
-        const body = await response.text().catch(() => "");
-        const challenge = detectCloudflareChallenge({ status: response.status, headers: response.headers, body });
-        if (challenge.challenged) {
-          return { mode: CLOUDFLARE_CHALLENGE_STATUS, status: response.status, signals: challenge.signals };
-        }
-      } else {
-        await response.body?.cancel?.();
-      }
-      lastFailure = `HTTP ${response.status}`;
-      if (!isRetryableStatus(source, response.status)) break;
-    }
-    if (attempt < MAX_ATTEMPTS) await sleepImpl(retryDelayMs(response, attempt));
+export function verifyArtifactBytes(artifact, bytes) {
+  assert.ok(Buffer.isBuffer(bytes), `${artifact.key}: artifact bytes missing`);
+  assert.equal(
+    bytes.length,
+    artifact.bytes,
+    `${artifact.key}: artifact byte length drifted (${bytes.length}, pinned ${artifact.bytes}); re-review the source before re-pinning`,
+  );
+  const digest = sha256(bytes);
+  assert.equal(
+    digest,
+    artifact.sha256,
+    `${artifact.key}: artifact SHA-256 drifted (${digest}); re-review the source before re-pinning`,
+  );
+  return digest;
+}
+
+export function verifyArtifactResponse(artifact, host, { finalUrl, contentType, headers }) {
+  const label = `${artifact.key} (${host.key})`;
+  assert.equal(finalUrl.protocol, "https:", `${label}: final URL left HTTPS`);
+  if (host.final_url_exact) {
+    assert.equal(finalUrl.href, new URL(host.url).href, `${label}: final URL drifted`);
+  } else {
+    assert.equal(finalUrl.hostname, host.final_host, `${label}: final URL host drifted`);
+    assert.match(finalUrl.pathname, new RegExp(host.final_path_pattern), `${label}: final URL path drifted`);
+    assert.equal(finalUrl.search, "", `${label}: final URL query drifted`);
   }
-  assert.fail(`${source.key}: primary-source retrieval failed after ${MAX_ATTEMPTS} attempts (${lastFailure})`);
+  if (host.key === "ncbi") {
+    assert.equal(finalUrl.searchParams.get("tool"), NCBI_TOOL, `${label}: tool parameter drifted`);
+    assert.equal(finalUrl.searchParams.has("email"), false, `${label}: request must not carry an email parameter`);
+  }
+  const mediaType = String(contentType ?? "").split(";")[0].trim().toLowerCase();
+  assert.equal(mediaType, artifact.media_type, `${label}: media type drifted (${contentType || "<missing>"})`);
+  if (host.memento_datetime) {
+    assert.equal(headers?.get?.("memento-datetime"), host.memento_datetime, `${label}: Memento-Datetime drifted`);
+    assert.ok(
+      String(headers?.get?.("link") ?? "").includes(`<${host.memento_original}>; rel="original"`),
+      `${label}: Memento original drifted`,
+    );
+  }
 }
 
-export function assertKozarArtifact(retrieved, source = SOURCES.kozar2018) {
-  const { finalUrl } = retrieved;
-  assert.equal(finalUrl.protocol, "https:", `${source.key}: final URL left HTTPS`);
-  assert.equal(finalUrl.hostname, source.final_host, `${source.key}: final URL host drifted`);
-  assert.match(finalUrl.pathname, new RegExp(source.final_path_pattern), `${source.key}: final URL path drifted`);
-  assert.equal(finalUrl.search, "", `${source.key}: final URL query drifted`);
-  const mediaType = retrieved.contentType.split(";")[0].trim().toLowerCase();
-  assert.equal(mediaType, source.media_type, `${source.key}: media type drifted`);
-  assert.equal(retrieved.bytes.subarray(0, 5).toString("latin1"), "%PDF-", `${source.key}: artifact lacks a PDF header`);
-  assert.equal(retrieved.bytes.length, source.bytes, `${source.key}: artifact byte length drifted`);
-  assert.equal(sha256(retrieved.bytes), source.sha256, `${source.key}: artifact SHA-256 drifted`);
-}
-
-export function assertPubmedArtifact(retrieved, source = SOURCES.pubmed) {
-  const expected = new URL(source.url);
-  const { finalUrl } = retrieved;
-  assert.equal(finalUrl.protocol, "https:", "pubmed: final URL left HTTPS");
-  assert.equal(finalUrl.hostname, expected.hostname, "pubmed: final URL host drifted");
-  assert.equal(finalUrl.pathname, expected.pathname, "pubmed: final URL path drifted");
-  assert.equal(finalUrl.search, expected.search, "pubmed: final URL query drifted");
-  assert.equal(finalUrl.searchParams.get("tool"), "radulator-aast-audit", "pubmed: tool parameter drifted");
-  assert.equal(finalUrl.searchParams.has("email"), false, "pubmed: request must not carry an email parameter");
-  const mediaType = retrieved.contentType.split(";")[0].trim().toLowerCase();
-  assert.equal(mediaType, source.media_type, "pubmed: media type drifted");
+/**
+ * Retrieve an artifact's exact pinned bytes. Hosts are tried in order; only transport failures
+ * move on (after MAX_ATTEMPTS on a host). A served artifact is verified (URL, media type,
+ * provenance, exact length and SHA-256) and either returned or rejected at once.
+ */
+export async function fetchArtifact(artifact, { fetchImpl = fetch, sleepImpl = delay } = {}) {
+  const failedHosts = [];
+  for (const host of artifact.hosts) {
+    let lastFailure = "unknown retrieval failure";
+    let attempts = 0;
+    let transient = true;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      attempts = attempt;
+      let response;
+      try {
+        response = await fetchImpl(host.url, {
+          headers: { "user-agent": USER_AGENT },
+          redirect: "follow",
+          signal: AbortSignal.timeout(45_000),
+        });
+      } catch (error) {
+        lastFailure = error instanceof Error ? error.message : String(error);
+      }
+      if (response?.ok) {
+        const finalUrl = new URL(response.url);
+        verifyArtifactResponse(artifact, host, {
+          finalUrl,
+          contentType: response.headers.get("content-type") ?? "",
+          headers: response.headers,
+        });
+        const bytes = Buffer.from(await response.arrayBuffer());
+        verifyArtifactBytes(artifact, bytes);
+        return { bytes, host: host.key, url: host.url, final_url: finalUrl.href, attempts: attempt, failed_hosts: failedHosts };
+      }
+      if (response) {
+        let challenge = { challenged: false, signals: [] };
+        if ([403, 429, 503].includes(response.status)) {
+          const body = await response.text().catch(() => "");
+          challenge = detectCloudflareChallenge({ status: response.status, headers: response.headers, body });
+        } else {
+          await response.body?.cancel?.();
+        }
+        lastFailure = `HTTP ${response.status}${challenge.challenged ? ` (Cloudflare bot protection: ${challenge.signals.join(", ")})` : ""}`;
+        if (!challenge.challenged && !isTransientStatus(host, response.status)) {
+          transient = false;
+          break;
+        }
+      }
+      if (attempt < MAX_ATTEMPTS) await sleepImpl(retryDelayMs(response, attempt));
+    }
+    failedHosts.push({ host: host.key, attempts, last_failure: lastFailure });
+    // A non-transient failure (for example HTTP 404) is a changed source: no fallback host.
+    if (!transient) break;
+  }
+  assert.fail(
+    `${artifact.key}: the pinned bytes were not verified on any host (${failedHosts
+      .map((failure) => `${failure.host}: ${failure.attempts} attempt(s), ${failure.last_failure}`)
+      .join("; ")})`,
+  );
 }
 
 // ---------------------------------------------------------------------------------------------
 // Kozar 2018 PDF
 
-export async function pdfPages(bytes, source = SOURCES.kozar2018) {
+export async function pdfPages(bytes, artifact = ARTIFACTS.kozar2018) {
+  verifyArtifactBytes(artifact, bytes);
   const document = await getDocument({
     data: new Uint8Array(bytes),
     disableWorker: true,
     useSystemFonts: true,
     verbosity: 0,
   }).promise;
-  assert.equal(document.numPages, source.pages, `${source.key}: PDF page count drifted`);
+  assert.equal(document.numPages, artifact.pages, `${artifact.key}: PDF page count drifted`);
   const pages = new Map();
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
     const page = await document.getPage(pageNumber);
@@ -572,29 +792,13 @@ export async function pdfPages(bytes, source = SOURCES.kozar2018) {
   return pages;
 }
 
-export function verifyKozarStatements(pages, mismatches, statements = KOZAR_STATEMENTS) {
+export function verifyKozarStatements(pages, mismatches, mutationChecks, statements = KOZAR_STATEMENTS) {
   const verified = new Map();
-  const mutationChecks = [];
   for (const statement of statements) {
     const pageText = pages.get(statement.pdf_page);
     assert.ok(pageText, `${statement.id}: PDF page ${statement.pdf_page} was not extracted`);
     const slice = compact(paragraphSlice(pageText, statement));
-    for (const absent of statement.must_not_contain ?? []) {
-      assert.equal(
-        slice.includes(compact(absent)),
-        false,
-        `${statement.id}: locator unexpectedly contains ${JSON.stringify(absent)}`,
-      );
-    }
-    const spans = checkSpans(statement, slice, compact, mismatches);
-    for (const [token, replacement] of statement.must_contain ?? []) {
-      const span = spans.find((candidate) => candidate.value.includes(token));
-      assert.ok(span, `${statement.id}: no pinned span contains ${JSON.stringify(token)}`);
-      const mutated = span.value.replace(token, replacement);
-      const rejected = sha256(mutated) !== span.sha256;
-      assert.ok(rejected, `${statement.id}: replacing ${JSON.stringify(token)} did not change the span digest`);
-      mutationChecks.push({ statement_id: statement.id, replaced: token, with: replacement, rejected });
-    }
+    const spans = verifyStatement(statement, slice, compact, mismatches, mutationChecks);
     verified.set(statement.id, {
       id: statement.id,
       source: "kozar2018",
@@ -602,103 +806,122 @@ export function verifyKozarStatements(pages, mismatches, statements = KOZAR_STAT
       printed_page: statement.printed_page,
       locator: statement.locator,
       paraphrase: statement.paraphrase,
-      spans: spans.map(({ from, to, length, sha256: digest }) => ({ from, to, length, sha256: digest })),
+      spans,
       ...(statement.must_not_contain ? { absent_anchors: [...statement.must_not_contain] } : {}),
     });
   }
-  return { verified, mutationChecks };
+  return verified;
 }
 
 // ---------------------------------------------------------------------------------------------
-// PubMed
+// AAST scale page (archived)
 
-function xmlText(fragment) {
-  return foldText(decodeEntities(String(fragment ?? "").replace(/<[^>]+>/g, " ")));
-}
-
-function firstTag(block, tag) {
-  const match = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`).exec(block);
-  return match ? xmlText(match[1]) : "";
-}
-
-export function parsePubmed(xml) {
-  const records = new Map();
-  for (const [block] of String(xml).matchAll(/<PubmedArticle>[\s\S]*?<\/PubmedArticle>/g)) {
-    const pmid = /<PMID Version="\d+">(\d+)<\/PMID>/.exec(block)?.[1];
-    assert.ok(pmid, "pubmed: record without PMID");
-    const authorList = /<AuthorList\b[^>]*>([\s\S]*?)<\/AuthorList>/.exec(block)?.[1] ?? "";
-    const authors = [...authorList.matchAll(/<Author\b[^>]*>([\s\S]*?)<\/Author>/g)].map(([, author]) => {
-      const collective = firstTag(author, "CollectiveName");
-      return collective || `${firstTag(author, "LastName")} ${firstTag(author, "Initials")}`.trim();
-    });
-    const pubDate = /<PubDate>([\s\S]*?)<\/PubDate>/.exec(block)?.[1] ?? "";
-    const doi = /<ArticleId IdType="doi">([^<]+)<\/ArticleId>/.exec(block)?.[1] ?? "";
-    const abstract = [...block.matchAll(/<AbstractText\b[^>]*>([\s\S]*?)<\/AbstractText>/g)].map(([, text]) => xmlText(text));
-    records.set(pmid, {
-      pmid,
-      title: firstTag(block, "ArticleTitle"),
-      authors,
-      journal: firstTag(block, "ISOAbbreviation"),
-      year: firstTag(pubDate, "Year"),
-      volume: firstTag(block, "Volume"),
-      issue: firstTag(block, "Issue"),
-      pages: firstTag(block, "MedlinePgn"),
-      doi: foldText(doi),
-      abstract,
+export function verifyAastPageStatements(bytes, mismatches, mutationChecks, artifact = ARTIFACTS.aastScalePage2020) {
+  verifyArtifactBytes(artifact, bytes);
+  const text = htmlText(bytes.toString("utf8"));
+  const verified = new Map();
+  for (const statement of AAST_PAGE_STATEMENTS) {
+    const slice = paragraphSlice(text, statement);
+    const spans = verifyStatement(statement, slice, foldText, mismatches, mutationChecks);
+    verified.set(statement.id, {
+      id: statement.id,
+      source: artifact.key,
+      locator: statement.locator,
+      paraphrase: statement.paraphrase,
+      spans,
     });
   }
-  return records;
+  return verified;
 }
 
-function expandPages(pages) {
-  // PubMed abbreviates page ranges (1119-1122 -> "1119-1122" or "1119-22").
-  const match = /^(\d+)-(\d+)$/.exec(pages);
-  if (!match) return pages;
-  const [, first, last] = match;
-  return last.length < first.length ? `${first}-${first.slice(0, first.length - last.length)}${last}` : pages;
+// ---------------------------------------------------------------------------------------------
+// PubMed plain-text records
+
+// PubMed plain-text abstract layout: blank-line separated blocks for the citation, title, authors,
+// author information, linked-record notices, abstract, copyright and identifiers. Adapted from
+// parseRecordText in scripts/audit-nirads-legacy-rates-source.mjs, plus the author list and the
+// linked errata.
+const NOTICE = /^(Comment (in|on)|Erratum (in|for)|Update (in|of)|Retraction (in|of)|Expression of concern (in|for)|Republished (in|from)|Conflict of interest|Copyright|©|DOI:|PMID:|PMCID:)/;
+
+export function parseRecordText(text) {
+  const blocks = String(text).split(/\n[ \t]*\n/).map((block) => block.trim()).filter(Boolean);
+  const citation = foldText(blocks[0] ?? "");
+  const title = foldText(blocks[1] ?? "");
+  const infoIndex = blocks.findIndex((block) => block.startsWith("Author information:"));
+  assert.equal(infoIndex, 3, "record must list citation, title, authors, then author information");
+  const authors = foldText(blocks[2])
+    .replace(/\.$/, "")
+    .split(/[,;]\s*/)
+    .map((author) => author.replace(/\(\d+\)/g, "").trim())
+    .filter(Boolean);
+  const after = blocks.slice(infoIndex + 1);
+  const abstract = foldText(after.find((block) => !NOTICE.test(block)) ?? "");
+  // A linked-record block lists one citation per indented line; unindented lines continue it.
+  const errata = [];
+  for (const block of after.filter((candidate) => candidate.startsWith("Erratum in"))) {
+    for (const line of block.split("\n").slice(1)) {
+      if (/^\s+\S/.test(line)) errata.push(line.trim());
+      else if (errata.length > 0) errata[errata.length - 1] += ` ${line.trim()}`;
+    }
+  }
+  for (let index = 0; index < errata.length; index += 1) errata[index] = foldText(errata[index]);
+  const cite = /^\d+\. (.+?)\. (\d{4})\b[^;]*;(\d+)\((\d+)\):(\d+-\d+)\./.exec(citation);
+  return {
+    citation,
+    title,
+    authors,
+    abstract,
+    errata,
+    journal: cite?.[1] ?? "",
+    year: cite?.[2] ?? "",
+    volume: cite?.[3] ?? "",
+    issue: cite?.[4] ?? "",
+    pages: cite?.[5] ?? "",
+    doi: String(text).match(/^DOI: (\S+)$/m)?.[1] ?? "",
+    pmid: String(text).match(/^PMID: (\d+)/m)?.[1] ?? "",
+  };
 }
 
-export function pubmedRecordsDigest(records) {
-  const canonical = [...records.values()].sort((left, right) => left.pmid.localeCompare(right.pmid));
-  return sha256(JSON.stringify(canonical));
-}
-
-export function verifyPubmed(records, mismatches) {
+export function verifyPubmed(recordBytes, mismatches) {
   const verified = new Map();
+  const records = new Map();
   for (const identity of PUBMED_IDENTITIES) {
-    const record = records.get(identity.pmid);
-    assert.ok(record, `${identity.id}: PubMed record ${identity.pmid} is missing`);
+    const artifact = ARTIFACTS[`pubmed${identity.pmid}`];
+    verifyArtifactBytes(artifact, recordBytes[identity.pmid]);
+    const record = parseRecordText(recordBytes[identity.pmid].toString("utf8"));
+    records.set(identity.pmid, record);
+    assert.equal(record.pmid, identity.pmid, `${identity.id}: PMID drifted`);
     assert.equal(record.title, identity.title, `${identity.id}: title drifted`);
     assert.deepEqual(record.authors.slice(0, identity.first_authors.length), identity.first_authors, `${identity.id}: first authors drifted`);
     assert.equal(record.journal, identity.journal, `${identity.id}: journal drifted`);
     assert.equal(record.year, identity.year, `${identity.id}: year drifted`);
     assert.equal(record.volume, identity.volume, `${identity.id}: volume drifted`);
     assert.equal(record.issue, identity.issue, `${identity.id}: issue drifted`);
-    assert.equal(expandPages(record.pages), identity.pages, `${identity.id}: pages drifted`);
-    assert.equal(record.doi.toLowerCase(), identity.doi.toLowerCase(), `${identity.id}: DOI drifted`);
+    assert.equal(record.pages, identity.pages, `${identity.id}: pages drifted`);
+    assert.equal(record.doi, identity.doi, `${identity.id}: DOI drifted`);
+    assert.deepEqual(record.errata, identity.errata, `${identity.id}: linked errata drifted`);
     verified.set(identity.id, {
       id: identity.id,
-      source: "pubmed",
+      source: artifact.key,
       pmid: identity.pmid,
-      locator: `PubMed ${identity.pmid} citation fields`,
-      paraphrase: `PubMed identifies PMID ${identity.pmid} as ${identity.first_authors[0]} et al., ${identity.journal} ${identity.year};${identity.volume}(${identity.issue}):${identity.pages}, DOI ${identity.doi}.`,
+      locator: `PubMed ${identity.pmid} citation, title, author and linked-record blocks`,
+      paraphrase: `PubMed identifies PMID ${identity.pmid} as ${identity.first_authors[0]} et al., ${identity.journal} ${identity.year};${identity.volume}(${identity.issue}):${identity.pages}, DOI ${identity.doi}${identity.errata.length ? `, with ${identity.errata.length} linked erratum` : ""}.`,
       identity: {
         title: identity.title,
         first_authors: [...identity.first_authors],
         citation: `${identity.journal}. ${identity.year};${identity.volume}(${identity.issue}):${identity.pages}`,
         doi: identity.doi,
+        errata: [...identity.errata],
       },
     });
   }
   for (const statement of PUBMED_STATEMENTS) {
     const record = records.get(statement.pmid);
-    assert.ok(record, `${statement.id}: PubMed record ${statement.pmid} is missing`);
-    const abstract = record.abstract.join("\n");
-    assert.ok(abstract.length > 0, `${statement.id}: abstract is missing`);
-    const spans = checkSpans(statement, abstract, foldText, mismatches);
+    assert.ok(record?.abstract, `${statement.id}: abstract of PMID ${statement.pmid} is missing`);
+    const spans = checkSpans(statement, record.abstract, foldText, mismatches);
     verified.set(statement.id, {
       id: statement.id,
-      source: "pubmed",
+      source: `pubmed${statement.pmid}`,
       pmid: statement.pmid,
       locator: statement.locator,
       paraphrase: statement.paraphrase,
@@ -751,6 +974,7 @@ export function verifyRuntime(calculator) {
   }
 
   // Grade matrix: every path x base grade x modifier x on/off.
+  const describe = (path, grade) => calculator.compute({ ...BASE_VECTORS[path][grade] })["Grade Description"];
   let vectors = 0;
   for (const [path, byGrade] of Object.entries(BASE_VECTORS)) {
     for (const [baseText, inputs] of Object.entries(byGrade)) {
@@ -762,6 +986,7 @@ export function verifyRuntime(calculator) {
           const result = calculator.compute({ ...inputs, [modifier]: checked });
           const expected = expectedGrade(path, base, modifier, checked);
           assert.equal(gradeOf(result, label), expected, `${label}: grade`);
+          assert.equal(result["Grade Description"], describe(path, expected), `${label}: description of the final grade`);
           const advanced = expected !== base;
           const findings = String(result["Key Findings"] ?? "");
           assert.equal(findings.includes(RUNTIME_TEXT.multiple_finding), advanced && modifier === "multiple_injuries", `${label}: multiple finding`);
@@ -777,6 +1002,11 @@ export function verifyRuntime(calculator) {
               ? `Base grade ${base} advanced to Grade ${expected} due to bilateral renal injuries (2018 kidney OIS)`
               : undefined,
             `${label}: bilateral adjustment line`,
+          );
+          assert.equal(
+            result["Grade-Advance Note"],
+            expected <= 2 ? NOTE_BY_PATH[path] : undefined,
+            `${label}: no-modifier note`,
           );
           vectors += 1;
         }
@@ -797,13 +1027,31 @@ export function verifyRuntime(calculator) {
     }
   }
 
-  // Wording of the modifier boxes and the two reworded subLabels; scoring unchanged.
+  // Pancreatic duct injuries: location decides grade III/IV; no location, no grade.
+  for (const duct of DUCT_SUBGRADES) {
+    for (const location of [undefined, "", "neck", "HEAD"]) {
+      for (const extra of [{}, { pancreas_parenchymal: "major_contusion" }, { pancreas_destructive: true }]) {
+        const inputs = { organ: "pancreas", pancreas_duct: duct, ...extra };
+        if (location !== undefined) inputs.pancreas_duct_location = location;
+        assert.deepEqual(calculator.compute(inputs), { Error: RUNTIME_TEXT.duct_location_error }, `duct ${duct} without a location must fail closed`);
+        vectors += 1;
+      }
+    }
+    assert.equal(gradeOf(calculator.compute({ organ: "pancreas", pancreas_duct: duct, pancreas_duct_location: "body_tail" }), duct), 3, `${duct}: neck/body/tail is grade III`);
+    assert.equal(gradeOf(calculator.compute({ organ: "pancreas", pancreas_duct: duct, pancreas_duct_location: "head" }), duct), 4, `${duct}: head is grade IV`);
+    vectors += 2;
+  }
+
+  // Wording of the modifier boxes, the reworded subLabels and the liver grade II option; scoring unchanged.
   assert.equal(multiple.label, RUNTIME_TEXT.multiple_label, "multiple_injuries label drifted");
   assert.equal(multiple.subLabel, RUNTIME_TEXT.multiple_sublabel, "multiple_injuries subLabel drifted");
   assert.equal(bilateral.label, RUNTIME_TEXT.bilateral_label, "kidney_2018_bilateral label drifted");
   assert.equal(bilateral.subLabel, RUNTIME_TEXT.bilateral_sublabel, "kidney_2018_bilateral subLabel drifted");
   assert.equal(field("kidney_2018_urinary_extrav").subLabel, RUNTIME_TEXT.kidney_2018_urinary_extrav_sublabel, "kidney_2018_urinary_extrav subLabel drifted");
   assert.equal(field("pancreas_destructive").subLabel, RUNTIME_TEXT.pancreas_destructive_sublabel, "pancreas_destructive subLabel drifted");
+  const liverLaceration = field("liver_laceration").opts.find((opt) => opt.value === "1_3cm");
+  assert.equal(liverLaceration?.label, RUNTIME_TEXT.liver_grade_ii_laceration_label, "liver grade II laceration option drifted");
+  assert.equal(gradeOf(calculator.compute({ organ: "liver", liver_laceration: "1_3cm" }), "liver 1-3 cm"), 2, "liver 1-3 cm laceration must stay grade II");
   assert.equal(gradeOf(calculator.compute({ organ: "kidney", kidney_ois_version: "2018", kidney_2018_urinary_extrav: true }), "2018 extravasation"), 4, "2018 urinary extravasation must stay grade IV");
   assert.equal(gradeOf(calculator.compute({ organ: "kidney", kidney_ois_version: "2018", kidney_2018_laceration: "into_collecting" }), "2018 collecting system"), 4, "2018 collecting-system laceration must stay grade IV");
   assert.equal(gradeOf(calculator.compute({ organ: "pancreas", pancreas_destructive: true }), "pancreas destructive"), 5, "destructive pancreatic head injury must stay grade V");
@@ -820,16 +1068,26 @@ export function verifyRuntime(calculator) {
   assert.ok(byUrl(RUNTIME_TEXT.keihani_reference_url)[0].t.startsWith(RUNTIME_TEXT.keihani_reference_prefix), "Keihani 2025 reference authors/title drifted");
   assert.equal(byUrl(RUNTIME_TEXT.notrica_reference_url).length, 1, "Notrica 2025 must be cited once by DOI");
   assert.equal(calculator.info.link.url, RUNTIME_TEXT.kozar_reference_url, "info link must point at Kozar 2018");
+  const aastRefs = refs.filter((ref) => ref.t === RUNTIME_TEXT.aast_reference_text);
+  assert.equal(aastRefs.length, 1, "the AAST website citation text must be kept once");
+  assert.equal(aastRefs[0].u, undefined, "the AAST website citation must not link a page that no longer serves the scales");
+  assert.ok(
+    refs.every((ref) => !String(ref.u ?? "").includes(RUNTIME_TEXT.aast_dead_reference_url_part)),
+    "no reference may link the AAST permissions page",
+  );
 
   return {
     vectors,
     bindings: {
-      "liver-2018-multiple-injury-advance": { path: "liver", modifier: "multiple_injuries", base_grades: [1, 2, 3, 4, 5], ceiling: 3 },
-      "spleen-2018-multiple-injury-advance": { path: "spleen", modifier: "multiple_injuries", base_grades: [1, 2, 3, 4, 5], ceiling: 3 },
-      "kidney-2018-bilateral-advance": { path: "kidney2018", modifier: "kidney_2018_bilateral", base_grades: [1, 2, 3, 4, 5], ceiling: 3 },
+      "liver-2018-multiple-injury-advance": { path: "liver", modifier: "multiple_injuries", base_grades: [1, 2, 3, 4, 5], ceiling: 3, description_follows_final_grade: true },
+      "spleen-2018-multiple-injury-advance": { path: "spleen", modifier: "multiple_injuries", base_grades: [1, 2, 3, 4, 5], ceiling: 3, description_follows_final_grade: true },
+      "kidney-2018-bilateral-advance": { path: "kidney2018", modifier: "kidney_2018_bilateral", base_grades: [1, 2, 3, 4, 5], ceiling: 3, description_follows_final_grade: true },
       "kidney-2018-no-multiple-injury-advance": { path: "kidney2018", modifier: "multiple_injuries", shown: false, applied: false },
+      "liver-2018-grade-ii-laceration-length": { field: "liver_laceration", option: "1_3cm", label: RUNTIME_TEXT.liver_grade_ii_laceration_label, grade: 2 },
       "kidney-2018-urinary-extravasation-sublabel": { field: "kidney_2018_urinary_extrav", sublabel: RUNTIME_TEXT.kidney_2018_urinary_extrav_sublabel, grade: 4 },
       "pancreas-2024-grade-v-sublabel": { field: "pancreas_destructive", sublabel: RUNTIME_TEXT.pancreas_destructive_sublabel, grade: 5 },
+      "pancreas-2024-duct-location-required": { subgrades: [...DUCT_SUBGRADES], body_tail: 3, head: 4, missing_location: RUNTIME_TEXT.duct_location_error },
+      "pancreas-2024-no-modifier-note-1990-sentence": { path: "pancreas", grades: [1, 2], note: RUNTIME_TEXT.pancreas_2024_note },
       "reference-list-identities": {
         kozar_url: RUNTIME_TEXT.kozar_reference_url,
         keihani_url: RUNTIME_TEXT.keihani_reference_url,
@@ -842,6 +1100,8 @@ export function verifyRuntime(calculator) {
       paths: [...FAIL_SAFE_PATHS],
       modifiers_shown: false,
       stale_values_applied: false,
+      grade_i_ii_note: { kidney2025: RUNTIME_TEXT.kidney_2025_note, pancreas: RUNTIME_TEXT.pancreas_2024_note },
+      aast_reference: { text: RUNTIME_TEXT.aast_reference_text, linked: false },
     },
   };
 }
@@ -849,56 +1109,36 @@ export function verifyRuntime(calculator) {
 // ---------------------------------------------------------------------------------------------
 // Audit
 
-export async function runAudit({ calculator, fetchImpl = fetch, sleepImpl = delay, requireLive = false } = {}) {
+export async function runAudit({ calculator, fetchImpl = fetch, sleepImpl = delay } = {}) {
   assert.ok(calculator?.id === "aast-trauma-grading", "runAudit needs the AAST calculator export");
-  const [kozarRetrieved, pubmedRetrieved] = await Promise.all([
-    retrieve(SOURCES.kozar2018, { fetchImpl, sleepImpl, allowChallenge: true }),
-    retrieve(SOURCES.pubmed, { fetchImpl, sleepImpl }),
-  ]);
-
-  const mismatches = [];
-  let kozar = { verified: new Map(), mutationChecks: [] };
-  const notices = [];
-  if (kozarRetrieved.mode === "live") {
-    assertKozarArtifact(kozarRetrieved);
-    kozar = verifyKozarStatements(await pdfPages(kozarRetrieved.bytes), mismatches);
-  } else {
-    const notice = `kozar2018: live source challenged by Cloudflare bot protection (HTTP ${kozarRetrieved.status}; ${kozarRetrieved.signals.join(", ")}); the ${KOZAR_STATEMENTS.length} Kozar 2018 statements were not re-read in this run`;
-    assert.ok(!requireLive, `${notice} and --require-live was given`);
-    notices.push(notice);
+  const retrieved = {};
+  for (const artifact of Object.values(ARTIFACTS)) {
+    retrieved[artifact.key] = await fetchArtifact(artifact, { fetchImpl, sleepImpl });
   }
 
-  assertPubmedArtifact(pubmedRetrieved);
-  const records = parsePubmed(pubmedRetrieved.bytes.toString("utf8"));
-  assert.deepEqual([...records.keys()].sort(), ["30462622", "39836096", "39898876"], "pubmed: unexpected record set");
-  const recordsSha256 = pubmedRecordsDigest(records);
-  assert.equal(
-    recordsSha256,
-    SOURCES.pubmed.records_sha256,
-    "pubmed: normalized citation fields or abstracts drifted (re-review the PubMed statements before re-pinning)",
+  const mismatches = [];
+  const mutationChecks = [];
+  const kozar = verifyKozarStatements(await pdfPages(retrieved.kozar2018.bytes), mismatches, mutationChecks);
+  const aastPage = verifyAastPageStatements(retrieved.aastScalePage2020.bytes, mismatches, mutationChecks);
+  const pubmed = verifyPubmed(
+    Object.fromEntries(PUBMED_IDENTITIES.map(({ pmid }) => [pmid, retrieved[`pubmed${pmid}`].bytes])),
+    mismatches,
   );
-  const pubmedVerified = verifyPubmed(records, mismatches);
-
   assert.equal(
     mismatches.length,
     0,
     `pinned source spans drifted (re-review each statement at its locator before re-pinning):\n${JSON.stringify(mismatches, null, 2)}`,
   );
 
-  const verified = new Map([...kozar.verified, ...pubmedVerified]);
-  const kozarIds = new Set(KOZAR_STATEMENTS.map((statement) => statement.id));
+  const verified = new Map([...kozar, ...aastPage, ...pubmed]);
   const boundIds = new Set(CLAIM_BINDINGS.flatMap((binding) => binding.source_statement_ids));
   for (const binding of CLAIM_BINDINGS) {
     for (const statementId of binding.source_statement_ids) {
-      const knownPubmed = PUBMED_IDENTITIES.some((identity) => identity.id === statementId) || PUBMED_STATEMENTS.some((statement) => statement.id === statementId);
-      assert.ok(kozarIds.has(statementId) || knownPubmed, `${binding.claim_id}: unknown source statement ${statementId}`);
-      if (kozarRetrieved.mode === "live" || !kozarIds.has(statementId)) {
-        assert.ok(verified.has(statementId), `${binding.claim_id}: source statement ${statementId} is not verified`);
-      }
+      assert.ok(verified.has(statementId), `${binding.claim_id}: source statement ${statementId} is not verified`);
     }
   }
-  for (const statementId of [...kozarIds, ...PUBMED_IDENTITIES.map((identity) => identity.id), ...PUBMED_STATEMENTS.map((statement) => statement.id)]) {
-    assert.ok(boundIds.has(statementId), `${statementId}: source statement has no runtime binding`);
+  for (const statementId of verified.keys()) {
+    assert.ok(boundIds.has(statementId), `${statementId}: verified statement has no runtime binding`);
   }
 
   const runtime = verifyRuntime(calculator);
@@ -907,54 +1147,38 @@ export async function runAudit({ calculator, fetchImpl = fetch, sleepImpl = dela
   }
 
   return {
-    schema: "radulator-aast-injury-modifier-source-audit/v1",
+    schema: "radulator-aast-injury-modifier-source-audit/v2",
     calculator_id: calculator.id,
     calculator_path: CALCULATOR_PATH,
-    sources: [
-      {
-        key: SOURCES.kozar2018.key,
-        authority: SOURCES.kozar2018.authority,
-        document: SOURCES.kozar2018.document,
-        doi: SOURCES.kozar2018.doi,
-        pmid: SOURCES.kozar2018.pmid,
-        url: SOURCES.kozar2018.url,
-        mode: kozarRetrieved.mode,
-        final_url: kozarRetrieved.mode === "live" ? kozarRetrieved.finalUrl.href : null,
-        media_type: SOURCES.kozar2018.media_type,
-        pin: SOURCES.kozar2018.pin,
-        bytes: SOURCES.kozar2018.bytes,
-        sha256: SOURCES.kozar2018.sha256,
-        pages: SOURCES.kozar2018.pages,
-      },
-      {
-        key: SOURCES.pubmed.key,
-        authority: SOURCES.pubmed.authority,
-        document: SOURCES.pubmed.document,
-        url: SOURCES.pubmed.url,
-        mode: pubmedRetrieved.mode,
-        final_url: pubmedRetrieved.finalUrl.href,
-        media_type: SOURCES.pubmed.media_type,
-        pin: SOURCES.pubmed.pin,
-        pin_rationale: SOURCES.pubmed.pin_rationale,
-        content_digest_basis: SOURCES.pubmed.content_digest_basis,
-        records_sha256: recordsSha256,
-        observed_raw: { bytes: pubmedRetrieved.bytes.length, sha256: sha256(pubmedRetrieved.bytes), enforced: false },
-      },
-    ],
+    artifacts: Object.values(ARTIFACTS).map((artifact) => ({
+      key: artifact.key,
+      authority: artifact.authority,
+      document: artifact.document,
+      ...(artifact.doi ? { doi: artifact.doi } : {}),
+      ...(artifact.pmid ? { pmid: artifact.pmid } : {}),
+      media_type: artifact.media_type,
+      pin: "raw-bytes",
+      bytes: artifact.bytes,
+      sha256: artifact.sha256,
+      hosts: artifact.hosts.map((host) => host.url),
+      verified_host: retrieved[artifact.key].host,
+      final_url: retrieved[artifact.key].final_url,
+      attempts: retrieved[artifact.key].attempts,
+      failed_hosts: retrieved[artifact.key].failed_hosts,
+    })),
     source_statements: [...verified.values()],
-    source_mutation_checks: kozar.mutationChecks,
+    source_mutation_checks: mutationChecks,
     claim_bindings: CLAIM_BINDINGS.map((binding) => ({
       claim_id: binding.claim_id,
       source_statement_ids: [...binding.source_statement_ids],
-      source_verified_this_run: binding.source_statement_ids.every((statementId) => verified.has(statementId)),
       runtime: runtime.bindings[binding.claim_id],
     })),
     runtime: { vectors: runtime.vectors, fail_safe: runtime.fail_safe },
-    notices,
     scope: {
       not_asserted: [
         "whether the 2025 kidney revision (Keihani 2025) keeps any grade-advance rule: full text not openly retrievable",
         "whether the 2024 pancreas revision (Notrica 2025) keeps any grade-advance rule: full text not openly retrievable",
+        "content of the Kozar 2018 erratum (PMID 31348410): not openly retrievable; indirect evidence points to an author-name correction",
         "2024 pancreas grade V ductal subgrades (not modeled by the calculator)",
         "whole-calculator clinical acceptance",
       ],
@@ -967,13 +1191,17 @@ const isMain = Boolean(process.argv[1]) && pathToFileURL(resolve(process.argv[1]
 
 if (isMain) {
   const { AASTTraumaGrading } = await import("../src/components/calculators/AASTTraumaGrading.jsx");
-  const audit = await runAudit({ calculator: AASTTraumaGrading, requireLive: process.argv.includes("--require-live") });
-  for (const notice of audit.notices) process.stderr.write(`${notice}\n`);
+  const audit = await runAudit({ calculator: AASTTraumaGrading });
+  for (const artifact of audit.artifacts) {
+    if (artifact.failed_hosts.length) {
+      process.stderr.write(`${artifact.key}: verified on ${artifact.verified_host} after transport failures on ${artifact.failed_hosts.map((failure) => failure.host).join(", ")}\n`);
+    }
+  }
   if (process.argv.includes("--json")) {
     process.stdout.write(`${JSON.stringify(audit)}\n`);
   } else {
     console.log(
-      `AAST injury-modifier source audit passed: Kozar 2018 PDF ${audit.sources[0].mode === "live" ? "byte-pinned live" : "challenged (statements not re-read)"}, PubMed records pinned, ${audit.source_statements.length} source statements, ${audit.source_mutation_checks.length} source mutation checks, ${audit.claim_bindings.length} runtime claim bindings and ${audit.runtime.vectors} runtime vectors.`,
+      `AAST injury-modifier source audit passed: ${audit.artifacts.length} byte-pinned artifacts (${audit.artifacts.map((artifact) => `${artifact.key}@${artifact.verified_host}`).join(", ")}), ${audit.source_statements.length} source statements, ${audit.source_mutation_checks.length} source mutation checks, ${audit.claim_bindings.length} runtime claim bindings and ${audit.runtime.vectors} runtime vectors.`,
     );
   }
 }

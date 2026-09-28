@@ -18,6 +18,7 @@
  * - Reference verification
  */
 
+import { existsSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import {
   navigateToCalculator,
@@ -26,6 +27,7 @@ import {
 } from "../../../helpers/calculator-test-helper.js";
 
 const CALCULATOR_NAME = "AAST Trauma Grading";
+const STATIC_AAST_PAGE = "dist/calculators/aast-trauma-grading/index.html";
 
 test.describe("AAST Trauma Grading Calculator", () => {
   test.beforeEach(async ({ page }) => {
@@ -137,7 +139,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade II liver injury - laceration 1-3 cm", async ({
       page,
     }) => {
-      await page.getByText("1-3 cm parenchymal depth, <10 cm length").click();
+      await page.getByText("1-3 cm parenchymal depth, ≤10 cm length").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -507,6 +509,15 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await expect(
         results.locator("text=Base grade 1 advanced to Grade 2").first(),
       ).toBeVisible();
+      // The description follows the advanced grade, not the base grade.
+      await expect(
+        results
+          .locator("text=Moderate - Subcapsular 10-50% or laceration 1-3 cm")
+          .first(),
+      ).toBeVisible();
+      await expect(
+        results.locator("text=Minor - Subcapsular hematoma <10%"),
+      ).toHaveCount(0);
     });
 
     test("should not advance grade beyond III for multiple injuries", async ({
@@ -620,8 +631,17 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       await expect(results(page).locator("text=Grade 1").first()).toBeVisible();
-      await expect(results(page).getByText("Multiple injuries")).toHaveCount(0);
+      await expect(
+        results(page).getByText("Multiple injuries (+1 grade)"),
+      ).toHaveCount(0);
       await expect(results(page).locator("text=2025").first()).toBeVisible();
+      await expect(
+        results(page)
+          .getByText(
+            "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path",
+          )
+          .first(),
+      ).toBeVisible();
     });
 
     test("a bilateral value left checked on kidney 2018 never advances the 2025 grade", async ({
@@ -857,15 +877,67 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should have link to AAST official website", async ({ page }) => {
-      const expandBtn = page.locator(
-        '.references-section button:has-text("more reference")',
+    test("static page keeps the AAST citation as plain text and hydrates cleanly", async ({
+      page,
+      request,
+      baseURL,
+    }) => {
+      test.skip(
+        !existsSync(STATIC_AAST_PAGE),
+        "requires npm run build so generated static pages are available",
+      );
+      test.skip(
+        !baseURL?.includes("4173"),
+        "requires Vite preview so generated static pages are served",
+      );
+      const hydrationMessages = [];
+      page.on("console", (msg) => {
+        if (
+          msg.type() === "error" &&
+          /hydration|Hydration failed|did not match/i.test(msg.text())
+        ) {
+          hydrationMessages.push(msg.text());
+        }
+      });
+
+      const response = await request.get("/calculators/aast-trauma-grading/");
+      expect(response.ok()).toBe(true);
+      const html = await response.text();
+      expect(html).toContain(
+        "<li>AAST Official Website - Organ Injury Scale</li>",
+      );
+      expect(html).not.toContain('href="undefined"');
+      expect(html).not.toContain("resources-detail/injury-scoring-scale");
+
+      await page.goto("/calculators/aast-trauma-grading/");
+      await expect(page.getByTestId("calculator-title").first()).toContainText(
+        "AAST Trauma Grading",
+      );
+      expect(hydrationMessages).toEqual([]);
+    });
+
+    test("should keep the AAST website citation without its dead link", async ({
+      page,
+    }) => {
+      const refsSection = page.locator(".references-section");
+      const expandBtn = refsSection.locator(
+        'button:has-text("more reference")',
       );
       if (await expandBtn.isVisible()) {
         await expandBtn.click();
       }
-      const aastWebsite = page.locator('a[href*="aast.org"]');
-      await expect(aastWebsite).toBeVisible();
+      // The AAST scale page now serves only a reprint-permissions notice.
+      await expect(
+        refsSection.getByText("AAST Official Website - Organ Injury Scale"),
+      ).toBeVisible();
+      await expect(
+        refsSection.getByRole("link", {
+          name: "AAST Official Website - Organ Injury Scale",
+        }),
+      ).toHaveCount(0);
+      await expect(
+        page.locator('a[href*="resources-detail/injury-scoring-scale"]'),
+      ).toHaveCount(0);
     });
   });
 
@@ -1368,6 +1440,30 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).toBeVisible();
     });
 
+    // The 2024 revision grades a duct injury by location, so none is assumed.
+    test("should ask for the duct injury location instead of grading", async ({
+      page,
+    }) => {
+      await page.getByText("Complete ductal transection").click();
+      await expect(
+        page.getByText("Location of Duct Injury").first(),
+      ).toBeVisible();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(
+        page
+          .locator("text=Select the Location of Duct Injury (neck/body/tail or head)")
+          .first(),
+      ).toBeVisible();
+      await expect(page.locator("text=Grade 3")).toHaveCount(0);
+      await expect(page.locator("text=Grade 4")).toHaveCount(0);
+
+      await page.locator('label[for="pancreas_duct_location-head"]').click();
+      await page.click('button:has-text("Calculate")');
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+    });
+
     // No grade-advance modifier is verified for the 2024 pancreas revision.
     test("should not offer or apply a multiple-injury advance (2024 revision)", async ({
       page,
@@ -1384,8 +1480,17 @@ test.describe("AAST Trauma Grading Calculator", () => {
 
       const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(results.locator("text=Grade 2").first()).toBeVisible();
-      await expect(results.getByText("Multiple injuries")).toHaveCount(0);
+      await expect(
+        results.getByText("Multiple injuries (+1 grade)"),
+      ).toHaveCount(0);
       await expect(results.getByText("Multiple Injury Adjustment")).toHaveCount(0);
+      await expect(
+        results
+          .getByText(
+            "No grade-advance modifier for multiple injuries is applied on the 2024 pancreas OIS path",
+          )
+          .first(),
+      ).toBeVisible();
     });
   });
 

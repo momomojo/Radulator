@@ -152,7 +152,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         },
         {
           value: "1_3cm",
-          label: "1-3 cm parenchymal depth, <10 cm length (Grade II)",
+          label: "1-3 cm parenchymal depth, ≤10 cm length (Grade II)",
         },
         { value: "gt3cm", label: ">3 cm parenchymal depth (Grade III)" },
         {
@@ -691,6 +691,8 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
     let grade = 0;
     let gradeFindings = [];
     let gradeDescription = "";
+    // Description table of the organ/version path; read after any grade advance.
+    let gradeDescriptions = {};
 
     // ============================================
     // LIVER GRADING
@@ -765,7 +767,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Major lobe disruption or intraperitoneal bleeding",
         5: "Critical - Massive disruption or juxtahepatic venous injury",
       };
-      gradeDescription = liverGrades[grade] || "";
+      gradeDescriptions = liverGrades;
     }
 
     // ============================================
@@ -852,7 +854,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Vascular injury (PSA/AVF) or >25% devascularization",
         5: "Critical - Shattered spleen or hilar avulsion or free bleeding",
       };
-      gradeDescription = spleenGrades[grade] || "";
+      gradeDescriptions = spleenGrades;
     }
 
     // ============================================
@@ -969,7 +971,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Active bleeding, pararenal extension, multifragmented, or UPJ disruption",
         5: "Critical - Main vessel injury or multifragmented kidney with active bleeding",
       };
-      gradeDescription = kidneyGrades[grade] || "";
+      gradeDescriptions = kidneyGrades;
     }
 
     // ============================================
@@ -1066,7 +1068,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Collecting system involvement, segmental vessel injury, or urinary extravasation",
         5: "Critical - Main vessel injury, shattered kidney, or devascularized with bleeding",
       };
-      gradeDescription = kidneyGrades[grade] || "";
+      gradeDescriptions = kidneyGrades;
     }
 
     // ============================================
@@ -1074,6 +1076,21 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
     // Ductal integrity is the primary grading determinant
     // ============================================
     else if (organ === "pancreas") {
+      // The 2024 revision grades a duct injury by location (neck/body/tail =
+      // Grade III, head = Grade IV). Without a location the grade is unknown, so
+      // fail closed instead of assuming the lower grade.
+      if (
+        pancreas_duct &&
+        pancreas_duct !== "none" &&
+        pancreas_duct_location !== "head" &&
+        pancreas_duct_location !== "body_tail"
+      ) {
+        return {
+          Error:
+            "Select the Location of Duct Injury (neck/body/tail or head) to grade this pancreatic duct injury: it is Grade III in the neck, body or tail and Grade IV in the head.",
+        };
+      }
+
       // DESTRUCTIVE (Grade V) — check first
       if (pancreas_destructive) {
         grade = Math.max(grade, 5);
@@ -1101,12 +1118,6 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         } else if (pancreas_duct_location === "body_tail") {
           grade = Math.max(grade, 3);
           gradeFindings.push(`Duct injury in neck/body/tail — ${ductSubgrade}`);
-        } else {
-          // Duct injury selected but location not yet chosen
-          grade = Math.max(grade, 3);
-          gradeFindings.push(
-            `Duct injury present — ${ductSubgrade} (select location for precise grading)`,
-          );
         }
       }
 
@@ -1142,7 +1153,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Duct injury in head (right of portal vein/SMV)",
         5: "Critical - Destructive injury to pancreatic head with nonviable parenchyma",
       };
-      gradeDescription = pancreasGrades[grade] || "";
+      gradeDescriptions = pancreasGrades;
     }
 
     // Grade-advance modifiers (Kozar 2018 table notes). Each applies only to the
@@ -1172,6 +1183,8 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       grade += 1;
       gradeFindings.push("Bilateral renal injuries (+1 grade)");
     }
+    // Describe the final grade; the adjustment line names the base grade.
+    gradeDescription = gradeDescriptions[grade] || "";
 
     if (grade === 0) {
       return {
@@ -1407,6 +1420,13 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
     } else if (gradeAdvance === "bilateral") {
       result["Bilateral Injury Adjustment"] =
         `Base grade ${baseGrade} advanced to Grade ${grade} due to bilateral renal injuries (2018 kidney OIS)`;
+    } else if (grade <= 2 && organ === "kidney" && kidney_ois_version !== "2018") {
+      // Paths with no verified grade-advance modifier say so for grades I-II.
+      result["Grade-Advance Note"] =
+        "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path because the revision's full text could not be verified for one. Clinical judgment applies.";
+    } else if (grade <= 2 && organ === "pancreas") {
+      result["Grade-Advance Note"] =
+        "No grade-advance modifier for multiple injuries is applied on the 2024 pancreas OIS path because the revision's full text could not be verified for one. The earlier 1990 AAST pancreas scale raised the grade by one, to at most Grade III, when multiple injuries were present. Clinical judgment applies.";
     }
 
     result["CRITICAL NOTE"] =
@@ -1485,9 +1505,11 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       t: "Bhullar IS, Frykberg ER, Siragusa D, et al. AAST Organ Injury Scale 2018 update for CT-based grading of renal trauma. Emerg Radiol. 2019;26(6):635-643.",
       u: "https://doi.org/10.1007/s10140-019-01721-z",
     },
+    // No link: the AAST's public injury scoring scale page no longer serves
+    // the scales (it is a reprint-permissions notice), so only the citation
+    // text is kept (docs/evidence/aast-injury-modifiers.md).
     {
       t: "AAST Official Website - Organ Injury Scale",
-      u: "https://www.aast.org/resources-detail/injury-scoring-scale",
     },
   ],
 };

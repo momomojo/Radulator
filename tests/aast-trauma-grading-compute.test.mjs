@@ -105,6 +105,12 @@ test("each path applies only its own modifier, at the grade I-II boundaries with
           assert.equal(gradeOf(result), expected, label);
 
           const advancedNow = expected !== base;
+          // "Grade Description" describes the final grade, not the base grade.
+          assert.equal(
+            result["Grade Description"],
+            compute({ ...BASE_VECTORS[path][expected] })["Grade Description"],
+            `${label}: description of the final grade`,
+          );
           const findings = result["Key Findings"];
           assert.equal(
             findings.includes("Multiple injuries (+1 grade)"),
@@ -164,6 +170,85 @@ test("explicit boundary vectors: liver/spleen multiple and kidney 2018 bilateral
   for (const [inputs, expected] of vectors) {
     assert.equal(gradeOf(compute(inputs)), expected, JSON.stringify(inputs));
   }
+});
+
+test("after an advance, Grade Description describes the advanced grade (liver, spleen, kidney 2018)", () => {
+  const vectors = [
+    // [inputs, final grade, description of the final grade]
+    [{ ...BASE_VECTORS.liver[1], multiple_injuries: true }, 2, "Moderate - Subcapsular 10-50% or laceration 1-3 cm"],
+    [{ ...BASE_VECTORS.liver[2], multiple_injuries: true }, 3, "Serious - Large hematoma or deep laceration or contained bleeding"],
+    [{ ...BASE_VECTORS.spleen[1], multiple_injuries: true }, 2, "Moderate - Subcapsular 10-50% or laceration 1-3 cm"],
+    [{ ...BASE_VECTORS.spleen[2], multiple_injuries: true }, 3, "Serious - Large hematoma or deep laceration"],
+    [{ ...BASE_VECTORS.kidney2018[1], kidney_2018_bilateral: true }, 2, "Moderate - Perirenal hematoma or small laceration ≤1 cm"],
+    [{ ...BASE_VECTORS.kidney2018[2], kidney_2018_bilateral: true }, 3, "Serious - Laceration >1 cm or contained vascular injury"],
+  ];
+  for (const [inputs, final, description] of vectors) {
+    const result = compute(inputs);
+    assert.equal(gradeOf(result), final, JSON.stringify(inputs));
+    assert.equal(result["Grade Description"], description, JSON.stringify(inputs));
+    // The base grade is still named by the adjustment line.
+    const adjustment = result["Multiple Injury Adjustment"] ?? result["Bilateral Injury Adjustment"];
+    assert.match(adjustment, new RegExp(`^Base grade ${final - 1} advanced to Grade ${final} `));
+  }
+  // Without an advance the description is unchanged.
+  assert.equal(compute({ ...BASE_VECTORS.liver[1] })["Grade Description"], "Minor - Subcapsular hematoma <10% or capsular tear <1 cm");
+  assert.equal(compute({ ...BASE_VECTORS.liver[3], multiple_injuries: true })["Grade Description"], "Serious - Large hematoma or deep laceration or contained bleeding");
+});
+
+const DUCT_LOCATION_ERROR =
+  "Select the Location of Duct Injury (neck/body/tail or head) to grade this pancreatic duct injury: it is Grade III in the neck, body or tail and Grade IV in the head.";
+
+test("a pancreatic duct injury without a location fails closed with an actionable error", () => {
+  for (const duct of ["deep_no_interrogation", "partial", "complete_transection"]) {
+    for (const location of [undefined, "", "neck", "HEAD", "left"]) {
+      for (const extra of [{}, { pancreas_parenchymal: "major_contusion" }, { pancreas_destructive: true }]) {
+        const inputs = { organ: "pancreas", pancreas_duct: duct, ...extra };
+        if (location !== undefined) inputs.pancreas_duct_location = location;
+        const result = compute(inputs);
+        assert.deepEqual(result, { Error: DUCT_LOCATION_ERROR }, JSON.stringify(inputs));
+      }
+    }
+    // With a location, the 2024 location rule grades it.
+    assert.equal(gradeOf(compute({ organ: "pancreas", pancreas_duct: duct, pancreas_duct_location: "body_tail" })), 3, duct);
+    assert.equal(gradeOf(compute({ organ: "pancreas", pancreas_duct: duct, pancreas_duct_location: "head" })), 4, duct);
+    assert.equal(
+      gradeOf(compute({ organ: "pancreas", pancreas_duct: duct, pancreas_duct_location: "body_tail", pancreas_destructive: true })),
+      5,
+      duct,
+    );
+  }
+  // No duct injury: a location left over from an earlier choice is ignored.
+  assert.equal(
+    gradeOf(compute({ organ: "pancreas", pancreas_duct: "none", pancreas_duct_location: "head", pancreas_parenchymal: "major_contusion" })),
+    2,
+  );
+  // Pancreas values left over on another organ never raise the error.
+  assert.equal(gradeOf(compute({ ...BASE_VECTORS.liver[1], pancreas_duct: "partial" })), 1);
+});
+
+const KIDNEY_2025_NOTE =
+  "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path because the revision's full text could not be verified for one. Clinical judgment applies.";
+const PANCREAS_2024_NOTE =
+  "No grade-advance modifier for multiple injuries is applied on the 2024 pancreas OIS path because the revision's full text could not be verified for one. The earlier 1990 AAST pancreas scale raised the grade by one, to at most Grade III, when multiple injuries were present. Clinical judgment applies.";
+
+test("grade I-II results on the kidney 2025 and pancreas 2024 paths carry a visible no-modifier note", () => {
+  const expectedNote = { kidney2025: KIDNEY_2025_NOTE, kidneyDefault: KIDNEY_2025_NOTE, pancreas: PANCREAS_2024_NOTE };
+  for (const [path, byGrade] of Object.entries(BASE_VECTORS)) {
+    for (const [baseText, inputs] of Object.entries(byGrade)) {
+      const base = Number(baseText);
+      for (const stale of [{}, { multiple_injuries: true, kidney_2018_bilateral: true }]) {
+        const result = compute({ ...inputs, ...stale });
+        const wanted = base <= 2 && gradeOf(result) <= 2 ? expectedNote[path] : undefined;
+        assert.equal(result["Grade-Advance Note"], wanted, `${path} base ${base} ${JSON.stringify(stale)}`);
+      }
+    }
+  }
+});
+
+test("liver grade II laceration length follows Kozar 2018 Table 2 (≤10 cm)", () => {
+  const laceration = field("liver_laceration").opts.find((opt) => opt.value === "1_3cm");
+  assert.equal(laceration.label, "1-3 cm parenchymal depth, ≤10 cm length (Grade II)");
+  assert.equal(gradeOf(compute({ organ: "liver", liver_laceration: "1_3cm" })), 2);
 });
 
 test("kidney 2018 bilateral advance changes the management tier with the grade", () => {
@@ -291,4 +376,13 @@ test("the 2025 kidney reference names the published author list", () => {
   const keihani = AASTTraumaGrading.refs.find((ref) => ref.u === "https://pubmed.ncbi.nlm.nih.gov/39836096/");
   assert.ok(keihani, "Keihani 2025 reference is missing");
   assert.match(keihani.t, /^Keihani S, Tominaga GT, Matta R, et al\. Kidney organ injury scaling: 2025 update\./);
+});
+
+test("the AAST website reference keeps its citation text without the dead link", () => {
+  const aast = AASTTraumaGrading.refs.filter((ref) => ref.t === "AAST Official Website - Organ Injury Scale");
+  assert.equal(aast.length, 1);
+  assert.equal(aast[0].u, undefined, "the AAST page no longer serves the scales, so no link is given");
+  for (const ref of AASTTraumaGrading.refs) {
+    assert.ok(!String(ref.u ?? "").includes("resources-detail/injury-scoring-scale"), ref.t);
+  }
 });
