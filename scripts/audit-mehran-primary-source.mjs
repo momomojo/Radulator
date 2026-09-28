@@ -3,110 +3,136 @@
 /**
  * Mehran CIN (original 2004 PCI score) primary-source audit.
  *
- * Retrieves four official or primary sources at the exact head, pins each source, pins
- * every cited source statement by the SHA-256 of its exact normalized text span inside an
- * explicit section, anchor or page locator, and binds every changed clinical claim in
- * MehranCIN.jsx to runtime output at explicit vectors, including the Table 15 score
- * boundaries and the published risk-band extremes. Any drift fails loudly; nothing falls
- * back to a secondary source.
+ * Retrieves five official or primary source artifacts at the exact head and verifies each one
+ * as bytes before anything is parsed: final URL (HTTPS host, path and query), media type, exact
+ * byte length and SHA-256. A response that misses any of these pins is a changed source and
+ * fails at once, without a retry; only transport failures are retried. Every cited source
+ * statement is then pinned by the length and SHA-256 of its exact normalized text span inside an
+ * explicit section, anchor or page locator, and every changed clinical claim in MehranCIN.jsx is
+ * bound to runtime output at explicit vectors, including the Table 15 score boundaries and the
+ * published risk-band extremes. Nothing falls back to a secondary source.
  *
- * Source pins (SOURCES.digest_of):
- * - "raw-artifact": byte length and SHA-256 of the exact response bytes. Used for the ACR
- *   PDF and the KDIGO PMC XML from NCBI E-utilities, which are static archived documents.
- * - "content-region": byte length and SHA-256 of the normalized text of a fixed content
- *   region. Used for the ESUR guideline page, a CMS page whose menus, modules and footer
- *   can change without any change to the guideline. The region runs from the B.1 anchor up
- *   to the B.6 anchor, i.e. all of B.1 through the end of B.5.
- * - "normalized-record-fields": byte length and SHA-256 of canonical JSON of the PubMed
- *   fields cited here (PMID, DOI, journal, volume, issue, pages, title, labelled abstract).
- *   The raw efetch XML changes with NLM record maintenance (yearly DTD header, DateRevised,
- *   CommentsCorrections) without any change to those fields.
+ * Sources, all pinned by their raw response bytes:
+ * - PubMed 15464318 and 34793743, one request per record, as PubMed's plain-text abstract
+ *   (efetch rettype=abstract, retmode=text). The text form carries no DTD header or retrieval
+ *   metadata, so its bytes change only when the record itself changes.
+ * - KDIGO 2012 AKI guideline Section 4 as PMC XML (efetch db=pmc).
+ * - ESUR Guidelines on Contrast Media, B. Renal adverse reactions (HTML page).
+ * - ACR Manual on Contrast Media 2026 (PDF).
  *
- * Statement pins: a span runs from a start marker, which must be unique in its locator,
- * through the first following end marker, inclusive. Markers are at most six words and
- * only locate the span; the audit pins the span's length and SHA-256, so it verifies the
- * literal source text at head without republishing it. Each statement's `paraphrase` is
- * Radulator's own summary; open the source at the locator to read the statement itself.
- * Titles and identifiers are compared directly, and Table 15 is parsed into its numbers.
+ * Statement pins: a span runs from a start marker, unique in its locator, through the first
+ * following end marker, inclusive. Markers are at most six words and only locate the span; the
+ * audit pins the span's length and SHA-256, so it verifies the literal source text at head
+ * without republishing it. Each statement's paraphrase is Radulator's own summary; open the
+ * source at the locator to read the statement itself. Titles and identifiers are compared
+ * directly, and Table 15 is parsed into its numbers.
  *
- * Normalizers: markupText (XML/HTML/PubMed) removes tags (inline tags without a space,
- * block tags as a space), drops bibliographic citation superscripts, decodes entities,
- * collapses whitespace and preserves case. compactPdfText (ACR PDF) applies NFKC, folds
- * quotes and hyphens, lower-cases and removes all whitespace, because the PDF text layer
- * splits words.
+ * Normalizers: PubMed text is NFKC-normalized with whitespace collapsed. XML and HTML use
+ * markupText (tags removed, inline tags without a space, citation superscripts dropped,
+ * entities decoded, whitespace collapsed, case preserved). ACR PDF text uses compactPdfText
+ * (NFKC, folded quotes and hyphens, lower case, all whitespace removed, because the PDF text
+ * layer splits words).
  *
- * Source bytes and source text are never committed.
+ * The steps are exported so the exact-head test can prove that each check fails when its source
+ * bytes, response, statement text, parsed table or runtime changes. Source bytes and source text
+ * are never committed.
  */
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { getDocument, version as pdfjsVersion } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { MehranCIN } from "../src/components/calculators/MehranCIN.jsx";
 
-const SCHEMA = "radulator-mehran-primary-source-audit/v1";
-const CALCULATOR_PATH = "src/components/calculators/MehranCIN.jsx";
-const USER_AGENT = "Radulator-Mehran-primary-source-audit/1";
-const MAX_ATTEMPTS = 4;
-const RETRYABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+export const SCHEMA = "radulator-mehran-primary-source-audit/v2";
+export const CALCULATOR_PATH = "src/components/calculators/MehranCIN.jsx";
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const USER_AGENT = "Radulator-Mehran-primary-source-audit/2";
+export const FETCH_ATTEMPTS = 4;
+const FETCH_MAX_DELAY_MS = 8_000;
+const FETCH_SPACING_MS = 1_100; // stay well below the anonymous NCBI E-utilities limit (3 requests/s)
+const TRANSIENT_HTTP_STATUSES = Object.freeze([408, 425, 429, 500, 502, 503, 504]);
+const EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi";
 const PRIMARY_DOI_URL = "https://doi.org/10.1016/j.jacc.2004.06.068";
 const ESUR_REFERENCE_URL = "https://esur-cm.org/index.php/en/b-renal-adverse-reactions";
 const KDIGO_REFERENCE_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC4089629/";
 const ACR_PDF_PAGE_OFFSET = 3;
 const ACR_EDITION_PAGE = 2; // PDF page 1 is an image-only cover
-const PDF_PARSER = "pdfjs-dist@4.10.38"; // package-lock.json pin
+export const PDF_PARSER = "pdfjs-dist@4.10.38"; // package-lock.json pin
 const MARKUP_PARSER = "scripts/audit-mehran-primary-source.mjs markupText (deterministic tag/entity normalizer)";
+const TEXT_PARSER = "scripts/audit-mehran-primary-source.mjs parseRecordText (PubMed plain-text abstract blocks)";
 
-const SOURCES = Object.freeze([
-  Object.freeze({
-    key: "pubmed",
+// Every source is pinned by the exact bytes of its response.
+export const SOURCES = Object.freeze({
+  "pubmed-15464318": Object.freeze({
+    key: "pubmed-15464318",
+    kind: "pubmed-text",
     authority: "U.S. National Library of Medicine (PubMed)",
-    title:
-      "PubMed 15464318 (Mehran et al., J Am Coll Cardiol 2004;44:1393-9) and PubMed 34793743 (Mehran et al., Lancet 2021;398:1974-83)",
-    url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=15464318,34793743&retmode=xml",
-    // NCBI E-utilities occasionally answers this fixed, valid query with a transient 400.
-    retry_http_statuses: [400],
-    media_type: "text/xml",
-    digest_of: "normalized-record-fields",
-    bytes: 5_891,
-    sha256: "c110bcca6d33f96295d636d57b8e547b6eb9aa29363149f7497dafe0fb1ed9d9",
+    title: "PubMed 15464318: Mehran et al., J Am Coll Cardiol 2004;44(7):1393-9 (plain-text abstract)",
+    pmid: "15464318",
+    citation: "J Am Coll Cardiol. 2004 Oct 6;44(7):1393-9.",
+    doi: "10.1016/j.jacc.2004.06.068",
+    url: `${EFETCH}?db=pubmed&id=15464318&rettype=abstract&retmode=text&tool=radulator-mehran-audit`,
+    // NCBI E-utilities occasionally answers a fixed, valid query with a transient 400.
+    retry_http_statuses: Object.freeze([400]),
+    media_type: "text/plain",
+    bytes: 2_301,
+    sha256: "1909b4329e81cab7dc1a9bb8085e4c0452f71f60bc9f689e470acc4a3a8b022d",
   }),
-  Object.freeze({
+  "pubmed-34793743": Object.freeze({
+    key: "pubmed-34793743",
+    kind: "pubmed-text",
+    authority: "U.S. National Library of Medicine (PubMed)",
+    title: "PubMed 34793743: Mehran et al., Lancet 2021;398(10315):1974-83 (plain-text abstract)",
+    pmid: "34793743",
+    citation: "Lancet. 2021 Nov 27;398(10315):1974-1983.",
+    doi: "10.1016/S0140-6736(21)02326-6",
+    url: `${EFETCH}?db=pubmed&id=34793743&rettype=abstract&retmode=text&tool=radulator-mehran-audit`,
+    retry_http_statuses: Object.freeze([400]),
+    media_type: "text/plain",
+    bytes: 5_570,
+    sha256: "9117f0f184abef66e82e5ac1228dcc0c0dbf36a52460f4b07366556eea3a0861",
+  }),
+  kdigo: Object.freeze({
     key: "kdigo",
+    kind: "pmc-xml",
     authority: "Kidney Disease: Improving Global Outcomes (KDIGO)",
     title:
       "KDIGO Clinical Practice Guideline for Acute Kidney Injury (2012), Section 4: Contrast-induced AKI. Kidney Int Suppl 2012;2:69-88 (PMC4089629)",
-    url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=4089629&retmode=xml",
-    retry_http_statuses: [400],
+    url: `${EFETCH}?db=pmc&id=4089629&retmode=xml`,
+    retry_http_statuses: Object.freeze([400]),
     media_type: "text/xml",
-    digest_of: "raw-artifact",
     bytes: 272_094,
     sha256: "b8775bd178b990bc0e6dd38e60fd03ffd0cee9ebf63f021bacc4eeb18ed77e22",
   }),
-  Object.freeze({
+  esur: Object.freeze({
     key: "esur",
+    kind: "html",
     authority: "European Society of Urogenital Radiology (ESUR)",
     title: "ESUR Guidelines on Contrast Media, B. Renal adverse reactions (PC-AKI)",
     url: ESUR_REFERENCE_URL,
+    retry_http_statuses: Object.freeze([]),
     media_type: "text/html",
-    digest_of: "content-region",
-    content_region: "anchor B_1 up to anchor B_6 (B.1 through the end of B.5), markupText-normalized",
-    bytes: 8_558,
-    sha256: "1f81890a1cc102b311e9724327d75ef27540279a3a6facdf6e5a0ddcb20a6b68",
+    bytes: 44_070,
+    sha256: "982259b9506a813557468a17855c4cb97afe791e3af52a943980bd01290a9f4d",
   }),
-  Object.freeze({
+  acr: Object.freeze({
     key: "acr",
+    kind: "pdf",
     authority: "American College of Radiology (ACR)",
     title: "ACR Manual on Contrast Media 2026 (official PDF)",
     url: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf",
+    retry_http_statuses: Object.freeze([]),
     media_type: "application/pdf",
-    digest_of: "raw-artifact",
     bytes: 1_765_419,
     sha256: "24bfacd3344310d1546636f50aabba11d6458f432b3c8b1205d9c63efe751be2",
   }),
-]);
+});
+export const SOURCE_KEYS = Object.freeze(Object.keys(SOURCES));
+const PUBMED_SOURCE_BY_PMID = Object.freeze({ 15464318: "pubmed-15464318", 34793743: "pubmed-34793743" });
 
 /**
  * Source statements, pinned without republishing source text. Span statements are checked
@@ -115,7 +141,7 @@ const SOURCES = Object.freeze([
  * (printed page = PDF page - 3, checked against the running header). Identity statements
  * compare a title or DOI; the Table 15 statement is verified by parsing the table.
  */
-const SOURCE_STATEMENTS = Object.freeze([
+export const SOURCE_STATEMENTS = Object.freeze([
   Object.freeze({
     id: "pm2004-title",
     source: "pubmed",
@@ -514,7 +540,7 @@ const EXPECTED_TABLE_15_ROWS = Object.freeze([
   ["eGFR <60 ml/min per 1.73 m2", "2 for 40–60 4 for 20–39 6 for <20"],
 ]);
 
-const MAX_MARKER_WORDS = 6;
+export const MAX_MARKER_WORDS = 6;
 const TABLE_15_CAPTION = "CI-AKI risk-scoring model for percutaneous coronary intervention";
 // Footnote shorthand is parsed into numbers; its exact text is pinned by digest only.
 const EXPECTED_TABLE_15_FOOTNOTE = Object.freeze({
@@ -547,9 +573,9 @@ const RUNTIME_FIELD_IDS_2004 = Object.freeze([
   "contrast_volume",
 ]);
 
-const PREVENTION_CONTEXT =
+export const PREVENTION_CONTEXT =
   "Assess renal function, acute kidney injury, contrast exposure route and volume status separately. Individualize hydration, especially in severe heart failure. This score does not prescribe hydration doses, medication holds, dialysis access or a safe contrast maximum.";
-const MODEL_SCOPE =
+export const MODEL_SCOPE =
   "Original 2004 PCI score; displayed rates are historical cohort estimates, not an individual guarantee or general IV CT contrast clearance. Anticipated procedural inputs make the estimate conditional; update after the procedure.";
 
 const RUNTIME_VECTORS = Object.freeze({
@@ -606,7 +632,7 @@ const FORBIDDEN_OUTPUT_PATTERNS = Object.freeze([
  * result for a vector, or "*" for every valid vector), "absent" (field must be
  * missing), "error" (compute() must refuse with no clinical report).
  */
-const CLAIM_BINDINGS = Object.freeze([
+export const CLAIM_BINDINGS = Object.freeze([
   {
     claim: "original-2004-pci-derivation-scope",
     statements: ["pm2004-objective-pci", "pm2004-title", "kdigo-pci-risk-models", "kdigo-table-15"],
@@ -855,6 +881,8 @@ const CLAIM_BINDINGS = Object.freeze([
 
 // Unchanged values that this audit does not source-verify (retrievable primary
 // text lacks them or is ambiguous). Listed so the audit never over-claims.
+// Unchanged values that this audit does not source-verify (retrievable primary
+// text lacks them or is ambiguous). Listed so the audit never over-claims.
 const NOT_SOURCE_BOUND = Object.freeze([
   "Middle-band cut points and CIN rates (6-10 points 14.0%; 11-15 points 26.1%) and their category labels: absent from the PubMed abstract and KDIGO; the original full text is behind publisher bot protection.",
   "All four dialysis rates (0.04%, 0.12%, 1.09%, 12.6%): absent from the retrievable sources.",
@@ -866,67 +894,104 @@ const NOT_SOURCE_BOUND = Object.freeze([
   "KDIGO Table 15 footnote shorthand ('<5', '>16') differs from the abstract and KDIGO text ('<=5', '>=16'); runtime follows <=5 and >=16.",
 ]);
 
-function sha256(value) {
+const ACR_STATEMENT_PAGES = Object.freeze(
+  [...new Set(SOURCE_STATEMENTS.filter(({ source }) => source === "acr").map(({ locator }) => locator.pdf_page))],
+);
+
+export function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+// Exact bytes first: nothing is parsed from a response that is not the pinned artifact.
+export function verifySourceBytes(key, bytes, source = SOURCES[key]) {
+  assert.ok(source, `${key} is not a pinned source`);
+  assert.ok(Buffer.isBuffer(bytes), `${key}: source bytes missing`);
+  assert.equal(
+    bytes.length,
+    source.bytes,
+    `${key}: source byte length drifted (${bytes.length}, pinned ${source.bytes}); re-review the source before re-pinning`,
+  );
+  const digest = sha256(bytes);
+  assert.equal(
+    digest,
+    source.sha256,
+    `${key}: source SHA-256 drifted (${digest}); re-review the source before re-pinning`,
+  );
+  return digest;
+}
+
+export function verifyResponse(key, { finalUrl, contentType }, source = SOURCES[key]) {
+  const expected = new URL(source.url);
+  const url = new URL(finalUrl);
+  assert.equal(url.protocol, "https:", `${key}: final URL left HTTPS (${url.protocol})`);
+  assert.equal(url.hostname, expected.hostname, `${key}: final URL host drifted (${url.hostname})`);
+  assert.equal(url.pathname, expected.pathname, `${key}: final URL path drifted (${url.pathname})`);
+  assert.equal(url.search, expected.search, `${key}: final URL query drifted (${url.search})`);
+  const mediaType = String(contentType ?? "").split(";")[0].trim().toLowerCase();
+  assert.equal(mediaType, source.media_type, `${key}: media type drifted (${contentType ?? "<missing>"})`);
 }
 
 function retryDelayMs(response, attempt) {
   const retryAfter = response?.headers?.get?.("retry-after")?.trim();
   const seconds = retryAfter ? Number(retryAfter) : Number.NaN;
-  const requested = Number.isFinite(seconds) && seconds >= 0 ? seconds * 1_000 : null;
-  return Math.min(8_000, requested ?? 500 * 2 ** (attempt - 1));
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1_000;
+  return 500 * 2 ** (attempt - 1);
 }
 
-async function fetchSource(source) {
-  const expected = new URL(source.url);
-  const retryable = new Set([...RETRYABLE_HTTP_STATUSES, ...(source.retry_http_statuses ?? [])]);
+// Retries transport failures only: network or body-read errors, 408/425/429/5xx, and the
+// source's listed transient statuses (400 for the fixed NCBI E-utilities queries). A 200
+// response that misses its URL, media-type, length or digest pin is a changed source and fails
+// at once, without a retry. A bot challenge is never bypassed.
+export async function fetchSource(key, { fetchImpl = globalThis.fetch, sleep = delay } = {}) {
+  const source = SOURCES[key];
+  assert.ok(source, `${key} is not a pinned source`);
+  const retryable = new Set([...TRANSIENT_HTTP_STATUSES, ...source.retry_http_statuses]);
   let lastFailure = "unknown retrieval failure";
-  let attempts = 0;
-  while (attempts < MAX_ATTEMPTS) {
-    attempts += 1;
+  let made = 0;
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    made = attempt;
     let response;
     try {
-      response = await fetch(source.url, {
+      response = await fetchImpl(source.url, {
         headers: { "user-agent": USER_AGENT },
         redirect: "follow",
         signal: AbortSignal.timeout(60_000),
       });
     } catch (error) {
       lastFailure = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-      if (attempts < MAX_ATTEMPTS) await delay(retryDelayMs(null, attempts));
-      continue;
     }
-    if (!response.ok) {
-      await response.body?.cancel();
+    if (response?.ok) {
+      verifyResponse(key, { finalUrl: response.url, contentType: response.headers.get("content-type") }, source);
+      let bytes = null;
+      try {
+        bytes = Buffer.from(await response.arrayBuffer());
+      } catch (error) {
+        lastFailure = error instanceof Error ? `body read failed: ${error.message}` : String(error);
+      }
+      if (bytes) {
+        verifySourceBytes(key, bytes, source);
+        return bytes;
+      }
+    } else if (response) {
+      await response.body?.cancel?.();
       const challenge = response.headers.get("cf-mitigated") ? " (bot challenge; this audit never bypasses it)" : "";
       lastFailure = `HTTP ${response.status}${challenge}`;
-      if (!retryable.has(response.status)) break;
-      if (attempts < MAX_ATTEMPTS) await delay(retryDelayMs(response, attempts));
-      continue;
+      if (challenge || !retryable.has(response.status)) break;
     }
-    const finalUrl = new URL(response.url);
-    assert.equal(finalUrl.protocol, "https:", `${source.key}: final URL left HTTPS (${response.url})`);
-    assert.equal(finalUrl.hostname, expected.hostname, `${source.key}: final URL host drifted (${response.url})`);
-    assert.equal(finalUrl.pathname, expected.pathname, `${source.key}: final URL path drifted (${response.url})`);
-    assert.equal(finalUrl.search, expected.search, `${source.key}: final URL query drifted (${response.url})`);
-    const contentType = response.headers.get("content-type") ?? "";
-    assert.equal(
-      contentType.split(";")[0].trim().toLowerCase(),
-      source.media_type,
-      `${source.key}: media type drifted (${contentType || "<missing>"})`,
-    );
-    try {
-      return {
-        bytes: Buffer.from(await response.arrayBuffer()),
-        final_host: finalUrl.hostname,
-        final_path: finalUrl.pathname,
-      };
-    } catch (error) {
-      lastFailure = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-      if (attempts < MAX_ATTEMPTS) await delay(retryDelayMs(null, attempts));
-    }
+    if (attempt < FETCH_ATTEMPTS) await sleep(Math.min(retryDelayMs(response, attempt), FETCH_MAX_DELAY_MS));
   }
-  assert.fail(`${source.key}: primary-source retrieval failed after ${attempts} attempt(s) (${lastFailure}) from ${source.url}`);
+  assert.fail(
+    `${key}: primary-source retrieval failed after ${made} of ${FETCH_ATTEMPTS} attempts (${lastFailure}) from ${source.url}`,
+  );
+}
+
+export async function fetchSources(options = {}) {
+  const sources = {};
+  for (const [index, key] of SOURCE_KEYS.entries()) {
+    if (index > 0) await (options.sleep ?? delay)(FETCH_SPACING_MS);
+    sources[key] = await fetchSource(key, options);
+  }
+  return sources;
 }
 
 const INLINE_TAGS = new Set(["a", "b", "bold", "em", "font", "i", "italic", "sc", "small", "span", "strong", "sub", "sup", "u", "xref"]);
@@ -942,7 +1007,7 @@ function decodeEntities(text) {
   });
 }
 
-function markupText(fragment) {
+export function markupText(fragment) {
   const stripped = fragment
     .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
@@ -952,7 +1017,7 @@ function markupText(fragment) {
   return decodeEntities(stripped).replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function compactPdfText(value) {
+export function compactPdfText(value) {
   return value
     .normalize("NFKC")
     .replace(/[‘’]/g, "'")
@@ -962,39 +1027,38 @@ function compactPdfText(value) {
     .toLowerCase();
 }
 
-function pubmedRecords(xml) {
-  const articles = [...xml.matchAll(/<PubmedArticle>([\s\S]*?)<\/PubmedArticle>/g)].map((match) => match[1]);
-  assert.equal(articles.length, 2, "PubMed efetch must return exactly two records");
-  return articles.map((article, index) => {
-    const citation = article.match(/<MedlineCitation\b[^>]*>([\s\S]*?)<\/MedlineCitation>/)?.[1];
-    const pubmedData = article.match(/<PubmedData>([\s\S]*?)<\/PubmedData>/)?.[1];
-    assert.ok(citation && pubmedData, `PubMed record ${index}: MedlineCitation/PubmedData missing`);
-    const pmid = citation.match(/^\s*<PMID Version="\d+">(\d+)<\/PMID>/)?.[1];
-    assert.ok(pmid, `PubMed record ${index}: PMID missing`);
-    const ids = pubmedData.match(/<ArticleIdList>([\s\S]*?)<\/ArticleIdList>/)?.[1] ?? "";
-    assert.match(ids, new RegExp(`<ArticleId IdType="pubmed">${pmid}</ArticleId>`), `${pmid}: article ID list mismatch`);
-    const field = (pattern, label) => {
-      const value = citation.match(pattern)?.[1];
-      assert.ok(value, `${pmid}: ${label} missing`);
-      return markupText(value);
-    };
-    return {
-      pmid,
-      doi: ids.match(/<ArticleId IdType="doi">([^<]+)<\/ArticleId>/)?.[1] ?? assert.fail(`${pmid}: DOI missing`),
-      journal: field(/<Journal>[\s\S]*?<Title>([\s\S]*?)<\/Title>/, "journal title"),
-      volume: field(/<Volume>([^<]+)<\/Volume>/, "volume"),
-      issue: field(/<Issue>([^<]+)<\/Issue>/, "issue"),
-      pages: field(/<MedlinePgn>([^<]+)<\/MedlinePgn>/, "pages"),
-      title: field(/<ArticleTitle>([\s\S]*?)<\/ArticleTitle>/, "title"),
-      abstract: [...citation.matchAll(/<AbstractText\b([^>]*)>([\s\S]*?)<\/AbstractText>/g)].map(([, attributes, body]) => ({
-        label: attributes.match(/\bLabel="([^"]*)"/)?.[1] ?? "",
-        text: markupText(body),
-      })),
-    };
-  });
+function normalizeText(value) {
+  return String(value).normalize("NFKC").replace(/\s+/g, " ").trim();
 }
 
-function kdigoSection(xml, title) {
+// PubMed plain-text abstract layout: blank-line separated blocks for the citation, title,
+// authors, author information, optional linked-record notices, abstract, copyright, identifiers
+// and conflict-of-interest statement.
+export function parseRecordText(text) {
+  const blocks = text.split(/\n[ \t]*\n/).map((block) => block.trim()).filter(Boolean);
+  const infoIndex = blocks.findIndex((block) => block.startsWith("Author information:"));
+  assert.ok(infoIndex >= 2, "PubMed record lacks the author-information block");
+  const notice =
+    /^(Comment (in|on)|Erratum (in|for)|Update (in|of)|Retraction (in|of)|Expression of concern (in|for)|Republished (in|from)|Conflict of interest|Copyright|©|DOI:|PMID:|PMCID:)/;
+  return {
+    citation: normalizeText(blocks[0] ?? ""),
+    title: normalizeText(blocks[1] ?? ""),
+    abstract: normalizeText(blocks.slice(infoIndex + 1).find((block) => !notice.test(block)) ?? ""),
+    doi: text.match(/^DOI: (\S+)$/m)?.[1] ?? "",
+    pmid: text.match(/^PMID: (\d+)/m)?.[1] ?? "",
+  };
+}
+
+export function sectionText(record, label) {
+  const labels = [...record.abstract.matchAll(/(?:^|\s)([A-Z][A-Z ]{3,}): /g)];
+  const hits = labels.filter((match) => match[1] === label);
+  assert.equal(hits.length, 1, `PubMed ${record.pmid}: abstract section ${label} must occur exactly once`);
+  const start = hits[0].index + hits[0][0].length;
+  const next = labels.find((match) => match.index > hits[0].index);
+  return record.abstract.slice(start, next ? next.index : undefined).trim();
+}
+
+export function kdigoSection(xml, title) {
   const marker = `<sec><title>${title}</title>`;
   const start = xml.indexOf(marker);
   assert.notEqual(start, -1, `KDIGO section "${title}" is missing`);
@@ -1009,7 +1073,7 @@ function kdigoSection(xml, title) {
   assert.fail(`KDIGO section "${title}" is unterminated`);
 }
 
-function kdigoTable15(xml) {
+export function kdigoTable15(xml) {
   const tables = xml.match(/<table-wrap id="tbl15"[\s\S]*?<\/table-wrap>/g) ?? [];
   assert.equal(tables.length, 1, "KDIGO XML must contain exactly one Table 15 (tbl15)");
   const [table] = tables;
@@ -1037,23 +1101,13 @@ function kdigoTable15(xml) {
   };
 }
 
-function esurSection(html, anchor) {
+export function esurSection(html, anchor) {
   const marker = `<a name="${anchor}" id="${anchor}"></a>`;
   const start = html.indexOf(marker);
   assert.notEqual(start, -1, `ESUR anchor ${anchor} is missing`);
   assert.equal(html.indexOf(marker, start + marker.length), -1, `ESUR anchor ${anchor} is not unique`);
   const next = html.indexOf('<a name="', start + marker.length);
   return markupText(html.slice(start, next === -1 ? undefined : next));
-}
-
-function esurContentRegion(html) {
-  const from = '<a name="B_1" id="B_1"></a>';
-  const to = '<a name="B_6" id="B_6"></a>';
-  const start = html.indexOf(from);
-  const end = html.indexOf(to);
-  assert.ok(start >= 0 && html.indexOf(from, start + 1) === -1, "ESUR content region: anchor B_1 missing or repeated");
-  assert.ok(end > start && html.indexOf(to, end + 1) === -1, "ESUR content region: anchor B_6 missing, repeated or out of order");
-  return markupText(html.slice(start, end));
 }
 
 function wordCount(value) {
@@ -1070,7 +1124,7 @@ function spanDigest(text, from, to, label) {
   return { length: span.length, sha256: sha256(span) };
 }
 
-async function acrPages(pdfBytes, pageNumbers) {
+export async function acrPages(pdfBytes, pageNumbers) {
   assert.equal(pdfBytes.subarray(0, 5).toString("ascii"), "%PDF-", "ACR artifact lacks a PDF header");
   const document = await getDocument({ data: new Uint8Array(pdfBytes), useSystemFonts: true, verbosity: 0 }).promise;
   try {
@@ -1085,6 +1139,169 @@ async function acrPages(pdfBytes, pageNumbers) {
   } finally {
     await document.destroy();
   }
+}
+
+// Verifies every source's exact bytes, then parses. Nothing is parsed from unverified bytes.
+export async function parseSources(sources) {
+  assert.ok(sources && typeof sources === "object", "source bytes missing");
+  for (const key of SOURCE_KEYS) verifySourceBytes(key, sources[key]);
+  const pubmed = {};
+  for (const [pmid, key] of Object.entries(PUBMED_SOURCE_BY_PMID)) {
+    pubmed[pmid] = parseRecordText(sources[key].toString("utf8"));
+  }
+  return {
+    pubmed,
+    kdigoXml: sources.kdigo.toString("utf8"),
+    esurHtml: sources.esur.toString("utf8"),
+    acr: await acrPages(sources.acr, ACR_STATEMENT_PAGES),
+  };
+}
+
+export function verifyIdentities(parsed) {
+  for (const [pmid, key] of Object.entries(PUBMED_SOURCE_BY_PMID)) {
+    const record = parsed.pubmed[pmid];
+    const source = SOURCES[key];
+    assert.equal(record.pmid, pmid, `${key}: PMID drifted`);
+    assert.equal(record.doi, source.doi, `${key}: DOI drifted`);
+    assert.ok(record.citation.includes(source.citation), `${key}: journal citation drifted`);
+    assert.ok(record.abstract.length > 0, `${key}: abstract missing`);
+  }
+  assert.match(parsed.kdigoXml, /<article-id pub-id-type="pmcid">PMC4089629<\/article-id>/, "kdigo: PMCID drifted");
+  assert.match(parsed.kdigoXml, /<article-id pub-id-type="doi">10\.1038\/kisup\.2011\.34<\/article-id>/, "kdigo: DOI drifted");
+  assert.match(parsed.kdigoXml, /<article-title>Section 4: Contrast-induced AKI<\/article-title>/, "kdigo: title drifted");
+  assert.equal(
+    markupText(parsed.esurHtml.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? ""),
+    "ESUR guidelines on Contrast Media - B. Renal adverse reactions",
+    "esur: page title drifted",
+  );
+  assert.ok(
+    compactPdfText(parsed.acr.get(ACR_EDITION_PAGE)).startsWith(compactPdfText("ACR Manual on Contrast Media 2026")),
+    `acr: PDF page ${ACR_EDITION_PAGE} edition title drifted`,
+  );
+  for (const pageNumber of ACR_STATEMENT_PAGES) {
+    const header = compactPdfText(`${ACR_RUNNING_HEADERS[pageNumber]} ${pageNumber - ACR_PDF_PAGE_OFFSET}`);
+    assert.ok(
+      compactPdfText(parsed.acr.get(pageNumber)).startsWith(header),
+      `acr: PDF page ${pageNumber} running header or printed page ${pageNumber - ACR_PDF_PAGE_OFFSET} drifted`,
+    );
+  }
+}
+
+// The normalized text a span statement is checked in, and how its markers are normalized.
+export function statementLocator(parsed, statement) {
+  const { locator } = statement;
+  if (statement.source === "pubmed") {
+    const record = parsed.pubmed[locator.pmid];
+    assert.ok(record, `${statement.id}: PubMed ${locator.pmid} missing`);
+    return {
+      text: sectionText(record, locator.label),
+      normalize: normalizeText,
+      locatorText: `PubMed ${locator.pmid} abstract, ${locator.label}`,
+    };
+  }
+  if (statement.source === "kdigo") {
+    return {
+      text: kdigoSection(parsed.kdigoXml, locator.section),
+      normalize: (value) => value,
+      locatorText: `KDIGO 2012 AKI Section 4 (PMC4089629), section "${locator.section}"`,
+    };
+  }
+  if (statement.source === "esur") {
+    return {
+      text: esurSection(parsed.esurHtml, locator.anchor),
+      normalize: (value) => value,
+      locatorText: `ESUR B. Renal adverse reactions, section ${locator.anchor.replaceAll("_", ".")} (anchor ${locator.anchor})`,
+    };
+  }
+  assert.equal(statement.source, "acr", `${statement.id}: unknown source`);
+  const page = parsed.acr.get(locator.pdf_page);
+  assert.ok(page, `${statement.id}: ACR PDF page ${locator.pdf_page} was not extracted`);
+  return {
+    text: compactPdfText(page),
+    normalize: compactPdfText,
+    locatorText: `ACR Manual on Contrast Media 2026, PDF p. ${locator.pdf_page} (printed p. ${locator.pdf_page - ACR_PDF_PAGE_OFFSET})`,
+  };
+}
+
+// Actual span digests for one statement; markers must be short and must locate the span.
+export function checkStatementSpans(statement, text, normalize, locatorText = statement.id) {
+  assert.ok(typeof text === "string" && text.length > 0, `${statement.id}: locator is empty`);
+  assert.ok(Array.isArray(statement.spans) && statement.spans.length > 0, `${statement.id}: no pinned span`);
+  return statement.spans.map((span, index) => {
+    for (const marker of [span.from, span.to]) {
+      assert.ok(
+        wordCount(marker) <= MAX_MARKER_WORDS,
+        `${statement.id}: marker ${JSON.stringify(marker)} exceeds ${MAX_MARKER_WORDS} words`,
+      );
+    }
+    assert.match(span.sha256, /^[a-f0-9]{64}$/, `${statement.id}: span ${index + 1} digest is malformed`);
+    const actual = spanDigest(text, normalize(span.from), normalize(span.to), `${statement.id} span ${index + 1} (${locatorText})`);
+    return {
+      id: statement.id,
+      span: index + 1,
+      ok: actual.length === span.length && actual.sha256 === span.sha256,
+      expected: { length: span.length, sha256: span.sha256 },
+      actual,
+    };
+  });
+}
+
+export function verifyStatements(parsed, table15, statements = SOURCE_STATEMENTS) {
+  const ids = new Set();
+  const mismatches = [];
+  const verified = statements.map((statement) => {
+    assert.equal(ids.has(statement.id), false, `duplicate statement ${statement.id}`);
+    ids.add(statement.id);
+    assert.ok(typeof statement.paraphrase === "string" && statement.paraphrase.length > 0, `${statement.id}: paraphrase missing`);
+    const base = { id: statement.id, source: statement.source };
+
+    if ("identity" in statement) {
+      assert.equal(statement.source, "pubmed", `${statement.id}: identity statements are PubMed fields`);
+      const record = parsed.pubmed[statement.locator.pmid];
+      assert.ok(record, `${statement.id}: PubMed ${statement.locator.pmid} missing`);
+      assert.equal(
+        record[statement.locator.field],
+        statement.identity,
+        `${statement.id}: PubMed ${statement.locator.pmid} ${statement.locator.field} drifted`,
+      );
+      return {
+        ...base,
+        locator: `PubMed ${statement.locator.pmid}, ${statement.locator.field}`,
+        paraphrase: statement.paraphrase,
+        identity: statement.identity,
+      };
+    }
+
+    if (statement.table) {
+      assert.equal(statement.locator.table, "tbl15", `${statement.id}: only Table 15 is parsed`);
+      if (Object.keys(EXPECTED_TABLE_15_FOOTNOTE).some((key) => table15.footnote[key] !== EXPECTED_TABLE_15_FOOTNOTE[key])) {
+        mismatches.push({ id: statement.id, span: "footnote", expected: EXPECTED_TABLE_15_FOOTNOTE, actual: table15.footnote });
+      }
+      return {
+        ...base,
+        locator: "KDIGO 2012 AKI Section 4 (PMC4089629), Table 15 (tbl15)",
+        paraphrase: statement.paraphrase,
+        table: { caption: TABLE_15_CAPTION, rows: table15.rows, footnote: { ...EXPECTED_TABLE_15_FOOTNOTE } },
+      };
+    }
+
+    const { text, normalize, locatorText } = statementLocator(parsed, statement);
+    for (const result of checkStatementSpans(statement, text, normalize, locatorText)) {
+      if (!result.ok) mismatches.push({ id: result.id, span: result.span, expected: result.expected, actual: result.actual });
+    }
+    return {
+      ...base,
+      locator: locatorText,
+      paraphrase: statement.paraphrase,
+      spans: statement.spans.map(({ from, to, length, sha256: digest }) => ({ from, to, length, sha256: digest })),
+    };
+  });
+  assert.equal(
+    mismatches.length,
+    0,
+    `pinned source statements drifted (re-review each statement at its locator before re-pinning):\n${JSON.stringify(mismatches, null, 2)}`,
+  );
+  return verified;
 }
 
 function readPath(object, path) {
@@ -1104,27 +1321,27 @@ function readPath(object, path) {
   return path.split(".").reduce((value, key) => value?.[key], object);
 }
 
-function computeVector(vectorId) {
+function computeVector(calculator, vectorId) {
   const inputs = RUNTIME_VECTORS[vectorId];
   assert.ok(inputs, `unknown runtime vector ${vectorId}`);
-  return MehranCIN.compute({ ...inputs });
+  return calculator.compute({ ...inputs });
 }
 
-function assertRuntimeCheck(claim, check, calculatorSource) {
+function assertRuntimeCheck(calculator, claim, check, calculatorSource) {
   const label = `${claim}: ${check.kind} ${check.path ?? check.field ?? ""} @ ${check.vector ?? "metadata"}`;
   if (check.kind === "calculator-source") {
     assert.ok(calculatorSource.includes(check.includes), `${label} lacks ${JSON.stringify(check.includes)}`);
     return;
   }
   if (check.kind === "metadata") {
-    const actual = String(readPath(MehranCIN, check.path));
+    const actual = String(readPath(calculator, check.path));
     if ("equals" in check) assert.equal(actual, String(check.equals), label);
     else assert.ok(actual.includes(check.includes), `${label} lacks ${JSON.stringify(check.includes)}`);
     return;
   }
   const vectorIds = check.vector === "*" ? VALID_VECTOR_IDS : [check.vector];
   for (const vectorId of vectorIds) {
-    const result = computeVector(vectorId);
+    const result = computeVector(calculator, vectorId);
     if (check.kind === "error") {
       assert.ok(typeof result.Error === "string", `${label}: expected a refusal`);
       assert.ok(result.Error.includes(check.includes), `${label}: refusal lacks ${JSON.stringify(check.includes)}`);
@@ -1145,10 +1362,10 @@ function assertRuntimeCheck(claim, check, calculatorSource) {
   }
 }
 
-function assertForbiddenOutputsAbsent() {
-  const texts = [["info.text", MehranCIN.info.text]];
+function assertForbiddenOutputsAbsent(calculator) {
+  const texts = [["info.text", calculator.info.text]];
   for (const vectorId of VALID_VECTOR_IDS) {
-    const result = computeVector(vectorId);
+    const result = computeVector(calculator, vectorId);
     for (const field of FORBIDDEN_OUTPUT_FIELDS) {
       assert.equal(Object.hasOwn(result, field), false, `${vectorId}: removed output ${field} reappeared`);
     }
@@ -1165,7 +1382,7 @@ function assertForbiddenOutputsAbsent() {
   return FORBIDDEN_OUTPUT_PATTERNS.map(([label]) => label);
 }
 
-function parseRiskBandExtremes(results) {
+export function parseRiskBandExtremes(results) {
   const match = results.match(
     /range ([\d.]+%) to ([\d.]+%) for a low \[<or=(\d+)\] and high \[>or=(\d+)\]/,
   );
@@ -1178,11 +1395,11 @@ function parseRiskBandExtremes(results) {
   };
 }
 
-function bindTable15(table) {
+function bindTable15(calculator, table) {
   const weights = new Map(table.rows.slice(1).map(([label, value]) => [label, value]));
   const baseline = { egfr: "90", contrast_volume: "0" };
   const score = (inputs) => {
-    const result = MehranCIN.compute({ ...inputs });
+    const result = calculator.compute({ ...inputs });
     assert.equal(result.Error, undefined, `${JSON.stringify(inputs)}: ${result.Error}`);
     return result;
   };
@@ -1256,7 +1473,7 @@ function bindTable15(table) {
   return { binary, contrast, creatinine, egfr };
 }
 
-function bindRiskBands(extremes) {
+function bindRiskBands(calculator, extremes) {
   const vectors = [
     ["score-0", { egfr: "90", contrast_volume: "0" }, 0],
     ["score-5", { hypotension: true, egfr: "90", contrast_volume: "0" }, 5],
@@ -1264,7 +1481,7 @@ function bindRiskBands(extremes) {
     ["score-17", { chf: true, iabp: true, diabetes: true, anemia: true, egfr: "90", contrast_volume: "100" }, 17],
   ];
   return vectors.map(([id, inputs, expectedScore]) => {
-    const result = MehranCIN.compute({ ...inputs });
+    const result = calculator.compute({ ...inputs });
     assert.equal(result["Mehran Score"], `${expectedScore} points`, `${id}: vector score drifted`);
     const expectedRate =
       expectedScore <= extremes.low_max_score
@@ -1277,175 +1494,11 @@ function bindRiskBands(extremes) {
   });
 }
 
-async function main() {
-  assert.equal(`pdfjs-dist@${pdfjsVersion}`, PDF_PARSER, "PDF parser drifted from the lockfile pin");
-  const calculatorBytes = await readFile(CALCULATOR_PATH);
-  const retrieved = new Map();
-  for (const source of SOURCES) {
-    retrieved.set(source.key, await fetchSource(source));
-    await delay(1_100); // stay well below the anonymous NCBI E-utilities limit (3 requests/s)
-  }
-
-  const pubmed = pubmedRecords(retrieved.get("pubmed").bytes.toString("utf8"));
-  const canonicalPubmed = Buffer.from(JSON.stringify(pubmed), "utf8");
-  const kdigoXml = retrieved.get("kdigo").bytes.toString("utf8");
-  const esurHtml = retrieved.get("esur").bytes.toString("utf8");
-  const acrBytes = retrieved.get("acr").bytes;
-
-  const pinnedContent = {
-    "raw-artifact": (key) => retrieved.get(key).bytes,
-    "content-region": () => Buffer.from(esurContentRegion(esurHtml), "utf8"),
-    "normalized-record-fields": () => canonicalPubmed,
-  };
-  const sourceRecords = SOURCES.map((source) => {
-    assert.ok(pinnedContent[source.digest_of], `${source.key}: unknown digest basis ${source.digest_of}`);
-    const pinned = pinnedContent[source.digest_of](source.key);
-    assert.equal(pinned.length, source.bytes, `${source.key}: ${source.digest_of} byte length drifted`);
-    assert.equal(sha256(pinned), source.sha256, `${source.key}: ${source.digest_of} SHA-256 drifted`);
-    const { final_host, final_path } = retrieved.get(source.key);
-    return {
-      key: source.key,
-      authority: source.authority,
-      title: source.title,
-      url: source.url,
-      final_host,
-      final_path,
-      media_type: source.media_type,
-      digest_of: source.digest_of,
-      ...(source.content_region ? { content_region: source.content_region } : {}),
-      bytes: pinned.length,
-      sha256: sha256(pinned),
-    };
-  });
-
-  // Source identity checks.
-  const [mehran2004] = pubmed;
-  assert.deepEqual(
-    pubmed.map(({ pmid, doi, journal, volume, issue, pages }) => ({ pmid, doi, journal, volume, issue, pages })),
-    [
-      {
-        pmid: "15464318",
-        doi: "10.1016/j.jacc.2004.06.068",
-        journal: "Journal of the American College of Cardiology",
-        volume: "44",
-        issue: "7",
-        pages: "1393-9",
-      },
-      {
-        pmid: "34793743",
-        doi: "10.1016/S0140-6736(21)02326-6",
-        journal: "Lancet (London, England)",
-        volume: "398",
-        issue: "10315",
-        pages: "1974-1983",
-      },
-    ],
-    "PubMed record identities drifted",
-  );
-  assert.match(kdigoXml, /<article-id pub-id-type="pmcid">PMC4089629<\/article-id>/, "KDIGO PMCID drifted");
-  assert.match(kdigoXml, /<article-id pub-id-type="doi">10\.1038\/kisup\.2011\.34<\/article-id>/, "KDIGO DOI drifted");
-  assert.match(kdigoXml, /<article-title>Section 4: Contrast-induced AKI<\/article-title>/, "KDIGO title drifted");
-  assert.equal(
-    markupText(esurHtml.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? ""),
-    "ESUR guidelines on Contrast Media - B. Renal adverse reactions",
-    "ESUR page title drifted",
-  );
-
-  const acrPageNumbers = [...new Set(SOURCE_STATEMENTS.filter((s) => s.source === "acr").map((s) => s.locator.pdf_page))];
-  const acr = await acrPages(acrBytes, acrPageNumbers);
-  assert.ok(
-    compactPdfText(acr.get(ACR_EDITION_PAGE)).startsWith(compactPdfText("ACR Manual on Contrast Media 2026")),
-    `ACR PDF page ${ACR_EDITION_PAGE}: edition title drifted`,
-  );
-  for (const pageNumber of acrPageNumbers) {
-    const header = compactPdfText(`${ACR_RUNNING_HEADERS[pageNumber]} ${pageNumber - ACR_PDF_PAGE_OFFSET}`);
-    assert.ok(
-      compactPdfText(acr.get(pageNumber)).startsWith(header),
-      `ACR PDF page ${pageNumber}: running header/printed page ${pageNumber - ACR_PDF_PAGE_OFFSET} drifted`,
-    );
-  }
-
-  const table15 = kdigoTable15(kdigoXml);
-  const statementIds = new Set();
-  const mismatches = [];
-  const verifiedStatements = SOURCE_STATEMENTS.map((statement) => {
-    assert.equal(statementIds.has(statement.id), false, `duplicate statement ${statement.id}`);
-    statementIds.add(statement.id);
-    assert.ok(typeof statement.paraphrase === "string" && statement.paraphrase.length > 0, `${statement.id}: paraphrase missing`);
-    const { locator } = statement;
-    const base = { id: statement.id, source: statement.source };
-
-    if ("identity" in statement) {
-      assert.equal(statement.source, "pubmed", `${statement.id}: identity statements are PubMed fields`);
-      const record = pubmed.find(({ pmid }) => pmid === locator.pmid);
-      assert.ok(record, `${statement.id}: PubMed ${locator.pmid} missing`);
-      assert.equal(record[locator.field], statement.identity, `${statement.id}: PubMed ${locator.pmid} ${locator.field} drifted`);
-      return { ...base, locator: `PubMed ${locator.pmid}, ${locator.field}`, paraphrase: statement.paraphrase, identity: statement.identity };
-    }
-
-    if (statement.table) {
-      assert.equal(locator.table, "tbl15", `${statement.id}: only Table 15 is parsed`);
-      for (const key of Object.keys(EXPECTED_TABLE_15_FOOTNOTE)) {
-        if (table15.footnote[key] !== EXPECTED_TABLE_15_FOOTNOTE[key]) {
-          mismatches.push({ id: statement.id, span: "footnote", expected: EXPECTED_TABLE_15_FOOTNOTE, actual: table15.footnote });
-          break;
-        }
-      }
-      return {
-        ...base,
-        locator: "KDIGO 2012 AKI Section 4 (PMC4089629), Table 15 (tbl15)",
-        paraphrase: statement.paraphrase,
-        table: { caption: TABLE_15_CAPTION, rows: table15.rows, footnote: { ...EXPECTED_TABLE_15_FOOTNOTE } },
-      };
-    }
-
-    let text;
-    let locatorText;
-    let normalize = (value) => value;
-    if (statement.source === "pubmed") {
-      const record = pubmed.find(({ pmid }) => pmid === locator.pmid);
-      assert.ok(record, `${statement.id}: PubMed ${locator.pmid} missing`);
-      const sections = record.abstract.filter(({ label }) => label === locator.label);
-      assert.equal(sections.length, 1, `${statement.id}: abstract section ${locator.label} missing or repeated`);
-      text = sections[0].text;
-      locatorText = `PubMed ${locator.pmid} abstract, ${locator.label}`;
-    } else if (statement.source === "kdigo") {
-      text = kdigoSection(kdigoXml, locator.section);
-      locatorText = `KDIGO 2012 AKI Section 4 (PMC4089629), section "${locator.section}"`;
-    } else if (statement.source === "esur") {
-      text = esurSection(esurHtml, locator.anchor);
-      locatorText = `ESUR B. Renal adverse reactions, section ${locator.anchor.replaceAll("_", ".")} (anchor ${locator.anchor})`;
-    } else {
-      assert.equal(statement.source, "acr", `${statement.id}: unknown source`);
-      text = compactPdfText(acr.get(locator.pdf_page));
-      normalize = compactPdfText;
-      locatorText = `ACR Manual on Contrast Media 2026, PDF p. ${locator.pdf_page} (printed p. ${locator.pdf_page - ACR_PDF_PAGE_OFFSET})`;
-    }
-    assert.ok(typeof text === "string" && text.length > 0, `${statement.id}: locator is empty`);
-    assert.ok(Array.isArray(statement.spans) && statement.spans.length > 0, `${statement.id}: no pinned span`);
-    const spans = statement.spans.map((span, index) => {
-      for (const marker of [span.from, span.to]) {
-        assert.ok(wordCount(marker) <= MAX_MARKER_WORDS, `${statement.id}: marker ${JSON.stringify(marker)} exceeds ${MAX_MARKER_WORDS} words`);
-      }
-      assert.match(span.sha256, /^[a-f0-9]{64}$/, `${statement.id}: span ${index + 1} digest is malformed`);
-      const actual = spanDigest(text, normalize(span.from), normalize(span.to), `${statement.id} span ${index + 1} (${locatorText})`);
-      if (actual.length !== span.length || actual.sha256 !== span.sha256) {
-        mismatches.push({ id: statement.id, span: index + 1, expected: { length: span.length, sha256: span.sha256 }, actual });
-      }
-      return { from: span.from, to: span.to, length: span.length, sha256: span.sha256 };
-    });
-    return { ...base, locator: locatorText, paraphrase: statement.paraphrase, spans };
-  });
-  assert.equal(
-    mismatches.length,
-    0,
-    `pinned source statements drifted (re-review each statement at its locator before re-pinning):\n${JSON.stringify(mismatches, null, 2)}`,
-  );
-
-  // Every changed claim is bound to verified statements and to runtime.
+export function verifyRuntime({ calculator, calculatorSource, table15, riskBandExtremes, statementIds }) {
+  const source = Buffer.isBuffer(calculatorSource) ? calculatorSource.toString("utf8") : String(calculatorSource);
   const claimIds = new Set();
   const boundStatementIds = new Set();
-  const claimSummaries = CLAIM_BINDINGS.map((binding) => {
+  const claims = CLAIM_BINDINGS.map((binding) => {
     assert.equal(claimIds.has(binding.claim), false, `duplicate claim ${binding.claim}`);
     claimIds.add(binding.claim);
     assert.ok(binding.statements.length > 0 && binding.runtime.length > 0, `${binding.claim}: incomplete binding`);
@@ -1453,7 +1506,7 @@ async function main() {
       assert.ok(statementIds.has(statementId), `${binding.claim}: unknown statement ${statementId}`);
       boundStatementIds.add(statementId);
     }
-    for (const check of binding.runtime) assertRuntimeCheck(binding.claim, check, calculatorBytes.toString("utf8"));
+    for (const check of binding.runtime) assertRuntimeCheck(calculator, binding.claim, check, source);
     return { claim: binding.claim, statements: [...binding.statements], runtime_checks: binding.runtime.length };
   });
   assert.deepEqual(
@@ -1461,49 +1514,93 @@ async function main() {
     [],
     "every verified source statement must support at least one bound claim",
   );
+  return {
+    claims,
+    forbiddenOutputChecks: assertForbiddenOutputsAbsent(calculator),
+    table15Bindings: bindTable15(calculator, table15),
+    riskBandBindings: bindRiskBands(calculator, riskBandExtremes),
+  };
+}
 
-  const forbiddenOutputChecks = assertForbiddenOutputsAbsent();
-  const table15Bindings = bindTable15(table15);
-  const riskBandExtremes = parseRiskBandExtremes(
-    mehran2004.abstract.find(({ label }) => label === "RESULTS")?.text ?? "",
-  );
+export async function runAudit({ sources, calculator, calculatorSource }) {
+  assert.equal(`pdfjs-dist@${pdfjsVersion}`, PDF_PARSER, "PDF parser drifted from the lockfile pin");
+  const parsed = await parseSources(sources);
+  verifyIdentities(parsed);
+  const table15 = kdigoTable15(parsed.kdigoXml);
+  const statements = verifyStatements(parsed, table15);
+  const riskBandExtremes = parseRiskBandExtremes(sectionText(parsed.pubmed["15464318"], "RESULTS"));
   assert.ok(
-    kdigoSection(kdigoXml, "Risk models of CI-AKI").includes(
+    kdigoSection(parsed.kdigoXml, "Risk models of CI-AKI").includes(
       `range ${riskBandExtremes.low_cin_rate} to ${riskBandExtremes.high_cin_rate} for a low [⩽${riskBandExtremes.low_max_score}] and high [⩾${riskBandExtremes.high_min_score}]`,
     ),
     "KDIGO and PubMed band extremes disagree",
   );
-  const riskBandBindings = bindRiskBands(riskBandExtremes);
-
-  const audit = {
+  const runtime = verifyRuntime({
+    calculator,
+    calculatorSource,
+    table15,
+    riskBandExtremes,
+    statementIds: new Set(statements.map(({ id }) => id)),
+  });
+  const calculatorBytes = Buffer.isBuffer(calculatorSource) ? calculatorSource : Buffer.from(String(calculatorSource), "utf8");
+  return {
     schema: SCHEMA,
-    calculator_id: MehranCIN.id,
+    calculator_id: calculator.id,
     runtime_source: CALCULATOR_PATH,
     runtime_source_bytes: calculatorBytes.length,
     runtime_source_sha256: sha256(calculatorBytes),
-    sources: sourceRecords,
-    parsers: { pdf: PDF_PARSER, markup: MARKUP_PARSER },
-    source_statement_count: verifiedStatements.length,
-    source_statement_ids: verifiedStatements.map(({ id }) => id),
-    source_statements_sha256: sha256(JSON.stringify(verifiedStatements)),
-    source_statements: verifiedStatements,
-    claims: claimSummaries,
-    table_15_bindings: table15Bindings,
+    sources: SOURCE_KEYS.map((key) => {
+      const source = SOURCES[key];
+      return {
+        key,
+        kind: source.kind,
+        authority: source.authority,
+        title: source.title,
+        url: source.url,
+        media_type: source.media_type,
+        digest_of: "raw-response-bytes",
+        verified_before_parsing: true,
+        bytes: source.bytes,
+        sha256: source.sha256,
+      };
+    }),
+    parsers: { pdf: PDF_PARSER, markup: MARKUP_PARSER, pubmed_text: TEXT_PARSER },
+    source_statement_count: statements.length,
+    source_statement_ids: statements.map(({ id }) => id),
+    source_statements_sha256: sha256(JSON.stringify(statements)),
+    source_statements: statements,
+    claims: runtime.claims,
+    table_15_bindings: runtime.table15Bindings,
     table_15_footnote_shorthand_recorded_not_bound: { ...table15.footnote },
     risk_band_extremes: riskBandExtremes,
-    risk_band_bindings: riskBandBindings,
-    forbidden_output_checks: forbiddenOutputChecks,
+    risk_band_bindings: runtime.riskBandBindings,
+    forbidden_output_checks: runtime.forbiddenOutputChecks,
     not_source_bound: [...NOT_SOURCE_BOUND],
     source_bytes_committed: false,
   };
+}
 
+export async function loadRuntime(root = REPO_ROOT) {
+  const file = path.join(root, CALCULATOR_PATH);
+  const [{ MehranCIN }, calculatorSource] = await Promise.all([import(pathToFileURL(file).href), readFile(file)]);
+  return { calculator: MehranCIN, calculatorSource };
+}
+
+export function passLine(audit) {
+  return `Mehran primary-source audit passed: ${audit.sources.length} sources verified as exact bytes before parsing, ${audit.source_statement_count} digest-pinned source statements, ${audit.claims.length} changed-claim bindings, Table 15 and risk-band boundary vectors.`;
+}
+
+async function main() {
+  const { calculator, calculatorSource } = await loadRuntime();
+  const sources = await fetchSources();
+  const audit = await runAudit({ sources, calculator, calculatorSource });
   if (process.argv.includes("--json")) {
     process.stdout.write(`${JSON.stringify(audit)}\n`);
   } else {
-    console.log(
-      `Mehran primary-source audit passed: ${sourceRecords.length} pinned sources, ${verifiedStatements.length} digest-pinned source statements, ${claimSummaries.length} changed-claim bindings, Table 15 and risk-band boundary vectors.`,
-    );
+    console.log(passLine(audit));
   }
 }
 
-await main();
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  await main();
+}
