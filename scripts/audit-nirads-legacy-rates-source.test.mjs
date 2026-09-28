@@ -114,17 +114,50 @@ fails(
   "2018 risk output that no longer matches the source",
 );
 
+// 5b. 2018 CT/PET-CT path must stay CT/PET-CT only (Bunch 2025).
+const withMriOption = {
+  ...nirads,
+  fields: nirads.fields.map((field) => (field.id === "modality" ? { ...field, opts: [...field.opts, { value: "mri", label: "MRI" }] } : field)),
+};
+fails(() => audit.bindRuntime(withMriOption, result.facts), /CT and PET\/CT only/, "MRI re-added to the 2018 modality options");
+fails(
+  () => audit.bindRuntime(withCompute((vals) => (vals.modality === "mri" ? nirads._compute2018({ ...vals, modality: "cect" }) : nirads.compute(vals))), result.facts),
+  /must fail closed|never receive a 2018/,
+  "MRI input receiving 2018 categories and rates",
+);
+fails(
+  () => audit.bindRuntime(withCompute((vals) => (!vals.modality && vals.nirads_version !== "mri_2025" ? nirads._compute2018({ ...vals, modality: "cect" }) : nirads.compute(vals))), result.facts),
+  /without a modality/,
+  "input without a modality receiving 2018 categories and rates",
+);
+
 // 6. Response identity and retry policy.
 fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url.replace("eutils.ncbi.nlm.nih.gov", "example.org"), contentType: "text/plain" }), /final URL host/, "wrong host");
 fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url.replace("retmode=text", "retmode=xml"), contentType: "text/plain" }), /final URL query retmode/, "wrong format");
 fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url, contentType: "text/xml" }), /media type/, "wrong media type");
 let transientCalls = 0;
 const transientStatuses = [400, 429, 503, 200];
+const transientSleeps = [];
 await audit.fetchSource(KRIEGER, {
   fetchImpl: async () => response(sources[KRIEGER], transientStatuses[transientCalls++]),
-  sleep: async () => {},
+  sleep: async (ms) => { transientSleeps.push(ms); },
 });
 assert.equal(transientCalls, 4, "400, 429 and 5xx are retried");
+assert.deepEqual(transientSleeps, [1_500, 3_000, 6_000], "without Retry-After the exponential backoff applies, never an immediate retry");
+const retryAfterSleeps = [];
+let retryAfterCalls = 0;
+const retryAfterHeaders = ["2", "120", ""];
+await audit.fetchSource(KRIEGER, {
+  fetchImpl: async () => {
+    const call = retryAfterCalls++;
+    if (call === retryAfterHeaders.length) return response(sources[KRIEGER]);
+    return response(sources[KRIEGER], 429, {
+      headers: new Headers({ "content-type": "text/plain; charset=UTF-8", "retry-after": retryAfterHeaders[call] }),
+    });
+  },
+  sleep: async (ms) => { retryAfterSleeps.push(ms); },
+});
+assert.deepEqual(retryAfterSleeps, [2_000, 20_000, 6_000], "Retry-After is honoured, capped at 20 s, and an empty header falls back to backoff");
 let permanentCalls = 0;
 await failsAsync(
   audit.fetchSource(KRIEGER, {
