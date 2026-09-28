@@ -26,6 +26,7 @@ import {
   classifyRisk,
   digest,
 } from "../../../scripts/release-policy.mjs";
+import { PROMOTION_CHAIN_SCHEMA } from "../../../scripts/promotion-chain.mjs";
 
 const HEAD = "a".repeat(40);
 const BASE = "b".repeat(40);
@@ -888,6 +889,106 @@ const needsFixState = stateFixture(HIGH_FILES, [], {
 });
 needsFixState.reviews = [signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, needsFixState, "NEEDS_FIX")];
 assert.deepEqual(await collect("verification", needsFixState), [], "verification never overrides a primary NEEDS_FIX");
+
+// ---- Promotions: chain, review mode, and judge order ----------------------------------------------
+assert.equal(standard[0].reviewMode, null, "develop candidates have no promotion review mode");
+assert.equal(standard[0].promotionChain, null);
+assert.equal(
+  standard[0].candidateId,
+  digest({ repository: "momomojo/Radulator", role: "primary", exact: standard[0].exactState }),
+  "the new candidate fields never change the exact-state candidate id",
+);
+
+const PROMOTION_HEAD_REF = "release/promote-484c9ee59ce2-6d7f8d95a462";
+const verifiedChain = {
+  schema: PROMOTION_CHAIN_SCHEMA,
+  ok: true,
+  reasonCode: "CHAIN_VERIFIED",
+  entries: [{ pr: 274, files: ["src/components/calculators/NIRADS.jsx"] }],
+  overlappingFiles: [],
+  integrationMergedPaths: ["docs/verification/calculator-inventory.json"],
+  digest: "c".repeat(64),
+};
+
+function promotionState(number, { chain = verifiedChain, labels = ["ready-for-gate"], headRef = PROMOTION_HEAD_REF } = {}) {
+  const state = stateFixture(HIGH_FILES, [], { requiredCi: HIGH_REQUIRED_CI, evidenceNames: HIGH_REQUIRED_CI });
+  const labelState = relevantLabelsDigest(labels);
+  state.pr = {
+    ...state.pr,
+    number,
+    baseRef: "main",
+    headRef,
+    headRepoFullName: "momomojo/Radulator",
+    repositoryFullName: "momomojo/Radulator",
+    labels: labelState.labels,
+    labelsDigest: labelState.sha256,
+  };
+  if (chain !== null) state.promotionChain = chain;
+  return state;
+}
+
+function developState(number, baseSha = BASE) {
+  const state = stateFixture();
+  state.pr = { ...state.pr, number, baseSha };
+  return state;
+}
+
+async function collectMany(role, states, { developHead = null } = {}) {
+  return collectCandidates({
+    repository: "momomojo/Radulator",
+    role,
+    publicKeys: PUBLIC_KEYS,
+    api: {
+      async listOpenPrs() { return states.map((state) => ({ number: state.pr.number, labels: [{ name: "ready-for-gate" }] })); },
+      async loadGateState(number) { return structuredClone(states.find((state) => state.pr.number === number)); },
+      ...(developHead ? { async getDevelopHead() { return developHead; } } : {}),
+    },
+    now: "2026-08-23T20:02:00Z",
+  });
+}
+
+{
+  const [batch] = await collectMany("primary", [promotionState(303)]);
+  assert.equal(batch.reviewMode, "batch", "a verified chain without the escape label is a batch review");
+  assert.deepEqual(batch.promotionChain, verifiedChain, "judges receive the whole chain, including attribution files");
+  const [escaped] = await collectMany("primary", [promotionState(303, { labels: ["ready-for-gate", "promotion-full-review"] })]);
+  assert.equal(escaped.reviewMode, "full", "promotion-full-review forces a full review");
+  const [unverified] = await collectMany("primary", [promotionState(303, { chain: { ...verifiedChain, ok: false, reasonCode: "CHAIN_TREE_MISMATCH" } })]);
+  assert.equal(unverified.reviewMode, "full", "an unverified chain is a full review");
+  const [unloaded] = await collectMany("primary", [promotionState(303, { chain: null })]);
+  assert.equal(unloaded.reviewMode, "full", "a promotion without a chain is a full review");
+  assert.equal(unloaded.promotionChain, null);
+  const [hotfix] = await collectMany("primary", [promotionState(304, { headRef: "hotfix/live-outage" })]);
+  assert.equal(hotfix.reviewMode, null, "a hotfix to main is judged as an ordinary high-risk PR");
+  assert.equal(hotfix.promotionChain, null);
+}
+
+{
+  const otherBase = "d".repeat(40);
+  const states = [developState(150), developState(110, otherBase), promotionState(303), developState(120)];
+  assert.deepEqual(
+    (await collectMany("primary", states, { developHead: BASE })).map((item) => item.pr),
+    [303, 120, 150, 110],
+    "promotions first, then develop PRs on the current develop head, then the rest by number",
+  );
+  assert.deepEqual(
+    (await collectMany("primary", states)).map((item) => item.pr),
+    [303, 110, 120, 150],
+    "without a develop head the develop PRs keep number order",
+  );
+  const failing = await collectCandidates({
+    repository: "momomojo/Radulator",
+    role: "primary",
+    publicKeys: PUBLIC_KEYS,
+    api: {
+      async listOpenPrs() { return states.map((state) => ({ number: state.pr.number, labels: [{ name: "ready-for-gate" }] })); },
+      async loadGateState(number) { return structuredClone(states.find((state) => state.pr.number === number)); },
+      async getDevelopHead() { throw new Error("rate limited"); },
+    },
+    now: "2026-08-23T20:02:00Z",
+  });
+  assert.deepEqual(failing.map((item) => item.pr), [303, 110, 120, 150], "an unreadable develop head only drops the tiebreak");
+}
 
 const temp = await mkdtemp(path.join(os.tmpdir(), "radulator-candidate-test-"));
 try {
