@@ -327,10 +327,16 @@ function trackedChanges(cwd) {
   }
 }
 
-// npm lifecycle scripts or an earlier audit could rewrite tracked code after checkout; an
-// exact-head result is only valid for the committed tree, so any such change stops the run.
-export function assertPristine(cwd, when) {
-  const changed = trackedChanges(cwd);
+// Inside a git checkout, a status git cannot read counts as a change, so the check fails closed.
+function changesInCheckout(cwd) {
+  return trackedChanges(cwd) ?? ["git status unavailable"];
+}
+
+// npm lifecycle scripts or an audit could rewrite tracked code after checkout; an exact-head
+// result is only valid for the committed tree, so any such change stops the run. With inGit, a
+// checkout whose status git cannot read stops it too.
+export function assertPristine(cwd, when, { inGit = false } = {}) {
+  const changed = inGit ? changesInCheckout(cwd) : trackedChanges(cwd);
   if (changed && changed.length) {
     const shown = changed.slice(0, 5).join("; ") + (changed.length > 5 ? "; …" : "");
     throw new Error(`tracked files differ from HEAD ${when} (${shown}); refusing to report exact-head results`);
@@ -369,7 +375,7 @@ export async function runSourceAudits({
     throw new Error(`the checkout at ${cwd} is ${actualHead ?? "not a git checkout"}, not HEAD_SHA ${env.HEAD_SHA}`);
   }
   const headSha = actualHead ?? env.HEAD_SHA ?? null;
-  if (actualHead) assertPristine(cwd, "before the audits");
+  if (actualHead) assertPristine(cwd, "before the audits", { inGit: true });
   const audits = resolveAudits(manifest, workingTree(cwd));
   const plan = planRun(options, audits, print);
 
@@ -403,7 +409,7 @@ export async function runSourceAudits({
 
   try {
     for (const audit of plan.run) {
-      if (actualHead) assertPristine(cwd, `before ${audit.id}`);
+      if (actualHead) assertPristine(cwd, `before ${audit.id}`, { inGit: true });
       const command = audit.command[0] === "node" ? [process.execPath, ...audit.command.slice(1)] : audit.command;
       const attemptLog = [];
       let final = null;
@@ -431,6 +437,9 @@ export async function runSourceAudits({
         };
         for (const name of WORKFLOW_FILE_VARIABLES) delete childEnv[name];
         const run = await runAttempt({ command, cwd, env: childEnv, timeoutMs });
+        // The attempt is judged on the tree it leaves behind: one that rewrote tracked files never
+        // passes, whatever its exit code.
+        const changed = actualHead ? changesInCheckout(cwd) : [];
         const combined = `${run.stdout}\n${run.stderr}`;
         const leaks = findLeaks(combined, key);
         const fetchLog = readFetchLog(fetchLogFile);
@@ -439,6 +448,9 @@ export async function runSourceAudits({
         if (leaks.length > 0) {
           status = "key-leak";
           failureClass = "key-leak";
+        } else if (changed.length > 0) {
+          status = "tampered";
+          failureClass = "tampered";
         } else if (run.timedOut) {
           status = "timeout";
           failureClass = "transport";
@@ -471,8 +483,9 @@ export async function runSourceAudits({
           ncbi: ncbiStats(fetchLog, manifest.ncbi_hosts),
         };
         attemptLog.push(final);
-        // A leak is deterministic, and printing it again would not help.
-        if (status === "pass" || status === "key-leak") break;
+        // A leak is deterministic, and printing it again would not help; a rewritten tree is no
+        // longer the head, so nothing more may run on it.
+        if (status === "pass" || status === "key-leak" || status === "tampered") break;
       }
       const status = final?.status ?? "not-run";
       const result = {
@@ -489,10 +502,14 @@ export async function runSourceAudits({
       };
       results.push({ ...result, attempt_log: attemptLog, duration_ms: Date.now() - auditStarted });
       print(`SOURCE-AUDIT RESULT ${JSON.stringify(result)}`);
+      // Stop the run here: no further audit, summary or results file for a tree that is not the head.
+      if (actualHead) assertPristine(cwd, `after ${audit.id}`, { inGit: true });
     }
   } finally {
     if (!tempRoot) rmSync(scratch, { recursive: true, force: true });
   }
+  // Once more before anything is reported, in case a process the audits started outlived them.
+  if (actualHead) assertPristine(cwd, "before reporting results", { inGit: true });
 
   const counted = results.filter((result) => !result.informational);
   const passed = counted.filter((result) => result.status === "pass").map((result) => result.id);

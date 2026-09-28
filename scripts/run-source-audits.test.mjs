@@ -130,12 +130,11 @@ function selectionFile(name, tests, mode = "selected") {
   return file;
 }
 
-async function run(argv, { env = {}, sleeps = [] } = {}) {
-  const lines = [];
+async function run(argv, { env = {}, sleeps = [], cwd = checkout, lines = [] } = {}) {
   const resultsFile = path.join(root, `results-${Math.random().toString(16).slice(2)}.json`);
   const summaryFile = path.join(root, `summary-${Math.random().toString(16).slice(2)}.md`);
   const outcome = await runSourceAudits({
-    argv: ["--manifest", manifestFile, "--cwd", checkout, "--results", resultsFile, ...argv],
+    argv: ["--manifest", manifestFile, "--cwd", cwd, "--results", resultsFile, ...argv],
     env: { PATH: process.env.PATH, NCBI_API_KEY: FAKE_KEY, GITHUB_STEP_SUMMARY: summaryFile, GITHUB_ENV: path.join(root, "github-env"), ...env },
     log: (line) => lines.push(line),
     sleepMs: async (ms) => {
@@ -329,6 +328,60 @@ try {
     git("-c", "user.email=t@example.com", "-c", "user.name=t", "add", ".");
     assert.throws(() => assertPristine(repo, "before x"), /refusing to report exact-head results/, "a staged rewrite is caught too");
     assert.doesNotThrow(() => assertPristine(path.join(root, "not-a-repo-" + Date.now()), "outside git"));
+    assert.throws(() => assertPristine(path.join(root, "not-a-repo-" + Date.now()), "after x", { inGit: true }),
+      /git status unavailable/, "inside a checkout, a status git cannot read fails closed");
+  }
+
+  // An audit that rewrites a tracked file and exits 0 does not pass, even as the last (or only)
+  // selected audit. Its attempt is reported as tampered and not retried, and the run stops there:
+  // no summary and no results file for a tree that is no longer the head.
+  {
+    const repo = path.join(root, "tamper-repo");
+    const put = (file, text) => {
+      mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+      writeFileSync(path.join(repo, file), text);
+    };
+    put("src/runtime.mjs", "export const minimum = 2;\n");
+    put("scripts/audit-rewrite-source.test.mjs", [
+      'import fs from "node:fs";',
+      'fs.writeFileSync("src/runtime.mjs", "export const minimum = 1;\\n");',
+      'console.log("rewrite audit verified the pinned source");',
+    ].join("\n") + "\n");
+    put("scripts/audit-before-source.test.mjs", 'console.log("before audit verified the pinned source");\n');
+    const git = (...args) => execFileSync("git", ["-C", repo, "-c", "user.email=t@example.com", "-c", "user.name=t", ...args],
+      { stdio: ["ignore", "pipe", "ignore"] });
+    git("init", "-q");
+    git("add", ".");
+    git("commit", "-q", "-m", "fixture");
+
+    const lines = [];
+    const sleeps = [];
+    await assert.rejects(
+      run(["--selection", selectionFile("tamper", ["before", "rewrite"]), "--attempts", "3", "--backoff-seconds", "60,180"],
+        { cwd: repo, lines, sleeps }),
+      /tracked files differ from HEAD after rewrite \(.*src\/runtime\.mjs\); refusing to report exact-head results/,
+    );
+    const reported = lines.filter((line) => line.startsWith("SOURCE-AUDIT RESULT ")).map((line) => JSON.parse(line.slice(20)));
+    assert.deepEqual(reported.map((result) => [result.id, result.status, result.failure_class, result.pass_line, result.attempts]), [
+      ["before", "pass", null, "before audit verified the pinned source", 1],
+      ["rewrite", "tampered", "tampered", null, 1],
+    ]);
+    assert.ok(lines.includes("::group::SOURCE-AUDIT rewrite attempt 1/3: tampered"), "the attempt is not labelled a pass");
+    assert.ok(lines.includes("| rewrite audit verified the pinned source"), "the audit's own claim is shown, prefixed");
+    assert.deepEqual(sleeps, [], "a rewritten tree is not retried");
+    assert.equal(lines.some((line) => line.startsWith("SOURCE-AUDIT SUMMARY ")), false, "no summary for a tree that is not the head");
+
+    // From the CLI, the same audit fails the job step.
+    git("checkout", "--", ".");
+    assert.doesNotThrow(() => assertPristine(repo, "after the reset", { inGit: true }));
+    const cli = spawnSync(process.execPath,
+      [RUNNER, "--manifest", manifestFile, "--cwd", repo, "--selection", selectionFile("tamper-cli", ["rewrite"])],
+      { encoding: "utf8", env: { PATH: process.env.PATH } });
+    assert.equal(cli.status, 1, cli.stdout + cli.stderr);
+    assert.match(cli.stdout, /^SOURCE-AUDIT RESULT \{"id":"rewrite","test":"scripts\/audit-rewrite-source\.test\.mjs","status":"tampered"/m);
+    assert.match(cli.stdout, /^SOURCE-AUDIT ERROR tracked files differ from HEAD after rewrite /m);
+    assert.doesNotMatch(cli.stdout, /^SOURCE-AUDIT SUMMARY /m);
+    assert.doesNotMatch(cli.stdout, /"status":"pass"/);
   }
 
   // An unreadable selection runs every audit rather than none.
