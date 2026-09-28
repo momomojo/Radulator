@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import process from "node:process";
 import { ALBIScore } from "../src/components/calculators/ALBIScore.jsx";
 import { calculateAlbi } from "../src/clinical/albi.js";
+import { acceptPmcArticleHtml, fetchWithRetry } from "./audit-albi-source-fetch.mjs";
 
 const SOURCE_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/";
 const SOURCE_HOST = "pmc.ncbi.nlm.nih.gov";
@@ -30,43 +31,13 @@ function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+// Retrieval (retry policy, challenge-page handling) lives in audit-albi-source-fetch.mjs so it can be
+// tested offline. Every pin below still applies to whatever response it returns.
 async function fetchPrimaryHtml() {
-  const expected = new URL(SOURCE_URL);
-  let lastFailure = "unknown retrieval failure";
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      const response = await fetch(SOURCE_URL, {
-        headers: { "user-agent": "Radulator-ALBI-primary-source-audit/1" },
-        redirect: "follow",
-        signal: AbortSignal.timeout(30_000),
-      });
-      if (!response.ok) {
-        lastFailure = `HTTP ${response.status}`;
-        await response.body?.cancel();
-        if (response.status !== 429 && response.status < 500) break;
-      } else {
-        const finalUrl = new URL(response.url);
-        assert.equal(finalUrl.protocol, "https:", "ALBI source redirect left HTTPS");
-        assert.equal(finalUrl.hostname, SOURCE_HOST, "ALBI source redirect left PMC");
-        assert.equal(finalUrl.pathname, expected.pathname, "unexpected ALBI source redirect path");
-        assert.match(
-          response.headers.get("content-type") ?? "",
-          /^text\/html\b/i,
-          "ALBI primary source must be HTML",
-        );
-        const bytes = Buffer.from(await response.arrayBuffer());
-        assert.ok(bytes.length > 100_000, "ALBI source response is unexpectedly small");
-        assert.ok(bytes.length <= 2_000_000, "ALBI source response is unexpectedly large");
-        return { bytes, html: bytes.toString("utf8") };
-      }
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error);
-    }
-    if (attempt < 3) {
-      await new Promise((resolve) => setTimeout(resolve, attempt * 500));
-    }
-  }
-  assert.fail(`ALBI primary-source retrieval failed after 3 attempts (${lastFailure})`);
+  return fetchWithRetry(SOURCE_URL, {
+    accept: (response, bytes) =>
+      acceptPmcArticleHtml(response, bytes, { url: SOURCE_URL, host: SOURCE_HOST }),
+  });
 }
 
 function decodeHtmlEntities(value) {
