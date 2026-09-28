@@ -11,39 +11,42 @@
 //     DOI 10.1016/j.jacr.2025.07.023): the abstract says the 2018 ACR NI-RADS paradigm was specific to
 //     CT and FDG PET/CT and that the MRI-specific descriptors were developed later.
 //
-// PubMed's raw XML changes whenever NLM maintains a record (DTD header, revision dates, links), so each
-// record is pinned by the SHA-256 of its normalized cited fields. Each statement is pinned by the SHA-256
-// of the exact normalized span between two short markers. No source prose is committed.
+// Each record is retrieved as PubMed's plain-text abstract (efetch rettype=abstract, retmode=text) and
+// verified as bytes before parsing: final URL, media type, exact byte length and SHA-256. The text form
+// carries no DTD header or retrieval metadata, so it changes only when the record itself changes.
+// Each statement is also pinned by the SHA-256 of the exact normalized span between two short markers.
+// No source prose is committed.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const SOURCE = Object.freeze({
-  url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=28364010,40754125&retmode=xml&tool=radulator-nirads-audit",
-  protocol: "https:",
-  host: "eutils.ncbi.nlm.nih.gov",
-  path: "/entrez/eutils/efetch.fcgi",
-  query: Object.freeze({ db: "pubmed", id: "28364010,40754125", retmode: "xml" }),
-  mediaType: "text/xml",
-});
+const EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi";
 
-// SHA-256 of JSON.stringify({ pmid, doi, year, title, abstract: [[label, text], ...] }) after normalize().
-export const RECORD_PINS = Object.freeze({
+// One plain-text abstract per record, pinned by its exact bytes.
+export const SOURCES = Object.freeze({
   28364010: Object.freeze({
+    url: `${EFETCH}?db=pubmed&id=28364010&rettype=abstract&retmode=text&tool=radulator-nirads-audit`,
     doi: "10.3174/ajnr.A5157",
     year: "2017",
-    sha256: "cea9541ec9741e4e9696986d6468f5d9a1f492728941ee04dc0145ab3e6ab090",
+    bytes: 2945,
+    sha256: "70d3751d0aeda10b23daa09c036a9f46b2191c030b0d45bdfab865a2aa83cb87",
   }),
   40754125: Object.freeze({
+    url: `${EFETCH}?db=pubmed&id=40754125&rettype=abstract&retmode=text&tool=radulator-nirads-audit`,
     doi: "10.1016/j.jacr.2025.07.023",
     year: "2025",
-    sha256: "5dca590cfde57557a915fdb3716294dfd677f30279762ed1ff798d2400d886d3",
+    bytes: 3480,
+    sha256: "f8c61b8642a29ca57ed3c0cf9d55dadd2d7caca10d909ac095496072d8728f30",
   }),
 });
+export const SOURCE_HOST = "eutils.ncbi.nlm.nih.gov";
+export const SOURCE_PATH = "/entrez/eutils/efetch.fcgi";
+export const SOURCE_MEDIA_TYPE = "text/plain";
 
 // Each span runs from the first character of `from` through the last character of `to` (inclusive),
-// inside the named abstract section. Markers are at most six words; `from` must occur exactly once.
+// inside the named abstract section ("" = the unlabelled abstract). Markers are at most six words;
+// `from` must occur exactly once in that section.
 export const STATEMENTS = Object.freeze([
   Object.freeze({
     id: "krieger-targets",
@@ -99,62 +102,61 @@ export function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-export function decodeEntities(value) {
-  const named = { amp: "&", apos: "'", gt: ">", lt: "<", nbsp: " ", quot: '"' };
-  return value
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16)))
-    .replace(/&#([0-9]+);/g, (_, decimal) => String.fromCodePoint(Number(decimal)))
-    .replace(/&(amp|apos|gt|lt|nbsp|quot);/g, (_, name) => named[name]);
-}
-
 export function normalize(value) {
-  return decodeEntities(String(value).replace(/<[^>]+>/g, ""))
-    .normalize("NFKC")
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(value).normalize("NFKC").replace(/\s+/g, " ").trim();
 }
 
-export function parseRecords(xml) {
-  const records = {};
-  for (const [, article] of xml.matchAll(/<PubmedArticle>([\s\S]*?)<\/PubmedArticle>/g)) {
-    const pmid = article.match(/<PMID[^>]*>(\d+)<\/PMID>/)?.[1];
-    assert.ok(pmid, "PubMed record without a PMID");
-    const title = normalize(article.match(/<ArticleTitle>([\s\S]*?)<\/ArticleTitle>/)?.[1] ?? "");
-    const doi = normalize(article.match(/<ArticleId IdType="doi">([\s\S]*?)<\/ArticleId>/)?.[1] ?? "");
-    const year = article.match(/<PubDate>[\s\S]*?<Year>(\d{4})<\/Year>/)?.[1] ?? "";
-    const abstract = [...article.matchAll(/<AbstractText([^>]*)>([\s\S]*?)<\/AbstractText>/g)].map(
-      ([, attributes, text]) => [attributes.match(/Label="([^"]*)"/)?.[1] ?? "", normalize(text)],
-    );
-    records[pmid] = { pmid, doi, year, title, abstract };
-  }
-  return records;
+// Exact bytes first: nothing is parsed from a response that is not the pinned artifact.
+export function verifySourceBytes(pmid, bytes, source = SOURCES[pmid]) {
+  assert.ok(source, `PMID ${pmid} is not a pinned source`);
+  assert.ok(Buffer.isBuffer(bytes), `PMID ${pmid}: source bytes missing`);
+  assert.equal(
+    bytes.length,
+    source.bytes,
+    `PMID ${pmid}: source byte length drifted (${bytes.length}, pinned ${source.bytes}); re-review the record before re-pinning`,
+  );
+  const digest = sha256(bytes);
+  assert.equal(
+    digest,
+    source.sha256,
+    `PMID ${pmid}: source SHA-256 drifted (${digest}); re-review the record before re-pinning`,
+  );
+  return digest;
 }
 
-export function recordDigest(record) {
-  const { pmid, doi, year, title, abstract } = record;
-  return sha256(JSON.stringify({ pmid, doi, year, title, abstract }));
-}
-
-export function verifyRecords(records, pins = RECORD_PINS) {
-  for (const [pmid, pin] of Object.entries(pins)) {
-    const record = records[pmid];
-    assert.ok(record, `PMID ${pmid} missing from the PubMed response`);
-    assert.equal(record.doi, pin.doi, `PMID ${pmid} DOI drifted`);
-    assert.equal(record.year, pin.year, `PMID ${pmid} publication year drifted`);
-    const digest = recordDigest(record);
-    assert.equal(
-      digest,
-      pin.sha256,
-      `PMID ${pmid} normalized record drifted (sha256 ${digest}); re-review the source before re-pinning`,
-    );
-  }
-  return records;
+// PubMed plain-text abstract layout: blank-line separated blocks for the citation, title, authors,
+// author information, abstract, copyright and identifiers.
+export function parseRecordText(text) {
+  const blocks = text.split(/\n[ \t]*\n/).map((block) => block.trim()).filter(Boolean);
+  const citation = normalize(blocks[0] ?? "");
+  const title = normalize(blocks[1] ?? "");
+  const infoIndex = blocks.findIndex((block) => block.startsWith("Author information:"));
+  assert.ok(infoIndex >= 2, "record lacks the author-information block");
+  // PubMed inserts linked-record notices (comments, errata, updates) between the author block and the
+  // abstract; the abstract is the first block after the author block that is not such a notice.
+  const notice = /^(Comment (in|on)|Erratum (in|for)|Update (in|of)|Retraction (in|of)|Expression of concern (in|for)|Republished (in|from)|Conflict of interest|Copyright|©|DOI:|PMID:|PMCID:)/;
+  const abstract = normalize(blocks.slice(infoIndex + 1).find((block) => !notice.test(block)) ?? "");
+  return {
+    citation,
+    title,
+    abstract,
+    year: citation.match(/\. (\d{4}) [A-Z][a-z]{2}\b/)?.[1] ?? "",
+    doi: text.match(/^DOI: (\S+)$/m)?.[1] ?? "",
+    pmid: text.match(/^PMID: (\d+)/m)?.[1] ?? "",
+  };
 }
 
 export function sectionText(record, section) {
-  const parts = record.abstract.filter(([label]) => label === section);
-  assert.equal(parts.length, 1, `PMID ${record.pmid}: abstract section "${section}" must occur exactly once`);
-  return parts[0][1];
+  if (!section) {
+    assert.ok(!/\b[A-Z][A-Z ]{3,}: /.test(record.abstract), `PMID ${record.pmid}: abstract is unexpectedly labelled`);
+    return record.abstract;
+  }
+  const labels = [...record.abstract.matchAll(/(?:^|\s)([A-Z][A-Z ]{3,}): /g)];
+  const hits = labels.filter((match) => match[1] === section);
+  assert.equal(hits.length, 1, `PMID ${record.pmid}: abstract section "${section}" must occur exactly once`);
+  const start = hits[0].index + hits[0][0].length;
+  const next = labels.find((match) => match.index > hits[0].index);
+  return record.abstract.slice(start, next ? next.index : undefined).trim();
 }
 
 export function extractSpan(text, from, to) {
@@ -164,6 +166,14 @@ export function extractSpan(text, from, to) {
   const end = text.indexOf(to, start + from.length);
   assert.ok(end >= 0, `end marker not found after start: ${to}`);
   return text.slice(start, end + to.length);
+}
+
+export function verifyRecord(pmid, record, source = SOURCES[pmid]) {
+  assert.equal(record.pmid, pmid, `PMID ${pmid}: record identifier drifted`);
+  assert.equal(record.doi, source.doi, `PMID ${pmid}: DOI drifted`);
+  assert.equal(record.year, source.year, `PMID ${pmid}: publication year drifted`);
+  assert.ok(record.abstract.length > 0, `PMID ${pmid}: abstract missing`);
+  return record;
 }
 
 export function verifyStatements(records, statements = STATEMENTS) {
@@ -181,7 +191,7 @@ export function verifyStatements(records, statements = STATEMENTS) {
   return spans;
 }
 
-// Facts parsed from the pinned spans (numbers and dates only).
+// Facts parsed from the pinned spans and records (numbers and dates only).
 export function extractFacts(records, spans) {
   const targets = spans["krieger-targets"].match(/(\d+) targets \((\d+) primary targets and (\d+) nodal targets\)/);
   assert.ok(targets, "Krieger target counts not found in the pinned span");
@@ -189,7 +199,6 @@ export function extractFacts(records, spans) {
   assert.equal(primary + nodal, total, "Krieger primary and nodal targets must sum to the total");
   const rates = spans["krieger-positive-disease-rates"].match(/([\d.]+)%, ([\d.]+)%, and ([\d.]+)%/);
   assert.ok(rates, "Krieger positive-disease rates not found in the pinned span");
-  const [rate1, rate2, rate3] = rates.slice(1).map(Number);
   assert.ok(/\b2018\b/.test(spans["bunch-2018-paradigm-ct-pet"]), "Bunch 2025: 2018 release year missing");
   assert.ok(/PET\/CT/.test(spans["bunch-2018-paradigm-ct-pet"]), "Bunch 2025: PET/CT scope missing");
   assert.ok(/\bMRI\b/.test(spans["bunch-mri-descriptors-later"]), "Bunch 2025: MRI descriptors missing");
@@ -197,7 +206,7 @@ export function extractFacts(records, spans) {
   const mriYear = Number(records["40754125"].year);
   assert.ok(kriegerYear < mriYear, "the rate study must predate the MRI v2025 publication");
   assert.match(records["40754125"].title, /Version 2025/, "Bunch 2025 title must name MRI Version 2025");
-  return { total, primary, nodal, rates: [rate1, rate2, rate3], kriegerYear, mriYear };
+  return { total, primary, nodal, rates: rates.slice(1).map(Number), kriegerYear, mriYear };
 }
 
 export const LEGACY_VECTORS = Object.freeze([
@@ -229,7 +238,7 @@ export function bindRuntime(nirads, facts) {
   assert.ok(INFO_SCOPE.includes(String(facts.kriegerYear)), "scope sentence must name the study year");
 
   const refs = (nirads.refs ?? []).map((ref) => ref.u);
-  for (const pmid of Object.keys(RECORD_PINS)) {
+  for (const pmid of Object.keys(SOURCES)) {
     assert.ok(refs.includes(`https://pubmed.ncbi.nlm.nih.gov/${pmid}/`), `references must link PMID ${pmid}`);
   }
 
@@ -254,16 +263,17 @@ export function bindRuntime(nirads, facts) {
   return { heading, lines: expected, legacyVectors: LEGACY_VECTORS.length, mriVectors: MRI_VECTORS.length };
 }
 
-export function verifyResponse({ finalUrl, contentType }) {
+export function verifyResponse(pmid, { finalUrl, contentType }) {
+  const expected = new URL(SOURCES[pmid].url);
   const url = new URL(finalUrl);
-  assert.equal(url.protocol, SOURCE.protocol, `final URL protocol ${url.protocol}`);
-  assert.equal(url.host, SOURCE.host, `final URL host ${url.host}`);
-  assert.equal(url.pathname, SOURCE.path, `final URL path ${url.pathname}`);
-  for (const [name, value] of Object.entries(SOURCE.query)) {
-    assert.equal(url.searchParams.get(name), value, `final URL query ${name}`);
+  assert.equal(url.protocol, "https:", `PMID ${pmid}: final URL protocol ${url.protocol}`);
+  assert.equal(url.host, SOURCE_HOST, `PMID ${pmid}: final URL host ${url.host}`);
+  assert.equal(url.pathname, SOURCE_PATH, `PMID ${pmid}: final URL path ${url.pathname}`);
+  for (const name of ["db", "id", "rettype", "retmode"]) {
+    assert.equal(url.searchParams.get(name), expected.searchParams.get(name), `PMID ${pmid}: final URL query ${name}`);
   }
   const mediaType = String(contentType ?? "").split(";")[0].trim().toLowerCase();
-  assert.equal(mediaType, SOURCE.mediaType, `media type ${contentType ?? "<missing>"}`);
+  assert.equal(mediaType, SOURCE_MEDIA_TYPE, `PMID ${pmid}: media type ${contentType ?? "<missing>"}`);
 }
 
 function retryDelayMs(response, attempt) {
@@ -273,14 +283,18 @@ function retryDelayMs(response, attempt) {
 }
 
 // Retries transport failures only: network errors, HTTP 400 (NCBI returns it transiently for valid
-// requests), 429 and 5xx. A 200 response that misses a pin is a changed source and fails at once.
-export async function fetchSource({ fetchImpl = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+// requests), 429 and 5xx. A 200 response that misses its URL, media-type, length or digest pin is a
+// changed source and fails at once.
+export async function fetchSource(pmid, { fetchImpl = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  const source = SOURCES[pmid];
   let lastFailure = "unknown retrieval failure";
+  let made = 0;
   for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    made = attempt;
     let response;
     try {
-      response = await fetchImpl(SOURCE.url, {
-        headers: { accept: "text/xml", "user-agent": "Radulator-NIRADS-legacy-rates-audit/1" },
+      response = await fetchImpl(source.url, {
+        headers: { accept: "text/plain", "user-agent": "Radulator-NIRADS-legacy-rates-audit/2" },
         redirect: "follow",
         signal: AbortSignal.timeout(30_000),
       });
@@ -288,8 +302,10 @@ export async function fetchSource({ fetchImpl = fetch, sleep = (ms) => new Promi
       lastFailure = error instanceof Error ? error.message : String(error);
     }
     if (response?.ok) {
-      verifyResponse({ finalUrl: response.url, contentType: response.headers.get("content-type") });
-      return { xml: await response.text(), finalUrl: response.url, contentType: response.headers.get("content-type") };
+      verifyResponse(pmid, { finalUrl: response.url, contentType: response.headers.get("content-type") });
+      const bytes = Buffer.from(await response.arrayBuffer());
+      verifySourceBytes(pmid, bytes, source);
+      return bytes;
     }
     if (response) {
       lastFailure = `HTTP ${response.status}`;
@@ -298,11 +314,22 @@ export async function fetchSource({ fetchImpl = fetch, sleep = (ms) => new Promi
     }
     if (attempt < FETCH_ATTEMPTS) await sleep(Math.min(retryDelayMs(response, attempt), FETCH_MAX_DELAY_MS));
   }
-  assert.fail(`PubMed retrieval failed after ${FETCH_ATTEMPTS} attempts (${lastFailure})`);
+  assert.fail(`PMID ${pmid}: PubMed retrieval failed after ${made} of ${FETCH_ATTEMPTS} attempts (${lastFailure})`);
 }
 
-export function runAudit({ xml, nirads }) {
-  const records = verifyRecords(parseRecords(xml));
+export async function fetchSources(options) {
+  const sources = {};
+  for (const pmid of Object.keys(SOURCES)) sources[pmid] = await fetchSource(pmid, options);
+  return sources;
+}
+
+// `sources` maps each PMID to the exact response bytes. Bytes are verified before anything is parsed.
+export function runAudit({ sources, nirads }) {
+  const records = {};
+  for (const pmid of Object.keys(SOURCES)) {
+    verifySourceBytes(pmid, sources[pmid]);
+    records[pmid] = verifyRecord(pmid, parseRecordText(sources[pmid].toString("utf8")));
+  }
   const spans = verifyStatements(records);
   const facts = extractFacts(records, spans);
   const binding = bindRuntime(nirads, facts);
@@ -314,12 +341,12 @@ export async function loadRuntime(root = path.resolve(path.dirname(fileURLToPath
   return module.NIRADS;
 }
 
-export function passLine({ records, facts, binding }) {
-  const pins = Object.keys(RECORD_PINS)
-    .map((pmid) => `PMID ${pmid} sha256=${recordDigest(records[pmid]).slice(0, 12)}`)
+export function passLine({ facts, binding }) {
+  const pins = Object.entries(SOURCES)
+    .map(([pmid, source]) => `PMID ${pmid} ${source.bytes} bytes sha256=${source.sha256.slice(0, 12)}`)
     .join(", ");
   return (
-    `NI-RADS legacy-rate source audit PASS: ${pins}; ${STATEMENTS.length} digest-pinned statements; ` +
+    `NI-RADS legacy-rate source audit PASS: ${pins} (text/plain, raw bytes); ${STATEMENTS.length} digest-pinned statements; ` +
     `Krieger ${facts.kriegerYear} rates ${facts.rates.join("/")}% over ${facts.total} targets ` +
     `-> info ${binding.lines.map((line) => line.split(": ")[1]).join("/")} and 2018 risk output ` +
     `(${binding.legacyVectors} vectors); MRI v2025 (${facts.mriYear}) output carries no risk (${binding.mriVectors} vectors)`
@@ -328,7 +355,6 @@ export function passLine({ records, facts, binding }) {
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-  const fetched = await fetchSource();
-  const result = runAudit({ xml: fetched.xml, nirads: await loadRuntime() });
+  const result = runAudit({ sources: await fetchSources(), nirads: await loadRuntime() });
   console.log(passLine(result));
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Exact-head test for scripts/audit-nirads-legacy-rates-source.mjs: runs the live audit, then proves each
-// check fails when its source, statement, runtime text or runtime output is changed.
+// check fails when its source bytes, statement, runtime text or runtime output is changed.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -23,32 +23,75 @@ if (!process.env.RADULATOR_NIRADS_AUDIT_CHILD) {
 
 const audit = await import("./audit-nirads-legacy-rates-source.mjs");
 const nirads = await audit.loadRuntime();
+const KRIEGER = "28364010";
+const BUNCH = "40754125";
 
-// 1. Live: the pinned PubMed records bind the runtime at this head.
-const fetched = await audit.fetchSource();
-const result = audit.runAudit({ xml: fetched.xml, nirads });
+// 1. Live: the byte-pinned PubMed records bind the runtime at this head.
+const sources = await audit.fetchSources();
+const result = audit.runAudit({ sources, nirads });
 assert.deepEqual(result.facts.rates, [3.79, 17.2, 59.4]);
 assert.equal(result.facts.total, 618);
 console.log(audit.passLine(result));
 
-const fails = (fn, pattern, label) => assert.throws(fn, pattern, `mutation not detected: ${label}`);
+let detected = 0;
+const fails = (fn, pattern, label) => {
+  assert.throws(fn, pattern, `mutation not detected: ${label}`);
+  detected += 1;
+};
+const failsAsync = async (promise, pattern, label) => {
+  await assert.rejects(promise, pattern, `mutation not detected: ${label}`);
+  detected += 1;
+};
+const withSource = (pmid, bytes) => ({ ...sources, [pmid]: bytes });
+const edit = (bytes, from, to) => {
+  const text = bytes.toString("utf8");
+  assert.ok(text.includes(from), `test fixture lacks ${from}`);
+  return Buffer.from(text.replace(from, to), "utf8");
+};
 const withInfo = (text) => ({ ...nirads, info: { ...nirads.info, text } });
 const withCompute = (compute) => ({ ...nirads, compute });
 
-// 2. Source mutations.
-fails(() => audit.runAudit({ xml: fetched.xml.replace("3.79%", "4.79%"), nirads }), /normalized record drifted/, "rate edit in the Krieger abstract");
-fails(() => audit.runAudit({ xml: fetched.xml.replace(/<PMID[^>]*>40754125<\/PMID>/, "<PMID>1</PMID>"), nirads }), /PMID 40754125 missing/, "missing Bunch record");
-const records = audit.parseRecords(fetched.xml);
-const edited = structuredClone(records);
-edited["40754125"].abstract[0][1] = edited["40754125"].abstract[0][1].replace("specific to CT and", "specific to MR and");
-fails(() => audit.verifyStatements(edited), /bunch-2018-paradigm-ct-pet: pinned statement drifted/, "one-word edit inside a pinned span");
+// 2. Source byte pins: digest and length drift, a missing record, and a drifted 200 that is not retried.
+fails(() => audit.runAudit({ sources: withSource(KRIEGER, edit(sources[KRIEGER], "3.79%", "4.79%")), nirads }), /source SHA-256 drifted/, "same-length edit of the Krieger bytes");
+fails(() => audit.runAudit({ sources: withSource(KRIEGER, Buffer.concat([sources[KRIEGER], Buffer.from("\n")])), nirads }), /source byte length drifted/, "one extra byte");
+fails(() => audit.runAudit({ sources: withSource(BUNCH, undefined), nirads }), /source bytes missing/, "missing Bunch record");
+const response = (bytes, status = 200, overrides = {}) => ({
+  ok: status === 200,
+  status,
+  url: audit.SOURCES[KRIEGER].url,
+  headers: new Headers({ "content-type": "text/plain; charset=UTF-8" }),
+  arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length),
+  body: null,
+  ...overrides,
+});
+let driftCalls = 0;
+await failsAsync(
+  audit.fetchSource(KRIEGER, {
+    fetchImpl: async () => {
+      driftCalls += 1;
+      return response(edit(sources[KRIEGER], "3.79%", "4.79%"));
+    },
+    sleep: async () => {},
+  }),
+  /source SHA-256 drifted/,
+  "drifted source served with HTTP 200",
+);
+assert.equal(driftCalls, 1, "a drifted source is a changed source, never retried");
+
+// 3. Record identity and statement pins (checked independently of the byte pins).
+const records = {};
+for (const pmid of Object.keys(audit.SOURCES)) records[pmid] = audit.parseRecordText(sources[pmid].toString("utf8"));
+fails(() => audit.verifyRecord(KRIEGER, { ...records[KRIEGER], doi: "10.3174/ajnr.A0000" }), /DOI drifted/, "changed DOI");
+fails(() => audit.verifyRecord(BUNCH, { ...records[BUNCH], year: "2016" }), /publication year drifted/, "changed year");
+const editedBunch = { ...records, [BUNCH]: { ...records[BUNCH], abstract: records[BUNCH].abstract.replace("specific to CT and", "specific to MR and") } };
+fails(() => audit.verifyStatements(editedBunch), /bunch-2018-paradigm-ct-pet: pinned statement drifted/, "one-word edit inside a pinned span");
 fails(
   () => audit.verifyStatements(records, [{ ...audit.STATEMENTS[0], from: "A total of 318 scans and 618" }]),
   /marker longer than six words/,
   "seven-word marker",
 );
 
-// 3. Runtime text mutations.
+// 4. Runtime text mutations.
 const info = nirads.info.text;
 fails(() => audit.bindRuntime(withInfo(info.replace("• NI-RADS 2: ~17%", "• NI-RADS 2: ~18%")), result.facts), /rounded Krieger rates/, "changed info rate");
 fails(() => audit.bindRuntime(withInfo(info.replace("618 primary-site", "600 primary-site")), result.facts), /sourced legacy-rate heading/, "changed target count");
@@ -56,7 +99,7 @@ fails(() => audit.bindRuntime(withInfo(info.replace(audit.INFO_SCOPE, "")), resu
 fails(() => audit.bindRuntime(withInfo(info.replace(audit.INFO_MRI_OUTPUT, "")), result.facts), /show no estimated recurrence risk/, "removed MRI output sentence");
 fails(() => audit.bindRuntime(withInfo(`About ~5% of cases.\n${info}`), result.facts), /no percentage may appear before/, "percentage before the heading");
 
-// 4. Runtime output mutations.
+// 5. Runtime output mutations.
 fails(
   () => audit.bindRuntime(withCompute((vals) => ({ ...nirads.compute(vals), ...(vals.nirads_version === "mri_2025" ? { "Estimated Recurrence Risk": "~4%" } : {}) })), result.facts),
   /must carry no risk estimate/,
@@ -71,30 +114,29 @@ fails(
   "2018 risk output that no longer matches the source",
 );
 
-// 5. Response identity and retry policy.
-fails(() => audit.verifyResponse({ finalUrl: "https://example.org/entrez/eutils/efetch.fcgi?db=pubmed&id=28364010,40754125&retmode=xml", contentType: "text/xml" }), /final URL host/, "wrong host");
-fails(() => audit.verifyResponse({ finalUrl: audit.SOURCE.url, contentType: "text/html" }), /media type/, "wrong media type");
-const stub = (statuses) => {
-  let calls = 0;
-  const fetchImpl = async () => {
-    const status = statuses[Math.min(calls, statuses.length - 1)];
-    calls += 1;
-    return {
-      ok: status === 200,
-      status,
-      url: audit.SOURCE.url,
-      headers: new Headers({ "content-type": "text/xml; charset=UTF-8" }),
-      text: async () => fetched.xml,
-      body: null,
-    };
-  };
-  return { fetchImpl, calls: () => calls };
-};
-const transient = stub([400, 429, 503, 200]);
-await audit.fetchSource({ fetchImpl: transient.fetchImpl, sleep: async () => {} });
-assert.equal(transient.calls(), 4, "400, 429 and 5xx are retried");
-const permanent = stub([404]);
-await assert.rejects(audit.fetchSource({ fetchImpl: permanent.fetchImpl, sleep: async () => {} }), /HTTP 404/);
-assert.equal(permanent.calls(), 1, "404 is not retried");
+// 6. Response identity and retry policy.
+fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url.replace("eutils.ncbi.nlm.nih.gov", "example.org"), contentType: "text/plain" }), /final URL host/, "wrong host");
+fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url.replace("retmode=text", "retmode=xml"), contentType: "text/plain" }), /final URL query retmode/, "wrong format");
+fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url, contentType: "text/xml" }), /media type/, "wrong media type");
+let transientCalls = 0;
+const transientStatuses = [400, 429, 503, 200];
+await audit.fetchSource(KRIEGER, {
+  fetchImpl: async () => response(sources[KRIEGER], transientStatuses[transientCalls++]),
+  sleep: async () => {},
+});
+assert.equal(transientCalls, 4, "400, 429 and 5xx are retried");
+let permanentCalls = 0;
+await failsAsync(
+  audit.fetchSource(KRIEGER, {
+    fetchImpl: async () => {
+      permanentCalls += 1;
+      return response(sources[KRIEGER], 404);
+    },
+    sleep: async () => {},
+  }),
+  /after 1 of 5 attempts \(HTTP 404\)/,
+  "404 fails at once with the real attempt count",
+);
+assert.equal(permanentCalls, 1, "404 is not retried");
 
-console.log("NI-RADS legacy-rate audit mutations: 15/15 detected");
+console.log(`NI-RADS legacy-rate audit mutations: ${detected}/${detected} detected`);
