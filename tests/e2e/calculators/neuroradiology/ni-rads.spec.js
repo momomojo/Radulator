@@ -1077,9 +1077,17 @@ test.describe("ACR NI-RADS Calculator", () => {
 
       const results = page.getByRole("status", { name: "Calculator results" });
       await expect(
-        results.getByText("A new or enlarging node needs one of the new/enlarging-node findings.", { exact: false }),
+        results.getByText("A new or enlarging node is at least NI-RADS 2.", { exact: false }),
       ).toBeVisible();
       await expect(results.getByText("Neck NI-RADS")).toHaveCount(0);
+
+      // Definitive recurrence remains a valid finding for a new or enlarging node.
+      await selectRadioOption(
+        page,
+        "NI-RADS 4: Pathologically proven recurrence or definite radiologic and clinical progression",
+      );
+      await page.getByRole("button", { name: "Calculate" }).click();
+      await expect(results.getByText("4 - Definitive Recurrence")).toBeVisible();
     });
 
     test("fails closed for insufficient inputs and FDG avidity while preventing conflicts", async ({
