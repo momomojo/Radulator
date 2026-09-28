@@ -9,6 +9,9 @@
  * - Wells PS, et al. Thromb Haemost. 2000;83(3):416-420
  * - Wells PS, et al. Ann Intern Med. 2001;135(2):98-107
  * - van Belle A, et al. JAMA. 2006;295(2):172-179 (CHRISTOPHER study)
+ *
+ * Criterion wording follows NICE NG158 recommendation 1.1.17, Table 2 (two-level PE Wells
+ * score, adapted from Wells 2000). Evidence and locators: docs/evidence/wells-pe-wording.md
  */
 
 export const WellsPE = {
@@ -43,22 +46,24 @@ The 2-tier model is preferred as it directly guides the diagnostic algorithm:
 This calculator follows the 2001 Wells criteria with PERC rule integration.`,
     link: {
       label: "View Original Wells PE Study",
-      url: "https://doi.org/10.1160/TH00-08-0302",
+      url: "https://doi.org/10.1055/s-0037-1613830",
     },
   },
 
   fields: [
     // CLINICAL SIGNS AND SYMPTOMS
+    // Wording: NICE NG158 Table 2 (adapted from Wells 2000); see docs/evidence/wells-pe-wording.md
     {
       id: "clinical_dvt",
       label: "Clinical signs/symptoms of DVT",
-      subLabel: "Leg swelling, pain with palpation of deep veins",
+      subLabel: "Must include both leg swelling and pain on palpation of the deep veins",
       type: "checkbox",
     },
     {
+      // Strictly "less likely": an alternative diagnosis judged equally likely scores 0.
       id: "alternative_less_likely",
-      label: "PE is #1 diagnosis OR equally likely",
-      subLabel: "Alternative diagnosis is less likely than PE",
+      label: "Alternative diagnosis less likely than PE",
+      subLabel: "PE judged more likely than every alternative diagnosis; a tie does not count",
       type: "checkbox",
     },
     {
@@ -70,13 +75,12 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
       id: "immobilization_surgery",
       label: "Immobilization or surgery in past 4 weeks",
       subLabel:
-        "Bedrest ≥3 days OR surgery requiring general/regional anesthesia in past 4 weeks",
+        "Immobilization lasting more than 3 days, or surgery, within the previous 4 weeks",
       type: "checkbox",
     },
     {
       id: "previous_pe_dvt",
       label: "Previous PE or DVT",
-      subLabel: "Objectively diagnosed",
       type: "checkbox",
     },
     {
@@ -87,7 +91,7 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
     {
       id: "malignancy",
       label: "Malignancy",
-      subLabel: "Active cancer (treatment within 6 months or palliative)",
+      subLabel: "Under treatment, treated within the past 6 months, or palliative",
       type: "checkbox",
     },
   ],
@@ -113,7 +117,7 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
     }
     if (alternative_less_likely) {
       score += 3;
-      breakdown.push("PE #1 diagnosis or equally likely: +3.0");
+      breakdown.push("Alternative diagnosis less likely than PE: +3.0");
     }
     if (heart_rate) {
       score += 1.5;
@@ -222,6 +226,10 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
     {
       t: "Wells PS, Anderson DR, Rodger M, et al. Derivation of a simple clinical model to categorize patients probability of pulmonary embolism. Thromb Haemost. 2000;83(3):416-420.",
       u: "https://pubmed.ncbi.nlm.nih.gov/10744147/",
+    },
+    {
+      t: "NICE NG158. Recommendation 1.1.17, Table 2: two-level PE Wells score and criterion definitions, adapted from Wells et al. 2000.",
+      u: "https://www.nice.org.uk/guidance/ng158/chapter/Recommendations",
     },
     {
       t: "Wells PS, Anderson DR, Rodger M, et al. Excluding pulmonary embolism at the bedside without diagnostic imaging. Ann Intern Med. 2001;135(2):98-107.",

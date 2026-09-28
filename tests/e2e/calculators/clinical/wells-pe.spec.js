@@ -20,12 +20,34 @@ test.describe("Wells Criteria for PE Calculator", () => {
       await expect(
         page.getByText("Clinical signs/symptoms of DVT"),
       ).toBeVisible();
-      await expect(page.getByText("PE is #1 diagnosis")).toBeVisible();
+      await expect(
+        page.getByText("Alternative diagnosis less likely than PE"),
+      ).toBeVisible();
       await expect(page.getByText("Heart rate >100 bpm")).toBeVisible();
       await expect(page.getByText("Immobilization")).toBeVisible();
       await expect(page.getByText("Previous PE or DVT")).toBeVisible();
       await expect(page.getByText("Hemoptysis")).toBeVisible();
       await expect(page.getByText("Malignancy")).toBeVisible();
+    });
+
+    test("should use the NICE NG158 / Wells 2000 wording for the alternative-diagnosis item", async ({
+      page,
+    }) => {
+      // The cited rule gives these 3 points only if PE is judged more likely than the alternative;
+      // the earlier "PE is #1 diagnosis OR equally likely" wording also scored a tie.
+      await expect(page.getByText(/equally likely/i)).toHaveCount(0);
+      await expect(page.getByText("PE is #1 diagnosis")).toHaveCount(0);
+
+      await page.locator('button[id="alternative_less_likely"]').click();
+      await page.click("button:has-text('Calculate')");
+
+      const breakdown = page.locator(
+        "section[aria-live='polite'] > div:has-text('Score Breakdown')",
+      );
+      await expect(breakdown).toContainText(
+        "Alternative diagnosis less likely than PE: +3.0",
+      );
+      await expect(page.getByText(/equally likely/i)).toHaveCount(0);
     });
 
     test("should display info section with Wells explanation", async ({
@@ -103,10 +125,10 @@ test.describe("Wells Criteria for PE Calculator", () => {
   });
 
   test.describe("High Risk Calculations", () => {
-    test("should calculate high risk with DVT signs + PE likely + HR >100", async ({
+    test("should calculate high risk with DVT signs + alternative less likely + HR >100", async ({
       page,
     }) => {
-      // DVT signs (3 pts) + PE likely (3 pts) + HR >100 (1.5 pts) = 7.5 pts
+      // DVT signs (3 pts) + alternative diagnosis less likely than PE (3 pts) + HR >100 (1.5 pts) = 7.5 pts
       await page.locator('button[id="clinical_dvt"]').click();
       await page.locator('button[id="alternative_less_likely"]').click();
       await page.locator('button[id="heart_rate"]').click();
