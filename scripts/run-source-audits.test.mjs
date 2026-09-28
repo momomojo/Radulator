@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Offline tests for scripts/run-source-audits.mjs, using fake audits in a throwaway checkout.
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   RESULTS_SCHEMA,
+  assertPristine,
   backoffBefore,
   classifyFailure,
   findLeaks,
@@ -289,14 +290,19 @@ try {
     assert.equal(missing.id, "not-here");
   }
 
-  // --all runs every network audit (declared commands included); a declared audit this checkout
-  // lacks is reported without failing, and offline audits are skipped.
+  // --all runs every network audit (declared commands included); with --allow-missing (the
+  // nightly) a declared audit this checkout lacks is reported without failing, and offline audits
+  // are skipped. Without it, the same missing audit fails the run (checked right after).
   {
     rmSync(path.join(checkout, "scripts/audit-slow-source.test.mjs"));
     rmSync(path.join(checkout, "scripts/audit-leaky-source.test.mjs"));
     rmSync(path.join(checkout, "scripts/audit-otherkey-source.test.mjs"));
     rmSync(path.join(checkout, "scripts/audit-broken-source.test.mjs"));
-    const outcome = await run(["--all", "--label", "develop"]);
+    const strict = await run(["--all", "--label", "develop"]);
+    assert.equal(strict.ok, false, "a declared audit missing at head fails without --allow-missing");
+    assert.equal(strict.resultLines.find((result) => result.id === "gone").status, "missing");
+    assert.deepEqual(strict.results.summary.failed_ids, ["gone"]);
+    const outcome = await run(["--all", "--allow-missing", "--label", "develop"]);
     assert.equal(outcome.ok, true, outcome.log);
     assert.deepEqual(outcome.resultLines.map((result) => `${result.id}:${result.status}`).sort(), [
       "custom:pass", "envcheck:pass", "flaky:pass", "gone:missing", "pass:pass", "spoof:pass",
@@ -306,6 +312,23 @@ try {
     assert.equal(outcome.results.mode, "all");
     assert.deepEqual(outcome.results.summary.missing_ids, ["gone"]);
     assert.equal(outcome.results.results.find((result) => result.id === "gone").informational, true);
+  }
+
+  // Tracked files that differ from the checked-out commit stop the run before any result.
+  {
+    const repo = path.join(root, "pristine-repo");
+    mkdirSync(path.join(repo, "scripts"), { recursive: true });
+    writeFileSync(path.join(repo, "scripts", "audit-example-source.test.mjs"), "console.log('ok');\n");
+    const git = (...args) => execFileSync("git", ["-C", repo, ...args], { stdio: ["ignore", "pipe", "ignore"] });
+    git("init", "-q");
+    git("-c", "user.email=t@example.com", "-c", "user.name=t", "add", ".");
+    git("-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "-m", "fixture");
+    assert.doesNotThrow(() => assertPristine(repo, "on a clean checkout"));
+    writeFileSync(path.join(repo, "scripts", "audit-example-source.test.mjs"), "console.log('rewritten');\n");
+    assert.throws(() => assertPristine(repo, "before the audits"), /tracked files differ from HEAD before the audits/);
+    git("-c", "user.email=t@example.com", "-c", "user.name=t", "add", ".");
+    assert.throws(() => assertPristine(repo, "before x"), /refusing to report exact-head results/, "a staged rewrite is caught too");
+    assert.doesNotThrow(() => assertPristine(path.join(root, "not-a-repo-" + Date.now()), "outside git"));
   }
 
   // An unreadable selection runs every audit rather than none.

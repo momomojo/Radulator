@@ -336,15 +336,20 @@ export function selectSourceAudits({
     .map((audit) => ({ id: audit.id, test: audit.test, why: "declared test is missing at head" }));
   const offline = audits.filter((audit) => !audit.network).map((audit) => audit.id);
   const changed = new Set((changes ?? []).flatMap((change) => [change.path, change.oldPath]).filter(Boolean));
-  const result = (mode, reason, selected, skipped) => ({
-    mode: selected.length === 0 ? "none" : mode,
-    reason,
+  // A declared network audit missing at head is always selected, so the runner fails it: a pull
+  // request cannot pass this lane by deleting (or renaming away) the audit that guards its change.
+  const result = (mode, reason, selected, skipped) => {
+    const required = [...selected, ...missing.filter((entry) => !selected.some((pick) => pick.test === entry.test))];
+    return {
+    mode: required.length === 0 ? "none" : selected.length === 0 ? "selected" : mode,
+    reason: missing.length ? `${reason}; declared audit(s) missing at head: ${missing.map((entry) => entry.id).join(", ")}` : reason,
     changed_files: changed.size,
-    audits: selected,
-    skipped: [...skipped, ...missing].sort(byId),
+    audits: required,
+    skipped: [...skipped].sort(byId),
     offline,
     ncbi: runnable.some((audit) => selected.some((entry) => entry.test === audit.test) && usesNcbi(audit, manifest)),
-  });
+    };
+  };
   const everything = (reason) => result(
     "all",
     reason,

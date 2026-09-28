@@ -236,6 +236,7 @@ function parsePositive(value, name, { integer = false, allowZero = false } = {})
 export function parseArgs(argv, selfDir) {
   const options = {
     all: false,
+    allowMissing: false,
     selection: null,
     manifest: path.join(selfDir, "source-audit-manifest.json"),
     cwd: process.cwd(),
@@ -250,6 +251,10 @@ export function parseArgs(argv, selfDir) {
     const name = argv[index];
     if (name === "--all") {
       options.all = true;
+      continue;
+    }
+    if (name === "--allow-missing") {
+      options.allowMissing = true;
       continue;
     }
     const value = argv[index + 1];
@@ -276,7 +281,14 @@ export function parseArgs(argv, selfDir) {
 function planRun(options, audits, log) {
   const runnable = audits.filter((audit) => audit.network && audit.present);
   const missing = audits.filter((audit) => audit.network && !audit.present);
-  if (options.all) return { mode: "all", rulesSha: null, run: runnable, missing };
+  // A declared network audit missing from the checkout fails the run: a pull request must not
+  // pass the exact-head lane by deleting the audit that guards its change. Only the nightly,
+  // which runs the current rules against older refs, reports them instead (--allow-missing).
+  const allMode = (rulesSha) => (options.allowMissing
+    ? { mode: "all", rulesSha, run: runnable, missing }
+    : { mode: "all", rulesSha, run: runnable, missing: [],
+        unrunnable: missing.map((audit) => ({ id: audit.id, test: audit.test })) });
+  if (options.all) return allMode(null);
   let selection;
   try {
     selection = JSON.parse(readFileSync(options.selection, "utf8"));
@@ -285,15 +297,15 @@ function planRun(options, audits, log) {
     }
   } catch (error) {
     log(`::warning title=Source-audit selection unreadable::${error.message}; running every audit`);
-    return { mode: "all", rulesSha: null, run: runnable, missing };
+    return allMode(null);
   }
   const rulesSha = typeof selection.rules_sha256 === "string" ? selection.rules_sha256 : null;
-  if (selection.mode === "all") return { mode: "all", rulesSha, run: runnable, missing };
+  if (selection.mode === "all") return allMode(rulesSha);
   const wanted = Array.isArray(selection.audits) ? selection.audits : [];
   const byTest = new Map(audits.map((audit) => [audit.test, audit]));
   const run = [];
-  // A selected audit the checkout cannot run fails; unlike --all, where a declared test that an
-  // older head does not have is only reported.
+  // A selected audit the checkout cannot run fails (so does a declared one in all-mode, unless
+  // --allow-missing).
   const unrunnable = [];
   const idOf = new Map(wanted.map((entry) => [entry?.test, entry?.id]));
   for (const test of idOf.keys()) {
@@ -302,6 +314,27 @@ function planRun(options, audits, log) {
     else unrunnable.push({ id: String(idOf.get(test) ?? test ?? "unknown"), test: String(test ?? "") });
   }
   return { mode: run.length || unrunnable.length ? "selected" : "none", rulesSha, run, missing: [], unrunnable };
+}
+
+// Tracked files that differ from HEAD in the index or the worktree; null outside a git checkout.
+function trackedChanges(cwd) {
+  try {
+    const out = execFileSync("git", ["-C", cwd, "status", "--porcelain", "--untracked-files=no"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    return out.split("\n").map((line) => line.trimEnd()).filter(Boolean);
+  } catch {
+    return null;
+  }
+}
+
+// npm lifecycle scripts or an earlier audit could rewrite tracked code after checkout; an
+// exact-head result is only valid for the committed tree, so any such change stops the run.
+export function assertPristine(cwd, when) {
+  const changed = trackedChanges(cwd);
+  if (changed && changed.length) {
+    const shown = changed.slice(0, 5).join("; ") + (changed.length > 5 ? "; …" : "");
+    throw new Error(`tracked files differ from HEAD ${when} (${shown}); refusing to report exact-head results`);
+  }
 }
 
 function headOf(cwd) {
@@ -336,6 +369,7 @@ export async function runSourceAudits({
     throw new Error(`the checkout at ${cwd} is ${actualHead ?? "not a git checkout"}, not HEAD_SHA ${env.HEAD_SHA}`);
   }
   const headSha = actualHead ?? env.HEAD_SHA ?? null;
+  if (actualHead) assertPristine(cwd, "before the audits");
   const audits = resolveAudits(manifest, workingTree(cwd));
   const plan = planRun(options, audits, print);
 
@@ -369,6 +403,7 @@ export async function runSourceAudits({
 
   try {
     for (const audit of plan.run) {
+      if (actualHead) assertPristine(cwd, `before ${audit.id}`);
       const command = audit.command[0] === "node" ? [process.execPath, ...audit.command.slice(1)] : audit.command;
       const attemptLog = [];
       let final = null;

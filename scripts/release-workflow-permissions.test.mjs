@@ -203,7 +203,10 @@ assert.match(selectStep.run, /rm -f "\$trusted"\/\*/, "partial base copies are n
 assert.equal(selectStep.env.BASE_SHA, "${{ github.event.pull_request.base.sha }}");
 assert.equal(selectStep.env.AUDIT_MODE, "${{ vars.RADULATOR_SOURCE_AUDIT_MODE }}");
 const runStep = audits.steps.find((step) => step.name === "Run selected source audits with bounded retries");
-assert.equal(runStep.env.NCBI_API_KEY, "${{ secrets.NCBI_API_KEY }}");
+assert.equal(runStep.env.NCBI_API_KEY, "${{ github.event_name != 'pull_request' && secrets.NCBI_API_KEY || '' }}",
+  "pull-request runs never receive the NCBI key: their audit code comes from the head");
+const installStep = audits.steps.find((step) => /^Install dependencies/.test(step.name ?? ""));
+assert.equal(installStep.run, "npm ci --ignore-scripts", "no npm lifecycle scripts run in the audit lane");
 assert.match(runStep.run, /^runner="\$RUNNER_TEMP\/source-audit-trusted\/run-source-audits\.mjs"$/m, "the runner comes from the base");
 assert.match(
   runStep.run,
@@ -236,10 +239,11 @@ assert.equal(
 const nightlyRuns = nightlyAudit.steps.filter((step) => (step.run ?? "").includes("run-source-audits.mjs"));
 assert.equal(nightlyRuns.length, 2, "main and develop each get one full run");
 for (const step of nightlyRuns) {
-  assert.match(step.run, /^node controller\/scripts\/run-source-audits\.mjs --all --manifest controller\/scripts\/source-audit-manifest\.json /);
+  assert.match(step.run, /^node controller\/scripts\/run-source-audits\.mjs --all --allow-missing --manifest controller\/scripts\/source-audit-manifest\.json /);
   assert.equal(step.env.NCBI_API_KEY, "${{ secrets.NCBI_API_KEY }}");
 }
 assert.equal((nightlyText.match(/secrets\.NCBI_API_KEY/g) ?? []).length, 2, "the NCBI key reaches the two audit steps only");
+assert.match(nightlyText, /gh run list --repo "\$REPO" --workflow source-audit-nightly\.yml --event schedule /, "the streak compares scheduled nightlies only");
 assert.equal(nightlyAudit.steps.find((step) => step.name === "Upload nightly results").with["retention-days"], 90);
 const report = nightly.jobs.report;
 assert.equal(report.needs, "audit");

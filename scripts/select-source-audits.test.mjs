@@ -316,12 +316,20 @@ assert.deepEqual(
   assert.equal(selection.audits.some((audit) => audit.id === "offline-pins"), false);
 }
 
-// A declared test missing at head is reported, not run.
+// A declared network audit missing at head is required, never skipped: the runner fails it, so a
+// pull request cannot pass the lane by deleting the audit that guards its change.
 {
   const { "ops/hermes/radulator/cac-boundary.test.mjs": _cac, ...headFiles } = HEAD_FILES;
   const selection = select({ baseRef: "main", headFiles, changes: ["README.md"] });
-  assert.deepEqual(ids(selection), ["albi", "birads", "ipss", "lirads-lrm"]);
-  assert.deepEqual(selection.skipped, [{ id: "cac", test: "ops/hermes/radulator/cac-boundary.test.mjs", why: "declared test is missing at head" }]);
+  assert.deepEqual(ids(selection), ["albi", "birads", "ipss", "lirads-lrm", "cac"]);
+  assert.deepEqual(selection.audits.find((audit) => audit.id === "cac"),
+    { id: "cac", test: "ops/hermes/radulator/cac-boundary.test.mjs", why: "declared test is missing at head" });
+  assert.equal(selection.skipped.some((entry) => entry.id === "cac"), false);
+  assert.match(selection.reason, /declared audit\(s\) missing at head: cac/);
+  // A pull request whose only change deletes the audit selects it (mode "selected"), never "none".
+  const deletion = select({ headFiles, changes: [{ status: "D", path: "ops/hermes/radulator/cac-boundary.test.mjs" }] });
+  assert.equal(deletion.mode, "selected");
+  assert.deepEqual(ids(deletion), ["cac"]);
 }
 
 // NCBI flag: set when a selected audit declares an NCBI host or declares no hosts.

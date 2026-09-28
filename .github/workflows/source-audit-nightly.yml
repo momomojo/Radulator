@@ -60,7 +60,7 @@ jobs:
         env:
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
         run: >-
-          node controller/scripts/run-source-audits.mjs --all
+          node controller/scripts/run-source-audits.mjs --all --allow-missing
           --manifest controller/scripts/source-audit-manifest.json
           --cwd ref-main --label main
           --attempts 3 --backoff-seconds 60,180 --audit-timeout-seconds 600 --budget-seconds 3000
@@ -76,7 +76,7 @@ jobs:
         env:
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
         run: >-
-          node controller/scripts/run-source-audits.mjs --all
+          node controller/scripts/run-source-audits.mjs --all --allow-missing
           --manifest controller/scripts/source-audit-manifest.json
           --cwd ref-develop --label develop
           --attempts 3 --backoff-seconds 60,180 --audit-timeout-seconds 600 --budget-seconds 3000
@@ -122,7 +122,7 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           mkdir -p previous
-          previous_run=$(gh run list --repo "$REPO" --workflow source-audit-nightly.yml --status completed --limit 20 \
+          previous_run=$(gh run list --repo "$REPO" --workflow source-audit-nightly.yml --event schedule --status completed --limit 20 \
             --json databaseId --jq "map(select(.databaseId != $RUN_ID)) | .[0].databaseId // empty" || true)
           if [ -n "$previous_run" ]; then
             gh run download "$previous_run" --repo "$REPO" --dir previous || echo "No results from run $previous_run."

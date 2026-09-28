@@ -234,8 +234,11 @@ jobs:
   source-audits:
     # Network-fetching clinical source audits for the exact PR head. Which audits run, how they
     # are run and retried, and what counts as a pass come from the PR's BASE commit (selector,
-    # runner and manifest), never from the head, with an all-audits fallback. The NCBI key reaches
-    # only the runner step, which redacts it and fails any audit that prints it. Never add
+    # runner and manifest), never from the head, with an all-audits fallback. Audit code on a pull
+    # request comes from its head, so pull-request runs never receive the NCBI key (keyless NCBI
+    # access is rate-limited; the runner's retries absorb 429s). Other events give the key to the
+    # runner step only. Dependencies install without lifecycle scripts, and the runner refuses to
+    # report once any tracked file differs from the checked-out commit. Never add
     # continue-on-error: the clinical gate requires this whole run to succeed.
     name: Clinical Source Audits (exact head)
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
@@ -255,8 +258,9 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (no lifecycle scripts)
+        # A pull request's npm lifecycle scripts must not run here: they could rewrite the audits.
+        run: npm ci --ignore-scripts
 
       - name: Select source audits for this exact head
         env:
@@ -290,8 +294,8 @@ jobs:
 
       - name: Run selected source audits with bounded retries
         env:
-          # The only step that sees the key: never npm ci, never the selector.
-          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+          # The only step that can see the key, and never on a pull request (head-controlled code).
+          NCBI_API_KEY: ${{ github.event_name != 'pull_request' && secrets.NCBI_API_KEY || '' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           runner="$RUNNER_TEMP/source-audit-trusted/run-source-audits.mjs"
