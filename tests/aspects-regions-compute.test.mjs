@@ -142,9 +142,9 @@ test("region subLabels keep the audited wording and render without nested parent
     lentiform: "Putamen and globus pallidus",
     internal_capsule: "Posterior limb of internal capsule",
     insular: "Insular cortex / loss of insular ribbon",
-    m1: "Frontal operculum at ganglionic level",
+    m1: "Frontal operculum",
     m2: "Anterior temporal lobe, lateral to insular ribbon",
-    m3: "MCA cortex behind M2 at ganglionic level",
+    m3: "MCA cortex behind M2",
     m4: "Immediately superior to M1",
     m5: "Immediately superior to M2",
     m6: "Immediately superior to M3",
@@ -152,7 +152,24 @@ test("region subLabels keep the audited wording and render without nested parent
   for (const field of checkboxes) {
     // FieldLabel renders "label (subLabel)".
     assert.doesNotMatch(field.subLabel, /[()]/, `${field.id}: subLabel would render nested parentheses`);
+    // The label's trailing parenthesis names the level; the subLabel must not repeat it,
+    // e.g. "M1 - Anterior MCA Cortex (Ganglionic Level) (Frontal operculum)".
+    const level = /\(([^()]*)\)\s*$/.exec(field.label)?.[1] ?? "";
+    for (const word of level.split(/\s+/).filter(Boolean)) {
+      assert.ok(
+        !field.subLabel.toLowerCase().includes(word.toLowerCase()),
+        `${field.id}: subLabel repeats the label's level (${word})`,
+      );
+    }
   }
+  assert.deepEqual(
+    ["m1", "m2", "m3"].map((id) => checkboxes.find((field) => field.id === id).label),
+    [
+      "M1 - Anterior MCA Cortex (Ganglionic Level)",
+      "M2 - Lateral MCA Cortex (Ganglionic Level)",
+      "M3 - Posterior MCA Cortex (Ganglionic Level)",
+    ],
+  );
   assert.doesNotMatch(
     checkboxes.find((field) => field.id === "m3").subLabel,
     /temporal/i,

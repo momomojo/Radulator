@@ -66,8 +66,9 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
 
     // REGION CHECKBOXES. Each affected region subtracts 1 point (see info text).
     // FieldLabel renders a subLabel as "label (subLabel)", so region subLabels
-    // carry no parentheses. Region wording and grouping are source-audited by
-    // scripts/audit-aspects-region-source.mjs (docs/evidence/aspects-regions.md).
+    // carry no parentheses and do not repeat the level named in the label.
+    // Region wording and grouping: scripts/audit-aspects-region-source.mjs and
+    // docs/evidence/aspects-regions.md.
 
     // SUBCORTICAL STRUCTURES (Ganglionic Level): C, L, IC
     {
@@ -100,7 +101,7 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
       id: "m1",
       label: "M1 - Anterior MCA Cortex (Ganglionic Level)",
       type: "checkbox",
-      subLabel: "Frontal operculum at ganglionic level",
+      subLabel: "Frontal operculum",
     },
     {
       id: "m2",
@@ -112,7 +113,7 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
       id: "m3",
       label: "M3 - Posterior MCA Cortex (Ganglionic Level)",
       type: "checkbox",
-      subLabel: "MCA cortex behind M2 at ganglionic level",
+      subLabel: "MCA cortex behind M2",
     },
 
     // CORTICAL MCA REGIONS - SUPRAGANGLIONIC LEVEL (M4-M6)
