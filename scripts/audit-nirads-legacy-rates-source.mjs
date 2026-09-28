@@ -315,8 +315,12 @@ export function verifyResponse(pmid, { finalUrl, contentType }) {
   assert.equal(mediaType, SOURCE_MEDIA_TYPE, `PMID ${pmid}: media type ${contentType ?? "<missing>"}`);
 }
 
+// Retry-After (seconds) is honoured only when the header is present; the caller caps every wait at
+// FETCH_MAX_DELAY_MS. Without it the exponential backoff applies: Number(null) is 0, so an absent header
+// must not be parsed as an immediate retry.
 function retryDelayMs(response, attempt) {
-  const retryAfter = Number(response?.headers?.get?.("retry-after"));
+  const header = response?.headers?.get?.("retry-after");
+  const retryAfter = header == null || String(header).trim() === "" ? Number.NaN : Number(header);
   if (Number.isFinite(retryAfter) && retryAfter >= 0) return retryAfter * 1_000;
   return 1_500 * 2 ** (attempt - 1);
 }
