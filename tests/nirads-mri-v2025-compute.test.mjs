@@ -200,6 +200,52 @@ assert.match(MRI_2025_MANAGEMENT["primary.3"], /multidisciplinary discussion can
 assert.equal(MRI_2025_MANAGEMENT["neck.3"], "Image-guided or clinical biopsy if clinically indicated.");
 assert.equal(MRI_2025_MANAGEMENT["neck.2"], "Short-interval MRI or PET.");
 
+// A node declared new or enlarging is at least neck 2 (n2_new_enlarging_no_definitive_morphology), so a
+// finding that would make it neck 1 fails closed instead of under-classifying (Codex review of promotion
+// #308). Neck 2-4 findings stay valid for it, including definitive recurrence (Codex review of #309).
+const newNodeTiming = { ...neck, node_temporal_status: "new_or_enlarging" };
+for (const [id, inputs] of [
+  ["new-node-timing-with-no-abnormal-nodes", { ...newNodeTiming, pattern_ids: ["n1_no_abnormal_nodes"] }],
+  ["new-node-timing-with-single-pattern-id", { ...newNodeTiming, pattern_id: "n1_no_abnormal_nodes" }],
+]) {
+  assert.deepEqual(
+    classifyNiradsMri2025(inputs),
+    { status: "error", error: "new_or_enlarging_node_below_category_2" },
+    `${id} fails closed`,
+  );
+}
+for (const [id, inputs, category] of [
+  ["new-node-with-definitive-recurrence", { ...newNodeTiming, pattern_ids: ["n4_definitive_recurrence"] }, "4"],
+  ["new-node-with-discordance", { ...newNodeTiming, pattern_ids: ["n2_pet_mri_discordance"], original_tumor_fdg_avid: "yes" }, "2"],
+  [
+    "new-node-finding-with-same-category-discordance",
+    { ...newNodeTiming, pattern_ids: ["n2_new_enlarging_no_definitive_morphology", "n2_pet_mri_discordance"], original_tumor_fdg_avid: "yes" },
+    "2",
+  ],
+]) {
+  assert.deepEqual(
+    classifyNiradsMri2025(inputs),
+    { status: "classified", category, management_key: `neck.${category}` },
+    `${id} still classifies`,
+  );
+}
+assert.deepEqual(
+  classifyNiradsMri2025({ ...primary, pattern_ids: ["p1_diffuse_linear_mucosa"], node_temporal_status: "new_or_enlarging" }),
+  { status: "classified", category: "1", management_key: "primary.1" },
+  "a stale hidden neck timing never blocks a primary-site assessment",
+);
+const newNodeNormalResult = NIRADS.compute({
+  nirads_version: "mri_2025",
+  during_treatment: "no",
+  assessment_site: "neck",
+  assessable: "yes",
+  prior_status: "available",
+  node_temporal_status: "new_or_enlarging",
+  neck_pattern_id: "n1_no_abnormal_nodes",
+});
+assert.equal(newNodeNormalResult["Error Code"], "new_or_enlarging_node_below_category_2");
+assert.equal(newNodeNormalResult["Neck NI-RADS"], undefined, "no neck category for contradictory timing and finding");
+
 console.log(
   `NI-RADS tests OK: ${vectors.length} reviewed MRI vectors, ${Object.keys(expectedPatternCategories).length} source patterns, ${preserved2018Cases.length} legacy regressions`,
 );

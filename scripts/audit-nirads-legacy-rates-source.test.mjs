@@ -137,11 +137,27 @@ fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url
 fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url, contentType: "text/xml" }), /media type/, "wrong media type");
 let transientCalls = 0;
 const transientStatuses = [400, 429, 503, 200];
+const transientSleeps = [];
 await audit.fetchSource(KRIEGER, {
   fetchImpl: async () => response(sources[KRIEGER], transientStatuses[transientCalls++]),
-  sleep: async () => {},
+  sleep: async (ms) => { transientSleeps.push(ms); },
 });
 assert.equal(transientCalls, 4, "400, 429 and 5xx are retried");
+assert.deepEqual(transientSleeps, [1_500, 3_000, 6_000], "without Retry-After the exponential backoff applies, never an immediate retry");
+const retryAfterSleeps = [];
+let retryAfterCalls = 0;
+const retryAfterHeaders = ["2", "120", ""];
+await audit.fetchSource(KRIEGER, {
+  fetchImpl: async () => {
+    const call = retryAfterCalls++;
+    if (call === retryAfterHeaders.length) return response(sources[KRIEGER]);
+    return response(sources[KRIEGER], 429, {
+      headers: new Headers({ "content-type": "text/plain; charset=UTF-8", "retry-after": retryAfterHeaders[call] }),
+    });
+  },
+  sleep: async (ms) => { retryAfterSleeps.push(ms); },
+});
+assert.deepEqual(retryAfterSleeps, [2_000, 20_000, 6_000], "Retry-After is honoured, capped at 20 s, and an empty header falls back to backoff");
 let permanentCalls = 0;
 await failsAsync(
   audit.fetchSource(KRIEGER, {

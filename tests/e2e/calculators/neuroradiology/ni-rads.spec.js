@@ -1063,6 +1063,33 @@ test.describe("ACR NI-RADS Calculator", () => {
       await expect(results.getByText("Short-interval MRI or PET.")).toBeVisible();
     });
 
+    test("refuses a normal-node finding for a node declared new or enlarging instead of returning neck 1", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Neck Nodes");
+      await selectRadioOption(page, "Yes — assessable");
+      await selectRadioOption(page, "Available now");
+      await selectRadioOption(page, "New or enlarging node");
+      await selectRadioOption(page, "NI-RADS 1: No abnormal cervical nodes");
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(
+        results.getByText("A new or enlarging node is at least NI-RADS 2.", { exact: false }),
+      ).toBeVisible();
+      await expect(results.getByText("Neck NI-RADS")).toHaveCount(0);
+
+      // Definitive recurrence remains a valid finding for a new or enlarging node.
+      await selectRadioOption(
+        page,
+        "NI-RADS 4: Pathologically proven recurrence or definite radiologic and clinical progression",
+      );
+      await page.getByRole("button", { name: "Calculate" }).click();
+      await expect(results.getByText("4 - Definitive Recurrence")).toBeVisible();
+    });
+
     test("fails closed for insufficient inputs and FDG avidity while preventing conflicts", async ({
       page,
     }) => {

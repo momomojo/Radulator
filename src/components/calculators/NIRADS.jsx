@@ -364,6 +364,21 @@ export function classifyNiradsMri2025(inputs = {}) {
       error: "new_node_pattern_requires_new_or_enlarging_status",
     };
   }
+  // A node declared new or enlarging is at least neck 2 (a new/enlarging node without high-suspicion
+  // morphology is neck 2), so a finding that would classify it as neck 1, such as "no abnormal nodes",
+  // contradicts the timing and fails closed. Neck 2-4 findings (for example definitive recurrence) stay
+  // valid. Neck only: the timing field is hidden for the primary site, where a stale value must not
+  // block classification.
+  if (
+    site === "neck" &&
+    inputs.node_temporal_status === "new_or_enlarging" &&
+    definitions.some((definition) => definition.category === "1")
+  ) {
+    return {
+      status: "error",
+      error: "new_or_enlarging_node_below_category_2",
+    };
+  }
   if (
     patternIds.includes("p3_discrete_matching_mass") &&
     inputs.original_features_match !== "yes"
@@ -416,6 +431,8 @@ const MRI_ERROR_MESSAGES = Object.freeze({
   discordance_rule_requires_original_fdg_avid: "PET/MRI discordance can be used only when the original tumor was FDG avid.",
   residual_node_pattern_requires_residual_status: "This finding applies only to residual treated nodal tissue.",
   new_node_pattern_requires_new_or_enlarging_status: "This finding applies only to a new or enlarging node.",
+  new_or_enlarging_node_below_category_2:
+    "A new or enlarging node is at least NI-RADS 2. Choose the finding that fits it, or change Neck Node Timing.",
   matching_pattern_requires_feature_match: "Confirm that the mass matches the original tumor's MRI features.",
   mismatch_pattern_requires_feature_mismatch: "Confirm that the tissue differs from the original tumor's MRI features.",
 });
