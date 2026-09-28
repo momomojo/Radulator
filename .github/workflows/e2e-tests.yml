@@ -54,7 +54,9 @@ jobs:
       # The rules and the risk classifier are read from the PR's BASE commit, never the
       # PR head, so a PR cannot choose which of its own checks are skipped. Push and
       # manual runs, a PR touching either file, a missing base copy, or any error run
-      # every check.
+      # every check. Live source audits now run in "Clinical Source Audits (exact head)",
+      # chosen by scripts/select-source-audits.mjs; in this job only the dependency audit
+      # uses the scope.
       - name: Scope world-state checks to the PR's trust domain
         id: scope
         env:
@@ -117,6 +119,8 @@ jobs:
           npm run test:auto-merge
           npm run test:release-workflow-permissions
           npm run test:ci-scope
+          # Guarded: older PR heads run this workflow file before they contain the source-audit lane.
+          if [ -f scripts/select-source-audits.test.mjs ]; then npm run test:source-audit-selection; fi
           npm run test:authorize-deployment
           npm run test:reconcile-deployment
           npm run test:post-deploy-smoke
@@ -138,24 +142,19 @@ jobs:
           npm run test:hermes-guideline-registry
           npm run test:hermes-install-core
 
-      # Deterministically discover conventional source-audit tests in Smoke.
-      # Bosniak is delegated to the protected exact-head release-control lane
-      # because that lane owns its live fetch; remaining network audits stay here.
-      - name: Verify roadmap clinical source audits at exact head
-        if: steps.scope.outputs.clinical != 'false'
+      # Network-fetching source audits run only in "Clinical Source Audits (exact head)"
+      # of this run, selected by trusted base rules; Smoke keeps deterministic offline evidence.
+      - name: Verify offline clinical evidence at exact head
         run: |
-          export LC_ALL=C
-          for audit in scripts/audit-*-source.test.mjs; do
-            test -f "$audit"
-            if [ "$audit" = "scripts/audit-bosniak-primary-source.test.mjs" ]; then
-              # Bosniak runs only in the protected exact-head lane to avoid duplicate live-source fetches.
-              continue
-            fi
-            node "$audit"
-          done
-          # CAC runs only in the protected exact-head lane (test:cac-drs-source) to avoid duplicate live-source fetches.
           npm run test:hermes-guideline-registry
           node tests/roadmap-guideline-status.test.mjs
+          # Guarded: some open PR heads predate this offline audit (the old glob loop skipped them too).
+          if [ -f scripts/audit-fleischner-nlm-pinned-source.test.mjs ]; then node scripts/audit-fleischner-nlm-pinned-source.test.mjs; fi
+          for test_file in scripts/lib/*.test.mjs; do
+            [ -e "$test_file" ] || continue
+            node "$test_file"
+          done
+          echo "Network source audits for this head: see job 'Clinical Source Audits (exact head)' in this run."
 
       - name: Build application
         run: npm run build
@@ -179,6 +178,7 @@ jobs:
   hermes-release-control-tests:
     # Keep this context stable: the protected develop/main rules require this
     # exact GitHub Actions check name. The job also runs the production audit.
+    # It runs no network source audits; see "Clinical Source Audits (exact head)".
     name: Hermes Release Control Tests
     if: github.event_name == 'pull_request'
     timeout-minutes: 10
@@ -214,6 +214,8 @@ jobs:
           npm run test:independent-review-gate
           npm run test:auto-merge
           npm run test:release-workflow-permissions
+          # Guarded: older PR heads run this workflow file before they contain the source-audit lane.
+          if [ -f scripts/select-source-audits.test.mjs ]; then npm run test:source-audit-selection; fi
           npm run test:authorize-deployment
           npm run test:reconcile-deployment
           npm run test:post-deploy-smoke
@@ -227,10 +229,90 @@ jobs:
           npm run test:hermes-seed-convert
           npm run test:hermes-guideline-registry
           npm run test:hermes-install-core
-          npm run test:bosniak-source
-          npm run test:cac-drs-source
           npm run check:invariants
 
+  source-audits:
+    # Network-fetching clinical source audits for the exact PR head. Which audits run, how they
+    # are run and retried, and what counts as a pass come from the PR's BASE commit (selector,
+    # runner and manifest), never from the head, with an all-audits fallback. The NCBI key reaches
+    # only the runner step, which redacts it and fails any audit that prints it. Never add
+    # continue-on-error: the clinical gate requires this whole run to succeed.
+    name: Clinical Source Audits (exact head)
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          # Full history: the selector diffs the head against its merge base with the PR base.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Select source audits for this exact head
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          AUDIT_MODE: ${{ vars.RADULATOR_SOURCE_AUDIT_MODE }}
+        run: |
+          trusted="$RUNNER_TEMP/source-audit-trusted"
+          selection="$RUNNER_TEMP/source-audit-selection.json"
+          mkdir -p "$trusted"
+          # The selector, the runner and the manifest come from the PR's BASE commit, never the head.
+          if [ "$EVENT_NAME" = "pull_request" ] \
+            && git show "$BASE_SHA:scripts/select-source-audits.mjs" > "$trusted/select-source-audits.mjs" 2>/dev/null \
+            && git show "$BASE_SHA:scripts/run-source-audits.mjs" > "$trusted/run-source-audits.mjs" 2>/dev/null \
+            && git show "$BASE_SHA:scripts/source-audit-manifest.json" > "$trusted/source-audit-manifest.json" 2>/dev/null; then
+            echo "Source-audit rules and runner loaded from base $BASE_SHA."
+          else
+            # A non-PR event, or the PR that introduces this lane (its base has no runner yet):
+            # drop partial copies so the next step uses the checked-out runner, and run every audit.
+            rm -f "$trusted"/*
+          fi
+          if [ -s "$trusted/source-audit-manifest.json" ] && [ "$AUDIT_MODE" != "all" ] \
+            && node "$trusted/select-source-audits.mjs" --manifest "$trusted/source-audit-manifest.json" --output "$selection"; then
+            :
+          else
+            printf '{"schema":"radulator-source-audit-selection/v1","mode":"all","reason":"not a pull request, owner override, no trusted base rules, or a selector error"}\n' > "$selection"
+            echo "SOURCE-AUDIT SELECTION $(cat "$selection")"
+          fi
+
+      - name: Run selected source audits with bounded retries
+        env:
+          # The only step that sees the key: never npm ci, never the selector.
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          runner="$RUNNER_TEMP/source-audit-trusted/run-source-audits.mjs"
+          if [ ! -s "$runner" ]; then
+            # Bootstrap only: the base predates the runner (the PR that introduces this lane).
+            runner=scripts/run-source-audits.mjs
+          fi
+          node "$runner" --selection "$RUNNER_TEMP/source-audit-selection.json" \
+            --attempts 3 --backoff-seconds 60,180 --audit-timeout-seconds 600 \
+            --budget-seconds 3000 --results "$RUNNER_TEMP/source-audit-results.json"
+
+      - name: Upload source-audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-audit-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/source-audit-selection.json
+            ${{ runner.temp }}/source-audit-results.json
+          if-no-files-found: warn
+          retention-days: 90
 
   targeted-tests:
     name: Targeted Calculator Tests
