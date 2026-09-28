@@ -6,7 +6,7 @@
  *
  * Test Coverage:
  * - Score range 0-10 (10 regions)
- * - Regional breakdown (subcortical, ganglionic cortical, supraganglionic)
+ * - Regional breakdown (subcortical C/L/IC, ganglionic cortical I/M1-M3, supraganglionic)
  * - Thrombectomy eligibility thresholds (ASPECTS >= 6)
  * - Extended time window guidance (DAWN, DEFUSE-3)
  * - Large core trial references (SELECT2, ANGEL-ASPECT)
@@ -52,14 +52,23 @@ test.describe("ASPECTS Score Calculator", () => {
       ).toBeVisible();
     });
 
+    test("should describe M3 as posterior MCA cortex, not a named lobe", async ({
+      page,
+    }) => {
+      await expect(
+        page.getByText("M3 - Posterior MCA cortex (behind M2)").first(),
+      ).toBeVisible();
+      await expect(page.getByText("Posterior temporal lobe")).toHaveCount(0);
+    });
+
     test("should have all 10 brain region checkboxes", async ({ page }) => {
-      // Subcortical structures
+      // Subcortical structures (C, L, IC)
       await expect(page.locator('label[for="caudate"]')).toBeVisible();
       await expect(page.locator('label[for="lentiform"]')).toBeVisible();
       await expect(page.locator('label[for="internal_capsule"]')).toBeVisible();
-      await expect(page.locator('label[for="insular"]')).toBeVisible();
 
-      // Ganglionic level cortical
+      // Ganglionic level cortical (I, M1-M3)
+      await expect(page.locator('label[for="insular"]')).toBeVisible();
       await expect(page.locator('label[for="m1"]')).toBeVisible();
       await expect(page.locator('label[for="m2"]')).toBeVisible();
       await expect(page.locator('label[for="m3"]')).toBeVisible();
@@ -191,14 +200,33 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
+      // The insular ribbon is cortex (developers' template: C, L, IC = 3
+      // subcortical points; insular cortex + M1-M6 = 7 cortical points).
       await expect(
-        results.locator("text=Subcortical: 4/4").first(),
+        results.locator("text=Subcortical (C, L, IC): 3/3").first(),
       ).toBeVisible();
       await expect(
-        results.locator("text=Ganglionic cortical").first(),
+        results.locator("text=Ganglionic cortical (I, M1-M3): 1/4").first(),
       ).toBeVisible();
       await expect(
-        results.locator("text=Supraganglionic").first(),
+        results.locator("text=Supraganglionic (M4-M6): 0/3").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=Subcortical: 4/4")).toHaveCount(0);
+    });
+
+    test("should count an isolated insular ribbon as ganglionic cortex", async ({
+      page,
+    }) => {
+      await page.locator('label[for="laterality-left"]').click();
+      await page.locator('label[for="insular"]').click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(
+        results.locator("text=Subcortical (C, L, IC): 0/3").first(),
+      ).toBeVisible();
+      await expect(
+        results.locator("text=Ganglionic cortical (I, M1-M3): 1/4").first(),
       ).toBeVisible();
     });
   });
@@ -401,6 +429,34 @@ test.describe("ASPECTS Score Calculator", () => {
       ).toBeVisible();
     });
 
+    test("should limit the predominantly subcortical note to C, L and IC without cortical involvement", async ({
+      page,
+    }) => {
+      await page.locator('label[for="laterality-left"]').click();
+      await page.locator('label[for="caudate"]').click();
+      await page.locator('label[for="lentiform"]').click();
+      await page.locator('label[for="internal_capsule"]').click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(
+        results.locator("text=Predominantly subcortical involvement").first(),
+      ).toBeVisible();
+
+      // Adding the insular ribbon (cortex) removes the note.
+      await page.locator('label[for="insular"]').click();
+      await page.click('button:has-text("Calculate")');
+      await expect(results.locator("text=6 / 10").first()).toBeVisible();
+      await expect(
+        results.locator("text=Predominantly subcortical involvement"),
+      ).toHaveCount(0);
+      await expect(
+        results
+          .locator("text=proximal M1 occlusion with poor collaterals")
+          .first(),
+      ).toBeVisible();
+    });
+
     test("should show complete cortical involvement note", async ({ page }) => {
       await page.locator('label[for="laterality-left"]').click();
       await page.locator('label[for="m1"]').click();
@@ -413,7 +469,7 @@ test.describe("ASPECTS Score Calculator", () => {
 
       const results = page.getByRole('status', { name: 'Calculator results' });
       await expect(
-        results.locator("text=Complete cortical MCA involvement").first(),
+        results.locator("text=Complete M1-M6 cortical involvement").first(),
       ).toBeVisible();
       await expect(
         results.locator("text=very poor collateral circulation").first(),
