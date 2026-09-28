@@ -837,6 +837,37 @@ test.describe("ACR NI-RADS Calculator", () => {
   });
 
   test.describe("MRI v2025 reviewed pathway", () => {
+    test("shows MRI users that the recurrence rates are legacy 2018 CT/PET-CT data", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await expect(
+        page.getByRole("radiogroup", {
+          name: "Is imaging being performed during active treatment?",
+        }),
+      ).toBeVisible();
+
+      const infoSection = page.getByTestId("calculator-info");
+      await expect(
+        infoSection
+          .getByText("Legacy NI-RADS 2018 (CT/PET-CT) recurrence rates by category:")
+          .first(),
+      ).toBeVisible();
+      await expect(
+        infoSection
+          .getByText(
+            "These rates were reported for the 2018 CT/PET-CT system only. They do not apply to MRI v2025",
+          )
+          .first(),
+      ).toBeVisible();
+
+      // Every percentage in the info text sits under the legacy heading, never before it.
+      const text = await infoSection.innerText();
+      const scope = text.indexOf("Legacy NI-RADS 2018 (CT/PET-CT) recurrence rates by category:");
+      expect(scope).toBeGreaterThan(-1);
+      expect(text.search(/~\d+%/)).toBeGreaterThan(scope);
+    });
+
     test("exposes an accessible modality/version selector and switches paths", async ({
       page,
     }) => {
