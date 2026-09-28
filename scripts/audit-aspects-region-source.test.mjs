@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-// Runs the ASPECTS region source audit once against the live sources, checks its JSON report,
-// then re-runs the verifier offline on the bytes that run fetched, with targeted mutations, to
-// show that each pin fails on a change it guards and passes on a change it must ignore. The
-// fetched bytes live only in a temporary directory that is deleted at the end.
+// Runs the ASPECTS region source audit once against the live sources and checks its JSON
+// report. It then replays the bytes that run fetched, offline and with targeted mutations, to
+// show that every raw-byte pin holds and that a drifted 200 response fails at once without a
+// retry. The fetched bytes live only in a temporary directory that is deleted at the end.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -61,79 +61,160 @@ function calculatorWith(overrides) {
   return { ...ASPECTSScore, ...overrides };
 }
 
-test("report pins the six artifacts by final URL, media type and pin", () => {
+function fakeResponse({ status = 200, url, contentType, bytes = Buffer.alloc(0), memento, link, retryAfter }) {
+  const headers = new Headers();
+  if (contentType) headers.set("content-type", contentType);
+  if (memento) headers.set("memento-datetime", memento);
+  if (link) headers.set("link", link);
+  if (retryAfter) headers.set("retry-after", retryAfter);
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    url,
+    headers,
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    body: { cancel: async () => {} },
+  };
+}
+
+// A fetch that serves one saved artifact, optionally drifted, and counts its calls.
+function serving(saved, drift = {}) {
+  let calls = 0;
+  return {
+    fetchImpl: async () => {
+      calls += 1;
+      return fakeResponse({
+        url: drift.finalUrl ?? saved.finalUrl,
+        contentType: drift.contentType ?? saved.contentType,
+        bytes: drift.bytes ?? saved.bytes,
+        memento: drift.memento ?? saved.mementoDatetime,
+        link: drift.link ?? saved.link,
+      });
+    },
+    calls: () => calls,
+  };
+}
+
+const noRetry = async () => {
+  assert.fail("a 200 response that misses a pin must not be retried");
+};
+
+test("report pins every artifact by raw bytes, final URL and media type", () => {
   assert.equal(report.schema, "radulator-aspects-region-source-audit/v1");
   assert.equal(report.calculator_id, "aspects-score");
   assert.equal(report.calculator_path, "src/components/calculators/ASPECTSScore.jsx");
   assert.deepEqual(
-    report.sources.map(({ key, final_url, media_type, pin }) => [key, final_url, media_type, pin]),
+    report.sources.map(({ key, final_url, media_type, pin, bytes, sha256 }) => [
+      key,
+      final_url,
+      media_type,
+      pin,
+      bytes,
+      sha256,
+    ]),
     [
       [
         "barber2000",
-        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&tool=radulator-aspects-audit&id=10905241",
-        "text/xml",
-        "citation-abstract-text",
+        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=10905241&rettype=abstract&retmode=text&tool=radulator-aspects-audit",
+        "text/plain",
+        "raw-bytes",
+        2463,
+        "fee68808adc8d45b02413464c7dc282361e72458bb2a9d340a69becad7a3960d",
       ],
-      ["pexman2001", "https://pmc.ncbi.nlm.nih.gov/articles/PMC7974585/", "text/html", "article-body-text"],
+      [
+        "pexman2001",
+        "https://web.archive.org/web/20250202055743id_/https://pmc.ncbi.nlm.nih.gov/articles/PMC7974585/",
+        "text/html",
+        "raw-bytes",
+        143520,
+        "1167a826eb0079f360f2cafdbe0040fb39a9bdaa0e6ca92dc54a5132d5b569d7",
+      ],
       [
         "dubey2013",
         "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&retmode=xml&tool=radulator-aspects-audit&id=3732599",
         "text/xml",
         "raw-bytes",
+        65170,
+        "7a0479726ba0956a36ce9e63050bf0e052fe69ac292428a67a9254b26d54a2ba",
       ],
       [
         "developers_what_is",
         "https://web.archive.org/web/20161206115358id_/http://www.aspectsinstroke.com:80/aspects/what-is-aspects/",
         "text/html",
         "raw-bytes",
+        12396,
+        "0fa6d381b95c3eb6d61f082c2c1e5821d3b5b00fcc461fa3666359adebb5a03e",
       ],
       [
         "developers_insula_basal_ganglia",
         "https://web.archive.org/web/20161229222203id_/http://www.aspectsinstroke.com:80/training-for-aspects/optimal-window-settings222/",
         "text/html",
         "raw-bytes",
+        11387,
+        "2ab9a266bbfd2dfbfcb1b8f60bded61ca9befa29393c1d6a768a0c264f5befe5",
       ],
       [
         "developers_m1_m6",
         "https://web.archive.org/web/20161230025253id_/http://www.aspectsinstroke.com:80/training-for-aspects/optimal-window-settings227/",
         "text/html",
         "raw-bytes",
+        10930,
+        "c2f480242b0061b6a0c122496dbdf45cf6c0a416ffddec1a7f7977a87fd657fb",
       ],
     ],
   );
   const sources = Object.fromEntries(report.sources.map((source) => [source.key, source]));
-  assert.equal(sources.barber2000.pmid, "10905241");
-  assert.equal(sources.barber2000.doi, "10.1016/S0140-6736(00)02237-6");
-  assert.equal(sources.barber2000.content_sha256, "b9d3c4f1e0ca70cb5e8a6d179579fb53e3f8b08bdb48f85cfd675b3877827598");
-  assert.equal(sources.barber2000.content_fields, 13);
-  assert.equal(sources.barber2000.observed_raw.raw_bytes_enforced, false);
-  assert.equal(sources.pexman2001.pmid, "11559501");
-  assert.equal(sources.pexman2001.pmcid, "PMC7974585");
-  assert.equal(sources.pexman2001.content_sha256, "1175e3d4722b64b9a9c723c1faa480a141464c14904a80e9550720a50d8bf09d");
-  assert.equal(sources.pexman2001.content_blocks, 46);
-  assert.equal(sources.pexman2001.observed_raw.raw_bytes_enforced, false);
-  assert.equal(sources.pexman2001.bytes, undefined, "PMC page raw bytes must not be pinned");
+  for (const source of report.sources) {
+    assert.equal(source.final_url, source.url, `${source.key}: final URL must be the pinned URL`);
+    assert.doesNotMatch(source.url, /[?&]email=/i, `${source.key}: no e-mail parameter`);
+    for (const field of ["content_sha256", "observed_raw", "pin_rationale"]) {
+      assert.equal(source[field], undefined, `${source.key}: no content-digest pin (${field})`);
+    }
+    if (new URL(source.url).hostname === "eutils.ncbi.nlm.nih.gov") {
+      assert.equal(new URL(source.url).searchParams.get("tool"), "radulator-aspects-audit", `${source.key}: NCBI tool`);
+    }
+  }
+  assert.deepEqual(
+    ["pexman2001", "developers_what_is", "developers_insula_basal_ganglia", "developers_m1_m6"].map((key) => [
+      key,
+      sources[key].original_url,
+      sources[key].memento_datetime,
+      sources[key].archive_sha1_base32,
+    ]),
+    [
+      [
+        "pexman2001",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC7974585/",
+        "Sun, 02 Feb 2025 05:57:43 GMT",
+        "6CAKOH2THRQX4SAUN7IR3CMVB4IQDWUJ",
+      ],
+      [
+        "developers_what_is",
+        "http://www.aspectsinstroke.com:80/aspects/what-is-aspects/",
+        "Tue, 06 Dec 2016 11:53:58 GMT",
+        "IEC2BKTXILM7IDIMIOYD3C7XG3CJKYBZ",
+      ],
+      [
+        "developers_insula_basal_ganglia",
+        "http://www.aspectsinstroke.com:80/training-for-aspects/optimal-window-settings222/",
+        "Thu, 29 Dec 2016 22:22:03 GMT",
+        "YUXRQZ452UCGIVYWN5VJRD43FQHOU6A2",
+      ],
+      [
+        "developers_m1_m6",
+        "http://www.aspectsinstroke.com:80/training-for-aspects/optimal-window-settings227/",
+        "Fri, 30 Dec 2016 02:52:53 GMT",
+        "YSZ7GX7XZFGGGMWDXBIO7FZHYDQFDDB5",
+      ],
+    ],
+  );
+  assert.deepEqual([sources.barber2000.pmid, sources.barber2000.doi], ["10905241", "10.1016/S0140-6736(00)02237-6"]);
+  assert.deepEqual([sources.pexman2001.pmid, sources.pexman2001.pmcid], ["11559501", "PMC7974585"]);
   assert.deepEqual(
     [sources.dubey2013.pmcid, sources.dubey2013.pmid, sources.dubey2013.doi, sources.dubey2013.license],
     ["PMC3732599", "23970999", "10.1155/2013/767212", "https://creativecommons.org/licenses/by/3.0/"],
   );
-  assert.deepEqual(
-    ["dubey2013", "developers_what_is", "developers_insula_basal_ganglia", "developers_m1_m6"].map((key) => [
-      key,
-      sources[key].bytes,
-      sources[key].sha256,
-    ]),
-    [
-      ["dubey2013", 65170, "7a0479726ba0956a36ce9e63050bf0e052fe69ac292428a67a9254b26d54a2ba"],
-      ["developers_what_is", 12396, "0fa6d381b95c3eb6d61f082c2c1e5821d3b5b00fcc461fa3666359adebb5a03e"],
-      ["developers_insula_basal_ganglia", 11387, "2ab9a266bbfd2dfbfcb1b8f60bded61ca9befa29393c1d6a768a0c264f5befe5"],
-      ["developers_m1_m6", 10930, "c2f480242b0061b6a0c122496dbdf45cf6c0a416ffddec1a7f7977a87fd657fb"],
-    ],
-  );
-  for (const key of ["developers_what_is", "developers_insula_basal_ganglia", "developers_m1_m6"]) {
-    assert.match(sources[key].original_url, /^http:\/\/www\.aspectsinstroke\.com:80\//, `${key}: original URL`);
-    assert.match(sources[key].memento_datetime, /^\w{3}, \d{2} Dec 2016 \d{2}:\d{2}:\d{2} GMT$/, `${key}: capture time`);
-  }
+  assert.deepEqual(report.informational.barber2000_errata_listed_by_pubmed, ["Lancet 2000 Jun 17;355(9221):2170."]);
   assert.equal(report.source_bytes_committed, false);
 });
 
@@ -264,7 +345,6 @@ test("report pins every statement span by digest and binds every statement", () 
   });
   assert.equal(report.runtime.region_combinations_checked, 1024);
   assert.equal(report.scope.score_arithmetic_changed, false);
-  assert.ok(Array.isArray(report.informational.barber2000_errata_listed_by_pubmed));
 });
 
 test("markers stay within the six-word limit and paraphrases do not copy their spans", () => {
@@ -283,11 +363,131 @@ test("markers stay within the six-word limit and paraphrases do not copy their s
   }
 });
 
-test("the saved live bytes verify offline and runtime mutations fail", () => {
+test("the archive digest of each saved capture matches its CDX index entry", () => {
   const artifacts = savedArtifacts();
-  const baseline = audit.buildAudit(artifacts);
-  assert.equal(baseline.source_statements.length, report.source_statements.length);
+  for (const source of Object.values(audit.SOURCES).filter(({ archive_sha1_base32 }) => archive_sha1_base32)) {
+    assert.equal(audit.sha1Base32(artifacts[source.key].bytes), source.archive_sha1_base32, source.key);
+  }
+  // RFC 4648 test vector: SHA-1("abc") = a9993e36 4706816a ba3e2571 7850c26c 9cd0d89d.
+  assert.equal(audit.sha1Base32(Buffer.from("abc")), "VGMT4NSHA2AWVOR6EVYXQUGCNSONBWE5");
+});
 
+test("retrieve() accepts each unmodified saved artifact on the first attempt", async () => {
+  const artifacts = savedArtifacts();
+  for (const source of Object.values(audit.SOURCES)) {
+    const fetch = serving(artifacts[source.key]);
+    const retrieved = await audit.retrieve(source, { fetchImpl: fetch.fetchImpl, sleep: noRetry });
+    assert.equal(retrieved.attempts, 1, source.key);
+    assert.equal(fetch.calls(), 1, source.key);
+  }
+});
+
+test("failure mode 1: same-length digest drift fails at once, without a retry", async () => {
+  const artifacts = savedArtifacts();
+  for (const source of Object.values(audit.SOURCES)) {
+    const bytes = Buffer.from(artifacts[source.key].bytes);
+    const index = Math.floor(bytes.length / 2);
+    bytes[index] = bytes[index] === 0x20 ? 0x21 : 0x20;
+    assert.equal(bytes.length, source.bytes, `${source.key}: the mutation keeps the length`);
+    const fetch = serving(artifacts[source.key], { bytes });
+    await assert.rejects(
+      audit.retrieve(source, { fetchImpl: fetch.fetchImpl, sleep: noRetry }),
+      new RegExp(`${source.key}: artifact SHA-256 drifted`),
+    );
+    assert.equal(fetch.calls(), 1, `${source.key}: fetched exactly once`);
+  }
+});
+
+test("failure mode 2: byte-length drift fails at once, without a retry", async () => {
+  const artifacts = savedArtifacts();
+  for (const source of Object.values(audit.SOURCES)) {
+    for (const bytes of [
+      Buffer.concat([artifacts[source.key].bytes, Buffer.from("\n")]),
+      artifacts[source.key].bytes.subarray(0, source.bytes - 1),
+    ]) {
+      const fetch = serving(artifacts[source.key], { bytes });
+      await assert.rejects(
+        audit.retrieve(source, { fetchImpl: fetch.fetchImpl, sleep: noRetry }),
+        new RegExp(`${source.key}: artifact byte length drifted`),
+      );
+      assert.equal(fetch.calls(), 1, `${source.key}: fetched exactly once`);
+    }
+  }
+});
+
+test("failure mode 3: a drifted HTTP 200 fails at once, without a retry", async () => {
+  const artifacts = savedArtifacts();
+  for (const source of Object.values(audit.SOURCES)) {
+    const saved = artifacts[source.key];
+    const changedQuery = new URL(source.url);
+    changedQuery.search = "?changed=1";
+    const drifts = [
+      // A different page served with status 200 and the pinned media type (an interstitial).
+      [{ bytes: Buffer.from("<html><body>Preparing to download ...</body></html>") }, /artifact byte length drifted/],
+      [{ contentType: "application/octet-stream" }, /media type drifted/],
+      [{ finalUrl: "https://example.org/moved" }, /final URL host drifted/],
+      [{ finalUrl: changedQuery.href }, /final URL query drifted/],
+    ];
+    if (source.memento_datetime) {
+      drifts.push([{ memento: "Sat, 01 Jan 2022 00:00:00 GMT" }, /archive capture time drifted/]);
+      drifts.push([{ link: '<http://example.org/other>; rel="original"' }, /archive capture is not of the pinned page/]);
+    }
+    for (const [drift, message] of drifts) {
+      const fetch = serving(saved, drift);
+      await assert.rejects(
+        audit.retrieve(source, { fetchImpl: fetch.fetchImpl, sleep: noRetry }),
+        message,
+        `${source.key}: ${JSON.stringify(Object.keys(drift))}`,
+      );
+      assert.equal(fetch.calls(), 1, `${source.key}: fetched exactly once`);
+    }
+  }
+});
+
+test("offline verification checks every pin before parsing", () => {
+  const artifacts = savedArtifacts();
+  assert.doesNotThrow(() => audit.buildAudit(artifacts));
+  // Same-length edits inside a statement fail on the SHA-256 pin, not later in a parser.
+  const dubey = withText(artifacts, "dubey2013", (xml) => xml.replace("allotted 3 points", "allotted 4 points"));
+  assert.throws(() => audit.buildAudit(dubey), /dubey2013: artifact SHA-256 drifted/);
+  const barber = withText(artifacts, "barber2000", (text) => text.replace("ten regions", "nine region"));
+  assert.throws(() => audit.buildAudit(barber), /barber2000: artifact SHA-256 drifted/);
+  const capsule = withText(artifacts, "developers_insula_basal_ganglia", (html) =>
+    html.replace("if posterior limb is hypodense", "if anterior limb is hypodense"),
+  );
+  assert.throws(() => audit.buildAudit(capsule), /developers_insula_basal_ganglia: artifact byte length drifted/);
+  // A truncated capture fails on its byte length before the parser could miss the article body.
+  const truncated = {
+    ...artifacts,
+    pexman2001: { ...artifacts.pexman2001, bytes: artifacts.pexman2001.bytes.subarray(0, 1000) },
+  };
+  assert.throws(() => audit.buildAudit(truncated), /pexman2001: artifact byte length drifted/);
+  const redirected = {
+    ...artifacts,
+    pexman2001: { ...artifacts.pexman2001, finalUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC7974585/" },
+  };
+  assert.throws(() => audit.buildAudit(redirected), /pexman2001: final URL host drifted/);
+});
+
+test("statement spans catch an edit inside a span even under re-pinned bytes", () => {
+  const artifacts = savedArtifacts();
+  const statement = audit.STATEMENTS.find(({ id }) => id === "pexman2001-results-internal-capsule-split");
+  const blocks = audit.pmcArticleBlocks(artifacts.pexman2001.bytes.toString("utf8"));
+  const block = blocks.find((candidate) => candidate.startsWith(statement.block));
+  const mismatches = [];
+  audit.checkSpans(statement, block.replace("both limbs", "one limb"), mismatches);
+  assert.equal(mismatches.length, 1);
+  assert.throws(() => audit.checkSpans(statement, block.replace("scored variably.", "scored."), []), /span start marker/);
+  const barber = audit.pubmedAbstractText(artifacts.barber2000.bytes.toString("utf8"));
+  assert.deepEqual([...barber.sections.keys()], [
+    "abstract:BACKGROUND",
+    "abstract:METHODS",
+    "abstract:FINDINGS",
+    "abstract:INTERPRETATION",
+  ]);
+});
+
+test("runtime mutations fail the binding", () => {
   // Old insula-as-subcortical breakdown.
   const oldBreakdown = calculatorWith({
     compute: (values) => {
@@ -325,7 +525,18 @@ test("the saved live bytes verify offline and runtime mutations fail", () => {
     /subLabels drifted/,
   );
   assert.throws(
-    () => audit.verifyRuntime(calculatorWith({ info: { ...ASPECTSScore.info, text: ASPECTSScore.info.text.replace("Posterior MCA cortex (behind M2)", "Posterior temporal lobe (posterior MCA cortex)") } })),
+    () =>
+      audit.verifyRuntime(
+        calculatorWith({
+          info: {
+            ...ASPECTSScore.info,
+            text: ASPECTSScore.info.text.replace(
+              "Posterior MCA cortex (behind M2)",
+              "Posterior temporal lobe (posterior MCA cortex)",
+            ),
+          },
+        }),
+      ),
     /ganglionic-level region list drifted/,
   );
   assert.throws(
@@ -334,104 +545,40 @@ test("the saved live bytes verify offline and runtime mutations fail", () => {
   );
 });
 
-test("each pin fails on a change it guards and ignores changes it must ignore", () => {
-  const artifacts = savedArtifacts();
-
-  // PMC page: chrome and per-request tokens may change; the article body may not.
-  const chrome = withText(artifacts, "pexman2001", (html) =>
-    html
-      .replace(/name="csrfmiddlewaretoken" value="[^"]*"/, 'name="csrfmiddlewaretoken" value="mutated-token"')
-      .replace(/<meta name="ncbi_phid" content="[^"]*"/, '<meta name="ncbi_phid" content="MUTATED"')
-      .replace('<section class="body main-article-body">', '<nav>Injected site notice</nav><section class="body main-article-body">'),
-  );
-  assert.doesNotThrow(() => audit.buildAudit(chrome));
-  const body = withText(artifacts, "pexman2001", (html) =>
-    html.replace("assessed only the posterior limb", "assessed only the anterior limb"),
-  );
-  assert.throws(() => audit.buildAudit(body), /pexman2001: article-body text drifted/);
-
-  // PubMed record: indexing metadata may change; the citation and abstract may not.
-  const indexing = withText(artifacts, "barber2000", (xml) =>
-    xml
-      .replace(/<DateRevised><Year>\d+<\/Year>/, "<DateRevised><Year>2099</Year>")
-      .replace("</MeshHeadingList>", '<MeshHeading><DescriptorName UI="D000000">Mutated</DescriptorName></MeshHeading></MeshHeadingList>'),
-  );
-  assert.doesNotThrow(() => audit.buildAudit(indexing));
-  const abstract = withText(artifacts, "barber2000", (xml) => xml.replace("ten regions of interest", "nine regions of interest"));
-  assert.throws(() => audit.buildAudit(abstract), /barber2000: citation\/abstract text drifted/);
-
-  // Raw-byte pins: any change fails, even one that keeps the length.
-  const dubey = withText(artifacts, "dubey2013", (xml) => xml.replace("allotted 3 points", "allotted 4 points"));
-  assert.throws(() => audit.buildAudit(dubey), /dubey2013: artifact SHA-256 drifted/);
-  const capsule = withText(artifacts, "developers_insula_basal_ganglia", (html) =>
-    html.replace("if posterior limb is hypodense", "if anterior limb is hypodense"),
-  );
-  assert.throws(() => audit.buildAudit(capsule), /developers_insula_basal_ganglia: artifact byte length drifted/);
-
-  // Identity: capture time, original page, final URL.
-  const otherCapture = {
-    ...artifacts,
-    developers_m1_m6: { ...artifacts.developers_m1_m6, mementoDatetime: "Sat, 01 Jan 2022 00:00:00 GMT" },
-  };
-  assert.throws(() => audit.buildAudit(otherCapture), /developers_m1_m6: archive capture time drifted/);
-  const otherPage = {
-    ...artifacts,
-    developers_what_is: {
-      ...artifacts.developers_what_is,
-      link: '<http://www.aspectsinstroke.com:80/contacts/>; rel="original"',
-    },
-  };
-  assert.throws(() => audit.buildAudit(otherPage), /developers_what_is: archive capture is not of the pinned page/);
-  const moved = {
-    ...artifacts,
-    pexman2001: { ...artifacts.pexman2001, finalUrl: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7974585/" },
-  };
-  assert.throws(() => audit.buildAudit(moved), /pexman2001: final URL host drifted/);
-
-  // Statement spans: a change inside a span is caught even if a region pin were re-pinned.
-  const statement = audit.STATEMENTS.find(({ id }) => id === "pexman2001-results-internal-capsule-split");
-  const blocks = audit.pmcArticleBlocks(artifacts.pexman2001.bytes.toString("utf8"));
-  const block = blocks.find((candidate) => candidate.startsWith(statement.block));
-  const mismatches = [];
-  audit.checkSpans(statement, block.replace("both limbs", "one limb"), mismatches);
-  assert.equal(mismatches.length, 1);
-  assert.throws(() => audit.checkSpans(statement, block.replace("scored variably.", "scored."), []), /span start marker/);
-});
-
 test("retrieval retries transport failures only", async () => {
   const source = audit.SOURCES.dubey2013;
+  const saved = savedArtifacts().dubey2013;
   const sleeps = [];
   const sleep = async (ms) => {
     sleeps.push(ms);
   };
-  const response = (status, body = "", headers = {}) =>
-    new Response(body, { status, headers: { "content-type": "text/xml; charset=UTF-8", ...headers } });
 
   let calls = 0;
   const flaky = async (url) => {
     calls += 1;
     if (calls === 1) throw new TypeError("fetch failed");
-    if (calls === 2) return response(503, "", { "retry-after": "2" });
-    const ok = response(200, "<ok/>");
-    Object.defineProperty(ok, "url", { value: url });
-    return ok;
+    if (calls === 2) return fakeResponse({ status: 503, url, retryAfter: "2" });
+    if (calls === 3) return fakeResponse({ status: 429, url });
+    return fakeResponse({ url: saved.finalUrl, contentType: saved.contentType, bytes: saved.bytes });
   };
   const retrieved = await audit.retrieve(source, { fetchImpl: flaky, sleep });
-  assert.equal(retrieved.attempts, 3);
-  assert.deepEqual(sleeps, [1000, 2000]);
+  assert.equal(retrieved.attempts, 4);
+  assert.deepEqual(sleeps, [1000, 2000, 4000]);
 
-  calls = 0;
-  await assert.rejects(
-    audit.retrieve(source, {
-      fetchImpl: async () => {
-        calls += 1;
-        return response(404);
-      },
-      sleep,
-    }),
-    /dubey2013: primary-source retrieval failed after 1 attempt\(s\) \(HTTP 404\)/,
-  );
-  assert.equal(calls, 1, "a 404 is not retried");
+  for (const status of [404, 403, 410]) {
+    calls = 0;
+    await assert.rejects(
+      audit.retrieve(source, {
+        fetchImpl: async (url) => {
+          calls += 1;
+          return fakeResponse({ status, url });
+        },
+        sleep,
+      }),
+      new RegExp(`dubey2013: primary-source retrieval failed after 1 attempt\\(s\\) \\(HTTP ${status}\\)`),
+    );
+    assert.equal(calls, 1, `HTTP ${status} is not retried`);
+  }
 
   calls = 0;
   await assert.rejects(
@@ -445,5 +592,9 @@ test("retrieval retries transport failures only", async () => {
     /after 4 attempt\(s\) \(fetch failed\)/,
   );
   assert.equal(calls, audit.FETCH_ATTEMPTS);
+  assert.deepEqual(
+    [408, 429, 500, 503, 404, 403].map((status) => audit.isRetryableStatus(status)),
+    [true, true, true, true, false, false],
+  );
   assert.equal(audit.retryDelayMs(null, 9), 20_000, "backoff is capped");
 });

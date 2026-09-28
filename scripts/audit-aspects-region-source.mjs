@@ -4,9 +4,12 @@
 //
 // Sources, all free to read:
 // - Barber et al., Lancet 2000 (the original ASPECTS paper; PMID 10905241). Only the PubMed
-//   record is free, so the audit pins its citation and abstract.
+//   record is free; the audit reads it as the plain-text abstract, which is byte-stable.
 // - Pexman et al., AJNR 2001 (the developers' methods paper; PMID 11559501, PMC7974585). The
-//   publisher does not release it as PMC XML, so the audit reads the PMC article page.
+//   publisher releases no PMC XML, the live PMC page is not byte-stable (per-request id and
+//   CSRF token) and the PMC PDF sits behind a browser challenge, which the audit does not
+//   bypass. The audit therefore reads a fixed Internet Archive capture of the PMC article page
+//   (2025-02-02). Its article body is identical to the live page's as of 2026-09-28.
 // - Dubey et al., Stroke Res Treat 2013 (PMC3732599, CC BY 3.0). Its Figure 1 reprints the
 //   developers' ASPECTS template from aspectsinstroke.com with the Calgary group's permission.
 // - The developers' own site, aspectsinstroke.com. The live site fails TLS (expired
@@ -14,15 +17,15 @@
 //   captures of the 2016 site: "What is ASPECTS", the training page "Insula and basal
 //   ganglia" and the training page "M1-M6 regions".
 //
-// Pins. Static artifacts are pinned by the byte length and SHA-256 of the raw response: the
-// Dubey 2013 PMC XML and the three archive captures (an Internet Archive "id_" capture never
-// changes). Two sources are not static, so their content region is pinned instead of raw
-// bytes. The PMC article page embeds a per-request id and CSRF token, so the audit pins the
-// SHA-256 of its normalized article body (Abstract through the last figure legend). The PubMed
-// record carries indexing metadata (revision date, MeSH terms, comment links) that NLM updates
-// without any change to the article, so the audit pins the SHA-256 of its normalized citation
-// and abstract. Every artifact must also come from its pinned final URL with its pinned media
-// type, and each one's identity (PMID, PMCID, DOI, title, capture time) is checked.
+// Pins. Every artifact is pinned by the exact byte length and SHA-256 of the raw response
+// body, and each pin was byte-stable across fetches minutes apart. retrieve() checks the pins,
+// the final URL (protocol, host, path, query) and the media type before returning, so nothing
+// is parsed until every pin holds. For the four Internet Archive captures (an "id_" capture
+// never changes) it also checks the Memento capture time, the original URL, and the capture's
+// SHA-1 as published in the archive's CDX index. A 200 response that misses any pin fails at
+// once and is never retried; only transport failures (network errors, timeouts, HTTP 408, 429
+// and 5xx) are retried. After the pins hold, each artifact's identity (PMID, PMCID, DOI,
+// title, page) is checked.
 //
 // Statements. Each source statement is pinned by the length and SHA-256 of the exact
 // normalized span that runs from a short `from` marker to the next `to` marker inside its
@@ -57,37 +60,32 @@ const ARCHIVE_ORIGIN = "http://www.aspectsinstroke.com:80";
 export const SOURCES = Object.freeze({
   barber2000: Object.freeze({
     key: "barber2000",
-    role: "original ASPECTS publication (PubMed citation and abstract; full text is paywalled)",
+    role: "original ASPECTS publication (PubMed plain-text abstract; full text is paywalled)",
     document:
       "Barber PA, Demchuk AM, Zhang J, Buchan AM. Validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke before thrombolytic therapy. Lancet. 2000;355(9216):1670-1674",
     pmid: "10905241",
     doi: "10.1016/S0140-6736(00)02237-6",
-    url: `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&tool=${NCBI_TOOL}&id=10905241`,
-    media_type: "text/xml",
-    pin: "citation-abstract-text",
-    pin_rationale:
-      "PubMed records carry indexing metadata (revision date, MeSH terms, comment links) that NLM updates without any change to the article",
-    content_sha256: "b9d3c4f1e0ca70cb5e8a6d179579fb53e3f8b08bdb48f85cfd675b3877827598",
-    content_fields: 13,
-    content_digest_basis:
-      "PMID, DOI, journal ISSN, volume, issue and year, article title, pagination and each labelled abstract paragraph; entities decoded, NFKC, quote/dash folding, whitespace collapsed, one field per line",
+    url: `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=10905241&rettype=abstract&retmode=text&tool=${NCBI_TOOL}`,
+    media_type: "text/plain",
+    pin: "raw-bytes",
+    bytes: 2_463,
+    sha256: "fee68808adc8d45b02413464c7dc282361e72458bb2a9d340a69becad7a3960d",
   }),
   pexman2001: Object.freeze({
     key: "pexman2001",
-    role: "ASPECTS developers' methods paper (full text)",
+    role: "ASPECTS developers' methods paper (full text; Internet Archive capture of the PMC article page)",
     document:
       "Pexman JHW, Barber PA, Hill MD, et al. Use of the Alberta Stroke Program Early CT Score (ASPECTS) for assessing CT scans in patients with acute stroke. AJNR Am J Neuroradiol. 2001;22(8):1534-1542",
     pmid: "11559501",
     pmcid: "PMC7974585",
-    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC7974585/",
+    original_url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC7974585/",
+    memento_datetime: "Sun, 02 Feb 2025 05:57:43 GMT",
+    url: "https://web.archive.org/web/20250202055743id_/https://pmc.ncbi.nlm.nih.gov/articles/PMC7974585/",
     media_type: "text/html",
-    pin: "article-body-text",
-    pin_rationale:
-      "the PMC article page embeds a per-request id, a CSRF token and site chrome that change without any change to the article",
-    content_sha256: "1175e3d4722b64b9a9c723c1faa480a141464c14904a80e9550720a50d8bf09d",
-    content_blocks: 46,
-    content_digest_basis:
-      "paragraph blocks of the main article body (Abstract through the last figure legend, before Footnotes); tags removed, entities decoded, NFKC, quote/dash folding, whitespace collapsed, one block per line",
+    pin: "raw-bytes",
+    bytes: 143_520,
+    sha256: "1167a826eb0079f360f2cafdbe0040fb39a9bdaa0e6ca92dc54a5132d5b569d7",
+    archive_sha1_base32: "6CAKOH2THRQX4SAUN7IR3CMVB4IQDWUJ",
   }),
   dubey2013: Object.freeze({
     key: "dubey2013",
@@ -114,6 +112,7 @@ export const SOURCES = Object.freeze({
     pin: "raw-bytes",
     bytes: 12_396,
     sha256: "0fa6d381b95c3eb6d61f082c2c1e5821d3b5b00fcc461fa3666359adebb5a03e",
+    archive_sha1_base32: "IEC2BKTXILM7IDIMIOYD3C7XG3CJKYBZ",
     page_title: "Alberta Stroke Program Early CT score (ASPECTS) - What is ASPECTS",
   }),
   developers_insula_basal_ganglia: Object.freeze({
@@ -127,6 +126,7 @@ export const SOURCES = Object.freeze({
     pin: "raw-bytes",
     bytes: 11_387,
     sha256: "2ab9a266bbfd2dfbfcb1b8f60bded61ca9befa29393c1d6a768a0c264f5befe5",
+    archive_sha1_base32: "YUXRQZ452UCGIVYWN5VJRD43FQHOU6A2",
     selected_menu_item: "Insula and basal ganglia",
   }),
   developers_m1_m6: Object.freeze({
@@ -140,6 +140,7 @@ export const SOURCES = Object.freeze({
     pin: "raw-bytes",
     bytes: 10_930,
     sha256: "c2f480242b0061b6a0c122496dbdf45cf6c0a416ffddec1a7f7977a87fd657fb",
+    archive_sha1_base32: "YSZ7GX7XZFGGGMWDXBIO7FZHYDQFDDB5",
     page_title: "Alberta Stroke Program Early CT score (ASPECTS) - M1-M6 regions",
     selected_menu_item: "M1-M6 regions",
   }),
@@ -697,44 +698,49 @@ export function markupText(fragment) {
   );
 }
 
-// Text of one XML element (first match), with inline tags removed.
-function xmlElementText(xml, tag, label) {
-  const match = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`).exec(xml);
-  assert.ok(match, `${label}: <${tag}> is missing`);
-  return markupText(match[1]);
-}
+// ---- Barber 2000: PubMed plain-text abstract --------------------------------------------------
 
-// ---- Barber 2000: PubMed citation and abstract -------------------------------------------------
+const BARBER_ABSTRACT_LABELS = Object.freeze(["BACKGROUND", "METHODS", "FINDINGS", "INTERPRETATION"]);
 
-export function pubmedCitationFields(xml) {
-  const citation = /<MedlineCitation\b[\s\S]*?<\/MedlineCitation>/.exec(xml)?.[0];
-  assert.ok(citation, "barber2000: MedlineCitation is missing");
-  const article = /<Article\b[\s\S]*?<\/Article>/.exec(citation)?.[0];
-  assert.ok(article, "barber2000: Article is missing");
-  const journal = /<Journal>[\s\S]*?<\/Journal>/.exec(article)?.[0];
-  assert.ok(journal, "barber2000: Journal is missing");
-  const doi = /<ArticleId IdType="doi">([^<]+)<\/ArticleId>/.exec(xml)?.[1];
-  assert.ok(doi, "barber2000: DOI is missing");
-  const fields = [
-    ["pmid", /<PMID Version="1">(\d+)<\/PMID>/.exec(citation)?.[1] ?? ""],
-    ["doi", foldText(doi)],
-    ["issn", xmlElementText(journal, "ISSN", "barber2000")],
-    ["volume", xmlElementText(journal, "Volume", "barber2000")],
-    ["issue", xmlElementText(journal, "Issue", "barber2000")],
-    ["year", xmlElementText(journal, "Year", "barber2000")],
-    ["journal", xmlElementText(journal, "ISOAbbreviation", "barber2000")],
-    ["title", xmlElementText(article, "ArticleTitle", "barber2000")],
-    ["pages", `${xmlElementText(article, "StartPage", "barber2000")}-${xmlElementText(article, "EndPage", "barber2000")}`],
-  ];
-  const abstract = /<Abstract>([\s\S]*?)<\/Abstract>/.exec(article)?.[1];
-  assert.ok(abstract, "barber2000: Abstract is missing");
-  for (const match of abstract.matchAll(/<AbstractText Label="([^"]+)"[^>]*>([\s\S]*?)<\/AbstractText>/g)) {
-    fields.push([`abstract:${match[1]}`, markupText(match[2])]);
+// Parses the efetch rettype=abstract, retmode=text record: blank-line-separated blocks for the
+// citation, title, authors, author information, erratum and comment notes, the labelled
+// abstract, and the closing DOI and PMID lines.
+export function pubmedAbstractText(text) {
+  const blocks = text
+    .replace(/\r\n/g, "\n")
+    .split(/\n[ \t]*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  assert.ok(blocks.length >= 4, "barber2000: PubMed record structure is missing");
+  const abstractBlocks = blocks.filter((block) => block.startsWith(`${BARBER_ABSTRACT_LABELS[0]}: `));
+  assert.equal(abstractBlocks.length, 1, "barber2000: expected exactly one labelled abstract");
+  const sections = new Map();
+  const labelStart = new RegExp(`^(?=(?:${BARBER_ABSTRACT_LABELS.join("|")}): )`, "m");
+  for (const part of abstractBlocks[0].split(labelStart)) {
+    const match = /^([A-Z]+): ([\s\S]*)$/.exec(part);
+    assert.ok(match, "barber2000: abstract text outside a labelled section");
+    sections.set(`abstract:${match[1]}`, foldText(match[2]));
   }
-  const errata = [...xml.matchAll(/<CommentsCorrections RefType="ErratumIn">\s*<RefSource>([^<]+)<\/RefSource>/g)].map(
-    (match) => foldText(decodeEntities(match[1])),
+  assert.deepEqual(
+    [...sections.keys()],
+    BARBER_ABSTRACT_LABELS.map((label) => `abstract:${label}`),
+    "barber2000: abstract sections drifted",
   );
-  return { fields, errata };
+  const errataBlock = blocks.find((block) => block.startsWith("Erratum in"));
+  return {
+    citation: foldText(blocks[0]),
+    title: foldText(blocks[1]),
+    sections,
+    pmid: /^PMID: (\d+)/m.exec(text)?.[1] ?? null,
+    doi: /^DOI: (\S+)$/m.exec(text)?.[1] ?? null,
+    errata: errataBlock
+      ? errataBlock
+          .split("\n")
+          .slice(1)
+          .map((line) => foldText(line))
+          .filter(Boolean)
+      : [],
+  };
 }
 
 // ---- Pexman 2001: PMC article page ------------------------------------------------------------
@@ -789,8 +795,15 @@ export function retryDelayMs(response, attempt, now = Date.now()) {
   return Math.min(1_000 * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS);
 }
 
-// Retries only transport failures (network errors, timeouts, HTTP 408, 429 and 5xx). A 200
-// response that misses a pin is a changed source, not a transient failure, and fails at once.
+export function isRetryableStatus(status) {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+// Retries only transport failures: network errors, timeouts, body-read failures and HTTP 408,
+// 429 and 5xx. Every 200 response is checked against all of its source's pins (final URL,
+// media type, archive capture, byte length, SHA-256) before it is returned, so nothing is
+// parsed unverified. A 200 that misses any pin is a changed source, not a transient failure:
+// it fails at once and is never retried.
 export async function retrieve(source, { fetchImpl = fetch, sleep = delay, attempts = FETCH_ATTEMPTS } = {}) {
   let lastFailure = "unknown retrieval failure";
   let made = 0;
@@ -807,22 +820,28 @@ export async function retrieve(source, { fetchImpl = fetch, sleep = delay, attem
       lastFailure = error instanceof Error ? error.message : String(error);
     }
     if (response?.ok) {
+      let bytes;
       try {
-        return {
-          bytes: Buffer.from(await response.arrayBuffer()),
+        bytes = Buffer.from(await response.arrayBuffer());
+      } catch (error) {
+        lastFailure = `body read failed (${error instanceof Error ? error.message : String(error)})`;
+      }
+      if (bytes) {
+        const artifact = {
+          bytes,
           finalUrl: response.url,
           contentType: response.headers.get("content-type") ?? "",
           mementoDatetime: response.headers.get("memento-datetime"),
           link: response.headers.get("link"),
           attempts: attempt,
         };
-      } catch (error) {
-        lastFailure = `body read failed (${error instanceof Error ? error.message : String(error)})`;
+        verifyPinnedArtifact(source, artifact);
+        return artifact;
       }
     } else if (response) {
       lastFailure = `HTTP ${response.status}`;
       await response.body?.cancel?.();
-      if (response.status !== 408 && response.status !== 429 && response.status < 500) break;
+      if (!isRetryableStatus(response.status)) break;
     }
     if (attempt < attempts) await sleep(retryDelayMs(response, attempt));
   }
@@ -830,6 +849,30 @@ export async function retrieve(source, { fetchImpl = fetch, sleep = delay, attem
 }
 
 // ---- Verification -----------------------------------------------------------------------------
+
+// RFC 4648 base32 of the SHA-1 digest: the form of the Internet Archive CDX "digest" field.
+export function sha1Base32(bytes) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let value = 0;
+  let bits = 0;
+  let out = "";
+  for (const byte of createHash("sha1").update(bytes).digest()) {
+    value = ((value << 8) | byte) & 0xffff;
+    bits += 8;
+    while (bits >= 5) {
+      out += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  return bits > 0 ? out + alphabet[(value << (5 - bits)) & 31] : out;
+}
+
+// All pins of one artifact, checked before anything in it is parsed.
+export function verifyPinnedArtifact(source, artifact) {
+  assert.equal(source.pin, "raw-bytes", `${source.key}: every source must be pinned by its raw bytes`);
+  assertArtifactIdentity(source, artifact);
+  assertRawBytePin(source, artifact.bytes);
+}
 
 export function assertArtifactIdentity(source, retrieved) {
   const expected = new URL(source.url);
@@ -859,6 +902,7 @@ export function assertArtifactIdentity(source, retrieved) {
 
 export function assertRawBytePin(source, bytes) {
   assert.equal(source.pin, "raw-bytes", `${source.key}: raw-byte pin requested for a ${source.pin} source`);
+  assert.ok(Buffer.isBuffer(bytes), `${source.key}: artifact bytes are missing`);
   assert.equal(
     bytes.length,
     source.bytes,
@@ -869,6 +913,13 @@ export function assertRawBytePin(source, bytes) {
     source.sha256,
     `${source.key}: artifact SHA-256 drifted (re-review the statements before re-pinning)`,
   );
+  if (source.archive_sha1_base32) {
+    assert.equal(
+      sha1Base32(bytes),
+      source.archive_sha1_base32,
+      `${source.key}: bytes differ from the Internet Archive CDX digest of the capture`,
+    );
+  }
 }
 
 export function spanDigest(text, from, to, label) {
@@ -913,7 +964,7 @@ export function locateBlocks(texts) {
     const label = `${statement.id} (${statement.locator})`;
     let block;
     if (statement.source === "barber2000") {
-      block = new Map(texts.barber2000.fields).get(statement.block);
+      block = texts.barber2000.sections.get(statement.block);
       assert.ok(block, `${label}: ${statement.block} is missing`);
     } else if (statement.source === "dubey2013") {
       block = texts.dubey2013.caption;
@@ -925,48 +976,32 @@ export function locateBlocks(texts) {
   return located;
 }
 
-// Verifies every artifact pin and identity, then every statement span. `retrieved` maps each
-// source key to the retrieve() result. Returns the per-source text views and verified statements.
+// Verifies every artifact's pins, then its identity, then every statement span. `retrieved`
+// maps each source key to the retrieve() result. The pins are checked again here, before any
+// parsing, so bytes handed in directly (tests, saved-source replays) pass the same gate as a
+// live retrieval.
 export function verifyArtifacts(retrieved, { sources = SOURCES } = {}) {
-  const texts = {};
-  const observed = {};
   for (const source of Object.values(sources)) {
     const artifact = retrieved[source.key];
     assert.ok(artifact, `${source.key}: artifact was not retrieved`);
-    assertArtifactIdentity(source, artifact);
-    if (source.pin === "raw-bytes") assertRawBytePin(source, artifact.bytes);
-    observed[source.key] = {
-      final_url: artifact.finalUrl,
-      bytes: artifact.bytes.length,
-      sha256: sha256(artifact.bytes),
-      raw_bytes_enforced: source.pin === "raw-bytes",
-    };
+    verifyPinnedArtifact(source, artifact);
   }
+  const texts = {};
 
-  // Barber 2000: PubMed citation and abstract region.
-  const barber = pubmedCitationFields(retrieved.barber2000.bytes.toString("utf8"));
-  const barberFields = new Map(barber.fields);
-  assert.equal(barberFields.get("pmid"), sources.barber2000.pmid, "barber2000: PMID drifted");
-  assert.equal(
-    barberFields.get("doi").toLowerCase(),
-    sources.barber2000.doi.toLowerCase(),
-    "barber2000: DOI drifted",
+  // Barber 2000: PubMed plain-text record identity, then the labelled abstract.
+  const barber = pubmedAbstractText(retrieved.barber2000.bytes.toString("utf8"));
+  assert.equal(barber.pmid, sources.barber2000.pmid, "barber2000: PMID drifted");
+  assert.equal(barber.doi?.toLowerCase(), sources.barber2000.doi.toLowerCase(), "barber2000: DOI drifted");
+  assert.match(barber.citation, /^1\. Lancet\. 2000 May 13;355\(9216\):1670-4\./, "barber2000: citation drifted");
+  assert.ok(
+    barber.title.startsWith(
+      "Validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke before thrombolytic therapy.",
+    ),
+    "barber2000: title drifted",
   );
-  assert.equal(barberFields.get("journal"), "Lancet", "barber2000: journal drifted");
-  assert.equal(barberFields.get("volume"), "355", "barber2000: volume drifted");
-  assert.equal(barberFields.get("issue"), "9216", "barber2000: issue drifted");
-  assert.equal(barberFields.get("year"), "2000", "barber2000: year drifted");
-  assert.equal(barberFields.get("pages"), "1670-1674", "barber2000: pages drifted");
-  const barberContent = barber.fields.map(([name, value]) => `${name}: ${value}`).join("\n");
-  assert.equal(barber.fields.length, sources.barber2000.content_fields, "barber2000: citation/abstract field count drifted");
-  assert.equal(
-    sha256(barberContent),
-    sources.barber2000.content_sha256,
-    "barber2000: citation/abstract text drifted (re-review the Barber statement before re-pinning)",
-  );
-  texts.barber2000 = { fields: barber.fields };
+  texts.barber2000 = { sections: barber.sections };
 
-  // Pexman 2001: PMC article body region plus citation metadata.
+  // Pexman 2001: PMC article page capture, citation metadata, then the article body.
   const pexmanHtml = retrieved.pexman2001.bytes.toString("utf8");
   assert.equal(htmlMeta(pexmanHtml, "citation_pmid"), sources.pexman2001.pmid, "pexman2001: PMID drifted");
   assert.equal(
@@ -982,15 +1017,7 @@ export function verifyArtifacts(retrieved, { sources = SOURCES } = {}) {
     new RegExp(`<link rel="canonical" href="https://pmc\\.ncbi\\.nlm\\.nih\\.gov/articles/${sources.pexman2001.pmcid}/">`),
     "pexman2001: canonical PMC URL drifted",
   );
-  const pexmanBlocks = pmcArticleBlocks(pexmanHtml);
-  assert.equal(pexmanBlocks.length, sources.pexman2001.content_blocks, "pexman2001: article-body paragraph count drifted");
-  const pexmanContentSha256 = sha256(pexmanBlocks.join("\n"));
-  assert.equal(
-    pexmanContentSha256,
-    sources.pexman2001.content_sha256,
-    "pexman2001: article-body text drifted (re-review the Pexman statements before re-pinning)",
-  );
-  texts.pexman2001 = { blocks: pexmanBlocks };
+  texts.pexman2001 = { blocks: pmcArticleBlocks(pexmanHtml) };
 
   // Dubey 2013: identity from the raw-pinned XML, then the Figure 1 caption.
   const dubeyXml = retrieved.dubey2013.bytes.toString("utf8");
@@ -1043,12 +1070,7 @@ export function verifyArtifacts(retrieved, { sources = SOURCES } = {}) {
     `pinned source spans drifted (re-review each statement at its locator before re-pinning):\n${JSON.stringify(mismatches, null, 2)}`,
   );
 
-  return {
-    verified,
-    observed,
-    barber: { contentSha256: sha256(barberContent), fields: barber.fields.length, errata: barber.errata },
-    pexman: { contentSha256: pexmanContentSha256, blocks: pexmanBlocks.length },
-  };
+  return { verified, barber: { errata: barber.errata } };
 }
 
 // ---- Runtime binding --------------------------------------------------------------------------
@@ -1217,23 +1239,18 @@ export function buildAudit(retrieved, { calculator = ASPECTSScore, calculatorSou
       ...(source.doi ? { doi: source.doi } : {}),
       ...(source.license ? { license: source.license } : {}),
       ...(source.original_url
-        ? { original_url: source.original_url, memento_datetime: source.memento_datetime }
+        ? {
+            original_url: source.original_url,
+            memento_datetime: source.memento_datetime,
+            archive_sha1_base32: source.archive_sha1_base32,
+          }
         : {}),
       url: source.url,
-      final_url: artifacts.observed[source.key].final_url,
+      final_url: retrieved[source.key].finalUrl,
       media_type: source.media_type,
       pin: source.pin,
-      ...(source.pin === "raw-bytes"
-        ? { bytes: source.bytes, sha256: source.sha256 }
-        : {
-            pin_rationale: source.pin_rationale,
-            content_sha256: source.key === "barber2000" ? artifacts.barber.contentSha256 : artifacts.pexman.contentSha256,
-            ...(source.key === "barber2000"
-              ? { content_fields: artifacts.barber.fields }
-              : { content_blocks: artifacts.pexman.blocks }),
-            content_digest_basis: source.content_digest_basis,
-            observed_raw: { ...artifacts.observed[source.key], raw_bytes_enforced: false },
-          }),
+      bytes: source.bytes,
+      sha256: source.sha256,
     })),
     source_statements: [...artifacts.verified.values()],
     claim_bindings: CLAIM_BINDINGS.map((binding) => ({

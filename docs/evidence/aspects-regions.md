@@ -13,6 +13,15 @@ node scripts/audit-aspects-region-source.test.mjs
 node --import ./scripts/register-jsx-loader.mjs scripts/audit-aspects-region-source.mjs
 ```
 
+Every retrieved artifact is pinned by its exact byte length and the SHA-256 of
+its raw bytes. Each pin was byte-stable across fetches minutes apart.
+`retrieve()` checks these pins, the final URL and the media type before it
+returns, so nothing is parsed until every pin holds. For Internet Archive
+captures it also checks the capture time, the original URL, and the capture's
+SHA-1 as published in the archive's CDX index. A 200 response that misses a pin
+fails at once and is never retried. Only transport failures are retried:
+network errors, timeouts, and HTTP 408, 429 and 5xx.
+
 The repository stores no copied source passages. Each source statement is pinned
 in `scripts/audit-aspects-region-source.mjs` by the SHA-256 of its exact
 normalized text between two markers of at most six words, with a locator and a
@@ -23,12 +32,12 @@ facts are the only other source content here.
 
 | Key | Source | Identifiers | Retrieved from | Pin |
 |---|---|---|---|---|
-| `barber2000` | Barber PA, Demchuk AM, Zhang J, Buchan AM. Validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke before thrombolytic therapy. Lancet. 2000;355(9216):1670-1674. The original ASPECTS paper. | PMID 10905241 (verified); DOI 10.1016/S0140-6736(00)02237-6 | PubMed record through NCBI E-utilities (`tool=radulator-aspects-audit`, no e-mail) | SHA-256 of the normalized citation and abstract (13 fields). PubMed updates indexing metadata without any change to the article, so raw bytes are not pinned. |
-| `pexman2001` | Pexman JHW, Barber PA, Hill MD, et al. Use of the Alberta Stroke Program Early CT Score (ASPECTS) for assessing CT scans in patients with acute stroke. AJNR Am J Neuroradiol. 2001;22(8):1534-1542. The developers' methods paper. | PMID 11559501; PMCID PMC7974585 | PMC article page (the publisher does not release PMC XML for it) | SHA-256 of the normalized article body (46 paragraph blocks, Abstract through the last figure legend). The page carries a per-request id and CSRF token, so raw bytes are not pinned. |
+| `barber2000` | Barber PA, Demchuk AM, Zhang J, Buchan AM. Validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke before thrombolytic therapy. Lancet. 2000;355(9216):1670-1674. The original ASPECTS paper. | PMID 10905241 (verified); DOI 10.1016/S0140-6736(00)02237-6 | PubMed plain-text abstract through NCBI E-utilities (`rettype=abstract&retmode=text`, `tool=radulator-aspects-audit`, no e-mail) | Raw bytes: 2,463 bytes, SHA-256 `fee68808adc8d45b02413464c7dc282361e72458bb2a9d340a69becad7a3960d` |
+| `pexman2001` | Pexman JHW, Barber PA, Hill MD, et al. Use of the Alberta Stroke Program Early CT Score (ASPECTS) for assessing CT scans in patients with acute stroke. AJNR Am J Neuroradiol. 2001;22(8):1534-1542. The developers' methods paper. | PMID 11559501; PMCID PMC7974585; Internet Archive capture of the PMC article page, 2025-02-02 05:57:43 GMT | web.archive.org `id_` capture. The live PMC page is not byte-stable (per-request id and CSRF token). The PMC PDF sits behind a browser challenge, which was not bypassed. The publisher releases no PMC XML. | Raw bytes: 143,520 bytes, SHA-256 `1167a826eb0079f360f2cafdbe0040fb39a9bdaa0e6ca92dc54a5132d5b569d7`; archive SHA-1 `6CAKOH2THRQX4SAUN7IR3CMVB4IQDWUJ`. The capture's article body (46 paragraphs) is identical to the live page's as of 2026-09-28. |
 | `dubey2013` | Dubey P, et al. Acute stroke imaging: recent updates. Stroke Res Treat. 2013;2013:767212. Figure 1 reprints the developers' ASPECTS template from aspectsinstroke.com with the Calgary group's permission. | PMID 23970999; PMCID PMC3732599; DOI 10.1155/2013/767212; article licence CC BY 3.0 | PMC XML through NCBI E-utilities | Raw bytes: 65,170 bytes, SHA-256 `7a0479726ba0956a36ce9e63050bf0e052fe69ac292428a67a9254b26d54a2ba` |
-| `developers_what_is` | aspectsinstroke.com (Foothills Medical Centre, University of Calgary), "What is ASPECTS" | Internet Archive capture of 2016-12-06 11:53:58 GMT | web.archive.org `id_` capture | Raw bytes: 12,396 bytes, SHA-256 `0fa6d381b95c3eb6d61f082c2c1e5821d3b5b00fcc461fa3666359adebb5a03e` |
-| `developers_insula_basal_ganglia` | aspectsinstroke.com, Training: "Insula and basal ganglia" | Internet Archive capture of 2016-12-29 22:22:03 GMT | web.archive.org `id_` capture | Raw bytes: 11,387 bytes, SHA-256 `2ab9a266bbfd2dfbfcb1b8f60bded61ca9befa29393c1d6a768a0c264f5befe5` |
-| `developers_m1_m6` | aspectsinstroke.com, Training: "M1-M6 regions" | Internet Archive capture of 2016-12-30 02:52:53 GMT | web.archive.org `id_` capture | Raw bytes: 10,930 bytes, SHA-256 `c2f480242b0061b6a0c122496dbdf45cf6c0a416ffddec1a7f7977a87fd657fb` |
+| `developers_what_is` | aspectsinstroke.com (Foothills Medical Centre, University of Calgary), "What is ASPECTS" | Internet Archive capture of 2016-12-06 11:53:58 GMT | web.archive.org `id_` capture | Raw bytes: 12,396 bytes, SHA-256 `0fa6d381b95c3eb6d61f082c2c1e5821d3b5b00fcc461fa3666359adebb5a03e`; archive SHA-1 `IEC2BKTXILM7IDIMIOYD3C7XG3CJKYBZ` |
+| `developers_insula_basal_ganglia` | aspectsinstroke.com, Training: "Insula and basal ganglia" | Internet Archive capture of 2016-12-29 22:22:03 GMT | web.archive.org `id_` capture | Raw bytes: 11,387 bytes, SHA-256 `2ab9a266bbfd2dfbfcb1b8f60bded61ca9befa29393c1d6a768a0c264f5befe5`; archive SHA-1 `YUXRQZ452UCGIVYWN5VJRD43FQHOU6A2` |
+| `developers_m1_m6` | aspectsinstroke.com, Training: "M1-M6 regions" | Internet Archive capture of 2016-12-30 02:52:53 GMT | web.archive.org `id_` capture | Raw bytes: 10,930 bytes, SHA-256 `c2f480242b0061b6a0c122496dbdf45cf6c0a416ffddec1a7f7977a87fd657fb`; archive SHA-1 `YSZ7GX7XZFGGGMWDXBIO7FZHYDQFDDB5` |
 
 Not retrieved:
 
@@ -40,8 +49,10 @@ Not retrieved:
   the 2016 site instead. The template legend and the internal-capsule guidance
   read the same in the earliest (2012) captures as in the 2016 ones. The
   redesigned site (captured 2024) no longer carries this text.
-- Europe PMC and ajnr.org copies of Pexman 2001 (HTTP 403 in the earlier review).
-  The PMC article page was used.
+- A live, byte-stable copy of Pexman 2001. Europe PMC and ajnr.org returned
+  HTTP 403 in the earlier review, and the PMC PDF is behind a browser challenge.
+  The audit uses the fixed Internet Archive capture of the PMC article page
+  described above.
 
 ## What changed, and why
 
@@ -84,8 +95,29 @@ Not retrieved:
   breakdown, the isolated-insula case, the note boundary, the renamed collateral
   note and the M3 info line.
 - `scripts/audit-aspects-region-source.test.mjs`: the live audit, then offline
-  mutation checks on the fetched bytes. A changed word in the PMC article body,
-  the PubMed abstract or a raw-pinned file fails. A change to PMC tokens or site
-  chrome, or to PubMed indexing metadata, passes. The same checks cover a changed
-  capture time, original page or final host, and a reverted calculator (old
-  grouping, old note trigger, old M3 text).
+  replays of the fetched bytes through `retrieve()` with a counting fake fetch.
+  Every artifact is checked for each of three failure modes, and each must fail
+  at once with exactly one fetch and no retry:
+  1. same-length digest drift (one byte changed);
+  2. byte-length drift (one byte added or removed);
+  3. a drifted HTTP 200: an interstitial page, a wrong media type, a moved host
+     or query, and, for archive captures, a changed capture time or original
+     page.
+
+  The test also covers:
+  - edits inside a statement, which fail at the byte pin before any parsing;
+  - the archive CDX digests;
+  - transport retries (network error, 503 with Retry-After, 429) against 4xx
+    responses, which are not retried;
+  - a reverted calculator: old grouping, old note trigger, old M3 text, the
+    reviewer's IC text and "(-1 point)".
+
+## Availability
+
+Two sources come from NCBI E-utilities and four from web.archive.org, and
+Smoke runs this audit on every clinical PR. The Internet Archive rate-limits
+bursts by refusing HTTPS connections from the client's address for a while. A
+run makes four archive requests, which is well under that limit, but a runner
+whose address is already blocked would fail Smoke until a re-run lands on
+another runner. If that happens repeatedly, move the audit to the protected
+exact-head lane, as was done for Bosniak.
