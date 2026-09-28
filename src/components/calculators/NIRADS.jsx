@@ -11,6 +11,17 @@
  */
 
 /**
+ * The 2018 ACR NI-RADS paradigm covers contrast-enhanced CT and FDG PET/CT only
+ * (Bunch 2025). The legacy path needs one of these modalities before it assigns a
+ * 2018 category or recurrence rate.
+ */
+const LEGACY_2018_MODALITIES = new Set(["cect", "pet_ct"]);
+export const LEGACY_2018_MRI_ERROR =
+  "The 2018 NI-RADS system covers CT and PET/CT only. For MRI, choose 2025 MRI under NI-RADS Modality / Version.";
+export const LEGACY_2018_MODALITY_REQUIRED_ERROR =
+  "Please select the imaging modality (Contrast-Enhanced CT or PET/CT).";
+
+/**
  * MRI v2025 source patterns translated into concise, independently authored
  * UI wording. Categories and management are bound to the reviewed ACR packet;
  * the public source does not define a numeric ADC cutoff.
@@ -353,6 +364,21 @@ export function classifyNiradsMri2025(inputs = {}) {
       error: "new_node_pattern_requires_new_or_enlarging_status",
     };
   }
+  // A node declared new or enlarging is at least neck 2 (a new/enlarging node without high-suspicion
+  // morphology is neck 2), so a finding that would classify it as neck 1, such as "no abnormal nodes",
+  // contradicts the timing and fails closed. Neck 2-4 findings (for example definitive recurrence) stay
+  // valid. Neck only: the timing field is hidden for the primary site, where a stale value must not
+  // block classification.
+  if (
+    site === "neck" &&
+    inputs.node_temporal_status === "new_or_enlarging" &&
+    definitions.some((definition) => definition.category === "1")
+  ) {
+    return {
+      status: "error",
+      error: "new_or_enlarging_node_below_category_2",
+    };
+  }
   if (
     patternIds.includes("p3_discrete_matching_mass") &&
     inputs.original_features_match !== "yes"
@@ -405,6 +431,8 @@ const MRI_ERROR_MESSAGES = Object.freeze({
   discordance_rule_requires_original_fdg_avid: "PET/MRI discordance can be used only when the original tumor was FDG avid.",
   residual_node_pattern_requires_residual_status: "This finding applies only to residual treated nodal tissue.",
   new_node_pattern_requires_new_or_enlarging_status: "This finding applies only to a new or enlarging node.",
+  new_or_enlarging_node_below_category_2:
+    "A new or enlarging node is at least NI-RADS 2. Choose the finding that fits it, or change Neck Node Timing.",
   matching_pattern_requires_feature_match: "Confirm that the mass matches the original tumor's MRI features.",
   mismatch_pattern_requires_feature_mismatch: "Confirm that the tissue differs from the original tumor's MRI features.",
 });
@@ -547,10 +575,11 @@ Note: Management text is source-provided and ungraded; NI-RADS supports, but doe
       label: "Imaging Modality",
       type: "radio",
       section: "2018 CT/PET-CT",
+      // The 2018 ACR NI-RADS paradigm covers CT and FDG PET/CT only; MRI is assessed with MRI v2025.
+      subLabel: "CT or PET/CT only. For MRI, choose 2025 MRI under NI-RADS Modality / Version.",
       showIf: (vals) => vals.nirads_version !== "mri_2025",
       opts: [
         { value: "cect", label: "Contrast-Enhanced CT" },
-        { value: "mri", label: "MRI" },
         { value: "pet_ct", label: "PET/CT" },
       ],
     },
@@ -579,10 +608,10 @@ Note: Management text is source-provided and ungraded; NI-RADS supports, but doe
       opts: [{ value: "header", label: "--- Primary Tumor Site Findings ---" }],
     },
 
-    // PRIMARY CT/MRI FINDINGS
+    // PRIMARY CT FINDINGS
     {
       id: "primary_ct_finding",
-      label: "Primary Site CT/MRI Finding",
+      label: "Primary Site CT Finding",
       type: "radio",
       section: "2018 CT/PET-CT",
       showIf: (vals) =>
@@ -667,10 +696,10 @@ Note: Management text is source-provided and ungraded; NI-RADS supports, but doe
       ],
     },
 
-    // NECK CT/MRI FINDINGS
+    // NECK CT FINDINGS
     {
       id: "neck_ct_finding",
-      label: "Neck Node CT/MRI Finding",
+      label: "Neck Node CT Finding",
       type: "radio",
       section: "2018 CT/PET-CT",
       showIf: (vals) =>
@@ -914,6 +943,16 @@ Note: Management text is source-provided and ungraded; NI-RADS supports, but doe
       neck_pet_finding = "",
     } = vals;
 
+    // The 2018 ACR NI-RADS paradigm is specific to CT and FDG PET/CT. Without one of those
+    // modalities (none selected, MRI, or anything else, including saved or linked state) the
+    // legacy path returns no 2018 category or recurrence rate.
+    if (!modality) {
+      return { Error: LEGACY_2018_MODALITY_REQUIRED_ERROR };
+    }
+    if (!LEGACY_2018_MODALITIES.has(modality)) {
+      return { Error: LEGACY_2018_MRI_ERROR };
+    }
+
     // NI-RADS 0: Incomplete
     if (prior_available === "no_pending") {
       return {
@@ -941,7 +980,7 @@ Note: Management text is source-provided and ungraded; NI-RADS supports, but doe
     let primarySubcat = "";
     let primaryManagement = "";
 
-    // Determine primary category based on CT/MRI
+    // Determine primary category based on CT
     switch (primary_ct_finding) {
       case "expected":
         primaryCategory = "1";
