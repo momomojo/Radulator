@@ -114,6 +114,23 @@ fails(
   "2018 risk output that no longer matches the source",
 );
 
+// 5b. 2018 CT/PET-CT path must stay CT/PET-CT only (Bunch 2025).
+const withMriOption = {
+  ...nirads,
+  fields: nirads.fields.map((field) => (field.id === "modality" ? { ...field, opts: [...field.opts, { value: "mri", label: "MRI" }] } : field)),
+};
+fails(() => audit.bindRuntime(withMriOption, result.facts), /CT and PET\/CT only/, "MRI re-added to the 2018 modality options");
+fails(
+  () => audit.bindRuntime(withCompute((vals) => (vals.modality === "mri" ? nirads._compute2018({ ...vals, modality: "cect" }) : nirads.compute(vals))), result.facts),
+  /must fail closed|never receive a 2018/,
+  "MRI input receiving 2018 categories and rates",
+);
+fails(
+  () => audit.bindRuntime(withCompute((vals) => (!vals.modality && vals.nirads_version !== "mri_2025" ? nirads._compute2018({ ...vals, modality: "cect" }) : nirads.compute(vals))), result.facts),
+  /without a modality/,
+  "input without a modality receiving 2018 categories and rates",
+);
+
 // 6. Response identity and retry policy.
 fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url.replace("eutils.ncbi.nlm.nih.gov", "example.org"), contentType: "text/plain" }), /final URL host/, "wrong host");
 fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url.replace("retmode=text", "retmode=xml"), contentType: "text/plain" }), /final URL query retmode/, "wrong format");
