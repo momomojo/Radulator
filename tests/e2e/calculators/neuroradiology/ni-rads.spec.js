@@ -24,6 +24,10 @@ import {
 } from "../../../helpers/calculator-test-helper.js";
 
 const CALCULATOR_NAME = "ACR NI-RADS";
+const LEGACY_RATES_HEADING =
+  "Legacy NI-RADS recurrence rates by category (Krieger et al., AJNR 2017; positive disease across 618 primary-site and neck targets):";
+const LEGACY_RATES_SCOPE =
+  "These rates come from a 2017 study that predates MRI v2025, so they are not MRI v2025 estimates.";
 
 /**
  * Helper to select a radio option by its exact label text within the calculator form
@@ -79,9 +83,9 @@ test.describe("ACR NI-RADS Calculator", () => {
         infoSection.getByText("PRIMARY TUMOR SITE").first(),
       ).toBeVisible();
       await expect(infoSection.getByText("CERVICAL LYMPH NODES")).toBeVisible();
-      // Legacy recurrence percentages are scoped to 2018 CT/PET-CT and never read as MRI v2025 risks.
-      await expect(infoSection).toContainText("Legacy NI-RADS 2018 (CT/PET-CT) recurrence rates by category");
-      await expect(infoSection).toContainText("They do not apply to MRI v2025");
+      // Legacy recurrence percentages carry their source (Krieger 2017) and are never read as MRI v2025 risks.
+      await expect(infoSection).toContainText(LEGACY_RATES_HEADING);
+      await expect(infoSection).toContainText(LEGACY_RATES_SCOPE);
       await expect(infoSection.getByText("NI-RADS 0")).toBeVisible();
       await expect(infoSection.getByText("NI-RADS 1")).toBeVisible();
     });
@@ -837,7 +841,7 @@ test.describe("ACR NI-RADS Calculator", () => {
   });
 
   test.describe("MRI v2025 reviewed pathway", () => {
-    test("shows MRI users that the recurrence rates are legacy 2018 CT/PET-CT data", async ({
+    test("shows MRI users that the recurrence rates are sourced legacy data, not MRI v2025 estimates", async ({
       page,
     }) => {
       await selectRadioOption(page, "2025 MRI");
@@ -848,24 +852,47 @@ test.describe("ACR NI-RADS Calculator", () => {
       ).toBeVisible();
 
       const infoSection = page.getByTestId("calculator-info");
-      await expect(
-        infoSection
-          .getByText("Legacy NI-RADS 2018 (CT/PET-CT) recurrence rates by category:")
-          .first(),
-      ).toBeVisible();
-      await expect(
-        infoSection
-          .getByText(
-            "These rates were reported for the 2018 CT/PET-CT system only. They do not apply to MRI v2025",
-          )
-          .first(),
-      ).toBeVisible();
+      await expect(infoSection.getByText(LEGACY_RATES_HEADING).first()).toBeVisible();
+      await expect(infoSection.getByText(LEGACY_RATES_SCOPE).first()).toBeVisible();
 
-      // Every percentage in the info text sits under the legacy heading, never before it.
+      // Every percentage in the info text sits under the sourced legacy heading, never before it.
       const text = await infoSection.innerText();
-      const scope = text.indexOf("Legacy NI-RADS 2018 (CT/PET-CT) recurrence rates by category:");
+      const scope = text.indexOf(LEGACY_RATES_HEADING);
       expect(scope).toBeGreaterThan(-1);
       expect(text.search(/~\d+%/)).toBeGreaterThan(scope);
+    });
+
+    test("MRI v2025 results show no estimated recurrence risk while 2018 CT/PET-CT results keep it", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Primary Site");
+      await selectRadioOption(page, "Known primary site");
+      await selectRadioOption(page, "Yes — assessable");
+      await selectRadioOption(page, "Available now");
+      await selectRadioOption(
+        page,
+        "NI-RADS 2a: Focal reduced diffusion at a superficial or mucosal site",
+      );
+      await page.getByRole("button", { name: "Calculate" }).click();
+      const mriResults = page.getByRole("status", { name: "Calculator results" });
+      await expect(mriResults.getByText("2a - Low Suspicion")).toBeVisible();
+      await expect(mriResults).not.toContainText("Estimated Recurrence Risk");
+      await expect(mriResults).not.toContainText(/~\d+%/);
+
+      await selectRadioOption(page, "2018 CT/PET-CT");
+      await selectRadioOption(page, "Contrast-Enhanced CT");
+      await selectRadioOption(page, "Yes - prior available");
+      await selectRadioOption(
+        page,
+        "Expected post-treatment changes only (distortion, scar, diffuse linear enhancement)",
+      );
+      await selectRadioOption(page, "No abnormal lymph nodes");
+      await page.getByRole("button", { name: "Calculate" }).click();
+      const legacyResults = page.getByRole("status", { name: "Calculator results" });
+      await expect(legacyResults).toContainText("Estimated Recurrence Risk");
+      await expect(legacyResults).toContainText("~4%");
     });
 
     test("exposes an accessible modality/version selector and switches paths", async ({

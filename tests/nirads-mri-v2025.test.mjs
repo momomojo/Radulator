@@ -142,6 +142,21 @@ for (const [id, inputs, expected] of preserved2018Cases) {
   );
 }
 
+// MRI v2025 results never carry an estimated recurrence risk: the legacy rates (Krieger 2017) are
+// not MRI v2025 estimates, and the information text says so.
+for (const [id, inputs] of [
+  ["mri-primary-1", { nirads_version: "mri_2025", during_treatment: "no", assessment_site: "primary", primary_tumor_status: "known", assessable: "yes", prior_status: "available", primary_pattern_id: "p1_expected_changes" }],
+  ["mri-neck-1", { nirads_version: "mri_2025", during_treatment: "no", assessment_site: "neck", assessable: "yes", prior_status: "available", neck_pattern_id: "n1_no_abnormal_nodes", node_temporal_status: "not_applicable" }],
+]) {
+  const result = NIRADS.compute(inputs);
+  assert.ok(result["Primary Site NI-RADS"] || result["Neck NI-RADS"], `${id} classifies`);
+  assert.equal(result["Estimated Recurrence Risk"], undefined, `${id} carries no estimated recurrence risk`);
+  assert.ok(
+    !Object.values(result).some((value) => typeof value === "string" && /~\d+%/.test(value)),
+    `${id} shows no legacy percentage`,
+  );
+}
+
 // ACR NI-RADS MRI v2025 neck 1: hypoenhancing residual nodal tissue, with no FDG uptake *if PET is
 // available*; MRI-only surveillance without PET still reaches neck 1 (verification judge, a26fd24).
 assert.match(
