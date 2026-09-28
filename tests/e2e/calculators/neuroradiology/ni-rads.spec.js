@@ -79,6 +79,9 @@ test.describe("ACR NI-RADS Calculator", () => {
         infoSection.getByText("PRIMARY TUMOR SITE").first(),
       ).toBeVisible();
       await expect(infoSection.getByText("CERVICAL LYMPH NODES")).toBeVisible();
+      // Legacy recurrence percentages are scoped to 2018 CT/PET-CT and never read as MRI v2025 risks.
+      await expect(infoSection).toContainText("Legacy NI-RADS 2018 (CT/PET-CT) recurrence rates by category");
+      await expect(infoSection).toContainText("They do not apply to MRI v2025");
       await expect(infoSection.getByText("NI-RADS 0")).toBeVisible();
       await expect(infoSection.getByText("NI-RADS 1")).toBeVisible();
     });

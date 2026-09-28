@@ -512,10 +512,12 @@ Categories:
 • NI-RADS 3: High suspicion (biopsy recommended)
 • NI-RADS 4: Known/definite recurrence
 
-Recurrence rates by category:
+Legacy NI-RADS 2018 (CT/PET-CT) recurrence rates by category:
 • NI-RADS 1: ~4%
 • NI-RADS 2: ~17%
 • NI-RADS 3: ~59%
+
+These rates were reported for the 2018 CT/PET-CT system only. They do not apply to MRI v2025, whose category-level outcome data are still being validated; MRI v2025 results show no estimated recurrence risk.
 
 The calculator keeps the legacy 2018 CT/PET-CT behavior separate from the reviewed 2025 MRI path. MRI v2025 is for surveillance after definitive/curative treatment, reports the primary site and neck separately, and does not specify a numeric ADC cutoff.
 
