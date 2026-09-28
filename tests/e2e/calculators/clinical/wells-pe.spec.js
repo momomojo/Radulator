@@ -101,6 +101,47 @@ test.describe("Wells Criteria for PE Calculator", () => {
     });
   });
 
+  test.describe("Wells 2000 Cut Points", () => {
+    test("should classify 1.5 points as Low probability (Wells 2000 low band is below 2)", async ({
+      page,
+    }) => {
+      await page.locator('button[id="heart_rate"]').click();
+
+      await page.click("button:has-text('Calculate')");
+
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("1.5 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
+      ).toContainText("Low Probability");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+        ),
+      ).toContainText("PERC");
+    });
+
+    test("should attribute the negative D-dimer outcome and make no NPV >99% claim", async ({
+      page,
+    }) => {
+      await page.click("button:has-text('Calculate')");
+
+      const recommendation = page.locator(
+        "section[aria-live='polite'] > div:has-text('Recommendation:')",
+      );
+      await expect(recommendation).toContainText("Christopher Study");
+      await expect(recommendation).toContainText(
+        "0.5% (95% CI 0.2–1.1%) had nonfatal VTE over 3 months of follow-up",
+      );
+      await expect(page.getByText(/NPV|>\s*99%|effectively excluded/)).toHaveCount(0);
+    });
+  });
+
   test.describe("Moderate Risk Calculations", () => {
     test("should calculate moderate risk with immobilization + HR >100", async ({
       page,
