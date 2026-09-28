@@ -5,14 +5,14 @@
 // Retrieves the official ICRP Publication 147 page (Abstract, Key Points and Executive
 // Summary (a)-(h) as published by ICRP), the ICRP-hosted free extract of Publication 103,
 // and AAPM Report 96. Every artifact must arrive from its pinned final URL host, path and
-// query with its pinned media type. The two static PDFs are pinned by byte length and SHA-256
-// of the raw response bytes. The ICRP 147 page is dynamic ASP whose navigation, news, footer
-// and session markup can change without any change to the publication, so it is pinned by the
-// SHA-256 of its normalized publication column (Recommended citation through Executive
-// Summary (h)) instead of raw bytes: editing publication text fails the audit, site chrome
-// does not. The audit then pins each source statement by the digest of its exact text span
-// at its locator and binds the statements to the calculator runtime: the Interpretation
-// text, the removed lifetime-cancer-risk output, the ICRP 147 citation/locator, the explicit
+// query with its pinned media type, and its retrieved bytes must match the pinned byte length
+// and SHA-256 before anything parses them. An HTTP 200 whose bytes drift fails at once and is
+// never retried; only network errors, HTTP 429 and 5xx responses are retried. The ICRP 147
+// page is additionally checked against the SHA-256 of its normalized publication column, so a
+// future raw re-pin after a site-chrome change cannot silently accept changed publication
+// text. The audit then pins each source statement by the digest of its exact text span at its
+// locator and binds the statements to the calculator runtime: the Interpretation text, the
+// removed lifetime-cancer-risk output, the ICRP 147 citation/locator, the explicit
 // age-stratum requirement and the unchanged adult chest conversion. Any drift exits non-zero.
 
 import assert from "node:assert/strict";
@@ -50,14 +50,14 @@ const SOURCES = Object.freeze({
     pmid: "33653178",
     url: "https://www.icrp.org/publication.asp?id=ICRP+Publication+147",
     media_type: "text/html",
-    // publication.asp is dynamic ASP: its navigation, news modules, footer and session markup
-    // may change at any time, so raw bytes are not pinned. The enforced pin is the SHA-256 of
-    // the publication column only (Recommended citation through Executive Summary (h)),
-    // decoded as windows-1252, tags removed, entities decoded, NFKC, quote/dash folding,
-    // whitespace collapsed, one paragraph block per line.
-    pin: "publication-column-text",
-    pin_rationale:
-      "dynamic ASP page: navigation, news, footer and session markup can change without any change to the publication text",
+    pin: "raw-bytes",
+    bytes: 42_193,
+    sha256: "e4601bc9c99bf9c3655ad8c919b322babf281818339dfac892b211660e5018f0",
+    // Additional check after the raw pin: SHA-256 of the publication column only (Recommended
+    // citation through Executive Summary (h)), decoded as windows-1252, tags removed, entities
+    // decoded, NFKC, quote/dash folding, whitespace collapsed, one paragraph block per line.
+    // If the page chrome ever changes and the raw pin is re-reviewed, this digest must still
+    // match unless the publication text itself changed.
     content_sha256: "01ebdf43c223d42a5618b20ba63cb4db4dee9de490ad28799e794fa49f08e8a6",
     content_blocks: 19,
     content_digest_basis:
@@ -542,9 +542,14 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-async function retrieve(source) {
+// Retrieves one source and verifies it before returning. Only transport failures, HTTP 429 and
+// 5xx responses are retried. The first HTTP 200 is final: its final URL, media type, byte
+// length and SHA-256 are checked immediately, outside the retry handler, so drifted bytes fail
+// at once, are never retried and are never handed to a parser.
+async function retrieveVerified(source) {
   let lastFailure = "unknown retrieval failure";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    let received = null;
     try {
       const response = await fetch(source.url, {
         headers: { "user-agent": USER_AGENT },
@@ -552,17 +557,24 @@ async function retrieve(source) {
         signal: AbortSignal.timeout(45_000),
       });
       if (response.ok) {
-        return {
+        received = {
           bytes: Buffer.from(await response.arrayBuffer()),
           finalUrl: new URL(response.url),
           contentType: response.headers.get("content-type") ?? "",
+          attempts: attempt,
         };
+      } else {
+        lastFailure = `HTTP ${response.status}`;
+        await response.body?.cancel();
+        if (response.status !== 429 && response.status < 500) break;
       }
-      lastFailure = `HTTP ${response.status}`;
-      await response.body?.cancel();
-      if (response.status !== 429 && response.status < 500) break;
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error);
+    }
+    if (received) {
+      assertArtifactIdentity(source, received);
+      assertRawBytePin(source, received);
+      return received;
     }
     if (attempt < MAX_ATTEMPTS) await delay(1_000 * 2 ** (attempt - 1));
   }
@@ -580,17 +592,11 @@ function assertArtifactIdentity(source, retrieved) {
   assert.equal(finalUrl.search, expected.search, `${source.key}: final URL query drifted`);
   const mediaType = retrieved.contentType.split(";")[0].trim().toLowerCase();
   assert.equal(mediaType, source.media_type, `${source.key}: media type drifted`);
-  if (source.media_type === "application/pdf") {
-    assert.equal(
-      retrieved.bytes.subarray(0, 5).toString("latin1"),
-      "%PDF-",
-      `${source.key}: artifact lacks a PDF header`,
-    );
-  }
 }
 
 function assertRawBytePin(source, retrieved) {
-  assert.equal(source.pin, "raw-bytes", `${source.key}: raw-byte pin requested for a ${source.pin} source`);
+  assert.equal(source.pin, "raw-bytes", `${source.key}: every source must carry a raw-byte pin`);
+  assert.ok(Number.isInteger(source.bytes) && /^[0-9a-f]{64}$/.test(source.sha256), `${source.key}: pin is incomplete`);
   assert.equal(retrieved.bytes.length, source.bytes, `${source.key}: artifact byte length drifted`);
   assert.equal(sha256(retrieved.bytes), source.sha256, `${source.key}: artifact SHA-256 drifted`);
 }
@@ -670,8 +676,8 @@ function icrp147Blocks(html) {
   return { blocks, located };
 }
 
+// Parses the ICRP 147 page. Callers pass only bytes already verified by retrieveVerified().
 function verifyIcrp147(retrieved, mismatches) {
-  assertArtifactIdentity(SOURCES.icrp147, retrieved);
   const html = decodeWindows1252(retrieved.bytes);
   const { blocks, located } = icrp147Blocks(html);
   assert.equal(
@@ -697,13 +703,7 @@ function verifyIcrp147(retrieved, mismatches) {
       spans: checkSpans(statement, block, foldText, mismatches),
     });
   }
-  return {
-    verified,
-    contentSha256,
-    blockCount: blocks.length,
-    // Informational only: raw page bytes are not pinned (site chrome may change).
-    observedRaw: { bytes: retrieved.bytes.length, sha256: sha256(retrieved.bytes), enforced: false },
-  };
+  return { verified, contentSha256, blockCount: blocks.length };
 }
 
 async function pdfPages(source, bytes) {
@@ -972,22 +972,15 @@ function verifyCalculatorSource(calculatorSource) {
 
 async function main() {
   const [icrp147Retrieved, icrp103Retrieved, aapm96Retrieved, calculatorSource] = await Promise.all([
-    retrieve(SOURCES.icrp147),
-    retrieve(SOURCES.icrp103),
-    retrieve(SOURCES.aapm96),
+    retrieveVerified(SOURCES.icrp147),
+    retrieveVerified(SOURCES.icrp103),
+    retrieveVerified(SOURCES.aapm96),
     readFile(CALCULATOR_PATH, "utf8"),
   ]);
 
   const mismatches = [];
   const icrp147 = verifyIcrp147(icrp147Retrieved, mismatches);
 
-  for (const [source, retrieved] of [
-    [SOURCES.icrp103, icrp103Retrieved],
-    [SOURCES.aapm96, aapm96Retrieved],
-  ]) {
-    assertArtifactIdentity(source, retrieved);
-    assertRawBytePin(source, retrieved);
-  }
   const icrp103Pages = await pdfPages(SOURCES.icrp103, icrp103Retrieved.bytes);
   verifyIcrp103Continuity(icrp103Pages);
   const aapm96Pages = await pdfPages(SOURCES.aapm96, aapm96Retrieved.bytes);
@@ -1047,16 +1040,21 @@ async function main() {
       }[source.key].finalUrl.href,
       media_type: source.media_type,
       pin: source.pin,
-      ...(source.pin === "publication-column-text"
+      bytes: source.bytes,
+      sha256: source.sha256,
+      verified_before_parsing: true,
+      ...(source.content_sha256
         ? {
-            pin_rationale: source.pin_rationale,
-            content_sha256: icrp147.contentSha256,
-            content_blocks: icrp147.blockCount,
-            content_digest_basis: source.content_digest_basis,
-            observed_raw: icrp147.observedRaw,
+            additional_check: {
+              content_sha256: icrp147.contentSha256,
+              content_blocks: icrp147.blockCount,
+              content_digest_basis: source.content_digest_basis,
+            },
           }
-        : { bytes: source.bytes, sha256: source.sha256, pages: source.pages }),
+        : { pages: source.pages }),
     })),
+    retrieval_policy:
+      "an HTTP 200 is verified (final URL host/path/query, media type, byte length, SHA-256) before any parsing and fails at once without retry on drift; only network errors, HTTP 429 and 5xx are retried (3 attempts, 1 s then 2 s backoff)",
     source_statements: [...verified.values()],
     claim_bindings: CLAIM_BINDINGS.map((binding) => ({
       claim_id: binding.claim_id,

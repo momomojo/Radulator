@@ -42,13 +42,18 @@ assert.equal(audit.schema, "radulator-dlp-primary-source-audit/v1");
 assert.equal(audit.calculator_id, "dlp-dose");
 assert.equal(audit.calculator_path, "src/components/calculators/DLPDose.jsx");
 
+// Every source is pinned by exact byte length and SHA-256 of the retrieved bytes, verified
+// before any parsing.
 assert.deepEqual(
-  audit.sources.map(({ key, url, final_url, media_type, pin }) => ({
+  audit.sources.map(({ key, url, final_url, media_type, pin, bytes, sha256, verified_before_parsing }) => ({
     key,
     url,
     final_url,
     media_type,
     pin,
+    bytes,
+    sha256,
+    verified_before_parsing,
   })),
   [
     {
@@ -56,7 +61,10 @@ assert.deepEqual(
       url: "https://www.icrp.org/publication.asp?id=ICRP+Publication+147",
       final_url: "https://www.icrp.org/publication.asp?id=ICRP+Publication+147",
       media_type: "text/html",
-      pin: "publication-column-text",
+      pin: "raw-bytes",
+      bytes: 42193,
+      sha256: "e4601bc9c99bf9c3655ad8c919b322babf281818339dfac892b211660e5018f0",
+      verified_before_parsing: true,
     },
     {
       key: "icrp103",
@@ -65,6 +73,9 @@ assert.deepEqual(
         "https://www.icrp.org/docs/ICRP_Publication_103-Annals_of_the_ICRP_37(2-4)-Free_extract.pdf",
       media_type: "application/pdf",
       pin: "raw-bytes",
+      bytes: 354712,
+      sha256: "8129e99e681e7a20abaa6e269782195ef026002b019dd438a77c594befb556b9",
+      verified_before_parsing: true,
     },
     {
       key: "aapm96",
@@ -72,32 +83,32 @@ assert.deepEqual(
       final_url: "https://www.aapm.org/pubs/reports/RPT_96.pdf",
       media_type: "application/pdf",
       pin: "raw-bytes",
+      bytes: 1241814,
+      sha256: "dd67d8b4d39c5c9ce4aa505588047754d4a30558414477161614aa5ee5178157",
+      verified_before_parsing: true,
     },
   ],
 );
+assert.match(audit.retrieval_policy, /before any parsing and fails at once without retry on drift/);
 const [icrp147, icrp103, aapm96] = audit.sources;
-// ICRP 147 page: dynamic ASP, so the enforced pin is the normalized publication column;
-// raw page bytes are reported for information only.
 assert.equal(icrp147.doi, "10.1177/0146645320911864");
 assert.equal(icrp147.pmid, "33653178");
-assert.equal(
-  icrp147.content_sha256,
-  "01ebdf43c223d42a5618b20ba63cb4db4dee9de490ad28799e794fa49f08e8a6",
+// Additional check on the ICRP 147 page after its raw pin: the normalized publication column.
+assert.deepEqual(
+  { ...icrp147.additional_check, content_digest_basis: undefined },
+  {
+    content_sha256: "01ebdf43c223d42a5618b20ba63cb4db4dee9de490ad28799e794fa49f08e8a6",
+    content_blocks: 19,
+    content_digest_basis: undefined,
+  },
 );
-assert.equal(icrp147.content_blocks, 19);
-assert.match(icrp147.content_digest_basis, /^publication column \(Recommended citation through Executive Summary \(h\)\)/);
-assert.match(icrp147.pin_rationale, /dynamic ASP page/);
-assert.equal(icrp147.observed_raw.enforced, false);
-assert.equal(icrp147.bytes, undefined, "ICRP 147 raw byte length must not be pinned");
-assert.equal(icrp147.sha256, undefined, "ICRP 147 raw SHA-256 must not be pinned");
-// PDFs: static documents pinned by raw bytes.
+assert.match(
+  icrp147.additional_check.content_digest_basis,
+  /^publication column \(Recommended citation through Executive Summary \(h\)\)/,
+);
 assert.equal(icrp103.doi, "10.1016/j.icrp.2007.10.003");
 assert.equal(icrp103.pmid, "18082557");
-assert.equal(icrp103.bytes, 354712);
-assert.equal(icrp103.sha256, "8129e99e681e7a20abaa6e269782195ef026002b019dd438a77c594befb556b9");
 assert.equal(icrp103.pages, 35);
-assert.equal(aapm96.bytes, 1241814);
-assert.equal(aapm96.sha256, "dd67d8b4d39c5c9ce4aa505588047754d4a30558414477161614aa5ee5178157");
 assert.equal(aapm96.pages, 34);
 
 const statements = new Map(audit.source_statements.map((statement) => [statement.id, statement]));
@@ -389,5 +400,5 @@ assert.deepEqual(audit.scope, {
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "DLP primary-source audit verified 3 pinned artifacts (ICRP 147 publication column, ICRP 103 extract and AAPM Report 96 raw bytes), 17 digest-pinned source statements, 7 runtime claim bindings, the unchanged 55-cell coefficient table, and the actual-export tests.",
+  "DLP primary-source audit verified 3 byte-pinned artifacts (ICRP 147 page, ICRP 103 extract, AAPM Report 96; length and SHA-256 checked before parsing), 17 digest-pinned source statements, 7 runtime claim bindings, the unchanged 55-cell coefficient table, and the actual-export tests.",
 );
