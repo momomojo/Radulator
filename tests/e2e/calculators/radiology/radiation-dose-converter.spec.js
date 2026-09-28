@@ -67,6 +67,10 @@ test("no calculation selected produces an actionable error rather than reference
 test("organ inverse requires confirmation and neutron energy; disabling clears derived output", async ({ page }) => {
   await conversion(page, "equivalent", "Sv", "1");
   await expect(page.locator("#radiation_type")).not.toBeVisible();
+  await expect(page.locator('label[for="input_is_organ_equivalent"]')).toBeVisible();
+  await expect(page.locator('label[for="input_is_organ_equivalent"]')).toContainText(
+    "I confirm the input is organ-equivalent dose from one radiation type, not effective dose",
+  );
   await page.locator('label[for="input_is_organ_equivalent"]').click();
   await page.locator("#radiation_type").selectOption("alpha");
   await calculate(page);

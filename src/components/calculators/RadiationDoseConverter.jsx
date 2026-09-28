@@ -119,9 +119,9 @@ Unit factors: NIST SP811. Radiation weighting: ICRP103 as reproduced in IAEA115 
     // Optional organ-equivalent relationship, never inferred from the Sv unit.
     {
       id: "input_is_organ_equivalent",
-      label: "Calculate Organ-Mean Absorbed Dose",
+      // The checkbox renderer shows only the label, so the confirmation lives in it.
+      label: "Calculate Organ-Mean Absorbed Dose (I confirm the input is organ-equivalent dose from one radiation type, not effective dose)",
       type: "checkbox",
-      subLabel: "I confirm the input is organ-equivalent dose from one radiation type, not effective dose",
       showIf: (vals) => vals.conversion_mode === "equivalent",
     },
     {
