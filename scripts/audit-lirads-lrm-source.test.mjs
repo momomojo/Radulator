@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import process from "node:process";
 
 // 1. Live exact-head audit (retrieves and pins the ACR PDF).
@@ -521,55 +522,104 @@ assert.equal(parseRetryAfter("Sun, 27 Sep 2026 23:00:00 GMT", now), 0);
 assert.equal(parseRetryAfter("soon", now), null);
 assert.equal(parseRetryAfter(null, now), null);
 
-const response = (status, headers = {}) => ({
+// A synthetic PDF body with its own raw-byte pins keeps these checks offline and exact.
+const syntheticBody = Buffer.from("%PDF-1.7 synthetic LI-RADS audit body\n");
+const SYNTHETIC_SOURCE = Object.freeze({
+  ...SOURCE,
+  key: "synthetic-pdf",
+  bytes: syntheticBody.length,
+  sha256: createHash("sha256").update(syntheticBody).digest("hex"),
+});
+const response = (status, { headers = {}, body = syntheticBody, url = SOURCE.url, readError = null } = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  url: SOURCE.url,
+  url,
   headers: new Headers({ "content-type": "application/pdf", ...headers }),
   body: { cancel: async () => {} },
-  arrayBuffer: async () => new TextEncoder().encode("%PDF-1.7 synthetic").buffer,
+  arrayBuffer: async () => {
+    if (readError) throw readError;
+    return Uint8Array.from(body).buffer;
+  },
 });
 const scripted = (steps) => {
   const queue = [...steps];
-  return async () => {
+  const impl = async () => {
+    impl.calls += 1;
     const next = queue.shift();
     if (next instanceof Error) throw next;
     return next;
   };
+  impl.calls = 0;
+  return impl;
 };
 const noSleep = async () => {};
 
-const recovered = await retrieve(SOURCE, {
-  fetchImpl: scripted([response(429, { "retry-after": "7" }), response(503), response(200)]),
+const recovered = await retrieve(SYNTHETIC_SOURCE, {
+  fetchImpl: scripted([response(429, { headers: { "retry-after": "7" } }), response(503), response(200)]),
   sleep: noSleep,
 });
 assert.equal(recovered.attempts, 3);
 assert.deepEqual(recovered.waits, [7_000, 4_000], "Retry-After must be honored, then exponential backoff");
+assert.ok(recovered.bytes.equals(syntheticBody), "only pin-verified bytes are returned");
 
-const afterNetworkError = await retrieve(SOURCE, {
+const afterNetworkError = await retrieve(SYNTHETIC_SOURCE, {
   fetchImpl: scripted([new TypeError("fetch failed"), response(200)]),
   sleep: noSleep,
 });
 assert.equal(afterNetworkError.attempts, 2);
 
-const capped = await retrieve(SOURCE, {
-  fetchImpl: scripted([response(429, { "retry-after": "3600" }), response(200)]),
+const afterAbortedBody = await retrieve(SYNTHETIC_SOURCE, {
+  fetchImpl: scripted([response(200, { readError: new TypeError("terminated") }), response(200)]),
+  sleep: noSleep,
+});
+assert.equal(afterAbortedBody.attempts, 2, "an aborted body read is a transport failure, not a completed 200");
+
+const capped = await retrieve(SYNTHETIC_SOURCE, {
+  fetchImpl: scripted([response(429, { headers: { "retry-after": "3600" } }), response(200)]),
   sleep: noSleep,
 });
 assert.deepEqual(capped.waits, [MAX_RETRY_AFTER_MS], "Retry-After is capped");
 
 for (const status of [403, 404]) {
+  const fetchImpl = scripted([response(status), response(200)]);
   await assert.rejects(
-    retrieve(SOURCE, { fetchImpl: scripted([response(status), response(200)]), sleep: noSleep }),
+    retrieve(SYNTHETIC_SOURCE, { fetchImpl, sleep: noSleep }),
     new RegExp(`after 1 attempt\\(s\\) \\(HTTP ${status}\\)`),
     `HTTP ${status} (bot check, missing) must not be retried or bypassed`,
   );
+  assert.equal(fetchImpl.calls, 1);
 }
 await assert.rejects(
-  retrieve(SOURCE, { fetchImpl: scripted([response(500), response(502), response(503), response(504)]), sleep: noSleep }),
+  retrieve(SYNTHETIC_SOURCE, {
+    fetchImpl: scripted([response(500), response(502), response(503), response(504)]),
+    sleep: noSleep,
+  }),
   /after 4 attempt\(s\) \(HTTP 504\)/,
 );
 
+// 3f. Pin drift on a completed HTTP 200 fails at once and is never retried, even when a correct
+// response would follow. Checked against the synthetic pins and against the real ACR pins.
+const sameLengthDrift = Buffer.from(syntheticBody);
+sameLengthDrift[sameLengthDrift.length - 2] ^= 0x01;
+const realSameLength = Buffer.alloc(SOURCE.bytes);
+realSameLength.write("%PDF-1.7");
+const realShorter = Buffer.alloc(SOURCE.bytes - 1);
+realShorter.write("%PDF-1.7");
+const driftedOk = [
+  ["same-length digest drift", SYNTHETIC_SOURCE, response(200, { body: sameLengthDrift }), /SHA-256 drifted/],
+  ["byte-length drift (one byte longer)", SYNTHETIC_SOURCE, response(200, { body: Buffer.concat([syntheticBody, Buffer.from(" ")]) }), /byte length drifted/],
+  ["byte-length drift (truncated)", SYNTHETIC_SOURCE, response(200, { body: syntheticBody.subarray(0, -1) }), /byte length drifted/],
+  ["media type drift on 200", SYNTHETIC_SOURCE, response(200, { headers: { "content-type": "text/html" } }), /media type drifted/],
+  ["redirected to another host on 200", SYNTHETIC_SOURCE, response(200, { url: SOURCE.url.replace("edge.sitecorecloud.io", "example.org") }), /host drifted/],
+  ["real pins: same-length digest drift", SOURCE, response(200, { body: realSameLength }), /SHA-256 drifted/],
+  ["real pins: byte-length drift", SOURCE, response(200, { body: realShorter }), /byte length drifted/],
+];
+for (const [name, source, drifted, message] of driftedOk) {
+  const fetchImpl = scripted([drifted, response(200)]);
+  await assert.rejects(retrieve(source, { fetchImpl, sleep: noSleep }), message, name);
+  assert.equal(fetchImpl.calls, 1, `${name}: a drifted HTTP 200 must not be retried`);
+}
+
 console.log(
-  `LI-RADS LR-M primary-source audit verified 1 pinned ACR PDF (raw bytes), ${audit.source_statements.length} digest-pinned source statements, 4 layout checks, ${audit.claim_bindings.length} runtime claim bindings and the actual-export tests; ${runtimeMutants.length} runtime mutants and the source, artifact, layout and retrieval mutants were all rejected.`,
+  `LI-RADS LR-M primary-source audit verified 1 pinned ACR PDF (raw bytes checked before parsing), ${audit.source_statements.length} digest-pinned source statements, 4 layout checks, ${audit.claim_bindings.length} runtime claim bindings and the actual-export tests; ${runtimeMutants.length} runtime mutants, ${driftedOk.length} drifted-200 mutants (each failed on the first fetch, never retried) and the source, artifact, layout and retrieval mutants were all rejected.`,
 );

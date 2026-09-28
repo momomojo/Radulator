@@ -15,6 +15,8 @@
 //
 // Fetching retries network errors, HTTP 408/425/429 and 5xx with exponential backoff, honoring
 // Retry-After (capped), because Smoke runs every scripts/audit-*-source.test.mjs on every PR.
+// The raw-byte pins (length and SHA-256), final URL and media type are verified on the HTTP 200
+// before anything is parsed; a 200 that misses a pin fails at once and is never retried.
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -434,6 +436,11 @@ export function isRetryableStatus(status) {
   return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
+// Returns only bytes that already match every pin: final URL, media type, PDF header, byte
+// length and SHA-256 are checked on the HTTP 200 before anything is parsed. A completed 200 that
+// misses any pin throws at once and is never retried (retrying could mask a source that serves
+// varying content). Only transport failures (network errors, an aborted body read) and HTTP
+// 408/425/429/5xx are retried.
 export async function retrieve(
   source,
   { fetchImpl = fetch, sleep = delay, attempts = MAX_ATTEMPTS, timeoutMs = FETCH_TIMEOUT_MS } = {},
@@ -442,6 +449,7 @@ export async function retrieve(
   const waits = [];
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     let waitMs = BASE_BACKOFF_MS * 2 ** (attempt - 1);
+    let completed = null;
     try {
       const response = await fetchImpl(source.url, {
         headers: { "user-agent": USER_AGENT, accept: source.media_type },
@@ -449,21 +457,28 @@ export async function retrieve(
         signal: AbortSignal.timeout(timeoutMs),
       });
       if (response.ok) {
-        return {
+        completed = {
           bytes: Buffer.from(await response.arrayBuffer()),
           finalUrl: new URL(response.url || source.url),
           contentType: response.headers.get("content-type") ?? "",
           attempts: attempt,
           waits,
         };
+      } else {
+        lastFailure = `HTTP ${response.status}`;
+        const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
+        await response.body?.cancel?.();
+        if (!isRetryableStatus(response.status)) break;
+        if (retryAfter !== null) waitMs = Math.min(Math.max(retryAfter, waitMs), MAX_RETRY_AFTER_MS);
       }
-      lastFailure = `HTTP ${response.status}`;
-      const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
-      await response.body?.cancel?.();
-      if (!isRetryableStatus(response.status)) break;
-      if (retryAfter !== null) waitMs = Math.min(Math.max(retryAfter, waitMs), MAX_RETRY_AFTER_MS);
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error);
+    }
+    if (completed) {
+      // Outside the try: a pin miss on a completed 200 is final, never a retry.
+      assertArtifactIdentity(source, completed);
+      assertRawBytePin(source, completed.bytes);
+      return completed;
     }
     if (attempt < attempts) {
       waits.push(waitMs);
@@ -1063,9 +1078,9 @@ function verifyCalculatorSource(calculatorSource) {
 }
 
 async function main() {
+  // retrieve() returns only bytes whose final URL, media type, byte length and SHA-256 already
+  // match the pins; nothing below parses the PDF before that.
   const [retrieved, calculatorSource] = await Promise.all([retrieve(SOURCE), readFile(CALCULATOR_PATH, "utf8")]);
-  assertArtifactIdentity(SOURCE, retrieved);
-  assertRawBytePin(SOURCE, retrieved.bytes);
 
   const pages = await pdfPages(retrieved.bytes, STATEMENTS.map((statement) => statement.pdf_page));
   const { verified, mismatches } = verifyStatements(pages);

@@ -58,6 +58,8 @@ the following:
 - **Retrieval.** It fetches the PDF and checks the final URL (host, path,
   query), the media type, the `%PDF-` header, the byte length and the raw-byte
   SHA-256.
+  - These pins are checked on the completed HTTP 200 before anything is parsed.
+    A 200 that misses any pin fails at once and is never retried.
   - Network errors, HTTP 408/425/429 and 5xx are retried with exponential
     backoff, honoring `Retry-After` (capped at 60 s).
   - Any other status fails at once. A bot check is never bypassed.
@@ -86,6 +88,10 @@ the following:
   break: 11 runtime mutants, including the old LR-M order and the old `showIf`.
   Source-span, raw-byte, URL/media-type, layout and retry mutants are rejected
   too.
+  - Seven drifted-200 mutants each fail on the first fetch, even when a correct
+    response would follow: same-length digest drift and byte-length drift
+    (against synthetic and against the real pins), media-type drift and a
+    cross-host redirect.
 
 The repository stores only titles, identifiers, numeric criteria, text
 coordinates, short markers, digests and the paraphrases below. It does not
