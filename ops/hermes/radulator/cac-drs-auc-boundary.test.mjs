@@ -432,7 +432,7 @@ const sourceAudit = record.implementation_evidence?.source_audit;
 assert.ok(sourceAudit, "CAC/MESA registry must pin the live source audit");
 assert.equal(sourceAudit.schema, "radulator-live-source-audit/v1");
 assert.equal(sourceAudit.command, "npm run test:cac-drs-source");
-assert.equal(sourceAudit.trusted_exact_head_check, "Hermes Release Control Tests");
+assert.equal(sourceAudit.trusted_exact_head_check, "Clinical Source Audits (exact head)");
 assert.deepEqual(sourceAudit.source_urls, Object.values(BIOC_SPECS).map(({ url }) => url));
 assert.deepEqual(sourceAudit.artifacts, Object.values(BIOC_SPECS).map((source) => ({
   id: source.id, url: source.url, host: source.host, path: source.path, media_type: source.mediaType,

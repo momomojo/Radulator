@@ -108,8 +108,12 @@ on redirect and non-200 responses, but a rejecting cleanup cannot replace the
 authoritative redirect or HTTP error; the regression assertions cover that
 case and its call count.
 
-The protected exact-head `Hermes Release Control Tests` job runs the live audit
-on every protected PR head:
+The protected exact-head `Clinical Source Audits (exact head)` job runs the live
+audit at the PR head whenever its selection rules, loaded from the PR's base
+commit, select it: on every PR to `main`, and on every `develop` PR whose diff
+reaches this audit, the CAC calculator it imports, or the `cac-mesa` registry
+record. The nightly source-audit run also runs it against `main` and `develop`.
+It runs the same command as:
 
 ```bash
 npm run test:cac-drs-source
