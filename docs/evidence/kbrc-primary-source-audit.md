@@ -7,11 +7,18 @@ supplement with:
 npm run test:kbrc-source
 ```
 
-The audit requires Node.js 20 or newer. It retrieves the publisher PDF first,
-falls back to the Europe PMC supplementary archive when the publisher
-endpoint is unavailable, and parses the verified PDF bytes with the installed
+The audit requires Node.js 20 or newer. It retrieves the publisher PDF,
+verifies it against the pin, and parses the verified bytes with the installed
 `pdfjs-dist` library in memory. No Poppler executable or temporary source
 directory is part of the audit path.
+
+The audit no longer falls back to the Europe PMC supplementary archive. That
+archive embeds the timestamp of each request: three fetches spaced about 70
+seconds apart all returned 4,349,790 bytes, but with three different SHA-256
+digests, although the `mmc1.pdf` inside was identical each time. The archive
+therefore cannot be pinned, and using it would mean parsing unverified ZIP
+bytes. Transient publisher failures (network errors, HTTP 429 and 5xx) are
+retried; a persistent outage or any drift fails the audit loudly.
 
 Every retrieved artifact is pinned by exact byte length and SHA-256 in the
 KBRC registry record. The audit verifies both before it decodes or parses the
@@ -33,7 +40,9 @@ with drifted bytes therefore fails at once and is never retried; only network
 errors, HTTP 429 and HTTP 5xx are retried. The audit test proves this offline:
 a preloaded fake fetch serves same-length, one-byte-short and one-byte-long
 article XML, and each run must fail with the matching pin error, print no
-result, and request the XML exactly once.
+result, and request the XML exactly once. The same three cases for the
+supplement PDF must also fail with its pin error, request it exactly once, and
+never request the archive.
 
 The script derives all 22 signed equation terms and spline knots from Item S1,
 derives the four published examples from the article XML and Table 1, and then
@@ -118,6 +127,6 @@ Primary endpoints:
 
 - Full-text XML used by the audit (the registry's `full_text_xml_url`, byte-pinned): https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=13156734&retmode=xml&tool=radulator-kbrc-source-audit
 - Full-text XML, Europe PMC copy with the same paragraph ids (for reading; not pinned or used by the audit): https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/fullTextXML
-- Supplement PDF (publisher): https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf
-- Supplement archive: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/supplementaryFiles
+- Supplement PDF (publisher, byte-pinned): https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf
+- Supplement archive (listed in the registry as `archive_url`; not retrieved by the audit because its bytes cannot be pinned): https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13156734/supplementaryFiles
 - Human-readable article: https://europepmc.org/article/PMC/13156734

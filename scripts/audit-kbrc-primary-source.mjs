@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import process from "node:process";
-import { inflateRawSync } from "node:zlib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
   KBRC_CALIBRATION_WARNING_THRESHOLD,
@@ -56,72 +55,18 @@ async function fetchBuffer(url) {
 }
 
 async function fetchSupplement(artifact) {
-  try {
-    const direct = await fetchBuffer(artifact.direct_pdf_url);
-    assert.equal(direct.length, artifact.archive_member_bytes, "direct supplement size");
-    assert.equal(sha256(direct), artifact.archive_member_sha256, "direct supplement digest");
-    return { bytes: direct, retrieval: "direct-publisher-pdf" };
-  } catch (directError) {
-    const archive = await fetchBuffer(artifact.archive_url);
-    const member = findZipMember(archive, artifact.archive_member);
-    assert.equal(member.length, artifact.archive_member_bytes, "fallback supplement size");
-    assert.equal(sha256(member), artifact.archive_member_sha256, "fallback supplement digest");
-    return {
-      bytes: member,
-      retrieval: "europe-pmc-archive-fallback",
-      direct_error: directError instanceof Error ? directError.message : String(directError),
-    };
-  }
-}
-
-function findZipMember(archive, memberName) {
-  const minimumEocdOffset = Math.max(0, archive.length - 65557);
-  let eocdOffset = -1;
-  for (let offset = archive.length - 22; offset >= minimumEocdOffset; offset -= 1) {
-    if (archive.readUInt32LE(offset) === 0x06054b50) {
-      eocdOffset = offset;
-      break;
-    }
-  }
-  assert.notEqual(eocdOffset, -1, "supplement archive lacks a ZIP end record");
-
-  const entryCount = archive.readUInt16LE(eocdOffset + 10);
-  let offset = archive.readUInt32LE(eocdOffset + 16);
-  for (let index = 0; index < entryCount; index += 1) {
-    assert.equal(
-      archive.readUInt32LE(offset),
-      0x02014b50,
-      `invalid ZIP central-directory entry ${index}`,
-    );
-    const compression = archive.readUInt16LE(offset + 10);
-    const compressedBytes = archive.readUInt32LE(offset + 20);
-    const uncompressedBytes = archive.readUInt32LE(offset + 24);
-    const nameBytes = archive.readUInt16LE(offset + 28);
-    const extraBytes = archive.readUInt16LE(offset + 30);
-    const commentBytes = archive.readUInt16LE(offset + 32);
-    const localOffset = archive.readUInt32LE(offset + 42);
-    const name = archive.subarray(offset + 46, offset + 46 + nameBytes).toString("utf8");
-
-    if (name === memberName) {
-      assert.equal(archive.readUInt32LE(localOffset), 0x04034b50, `${name}: invalid local header`);
-      const localNameBytes = archive.readUInt16LE(localOffset + 26);
-      const localExtraBytes = archive.readUInt16LE(localOffset + 28);
-      const dataOffset = localOffset + 30 + localNameBytes + localExtraBytes;
-      const compressed = archive.subarray(dataOffset, dataOffset + compressedBytes);
-      const member =
-        compression === 0
-          ? Buffer.from(compressed)
-          : compression === 8
-            ? inflateRawSync(compressed)
-            : null;
-      assert.ok(member, `${name}: unsupported ZIP compression method ${compression}`);
-      assert.equal(member.length, uncompressedBytes, `${name}: uncompressed length`);
-      return member;
-    }
-
-    offset += 46 + nameBytes + extraBytes + commentBytes;
-  }
-  assert.fail(`supplement archive is missing ${memberName}`);
+  // Only the publisher PDF is retrieved. The Europe PMC supplementary archive embeds per-request
+  // timestamps, so its bytes cannot be pinned and would have to be parsed (as a ZIP) before any
+  // verification. A drifted publisher PDF therefore fails at once instead of falling back.
+  const direct = await fetchBuffer(artifact.direct_pdf_url);
+  return {
+    bytes: verifyPinnedBytes(
+      direct,
+      { bytes: artifact.archive_member_bytes, sha256: artifact.archive_member_sha256 },
+      "supplement PDF",
+    ),
+    retrieval: "direct-publisher-pdf",
+  };
 }
 
 async function pdfText(pdfBytes) {

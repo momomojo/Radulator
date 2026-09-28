@@ -38,11 +38,8 @@ assert.equal(
   audit.direct_pdf_url,
   "https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf",
 );
-assert.ok(
-  ["direct-publisher-pdf", "europe-pmc-archive-fallback"].includes(
-    audit.supplement_retrieval,
-  ),
-);
+// Only the byte-pinned publisher PDF is retrieved; the unpinnable Europe PMC archive is not.
+assert.equal(audit.supplement_retrieval, "direct-publisher-pdf");
 assert.equal(audit.archive_member_bytes, 3696579);
 assert.equal(
   audit.archive_member_sha256,
@@ -190,24 +187,35 @@ function auditWithDriftedResponse(url, bytes) {
   return { ...result, requests: requests ? JSON.parse(requests) : null };
 }
 
-const driftCases = [
-  ["same-length digest drift", pinned.full_text_xml_bytes, /article XML: SHA-256 drifted from the pin/],
-  ["byte-length drift, one byte short", pinned.full_text_xml_bytes - 1, /article XML: byte length drifted from the pin/],
-  ["byte-length drift, one byte long", pinned.full_text_xml_bytes + 1, /article XML: byte length drifted from the pin/],
+const driftTargets = [
+  ["article XML", pinned.full_text_xml_url, pinned.full_text_xml_bytes],
+  ["supplement PDF", pinned.direct_pdf_url, pinned.archive_member_bytes],
 ];
-for (const [label, bytes, failure] of driftCases) {
-  const drift = auditWithDriftedResponse(pinned.full_text_xml_url, bytes);
-  const detail = `\nstatus ${drift.status} signal ${drift.signal}\nstderr:\n${drift.stderr}`;
-  assert.equal(drift.status, 1, `article XML ${label}: the audit must fail${detail}`);
-  assert.match(drift.stderr, failure, `article XML ${label}: wrong failure${detail}`);
-  assert.equal(drift.stdout, "", `article XML ${label}: no audit result may be printed`);
-  assert.equal(
-    drift.requests?.[pinned.full_text_xml_url],
-    1,
-    `article XML ${label}: a drifted HTTP 200 must fail at once and never be retried${detail}`,
-  );
+for (const [artifact, url, pinnedBytes] of driftTargets) {
+  for (const [kind, bytes, failure] of [
+    ["same-length digest drift", pinnedBytes, "SHA-256 drifted from the pin"],
+    ["byte-length drift, one byte short", pinnedBytes - 1, "byte length drifted from the pin"],
+    ["byte-length drift, one byte long", pinnedBytes + 1, "byte length drifted from the pin"],
+  ]) {
+    const drift = auditWithDriftedResponse(url, bytes);
+    const label = `${artifact} ${kind}`;
+    const detail = `\nstatus ${drift.status} signal ${drift.signal}\nstderr:\n${drift.stderr}`;
+    assert.equal(drift.status, 1, `${label}: the audit must fail${detail}`);
+    assert.ok(drift.stderr.includes(`${artifact}: ${failure}`), `${label}: wrong failure${detail}`);
+    assert.equal(drift.stdout, "", `${label}: no audit result may be printed`);
+    assert.equal(
+      drift.requests?.[url],
+      1,
+      `${label}: a drifted HTTP 200 must fail at once and never be retried${detail}`,
+    );
+    assert.equal(
+      drift.requests?.[pinned.archive_url],
+      undefined,
+      `${label}: the unpinnable supplement archive must never be retrieved${detail}`,
+    );
+  }
 }
 
 console.log(
-  "KBRC primary-source integration audit verified the byte-pinned article XML and supplement, 22 equation terms, 4 source examples, the p0130 calibration warning, app-only input-limit provenance, and the BMI-based weight-review binding (p0030, p0050, Table 1, Item S1, Table S1); article XML drift (same length, one byte short, one byte long) failed at once with a single request.",
+  "KBRC primary-source integration audit verified the byte-pinned article XML and supplement PDF, 22 equation terms, 4 source examples, the p0130 calibration warning, app-only input-limit provenance, and the BMI-based weight-review binding (p0030, p0050, Table 1, Item S1, Table S1); same-length, one-byte-short and one-byte-long drift of either artifact failed at once with a single request and no fallback.",
 );
