@@ -8,6 +8,14 @@
  * Kidney supports both 2018 and 2025 OIS revisions (version selector).
  * Pancreas uses 2024 OIS revision (ductal integrity as primary grading determinant).
  *
+ * Grade-advance modifiers are bound to the table that states them (Kozar 2018,
+ * Tables 1-3 notes; docs/evidence/aast-injury-modifiers.md):
+ * - Liver and spleen 2018: multiple grade I-II injuries advance one grade (max III).
+ * - Kidney 2018: bilateral renal injuries advance one grade (max III).
+ * - Kidney 2025 and pancreas 2024: no modifier is applied (the revision full texts
+ *   could not be checked for one), and hidden or stale checkbox values never
+ *   change the grade.
+ *
  * Primary Sources:
  * - Kozar RA, et al. J Trauma Acute Care Surg. 2018;85(6):1119-1122 (2018 AAST-OIS Update)
  * - Keihani S, et al. J Trauma Acute Care Surg. 2025;98(3):448-451 (2025 Kidney OIS Update)
@@ -50,6 +58,11 @@ PANCREAS (2024 Revision):
 • Ductal integrity is the PRIMARY grading determinant
 • Location (head vs. body/tail) differentiates Grade III from IV
 • Head lacerations without duct injury reclassified from Grade IV to Grade II
+
+GRADE-ADVANCE MODIFIERS (2018 OIS table notes):
+• Liver and spleen: multiple grade I–II injuries advance one grade, up to Grade III
+• Kidney (2018 scale): bilateral renal injuries advance one grade, up to Grade III
+• Kidney 2025 and pancreas 2024 paths: no grade-advance modifier is applied
 
 MANAGEMENT PRINCIPLES (WSES Guidelines):
 • Hemodynamic stability is the PRIMARY determinant of management
@@ -469,7 +482,8 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       id: "kidney_2018_urinary_extrav",
       label: "Urinary Extravasation",
       type: "checkbox",
-      subLabel: "Contrast extravasation on delayed phase → Grade IV",
+      subLabel:
+        "Excreted contrast leaking outside the collecting system on delayed (excretory) phase → Grade IV",
       showIf: (vals) =>
         vals.organ === "kidney" && vals.kidney_ois_version === "2018",
     },
@@ -522,6 +536,18 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
           label: "Devascularized kidney with active bleeding (Grade V)",
         },
       ],
+    },
+
+    // Kidney 2018 table note: the kidney's advance trigger is bilateral injury
+    // (not multiple injuries in one kidney, which take the highest grade).
+    {
+      id: "kidney_2018_bilateral",
+      label: "Bilateral Renal Injuries",
+      type: "checkbox",
+      subLabel:
+        "Both kidneys injured: advance one grade, up to Grade III (2018 kidney OIS)",
+      showIf: (vals) =>
+        vals.organ === "kidney" && vals.kidney_ois_version === "2018",
     },
 
     // ============================================
@@ -605,18 +631,22 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       label: "Destructive Pancreatic Head Injury",
       type: "checkbox",
       subLabel:
-        "Massive disruption of pancreatic head with nonviable parenchyma → Grade V",
+        "Pancreatic head destruction with nonviable parenchyma (2024 revision) → Grade V",
       showIf: (vals) => vals.organ === "pancreas",
     },
 
     // ============================================
-    // COMMON FIELDS
+    // LIVER/SPLEEN MODIFIER (2018 table notes)
+    // Not offered for the kidney (its 2018 modifier is bilateral injury) or for
+    // the 2025 kidney / 2024 pancreas paths (no modifier verified).
     // ============================================
     {
       id: "multiple_injuries",
       label: "Multiple Injuries in Same Organ",
       type: "checkbox",
-      subLabel: "Advance one grade for multiple injuries (up to Grade III)",
+      subLabel:
+        "Multiple grade I–II injuries: advance one grade, up to Grade III (2018 liver/spleen OIS)",
+      showIf: (vals) => vals.organ === "liver" || vals.organ === "spleen",
     },
   ],
 
@@ -643,6 +673,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       kidney_2018_urinary_extrav = false,
       kidney_2018_vascular = "",
       kidney_2018_infarction = "",
+      kidney_2018_bilateral = false,
       // pancreas fields
       pancreas_parenchymal = "",
       pancreas_duct = "",
@@ -1114,11 +1145,32 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       gradeDescription = pancreasGrades[grade] || "";
     }
 
-    // Apply multiple injury rule
-    let baseGrade = grade;
-    if (multiple_injuries && grade < 3 && grade > 0) {
+    // Grade-advance modifiers (Kozar 2018 table notes). Each applies only to the
+    // organ and version whose table states it, and only to a base grade of I or
+    // II (ceiling Grade III). The UI keeps hidden checkbox values, so the organ
+    // and version are checked here as well: a stale value never changes a grade.
+    const baseGrade = grade;
+    let gradeAdvance = null;
+    if (baseGrade > 0 && baseGrade < 3) {
+      if (
+        (organ === "liver" || organ === "spleen") &&
+        multiple_injuries === true
+      ) {
+        gradeAdvance = "multiple";
+      } else if (
+        organ === "kidney" &&
+        kidney_ois_version === "2018" &&
+        kidney_2018_bilateral === true
+      ) {
+        gradeAdvance = "bilateral";
+      }
+    }
+    if (gradeAdvance === "multiple") {
       grade += 1;
       gradeFindings.push("Multiple injuries (+1 grade)");
+    } else if (gradeAdvance === "bilateral") {
+      grade += 1;
+      gradeFindings.push("Bilateral renal injuries (+1 grade)");
     }
 
     if (grade === 0) {
@@ -1349,9 +1401,12 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       "Key Imaging Pitfalls": imagingPitfalls,
     };
 
-    if (multiple_injuries && baseGrade < 3 && baseGrade > 0) {
+    if (gradeAdvance === "multiple") {
       result["Multiple Injury Adjustment"] =
         `Base grade ${baseGrade} advanced to Grade ${grade} due to multiple injuries`;
+    } else if (gradeAdvance === "bilateral") {
+      result["Bilateral Injury Adjustment"] =
+        `Base grade ${baseGrade} advanced to Grade ${grade} due to bilateral renal injuries (2018 kidney OIS)`;
     }
 
     result["CRITICAL NOTE"] =
@@ -1391,7 +1446,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       u: "https://doi.org/10.1097/TA.0000000000002058",
     },
     {
-      t: "Keihani S, Tominaga GT, Swaroop M, et al. Kidney organ injury scaling: 2025 update. J Trauma Acute Care Surg. 2025;98(3):448-451.",
+      t: "Keihani S, Tominaga GT, Matta R, et al. Kidney organ injury scaling: 2025 update. J Trauma Acute Care Surg. 2025;98(3):448-451.",
       u: "https://pubmed.ncbi.nlm.nih.gov/39836096/",
     },
     {
