@@ -11,6 +11,8 @@
  * - LR-4: Probably HCC (67-74% HCC)
  * - LR-5: Definitely HCC (92-95% HCC)
  * - LR-M: Malignant, not HCC-specific (93-100% malignancy)
+ *   (targetoid mass -> LR-M; nontargetoid LR-M feature -> LR-M only when LR-5
+ *   criteria are not met; no dead end or stale hidden values)
  * - LR-TIV: Tumor in vein
  * - LR-NC: Not categorizable (inadequate study)
  * - Ancillary feature adjustments
@@ -161,9 +163,15 @@ test.describe("LI-RADS v2018 Calculator", () => {
       // Enable LR-M features
       await page.locator('label[for="has_lrm_features"]').click();
 
+      // Major features stay on screen until a targetoid feature is selected
+      await expect(page.locator('input[id="observation_size"]')).toBeVisible();
+
       // Select targetoid features
       await page.locator('label[for="lrm_rim_aphe"]').click();
       await page.locator('label[for="lrm_peripheral_washout"]').click();
+
+      // A targetoid mass is LR-M whatever its major features, so they are hidden
+      await expect(page.locator('input[id="observation_size"]')).toHaveCount(0);
 
       await page.click('button:has-text("Calculate")');
 
@@ -171,6 +179,122 @@ test.describe("LI-RADS v2018 Calculator", () => {
       await expect(results.locator("text=Not HCC-Specific")).toBeVisible();
       await expect(results.locator("text=93-100%")).toBeVisible();
       await expect(results.locator("text=Biopsy recommended")).toBeVisible();
+      await expect(results.getByText("Targetoid mass", { exact: true })).toBeVisible();
+    });
+
+    test("should keep LR-5 when a nontargetoid LR-M feature is present but LR-5 criteria are met", async ({
+      page,
+    }) => {
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
+      await page.locator('label[for="has_lrm_features"]').click();
+      await page.locator('label[for="lrm_necrosis"]').click();
+
+      // Nontargetoid features need the major features to check LR-5 criteria
+      await expect(page.locator('input[id="observation_size"]')).toBeVisible();
+
+      // >=20 mm, nonrim APHE + washout meets LR-5 criteria
+      await page.fill('input[id="observation_size"]', "25");
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-present"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results.locator("text=LR-5").first()).toBeVisible();
+      await expect(results.locator("text=Definitely HCC")).toBeVisible();
+      await expect(
+        results.locator("text=LR-M not assigned: LR-5 criteria met"),
+      ).toBeVisible();
+      await expect(
+        results.locator("text=lower certainty of hepatocellular origin"),
+      ).toBeVisible();
+      await expect(results.locator("text=Not HCC-Specific")).toHaveCount(0);
+    });
+
+    test("should assign LR-M for a nontargetoid LR-M feature when LR-5 criteria are not met", async ({
+      page,
+    }) => {
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
+      await page.locator('label[for="has_lrm_features"]').click();
+      await page.locator('label[for="lrm_infiltrative"]').click();
+
+      // >=20 mm, nonrim APHE, no additional major feature: diagnostic table LR-4
+      await page.fill('input[id="observation_size"]', "25");
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results.locator("text=LR-M").first()).toBeVisible();
+      await expect(results.locator("text=Not HCC-Specific")).toBeVisible();
+      await expect(
+        results.locator(
+          "text=LR-5 criteria not met (diagnostic table: LR-4)",
+        ),
+      ).toBeVisible();
+    });
+
+    test("should ask for a feature when LR-M Features Present has none selected", async ({
+      page,
+    }) => {
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
+      await page.locator('label[for="has_lrm_features"]').click();
+
+      // The major features are not hidden by the checkbox alone
+      await expect(page.locator('input[id="observation_size"]')).toBeVisible();
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(
+        results.getByText(/is checked but no LR-M feature is selected/),
+      ).toBeVisible();
+      await expect(results.locator("text=LI-RADS Category")).toHaveCount(0);
+    });
+
+    test("should ignore LR-M features hidden by unchecking LR-M Features Present", async ({
+      page,
+    }) => {
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
+
+      // Diagnostic table LR-4 (>=20 mm, nonrim APHE, no additional feature)
+      await page.fill('input[id="observation_size"]', "25");
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
+
+      await page.locator('label[for="has_lrm_features"]').click();
+      await page.locator('label[for="lrm_marked_restriction"]').click();
+      await page.click('button:has-text("Calculate")');
+      await expect(results.locator("text=LR-M").first()).toBeVisible();
+
+      // Unchecking the box hides the feature list; its stale value must not count
+      await page.locator('label[for="has_lrm_features"]').click();
+      await expect(page.locator('[id="lrm_marked_restriction"]')).toHaveCount(0);
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results.locator("text=LR-4").first()).toBeVisible();
+      await expect(results.locator("text=Probably HCC")).toBeVisible();
+      await expect(results.locator("text=Not HCC-Specific")).toHaveCount(0);
     });
 
     test("should classify as LR-M with rim APHE", async ({ page }) => {
