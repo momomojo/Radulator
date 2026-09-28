@@ -3,8 +3,11 @@
 import "./register-jsx-loader.mjs";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import process from "node:process";
+
+const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
 const run = spawnSync(
   process.execPath,
@@ -31,44 +34,130 @@ assert.equal(
 const audit = JSON.parse(run.stdout);
 assert.equal(audit.schema, "radulator-adrenal-primary-source-audit/v1");
 assert.deepEqual(audit.calculator_ids, ["adrenal-ct", "adrenal-mri"]);
-const [ese, pmc, pubmed] = audit.artifacts;
-assert.deepEqual(ese, {
-  id: "ese-ensat-2023-guideline-pdf",
-  doi: "10.1093/ejendo/lvad066",
-  final_url: "https://eprints.whiterose.ac.uk/id/eprint/208070/1/lvad066.pdf",
-  media_type: "application/pdf",
-  bytes: 2_086_909,
-  sha256: "70faac5423838b806d5be7abe489a8bd35b7ae12714d32d821fcdc083f80d47f",
-  digest_scope: "artifact-bytes",
-  pages: 43,
-  license: "CC BY",
-});
-assert.deepEqual(pmc, {
-  id: "schloetelburg-2021-pmc-jats",
-  doi: "10.1530/EJE-21-0650",
-  pmcid: "PMC8679842",
-  final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
-  media_type: "text/xml",
-  bytes: 116_668,
-  sha256: "9210b41674e56030b538fc9329a94b540a0079e64ba4e162819eb16a33221d75",
-  digest_scope: "artifact-bytes",
-  license: "CC BY 4.0",
-});
-assert.equal(pubmed.id, "pubmed-primary-abstracts");
-assert.equal(pubmed.final_url, "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi");
-assert.equal(pubmed.media_type, "text/xml");
-assert.equal(pubmed.digest_scope, "normalized-record-json (PubMed XML bytes are volatile)");
-assert.deepEqual(pubmed.records, {
-  "8598820": { doi: "10.1002/mrm.1910340618", normalized_bytes: 690, normalized_sha256: "d62283e1af3bff96f54aeea728f55cece85c0843d7c1eeee5faf5d8a61dbb42e" },
-  "8756926": { doi: "10.1148/radiology.200.3.8756926", normalized_bytes: 1673, normalized_sha256: "14ffba8c110b5926addf25aea7b0b9624d286be5b25de5e4f7ae2a5552b74dc5" },
-  "11044054": { doi: "10.2214/ajr.175.5.1751411", normalized_bytes: 2033, normalized_sha256: "5b11073e37b139d5b8c77f5b27d9ea6ba44c48e7eaa824eeab80a4c831ffc648" },
-  "11867777": { doi: "10.1148/radiol.2223010766", normalized_bytes: 1407, normalized_sha256: "42ff089818380f9f0bf38c218e2c4312b5a52d0a4384faa318d8cf28247ce990" },
-  "12760936": { doi: "10.2214/ajr.180.6.1801649", normalized_bytes: 1562, normalized_sha256: "ff16a896fe75842f30a710aae1be2e2ec90de4d24ff575e5067942d027e97c2c" },
-  "15208141": { doi: "10.2214/ajr.183.1.1830215", normalized_bytes: 2056, normalized_sha256: "84566191b9f711268c3072d5571273f7df5b0f3e820515e6f283db6a120b55ba" },
-  "23151828": { doi: "10.1148/radiol.12120110", normalized_bytes: 2320, normalized_sha256: "c06c66e114f99bc0bfa143af4febc570cd59207fe8a07488ee207ccdf3109cea" },
-  "23789665": { doi: "10.2214/AJR.12.9620", normalized_bytes: 2028, normalized_sha256: "78f7dc67f910f69d272a53a16a96a57647669794d56dffef4040ab86fe3f4984" },
-  "26254908": { doi: "10.1007/s00261-015-0521-x", normalized_bytes: 1754, normalized_sha256: "cb0a1dbb095aa60ed6f0395c50a3d4ff762fdaf12978eab7d0c9265c30bdefd1" },
-});
+// Every artifact is pinned by the exact byte length and SHA-256 of the retrieved bytes.
+assert.deepEqual(audit.artifacts, [
+  {
+    id: "ese-ensat-2023-guideline-pdf",
+    doi: "10.1093/ejendo/lvad066",
+    final_url: "https://eprints.whiterose.ac.uk/id/eprint/208070/1/lvad066.pdf",
+    media_type: "application/pdf",
+    bytes: 2086909,
+    sha256: "70faac5423838b806d5be7abe489a8bd35b7ae12714d32d821fcdc083f80d47f",
+    digest_scope: "artifact-bytes",
+    pages: 43,
+    license: "CC BY",
+  },
+  {
+    id: "schloetelburg-2021-pmc-jats",
+    doi: "10.1530/EJE-21-0650",
+    pmcid: "PMC8679842",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=8679842&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/xml",
+    bytes: 116668,
+    sha256: "9210b41674e56030b538fc9329a94b540a0079e64ba4e162819eb16a33221d75",
+    digest_scope: "artifact-bytes",
+    license: "CC BY 4.0",
+  },
+  {
+    id: "pubmed-8598820",
+    pmid: "8598820",
+    doi: "10.1002/mrm.1910340618",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=8598820&rettype=abstract&retmode=text&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/plain",
+    bytes: 944,
+    sha256: "86fe91c16e25c6f3f46866730bdc68893c01f58d3b57e5282b3b947543e4acaf",
+    digest_scope: "artifact-bytes",
+    linked_notices: ["Erratum in Magn Reson Med 1996 Aug;36(2):332."],
+  },
+  {
+    id: "pubmed-8756926",
+    pmid: "8756926",
+    doi: "10.1148/radiology.200.3.8756926",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=8756926&rettype=abstract&retmode=text&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/plain",
+    bytes: 1957,
+    sha256: "f47817ca86d7ce242a0b01dfe83d85b98d93526b4fc29b8c53eaaf88fd626928",
+    digest_scope: "artifact-bytes",
+    linked_notices: ["Erratum in Radiology 1996 Dec;201(3):880."],
+  },
+  {
+    id: "pubmed-11044054",
+    pmid: "11044054",
+    doi: "10.2214/ajr.175.5.1751411",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=11044054&rettype=abstract&retmode=text&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/plain",
+    bytes: 2319,
+    sha256: "533378781edb78cb27d3f85a57e6bfea12e7fcace5e6468443dc178ae205a1fb",
+    digest_scope: "artifact-bytes",
+    linked_notices: [],
+  },
+  {
+    id: "pubmed-11867777",
+    pmid: "11867777",
+    doi: "10.1148/radiol.2223010766",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=11867777&rettype=abstract&retmode=text&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/plain",
+    bytes: 1817,
+    sha256: "6b8d55c2ed177f02157c5818e924e698835e55fd90dadd126223ed1ce5d73cb9",
+    digest_scope: "artifact-bytes",
+    linked_notices: ["Comment in Radiology. 2003 Jan;226(1):289-90; author reply 290. doi: 10.1148/radiol.2261020528."],
+  },
+  {
+    id: "pubmed-12760936",
+    pmid: "12760936",
+    doi: "10.2214/ajr.180.6.1801649",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=12760936&rettype=abstract&retmode=text&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/plain",
+    bytes: 1822,
+    sha256: "0f35b836be2f938cfecc1d2220c59c5ed98db3af367bd3821172a0e47b7f18c4",
+    digest_scope: "artifact-bytes",
+    linked_notices: [],
+  },
+  {
+    id: "pubmed-15208141",
+    pmid: "15208141",
+    doi: "10.2214/ajr.183.1.1830215",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=15208141&rettype=abstract&retmode=text&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/plain",
+    bytes: 2337,
+    sha256: "1f91c231176f8f88f6fd2f2e813dd038cad6f24fed6b1dd6400c0a9396b4588a",
+    digest_scope: "artifact-bytes",
+    linked_notices: [],
+  },
+  {
+    id: "pubmed-23151828",
+    pmid: "23151828",
+    doi: "10.1148/radiol.12120110",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=23151828&rettype=abstract&retmode=text&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/plain",
+    bytes: 2736,
+    sha256: "db1c71d63ce9d190012e6935f294a51650e8a7350f8c3ee7c4aa55c345266765",
+    digest_scope: "artifact-bytes",
+    linked_notices: ["Comment in J Urol. 2013 Dec;190(6):2018-9. doi: 10.1016/j.juro.2013.08.045."],
+  },
+  {
+    id: "pubmed-23789665",
+    pmid: "23789665",
+    doi: "10.2214/AJR.12.9620",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=23789665&rettype=abstract&retmode=text&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/plain",
+    bytes: 2296,
+    sha256: "88c37516abae3f430580d8bbd6b9155ab13eed75842e52d6386b6d1f1def4203",
+    digest_scope: "artifact-bytes",
+    linked_notices: [],
+  },
+  {
+    id: "pubmed-26254908",
+    pmid: "26254908",
+    doi: "10.1007/s00261-015-0521-x",
+    final_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=26254908&rettype=abstract&retmode=text&tool=radulator-adrenal-primary-source-audit",
+    media_type: "text/plain",
+    bytes: 2363,
+    sha256: "27ed92335099d70d3e52d3f8eb62a48f58134935775b918f5218e00febdef54f",
+    digest_scope: "artifact-bytes",
+    linked_notices: [],
+  },
+]);
 
 // Every source statement is pinned by the length and SHA-256 of its exact normalized span.
 assert.deepEqual(
@@ -162,23 +251,30 @@ assert.deepEqual(
 assert.equal(audit.source_text_committed, false);
 assert.equal(audit.source_bytes_committed, false);
 
-// In-process mutation checks against the live sources: the audit must reject a
-// one-word edit inside every pinned span, a changed source threshold, a changed
-// runtime rule or formula, a reintroduced benign banner and bad retrieval identity.
+// In-process checks against a fresh live retrieval: the audit must reject changed
+// source bytes before parsing, a one-word edit inside every pinned span, a changed
+// source threshold, a changed runtime rule or formula, a reintroduced benign banner
+// and bad retrieval identity.
 const {
+  ESE_PDF,
   MAX_MARKER_WORDS,
+  PMC_ARTICLE,
+  PUBMED_RECORDS,
   STATEMENTS,
   bindCtRuntime,
   bindMriRuntime,
   checkStatementText,
   compactProse,
   fetchArtifact,
-  loadSources,
   locateStatement,
   markerWordCount,
-  parsePubmed,
+  parseRecordText,
+  parseSources,
+  recordSections,
+  retrieveSources,
   sourceThresholds,
   spanOf,
+  verifyArtifactBytes,
   verifyStatements,
 } = await import("./audit-adrenal-primary-source.mjs");
 
@@ -189,7 +285,37 @@ for (const statement of STATEMENTS) {
   }
 }
 
-const sources = await loadSources();
+const retrieved = await retrieveSources();
+const byteArtifacts = [
+  [ESE_PDF, retrieved.ese],
+  [PMC_ARTICLE, retrieved.pmc],
+  ...Object.values(PUBMED_RECORDS).map((artifact) => [artifact, retrieved.pubmed.get(artifact.pmid)]),
+];
+assert.equal(byteArtifacts.length, 11);
+for (const [artifact, entry] of byteArtifacts) {
+  verifyArtifactBytes(artifact, entry.bytes);
+  // Same-length digest drift: one flipped byte.
+  const flipped = Buffer.from(entry.bytes);
+  flipped[Math.floor(flipped.length / 2)] ^= 0x01;
+  assert.throws(() => verifyArtifactBytes(artifact, flipped), new RegExp(`${artifact.id}: source SHA-256 drifted`));
+  // Byte-length drift: one appended byte.
+  assert.throws(
+    () => verifyArtifactBytes(artifact, Buffer.concat([entry.bytes, Buffer.from(" ")])),
+    new RegExp(`${artifact.id}: source byte length drifted`),
+  );
+}
+// Parsing never starts on changed bytes.
+const tamperedPubmed = new Map(retrieved.pubmed);
+const caoili = retrieved.pubmed.get("11044054");
+const tamperedBytes = Buffer.from(caoili.bytes);
+tamperedBytes[Math.floor(tamperedBytes.length / 2)] ^= 0x01;
+tamperedPubmed.set("11044054", { ...caoili, bytes: tamperedBytes });
+await assert.rejects(parseSources({ ...retrieved, pubmed: tamperedPubmed }), /pubmed-11044054: source SHA-256 drifted/);
+const tamperedPdf = Buffer.from(retrieved.ese.bytes);
+tamperedPdf[1_000] ^= 0x01;
+await assert.rejects(parseSources({ ...retrieved, ese: { ...retrieved.ese, bytes: tamperedPdf } }), /ese-ensat-2023-guideline-pdf: source SHA-256 drifted/);
+
+const sources = await parseSources(retrieved);
 const spans = verifyStatements(sources);
 const thresholds = sourceThresholds(spans);
 assert.deepEqual([thresholds.ct.apw, thresholds.ct.rpw, thresholds.mri.sii], [60, 40, 16.5]);
@@ -264,38 +390,80 @@ assert.throws(
 
 assert.equal(compactProse("wash-\nout at 15 min-\nutes"), compactProse("washout at 15 minutes"));
 
-// parsePubmed must take the article's own DOI, never one from its reference list.
-const pubmedXml = `<PubmedArticleSet><PubmedArticle><MedlineCitation Status="MEDLINE"><PMID Version="1">1</PMID><Article><ArticleTitle>T</ArticleTitle><Abstract><AbstractText Label="RESULTS">a &lt; b</AbstractText></Abstract></Article></MedlineCitation><PubmedData><ArticleIdList><ArticleId IdType="pubmed">1</ArticleId><ArticleId IdType="doi">10.1/own</ArticleId></ArticleIdList><ReferenceList><Reference><ArticleIdList><ArticleId IdType="doi">10.1/cited</ArticleId></ArticleIdList></Reference></ReferenceList></PubmedData></PubmedArticle></PubmedArticleSet>`;
-const parsed = parsePubmed(pubmedXml).get("1");
-assert.equal(parsed.doi, "10.1/own");
-assert.deepEqual(parsed.sections, [["RESULTS", "a < b"]]);
+// PubMed plain-text layout, on an invented record: linked-record notices sit between
+// the author information and the abstract, and labels must match their pin.
+const record = parseRecordText(
+  [
+    "1. Test J. 2001 Jan;1(1):1-2. doi: 10.1/test.",
+    "Invented title.",
+    "Author A(1), Author B.",
+    "Author information: (1)Nowhere.",
+    "Comment in\n    Test J. 2002 Feb;2(2):3.",
+    "Erratum in\n    Test J. 2002 Mar;2(3):4.",
+    "INTRO: First invented section. FINDINGS: Second\ninvented section.",
+    "DOI: 10.1/test\nPMID: 1  [Indexed for MEDLINE]",
+  ].join("\n\n"),
+);
+assert.deepEqual(record.notices, ["Comment in Test J. 2002 Feb;2(2):3.", "Erratum in Test J. 2002 Mar;2(3):4."]);
+assert.deepEqual([record.pmid, record.doi, record.year, record.pmcid], ["1", "10.1/test", "2001", null]);
+assert.deepEqual([...recordSections(record, ["INTRO", "FINDINGS"])], [["INTRO", "First invented section."], ["FINDINGS", "Second invented section."]]);
+assert.throws(() => recordSections(record, ["INTRO", "RESULTS"]), /abstract section labels drifted/);
 
-const artifact = { id: "fake", url: "https://example.org/a.pdf", host: "example.org", path: "/a.pdf", media_type: "application/pdf" };
-const reply = (status, url = artifact.url, type = "application/pdf") => ({
+// Retrieval: only transport failures are retried; a 200 that misses any pin fails at once.
+const fakeBytes = Buffer.from("pinned artifact bytes");
+const fake = {
+  id: "fake",
+  url: "https://example.org/a.txt?db=x&id=1",
+  host: "example.org",
+  path: "/a.txt",
+  query: { db: "x", id: "1" },
+  media_type: "text/plain",
+  bytes: fakeBytes.length,
+  sha256: sha256(fakeBytes),
+};
+const reply = (status, { body = fakeBytes, url = fake.url, type = "text/plain; charset=UTF-8" } = {}) => ({
   ok: status >= 200 && status < 300,
   status,
   url,
   headers: new Headers({ "content-type": type }),
-  arrayBuffer: async () => new TextEncoder().encode("pdf").buffer,
+  arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength),
   body: { cancel: async () => {} },
 });
-await assert.rejects(fetchArtifact(artifact, async () => reply(200, "https://mirror.example.net/a.pdf")), /final URL host drifted/);
-await assert.rejects(fetchArtifact(artifact, async () => reply(200, artifact.url, "text/html")), /media type drifted/);
+const noSleep = async () => {};
 let calls = 0;
-await assert.rejects(fetchArtifact(artifact, async () => { calls += 1; return reply(404); }), /after 1 attempt\(s\) \(HTTP 404\)/);
-assert.equal(calls, 1, "a 4xx must not be retried");
+const counted = (respond) => async () => {
+  calls += 1;
+  return respond(calls);
+};
+async function expectFailure(artifact, respond, pattern, expectedCalls) {
+  calls = 0;
+  await assert.rejects(fetchArtifact(artifact, { fetchImpl: counted(respond), sleep: noSleep }), pattern);
+  assert.equal(calls, expectedCalls, `${pattern}: expected ${expectedCalls} request(s)`);
+}
 calls = 0;
-await assert.rejects(fetchArtifact(artifact, async () => { calls += 1; return reply(400); }), /after 1 attempt\(s\) \(HTTP 400\)/);
-assert.equal(calls, 1, "a 400 from a non-NCBI host must not be retried");
+assert.equal((await fetchArtifact(fake, { fetchImpl: counted(() => reply(200)), sleep: noSleep })).attempts, 1);
+const sameLength = Buffer.from(fakeBytes);
+sameLength[0] ^= 0x01;
+await expectFailure(fake, () => reply(200, { body: sameLength }), /fake: source SHA-256 drifted/, 1);
+await expectFailure(fake, () => reply(200, { body: Buffer.concat([fakeBytes, Buffer.from("!")]) }), /fake: source byte length drifted/, 1);
+await expectFailure(fake, () => reply(200, { url: "https://example.org/a.txt?db=x&id=2" }), /fake: final URL query id drifted/, 1);
+await expectFailure(fake, () => reply(200, { url: "https://mirror.example.net/a.txt?db=x&id=1" }), /fake: final URL host drifted/, 1);
+await expectFailure(fake, () => reply(200, { type: "text/html" }), /fake: media type drifted/, 1);
+await expectFailure(fake, () => reply(404), /after 1 attempt\(s\) \(HTTP 404\)/, 1);
+await expectFailure(fake, () => reply(400), /after 1 attempt\(s\) \(HTTP 400\)/, 1);
+await expectFailure(fake, () => reply(503), /after 5 attempt\(s\) \(HTTP 503\)/, 5);
 calls = 0;
-const retried = await fetchArtifact(artifact, async () => { calls += 1; return reply(calls === 1 ? 503 : 200); });
-assert.equal(retried.attempts, 2);
-assert.equal(retried.bytes.toString(), "pdf");
+assert.equal((await fetchArtifact(fake, { fetchImpl: counted((n) => reply(n === 1 ? 503 : 200)), sleep: noSleep })).attempts, 2);
 calls = 0;
-const ncbiArtifact = { ...artifact, retry_statuses: [400, 429, 500, 502, 503, 504] };
-const ncbiRetried = await fetchArtifact(ncbiArtifact, async () => { calls += 1; return reply(calls === 1 ? 400 : 200); });
-assert.equal(ncbiRetried.attempts, 2, "NCBI artifacts retry a transient 400");
+const ncbiLike = { ...fake, retry_statuses: [400, 429, 500, 502, 503, 504] };
+assert.equal((await fetchArtifact(ncbiLike, { fetchImpl: counted((n) => reply(n === 1 ? 400 : 200)), sleep: noSleep })).attempts, 2, "NCBI artifacts retry a transient 400");
+calls = 0;
+const networkThenOk = counted((n) => {
+  if (n === 1) throw new TypeError("fetch failed");
+  return reply(200);
+});
+assert.equal((await fetchArtifact(fake, { fetchImpl: networkThenOk, sleep: noSleep })).attempts, 2, "network errors are retried");
 
 console.log(
-  `Adrenal primary-source audit verified 3 pinned artifacts and ${STATEMENTS.length} span-pinned statements, bound washout and chemical-shift boundaries to the runtime, and rejected a one-word edit in every span plus threshold, formula, banner and retrieval mutations.`,
+  `Adrenal primary-source audit verified ${byteArtifacts.length} byte-pinned artifacts and ${STATEMENTS.length} span-pinned statements, bound washout and chemical-shift boundaries to the runtime, and rejected byte drift before parsing, a one-word edit in every span, and threshold, formula, banner and retrieval mutations.`,
 );
