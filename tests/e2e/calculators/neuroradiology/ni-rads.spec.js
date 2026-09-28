@@ -659,6 +659,27 @@ test.describe("ACR NI-RADS Calculator", () => {
   });
 
   test.describe("Input Validation", () => {
+    test("should ask for CT or PET/CT and show no 2018 result when modality not selected", async ({
+      page,
+    }) => {
+      // Skip the modality; everything else would otherwise give NI-RADS 1 (~4%).
+      await selectRadioOption(page, "Yes - prior available");
+      await selectRadioOption(
+        page,
+        "Expected post-treatment changes only (distortion, scar, diffuse linear enhancement)",
+      );
+      await selectRadioOption(page, "No abnormal lymph nodes");
+
+      await page.click('button:has-text("Calculate")');
+
+      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      await expect(
+        resultSection.getByText("Please select the imaging modality (Contrast-Enhanced CT or PET/CT)."),
+      ).toBeVisible();
+      await expect(resultSection.getByText("1 - No Evidence of Recurrence")).toHaveCount(0);
+      await expect(resultSection.getByText("~4%")).toHaveCount(0);
+    });
+
     test("should show error when primary site findings not selected", async ({
       page,
     }) => {

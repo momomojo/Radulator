@@ -125,6 +125,11 @@ fails(
   /must fail closed|never receive a 2018/,
   "MRI input receiving 2018 categories and rates",
 );
+fails(
+  () => audit.bindRuntime(withCompute((vals) => (!vals.modality && vals.nirads_version !== "mri_2025" ? nirads._compute2018({ ...vals, modality: "cect" }) : nirads.compute(vals))), result.facts),
+  /without a modality/,
+  "input without a modality receiving 2018 categories and rates",
+);
 
 // 6. Response identity and retry policy.
 fails(() => audit.verifyResponse(KRIEGER, { finalUrl: audit.SOURCES[KRIEGER].url.replace("eutils.ncbi.nlm.nih.gov", "example.org"), contentType: "text/plain" }), /final URL host/, "wrong host");

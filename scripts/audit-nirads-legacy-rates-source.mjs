@@ -220,6 +220,11 @@ export const LEGACY_MRI_VECTORS = Object.freeze([
   { nirads_version: "ct_pet_2018", modality: "mri", prior_available: "yes", primary_ct_finding: "expected", neck_ct_finding: "no_abnormal" },
 ]);
 
+export const LEGACY_NO_MODALITY_VECTORS = Object.freeze([
+  { prior_available: "yes", primary_ct_finding: "discrete_mass", primary_bone: "yes", neck_ct_finding: "new_necrosis" },
+  { nirads_version: "ct_pet_2018", modality: "", prior_available: "yes", primary_ct_finding: "expected", neck_ct_finding: "no_abnormal" },
+]);
+
 export const MRI_VECTORS = Object.freeze([
   { nirads_version: "mri_2025", during_treatment: "no", assessment_site: "primary", primary_tumor_status: "known", assessable: "yes", prior_status: "available", primary_pattern_id: "p1_expected_changes" },
   { nirads_version: "mri_2025", during_treatment: "no", assessment_site: "neck", assessable: "yes", prior_status: "available", neck_pattern_id: "n1_no_abnormal_nodes", node_temporal_status: "not_applicable" },
@@ -261,6 +266,13 @@ export function bindRuntime(nirads, facts) {
     assert.equal(result["Estimated Recurrence Risk"], undefined, "MRI input must never receive a 2018 recurrence rate");
     assert.equal(result["Overall Assessment"], undefined, "MRI input must never receive a 2018 category");
   }
+  // Without a selected modality nothing shows the study was CT or PET/CT, so the same boundary applies.
+  for (const inputs of LEGACY_NO_MODALITY_VECTORS) {
+    const result = nirads.compute(inputs);
+    assert.ok(result && typeof result.Error === "string", "input without a modality on the 2018 path must fail closed with an error");
+    assert.equal(result["Estimated Recurrence Risk"], undefined, "input without a modality must never receive a 2018 recurrence rate");
+    assert.equal(result["Overall Assessment"], undefined, "input without a modality must never receive a 2018 category");
+  }
 
   LEGACY_VECTORS.forEach(([category, inputs], index) => {
     const result = nirads.compute(inputs);
@@ -280,7 +292,14 @@ export function bindRuntime(nirads, facts) {
       `MRI vector ${index + 1} must show no legacy percentage`,
     );
   });
-  return { heading, lines: expected, legacyVectors: LEGACY_VECTORS.length, mriVectors: MRI_VECTORS.length, legacyMriRejected: LEGACY_MRI_VECTORS.length };
+  return {
+    heading,
+    lines: expected,
+    legacyVectors: LEGACY_VECTORS.length,
+    mriVectors: MRI_VECTORS.length,
+    legacyMriRejected: LEGACY_MRI_VECTORS.length,
+    legacyNoModalityRejected: LEGACY_NO_MODALITY_VECTORS.length,
+  };
 }
 
 export function verifyResponse(pmid, { finalUrl, contentType }) {
@@ -370,7 +389,8 @@ export function passLine({ facts, binding }) {
     `Krieger ${facts.kriegerYear} rates ${facts.rates.join("/")}% over ${facts.total} targets ` +
     `-> info ${binding.lines.map((line) => line.split(": ")[1]).join("/")} and 2018 risk output ` +
     `(${binding.legacyVectors} vectors); MRI v2025 (${facts.mriYear}) output carries no risk (${binding.mriVectors} vectors); ` +
-    `2018 path offers CT/PET-CT only and rejects MRI (${binding.legacyMriRejected} vectors)`
+    `2018 path offers CT/PET-CT only and rejects MRI (${binding.legacyMriRejected} vectors) ` +
+    `and a missing modality (${binding.legacyNoModalityRejected} vectors)`
   );
 }
 
