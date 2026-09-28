@@ -1,0 +1,46 @@
+{
+  "schema": "radulator-guideline-notices/v1",
+  "policy": "Reviewed notices about the sources behind Radulator calculators, shown on the public Guideline Finder (public/guidelines.html). The weekly guideline currency watch proposes items; a reviewer adds them here with their review state. A notice never changes a calculator by itself: an impact of 'changes-calculator' requires a separate, gated calculator change.",
+  "currency_check": {
+    "last_run": "2026-09-27",
+    "method": "Every PubMed-indexed source cited by a calculator is checked weekly for retractions, expressions of concern, updates and published corrections, and for newer guideline publications on the same subject. Sources published only on society websites are reviewed by the evidence pipeline."
+  },
+  "notices": [
+    {
+      "calculator_id": "aast-trauma-grading",
+      "type": "erratum",
+      "source": "Organ injury scaling 2018 update: Spleen, liver, and kidney (J Trauma Acute Care Surg 2018)",
+      "notice": "Erratum, J Trauma Acute Care Surg 2019;87(2):512",
+      "url": "https://doi.org/10.1097/TA.0000000000002419",
+      "first_seen": "2026-09-27",
+      "impact": "under-review"
+    },
+    {
+      "calculator_id": "aspects-score",
+      "type": "erratum",
+      "source": "Barber et al. Validity and reliability of a quantitative computed tomography score (Lancet 2000)",
+      "notice": "Erratum, Lancet 2000;355(9221):2170",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/10905241/",
+      "first_seen": "2026-09-27",
+      "impact": "under-review"
+    },
+    {
+      "calculator_id": "adrenal-mri",
+      "type": "erratum",
+      "source": "Adrenal imaging (AJR Am J Roentgenol)",
+      "notice": "Erratum, AJR Am J Roentgenol 2012;198(5):1232",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/20489083/",
+      "first_seen": "2026-09-27",
+      "impact": "under-review"
+    },
+    {
+      "calculator_id": "ipss",
+      "type": "erratum",
+      "source": "Oldfield et al. Petrosal sinus sampling with and without corticotropin-releasing hormone (N Engl J Med 1991)",
+      "notice": "Erratum, N Engl J Med 1992;326(17):1172",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/1652686/",
+      "first_seen": "2026-09-27",
+      "impact": "under-review"
+    }
+  ]
+}

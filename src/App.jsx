@@ -1604,6 +1604,13 @@ function AppContent() {
               Guide
             </button>
             <a
+              href="/guidelines.html"
+              className="hover:text-foreground hover:underline transition-colors"
+              data-testid="footer-guidelines-link"
+            >
+              Guidelines
+            </a>
+            <a
               href="/about.html"
               className="hover:text-foreground hover:underline transition-colors"
             >

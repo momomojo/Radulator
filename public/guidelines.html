@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-E0XQJUYddypI5qBD7YRjKKCe5/JdDfvDG1TMe7LeCLs='; style-src 'unsafe-inline'; img-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none';" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>Guideline Finder - Radulator</title>
+  <meta name="description" content="Every guideline and version behind Radulator's calculators, with links to the official sources and notices about corrections, retractions and updates.">
+  <link rel="canonical" href="https://radulator.com/guidelines.html">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; line-height: 1.55; max-width: 880px; margin: 0 auto; padding: 2rem 1rem; color: #333; }
+    h1 { color: #1a1a1a; border-bottom: 2px solid #e5e5e5; padding-bottom: 0.5rem; }
+    h2 { color: #333; margin-top: 2rem; font-size: 1.25rem; }
+    h3 { margin: 0 0 0.25rem; font-size: 1.05rem; }
+    a { color: #2563eb; }
+    .back-link { margin-bottom: 1.5rem; display: inline-block; }
+    .highlight { background: #eff6ff; border: 1px solid #3b82f6; padding: 0.9rem 1rem; border-radius: 0.5rem; margin: 1rem 0; }
+    .summary { color: #475569; font-size: 0.95rem; }
+    .gf-controls { display: none; gap: 0.75rem; flex-wrap: wrap; margin: 1.25rem 0 0.5rem; }
+    .gf-js .gf-controls { display: flex; }
+    .gf-controls input, .gf-controls select { font: inherit; padding: 0.5rem 0.65rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; }
+    .gf-controls input { flex: 1 1 18rem; }
+    #gf-count { color: #64748b; font-size: 0.9rem; min-height: 1.3em; }
+    .card { border: 1px solid #e2e8f0; border-radius: 0.6rem; padding: 0.9rem 1rem; margin: 0.75rem 0; background: #fff; }
+    .card[hidden], .group[hidden] { display: none; }
+    .desc { margin: 0 0 0.3rem; color: #475569; font-size: 0.93rem; }
+    .version { margin: 0 0 0.4rem; }
+    .sources { margin: 0.4rem 0; padding-left: 1.1rem; font-size: 0.93rem; }
+    .sources li { margin: 0.2rem 0; }
+    .role { display: inline-block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: #475569; background: #f1f5f9; border-radius: 0.25rem; padding: 0 0.35rem; margin-right: 0.3rem; }
+    .authority { color: #64748b; }
+    .status { font-size: 0.88rem; margin: 0.4rem 0 0; }
+    .status.verified { color: #166534; }
+    .status.pending { color: #64748b; }
+    .notice { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 0.45rem 0.7rem; font-size: 0.92rem; margin: 0.4rem 0; }
+    .notice.no-change { background: #f0fdf4; border-left-color: #22c55e; }
+    .no-sources { color: #64748b; font-size: 0.92rem; }
+    footer { margin-top: 2.5rem; color: #64748b; font-size: 0.88rem; border-top: 1px solid #e5e5e5; padding-top: 1rem; }
+  </style>
+</head>
+<body>
+  <a href="/" class="back-link">&larr; Back to Radulator</a>
+  <h1>Guideline Finder</h1>
+  <p>Every guideline and version behind Radulator's 42 calculators, with links to the official source. Radulator links to guideline content and does not reproduce it: always confirm against the official source and your local protocol.</p>
+  <div class="highlight"><strong>Kept current:</strong> Every PubMed-indexed source cited by a calculator is checked weekly for retractions, expressions of concern, updates and published corrections, and for newer guideline publications on the same subject. Sources published only on society websites are reviewed by the evidence pipeline. <strong>Last check: 27 September 2026.</strong></div>
+  <p class="summary">42 calculators · 42 with official source links · 4 with a published correction or update under review.</p>
+  <div class="gf-controls" role="search">
+    <label for="gf-search" class="sr-only" hidden>Search guidelines</label>
+    <input id="gf-search" type="search" placeholder="Search a calculator, guideline, society or topic" aria-label="Search guidelines" autocomplete="off">
+    <select id="gf-category" aria-label="Filter by specialty"><option value="">All specialties</option><option value="Radiology">Radiology</option><option value="Neuroradiology">Neuroradiology</option><option value="Trauma">Trauma</option><option value="Cardiac Imaging">Cardiac Imaging</option><option value="Breast Imaging">Breast Imaging</option><option value="Women&#39;s Imaging">Women&#39;s Imaging</option><option value="Clinical Decision">Clinical Decision</option><option value="Hepatology/Liver">Hepatology/Liver</option><option value="Urology">Urology</option><option value="Interventional">Interventional</option><option value="Nephrology">Nephrology</option></select>
+  </div>
+  <p id="gf-count" aria-live="polite"></p>
+  <section class="group" data-gf-group>
+    <h2>Radiology</h2>
+    <article class="card" id="tirads" data-gf-card data-gf-category="Radiology" data-gf-text="acr ti-rads radiology thyroid imaging reporting and data system for thyroid nodule risk stratification thyroid nodule thyroid nodule fna biopsy acr radiology endocrinology thyroid acr ti-rads 2017 american college of radiology acr thyroid imaging, reporting and data system white paper">
+      <h3><a href="/#/tirads">ACR TI-RADS</a></h3>
+      <p class="desc">Thyroid Imaging Reporting and Data System for thyroid nodule risk stratification</p>
+      <p class="version">Guideline: <strong>ACR TI-RADS 2017</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1016/j.jacr.2017.01.046" target="_blank" rel="noopener noreferrer">ACR Thyroid Imaging, Reporting and Data System white paper</a> <span class="authority">American College of Radiology</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="adrenal-ct" data-gf-card data-gf-category="Radiology" data-gf-text="adrenal ct washout radiology absolute &amp; relative washout percentages to differentiate adenoma vs. non‐adenoma. adrenal mass adenoma pheochromocytoma metastasis hu hounsfield radiology adrenal endocrinology published adrenal ct washout equations caoili et al. adrenal masses: characterization with combined unenhanced and delayed enhanced ct">
+      <h3><a href="/#/adrenal-ct">Adrenal CT Washout</a></h3>
+      <p class="desc">Absolute &amp; relative washout percentages to differentiate adenoma vs. non‑adenoma.</p>
+      <p class="version">Guideline: <strong>Published adrenal CT washout equations</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.2214/ajr.175.5.1751411" target="_blank" rel="noopener noreferrer">Adrenal masses: characterization with combined unenhanced and delayed enhanced CT</a> <span class="authority">Caoili et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="adrenal-mri" data-gf-card data-gf-category="Radiology" data-gf-text="adrenal mri chemical shift radiology signal‐intensity index and adrenal‐to‐spleen csi ratio. adrenal mass chemical shift signal intensity adenoma lipid radiology adrenal endocrinology published adrenal chemical-shift mri measurements mayo-smith et al. characterization of adrenal lesions with chemical shift mri adrenal imaging (ajr am j roentgenol) erratum, ajr am j roentgenol 2012;198(5):1232">
+      <h3><a href="/#/adrenal-mri">Adrenal MRI Chemical Shift</a></h3>
+      <p class="desc">Signal‑intensity index and adrenal‑to‑spleen CSI ratio.</p>
+      <p class="version">Guideline: <strong>Published adrenal chemical-shift MRI measurements</strong></p>
+      <p class="notice under-review"><strong>Correction published</strong> to Adrenal imaging (AJR Am J Roentgenol): <a href="https://pubmed.ncbi.nlm.nih.gov/20489083/" target="_blank" rel="noopener noreferrer">Erratum, AJR Am J Roentgenol 2012;198(5):1232</a>. Radulator is checking whether it affects this calculator (since 27 September 2026).</p><ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.2214/AJR.10.4547" target="_blank" rel="noopener noreferrer">Characterization of adrenal lesions with chemical shift MRI</a> <span class="authority">Mayo-Smith et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="bosniak" data-gf-card data-gf-category="Radiology" data-gf-text="bosniak classification (renal cysts) radiology classify cystic renal masses using bosniak classification, version 2019 ct criteria. kidney cyst renal cyst cystic renal mass bosniak radiology urology nephrology bosniak version 2019 silverman et al. canadian urological association bosniak classification of cystic renal masses, version 2019 2023 update - canadian urological association guideline: management of cystic renal lesions">
+      <h3><a href="/#/bosniak">Bosniak Classification (Renal Cysts)</a></h3>
+      <p class="desc">Classify cystic renal masses using Bosniak Classification, version 2019 CT criteria.</p>
+      <p class="version">Guideline: <strong>Bosniak version 2019</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/" target="_blank" rel="noopener noreferrer">Bosniak Classification of Cystic Renal Masses, version 2019</a> <span class="authority">Silverman et al.</span></li><li><span class="role">Official source</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/" target="_blank" rel="noopener noreferrer">2023 UPDATE - Canadian Urological Association guideline: Management of cystic renal lesions</a> <span class="authority">Canadian Urological Association</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 26 August 2026.</p>
+    </article>
+    <article class="card" id="dlp-dose" data-gf-card data-gf-category="Radiology" data-gf-text="dlp to effective dose radiology convert ct dose length product to estimated effective radiation dose radiation dose effective dose ct dose dlp msv radiology safety radiation icrp publication 103 (2007) context international commission on radiological protection the 2007 recommendations of the international commission on radiological protection">
+      <h3><a href="/#/dlp-dose">DLP to Effective Dose</a></h3>
+      <p class="desc">Convert CT Dose Length Product to estimated effective radiation dose</p>
+      <p class="version">Guideline: <strong>ICRP Publication 103 (2007) context</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://doi.org/10.1016/j.icrp.2007.10.003" target="_blank" rel="noopener noreferrer">The 2007 Recommendations of the International Commission on Radiological Protection</a> <span class="authority">International Commission on Radiological Protection</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="fleischner" data-gf-card data-gf-category="Radiology" data-gf-text="fleischner 2017 pulmonary nodules radiology source-locked 2017 follow-up guidance for eligible incidental solid and subsolid pulmonary nodules pulmonary nodule lung nodule incidental follow-up ct chest radiology pulmonary oncology fleischner 2017 fleischner society and radiological society of north america national library of medicine bookshelf guidelines for management of incidental pulmonary nodules detected on ct images: from the fleischner society 2017 recommendations for measuring pulmonary nodules at ct: a statement from the fleischner society table 5.1, revised fleischner guidelines (2017) for solid nodules table 5.2, revised fleischner guidelines (2017) for subsolid nodules">
+      <h3><a href="/#/fleischner">Fleischner 2017 Pulmonary Nodules</a></h3>
+      <p class="desc">Source-locked 2017 follow-up guidance for eligible incidental solid and subsolid pulmonary nodules</p>
+      <p class="version">Guideline: <strong>Fleischner 2017</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://pubs.rsna.org/doi/10.1148/radiol.2017161659" target="_blank" rel="noopener noreferrer">Guidelines for Management of Incidental Pulmonary Nodules Detected on CT Images: From the Fleischner Society 2017</a> <span class="authority">Fleischner Society and Radiological Society of North America</span></li><li><span class="role">Primary publication</span> <a href="https://pubs.rsna.org/doi/10.1148/radiol.2017162894" target="_blank" rel="noopener noreferrer">Recommendations for Measuring Pulmonary Nodules at CT: A Statement from the Fleischner Society</a> <span class="authority">Fleischner Society and Radiological Society of North America</span></li><li><span class="role">Supporting publication</span> <a href="https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab1/?report=objectonly" target="_blank" rel="noopener noreferrer">Table 5.1, Revised Fleischner guidelines (2017) for solid nodules</a> <span class="authority">National Library of Medicine Bookshelf</span></li><li><span class="role">Supporting publication</span> <a href="https://www.ncbi.nlm.nih.gov/books/NBK553863/table/ch5.Tab2/?report=objectonly" target="_blank" rel="noopener noreferrer">Table 5.2, Revised Fleischner guidelines (2017) for subsolid nodules</a> <span class="authority">National Library of Medicine Bookshelf</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 31 August 2026.</p>
+    </article>
+    <article class="card" id="hip-dysplasia" data-gf-card data-gf-category="Radiology" data-gf-text="hip dysplasia radiology calculate migration indices and normal values in hip dysplasia ddh developmental dysplasia acetabular pediatric hip radiology pediatric orthopedic published pediatric hip measurement references tonnis et al. normal values of the hip joint for the evaluation of x-rays in children and adults">
+      <h3><a href="/#/hip-dysplasia">Hip Dysplasia</a></h3>
+      <p class="desc">Calculate migration indices and normal values in hip dysplasia</p>
+      <p class="version">Guideline: <strong>Published pediatric hip measurement references</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://pubmed.ncbi.nlm.nih.gov/954321/" target="_blank" rel="noopener noreferrer">Normal values of the hip joint for the evaluation of X-rays in children and adults</a> <span class="authority">Tonnis et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="contrast-dosing" data-gf-card data-gf-category="Radiology" data-gf-text="iv contrast dosing radiology iodinated contrast protocol-planning aid for ct with renal-safety context iodine contrast media iv contrast iohexol iodixanol radiology safety local dosing model with acr manual on contrast media 2026 renal-safety and warming context american college of radiology acr manual on contrast media 2026 acr adult contrast reaction card acr pediatric contrast reaction card">
+      <h3><a href="/#/contrast-dosing">IV Contrast Dosing</a></h3>
+      <p class="desc">Iodinated contrast protocol-planning aid for CT with renal-safety context</p>
+      <p class="version">Guideline: <strong>Local dosing model with ACR Manual on Contrast Media 2026 renal-safety and warming context</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/ACR-Manual-on-Contrast-Media.pdf" target="_blank" rel="noopener noreferrer">ACR Manual on Contrast Media 2026</a> <span class="authority">American College of Radiology</span></li><li><span class="role">Official source</span> <a href="https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Adult.pdf" target="_blank" rel="noopener noreferrer">ACR Adult Contrast Reaction Card</a> <span class="authority">American College of Radiology</span></li><li><span class="role">Official source</span> <a href="https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/Clinical/Contrast-Manual/Contrast-Reaction-Card-Pediatric.pdf" target="_blank" rel="noopener noreferrer">ACR Pediatric Contrast Reaction Card</a> <span class="authority">American College of Radiology</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 29 August 2026.</p>
+    </article>
+    <article class="card" id="lung-rads" data-gf-card data-gf-category="Radiology" data-gf-text="lung-rads v2022 radiology lung cancer screening ct classification and management recommendations lung cancer screening ldct low-dose ct lung-rads radiology pulmonary oncology lung-rads v2022 american college of radiology lung ct screening reporting and data system (lung-rads)">
+      <h3><a href="/#/lung-rads">Lung-RADS v2022</a></h3>
+      <p class="desc">Lung cancer screening CT classification and management recommendations</p>
+      <p class="version">Guideline: <strong>Lung-RADS v2022</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Lung-RADS" target="_blank" rel="noopener noreferrer">Lung CT Screening Reporting and Data System (Lung-RADS)</a> <span class="authority">American College of Radiology</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="prostate-volume" data-gf-card data-gf-category="Radiology" data-gf-text="prostate volume &amp; psa density radiology ellipsoid volume estimation (mri/us) and psa‐density. prostate size psa density psad bph ellipsoid radiology urology published ellipsoid volume and psa-density measurements paterson et al. prostate volume and psa density measurement reference">
+      <h3><a href="/#/prostate-volume">Prostate Volume &amp; PSA Density</a></h3>
+      <p class="desc">Ellipsoid volume estimation (MRI/US) and PSA‑Density.</p>
+      <p class="version">Guideline: <strong>Published ellipsoid volume and PSA-density measurements</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.5489/cuaj.3236" target="_blank" rel="noopener noreferrer">Prostate volume and PSA density measurement reference</a> <span class="authority">Paterson et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="radiation-dose-converter" data-gf-card data-gf-category="Radiology" data-gf-text="radiation dose converter radiology convert between radiation dose units (gy, sv, bq, etc.) with ct dose estimation gy rad sv rem radiation units radiology safety radiation nist unit conversions / aapm96 ct reference / icrp103 weighting international commission on radiological protection nist aapm iaea icrp publication 103 sp811 appendix b.9 radiology unit conversion factors report 96 (2008), table3 and eq12, printed p13 safety reports series115 (2023), eq5.10/table5.4, printed pp41–42">
+      <h3><a href="/#/radiation-dose-converter">Radiation Dose Converter</a></h3>
+      <p class="desc">Convert between radiation dose units (Gy, Sv, Bq, etc.) with CT dose estimation</p>
+      <p class="version">Guideline: <strong>NIST unit conversions / AAPM96 CT reference / ICRP103 weighting</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://www.icrp.org/publication.asp?id=ICRP+Publication+103" target="_blank" rel="noopener noreferrer">ICRP Publication 103</a> <span class="authority">International Commission on Radiological Protection</span></li><li><span class="role">Official source</span> <a href="https://www.nist.gov/pml/special-publication-811/nist-guide-si-appendix-b-conversion-factors/nist-guide-si-appendix-b9" target="_blank" rel="noopener noreferrer">SP811 Appendix B.9 radiology unit conversion factors</a> <span class="authority">NIST</span></li><li><span class="role">Official source</span> <a href="https://www.aapm.org/pubs/reports/RPT_96.pdf" target="_blank" rel="noopener noreferrer">Report 96 (2008), Table3 and Eq12, printed p13</a> <span class="authority">AAPM</span></li><li><span class="role">Official source</span> <a href="https://www-pub.iaea.org/MTCD/Publications/PDF/PUB1987_web.pdf" target="_blank" rel="noopener noreferrer">Safety Reports Series115 (2023), Eq5.10/Table5.4, printed pp41–42</a> <span class="authority">IAEA</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="spleen-size" data-gf-card data-gf-category="Radiology" data-gf-text="spleen size radiology gender- and height-adjusted upper limits of normal spleen length and volume splenomegaly spleen enlargement splenic radiology hematology chow et al. 2016 measurement reference chow et al. spleen size reference data from healthy subjects">
+      <h3><a href="/#/spleen-size">Spleen Size</a></h3>
+      <p class="desc">Gender- and height-adjusted upper limits of normal spleen length and volume</p>
+      <p class="version">Guideline: <strong>Chow et al. 2016 measurement reference</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1148/radiol.2015150887" target="_blank" rel="noopener noreferrer">Spleen size reference data from healthy subjects</a> <span class="authority">Chow et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Neuroradiology</h2>
+    <article class="card" id="nirads" data-gf-card data-gf-category="Neuroradiology" data-gf-text="acr ni-rads neuroradiology neck imaging reporting and data system for post-treatment head and neck cancer surveillance neck imaging head and neck squamous cell scc recurrence neuroradiology oncology head &amp; neck acr ni-rads 2018 american college of radiology neck imaging reporting and data system (ni-rads)">
+      <h3><a href="/#/nirads">ACR NI-RADS</a></h3>
+      <p class="desc">Neck Imaging Reporting and Data System for post-treatment head and neck cancer surveillance</p>
+      <p class="version">Guideline: <strong>ACR NI-RADS 2018</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/NI-RADS" target="_blank" rel="noopener noreferrer">Neck Imaging Reporting and Data System (NI-RADS)</a> <span class="authority">American College of Radiology</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="aspects-score" data-gf-card data-gf-category="Neuroradiology" data-gf-text="aspects score neuroradiology alberta stroke program early ct score for acute mca stroke assessment stroke mca ischemic aspects thrombolysis neuroradiology stroke neurology aspects (barber 2000) barber et al. validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke barber et al. validity and reliability of a quantitative computed tomography score (lancet 2000) erratum, lancet 2000;355(9221):2170">
+      <h3><a href="/#/aspects-score">ASPECTS Score</a></h3>
+      <p class="desc">Alberta Stroke Program Early CT Score for acute MCA stroke assessment</p>
+      <p class="version">Guideline: <strong>ASPECTS (Barber 2000)</strong></p>
+      <p class="notice under-review"><strong>Correction published</strong> to Barber et al. Validity and reliability of a quantitative computed tomography score (Lancet 2000): <a href="https://pubmed.ncbi.nlm.nih.gov/10905241/" target="_blank" rel="noopener noreferrer">Erratum, Lancet 2000;355(9221):2170</a>. Radulator is checking whether it affects this calculator (since 27 September 2026).</p><ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1016/S0140-6736(00)02237-6" target="_blank" rel="noopener noreferrer">Validity and reliability of a quantitative computed tomography score in predicting outcome of hyperacute stroke</a> <span class="authority">Barber et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Trauma</h2>
+    <article class="card" id="aast-trauma-grading" data-gf-card data-gf-category="Trauma" data-gf-text="aast trauma grading trauma aast-ois solid organ injury grading for liver, spleen, kidney, and pancreas trauma trauma organ injury spleen injury liver injury kidney injury pancreas injury pancreatic trauma pancreatic duct trauma emergency abdominal aast ois 2018/2025 american association for the surgery of trauma aast organ injury scale 2018 revision publication organ injury scaling 2018 update: spleen, liver, and kidney (j trauma acute care surg 2018) erratum, j trauma acute care surg 2019;87(2):512">
+      <h3><a href="/#/aast-trauma-grading">AAST Trauma Grading</a></h3>
+      <p class="desc">AAST-OIS solid organ injury grading for liver, spleen, kidney, and pancreas trauma</p>
+      <p class="version">Guideline: <strong>AAST OIS 2018/2025</strong></p>
+      <p class="notice under-review"><strong>Correction published</strong> to Organ injury scaling 2018 update: Spleen, liver, and kidney (J Trauma Acute Care Surg 2018): <a href="https://doi.org/10.1097/TA.0000000000002419" target="_blank" rel="noopener noreferrer">Erratum, J Trauma Acute Care Surg 2019;87(2):512</a>. Radulator is checking whether it affects this calculator (since 27 September 2026).</p><ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1097/TA.0000000000002058" target="_blank" rel="noopener noreferrer">AAST Organ Injury Scale 2018 revision publication</a> <span class="authority">American Association for the Surgery of Trauma</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Cardiac Imaging</h2>
+    <article class="card" id="cac-mesa" data-gf-card data-gf-category="Cardiac Imaging" data-gf-text="cac/mesa calculator cardiac imaging agatston coronary calcium band, cac-drs, and mesa reference context cac agatston coronary calcium mesa cac-drs cardiac ct cardiac radiology mesa reference values with cac-drs (scct 2018; 2023 auc boundary) multi-ethnic study of atherosclerosis mcclelland et al. society of cardiovascular computed tomography acc, aha, ase, asnc, aspc, hfsa, hrs, scai, scct, scmr, and sts maron et al. cac score reference values distribution of coronary artery calcium by race, gender, and age: results from mesa cac-drs: coronary artery calcium data and reporting system 2023 multimodality appropriate use criteria for the detection and risk assessment of chronic coronary disease coronary artery calcium staging to guide preventive interventions">
+      <h3><a href="/#/cac-mesa">CAC/MESA Calculator</a></h3>
+      <p class="desc">Agatston coronary calcium band, CAC-DRS, and MESA reference context</p>
+      <p class="version">Guideline: <strong>MESA reference values with CAC-DRS (SCCT 2018; 2023 AUC boundary)</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://mesa-nhlbi.org/researchers/tools/cac-score-reference-values" target="_blank" rel="noopener noreferrer">CAC Score Reference Values</a> <span class="authority">Multi-Ethnic Study of Atherosclerosis</span></li><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1161/CIRCULATIONAHA.105.580696" target="_blank" rel="noopener noreferrer">Distribution of coronary artery calcium by race, gender, and age: results from MESA</a> <span class="authority">McClelland et al.</span></li><li><span class="role">Source</span> <a href="https://doi.org/10.1016/j.jcct.2018.03.008" target="_blank" rel="noopener noreferrer">CAC-DRS: Coronary Artery Calcium Data and Reporting System</a> <span class="authority">Society of Cardiovascular Computed Tomography</span></li><li><span class="role">Primary publication</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/" target="_blank" rel="noopener noreferrer">2023 Multimodality Appropriate Use Criteria for the Detection and Risk Assessment of Chronic Coronary Disease</a> <span class="authority">ACC, AHA, ASE, ASNC, ASPC, HFSA, HRS, SCAI, SCCT, SCMR, and STS</span></li><li><span class="role">Primary publication</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11462328/" target="_blank" rel="noopener noreferrer">Coronary artery calcium staging to guide preventive interventions</a> <span class="authority">Maron et al.</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 25 August 2026.</p>
+    </article>
+    <article class="card" id="cad-rads" data-gf-card data-gf-category="Cardiac Imaging" data-gf-text="cad-rads 2.0 cardiac imaging coronary artery disease reporting and data system for coronary cta coronary ccta coronary cta cad stenosis cardiac radiology cad-rads 2.0 (2022) scct, acc, acr and nasci cad-rads 2.0 expert consensus document">
+      <h3><a href="/#/cad-rads">CAD-RADS 2.0</a></h3>
+      <p class="desc">Coronary Artery Disease Reporting and Data System for coronary CTA</p>
+      <p class="version">Guideline: <strong>CAD-RADS 2.0 (2022)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1016/j.jcmg.2022.01.008" target="_blank" rel="noopener noreferrer">CAD-RADS 2.0 expert consensus document</a> <span class="authority">SCCT, ACC, ACR and NASCI</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Breast Imaging</h2>
+    <article class="card" id="birads" data-gf-card data-gf-category="Breast Imaging" data-gf-text="bi-rads assessment calculator (legacy 2013) breast imaging interactive 2013-era assessment assistant for mammography, ultrasound, and mri breast mammography ultrasound mri breast cancer mammogram bi-rads birads breast radiology oncology legacy acr bi-rads fifth edition (2013) temporary rollback with public 2025 assessment-summary constraints american college of radiology breast imaging reporting and data system (bi-rads) acr bi-rads atlas fifth edition quick reference bi-rads v2025 mammography summary form bi-rads v2025 ultrasound summary form bi-rads v2025 mri summary form">
+      <h3><a href="/#/birads">BI-RADS Assessment Calculator (Legacy 2013)</a></h3>
+      <p class="desc">Interactive 2013-era assessment assistant for mammography, ultrasound, and MRI</p>
+      <p class="version">Guideline: <strong>Legacy ACR BI-RADS Fifth Edition (2013) temporary rollback with public 2025 assessment-summary constraints</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/BI-RADS" target="_blank" rel="noopener noreferrer">Breast Imaging Reporting and Data System (BI-RADS)</a> <span class="authority">American College of Radiology</span></li><li><span class="role">Official source</span> <a href="https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BIRADS-Poster.pdf" target="_blank" rel="noopener noreferrer">ACR BI-RADS Atlas Fifth Edition Quick Reference</a> <span class="authority">American College of Radiology</span></li><li><span class="role">Official source</span> <a href="https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Mammography.pdf" target="_blank" rel="noopener noreferrer">BI-RADS v2025 Mammography Summary Form</a> <span class="authority">American College of Radiology</span></li><li><span class="role">Official source</span> <a href="https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-Ultrasound.pdf" target="_blank" rel="noopener noreferrer">BI-RADS v2025 Ultrasound Summary Form</a> <span class="authority">American College of Radiology</span></li><li><span class="role">Official source</span> <a href="https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/BI-RADS/BI-RADS-Summary-Form-MRI.pdf" target="_blank" rel="noopener noreferrer">BI-RADS v2025 MRI Summary Form</a> <span class="authority">American College of Radiology</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 29 August 2026.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Women&#39;s Imaging</h2>
+    <article class="card" id="orads" data-gf-card data-gf-category="Women&#39;s Imaging" data-gf-text="acr o-rads women&#39;s imaging ovarian-adnexal reporting and data system for us and mri ovarian ovary adnexal ovarian mass cyst women&#39;s imaging radiology oncology acr o-rads 2020 implementation american college of radiology o-rads ultrasound">
+      <h3><a href="/#/orads">ACR O-RADS</a></h3>
+      <p class="desc">Ovarian-Adnexal Reporting and Data System for US and MRI</p>
+      <p class="version">Guideline: <strong>ACR O-RADS 2020 implementation</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/O-RADS/Ultrasound" target="_blank" rel="noopener noreferrer">O-RADS Ultrasound</a> <span class="authority">American College of Radiology</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Clinical Decision</h2>
+    <article class="card" id="pesi" data-gf-card data-gf-category="Clinical Decision" data-gf-text="pesi score clinical decision adult acute pulmonary embolism 30-day mortality risk classification using the original pesi. pesi pulmonary embolism severity index pulmonary embolism prognosis 30-day mortality acute pe clinical decision pulmonary emergency original pesi (2005) aujesky et al. derivation and validation of a prognostic model for pulmonary embolism">
+      <h3><a href="/#/pesi">PESI Score</a></h3>
+      <p class="desc">Adult acute pulmonary embolism 30-day mortality risk classification using the original PESI.</p>
+      <p class="version">Guideline: <strong>Original PESI (2005)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2718410/" target="_blank" rel="noopener noreferrer">Derivation and validation of a prognostic model for pulmonary embolism</a> <span class="authority">Aujesky et al.</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 25 August 2026.</p>
+    </article>
+    <article class="card" id="wells-dvt" data-gf-card data-gf-category="Clinical Decision" data-gf-text="wells criteria for dvt clinical decision clinical decision rule for deep vein thrombosis probability assessment deep vein thrombosis dvt leg swelling venous clinical decision vascular emergency modified wells dvt / nice ng158 wells et al. nice american society of hematology american college of chest physicians evaluation of d-dimer in the diagnosis of suspected deep-vein thrombosis ng158 table 1 and recommendations 1.1.1–1.1.14 2018 diagnosis guideline, lower-extremity recommendations 5–8 and remarks chest 2012 diagnosis guideline, section 3.1.1: historical probability estimates">
+      <h3><a href="/#/wells-dvt">Wells Criteria for DVT</a></h3>
+      <p class="desc">Clinical decision rule for deep vein thrombosis probability assessment</p>
+      <p class="version">Guideline: <strong>Modified Wells DVT / NICE NG158</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1056/NEJMoa023153" target="_blank" rel="noopener noreferrer">Evaluation of D-dimer in the diagnosis of suspected deep-vein thrombosis</a> <span class="authority">Wells et al.</span></li><li><span class="role">Official source</span> <a href="https://www.nice.org.uk/guidance/ng158/chapter/Recommendations" target="_blank" rel="noopener noreferrer">NG158 Table 1 and recommendations 1.1.1–1.1.14</a> <span class="authority">NICE</span></li><li><span class="role">Official source</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6258916/" target="_blank" rel="noopener noreferrer">2018 diagnosis guideline, lower-extremity recommendations 5–8 and remarks</a> <span class="authority">American Society of Hematology</span></li><li><span class="role">Official source</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3278048/" target="_blank" rel="noopener noreferrer">CHEST 2012 diagnosis guideline, section 3.1.1: historical probability estimates</a> <span class="authority">American College of Chest Physicians</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="wells-pe" data-gf-card data-gf-category="Clinical Decision" data-gf-text="wells criteria for pe clinical decision clinical decision rule for pulmonary embolism probability assessment pulmonary embolism pe dvt thrombosis d-dimer clinical decision pulmonary emergency wells criteria (2000) wells et al. derivation of a simple clinical model to categorize patients probability of pulmonary embolism">
+      <h3><a href="/#/wells-pe">Wells Criteria for PE</a></h3>
+      <p class="desc">Clinical decision rule for pulmonary embolism probability assessment</p>
+      <p class="version">Guideline: <strong>Wells Criteria (2000)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://pubmed.ncbi.nlm.nih.gov/10744147/" target="_blank" rel="noopener noreferrer">Derivation of a simple clinical model to categorize patients probability of pulmonary embolism</a> <span class="authority">Wells et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Hepatology/Liver</h2>
+    <article class="card" id="albi-score" data-gf-card data-gf-category="Hepatology/Liver" data-gf-text="albi score hepatology/liver albumin-bilirubin grade for liver function assessment in hepatocellular carcinoma (hcc). liver function hcc hepatocellular albumin bilirubin hepatology oncology albi grade (johnson 2015) johnson et al. assessment of liver function in patients with hepatocellular carcinoma: a new evidence-based approach">
+      <h3><a href="/#/albi-score">ALBI Score</a></h3>
+      <p class="desc">Albumin-Bilirubin grade for liver function assessment in hepatocellular carcinoma (HCC).</p>
+      <p class="version">Guideline: <strong>ALBI Grade (Johnson 2015)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4322258/" target="_blank" rel="noopener noreferrer">Assessment of liver function in patients with hepatocellular carcinoma: a new evidence-based approach</a> <span class="authority">Johnson et al.</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 8 September 2026.</p>
+    </article>
+    <article class="card" id="bclc-staging" data-gf-card data-gf-category="Hepatology/Liver" data-gf-text="bclc staging (hcc) hepatology/liver barcelona clinic liver cancer staging for hepatocellular carcinoma with treatment recommendations. hcc hepatocellular liver cancer barcelona staging hepatology oncology staging bclc 2022 bclc group bclc strategy for prognosis prediction and treatment recommendation: the 2022 update">
+      <h3><a href="/#/bclc-staging">BCLC Staging (HCC)</a></h3>
+      <p class="desc">Barcelona Clinic Liver Cancer staging for hepatocellular carcinoma with treatment recommendations.</p>
+      <p class="version">Guideline: <strong>BCLC 2022</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8866082/" target="_blank" rel="noopener noreferrer">BCLC strategy for prognosis prediction and treatment recommendation: the 2022 update</a> <span class="authority">BCLC Group</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="child-pugh" data-gf-card data-gf-category="Hepatology/Liver" data-gf-text="child-pugh score hepatology/liver classification and prognosis of chronic liver disease and cirrhosis cirrhosis liver function hepatic ascites encephalopathy ctp hepatology gastroenterology child-pugh (pugh 1973) pugh et al. transection of the oesophagus for bleeding oesophageal varices">
+      <h3><a href="/#/child-pugh">Child-Pugh Score</a></h3>
+      <p class="desc">Classification and prognosis of chronic liver disease and cirrhosis</p>
+      <p class="version">Guideline: <strong>Child-Pugh (Pugh 1973)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1002/bjs.1800600817" target="_blank" rel="noopener noreferrer">Transection of the oesophagus for bleeding oesophageal varices</a> <span class="authority">Pugh et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="ct-pancreatitis" data-gf-card data-gf-category="Hepatology/Liver" data-gf-text="ct severity index (ctsi) hepatology/liver balthazar score with necrosis grading for acute pancreatitis severity pancreatitis balthazar ctsi pancreatic necrosis hepatology gastroenterology radiology balthazar ctsi and modified ctsi balthazar et al. acute pancreatitis: value of ct in establishing prognosis">
+      <h3><a href="/#/ct-pancreatitis">CT Severity Index (CTSI)</a></h3>
+      <p class="desc">Balthazar score with necrosis grading for acute pancreatitis severity</p>
+      <p class="version">Guideline: <strong>Balthazar CTSI and modified CTSI</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1148/radiology.174.2.2296641" target="_blank" rel="noopener noreferrer">Acute pancreatitis: value of CT in establishing prognosis</a> <span class="authority">Balthazar et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="lirads" data-gf-card data-gf-category="Hepatology/Liver" data-gf-text="li-rads v2018 hepatology/liver liver imaging reporting and data system for hepatocellular carcinoma risk stratification liver hcc hepatocellular carcinoma lr-5 liver mass hepatology radiology oncology li-rads v2018 american college of radiology li-rads steering committee li-rads version 2018: imaging of hepatocellular carcinoma in at-risk patients">
+      <h3><a href="/#/lirads">LI-RADS v2018</a></h3>
+      <p class="desc">Liver Imaging Reporting and Data System for hepatocellular carcinoma risk stratification</p>
+      <p class="version">Guideline: <strong>LI-RADS v2018</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1148/radiol.2018181494" target="_blank" rel="noopener noreferrer">LI-RADS version 2018: imaging of hepatocellular carcinoma in at-risk patients</a> <span class="authority">American College of Radiology LI-RADS Steering Committee</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="meld-na" data-gf-card data-gf-category="Hepatology/Liver" data-gf-text="meld-na score hepatology/liver meld 3.0 current optn allocation score with a temporary legacy meld-na option meld 3.0 meld-na liver transplant cirrhosis end-stage liver disease esld transplant priority hepatology transplant meld 3.0 (optn policy 9.1.d) health resources and services administration and optn optn policies, policy 9.1.d liver allocation score meld and peld calculators user guide">
+      <h3><a href="/#/meld-na">MELD-Na Score</a></h3>
+      <p class="desc">MELD 3.0 current OPTN allocation score with a temporary legacy MELD-Na option</p>
+      <p class="version">Guideline: <strong>MELD 3.0 (OPTN Policy 9.1.D)</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://www.hrsa.gov/sites/default/files/hrsa/optn/optn_policies.pdf" target="_blank" rel="noopener noreferrer">OPTN Policies, Policy 9.1.D liver allocation score</a> <span class="authority">Health Resources and Services Administration and OPTN</span></li><li><span class="role">Official source</span> <a href="https://www.hrsa.gov/sites/default/files/hrsa/optn/meld-peld-calculator-user-guide.pdf" target="_blank" rel="noopener noreferrer">MELD and PELD Calculators User Guide</a> <span class="authority">Health Resources and Services Administration and OPTN</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 25 August 2026.</p>
+    </article>
+    <article class="card" id="milan-criteria" data-gf-card data-gf-category="Hepatology/Liver" data-gf-text="milan criteria (hcc) hepatology/liver liver transplant eligibility criteria for hepatocellular carcinoma patients liver transplant hcc transplant eligibility ucsf hepatology oncology transplant milan criteria (mazzaferro 1996) mazzaferro et al. liver transplantation for the treatment of small hepatocellular carcinomas in patients with cirrhosis">
+      <h3><a href="/#/milan-criteria">Milan Criteria (HCC)</a></h3>
+      <p class="desc">Liver transplant eligibility criteria for hepatocellular carcinoma patients</p>
+      <p class="version">Guideline: <strong>Milan Criteria (Mazzaferro 1996)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://pubmed.ncbi.nlm.nih.gov/8594428/" target="_blank" rel="noopener noreferrer">Liver transplantation for the treatment of small hepatocellular carcinomas in patients with cirrhosis</a> <span class="authority">Mazzaferro et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="mr-elastography" data-gf-card data-gf-category="Hepatology/Liver" data-gf-text="mr elastography (liver) hepatology/liver area-weighted mean liver stiffness across rois/slices. liver stiffness fibrosis cirrhosis mre elastography hepatology radiology mre consensus (manduca 2020) manduca et al. mr elastography: principles, guidelines, and terminology">
+      <h3><a href="/#/mr-elastography">MR Elastography (Liver)</a></h3>
+      <p class="desc">Area-weighted mean liver stiffness across ROIs/slices.</p>
+      <p class="version">Guideline: <strong>MRE consensus (Manduca 2020)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8495610/" target="_blank" rel="noopener noreferrer">MR elastography: principles, guidelines, and terminology</a> <span class="authority">Manduca et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="y90-radiation-segmentectomy" data-gf-card data-gf-category="Hepatology/Liver" data-gf-text="y-90 radioembolization dosimetry hepatology/liver dosimetry calculator for y-90 radioembolization using mird and partition models mird tare radioembolization sir-spheres therasphere liver cancer hcc microspheres yttrium hepatology interventional oncology eanm 2022 compartment arithmetic (49.67 j/gbq); clinician-selected targets eanm (weber et al.) fda-hosted therasphere instructions for use ho et al. eanm procedure guideline for the treatment of liver cancer and liver metastases with intra-arterial radioactive compounds p200029s011c: pages 20-23 and appendix page 29; model equations and treatment-time versus calibration-time distinction partition model for estimating radiation doses from yttrium-90 microspheres">
+      <h3><a href="/#/y90-radiation-segmentectomy">Y-90 Radioembolization Dosimetry</a></h3>
+      <p class="desc">Dosimetry calculator for Y-90 radioembolization using MIRD and partition models</p>
+      <p class="version">Guideline: <strong>EANM 2022 compartment arithmetic (49.67 J/GBq); clinician-selected targets</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1007/s00259-021-05600-z" target="_blank" rel="noopener noreferrer">EANM procedure guideline for the treatment of liver cancer and liver metastases with intra-arterial radioactive compounds</a> <span class="authority">EANM (Weber et al.)</span></li><li><span class="role">Primary publication</span> <a href="https://www.accessdata.fda.gov/cdrh_docs/pdf20/P200029S011C.pdf" target="_blank" rel="noopener noreferrer">P200029S011C: pages 20-23 and Appendix page 29; model equations and treatment-time versus calibration-time distinction</a> <span class="authority">FDA-hosted TheraSphere instructions for use</span></li><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1007/BF00949868" target="_blank" rel="noopener noreferrer">Partition model for estimating radiation doses from yttrium-90 microspheres</a> <span class="authority">Ho et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Urology</h2>
+    <article class="card" id="shim" data-gf-card data-gf-category="Urology" data-gf-text="iief-5 (shim score) urology sexual health inventory for men (iief-5) - erectile dysfunction assessment erectile dysfunction ed iief-5 sexual health impotence urology sexual health iief-5 (rosen 1999) rosen et al. development and evaluation of an abridged, 5-item version of the international index of erectile function">
+      <h3><a href="/#/shim">IIEF-5 (SHIM Score)</a></h3>
+      <p class="desc">Sexual Health Inventory for Men (IIEF-5) - Erectile Dysfunction Assessment</p>
+      <p class="version">Guideline: <strong>IIEF-5 (Rosen 1999)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1038/sj.ijir.3900472" target="_blank" rel="noopener noreferrer">Development and evaluation of an abridged, 5-item version of the International Index of Erectile Function</a> <span class="authority">Rosen et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="pirads" data-gf-card data-gf-category="Urology" data-gf-text="pi-rads v2.1 urology prostate mri risk stratification for clinically significant cancer prostate mri prostate cancer pca mpmri urology radiology pi-rads v2.1 (2019) pi-rads steering committee pi-rads prostate imaging - reporting and data system: 2019, version 2.1">
+      <h3><a href="/#/pirads">PI-RADS v2.1</a></h3>
+      <p class="desc">Prostate MRI risk stratification for clinically significant cancer</p>
+      <p class="version">Guideline: <strong>PI-RADS v2.1 (2019)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1016/j.eururo.2019.02.033" target="_blank" rel="noopener noreferrer">PI-RADS Prostate Imaging - Reporting and Data System: 2019, version 2.1</a> <span class="authority">PI-RADS Steering Committee</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="renal-nephrometry" data-gf-card data-gf-category="Urology" data-gf-text="renal nephrometry score urology quantifies anatomical characteristics of renal tumours for surgical planning and risk assessment. kidney tumor renal mass partial nephrectomy renal score padua urology oncology surgical r.e.n.a.l. score (kutikov 2009) kutikov and uzzo the r.e.n.a.l. nephrometry score: a comprehensive standardized system for quantitating renal tumor size, location and depth">
+      <h3><a href="/#/renal-nephrometry">RENAL Nephrometry Score</a></h3>
+      <p class="desc">Quantifies anatomical characteristics of renal tumours for surgical planning and risk assessment.</p>
+      <p class="version">Guideline: <strong>R.E.N.A.L. score (Kutikov 2009)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1016/j.juro.2009.05.035" target="_blank" rel="noopener noreferrer">The R.E.N.A.L. nephrometry score: a comprehensive standardized system for quantitating renal tumor size, location and depth</a> <span class="authority">Kutikov and Uzzo</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Interventional</h2>
+    <article class="card" id="avs-hyperaldo" data-gf-card data-gf-category="Interventional" data-gf-text="adrenal vein sampling – aldosterone interventional comprehensive primary aldosteronism avs with csi/rasi, multi-sample support, and pre/post-acth comparison. avs aldosterone hyperaldosteronism conn syndrome pa interventional endocrinology adrenal published avs selectivity and lateralization protocols korean endocrine society consensus guidance for primary aldosteronism and adrenal venous sampling">
+      <h3><a href="/#/avs-hyperaldo">Adrenal Vein Sampling – Aldosterone</a></h3>
+      <p class="desc">Comprehensive primary aldosteronism AVS with CSI/RASI, multi-sample support, and pre/post-ACTH comparison.</p>
+      <p class="version">Guideline: <strong>Published AVS selectivity and lateralization protocols</strong></p>
+      <ul class="sources"><li><span class="role">Source</span> <a href="https://doi.org/10.3803/EnM.2021.1192" target="_blank" rel="noopener noreferrer">Consensus guidance for primary aldosteronism and adrenal venous sampling</a> <span class="authority">Korean Endocrine Society</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="avs-cortisol" data-gf-card data-gf-category="Interventional" data-gf-text="adrenal vein sampling – cortisol interventional comprehensive adrenal vein sampling interpretation for acth-independent hypercortisolism with multi-sample support. avs cortisol cushing hypercortisolism acth-independent interventional endocrinology adrenal published cortisol avs protocols acharya et al. adrenal venous sampling for acth-independent hypercortisolism">
+      <h3><a href="/#/avs-cortisol">Adrenal Vein Sampling – Cortisol</a></h3>
+      <p class="desc">Comprehensive adrenal vein sampling interpretation for ACTH-independent hypercortisolism with multi-sample support.</p>
+      <p class="version">Guideline: <strong>Published cortisol AVS protocols</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1007/s00268-018-4788-2" target="_blank" rel="noopener noreferrer">Adrenal venous sampling for ACTH-independent hypercortisolism</a> <span class="authority">Acharya et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="ipss" data-gf-card data-gf-category="Interventional" data-gf-text="inferior petrosal sinus sampling (ipss) interventional basal and post-crh acth ratios with explicitly labeled prolactin normalization pituitary cushing acth petrosal sinus lateralization interventional endocrinology neuroradiology ipss sampling interpretation (svin 2026) svin sharma et al. oldfield et al. consensus guidelines on inferior petrosal sinus sampling (2026) prolactin as a marker of successful catheterization during ipss (2011) petrosal sinus sampling with and without corticotropin-releasing hormone for the differential diagnosis of cushing syndrome oldfield et al. petrosal sinus sampling with and without corticotropin-releasing hormone (n engl j med 1991) erratum, n engl j med 1992;326(17):1172">
+      <h3><a href="/#/ipss">Inferior Petrosal Sinus Sampling (IPSS)</a></h3>
+      <p class="desc">Basal and post-CRH ACTH ratios with explicitly labeled prolactin normalization</p>
+      <p class="version">Guideline: <strong>IPSS sampling interpretation (SVIN 2026)</strong></p>
+      <p class="notice under-review"><strong>Correction published</strong> to Oldfield et al. Petrosal sinus sampling with and without corticotropin-releasing hormone (N Engl J Med 1991): <a href="https://pubmed.ncbi.nlm.nih.gov/1652686/" target="_blank" rel="noopener noreferrer">Erratum, N Engl J Med 1992;326(17):1172</a>. Radulator is checking whether it affects this calculator (since 27 September 2026).</p><ul class="sources"><li><span class="role">Official source</span> <a href="https://doi.org/10.1161/SVIN.125.002309" target="_blank" rel="noopener noreferrer">Consensus Guidelines on Inferior Petrosal Sinus Sampling (2026)</a> <span class="authority">SVIN</span></li><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1210/jc.2011-2149" target="_blank" rel="noopener noreferrer">Prolactin as a marker of successful catheterization during IPSS (2011)</a> <span class="authority">Sharma et al.</span></li><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1056/NEJM199109263251301" target="_blank" rel="noopener noreferrer">Petrosal sinus sampling with and without corticotropin-releasing hormone for the differential diagnosis of Cushing syndrome</a> <span class="authority">Oldfield et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="khoury-catheter-selector" data-gf-card data-gf-category="Interventional" data-gf-text="khoury catheter selector interventional interactive microcatheter selection tool for interventional procedures based on embolic agent, device size, and clinical requirements interventional catheter microcatheter embolization angiography interventional neuroradiology equipment manufacturer specification reference set terumo neuro neurovascular product and specification source">
+      <h3><a href="/#/khoury-catheter-selector">Khoury Catheter Selector</a></h3>
+      <p class="desc">Interactive microcatheter selection tool for interventional procedures based on embolic agent, device size, and clinical requirements</p>
+      <p class="version">Guideline: <strong>Manufacturer specification reference set</strong></p>
+      <ul class="sources"><li><span class="role">Official source</span> <a href="https://www.terumoneuro.com/" target="_blank" rel="noopener noreferrer">Neurovascular product and specification source</a> <span class="authority">Terumo Neuro</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+    <article class="card" id="thypro-39" data-gf-card data-gf-category="Interventional" data-gf-text="thypro-39 interventional thyroid-related patient-reported outcome - quality of life assessment thyroid quality of life qol goiter thypro patient-reported outcome tae thyroid embolization nodular goiter interventional endocrinology thyroid patient-reported outcomes pro survey thypro-39 (watt 2014) watt et al. development of a short version of the thyroid-related patient-reported outcome thypro">
+      <h3><a href="/#/thypro-39">ThyPRO-39</a></h3>
+      <p class="desc">Thyroid-Related Patient-Reported Outcome - Quality of Life Assessment</p>
+      <p class="version">Guideline: <strong>ThyPRO-39 (Watt 2014)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1210/jc.2014-1322" target="_blank" rel="noopener noreferrer">Development of a short version of the thyroid-related patient-reported outcome ThyPRO</a> <span class="authority">Watt et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <section class="group" data-gf-group>
+    <h2>Nephrology</h2>
+    <article class="card" id="cockcroft-gault" data-gf-card data-gf-category="Nephrology" data-gf-text="cockcroft-gault ecrcl nephrology adult legacy-label estimated creatinine clearance using cockcroft-gault. cockcroft-gault creatinine clearance ecrcl renal function serum creatinine nephrology safety creatinine cockcroft-gault equation (1976) - radulator v1 cockcroft and gault kidney disease: improving global outcomes prediction of creatinine clearance from serum creatinine kdigo 2024 clinical practice guideline for the evaluation and management of chronic kidney disease">
+      <h3><a href="/#/cockcroft-gault">Cockcroft-Gault eCrCl</a></h3>
+      <p class="desc">Adult legacy-label estimated creatinine clearance using Cockcroft-Gault.</p>
+      <p class="version">Guideline: <strong>Cockcroft-Gault equation (1976) - Radulator V1</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://pubmed.ncbi.nlm.nih.gov/1244564/" target="_blank" rel="noopener noreferrer">Prediction of creatinine clearance from serum creatinine</a> <span class="authority">Cockcroft and Gault</span></li><li><span class="role">Source</span> <a href="https://kdigo.org/wp-content/uploads/2024/03/KDIGO-2024-CKD-Guideline.pdf" target="_blank" rel="noopener noreferrer">KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease</a> <span class="authority">Kidney Disease: Improving Global Outcomes</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 25 August 2026.</p>
+    </article>
+    <article class="card" id="kidney-biopsy-bleeding-risk" data-gf-card data-gf-category="Nephrology" data-gf-text="kidney biopsy major bleeding risk (kbrc) nephrology estimates major bleeding probability after diagnostic percutaneous native- or transplant-kidney biopsy. kbrc kidney biopsy renal biopsy major bleeding transplant kidney nephrology interventional safety thorne et al. recalibrated major-bleeding model (2026) thorne et al. thorne et al. via ncbi pmc oai-pmh thorne et al. via elsevier schorr et al. external validation and recalibration of a risk calculator for major bleeding after diagnostic kidney biopsy open full-text jats xml with supplementary material manifest for pmcid pmc13156734 direct primary supplementary pdf (item s1) for the recalibrated kbrc equation frequency, timing, and prediction of major bleeding complications from percutaneous renal biopsy">
+      <h3><a href="/#/kidney-biopsy-bleeding-risk">Kidney Biopsy Major Bleeding Risk (KBRC)</a></h3>
+      <p class="desc">Estimates major bleeding probability after diagnostic percutaneous native- or transplant-kidney biopsy.</p>
+      <p class="version">Guideline: <strong>Thorne et al. recalibrated major-bleeding model (2026)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1016/j.xkme.2026.101352" target="_blank" rel="noopener noreferrer">External Validation and Recalibration of a Risk Calculator for Major Bleeding After Diagnostic Kidney Biopsy</a> <span class="authority">Thorne et al.</span></li><li><span class="role">Primary publication</span> <a href="https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&amp;identifier=oai:pubmedcentral.nih.gov:13156734&amp;metadataPrefix=pmc" target="_blank" rel="noopener noreferrer">Open full-text JATS XML with supplementary material manifest for PMCID PMC13156734</a> <span class="authority">Thorne et al. via NCBI PMC OAI-PMH</span></li><li><span class="role">Primary publication</span> <a href="https://ars.els-cdn.com/content/image/1-s2.0-S2590059526001135-mmc1.pdf" target="_blank" rel="noopener noreferrer">Direct primary supplementary PDF (Item S1) for the recalibrated KBRC equation</a> <span class="authority">Thorne et al. via Elsevier</span></li><li><span class="role">Supporting publication</span> <a href="https://doi.org/10.1177/2054358120923527" target="_blank" rel="noopener noreferrer">Frequency, Timing, and Prediction of Major Bleeding Complications From Percutaneous Renal Biopsy</a> <span class="authority">Schorr et al.</span></li></ul>
+      <p class="status verified">Radulator source audit: verified against the primary source on 25 August 2026.</p>
+    </article>
+    <article class="card" id="mehran-cin" data-gf-card data-gf-category="Nephrology" data-gf-text="mehran cin risk score nephrology original 2004 pci contrast-associated kidney injury risk score contrast nephropathy aki cin kidney injury creatinine nephrology cardiology safety original mehran score (2004) mehran et al. a simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention">
+      <h3><a href="/#/mehran-cin">Mehran CIN Risk Score</a></h3>
+      <p class="desc">Original 2004 PCI contrast-associated kidney injury risk score</p>
+      <p class="version">Guideline: <strong>Original Mehran score (2004)</strong></p>
+      <ul class="sources"><li><span class="role">Primary publication</span> <a href="https://doi.org/10.1016/j.jacc.2004.06.068" target="_blank" rel="noopener noreferrer">A simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention</a> <span class="authority">Mehran et al.</span></li></ul>
+      <p class="status pending">Radulator source audit: pending. The guideline and version are recorded; the independent check against the primary source is in progress.</p>
+    </article>
+  </section>
+  <footer>This page is generated from Radulator's guideline registry and reviewed notices. Radulator is an educational tool and not a substitute for clinical judgment. <a href="/about.html">About</a> · <a href="/privacy.html">Privacy</a></footer>
+  <script>(() => {
+  const input = document.getElementById("gf-search");
+  const select = document.getElementById("gf-category");
+  const count = document.getElementById("gf-count");
+  const cards = Array.from(document.querySelectorAll("[data-gf-card]"));
+  const groups = Array.from(document.querySelectorAll("[data-gf-group]"));
+  const norm = (s) => s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").trim();
+  const apply = () => {
+    const terms = norm(input.value).split(/\s+/).filter(Boolean);
+    const category = select.value;
+    let shown = 0;
+    for (const card of cards) {
+      const match = terms.every((t) => card.dataset.gfText.includes(t)) &&
+        (!category || card.dataset.gfCategory === category);
+      card.hidden = !match;
+      if (match) shown += 1;
+    }
+    for (const group of groups) {
+      group.hidden = !group.querySelector("[data-gf-card]:not([hidden])");
+    }
+    count.textContent = shown === cards.length ? "Showing all " + cards.length : "Showing " + shown + " of " + cards.length;
+  };
+  input.addEventListener("input", apply);
+  select.addEventListener("change", apply);
+  document.documentElement.classList.add("gf-js");
+  apply();
+})();</script>
+</body>
+</html>
