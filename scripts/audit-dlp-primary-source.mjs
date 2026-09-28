@@ -4,12 +4,16 @@
 //
 // Retrieves the official ICRP Publication 147 page (Abstract, Key Points and Executive
 // Summary (a)-(h) as published by ICRP), the ICRP-hosted free extract of Publication 103,
-// and AAPM Report 96. Each artifact is pinned by final URL, media type, byte length and
-// SHA-256 of the raw response bytes (all three are byte-stable static documents). The
-// audit then pins each source statement by the digest of its exact text span at its locator
-// and binds the statements to the calculator runtime: the Interpretation text, the removed
-// lifetime-cancer-risk output, the ICRP 147 citation/locator, the explicit age-stratum
-// requirement and the unchanged adult chest conversion. Any drift exits non-zero.
+// and AAPM Report 96. Every artifact must arrive from its pinned final URL host, path and
+// query with its pinned media type. The two static PDFs are pinned by byte length and SHA-256
+// of the raw response bytes. The ICRP 147 page is dynamic ASP whose navigation, news, footer
+// and session markup can change without any change to the publication, so it is pinned by the
+// SHA-256 of its normalized publication column (Recommended citation through Executive
+// Summary (h)) instead of raw bytes: editing publication text fails the audit, site chrome
+// does not. The audit then pins each source statement by the digest of its exact text span
+// at its locator and binds the statements to the calculator runtime: the Interpretation
+// text, the removed lifetime-cancer-risk output, the ICRP 147 citation/locator, the explicit
+// age-stratum requirement and the unchanged adult chest conversion. Any drift exits non-zero.
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -46,13 +50,18 @@ const SOURCES = Object.freeze({
     pmid: "33653178",
     url: "https://www.icrp.org/publication.asp?id=ICRP+Publication+147",
     media_type: "text/html",
-    bytes: 42_193,
-    sha256: "e4601bc9c99bf9c3655ad8c919b322babf281818339dfac892b211660e5018f0",
-    digest_basis: "raw response bytes",
-    // Diagnostic second pin: publication column only (Recommended citation through
-    // Executive Summary (h)), decoded as windows-1252, tags removed, entities decoded,
-    // NFKC, quote/dash folding, whitespace collapsed, one paragraph block per line.
+    // publication.asp is dynamic ASP: its navigation, news modules, footer and session markup
+    // may change at any time, so raw bytes are not pinned. The enforced pin is the SHA-256 of
+    // the publication column only (Recommended citation through Executive Summary (h)),
+    // decoded as windows-1252, tags removed, entities decoded, NFKC, quote/dash folding,
+    // whitespace collapsed, one paragraph block per line.
+    pin: "publication-column-text",
+    pin_rationale:
+      "dynamic ASP page: navigation, news, footer and session markup can change without any change to the publication text",
     content_sha256: "01ebdf43c223d42a5618b20ba63cb4db4dee9de490ad28799e794fa49f08e8a6",
+    content_blocks: 19,
+    content_digest_basis:
+      "publication column (Recommended citation through Executive Summary (h)), windows-1252 decoded, tags removed, entities decoded, NFKC, quote/dash folding, whitespace collapsed, one paragraph block per line",
   }),
   icrp103: Object.freeze({
     key: "icrp103",
@@ -65,7 +74,7 @@ const SOURCES = Object.freeze({
     media_type: "application/pdf",
     bytes: 354_712,
     sha256: "8129e99e681e7a20abaa6e269782195ef026002b019dd438a77c594befb556b9",
-    digest_basis: "raw response bytes",
+    pin: "raw-bytes",
     pages: 35,
   }),
   aapm96: Object.freeze({
@@ -77,7 +86,7 @@ const SOURCES = Object.freeze({
     media_type: "application/pdf",
     bytes: 1_241_814,
     sha256: "dd67d8b4d39c5c9ce4aa505588047754d4a30558414477161614aa5ee5178157",
-    digest_basis: "raw response bytes",
+    pin: "raw-bytes",
     pages: 34,
   }),
 });
@@ -580,13 +589,10 @@ function assertArtifactIdentity(source, retrieved) {
   }
 }
 
-function assertArtifactDigest(source, retrieved, detail = "") {
-  assert.equal(
-    retrieved.bytes.length,
-    source.bytes,
-    `${source.key}: artifact byte length drifted${detail}`,
-  );
-  assert.equal(sha256(retrieved.bytes), source.sha256, `${source.key}: artifact SHA-256 drifted${detail}`);
+function assertRawBytePin(source, retrieved) {
+  assert.equal(source.pin, "raw-bytes", `${source.key}: raw-byte pin requested for a ${source.pin} source`);
+  assert.equal(retrieved.bytes.length, source.bytes, `${source.key}: artifact byte length drifted`);
+  assert.equal(sha256(retrieved.bytes), source.sha256, `${source.key}: artifact SHA-256 drifted`);
 }
 
 function decodeWindows1252(bytes) {
@@ -668,16 +674,16 @@ function verifyIcrp147(retrieved, mismatches) {
   assertArtifactIdentity(SOURCES.icrp147, retrieved);
   const html = decodeWindows1252(retrieved.bytes);
   const { blocks, located } = icrp147Blocks(html);
+  assert.equal(
+    blocks.length,
+    SOURCES.icrp147.content_blocks,
+    "icrp147: publication-column paragraph count drifted",
+  );
   const contentSha256 = sha256(blocks.join("\n"));
   assert.equal(
     contentSha256,
     SOURCES.icrp147.content_sha256,
     "icrp147: publication-column text drifted (re-review the ICRP 147 statements before re-pinning)",
-  );
-  assertArtifactDigest(
-    SOURCES.icrp147,
-    retrieved,
-    " although the publication-column text is unchanged (page chrome changed; re-review and re-pin)",
   );
   const verified = new Map();
   for (const statement of ICRP147_STATEMENTS) {
@@ -691,7 +697,13 @@ function verifyIcrp147(retrieved, mismatches) {
       spans: checkSpans(statement, block, foldText, mismatches),
     });
   }
-  return { verified, contentSha256, blockCount: blocks.length };
+  return {
+    verified,
+    contentSha256,
+    blockCount: blocks.length,
+    // Informational only: raw page bytes are not pinned (site chrome may change).
+    observedRaw: { bytes: retrieved.bytes.length, sha256: sha256(retrieved.bytes), enforced: false },
+  };
 }
 
 async function pdfPages(source, bytes) {
@@ -974,7 +986,7 @@ async function main() {
     [SOURCES.aapm96, aapm96Retrieved],
   ]) {
     assertArtifactIdentity(source, retrieved);
-    assertArtifactDigest(source, retrieved);
+    assertRawBytePin(source, retrieved);
   }
   const icrp103Pages = await pdfPages(SOURCES.icrp103, icrp103Retrieved.bytes);
   verifyIcrp103Continuity(icrp103Pages);
@@ -1034,17 +1046,16 @@ async function main() {
         aapm96: aapm96Retrieved,
       }[source.key].finalUrl.href,
       media_type: source.media_type,
-      bytes: source.bytes,
-      sha256: source.sha256,
-      digest_basis: source.digest_basis,
-      ...(source.content_sha256
+      pin: source.pin,
+      ...(source.pin === "publication-column-text"
         ? {
+            pin_rationale: source.pin_rationale,
             content_sha256: icrp147.contentSha256,
-            content_digest_basis:
-              "publication column (Recommended citation through Executive Summary (h)), windows-1252 decoded, normalized text, one paragraph block per line",
             content_blocks: icrp147.blockCount,
+            content_digest_basis: source.content_digest_basis,
+            observed_raw: icrp147.observedRaw,
           }
-        : { pages: source.pages }),
+        : { bytes: source.bytes, sha256: source.sha256, pages: source.pages }),
     })),
     source_statements: [...verified.values()],
     claim_bindings: CLAIM_BINDINGS.map((binding) => ({
