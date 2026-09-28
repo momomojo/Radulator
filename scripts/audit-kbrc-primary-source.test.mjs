@@ -64,11 +64,42 @@ assert.deepEqual(audit.input_limits, {
   },
 });
 assert.equal(audit.runtime_input_limit_claims_match, true);
+// Weight-input review: BMI (not weight) is the modeled spline predictor, the source publishes no
+// weight domain, and the runtime reviews rather than rejects outside 30-130 kg without altering
+// the Item S1 estimate.
+assert.deepEqual(audit.weight_input_evidence, {
+  model_inputs: ["age", "bmi", "hemoglobin", "kidneySize", "native", "platelets"],
+  xml_statements: [
+    "p0030:derivation-variables-weight-height",
+    "p0050:bmi-continuous-spline",
+    "p0050:no-arbitrary-cutoffs",
+  ],
+  pdf_statements: [
+    "mmc1.pdf page 5:item-s1-bmi-unit",
+    "mmc1.pdf page 6:table-s1-title",
+    "mmc1.pdf page 6:table-s1-bmi-spline",
+  ],
+  weight_mentions: ["abstract", "p0030"],
+  table1_bmi_combined: { median: 28.28, iqr: [24.6, 32.59] },
+  table1_weight_or_height_rows: 0,
+  publication_defines_weight_domain: false,
+  review_interval_kg: [30, 130],
+  review_probes_kg: [29.99, 30, 30.01, 129.99, 130, 130.01],
+  review_flags: [true, false, false, false, false, true],
+  equal_bmi_pair_display: "0.4%",
+  regressions_detected: [
+    "hard-weight-cutoff",
+    "weight-clamped",
+    "input-review-removed",
+    "input-review-claims-model-domain",
+  ],
+});
+assert.equal(audit.runtime_weight_review_match, true);
 assert.equal(audit.runtime_equation_match, true);
 assert.equal(audit.runtime_vector_match, true);
 assert.equal(audit.fixture_vector_match, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "KBRC primary-source integration audit verified the live supplement member, 22 equation terms, 4 source examples, the p0130 calibration warning, and app-only input-limit provenance.",
+  "KBRC primary-source integration audit verified the live supplement member, 22 equation terms, 4 source examples, the p0130 calibration warning, app-only input-limit provenance, and the BMI-based weight-review binding (p0030, p0050, Table 1, Item S1, Table S1).",
 );
