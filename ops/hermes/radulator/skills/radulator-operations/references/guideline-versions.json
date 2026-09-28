@@ -1921,12 +1921,24 @@
     {
       "calculator_id": "ipss",
       "title": "Inferior Petrosal Sinus Sampling",
-      "implemented_version": "IPSS (Oldfield 1991)",
+      "implemented_version": "IPSS sampling interpretation (SVIN 2026)",
       "basis_type": "primary-model",
       "verification_status": "seed-unverified",
       "last_verified": null,
-      "justification": "Implements published IPSS diagnostic ratios and sampling interpretation; current protocol context remains queued for expert source review.",
+      "justification": "Adult CRH sampling ratios with SVIN 2026 inclusive criteria and separately labeled basal/concurrent PRL normalization. Safety correction and evidence: docs/verification/calculators/ipss.md. No normalized diagnostic cutoff or tumor-side inference. Full source-scope audit and live acceptance remain incomplete; no verification upgrade.",
       "sources": [
+        {
+          "authority": "SVIN",
+          "title": "Consensus Guidelines on Inferior Petrosal Sinus Sampling (2026)",
+          "role": "official-authority",
+          "url": "https://doi.org/10.1161/SVIN.125.002309"
+        },
+        {
+          "authority": "Sharma et al.",
+          "title": "Prolactin as a marker of successful catheterization during IPSS (2011)",
+          "role": "primary-publication",
+          "url": "https://doi.org/10.1210/jc.2011-2149"
+        },
         {
           "authority": "Oldfield et al.",
           "title": "Petrosal sinus sampling with and without corticotropin-releasing hormone for the differential diagnosis of Cushing syndrome",
