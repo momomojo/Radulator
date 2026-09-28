@@ -313,7 +313,10 @@ function matchesExactState(record, exactState) {
     record.ci_sha256 === exactState.ciSha256;
 }
 
-export function verifyAttestation(record, publicKeys, exactState) {
+// Record-only verification: schema, fields, configured judge identity, and the signature over the
+// canonical record. It never compares the record with live PR state, so it can re-verify an
+// attestation on a merged PR, whose "closed" timeline event has since moved the live state epoch.
+export function verifyAttestationRecord(record, publicKeys) {
   if (!record || typeof record !== "object" || record.schema !== ATTESTATION_SCHEMA) {
     return attestationFailure("MALFORMED_ATTESTATION", "Attestation schema is missing or unsupported.");
   }
@@ -356,6 +359,12 @@ export function verifyAttestation(record, publicKeys, exactState) {
     signatureValid = false;
   }
   if (!signatureValid) return attestationFailure("INVALID_SIGNATURE", "Attestation signature is invalid.");
+  return { ok: true, reasonCode: "VALID_ATTESTATION_RECORD", record };
+}
+
+export function verifyAttestation(record, publicKeys, exactState) {
+  const verified = verifyAttestationRecord(record, publicKeys);
+  if (!verified.ok) return verified;
   if (!matchesExactState(record, exactState)) {
     return attestationFailure("ATTESTATION_STATE_MISMATCH", "Attestation does not bind the current exact PR state.");
   }
