@@ -194,6 +194,54 @@ export const STATEMENTS = Object.freeze([
     ],
   }),
   Object.freeze({
+    id: "whats-new-threshold-growth",
+    pdf_page: 7,
+    printed_page: 4,
+    locator: "What's New in v2018, threshold growth",
+    paraphrase:
+      "v2018 narrowed threshold growth to a mass growing by at least 50% within 6 months, matching AASLD and OPTN. A new observation of 10 mm or more within 24 months, or growth of 100% or more across exams over 6 months apart, no longer counts as threshold growth; both are now subthreshold growth.",
+    spans: [
+      {
+        from: "Revised, simplified definition of threshold",
+        to: "exams > 6 months apart",
+        length: 420,
+        sha256: "a228100c6bb75b8e8e30c4c6d3b67f4824464907d665d8db1528bc1ac275daad",
+      },
+    ],
+  }),
+  Object.freeze({
+    id: "threshold-growth-definition",
+    pdf_page: 23,
+    printed_page: 20,
+    locator: "Major Imaging Features, threshold growth",
+    paraphrase:
+      "Threshold growth is a size increase of at least 50% in 6 months or less. It applies only to an observation that is unequivocally a mass, only against a prior CT or MRI of adequate quality (never a prior US or CEUS), measured on matching phase, sequence and plane where possible.",
+    spans: [
+      {
+        from: "Threshold growth Size increase",
+        to: "US or CEUS exams",
+        length: 471,
+        sha256: "7a4e216900f4bee184a598d7c96ce0271dcff34ffafcc2ed80c208b7741bb505",
+      },
+    ],
+  }),
+  Object.freeze({
+    id: "ancillary-subthreshold-growth",
+    pdf_page: 27,
+    printed_page: 24,
+    locator: "Ancillary features favoring malignancy, subthreshold growth",
+    paraphrase:
+      "Subthreshold growth, an ancillary feature favoring malignancy (not HCC in particular), is an unequivocal increase in the size of a mass that falls short of threshold growth.",
+    spans: [
+      {
+        from: "Subthreshold growth Unequivocal size",
+        to: "definition of threshold growth",
+        length: 112,
+        sha256: "779434719ec7815f159c2e6d51e57b53f6968ed3403cf08acab3b6d515dc3185",
+      },
+    ],
+  }),
+  Object.freeze({
     id: "step3-tiebreaking",
     pdf_page: 13,
     printed_page: 10,
@@ -357,6 +405,26 @@ export const RUNTIME_SUBLABELS = Object.freeze({
   has_lrm_features:
     "Targetoid mass, or a nontargetoid mass not meeting LR-5 criteria with infiltrative appearance, marked diffusion restriction, necrosis/severe ischemia, or another non-HCC feature",
 });
+export const RUNTIME_THRESHOLD_GROWTH = Object.freeze({
+  subLabel:
+    "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
+  note: "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
+  subthresholdOption:
+    "Subthreshold growth (growth below threshold, e.g. new ≥10 mm observation in ≤24 months or ≥100% over >6 months)",
+});
+const BENIGN_ANCILLARY_VALUES = Object.freeze([
+  "size_stability",
+  "size_reduction",
+  "parallels_blood_pool",
+  "undistorted_vessels",
+  "iron_in_mass",
+  "marked_t2",
+  "hbp_iso",
+]);
+const ONE_CATEGORY_DOWN = Object.freeze({ "LR-5": "LR-4", "LR-4": "LR-3", "LR-3": "LR-2" });
+const LR2_LABEL = "LR-2 (Probably Benign)";
+// The calculator's former ACR reference; it has returned HTTP 404 since ACR moved its site.
+const DEAD_ACR_REFERENCE = "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/LI-RADS";
 export const RUNTIME_TIEBREAK_NOTE =
   "Nontargetoid LR-M features give LR-M only when LR-5 criteria are not met. If unsure between LR-M and this category, choose LR-M (v2018 tiebreaking: lower certainty of hepatocellular origin)";
 const RUNTIME_ERRORS = Object.freeze({
@@ -414,6 +482,34 @@ export const CLAIM_BINDINGS = Object.freeze([
     claim_id: "sublabel-has-lrm-features",
     source_statement_ids: ["lrm-criteria"],
   }),
+  Object.freeze({
+    claim_id: "threshold-growth-v2018",
+    source_statement_ids: [
+      "whats-new-threshold-growth",
+      "threshold-growth-definition",
+      "ancillary-subthreshold-growth",
+      "step2-ancillary-features",
+    ],
+  }),
+  Object.freeze({
+    claim_id: "benign-ancillary-downgrade-one-category",
+    source_statement_ids: ["step2-ancillary-features"],
+  }),
+  Object.freeze({
+    claim_id: "acr-reference-is-live-landing-page",
+    source_statement_ids: ["core-identity"],
+  }),
+]);
+
+// In-memory edits of the real extracted page text (never written anywhere). Each must break the
+// named statement's pin, which shows the pin would catch that kind of source change.
+export const SOURCE_MUTATIONS = Object.freeze([
+  Object.freeze({ statement_id: "whats-new-threshold-growth", find: "≥ 50%", replace: "≥ 40%" }),
+  Object.freeze({ statement_id: "whats-new-threshold-growth", find: "≤ 24 months", replace: "≤ 12 months" }),
+  Object.freeze({ statement_id: "threshold-growth-definition", find: "≤ 6 months", replace: "≤ 12 months" }),
+  Object.freeze({ statement_id: "ancillary-subthreshold-growth", find: "less than threshold", replace: "more than threshold" }),
+  Object.freeze({ statement_id: "step2-ancillary-features", find: "downgrade by 1", replace: "downgrade by 2" }),
+  Object.freeze({ statement_id: "lrm-criteria", find: "Not meeting LR", replace: "Meeting LR" }),
 ]);
 
 function sha256(value) {
@@ -734,6 +830,37 @@ export function checkTiebreakLabelPlacement(items) {
   };
 }
 
+// Step 2 figure: the LR-1..LR-5 bar reads left to right on one row, the only "✘" marks the
+// upgrade from LR-4 into LR-5 (between those boxes, above the bar, under the upgrade label), and
+// the downgrade label sits under the whole bar, so the one-category downgrade has no exception.
+export function checkStep2Ladder(items) {
+  const tokens = categoryTokens(items).filter((token) => /^LR-[1-5]$/.test(token.category));
+  assert.equal(tokens.length, 5, "step 2 figure: expected one LR-1..LR-5 bar");
+  const barY = tokens[0].y;
+  assert.ok(tokens.every((token) => Math.abs(token.y - barY) <= 1.5), "step 2 figure: bar must be one row");
+  const bar = [...tokens].sort((a, b) => a.x - b.x);
+  assert.deepEqual(
+    bar.map((token) => token.category),
+    ["LR-1", "LR-2", "LR-3", "LR-4", "LR-5"],
+    "step 2 figure: bar must read LR-1 to LR-5 left to right",
+  );
+  const upgrade = findItem(items, { startsWith: "≥ 1 AF favoring malignancy: upgrade" }, "step 2 upgrade label");
+  const downgrade = findItem(items, { startsWith: "≥ 1 AF favoring benignity: downgrade" }, "step 2 downgrade label");
+  const crosses = items.filter((item) => foldText(item.str) === "✘");
+  assert.equal(crosses.length, 1, "step 2 figure: expected exactly one forbidden-move mark");
+  const [cross] = crosses;
+  assert.ok(cross.x > bar[3].x && cross.x < bar[4].x, "step 2 figure: the forbidden move must sit between LR-4 and LR-5");
+  assert.ok(cross.y > barY && cross.y < upgrade.y, "step 2 figure: the forbidden move must be on the upgrade side");
+  assert.ok(downgrade.y < barY, "step 2 figure: the downgrade label must sit under the bar");
+  return {
+    bar_y: Number(barY.toFixed(1)),
+    bar_order: bar.map((token) => token.category),
+    forbidden_move_x: Number(cross.x.toFixed(1)),
+    upgrade_label_y: Number(upgrade.y.toFixed(1)),
+    downgrade_label_y: Number(downgrade.y.toFixed(1)),
+  };
+}
+
 // ---------------------------------------------------------------------------------------------
 // Runtime binding
 
@@ -944,6 +1071,96 @@ export function verifyRuntime(calculator, table = EXPECTED_TABLE) {
   bindings["sublabel-tumor-in-vein"] = { field: "tumor_in_vein", subLabel: RUNTIME_SUBLABELS.tumor_in_vein };
   bindings["sublabel-has-lrm-features"] = { field: "has_lrm_features", subLabel: RUNTIME_SUBLABELS.has_lrm_features };
 
+  // Threshold growth (v2018): the field, the result note and the subthreshold-growth option.
+  assert.equal(
+    field("threshold_growth").subLabel,
+    RUNTIME_THRESHOLD_GROWTH.subLabel,
+    "threshold_growth subLabel drifted",
+  );
+  const subthreshold = (field("ancillary_malignancy").opts ?? []).find((opt) => opt.value === "subthreshold_growth");
+  assert.equal(subthreshold?.label, RUNTIME_THRESHOLD_GROWTH.subthresholdOption, "subthreshold growth option drifted");
+  const visibleText = JSON.stringify(
+    calculator.fields.map((candidate) => [candidate.label, candidate.subLabel, (candidate.opts ?? []).map((opt) => opt.label)]),
+  );
+  assert.doesNotMatch(visibleText, /or new observation ≥\s?10\s?mm/i, "a new observation is still offered as threshold growth");
+  let growthVectors = 0;
+  for (const vector of vectors) {
+    const withSubthreshold = compute({
+      ...INDETERMINATE,
+      ...vector.values,
+      ancillary_malignancy: "subthreshold_growth",
+    });
+    const expected = vector.expected === "LR-3" ? "LR-4" : vector.expected;
+    assert.equal(
+      withSubthreshold["LI-RADS Category"],
+      TABLE_LABELS[expected],
+      `subthreshold growth ${vector.id}: an ancillary feature upgrades one category, never to LR-5`,
+    );
+    if (vector.values.threshold_growth === "present") {
+      const plain = compute({ ...INDETERMINATE, ...vector.values });
+      assert.ok(
+        (plain["Clinical Notes"] ?? "").includes(RUNTIME_THRESHOLD_GROWTH.note),
+        `threshold growth note missing for ${vector.id}`,
+      );
+    }
+    growthVectors += 1;
+  }
+  const newObservationAsSubthreshold = compute({
+    ...INDETERMINATE,
+    ...majors("15", "nonrim"),
+    ancillary_malignancy: "subthreshold_growth",
+  });
+  assert.equal(
+    newObservationAsSubthreshold["LI-RADS Category"],
+    TABLE_LABELS["LR-4"],
+    "subthreshold growth: a new 10-19 mm nonrim-APHE observation must stay below LR-5",
+  );
+  bindings["threshold-growth-v2018"] = {
+    field_subLabel: RUNTIME_THRESHOLD_GROWTH.subLabel,
+    result_note: RUNTIME_THRESHOLD_GROWTH.note,
+    subthreshold_option: RUNTIME_THRESHOLD_GROWTH.subthresholdOption,
+    subthreshold_vectors: growthVectors,
+    new_observation_10_19mm_nonrim_aphe: newObservationAsSubthreshold["LI-RADS Category"],
+  };
+
+  // Benign ancillary features: exactly one category down, LR-3 to LR-2 included; none when mixed.
+  let downgradeVectors = 0;
+  for (const vector of vectors) {
+    for (const benign of BENIGN_ANCILLARY_VALUES) {
+      const result = compute({ ...INDETERMINATE, ...vector.values, ancillary_benign: benign });
+      const expected = ONE_CATEGORY_DOWN[vector.expected];
+      assert.equal(
+        result["LI-RADS Category"],
+        expected === "LR-2" ? LR2_LABEL : TABLE_LABELS[expected],
+        `benign downgrade ${vector.id} + ${benign}: exactly one category down`,
+      );
+      assert.equal(result["Base Category (before ancillary)"], vector.expected, `benign downgrade ${vector.id}: base category`);
+      downgradeVectors += 1;
+    }
+    const mixed = compute({
+      ...INDETERMINATE,
+      ...vector.values,
+      ancillary_benign: "size_stability",
+      ancillary_malignancy: "corona",
+    });
+    assert.equal(mixed["LI-RADS Category"], TABLE_LABELS[vector.expected], `benign downgrade ${vector.id}: mixed means no change`);
+  }
+  const lr2 = compute({ ...INDETERMINATE, ...majors("15", "none"), ancillary_benign: "size_stability" });
+  assert.equal(lr2["HCC Probability"], "~14%", "benign downgrade to LR-2: probably-benign figures");
+  assert.equal(lr2._severity, "success", "benign downgrade to LR-2: severity");
+  bindings["benign-ancillary-downgrade-one-category"] = {
+    benign_values: [...BENIGN_ANCILLARY_VALUES],
+    downgrade_vectors: downgradeVectors,
+    lr3_to_lr2: lr2["LI-RADS Category"],
+    mixed_no_adjustment: true,
+  };
+
+  // ACR reference: the live LI-RADS page that links the pinned Core PDF, not the dead path.
+  const refUrls = (calculator.refs ?? []).map((ref) => ref.u);
+  assert.ok(refUrls.includes(SOURCE.landing_page), "ACR reference must be the live LI-RADS page");
+  assert.ok(!refUrls.includes(DEAD_ACR_REFERENCE), "ACR reference still points to the dead page");
+  bindings["acr-reference-is-live-landing-page"] = { reference_url: SOURCE.landing_page };
+
   return { bindings, guardrails: verifyGuardrails(calculator) };
 }
 
@@ -1070,11 +1287,43 @@ export function assertBindingsCoverStatements(verified, bindings = CLAIM_BINDING
   }
 }
 
+// Applies each SOURCE_MUTATIONS edit to the real page text in memory and requires the named
+// statement's pin to break (a digest mismatch or a vanished marker). Nothing is written.
+export function verifySourceMutations(pages, statements = STATEMENTS, mutations = SOURCE_MUTATIONS) {
+  return mutations.map((mutation) => {
+    const statement = statements.find((candidate) => candidate.id === mutation.statement_id);
+    assert.ok(statement, `source mutation: unknown statement ${mutation.statement_id}`);
+    const text = foldText(pages.get(statement.pdf_page)?.text ?? "");
+    assert.ok(
+      text.includes(mutation.find),
+      `source mutation: ${JSON.stringify(mutation.find)} is not on PDF page ${statement.pdf_page}`,
+    );
+    const mutated = text.split(mutation.find).join(mutation.replace);
+    let detected;
+    try {
+      const mismatches = [];
+      checkSpans(statement, mutated, mismatches);
+      detected = mismatches.length > 0;
+    } catch {
+      detected = true;
+    }
+    assert.ok(
+      detected,
+      `source mutation ${mutation.statement_id} (${mutation.find} -> ${mutation.replace}) was not caught by its pin`,
+    );
+    return { statement_id: mutation.statement_id, find: mutation.find, replace: mutation.replace, detected };
+  });
+}
+
 function verifyCalculatorSource(calculatorSource) {
-  assert.ok(
-    !calculatorSource.includes("!vals.has_lrm_features"),
-    "calculator still hides the major features behind the LR-M checkbox",
-  );
+  for (const [removed, reason] of [
+    ["!vals.has_lrm_features", "calculator still hides the major features behind the LR-M checkbox"],
+    ["or new observation ≥10mm", "calculator still counts a new observation as threshold growth"],
+    ["no further downgrade possible", "calculator still stops the benign downgrade at LR-3"],
+    [DEAD_ACR_REFERENCE, "calculator still links the dead ACR page"],
+  ]) {
+    assert.ok(!calculatorSource.includes(removed), reason);
+  }
 }
 
 async function main() {
@@ -1090,10 +1339,12 @@ async function main() {
     `pinned source spans drifted (re-review each statement at its locator before re-pinning):\n${JSON.stringify(mismatches, null, 2)}`,
   );
   assertBindingsCoverStatements(verified);
+  const sourceMutations = verifySourceMutations(pages);
 
   const layout = {
     step1_order: checkStep1Order(pages.get(11).items),
     diagnostic_table: parseDiagnosticTable(pages.get(11).items),
+    step2_ladder: checkStep2Ladder(pages.get(12).items),
     lrm_condition_box: checkLrmConditionPlacement(pages.get(25).items),
     tiebreak_label: checkTiebreakLabelPlacement(pages.get(13).items),
   };
@@ -1126,6 +1377,7 @@ async function main() {
       retrieval_attempts: retrieved.attempts,
     },
     source_statements: [...verified.values()],
+    source_mutations: sourceMutations,
     layout,
     claim_bindings: CLAIM_BINDINGS.map((binding) => ({
       claim_id: binding.claim_id,
@@ -1135,8 +1387,7 @@ async function main() {
     app_guardrails: runtime.guardrails,
     scope: {
       not_asserted: [
-        "ancillary-feature downgrade of LR-3 and LR-2",
-        "threshold growth definition text",
+        "ancillary-feature adjustment of LR-1 and LR-2 chosen directly in the benignity question",
         "LR-M and LR-5 probability figures",
         "management recommendations",
         "whole-calculator clinical acceptance",

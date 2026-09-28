@@ -570,6 +570,37 @@ test.describe("LI-RADS v2018 Calculator", () => {
       ).toBeVisible();
     });
 
+    test("should downgrade LR-3 to LR-2 when an ancillary feature favors benignity", async ({
+      page,
+    }) => {
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
+
+      // LR-3 from the diagnostic table (<20 mm, no APHE, no additional feature)
+      await page.fill('input[id="observation_size"]', "15");
+      await page.locator('label[for="aphe-none"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
+
+      await page
+        .locator('select[id="ancillary_benign"]')
+        .selectOption("size_stability");
+
+      await page.click('button:has-text("Calculate")');
+
+      // One category down, not to LR-1
+      await expect(results.locator("text=LR-2").first()).toBeVisible();
+      await expect(results.locator("text=Probably Benign")).toBeVisible();
+      await expect(
+        results.locator("text=Downgraded from LR-3 to LR-2"),
+      ).toBeVisible();
+      await expect(results.locator("text=LR-1")).toHaveCount(0);
+    });
+
     test("should not adjust category when conflicting ancillary features present", async ({
       page,
     }) => {
@@ -659,18 +690,25 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(results.locator("text=LR-4")).toBeVisible();
+      // .first(): the v2018 threshold-growth note also mentions LR-4
+      await expect(results.locator("text=LR-4").first()).toBeVisible();
       await expect(
         results.locator("text=<10mm cannot be categorized as LR-5"),
       ).toBeVisible();
     });
 
-    test("should show threshold growth definition", async ({ page }) => {
+    test("should show the v2018 threshold growth definition", async ({ page }) => {
       const results = page.getByRole('status', { name: 'Calculator results' });
 
       await page.locator('label[for="high_risk_population"]').click();
       await page.locator('label[for="study_adequate"]').click();
       await page.locator('label[for="benign_status-indeterminate"]').click();
+
+      // The field itself says a new >=10 mm observation is subthreshold growth
+      await expect(
+        page.getByText(/is subthreshold growth \(ancillary feature\), not threshold growth/),
+      ).toBeVisible();
+      await expect(page.getByText(/or new observation ≥10mm/)).toHaveCount(0);
 
       await page.fill('input[id="observation_size"]', "20");
       await page.locator('label[for="aphe-nonrim"]').click();
@@ -680,7 +718,39 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(results.locator("text=50% size increase in")).toBeVisible();
+      await expect(results.locator("text=grew ≥50% within ≤6 months")).toBeVisible();
+      await expect(
+        results.locator("text=is subthreshold growth instead"),
+      ).toBeVisible();
+      await expect(results.locator("text=new observation ≥10mm")).toHaveCount(0);
+    });
+
+    test("should keep a new 10-19 mm observation below LR-5 when entered as subthreshold growth", async ({
+      page,
+    }) => {
+      const results = page.getByRole('status', { name: 'Calculator results' });
+
+      await page.locator('label[for="high_risk_population"]').click();
+      await page.locator('label[for="study_adequate"]').click();
+      await page.locator('label[for="benign_status-indeterminate"]').click();
+
+      // 15 mm with nonrim APHE only (washout, capsule, threshold growth absent): LR-3
+      await page.fill('input[id="observation_size"]', "15");
+      await page.locator('label[for="aphe-nonrim"]').click();
+      await page.locator('label[for="washout-absent"]').click();
+      await page.locator('label[for="capsule-absent"]').click();
+      await page.locator('label[for="threshold_growth-absent"]').click();
+
+      // New observation: subthreshold growth, an ancillary feature favoring malignancy
+      await page
+        .locator('select[id="ancillary_malignancy"]')
+        .selectOption("subthreshold_growth");
+
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results.locator("text=LR-4").first()).toBeVisible();
+      await expect(results.locator("text=Upgraded from LR-3 to LR-4")).toBeVisible();
+      await expect(results.locator("text=Definitely HCC")).toHaveCount(0);
     });
   });
 
@@ -734,6 +804,15 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       const acrLink = page.locator('a[href*="acr.org"]');
       await expect(acrLink.first()).toBeVisible();
+      // The live ACR LI-RADS page (the former path returns HTTP 404)
+      await expect(
+        page.locator(
+          'a[href="https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/LI-RADS"]',
+        ),
+      ).toBeVisible();
+      await expect(
+        page.locator('a[href="https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/LI-RADS"]'),
+      ).toHaveCount(0);
     });
   });
 

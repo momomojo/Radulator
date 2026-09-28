@@ -280,7 +280,8 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
     {
       id: "threshold_growth",
       label: "Threshold Growth",
-      subLabel: "Size increase ≥50% in ≤6 months, or new observation ≥10mm",
+      subLabel:
+        "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
       type: "radio",
       opts: [
         { value: "absent", label: "Absent" },
@@ -299,7 +300,11 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       opts: [
         { value: "none", label: "None" },
         { value: "us_visible", label: "US visibility as discrete nodule" },
-        { value: "subthreshold_growth", label: "Subthreshold growth" },
+        {
+          value: "subthreshold_growth",
+          label:
+            "Subthreshold growth (growth below threshold, e.g. new ≥10 mm observation in ≤24 months or ≥100% over >6 months)",
+        },
         { value: "corona", label: "Corona enhancement" },
         { value: "fat_sparing", label: "Fat sparing in focal fat" },
         { value: "restricted_diffusion", label: "Restricted diffusion" },
@@ -565,8 +570,15 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       );
     }
 
-    // Set category details
+    // Set category details (LR-2 is reachable here only by the one-step
+    // ancillary downgrade of LR-3; texts match the probably-benign result above)
     const categoryDetails = {
+      "LR-2": {
+        name: "Probably Benign",
+        hcc: "~14%",
+        recommendation:
+          "Return to routine surveillance; option for alternate imaging modality",
+      },
       "LR-3": {
         name: "Intermediate Probability",
         hcc: "38-40%",
@@ -618,7 +630,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
           "Ancillary features favor malignancy but cannot upgrade beyond LR-4";
       }
     } else if (hasFavoringBenignity && !hasFavoringMalignancy) {
-      // Downgrade by 1
+      // Downgrade by exactly 1 category (v2018 Core p. 9), including LR-3 to LR-2
       if (baseCategory === "LR-5") {
         finalCategory = "LR-4";
         ancillaryAdjustment =
@@ -627,9 +639,10 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         finalCategory = "LR-3";
         ancillaryAdjustment =
           "Downgraded from LR-4 to LR-3 based on ancillary features favoring benignity";
-      } else {
+      } else if (baseCategory === "LR-3") {
+        finalCategory = "LR-2";
         ancillaryAdjustment =
-          "Ancillary features favor benignity but no further downgrade possible";
+          "Downgraded from LR-3 to LR-2 based on ancillary features favoring benignity";
       }
     }
 
@@ -703,7 +716,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
 
     if (hasThresholdGrowth) {
       notes.push(
-        "Threshold growth defined as ≥50% size increase in ≤6 months or new observation ≥10mm",
+        "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
       );
     }
 
@@ -718,7 +731,12 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       result["Clinical Notes"] = notes.join("; ");
     }
 
-    result._severity = finalCategory === "LR-3" ? "warning" : "danger";
+    result._severity =
+      finalCategory === "LR-2"
+        ? "success"
+        : finalCategory === "LR-3"
+          ? "warning"
+          : "danger";
     return result;
   },
 
@@ -761,7 +779,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
     },
     {
       t: "ACR LI-RADS - Liver Imaging Reporting and Data System",
-      u: "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/LI-RADS",
+      u: "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/LI-RADS",
     },
   ],
 };

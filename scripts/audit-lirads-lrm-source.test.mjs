@@ -114,6 +114,27 @@ assert.deepEqual(
       ],
     ],
     [
+      "whats-new-threshold-growth",
+      "What's New in v2018, threshold growth",
+      7,
+      4,
+      ["420:a228100c6bb75b8e8e30c4c6d3b67f4824464907d665d8db1528bc1ac275daad"],
+    ],
+    [
+      "threshold-growth-definition",
+      "Major Imaging Features, threshold growth",
+      23,
+      20,
+      ["471:7a4e216900f4bee184a598d7c96ce0271dcff34ffafcc2ed80c208b7741bb505"],
+    ],
+    [
+      "ancillary-subthreshold-growth",
+      "Ancillary features favoring malignancy, subthreshold growth",
+      27,
+      24,
+      ["112:779434719ec7815f159c2e6d51e57b53f6968ed3403cf08acab3b6d515dc3185"],
+    ],
+    [
       "step3-tiebreaking",
       "Step 3, tiebreaking rules",
       13,
@@ -171,6 +192,22 @@ assert.deepEqual(audit.layout.diagnostic_table, {
   one: ["LR-3", "LR-4", "LR-4", "LR-4|LR-5", "LR-5"],
   two: ["LR-4", "LR-4", "LR-4", "LR-5", "LR-5"],
 });
+assert.deepEqual(audit.layout.step2_ladder, {
+  bar_y: 515,
+  bar_order: ["LR-1", "LR-2", "LR-3", "LR-4", "LR-5"],
+  forbidden_move_x: 422.8,
+  upgrade_label_y: 580.3,
+  downgrade_label_y: 463.9,
+});
+// In-memory edits of the real page text must each break the named statement's pin.
+assert.deepEqual(audit.source_mutations, [
+  { statement_id: "whats-new-threshold-growth", find: "≥ 50%", replace: "≥ 40%", detected: true },
+  { statement_id: "whats-new-threshold-growth", find: "≤ 24 months", replace: "≤ 12 months", detected: true },
+  { statement_id: "threshold-growth-definition", find: "≤ 6 months", replace: "≤ 12 months", detected: true },
+  { statement_id: "ancillary-subthreshold-growth", find: "less than threshold", replace: "more than threshold", detected: true },
+  { statement_id: "step2-ancillary-features", find: "downgrade by 1", replace: "downgrade by 2", detected: true },
+  { statement_id: "lrm-criteria", find: "Not meeting LR", replace: "Meeting LR", detected: true },
+]);
 assert.deepEqual(audit.layout.lrm_condition_box, {
   targetoid_line_y: 640.9,
   or_y: 616.9,
@@ -195,6 +232,17 @@ assert.deepEqual(
     ["sublabel-study-adequate", ["categories-lr-nc", "step1-diagnostic-algorithm"]],
     ["sublabel-tumor-in-vein", ["tumor-in-vein-definition", "step3-tiebreaking"]],
     ["sublabel-has-lrm-features", ["lrm-criteria"]],
+    [
+      "threshold-growth-v2018",
+      [
+        "whats-new-threshold-growth",
+        "threshold-growth-definition",
+        "ancillary-subthreshold-growth",
+        "step2-ancillary-features",
+      ],
+    ],
+    ["benign-ancillary-downgrade-one-category", ["step2-ancillary-features"]],
+    ["acr-reference-is-live-landing-page", ["core-identity"]],
   ],
 );
 const bindings = new Map(audit.claim_bindings.map(({ claim_id, runtime }) => [claim_id, runtime]));
@@ -211,6 +259,33 @@ assert.deepEqual(bindings.get("nontargetoid-lrm-only-if-not-lr5"), {
 assert.equal(bindings.get("targetoid-mass-is-lrm").vectors, 521);
 assert.equal(bindings.get("tiebreak-note-lrm-vs-lr5").results_checked, 128);
 assert.equal(bindings.get("lrm-decided-before-ancillary-features").lr5_then_benign_downgrade, "LR-4 (Probably HCC)");
+assert.deepEqual(bindings.get("threshold-growth-v2018"), {
+  field_subLabel:
+    "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
+  result_note:
+    "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
+  subthreshold_option:
+    "Subthreshold growth (growth below threshold, e.g. new ≥10 mm observation in ≤24 months or ≥100% over >6 months)",
+  subthreshold_vectors: 104,
+  new_observation_10_19mm_nonrim_aphe: "LR-4 (Probably HCC)",
+});
+assert.deepEqual(bindings.get("benign-ancillary-downgrade-one-category"), {
+  benign_values: [
+    "size_stability",
+    "size_reduction",
+    "parallels_blood_pool",
+    "undistorted_vessels",
+    "iron_in_mass",
+    "marked_t2",
+    "hbp_iso",
+  ],
+  downgrade_vectors: 728,
+  lr3_to_lr2: "LR-2 (Probably Benign)",
+  mixed_no_adjustment: true,
+});
+assert.deepEqual(bindings.get("acr-reference-is-live-landing-page"), {
+  reference_url: "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/LI-RADS",
+});
 assert.deepEqual(audit.app_guardrails, {
   provenance: "radulator-data-entry-guardrail",
   publication_derived: false,
@@ -220,8 +295,7 @@ assert.deepEqual(audit.app_guardrails, {
 });
 assert.deepEqual(audit.scope, {
   not_asserted: [
-    "ancillary-feature downgrade of LR-3 and LR-2",
-    "threshold growth definition text",
+    "ancillary-feature adjustment of LR-1 and LR-2 chosen directly in the benignity question",
     "LR-M and LR-5 probability figures",
     "management recommendations",
     "whole-calculator clinical acceptance",
@@ -240,6 +314,7 @@ const {
   TARGETOID_FIELDS,
   NONTARGETOID_FIELDS,
   RUNTIME_TIEBREAK_NOTE,
+  RUNTIME_THRESHOLD_GROWTH,
   MAX_RETRY_AFTER_MS,
   verifyRuntime,
   checkSpans,
@@ -251,6 +326,7 @@ const {
   parseDiagnosticTable,
   checkLrmConditionPlacement,
   checkTiebreakLabelPlacement,
+  checkStep2Ladder,
   assertBindingsCoverStatements,
   parseRetryAfter,
   retrieve,
@@ -357,6 +433,82 @@ const runtimeMutants = [
         : field,
     ),
     /tumor_in_vein subLabel drifted/,
+  ],
+  [
+    "threshold-growth subLabel reverted to the v2017 definition",
+    withFields((field) =>
+      field.id === "threshold_growth"
+        ? { ...field, subLabel: "Size increase ≥50% in ≤6 months, or new observation ≥10mm" }
+        : field,
+    ),
+    /threshold_growth subLabel drifted/,
+  ],
+  [
+    "threshold-growth result note reverted to the v2017 definition",
+    computeMutant((vals, result) =>
+      result["Clinical Notes"]?.includes(RUNTIME_THRESHOLD_GROWTH.note)
+        ? {
+            ...result,
+            "Clinical Notes": result["Clinical Notes"].replace(
+              RUNTIME_THRESHOLD_GROWTH.note,
+              "Threshold growth defined as ≥50% size increase in ≤6 months or new observation ≥10mm",
+            ),
+          }
+        : result,
+    ),
+    /threshold growth note missing/,
+  ],
+  [
+    "a new >=10 mm observation (subthreshold growth) scored as threshold growth",
+    computeMutant((vals, result) =>
+      vals.ancillary_malignancy === "subthreshold_growth"
+        ? LIRADS.compute({ ...vals, ancillary_malignancy: "none", threshold_growth: "present" })
+        : result,
+    ),
+    /^subthreshold growth /,
+  ],
+  [
+    "subthreshold-growth option loses its description",
+    withFields((field) =>
+      field.id === "ancillary_malignancy"
+        ? {
+            ...field,
+            opts: field.opts.map((opt) =>
+              opt.value === "subthreshold_growth" ? { ...opt, label: "Subthreshold growth" } : opt,
+            ),
+          }
+        : field,
+    ),
+    /subthreshold growth option drifted/,
+  ],
+  [
+    "benign ancillary features stop at LR-3 (the old behavior)",
+    computeMutant((vals, result) =>
+      result["Base Category (before ancillary)"] === "LR-3" && /^LR-2 /.test(result["LI-RADS Category"])
+        ? { ...result, "LI-RADS Category": "LR-3 (Intermediate Probability)" }
+        : result,
+    ),
+    /^benign downgrade .*exactly one category down/,
+  ],
+  [
+    "benign ancillary features downgrade two categories",
+    computeMutant((vals, result) =>
+      result["Base Category (before ancillary)"] === "LR-4" && /^LR-3 /.test(result["LI-RADS Category"])
+        ? { ...result, "LI-RADS Category": "LR-2 (Probably Benign)" }
+        : result,
+    ),
+    /^benign downgrade .*exactly one category down/,
+  ],
+  [
+    "ACR reference reverted to the dead page",
+    mutant({
+      refs: LIRADS.refs.map((ref) =>
+        ref.u === SOURCE.landing_page
+          ? { ...ref, u: "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/LI-RADS" }
+          : ref,
+      ),
+    }),
+    /ACR reference must be the live LI-RADS page/,
   ],
 ];
 for (const [name, broken, message] of runtimeMutants) {
@@ -514,6 +666,20 @@ const tiebreakItems = (lrmY = 339.6) => [
 checkTiebreakLabelPlacement(tiebreakItems());
 assert.throws(() => checkTiebreakLabelPlacement(tiebreakItems(420)), /LR-M must sit below/);
 
+const ladderItems = ({ crossX = 422.8, order = ["1", "2", "3", "4", "5"] } = {}) => [
+  ...order.flatMap((suffix, index) => lr(suffix, [56.5, 157.2, 257.9, 358.7, 459.7][index], 515)),
+  { str: "≥ 1 AF favoring malignancy: upgrade", x: 118.7, y: 580.3 },
+  { str: "≥ 1 AF favoring benignity: downgrade", x: 146, y: 463.9 },
+  { str: "✘", x: crossX, y: 545.8 },
+];
+assert.deepEqual(checkStep2Ladder(ladderItems()).bar_order, ["LR-1", "LR-2", "LR-3", "LR-4", "LR-5"]);
+assert.throws(
+  () => checkStep2Ladder(ladderItems({ crossX: 210 })),
+  /between LR-4 and LR-5/,
+  "a forbidden move drawn elsewhere on the ladder (e.g. LR-3 to LR-2) must be rejected",
+);
+assert.throws(() => checkStep2Ladder(ladderItems({ order: ["1", "3", "2", "4", "5"] })), /left to right/);
+
 // 3e. Retrieval: retries network errors, 429 and 5xx; honors Retry-After; fails fast otherwise.
 const now = Date.parse("2026-09-28T00:00:00Z");
 assert.equal(parseRetryAfter("7", now), 7_000);
@@ -621,5 +787,5 @@ for (const [name, source, drifted, message] of driftedOk) {
 }
 
 console.log(
-  `LI-RADS LR-M primary-source audit verified 1 pinned ACR PDF (raw bytes checked before parsing), ${audit.source_statements.length} digest-pinned source statements, 4 layout checks, ${audit.claim_bindings.length} runtime claim bindings and the actual-export tests; ${runtimeMutants.length} runtime mutants, ${driftedOk.length} drifted-200 mutants (each failed on the first fetch, never retried) and the source, artifact, layout and retrieval mutants were all rejected.`,
+  `LI-RADS LR-M primary-source audit verified 1 pinned ACR PDF (raw bytes checked before parsing), ${audit.source_statements.length} digest-pinned source statements, ${audit.source_mutations.length} in-memory source mutations caught, ${Object.keys(audit.layout).length} layout checks, ${audit.claim_bindings.length} runtime claim bindings and the actual-export tests; ${runtimeMutants.length} runtime mutants, ${driftedOk.length} drifted-200 mutants (each failed on the first fetch, never retried) and the source, artifact, layout and retrieval mutants were all rejected.`,
 );

@@ -1,9 +1,11 @@
 # LI-RADS v2018: LR-M order and hidden-field guards
 
 This note records the source evidence for the LI-RADS v2018 CT/MRI calculator
-fix in `src/components/calculators/LIRADS.jsx`. It covers four things: the LR-M
-step order, the LR-5 exception for nontargetoid LR-M features, the "LR-M
-Features Present" dead end, and the reworded checkbox subLabels.
+fix in `src/components/calculators/LIRADS.jsx`. It covers the LR-M step order,
+the LR-5 exception for nontargetoid LR-M features, the "LR-M Features Present"
+dead end and the reworded checkbox subLabels. It also covers three follow-up
+fixes from the same source: the v2018 threshold-growth definition, the
+one-category downgrade of LR-3 to LR-2, and the ACR reference link.
 
 ## What was wrong
 
@@ -21,6 +23,16 @@ Features Present" dead end, and the reworded checkbox subLabels.
   - Or it categorized from hidden values entered earlier.
   - The app passes every stored value to `compute`, including values of hidden
     fields.
+- **Threshold growth used the v2017 wording.** The subLabel and result note
+  counted a new observation of 10 mm or more as threshold growth. In v2018 that
+  is subthreshold growth, an ancillary feature.
+  - Following the subLabel could make a new 10-19 mm nonrim-APHE observation
+    LR-5 instead of LR-4 at most.
+- **LR-3 downgrade missing.** A feature favoring benignity left LR-3 unchanged
+  ("no further downgrade possible") instead of moving it down one category to
+  LR-2.
+- **Dead reference link.** The ACR reference returned HTTP 404 after ACR moved
+  its site.
 
 ## Source
 
@@ -47,6 +59,8 @@ LI-RADS v2018 CT/MRI Manual, Chapter 8 "Diagnostic Categories":
   - The LR-M page (printed p. 8-14) resolves LR-M against LR-3 in favor of
     LR-3, and against LR-4, LR-5 or LR-TIV in favor of LR-M.
   - It also restates the same targetoid and nontargetoid criteria.
+  - The LR-2 page (printed p. 8-9) lists an LR-3 moved down by ancillary
+    features favoring benignity as one pathway to LR-2.
 - It is not pinned in CI because of its size.
 
 ## How the audit pins the source
@@ -75,7 +89,10 @@ the following:
   - that the no-TIV / not-LR-5 box sits inside the nontargetoid list, below the
     "OR" and the targetoid line;
   - that the hepatocellular-origin tiebreak label spans from the LR-4/LR-5 row
-    down to LR-M.
+    down to LR-M;
+  - the Step 2 bar: LR-1 to LR-5 read left to right, the only forbidden move
+    (the "✘") is the upgrade from LR-4 into LR-5, and the downgrade label sits
+    under the whole bar.
 - **Runtime binding.** Every statement is bound to a runtime claim, which the
   audit exercises against the exported calculator:
   - 104 diagnostic-table vectors, each with no LR-M feature, each nontargetoid
@@ -83,11 +100,18 @@ the following:
   - the Step 1 precedence ladder;
   - ancillary-feature ordering;
   - the subLabels;
+  - 104 subthreshold-growth vectors and 728 benign-downgrade vectors;
+  - the reference link;
   - 547 hidden-field mutations.
 - **Mutation checks.** The test also shows that each guard rejects a deliberate
-  break: 11 runtime mutants, including the old LR-M order and the old `showIf`.
+  break: 18 runtime mutants. These include the old LR-M order, the old `showIf`,
+  the v2017 threshold-growth wording, a new observation scored as threshold
+  growth, a missing or a double benign downgrade, and the dead reference link.
   Source-span, raw-byte, URL/media-type, layout and retry mutants are rejected
   too.
+  - Six in-memory edits of the real extracted page text each break the pin of
+    the statement they touch (for example 50% to 40%, 24 to 12 months, or a
+    one-category downgrade to two). Nothing is written to disk.
   - Seven drifted-200 mutants each fail on the first fetch, even when a correct
     response would follow: same-length digest drift and byte-length drift
     (against synthetic and against the real pins), media-type drift and a
@@ -113,6 +137,9 @@ Printed pages refer to the Core unless noted.
 | subLabel `study_adequate` | Printed p. 7 (PDF p. 10), Categories, and printed p. 8. Statements `categories-lr-nc`, `step1-diagnostic-algorithm` | LR-NC applies when missing or degraded images prevent categorization. | Claim `sublabel-study-adequate`; unchecked still gives LR-NC. |
 | subLabel `tumor_in_vein` | Printed p. 21 (PDF p. 24), and printed p. 10. Statements `tumor-in-vein-definition`, `step3-tiebreaking` | Tumor in vein is unequivocal enhancing soft tissue in a vein, with or without a visible parenchymal mass. It is not limited to portal or hepatic veins. If uncertain, do not assign LR-TIV. | Claim `sublabel-tumor-in-vein`. |
 | subLabel `has_lrm_features` | Printed p. 22 (PDF p. 25). Statement `lrm-criteria` | The LR-M criteria as above: targetoid mass, or a nontargetoid mass not meeting LR-5 criteria with one of the four nontargetoid features. | Claim `sublabel-has-lrm-features`. |
+| Threshold growth follows v2018. The subLabel and result note no longer count a new ≥10 mm observation, or ≥100% growth over >6 months, as threshold growth. The subthreshold-growth ancillary option names those cases. | Printed p. 4 (PDF p. 7) `whats-new-threshold-growth`; printed p. 20 (PDF p. 23) `threshold-growth-definition`; printed p. 24 (PDF p. 27) `ancillary-subthreshold-growth`; printed p. 9 `step2-ancillary-features` | v2018 narrowed threshold growth to growth of a mass by at least 50% within 6 months, judged against a prior CT or MRI. A new observation of 10 mm or more within 24 months, or growth of 100% or more across exams over 6 months apart, is now subthreshold growth. That is an ancillary feature favoring malignancy, which can raise the category by one step but never to LR-5. | Claim `threshold-growth-v2018`: exact field, note and option texts; 104 subthreshold vectors (LR-3 to LR-4, never LR-5); a new 10-19 mm nonrim-APHE observation stays LR-4. |
+| A feature favoring benignity moves LR-3 down to LR-2: one category, never to LR-1. Unchanged: LR-5 to LR-4, LR-4 to LR-3, and no change when both kinds are present. | Printed p. 9 (PDF p. 12) `step2-ancillary-features`; layout check `step2_ladder` (bar LR-1..LR-5 at y 515.0; the only forbidden move at x 422.8, between LR-4 and LR-5). Corroborated by Manual Ch. 8 printed p. 8-9 | At least one feature favoring benignity moves the category down one step. The figure forbids only the upgrade into LR-5, and the Manual lists an LR-3 moved down to LR-2 as a pathway to LR-2. | Claim `benign-ancillary-downgrade-one-category` (728 vectors, 7 benign features); the LR-2 result uses the probably-benign texts and severity. |
+| The ACR reference points to the live LI-RADS page | The page that links the pinned Core (see Source). On 2026-09-28 it returned HTTP 200; the old path returned HTTP 404 | Not applicable | Claim `acr-reference-is-live-landing-page`; the e2e spec checks the exact link. |
 | LR-M box ticked with no feature: an actionable message, and the major features are shown. Benignity not chosen: a message pointing to that input. Nontargetoid feature with size or APHE missing: a message asking for the major features. | Radulator data-entry guardrail, not derived from the publication | Not applicable | The audit's `app_guardrails` (three actionable errors). Compute tests "dead end" and "unselected benignity". |
 | `compute` never reads a field that the form hides | Radulator data-entry guardrail, not derived from the publication | Not applicable | `compute` reads values only through the same `showIf` chain as the form; every predicate includes its parents. 547 hidden-field mutations change no result (audit), plus the compute-test sweep. |
 
@@ -142,29 +169,22 @@ before it was adopted:
   graphics. The audit therefore checks the label's position, and the Manual's
   text states the LR-5 versus LR-M resolution explicitly.
 
-## Found but not changed (outside this fix)
+## Found but not changed (follow-ups)
 
-- **LR-3 downgrade missing.** A feature favoring benignity does not downgrade
-  LR-3 to LR-2: the calculator says no further downgrade is possible. Printed
-  p. 9 allows a one-category downgrade from LR-3 as well.
-- **Stale threshold-growth wording.** The threshold-growth subLabel and result
-  note still count a new observation of 10 mm or more as threshold growth.
-  Printed p. 4 says v2018 moved that to subthreshold growth, which is an
-  ancillary feature. A user following the subLabel could upgrade a 10-19 mm
-  nonrim-APHE observation to LR-5.
+- **LR-1 and LR-2 from the benignity question.** When the user picks
+  definitely or probably benign, the result is final. Ancillary features cannot
+  move it, although the Step 2 figure also allows LR-1 to LR-2, LR-2 to LR-3
+  and LR-2 to LR-1.
 - **Stale fixture.** `tests/fixtures/lirads-test-data.json` is not used by any
   test.
   - Cases 7, 32 and 33 and algorithm note 12 still describe the old LR-M order.
   - Note 5 still uses the v2017 threshold-growth definition.
   - Six other cases already disagree with current clinical-note text.
-- **Dead reference link.** The calculator's ACR reference link
-  (`/Clinical-Resources/Reporting-and-Data-Systems/LI-RADS`) returns HTTP 404
-  since ACR moved its site. The live page is the one listed under Source.
 
 ## Reproduce
 
 ```bash
 node scripts/audit-lirads-lrm-source.test.mjs          # live pins, layout, bindings, mutants
 node --import ./scripts/register-jsx-loader.mjs --test tests/lirads-compute.test.mjs
-npm run build && CI=true npx playwright test tests/e2e/calculators/hepatology/lirads.spec.js
+npm run build && CI=true npx playwright test tests/e2e/calculators/hepatology/lirads.spec.js tests/e2e/smoke.spec.js
 ```

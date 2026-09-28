@@ -446,6 +446,126 @@ test("diagnostic table is unchanged when no LR-M feature is present", () => {
   assert.equal(vectors, 160);
 });
 
+const TG_SUBLABEL =
+  "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth";
+const TG_NOTE =
+  "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4";
+const SUBTHRESHOLD_LABEL =
+  "Subthreshold growth (growth below threshold, e.g. new ≥10 mm observation in ≤24 months or ≥100% over >6 months)";
+const BENIGN_AF = ["size_stability", "size_reduction", "parallels_blood_pool", "undistorted_vessels", "iron_in_mass", "marked_t2", "hbp_iso"];
+const ONE_STEP_DOWN = { "LR-5": "LR-4", "LR-4": "LR-3", "LR-3": "LR-2" };
+const LR2_LABEL = "LR-2 (Probably Benign)";
+
+test("threshold growth follows v2018: a new >=10 mm observation is subthreshold growth", () => {
+  const threshold = LIRADS.fields.find((field) => field.id === "threshold_growth");
+  assert.equal(threshold.subLabel, TG_SUBLABEL);
+  const option = LIRADS.fields
+    .find((field) => field.id === "ancillary_malignancy")
+    .opts.find((opt) => opt.value === "subthreshold_growth");
+  assert.equal(option.label, SUBTHRESHOLD_LABEL);
+
+  // No visible text may still count a new observation as threshold growth.
+  const visibleText = JSON.stringify(
+    LIRADS.fields.map((field) => [field.label, field.subLabel, (field.opts ?? []).map((opt) => opt.label)]),
+  );
+  assert.doesNotMatch(visibleText, /or new observation ≥\s?10\s?mm/i);
+
+  // True threshold growth: 10-19 mm nonrim APHE + threshold growth is LR-5, with the v2018 note.
+  const trueGrowth = LIRADS.compute({ ...indeterminate, ...majors(15, "nonrim", { growth: true }) });
+  assert.equal(trueGrowth["LI-RADS Category"], CATEGORY_LABELS["LR-5"]);
+  assert.ok(trueGrowth["Clinical Notes"].includes(TG_NOTE));
+  assert.doesNotMatch(trueGrowth["Clinical Notes"], /or new observation ≥10mm/);
+
+  // The same observation first seen as a new >=10 mm lesion: subthreshold growth, LR-4 at most.
+  for (const [values, expected] of [
+    [majors(15, "nonrim"), "LR-4"], // LR-3 -> LR-4
+    [majors(10, "nonrim"), "LR-4"],
+    [majors(15, "none"), "LR-4"], // LR-3 -> LR-4
+    [majors(25, "nonrim"), "LR-4"], // LR-4 stays LR-4, never LR-5
+    [majors(15, "nonrim", { capsule: true }), "LR-4"],
+    [majors(8, "nonrim", { washout: true }), "LR-4"],
+    [majors(25, "nonrim", { washout: true }), "LR-5"], // already LR-5 from the table
+  ]) {
+    const result = LIRADS.compute({ ...indeterminate, ...values, ancillary_malignancy: "subthreshold_growth" });
+    assert.equal(result["LI-RADS Category"], CATEGORY_LABELS[expected], JSON.stringify(values));
+  }
+});
+
+test("ancillary features favoring benignity downgrade exactly one category, including LR-3 to LR-2", () => {
+  const sizes = [5, 9.9, 10, 15, 19.9, 20, 25];
+  let vectors = 0;
+  for (const size of sizes) {
+    for (const aphe of ["none", "nonrim"]) {
+      for (const washout of [false, true]) {
+        for (const capsule of [false, true]) {
+          for (const growth of [false, true]) {
+            const flags = { washout, capsule, growth };
+            const table = expectedTableCategory(size, aphe, flags);
+            const values = { ...indeterminate, ...majors(size, aphe, flags) };
+            for (const benign of BENIGN_AF) {
+              const result = LIRADS.compute({ ...values, ancillary_benign: benign });
+              const expected = ONE_STEP_DOWN[table];
+              assert.equal(
+                result["LI-RADS Category"],
+                expected === "LR-2" ? LR2_LABEL : CATEGORY_LABELS[expected],
+                `${table} + ${benign}`,
+              );
+              assert.equal(result["Base Category (before ancillary)"], table);
+              assert.equal(
+                result["Ancillary Adjustment"],
+                `Downgraded from ${table} to ${expected} based on ancillary features favoring benignity`,
+              );
+              vectors += 1;
+            }
+            // Other side of the rule: both kinds present -> no adjustment at all.
+            for (const conflict of [{ ancillary_malignancy: "corona" }, { ancillary_hcc: "mosaic" }]) {
+              const result = LIRADS.compute({ ...values, ancillary_benign: "size_stability", ...conflict });
+              assert.equal(result["LI-RADS Category"], CATEGORY_LABELS[table], `${table} conflicting`);
+              assert.equal(result["Base Category (before ancillary)"], undefined);
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.equal(vectors, 7 * 2 * 8 * BENIGN_AF.length);
+
+  // The LR-2 reached by downgrade carries the probably-benign texts and is never LR-1.
+  const lr2 = LIRADS.compute({ ...indeterminate, ...majors(15, "none"), ancillary_benign: "size_stability" });
+  assert.equal(lr2["LI-RADS Category"], LR2_LABEL);
+  assert.equal(lr2["HCC Probability"], "~14%");
+  assert.equal(lr2.Recommendation, "Return to routine surveillance; option for alternate imaging modality");
+  assert.equal(lr2._severity, "success");
+
+  // Malignancy side unchanged: up one category, never to LR-5.
+  for (const [values, expected] of [
+    [majors(15, "none"), "LR-4"],
+    [majors(25, "nonrim"), "LR-4"],
+    [majors(25, "nonrim", { washout: true }), "LR-5"],
+  ]) {
+    const result = LIRADS.compute({ ...indeterminate, ...values, ancillary_malignancy: "corona" });
+    assert.equal(result["LI-RADS Category"], CATEGORY_LABELS[expected]);
+  }
+
+  // LR-M is decided before ancillary features, so a benign feature cannot turn it into LR-2.
+  const lrm = LIRADS.compute({
+    ...indeterminate,
+    has_lrm_features: true,
+    lrm_necrosis: true,
+    ...majors(15, "none"),
+    ancillary_benign: "size_stability",
+  });
+  assert.equal(lrm["LI-RADS Category"], LRM);
+});
+
+test("ACR reference points to the live LI-RADS page", () => {
+  const urls = LIRADS.refs.map((ref) => ref.u);
+  assert.ok(
+    urls.includes("https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/LI-RADS"),
+  );
+  assert.ok(!urls.some((url) => url.includes("acr.org/Clinical-Resources/Reporting-and-Data-Systems/LI-RADS")));
+});
+
 test("reworded checkbox subLabels", () => {
   const subLabel = (id) => LIRADS.fields.find((field) => field.id === id).subLabel;
   assert.equal(
