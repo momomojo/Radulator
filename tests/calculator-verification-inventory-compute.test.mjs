@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import process from "node:process";
+import { readdirSync } from "node:fs";
 import {
   buildInventory,
   collectInventory,
@@ -159,7 +160,9 @@ test("collectInventory reflects the checked-out source, registry, fixtures, and 
   assert.equal(inventory.summary.registry.seedUnverified, 32);
   assert.equal(inventory.summary.compute.fixtureFiles, 12);
   assert.equal(inventory.summary.compute.cases, 313);
-  assert.equal(inventory.summary.browser.calculatorSpecificSpecFiles, 42);
+  const dedicatedFiles = readdirSync("tests/e2e/calculators", { recursive: true })
+    .filter(path => path.endsWith(".spec.js") && path.includes("/"));
+  assert.equal(inventory.summary.browser.calculatorSpecificSpecFiles, dedicatedFiles.length);
   assert.equal(inventory.summary.browser.sharedSpecFiles, 3);
   assert.ok(inventory.rows.every((row) => row.clinicalSignoff === "not established"));
   assert.ok(inventory.rows.every((row) => row.releaseProof === "not established"));
