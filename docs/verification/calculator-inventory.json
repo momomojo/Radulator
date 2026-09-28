@@ -1257,13 +1257,13 @@
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Implements the original 2004 score while a 2021 update exists; the implemented-versus-current relationship must be resolved before verification.",
+        "justification": "Original 2004 PCI score, not Mehran 2 or general IV contrast clearance. Bounded input and unsafe-output repair: docs/verification/calculators/mehran-cin.md. Original-study rounding, rates, definitions, current applicability and full baseline acceptance remain unresolved; no verification upgrade.",
         "sourceReferences": [
           {
             "authority": "Mehran et al.",
             "title": "A simple risk score for prediction of contrast-induced nephropathy after percutaneous coronary intervention",
             "role": "primary-publication",
-            "url": "https://doi.org/10.1016/j.jacc.2004.06.034"
+            "url": "https://doi.org/10.1016/j.jacc.2004.06.068"
           }
         ],
         "implementationEvidence": null
