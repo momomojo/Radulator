@@ -488,9 +488,10 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
   }
 
   const labels = new Set((pr.labels || []).map((label) => `${label}`.toLowerCase()));
-  if (!labels.has("ready-for-gate")) return waiting(pr.headSha, pr.baseSha, "ready-for-gate is absent.", "READY_LABEL_MISSING");
+  // A hold label is a deliberate stop and stays red, so it is checked before the (waiting) missing label.
   const hold = [...labels].find((label) => HOLD_LABELS.has(label));
   if (hold) return failure(pr.headSha, pr.baseSha, `A hold label is present (${hold}); refusing PASS.`, "HOLD_PRESENT");
+  if (!labels.has("ready-for-gate")) return waiting(pr.headSha, pr.baseSha, "ready-for-gate is absent.", "READY_LABEL_MISSING");
 
   const ciPolicy = validateCiPolicy({ pr, files, requiredCi, ci });
   if (!ciPolicy.ok) {

@@ -730,6 +730,7 @@ expectWaiting("PR_NOT_OPEN_READY", { pr: { draft: true, labels: ["ready-for-gate
 expectBlocked("PR_NOT_OPEN_READY", { pr: { state: "closed", draft: true } });
 expectWaiting("READY_LABEL_MISSING", { pr: { labels: [] } });
 expectBlocked("HOLD_PRESENT", { pr: { labels: ["ready-for-gate", "hold"] } });
+expectBlocked("HOLD_PRESENT", { pr: { labels: ["needs-fix"] } }); // a hold stays red without ready-for-gate too
 expectBlocked("CI_NOT_EXACT_SUCCESS", { ci: { ok: false, summary: "latest run failed", evidence: [] } });
 expectWaiting("CI_NOT_EXACT_SUCCESS", {
   ci: { ok: false, pending: true, summary: "Latest exact-head E2E run 1001 is in_progress/none.", evidence: [] },
