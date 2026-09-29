@@ -308,6 +308,36 @@ assert.deepEqual(
   assert.equal(select({ headManifest: narrowing, changes: ["package.json"] }).mode, "all");
 }
 
+// A network audit declared only in the head manifest, at a path the base manifest and the
+// discovery glob do not cover, is required and marked untrusted, in all-mode (a manifest change)
+// and in selected mode alike, so the base-loaded runner fails it. A head declaration of a file the
+// glob already discovers stays a normal discovered audit, and an offline one is ignored here.
+{
+  const custom = { id: "newcustom", test: "ops/hermes/radulator/new-custom.test.mjs", command: ["node", "ops/hermes/radulator/new-custom.test.mjs"] };
+  const headFiles = { ...HEAD_FILES, [custom.test]: "console.log('head-only custom audit');\n" };
+  const headManifest = validateManifest({ ...structuredClone(MANIFEST_SOURCE), audits: [...MANIFEST_SOURCE.audits, custom] });
+  const untrustedOf = (selection) => selection.audits.filter((entry) => /declared only in the head manifest/.test(entry.why ?? ""));
+
+  const allMode = select({ headManifest, headFiles, changes: ["scripts/source-audit-manifest.json", custom.test] });
+  assert.equal(allMode.mode, "all");
+  assert.deepEqual(untrustedOf(allMode).map((entry) => [entry.id, entry.test]), [["newcustom", custom.test]]);
+  assert.match(allMode.reason, /audit\(s\) declared only in the head manifest: newcustom/);
+  assert.deepEqual(ids(allMode).sort(), [...NETWORK_AUDITS, "newcustom"].sort(), "every trusted audit still runs, plus the untrusted one");
+
+  const selected = select({ headManifest, headFiles, changes: ["src/components/calculators/ALBIScore.jsx"] });
+  assert.equal(selected.mode, "selected");
+  assert.deepEqual(ids(selected), ["albi", "newcustom"]);
+  assert.equal(untrustedOf(selected).length, 1);
+
+  const discovered = validateManifest({ ...structuredClone(MANIFEST_SOURCE), audits: [...MANIFEST_SOURCE.audits,
+    { id: "lirads-custom", test: "scripts/audit-lirads-lrm-source.test.mjs", command: ["node", "--inspect", "x.mjs"] }] });
+  assert.deepEqual(untrustedOf(select({ headManifest: discovered, changes: ["scripts/source-audit-manifest.json"] })), [],
+    "a file the discovery glob finds is a normal audit with the trusted default command");
+  const offline = validateManifest({ ...structuredClone(MANIFEST_SOURCE), audits: [...MANIFEST_SOURCE.audits, { ...custom, network: false }] });
+  assert.deepEqual(untrustedOf(select({ headManifest: offline, headFiles, changes: ["scripts/source-audit-manifest.json"] })), []);
+  assert.deepEqual(untrustedOf(select({ changes: ["scripts/source-audit-manifest.json"] })), [], "no head manifest, nothing untrusted");
+}
+
 // Offline audits are never selected here; they run in Smoke Tests.
 {
   const selection = select({ changes: ["scripts/audit-offline-pins-source.test.mjs"] });
