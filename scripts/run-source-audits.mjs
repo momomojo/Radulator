@@ -284,10 +284,15 @@ function planRun(options, audits, log) {
   // A declared network audit missing from the checkout fails the run: a pull request must not
   // pass the exact-head lane by deleting the audit that guards its change. Only the nightly,
   // which runs the current rules against older refs, reports them instead (--allow-missing).
-  const allMode = (rulesSha) => (options.allowMissing
-    ? { mode: "all", rulesSha, run: runnable, missing }
+  // A required entry the trusted manifest cannot resolve (an audit declared only in the head
+  // manifest) fails in all-mode too; nothing from the head manifest is ever run.
+  const known = new Set(audits.map((audit) => audit.test));
+  const unknown = (wanted) => wanted.filter((entry) => !known.has(entry?.test))
+    .map((entry) => ({ id: String(entry?.id ?? entry?.test ?? "unknown"), test: String(entry?.test ?? "") }));
+  const allMode = (rulesSha, wanted = []) => (options.allowMissing
+    ? { mode: "all", rulesSha, run: runnable, missing, unrunnable: unknown(wanted) }
     : { mode: "all", rulesSha, run: runnable, missing: [],
-        unrunnable: missing.map((audit) => ({ id: audit.id, test: audit.test })) });
+        unrunnable: [...missing.map((audit) => ({ id: audit.id, test: audit.test })), ...unknown(wanted)] });
   if (options.all) return allMode(null);
   let selection;
   try {
@@ -300,8 +305,8 @@ function planRun(options, audits, log) {
     return allMode(null);
   }
   const rulesSha = typeof selection.rules_sha256 === "string" ? selection.rules_sha256 : null;
-  if (selection.mode === "all") return allMode(rulesSha);
   const wanted = Array.isArray(selection.audits) ? selection.audits : [];
+  if (selection.mode === "all") return allMode(rulesSha, wanted);
   const byTest = new Map(audits.map((audit) => [audit.test, audit]));
   const run = [];
   // A selected audit the checkout cannot run fails (so does a declared one in all-mode, unless
@@ -396,7 +401,7 @@ export async function runSourceAudits({
     const result = { id: entry.id, test: entry.test, status: "missing", attempts: 0, head_sha: headSha,
       command: null, stdout_sha256: null, pass_line: null, failure_class: null, ncbi: null };
     results.push({ ...result, attempt_log: [], duration_ms: 0 });
-    print(`::error title=Selected source audit missing::${entry.test} is not in this checkout`);
+    print(`::error title=Selected source audit missing::${entry.test} cannot run from the trusted manifest (missing at head, or declared only in the head manifest)`);
     print(`SOURCE-AUDIT RESULT ${JSON.stringify(result)}`);
   }
   for (const audit of plan.missing) {

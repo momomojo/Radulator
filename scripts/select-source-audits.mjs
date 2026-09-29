@@ -335,14 +335,29 @@ export function selectSourceAudits({
   const missing = audits.filter((audit) => audit.network && !audit.present)
     .map((audit) => ({ id: audit.id, test: audit.test, why: "declared test is missing at head" }));
   const offline = audits.filter((audit) => !audit.network).map((audit) => audit.id);
+  // A network audit declared only in the head manifest, at a path neither the base manifest nor the
+  // discovery glob covers, is untrusted: its path and command come from the pull request. It is
+  // required all the same, and the runner (loaded from the base) cannot resolve it, so the lane
+  // fails until the declaration is on the base branch. Its head-supplied command never runs.
+  const known = new Set(audits.map((audit) => audit.test));
+  const untrusted = (headManifest?.audits ?? [])
+    .filter((entry) => entry.network && !known.has(entry.test))
+    .map((entry) => ({ id: entry.id, test: entry.test, why: "declared only in the head manifest; not trusted until it is on the base" }))
+    .sort(byId);
   const changed = new Set((changes ?? []).flatMap((change) => [change.path, change.oldPath]).filter(Boolean));
   // A declared network audit missing at head is always selected, so the runner fails it: a pull
   // request cannot pass this lane by deleting (or renaming away) the audit that guards its change.
+  // An untrusted head-only declaration is selected the same way.
   const result = (mode, reason, selected, skipped) => {
-    const required = [...selected, ...missing.filter((entry) => !selected.some((pick) => pick.test === entry.test))];
+    const unpicked = (entries) => entries.filter((entry) => !selected.some((pick) => pick.test === entry.test));
+    const required = [...selected, ...unpicked(missing), ...unpicked(untrusted)];
+    const notes = [
+      missing.length ? `declared audit(s) missing at head: ${missing.map((entry) => entry.id).join(", ")}` : null,
+      untrusted.length ? `audit(s) declared only in the head manifest: ${untrusted.map((entry) => entry.id).join(", ")}` : null,
+    ].filter(Boolean);
     return {
     mode: required.length === 0 ? "none" : selected.length === 0 ? "selected" : mode,
-    reason: missing.length ? `${reason}; declared audit(s) missing at head: ${missing.map((entry) => entry.id).join(", ")}` : reason,
+    reason: notes.length ? `${reason}; ${notes.join("; ")}` : reason,
     changed_files: changed.size,
     audits: required,
     skipped: [...skipped].sort(byId),

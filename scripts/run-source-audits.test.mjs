@@ -2,7 +2,7 @@
 // Offline tests for scripts/run-source-audits.mjs, using fake audits in a throwaway checkout.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -19,7 +19,7 @@ import {
   redact,
   runSourceAudits,
 } from "./run-source-audits.mjs";
-import { MANIFEST_SCHEMA, SELECTION_SCHEMA } from "./select-source-audits.mjs";
+import { MANIFEST_SCHEMA, SELECTION_SCHEMA, selectSourceAudits, validateManifest } from "./select-source-audits.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RUNNER = path.join(here, "run-source-audits.mjs");
@@ -382,6 +382,41 @@ try {
     assert.match(cli.stdout, /^SOURCE-AUDIT ERROR tracked files differ from HEAD after rewrite /m);
     assert.doesNotMatch(cli.stdout, /^SOURCE-AUDIT SUMMARY /m);
     assert.doesNotMatch(cli.stdout, /"status":"pass"/);
+  }
+
+  // Regression (verification judge, #313): a network audit declared only in the head manifest, at a
+  // custom path, cannot give the exact-head lane a green result. The real selector marks it
+  // untrusted and required; the runner, which knows only the trusted manifest, fails it in all-mode
+  // and in selected mode, and never runs its head-supplied command.
+  {
+    write("ops/untrusted-audit.test.mjs", 'import fs from "node:fs";\nfs.writeFileSync("untrusted-ran", "1");\nconsole.log("untrusted audit PASS");\n');
+    const baseManifest = validateManifest(JSON.parse(readFileSync(manifestFile, "utf8")));
+    const headManifest = validateManifest({ ...JSON.parse(readFileSync(manifestFile, "utf8")), audits: [
+      ...baseManifest.audits.map(({ id, test, network, command }) => ({ id, test, network, ...(command ? { command } : {}) })),
+      { id: "untrusted", test: "ops/untrusted-audit.test.mjs", command: ["node", "ops/untrusted-audit.test.mjs"] },
+    ] });
+    const tree = {
+      exists: (file) => existsSync(path.join(checkout, file)),
+      list: (dir) => (existsSync(path.join(checkout, dir)) ? readdirSync(path.join(checkout, dir)) : []),
+    };
+    const read = (file) => (existsSync(path.join(checkout, file)) ? readFileSync(path.join(checkout, file), "utf8") : null);
+    for (const [label, selectionArgs] of [
+      ["all-mode", { eventName: "push", changes: [] }],
+      ["selected", { eventName: "pull_request", changes: [{ status: "A", path: "ops/untrusted-audit.test.mjs", oldPath: null }] }],
+    ]) {
+      const selection = selectSourceAudits({ baseRef: "develop", auditMode: "", manifest: baseManifest, headManifest, tree,
+        readHead: read, readBase: read, ...selectionArgs });
+      assert.ok(selection.audits.some((entry) => entry.id === "untrusted"), `${label}: the selector requires the head-only audit`);
+      const file = path.join(root, `untrusted-${label}.selection.json`);
+      writeFileSync(file, JSON.stringify({ schema: SELECTION_SCHEMA, rules_sha256: "e".repeat(64), ...selection }));
+      const outcome = await run(["--selection", file]);
+      assert.equal(outcome.ok, false, `${label}: a head-only audit cannot yield a green lane`);
+      const result = outcome.resultLines.find((line) => line.id === "untrusted");
+      assert.equal(result.status, "missing", label);
+      assert.ok(outcome.results.summary.failed_ids.includes("untrusted"), label);
+      assert.equal(existsSync(path.join(checkout, "untrusted-ran")), false, `${label}: its head-supplied command never ran`);
+      assert.ok(outcome.lines.some((line) => line.includes("cannot run from the trusted manifest")), label);
+    }
   }
 
   // An unreadable selection runs every audit rather than none.
