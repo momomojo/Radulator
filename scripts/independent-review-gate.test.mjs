@@ -726,7 +726,9 @@ function expectWaiting(reasonCode, options = {}) {
 expectBlocked("UNSUPPORTED_BASE", { pr: { baseRef: "feature" } });
 expectBlocked("PR_NOT_OPEN_READY", { pr: { state: "closed" } });
 expectWaiting("PR_NOT_OPEN_READY", { pr: { draft: true } });
-expectWaiting("PR_NOT_OPEN_READY", { pr: { draft: true, labels: ["ready-for-gate", "hold"] } });
+expectBlocked("HOLD_PRESENT", { pr: { draft: true, labels: ["ready-for-gate", "hold"] } }); // a hold stays red on a draft
+expectBlocked("HOLD_PRESENT", { pr: { draft: true, labels: ["needs-fix"] } });
+expectWaiting("PR_NOT_OPEN_READY", { pr: { draft: true, labels: ["ready-for-gate"] } });
 expectBlocked("PR_NOT_OPEN_READY", { pr: { state: "closed", draft: true } });
 expectWaiting("READY_LABEL_MISSING", { pr: { labels: [] } });
 expectBlocked("HOLD_PRESENT", { pr: { labels: ["ready-for-gate", "hold"] } });

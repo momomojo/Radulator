@@ -474,6 +474,10 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
   }
   if (!ALLOWED_BASE_REFS.has(pr.baseRef)) return failure(pr.headSha, pr.baseSha, "PR base is outside develop/main; refusing PASS.", "UNSUPPORTED_BASE");
   if (pr.state !== "open") return failure(pr.headSha, pr.baseSha, "PR is not open and ready; refusing PASS.", "PR_NOT_OPEN_READY");
+  // A hold label is a deliberate stop and stays red, on a draft too, so it is checked before any waiting state.
+  const labels = new Set((pr.labels || []).map((label) => `${label}`.toLowerCase()));
+  const hold = [...labels].find((label) => HOLD_LABELS.has(label));
+  if (hold) return failure(pr.headSha, pr.baseSha, `A hold label is present (${hold}); refusing PASS.`, "HOLD_PRESENT");
   if (pr.draft) return waiting(pr.headSha, pr.baseSha, "PR is a draft (parked); refusing PASS until it is ready for review.", "PR_NOT_OPEN_READY");
   if (!completeFileList(pr, files)) {
     return failure(
@@ -487,10 +491,6 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
     return failure(pr.headSha, pr.baseSha, "Relevant PR-state epoch is malformed; refusing PASS.", "MALFORMED_STATE_EPOCH");
   }
 
-  const labels = new Set((pr.labels || []).map((label) => `${label}`.toLowerCase()));
-  // A hold label is a deliberate stop and stays red, so it is checked before the (waiting) missing label.
-  const hold = [...labels].find((label) => HOLD_LABELS.has(label));
-  if (hold) return failure(pr.headSha, pr.baseSha, `A hold label is present (${hold}); refusing PASS.`, "HOLD_PRESENT");
   if (!labels.has("ready-for-gate")) return waiting(pr.headSha, pr.baseSha, "ready-for-gate is absent.", "READY_LABEL_MISSING");
 
   const ciPolicy = validateCiPolicy({ pr, files, requiredCi, ci });
