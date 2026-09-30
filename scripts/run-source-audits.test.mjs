@@ -2,7 +2,7 @@
 // Offline tests for scripts/run-source-audits.mjs, using fake audits in a throwaway checkout.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -17,9 +17,13 @@ import {
   ncbiStats,
   oneLine,
   redact,
+  checkoutFingerprint,
+  exactHeadDrift,
+  fingerprintChanges,
   runSourceAudits,
+  snapshotCommit,
 } from "./run-source-audits.mjs";
-import { MANIFEST_SCHEMA, SELECTION_SCHEMA } from "./select-source-audits.mjs";
+import { MANIFEST_SCHEMA, SELECTION_SCHEMA, selectSourceAudits, validateManifest } from "./select-source-audits.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RUNNER = path.join(here, "run-source-audits.mjs");
@@ -382,6 +386,325 @@ try {
     assert.match(cli.stdout, /^SOURCE-AUDIT ERROR tracked files differ from HEAD after rewrite /m);
     assert.doesNotMatch(cli.stdout, /^SOURCE-AUDIT SUMMARY /m);
     assert.doesNotMatch(cli.stdout, /"status":"pass"/);
+  }
+
+  // Regression (verification judge, #313): a network audit declared only in the head manifest, at a
+  // custom path, cannot give the exact-head lane a green result. The real selector marks it
+  // untrusted and required; the runner, which knows only the trusted manifest, fails it in all-mode
+  // and in selected mode, and never runs its head-supplied command.
+  {
+    write("ops/untrusted-audit.test.mjs", 'import fs from "node:fs";\nfs.writeFileSync("untrusted-ran", "1");\nconsole.log("untrusted audit PASS");\n');
+    const baseManifest = validateManifest(JSON.parse(readFileSync(manifestFile, "utf8")));
+    const headManifest = validateManifest({ ...JSON.parse(readFileSync(manifestFile, "utf8")), audits: [
+      ...baseManifest.audits.map(({ id, test, network, command }) => ({ id, test, network, ...(command ? { command } : {}) })),
+      { id: "untrusted", test: "ops/untrusted-audit.test.mjs", command: ["node", "ops/untrusted-audit.test.mjs"] },
+    ] });
+    const tree = {
+      exists: (file) => existsSync(path.join(checkout, file)),
+      list: (dir) => (existsSync(path.join(checkout, dir)) ? readdirSync(path.join(checkout, dir)) : []),
+    };
+    const read = (file) => (existsSync(path.join(checkout, file)) ? readFileSync(path.join(checkout, file), "utf8") : null);
+    for (const [label, selectionArgs] of [
+      ["all-mode", { eventName: "push", changes: [] }],
+      ["selected", { eventName: "pull_request", changes: [{ status: "A", path: "ops/untrusted-audit.test.mjs", oldPath: null }] }],
+    ]) {
+      const selection = selectSourceAudits({ baseRef: "develop", auditMode: "", manifest: baseManifest, headManifest, tree,
+        readHead: read, readBase: read, ...selectionArgs });
+      assert.ok(selection.audits.some((entry) => entry.id === "untrusted"), `${label}: the selector requires the head-only audit`);
+      const file = path.join(root, `untrusted-${label}.selection.json`);
+      writeFileSync(file, JSON.stringify({ schema: SELECTION_SCHEMA, rules_sha256: "e".repeat(64), ...selection }));
+      const outcome = await run(["--selection", file]);
+      assert.equal(outcome.ok, false, `${label}: a head-only audit cannot yield a green lane`);
+      const result = outcome.resultLines.find((line) => line.id === "untrusted");
+      assert.equal(result.status, "missing", label);
+      assert.ok(outcome.results.summary.failed_ids.includes("untrusted"), label);
+      assert.equal(existsSync(path.join(checkout, "untrusted-ran")), false, `${label}: its head-supplied command never ran`);
+      assert.ok(outcome.lines.some((line) => line.includes("cannot run from the trusted manifest")), label);
+    }
+  }
+
+  // Regression (primary judge, #320): an audit that moves HEAD or hides edits behind index flags, then
+  // exits 0, cannot pass. Every check compares against the snapshot taken before the audits (the
+  // commit, its tree and each tracked blob id), never against the current HEAD or index.
+  {
+    const makeRepo = (name, auditBody) => {
+      const repo = path.join(root, name);
+      const put = (file, text) => {
+        mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+        writeFileSync(path.join(repo, file), text);
+      };
+      const git = (...args) => execFileSync("git", ["-C", repo, "-c", "user.email=t@example.com", "-c", "user.name=t", ...args],
+        { stdio: ["ignore", "pipe", "ignore"] });
+      put("src/runtime.mjs", "export const minimum = 1;\n");
+      put("scripts/audit-sneak-source.test.mjs", auditBody);
+      git("init", "-q");
+      git("add", ".");
+      git("commit", "-q", "-m", "an older commit");
+      put("src/runtime.mjs", "export const minimum = 2;\n");
+      git("commit", "-q", "-am", "the reviewed head");
+      return repo;
+    };
+    const sneak = (steps) => [
+      'import { execFileSync } from "node:child_process";',
+      'import fs from "node:fs";',
+      ...steps,
+      'console.log("sneak audit verified the pinned source");',
+    ].join("\n") + "\n";
+    const edit = 'fs.writeFileSync("src/runtime.mjs", "export const minimum = 0;\\n");';
+    const cases = [
+      ["checks out another commit", ['execFileSync("git", ["checkout", "-q", "HEAD~1"]);']],
+      ["resets to another commit", ['execFileSync("git", ["reset", "-q", "--hard", "HEAD~1"]);']],
+      ["hides an edit behind assume-unchanged", [edit, 'execFileSync("git", ["update-index", "--assume-unchanged", "src/runtime.mjs"]);']],
+      ["hides an edit behind skip-worktree", [edit, 'execFileSync("git", ["update-index", "--skip-worktree", "src/runtime.mjs"]);']],
+    ];
+    for (const [label, steps] of cases) {
+      const slug = label.replace(/[^a-z]+/g, "-");
+      const repo = makeRepo(`sneak-${slug}`, sneak(steps));
+      const lines = [];
+      await assert.rejects(
+        run(["--selection", selectionFile(`sneak-${slug}`, ["sneak"])], { cwd: repo, lines }),
+        /the checkout drifted from exact head [0-9a-f]{12} after sneak \(.+\); refusing to report exact-head results/,
+        label,
+      );
+      const reported = lines.filter((line) => line.startsWith("SOURCE-AUDIT RESULT ")).map((line) => JSON.parse(line.slice(20)));
+      assert.deepEqual(reported.map((result) => [result.id, result.status, result.pass_line]), [["sneak", "tampered", null]], label);
+      assert.equal(lines.some((line) => line.startsWith("SOURCE-AUDIT SUMMARY ")), false, `${label}: no summary`);
+      assert.ok(lines.includes("| sneak audit verified the pinned source"), `${label}: the audit did claim success`);
+    }
+    // Primary judge on #321: an audit that changes the checkout, runs from the changed state and puts
+    // everything back before exiting 0 must still be rejected. Each attempt is bracketed by file
+    // identities it cannot restore (inode and ctime of every tracked file, and of git's HEAD and index).
+    const runsIt = 'const { minimum } = await import(new URL(`../src/runtime.mjs?t=${Date.now()}`, import.meta.url)); console.log("ran with minimum " + minimum);';
+    const restoring = [
+      ["edits a tracked file, runs it and restores the bytes", [
+        'const original = fs.readFileSync("src/runtime.mjs");',
+        'fs.writeFileSync("src/runtime.mjs", "export const minimum = 0;\\n");',
+        runsIt,
+        'fs.writeFileSync("src/runtime.mjs", original);',
+      ]],
+      ["checks out another commit, runs it and returns to the reviewed one", [
+        'execFileSync("git", ["checkout", "-q", "HEAD~1"]);',
+        runsIt,
+        'execFileSync("git", ["checkout", "-q", "-"]);',
+      ]],
+      ["edits through a hard link outside the checkout and restores", [
+        'import os from "node:os"; import path from "node:path";',
+        'const link = path.join(os.tmpdir(), `sneak-link-${process.pid}`);',
+        'fs.linkSync("src/runtime.mjs", link);',
+        'const original = fs.readFileSync(link);',
+        'fs.writeFileSync(link, "export const minimum = 0;\\n");',
+        runsIt,
+        'fs.writeFileSync(link, original);',
+        'fs.unlinkSync(link);',
+      ]],
+      ["sets an index flag and clears it again", [
+        'execFileSync("git", ["update-index", "--assume-unchanged", "src/runtime.mjs"]);',
+        'execFileSync("git", ["update-index", "--no-assume-unchanged", "src/runtime.mjs"]);',
+      ]],
+    ];
+    for (const [label, steps] of restoring) {
+      const slug = label.replace(/[^a-z]+/g, "-").slice(0, 40);
+      const repo = makeRepo(`back-${slug}`, sneak(steps));
+      const reviewedHead = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+      const lines = [];
+      await assert.rejects(
+        run(["--selection", selectionFile(`back-${slug}`, ["sneak"])], { cwd: repo, lines }),
+        /the checkout changed while sneak ran \(.+\); refusing to report exact-head results/,
+        label,
+      );
+      const reported = lines.filter((line) => line.startsWith("SOURCE-AUDIT RESULT ")).map((line) => JSON.parse(line.slice(20)));
+      assert.deepEqual(reported.map((result) => [result.id, result.status, result.pass_line]), [["sneak", "tampered", null]], label);
+      assert.equal(lines.some((line) => line.startsWith("SOURCE-AUDIT SUMMARY ")), false, `${label}: no summary`);
+      // Everything really was put back: only the change trail gives it away.
+      assert.equal(execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(), reviewedHead, label);
+      assert.equal(execFileSync("git", ["-C", repo, "status", "--porcelain"], { encoding: "utf8" }), "", label);
+    }
+
+    // A clean checkout has no drift, and the snapshot comes from the commit, not the index.
+    const clean = makeRepo("sneak-clean", sneak([]));
+    const snapshot = snapshotCommit(clean);
+    assert.deepEqual(exactHeadDrift(clean, snapshot), []);
+    assert.deepEqual(snapshot.entries.map((entry) => entry.file).sort(), ["scripts/audit-sneak-source.test.mjs", "src/runtime.mjs"]);
+    // Each check stands on its own: a different recorded commit, a different recorded blob, a flag.
+    assert.match(exactHeadDrift(clean, { ...snapshot, commit: "0".repeat(40) }).join("; "), /^HEAD moved to [0-9a-f]{12} from 000000000000$/);
+    const otherBlob = snapshot.entries.map((entry) => (entry.file === "src/runtime.mjs" ? { ...entry, id: "1".repeat(40) } : entry));
+    assert.deepEqual(exactHeadDrift(clean, { ...snapshot, entries: otherBlob }), ["src/runtime.mjs content changed"]);
+    execFileSync("git", ["-C", clean, "update-index", "--assume-unchanged", "src/runtime.mjs"]);
+    assert.match(exactHeadDrift(clean, snapshot).join("; "), /not plainly tracked/, "a flag alone is drift");
+    execFileSync("git", ["-C", clean, "update-index", "--no-assume-unchanged", "src/runtime.mjs"]);
+    // Fingerprints are stable for an untouched checkout and change on any write, even an identical one.
+    const printA = checkoutFingerprint(clean, snapshot);
+    assert.deepEqual(fingerprintChanges(printA, checkoutFingerprint(clean, snapshot)), []);
+    writeFileSync(path.join(clean, "src/runtime.mjs"), readFileSync(path.join(clean, "src/runtime.mjs")));
+    assert.deepEqual(fingerprintChanges(printA, checkoutFingerprint(clean, snapshot)), ["src/runtime.mjs"]);
+    // From the CLI, the job step fails.
+    const cliRepo = makeRepo("sneak-cli", sneak(['execFileSync("git", ["checkout", "-q", "HEAD~1"]);']));
+    const cli = spawnSync(process.execPath,
+      [RUNNER, "--manifest", manifestFile, "--cwd", cliRepo, "--selection", selectionFile("sneak-cli", ["sneak"])],
+      { encoding: "utf8", env: { PATH: process.env.PATH } });
+    assert.equal(cli.status, 1, cli.stdout + cli.stderr);
+    assert.match(cli.stdout, /^SOURCE-AUDIT RESULT \{"id":"sneak","test":"scripts\/audit-sneak-source\.test\.mjs","status":"tampered"/m);
+    assert.match(cli.stdout, /^SOURCE-AUDIT ERROR the checkout drifted from exact head /m);
+    assert.doesNotMatch(cli.stdout, /^SOURCE-AUDIT SUMMARY /m);
+  }
+
+  // Regression (primary judge, #322): given the pull request's base (BASE_SHA), the runner fails a
+  // discovered audit the pull request deleted, in every mode and whatever the selection says: one
+  // that omits it (an older selector), one that lists it, the all-audits fallback, an unreadable
+  // selection and an empty one. Retiring it through a trusted "network": false entry passes.
+  {
+    const repo = path.join(root, "removed-repo");
+    const put = (file, text) => {
+      mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+      writeFileSync(path.join(repo, file), text);
+    };
+    const git = (...args) => execFileSync("git", ["-C", repo, "-c", "user.email=t@example.com", "-c", "user.name=t", ...args],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    put("scripts/audit-keep-source.test.mjs", 'console.log("keep audit verified the pinned source");\n');
+    put("scripts/audit-doomed-source.test.mjs", 'console.log("doomed audit verified the pinned source");\n');
+    git("init", "-q");
+    git("add", ".");
+    git("commit", "-q", "-m", "base");
+    const baseSha = git("rev-parse", "HEAD");
+    git("rm", "-q", "scripts/audit-doomed-source.test.mjs");
+    git("commit", "-q", "-m", "delete a discovered audit");
+    const manifestSource = JSON.parse(readFileSync(manifestFile, "utf8"));
+    const bareManifest = path.join(root, "removed-manifest.json");
+    writeFileSync(bareManifest, JSON.stringify({ ...manifestSource, audits: [] }));
+    const DOOMED = "scripts/audit-doomed-source.test.mjs";
+    const runAgainst = (argv, { env = { BASE_SHA: baseSha }, manifest = bareManifest } = {}) =>
+      run([...argv, "--manifest", manifest], { cwd: repo, env });
+    const listed = selectionFile("removed-listed", []);
+    writeFileSync(listed, JSON.stringify({ schema: SELECTION_SCHEMA, mode: "selected", rules_sha256: "f".repeat(64),
+      audits: [{ id: "doomed", test: DOOMED, why: "discovered audit removed since the merge base" }] }));
+    const bogus = path.join(root, "removed-bogus.selection.json");
+    writeFileSync(bogus, "{ nope");
+    for (const [label, argv] of [
+      ["a selection that omits it", ["--selection", selectionFile("removed-keep", ["keep"])]],
+      ["a selection that lists it", ["--selection", listed]],
+      ["all-mode", ["--selection", selectionFile("removed-all", [], "all")]],
+      ["an unreadable selection", ["--selection", bogus]],
+      ["an empty selection", ["--selection", selectionFile("removed-none", [], "none")]],
+    ]) {
+      const outcome = await runAgainst(argv);
+      assert.equal(outcome.ok, false, label);
+      assert.notEqual(outcome.results.mode, "none", `${label}: a run with a failure is never reported as mode none`);
+      const doomed = outcome.resultLines.find((result) => result.test === DOOMED);
+      assert.equal(doomed?.status, "missing", label);
+      assert.ok(outcome.results.summary.failed_ids.includes(doomed.id), label);
+      assert.ok(outcome.lines.some((line) => line.startsWith(`::error title=Source audit removed::${DOOMED} is a discovered audit`)), label);
+      assert.equal(outcome.resultLines.filter((result) => result.test === DOOMED).length, 1, `${label}: reported once`);
+    }
+    // The audits that are still there run as usual.
+    const omitted = await runAgainst(["--selection", selectionFile("removed-keep-2", ["keep"])]);
+    assert.equal(omitted.resultLines.find((result) => result.id === "keep").status, "pass");
+    // Without BASE_SHA (the nightly, local runs) there is nothing to compare, and it passes.
+    assert.equal((await runAgainst(["--selection", selectionFile("removed-nobase", ["keep"])], { env: {} })).ok, true);
+    // Retiring it: a trusted "network": false entry makes the deletion legitimate.
+    const retiredManifest = path.join(root, "retired-manifest.json");
+    writeFileSync(retiredManifest, JSON.stringify({ ...manifestSource, audits: [{ id: "doomed", test: DOOMED, network: false }] }));
+    assert.equal((await runAgainst(["--selection", selectionFile("removed-retired", ["keep"])], { manifest: retiredManifest })).ok, true);
+    // A BASE_SHA that cannot be resolved fails the run instead of skipping the check.
+    await assert.rejects(runAgainst(["--all"], { env: { BASE_SHA: "0".repeat(40) } }), /Command failed: git/);
+    await assert.rejects(runAgainst(["--all"], { env: { BASE_SHA: "not-a-sha" } }), /BASE_SHA must be a full commit SHA/);
+    await assert.rejects(run(["--all"], { env: { BASE_SHA: baseSha }, cwd: path.join(root, "not-a-repo") }),
+      /BASE_SHA is set but .* is not a git checkout/);
+    // From the CLI, the job step fails.
+    const cli = spawnSync(process.execPath,
+      [RUNNER, "--manifest", bareManifest, "--cwd", repo, "--selection", selectionFile("removed-cli", ["keep"])],
+      { encoding: "utf8", env: { PATH: process.env.PATH, BASE_SHA: baseSha } });
+    assert.equal(cli.status, 1, cli.stdout + cli.stderr);
+    assert.match(cli.stdout, /^SOURCE-AUDIT RESULT \{"id":"doomed","test":"scripts\/audit-doomed-source\.test\.mjs","status":"missing"/m);
+  }
+
+  // Regression (verification judge, #324): given BASE_SHA, the runner reads the pull request's own
+  // manifest from the checked-out commit, in every mode. A network audit it declares at a path the
+  // trusted manifest does not know fails and its command never runs; an audit the trusted manifest
+  // declares offline and the pull request enables runs with the trusted command; a manifest there
+  // that cannot be parsed fails the run. Without BASE_SHA (the nightly) it is not read.
+  {
+    const repo = path.join(root, "declared-repo");
+    const put = (file, text) => {
+      mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+      writeFileSync(path.join(repo, file), text);
+    };
+    const git = (...args) => execFileSync("git", ["-C", repo, "-c", "user.email=t@example.com", "-c", "user.name=t", ...args],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const trusted = { ...JSON.parse(readFileSync(manifestFile, "utf8")),
+      audits: [{ id: "pins", test: "ops/pins-audit.test.mjs", network: false }] };
+    const trustedManifest = path.join(root, "declared-trusted-manifest.json");
+    writeFileSync(trustedManifest, JSON.stringify(trusted));
+    const headManifest = (audits) => put("scripts/source-audit-manifest.json", JSON.stringify({ ...trusted, audits }));
+    put("scripts/audit-keep-source.test.mjs", 'console.log("keep audit verified the pinned source");\n');
+    put("ops/pins-audit.test.mjs", 'console.log("pins audit verified the pinned source");\n');
+    put("ops/sneaky.test.mjs", 'import fs from "node:fs";\nfs.writeFileSync("sneaky-ran", "1");\nconsole.log("sneaky audit verified the pinned source");\n');
+    headManifest(trusted.audits);
+    git("init", "-q");
+    git("add", ".");
+    git("commit", "-q", "-m", "base");
+    const baseSha = git("rev-parse", "HEAD");
+    const runAt = (argv, env = { BASE_SHA: baseSha }) => run([...argv, "--manifest", trustedManifest], { cwd: repo, env });
+
+    // The pull request enables pins: it runs with the trusted command (not the head's) and passes.
+    headManifest([{ id: "pins", test: "ops/pins-audit.test.mjs", network: true, command: ["node", "--eval", "process.exit(0)"] }]);
+    git("commit", "-q", "-am", "enable pins");
+    const enabled = await runAt(["--selection", selectionFile("declared-all", [], "all")]);
+    assert.equal(enabled.ok, true, enabled.log);
+    const pins = enabled.resultLines.find((result) => result.id === "pins");
+    assert.equal(pins?.status, "pass");
+    assert.equal(pins.command, "node ops/pins-audit.test.mjs", "the trusted command, not the head's");
+    const nightly = await runAt(["--selection", selectionFile("declared-all-nobase", [], "all")], {});
+    assert.equal(nightly.resultLines.some((result) => result.id === "pins"), false, "without BASE_SHA the head manifest is not read");
+    // Primary judge on #325: in every mode, whatever the selection says. A valid selection that omits
+    // it, or an empty one, still runs it, with the trusted command.
+    for (const [label, argv] of [
+      ["a selection that omits it", ["--selection", selectionFile("enabled-keep", ["keep"])]],
+      ["an empty selection", ["--selection", selectionFile("enabled-none", [], "none")]],
+    ]) {
+      const outcome = await runAt(argv);
+      assert.equal(outcome.ok, true, `${label}: ${outcome.log}`);
+      const forced = outcome.resultLines.find((result) => result.id === "pins");
+      assert.equal(forced?.status, "pass", label);
+      assert.equal(forced.command, "node ops/pins-audit.test.mjs", `${label}: the trusted command`);
+      assert.notEqual(outcome.results.mode, "none", label);
+    }
+    // Enabled but missing at head: it fails in every mode.
+    rmSync(path.join(repo, "ops/pins-audit.test.mjs"));
+    git("commit", "-q", "-am", "enable pins without its test");
+    for (const [label, argv] of [
+      ["all-mode", ["--selection", selectionFile("enabled-missing-all", [], "all")]],
+      ["a selection that omits it", ["--selection", selectionFile("enabled-missing-keep", ["keep"])]],
+      ["an empty selection", ["--selection", selectionFile("enabled-missing-none", [], "none")]],
+    ]) {
+      const outcome = await runAt(argv);
+      assert.equal(outcome.ok, false, label);
+      assert.equal(outcome.resultLines.find((result) => result.id === "pins")?.status, "missing", label);
+    }
+
+    // The pull request declares a custom-path network audit: it fails in every mode and never runs.
+    headManifest([...trusted.audits, { id: "sneaky", test: "ops/sneaky.test.mjs", command: ["node", "ops/sneaky.test.mjs"] }]);
+    git("commit", "-q", "-am", "declare a custom audit");
+    const bogus = path.join(root, "declared-bogus.selection.json");
+    writeFileSync(bogus, "{ nope");
+    for (const [label, argv] of [
+      ["all-mode", ["--selection", selectionFile("declared-all-2", [], "all")]],
+      ["a selection that omits it", ["--selection", selectionFile("declared-keep", ["keep"])]],
+      ["an unreadable selection", ["--selection", bogus]],
+      ["an empty selection", ["--selection", selectionFile("declared-none", [], "none")]],
+    ]) {
+      const outcome = await runAt(argv);
+      assert.equal(outcome.ok, false, label);
+      assert.notEqual(outcome.results.mode, "none", label);
+      const sneaky = outcome.resultLines.find((result) => result.test === "ops/sneaky.test.mjs");
+      assert.equal(sneaky?.status, "missing", label);
+      assert.ok(outcome.lines.some((line) => line.startsWith("::error title=Untrusted source audit::ops/sneaky.test.mjs")), label);
+      assert.equal(existsSync(path.join(repo, "sneaky-ran")), false, `${label}: its command never ran`);
+    }
+
+    // A manifest in the pull request that cannot be parsed fails the run.
+    put("scripts/source-audit-manifest.json", "{ not json");
+    git("commit", "-q", "-am", "break the manifest");
+    await assert.rejects(runAt(["--all"]), /cannot be read as a manifest/);
   }
 
   // An unreadable selection runs every audit rather than none.

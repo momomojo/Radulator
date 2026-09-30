@@ -9,13 +9,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  ENABLED_MISSING_WHY,
   MANIFEST_SCHEMA,
+  REMOVED_WHY,
   SELECTION_SCHEMA,
+  UNTRUSTED_WHY,
   auditCoverage,
   calculatorIdFromSource,
   extractReferences,
+  headDeclarations,
   parseNameStatus,
   registryChanges,
+  removedAudits,
   resolveAudits,
   selectSourceAudits,
   validateManifest,
@@ -120,8 +125,9 @@ function repo(files) {
   };
 }
 
+// The merge base has the same audit files as HEAD_FILES unless a test says otherwise.
 function select({ changes, eventName = "pull_request", baseRef = "develop", auditMode = "", headFiles = HEAD_FILES,
-  baseRegistry = registry(BASE_RECORDS), headManifest = null, manifest = MANIFEST }) {
+  baseFiles = HEAD_FILES, baseRegistry = registry(BASE_RECORDS), headManifest = null, manifest = MANIFEST }) {
   const head = repo(headFiles);
   return selectSourceAudits({
     eventName,
@@ -131,6 +137,7 @@ function select({ changes, eventName = "pull_request", baseRef = "develop", audi
     headManifest,
     changes: changes.map((change) => (typeof change === "string" ? { status: "M", path: change, oldPath: null } : change)),
     tree: head.tree,
+    baseTree: baseFiles === null ? null : repo(baseFiles).tree,
     readHead: head.readHead,
     readBase: (file) => (file === REGISTRY ? baseRegistry : null),
   });
@@ -308,6 +315,36 @@ assert.deepEqual(
   assert.equal(select({ headManifest: narrowing, changes: ["package.json"] }).mode, "all");
 }
 
+// A network audit declared only in the head manifest, at a path the base manifest and the
+// discovery glob do not cover, is required and marked untrusted, in all-mode (a manifest change)
+// and in selected mode alike, so the base-loaded runner fails it. A head declaration of a file the
+// glob already discovers stays a normal discovered audit, and an offline one is ignored here.
+{
+  const custom = { id: "newcustom", test: "ops/hermes/radulator/new-custom.test.mjs", command: ["node", "ops/hermes/radulator/new-custom.test.mjs"] };
+  const headFiles = { ...HEAD_FILES, [custom.test]: "console.log('head-only custom audit');\n" };
+  const headManifest = validateManifest({ ...structuredClone(MANIFEST_SOURCE), audits: [...MANIFEST_SOURCE.audits, custom] });
+  const untrustedOf = (selection) => selection.audits.filter((entry) => /declared only in the head manifest/.test(entry.why ?? ""));
+
+  const allMode = select({ headManifest, headFiles, changes: ["scripts/source-audit-manifest.json", custom.test] });
+  assert.equal(allMode.mode, "all");
+  assert.deepEqual(untrustedOf(allMode).map((entry) => [entry.id, entry.test]), [["newcustom", custom.test]]);
+  assert.match(allMode.reason, /audit\(s\) declared only in the head manifest: newcustom/);
+  assert.deepEqual(ids(allMode).sort(), [...NETWORK_AUDITS, "newcustom"].sort(), "every trusted audit still runs, plus the untrusted one");
+
+  const selected = select({ headManifest, headFiles, changes: ["src/components/calculators/ALBIScore.jsx"] });
+  assert.equal(selected.mode, "selected");
+  assert.deepEqual(ids(selected), ["albi", "newcustom"]);
+  assert.equal(untrustedOf(selected).length, 1);
+
+  const discovered = validateManifest({ ...structuredClone(MANIFEST_SOURCE), audits: [...MANIFEST_SOURCE.audits,
+    { id: "lirads-custom", test: "scripts/audit-lirads-lrm-source.test.mjs", command: ["node", "--inspect", "x.mjs"] }] });
+  assert.deepEqual(untrustedOf(select({ headManifest: discovered, changes: ["scripts/source-audit-manifest.json"] })), [],
+    "a file the discovery glob finds is a normal audit with the trusted default command");
+  const offline = validateManifest({ ...structuredClone(MANIFEST_SOURCE), audits: [...MANIFEST_SOURCE.audits, { ...custom, network: false }] });
+  assert.deepEqual(untrustedOf(select({ headManifest: offline, headFiles, changes: ["scripts/source-audit-manifest.json"] })), []);
+  assert.deepEqual(untrustedOf(select({ changes: ["scripts/source-audit-manifest.json"] })), [], "no head manifest, nothing untrusted");
+}
+
 // Offline audits are never selected here; they run in Smoke Tests.
 {
   const selection = select({ changes: ["scripts/audit-offline-pins-source.test.mjs"] });
@@ -330,6 +367,117 @@ assert.deepEqual(
   const deletion = select({ headFiles, changes: [{ status: "D", path: "ops/hermes/radulator/cac-boundary.test.mjs" }] });
   assert.equal(deletion.mode, "selected");
   assert.deepEqual(ids(deletion), ["cac"]);
+}
+
+// Regression (primary judge, #322): a discovered audit (no manifest entry) that a pull request
+// deletes or renames away is named by neither the manifest nor the head tree, only by the merge
+// base. It is required like a declared audit missing at head, in every mode, so the runner fails it.
+{
+  const LIRADS = "scripts/audit-lirads-lrm-source.test.mjs";
+  const { [LIRADS]: _deleted, ...headFiles } = HEAD_FILES;
+  const removed = { id: "lirads-lrm", test: LIRADS, why: REMOVED_WHY };
+  const removedOf = (selection) => selection.audits.filter((entry) => entry.why === REMOVED_WHY);
+
+  // Its only change is the deletion: selected, never "none" and never skipped.
+  const deletion = select({ headFiles, changes: [{ status: "D", path: LIRADS, oldPath: null }] });
+  assert.equal(deletion.mode, "selected");
+  assert.deepEqual(deletion.audits, [removed]);
+  assert.equal(deletion.skipped.some((entry) => entry.test === LIRADS), false);
+  assert.match(deletion.reason, /discovered audit\(s\) removed since the merge base: lirads-lrm/);
+  // Alongside a change that selects another audit, and with nothing else selected at all.
+  assert.deepEqual(ids(select({ headFiles, changes: ["src/components/calculators/BIRADS.jsx", { status: "D", path: LIRADS }] })),
+    ["birads", "lirads-lrm"]);
+  assert.deepEqual(removedOf(select({ headFiles, changes: ["README.md"] })), [removed], "whatever the diff says");
+  // Renamed away: the new name runs as a new audit and the old one is still required.
+  const renamedFiles = { ...headFiles, "scripts/audit-lirads-renamed-source.test.mjs": HEAD_FILES[LIRADS] };
+  const rename = select({ headFiles: renamedFiles,
+    changes: [{ status: "R", path: "scripts/audit-lirads-renamed-source.test.mjs", oldPath: LIRADS }] });
+  assert.deepEqual(ids(rename), ["lirads-renamed", "lirads-lrm"]);
+  assert.deepEqual(removedOf(rename), [removed]);
+  // Every mode: R1 (a PR to main), R2 (the toolchain changed), the owner override, and R0.
+  for (const options of [{ baseRef: "main" }, { changes: ["package.json"] }, { auditMode: "all" }, { eventName: "push" }]) {
+    const selection = select({ headFiles, changes: ["README.md"], ...options });
+    assert.equal(selection.mode, "all", JSON.stringify(options));
+    assert.deepEqual(removedOf(selection), [removed], JSON.stringify(options));
+    assert.deepEqual(ids(selection), [...NETWORK_AUDITS.filter((id) => id !== "lirads-lrm"), "lirads-lrm"]);
+  }
+  // Nothing to compare without a merge base (the runner has no BASE_SHA then either).
+  assert.deepEqual(removedOf(select({ headFiles, baseFiles: null, changes: ["README.md"] })), []);
+  // An audit the pull request adds is new, not removed; one the base never had is not required.
+  assert.deepEqual(removedOf(select({ baseFiles: headFiles, changes: [{ status: "A", path: LIRADS }] })), []);
+  // Retiring one: once the trusted manifest declares it offline, deleting it is not a removal, and a
+  // declared audit missing at head is reported once, as declared-missing.
+  const retired = validateManifest({ ...structuredClone(MANIFEST_SOURCE),
+    audits: [...MANIFEST_SOURCE.audits, { id: "lirads-lrm", test: LIRADS, network: false }] });
+  const retirement = select({ manifest: retired, headFiles, changes: [{ status: "D", path: LIRADS }] });
+  assert.equal(retirement.mode, "none");
+  assert.deepEqual(retirement.audits, []);
+  const declared = validateManifest({ ...structuredClone(MANIFEST_SOURCE),
+    audits: [...MANIFEST_SOURCE.audits, { id: "lirads-lrm", test: LIRADS }] });
+  assert.deepEqual(select({ manifest: declared, headFiles, changes: [{ status: "D", path: LIRADS }] }).audits,
+    [{ id: "lirads-lrm", test: LIRADS, why: "declared test is missing at head" }]);
+  // The helper on its own.
+  assert.deepEqual(removedAudits(MANIFEST, repo(HEAD_FILES).tree, repo(headFiles).tree), [removed]);
+  assert.deepEqual(removedAudits(MANIFEST, repo(HEAD_FILES).tree, repo(HEAD_FILES).tree), []);
+}
+
+// Regression (verification judge, #324): the pull request's own manifest is read for every pull
+// request, including one to main and one under the owner override. A network audit it declares at a
+// path the trusted manifest does not know is required and untrusted in every mode (its command never
+// runs); an audit the trusted manifest declares offline and the head enables runs as a network audit
+// with the trusted declaration's command.
+{
+  const custom = { id: "newcustom", test: "ops/hermes/radulator/new-custom.test.mjs", command: ["node", "ops/hermes/radulator/new-custom.test.mjs"] };
+  const headFiles = { ...HEAD_FILES, [custom.test]: "console.log('head-only custom audit');\n" };
+  const adding = validateManifest({ ...structuredClone(MANIFEST_SOURCE), audits: [...MANIFEST_SOURCE.audits, custom] });
+  const untrustedOf = (selection) => selection.audits.filter((entry) => entry.why === UNTRUSTED_WHY);
+  for (const [label, options] of [
+    ["a pull request to main (R1)", { baseRef: "main", changes: ["README.md"] }],
+    ["the owner override", { auditMode: "all", changes: ["README.md"] }],
+    ["a manifest change (R2)", { changes: ["scripts/source-audit-manifest.json", custom.test] }],
+    ["a diff-selected pull request", { changes: ["src/components/calculators/ALBIScore.jsx"] }],
+  ]) {
+    const selection = select({ headManifest: adding, headFiles, ...options });
+    assert.deepEqual(untrustedOf(selection), [{ id: "newcustom", test: custom.test, why: UNTRUSTED_WHY }], label);
+    assert.match(selection.reason, /audit\(s\) declared only in the head manifest: newcustom/, label);
+  }
+
+  // offline-pins is declared offline in the trusted manifest; the head manifest enables it.
+  const enabling = validateManifest({ ...structuredClone(MANIFEST_SOURCE),
+    audits: MANIFEST_SOURCE.audits.map((audit) => (audit.id === "offline-pins" ? { ...audit, network: true } : audit)) });
+  for (const [label, options] of [
+    ["a pull request to main (R1)", { baseRef: "main", changes: ["README.md"] }],
+    ["the owner override", { auditMode: "all", changes: ["README.md"] }],
+    ["a manifest change (R2)", { changes: ["scripts/source-audit-manifest.json"] }],
+  ]) {
+    const selection = select({ headManifest: enabling, ...options });
+    assert.equal(selection.mode, "all", label);
+    const pins = selection.audits.find((entry) => entry.id === "offline-pins");
+    assert.ok(pins?.reasons?.length, `${label}: the enabled audit is selected to run`);
+    assert.equal(selection.offline.includes("offline-pins"), false, label);
+    assert.match(selection.reason, /audit\(s\) enabled by the head manifest: offline-pins/, label);
+  }
+  // In diff mode too (say the base disabled it after this pull request branched, so the manifest is
+  // not in the diff): selected whatever the diff says; the runner forces it as well.
+  const diffMode = select({ headManifest: enabling, changes: ["src/components/calculators/BIRADS.jsx"] });
+  assert.deepEqual(diffMode.audits.find((entry) => entry.id === "offline-pins")?.reasons, ["enabled by the head manifest"]);
+  assert.deepEqual(ids(diffMode).sort(), ["birads", "offline-pins"]);
+  // It runs with the trusted command: a command in the head manifest is ignored.
+  const rewired = validateManifest({ ...structuredClone(MANIFEST_SOURCE), audits: MANIFEST_SOURCE.audits.map((audit) =>
+    (audit.id === "offline-pins" ? { ...audit, network: true, command: ["node", "--inspect", "elsewhere.mjs"] } : audit)) });
+  const declarations = headDeclarations(MANIFEST, rewired, repo(HEAD_FILES).tree);
+  assert.deepEqual(declarations.enabled.map((audit) => [audit.id, audit.command, audit.network]),
+    [["offline-pins", ["node", "scripts/audit-offline-pins-source.test.mjs"], true]]);
+  assert.deepEqual(declarations.untrusted, []);
+  // Enabled but missing at head: required, and the runner fails it.
+  const { "scripts/audit-offline-pins-source.test.mjs": _pins, ...withoutPins } = HEAD_FILES;
+  const missingPins = select({ headManifest: enabling, headFiles: withoutPins, baseRef: "main", changes: ["README.md"] });
+  assert.deepEqual(missingPins.audits.find((entry) => entry.id === "offline-pins"),
+    { id: "offline-pins", test: "scripts/audit-offline-pins-source.test.mjs", why: ENABLED_MISSING_WHY });
+  // A head manifest that disables or drops an audit changes nothing: the trusted declaration stands.
+  const narrowing = validateManifest({ ...structuredClone(MANIFEST_SOURCE),
+    audits: MANIFEST_SOURCE.audits.map((audit) => ({ ...audit, network: false })) });
+  assert.deepEqual(ids(select({ headManifest: narrowing, baseRef: "main", changes: ["README.md"] })), NETWORK_AUDITS);
 }
 
 // NCBI flag: set when a selected audit declares an NCBI host or declares no hosts.
@@ -495,6 +643,59 @@ for (const [change, pattern] of [
     assert.equal(JSON.parse(readFileSync(path.join(root, "selection-4.json"), "utf8")).mode, "all");
     const usage = spawnSync(process.execPath, [path.join(here, "select-source-audits.mjs"), "--manifest"], { encoding: "utf8" });
     assert.notEqual(usage.status, 0, "bad arguments fail, so the workflow falls back to every audit");
+
+    // Regression (primary judge, #322), end to end: a commit that deletes a discovered audit, in a
+    // pull request to develop and in one to main.
+    git("rm", "-q", "scripts/audit-lirads-lrm-source.test.mjs");
+    git("commit", "-q", "-m", "delete a discovered audit");
+    const deletedSha = git("rev-parse", "HEAD");
+    for (const [baseRef, mode] of [["develop", "selected"], ["main", "all"]]) {
+      const output = path.join(root, `selection-removed-${baseRef}.json`);
+      const removedRun = run({ BASE_REF: baseRef, HEAD_SHA: deletedSha }, output);
+      assert.equal(removedRun.status, 0, removedRun.stderr);
+      const removedSelection = JSON.parse(readFileSync(output, "utf8"));
+      assert.equal(removedSelection.mode, mode, baseRef);
+      assert.deepEqual(removedSelection.audits.filter((entry) => entry.why === REMOVED_WHY),
+        [{ id: "lirads-lrm", test: "scripts/audit-lirads-lrm-source.test.mjs", why: REMOVED_WHY }], baseRef);
+      assert.equal(removedSelection.merge_base, baseSha, baseRef);
+    }
+
+    // Regression (verification judge, #324), end to end: a pull request whose manifest adds a
+    // custom-path network audit and enables the offline one, to main, to develop, and under the owner
+    // override. (Only named files are staged: the uncommitted edit above must stay out.)
+    write({
+      "ops/hermes/radulator/new-custom.test.mjs": "console.log('custom');\n",
+      "scripts/source-audit-manifest.json": `${JSON.stringify({ ...MANIFEST_SOURCE, audits: [
+        ...MANIFEST_SOURCE.audits.map((audit) => (audit.id === "offline-pins" ? { ...audit, network: true } : audit)),
+        { id: "newcustom", test: "ops/hermes/radulator/new-custom.test.mjs", command: ["node", "ops/hermes/radulator/new-custom.test.mjs"] },
+      ] }, null, 2)}\n`,
+    });
+    git("add", "ops/hermes/radulator/new-custom.test.mjs", "scripts/source-audit-manifest.json");
+    git("commit", "-q", "-m", "declare a custom audit and enable an offline one");
+    const declaringSha = git("rev-parse", "HEAD");
+    // The trusted manifest is the base's copy, as the workflow loads it; the checkout's file is the head's.
+    const trustedManifest = path.join(root, "trusted-manifest.json");
+    writeFileSync(trustedManifest, `${JSON.stringify(MANIFEST_SOURCE, null, 2)}\n`);
+    for (const [label, env] of [
+      ["main", { BASE_REF: "main" }],
+      ["develop", { BASE_REF: "develop" }],
+      ["owner override", { BASE_REF: "develop", AUDIT_MODE: "all" }],
+    ]) {
+      const output = path.join(root, `selection-declared-${label.replace(/ /g, "-")}.json`);
+      const declaredRun = spawnSync(process.execPath, [path.join(here, "select-source-audits.mjs"),
+        "--manifest", trustedManifest, "--output", output], {
+        cwd: root,
+        encoding: "utf8",
+        env: { PATH: process.env.PATH, EVENT_NAME: "pull_request", BASE_SHA: baseSha, HEAD_SHA: declaringSha, ...env },
+      });
+      assert.equal(declaredRun.status, 0, declaredRun.stderr);
+      const declared = JSON.parse(readFileSync(output, "utf8"));
+      assert.equal(declared.mode, "all", label);
+      assert.deepEqual(declared.audits.filter((entry) => entry.why === UNTRUSTED_WHY),
+        [{ id: "newcustom", test: "ops/hermes/radulator/new-custom.test.mjs", why: UNTRUSTED_WHY }], label);
+      assert.ok(declared.audits.some((entry) => entry.id === "offline-pins" && entry.reasons), `${label}: the enabled audit runs`);
+      assert.equal(declared.offline.includes("offline-pins"), false, label);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
