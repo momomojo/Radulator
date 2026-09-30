@@ -284,11 +284,13 @@ jobs:
             # drop partial copies so the next step uses the checked-out runner, and run every audit.
             rm -f "$trusted"/*
           fi
-          if [ -s "$trusted/source-audit-manifest.json" ] && [ "$AUDIT_MODE" != "all" ] \
+          # The owner override (AUDIT_MODE=all) is applied inside the selector, which only widens, so
+          # the selection still lists what the pull request itself requires.
+          if [ -s "$trusted/source-audit-manifest.json" ] \
             && node "$trusted/select-source-audits.mjs" --manifest "$trusted/source-audit-manifest.json" --output "$selection"; then
             :
           else
-            printf '{"schema":"radulator-source-audit-selection/v1","mode":"all","reason":"not a pull request, owner override, no trusted base rules, or a selector error"}\n' > "$selection"
+            printf '{"schema":"radulator-source-audit-selection/v1","mode":"all","reason":"not a pull request, no trusted base rules, or a selector error"}\n' > "$selection"
             echo "SOURCE-AUDIT SELECTION $(cat "$selection")"
           fi
 
