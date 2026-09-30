@@ -18,7 +18,16 @@
 //     --audit-timeout-seconds <s>    per attempt, default 600
 //     --budget-seconds <s>           for the whole run, default 3000
 //   env: NCBI_API_KEY (optional; passed to the audits), HEAD_SHA (optional; must match the checkout),
-//        GITHUB_STEP_SUMMARY (optional), RUNNER_TEMP (optional)
+//        BASE_SHA (the pull request's base; optional), GITHUB_STEP_SUMMARY (optional), RUNNER_TEMP (optional)
+//
+// With BASE_SHA (a pull request), the runner also checks, in every mode and whatever the selection
+// says (so the all-audits fallback and the owner override are covered too):
+//   - a discovered audit that the merge base has and the checked-out commit does not (the pull
+//     request deleted or renamed it away) fails;
+//   - the pull request's own manifest, read as data from the checked-out commit: a network audit it
+//     declares at a path the trusted manifest does not know fails (its command is never run), and
+//     an audit the trusted manifest declares offline but the pull request enables runs as a network
+//     audit with the trusted command. A manifest there that cannot be parsed fails the run.
 //
 // Each audit gets RADULATOR_SOURCE_CACHE_DIR (a cache shared by this run only),
 // RADULATOR_SOURCE_FETCH_LOG (JSONL, one record per request) and RADULATOR_NCBI_RATE_FILE (request
@@ -36,9 +45,11 @@
 import { execFileSync, spawn } from "node:child_process";
 import {
   appendFileSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readlinkSync,
   realpathSync,
   rmSync,
   writeFileSync,
@@ -48,7 +59,20 @@ import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
-import { SELECTION_SCHEMA, resolveAudits, sha256, validateManifest, workingTree } from "./select-source-audits.mjs";
+import {
+  ENABLED_MISSING_WHY,
+  MANIFEST_PATH,
+  REMOVED_WHY,
+  SELECTION_SCHEMA,
+  UNTRUSTED_WHY,
+  headDeclarations,
+  pathTree,
+  removedAudits,
+  resolveAudits,
+  sha256,
+  validateManifest,
+  workingTree,
+} from "./select-source-audits.mjs";
 
 export const RESULTS_SCHEMA = "radulator-source-audit-results/v1";
 const REDACTED = "[REDACTED]";
@@ -277,17 +301,70 @@ export function parseArgs(argv, selfDir) {
   return options;
 }
 
-// Which audits to run. A selection that cannot be read runs every audit (fail safe).
-function planRun(options, audits, log) {
+// Discovered audits the pull request removed: in the merge base of BASE_SHA and the snapshot commit,
+// not in the snapshot commit. Both trees come from git objects. Any git failure throws, so the run
+// fails closed rather than skip the check.
+export function removedSinceBase(cwd, snapshot, baseSha, manifest) {
+  if (!snapshot) throw new Error(`BASE_SHA is set but ${cwd} is not a git checkout`);
+  if (!/^[0-9a-f]{40}$/.test(baseSha)) throw new Error("BASE_SHA must be a full commit SHA");
+  const mergeBase = git(cwd, ["merge-base", baseSha, snapshot.commit]).trim();
+  const basePaths = new Set(git(cwd, ["ls-tree", "-r", "-z", "--name-only", mergeBase]).split("\0").filter(Boolean));
+  const headPaths = new Set(snapshot.entries.map((entry) => entry.file));
+  return removedAudits(manifest, pathTree(basePaths), pathTree(headPaths));
+}
+
+// What a pull request adds to the run (see the header): removed audits, and the untrusted and
+// enabled declarations of its own manifest. The manifest is read from the snapshot commit, never
+// from the working tree.
+export function pullRequestExtras(cwd, snapshot, baseSha, manifest) {
+  const removed = removedSinceBase(cwd, snapshot, baseSha, manifest);
+  const headPaths = new Set(snapshot.entries.map((entry) => entry.file));
+  let headManifest = null;
+  if (headPaths.has(MANIFEST_PATH)) {
+    try {
+      headManifest = validateManifest(JSON.parse(git(cwd, ["show", `${snapshot.commit}:${MANIFEST_PATH}`])));
+    } catch (error) {
+      throw new Error(`the pull request's ${MANIFEST_PATH} cannot be read as a manifest (${error.message})`);
+    }
+  }
+  return { removed, ...headDeclarations(manifest, headManifest, pathTree(headPaths)) };
+}
+
+// Which audits to run. A selection that cannot be read runs every audit (fail safe). In every mode,
+// whatever the selection says: the required entries (removed and untrusted audits, each with its
+// why) are unrunnable, and each forced audit (enabled by the pull request's manifest) runs, or is
+// unrunnable when its test is missing at head.
+function planRun(options, audits, log, required = [], forced = []) {
+  const plan = selectPlan(options, audits, log);
+  if (required.length === 0 && forced.length === 0) return plan;
+  const whyOf = new Map(required.map((entry) => [entry.test, entry.why]));
+  const listed = plan.unrunnable.map((entry) => (whyOf.has(entry.test) ? { ...entry, why: whyOf.get(entry.test) } : entry));
+  const unrunnable = [...listed, ...required.filter((entry) => !listed.some((known) => known.test === entry.test))];
+  const run = [...plan.run];
+  for (const audit of forced) {
+    if (run.some((entry) => entry.test === audit.test) || unrunnable.some((entry) => entry.test === audit.test)) continue;
+    if (audit.present) run.push(audit);
+    else unrunnable.push({ id: audit.id, test: audit.test, why: ENABLED_MISSING_WHY });
+  }
+  const mode = plan.mode === "none" && (run.length || unrunnable.length) ? "selected" : plan.mode;
+  return { ...plan, mode, run, unrunnable };
+}
+
+function selectPlan(options, audits, log) {
   const runnable = audits.filter((audit) => audit.network && audit.present);
   const missing = audits.filter((audit) => audit.network && !audit.present);
   // A declared network audit missing from the checkout fails the run: a pull request must not
   // pass the exact-head lane by deleting the audit that guards its change. Only the nightly,
   // which runs the current rules against older refs, reports them instead (--allow-missing).
-  const allMode = (rulesSha) => (options.allowMissing
-    ? { mode: "all", rulesSha, run: runnable, missing }
+  // A required entry the trusted manifest cannot resolve (an audit declared only in the head
+  // manifest) fails in all-mode too; nothing from the head manifest is ever run.
+  const known = new Set(audits.map((audit) => audit.test));
+  const unknown = (wanted) => wanted.filter((entry) => !known.has(entry?.test))
+    .map((entry) => ({ id: String(entry?.id ?? entry?.test ?? "unknown"), test: String(entry?.test ?? "") }));
+  const allMode = (rulesSha, wanted = []) => (options.allowMissing
+    ? { mode: "all", rulesSha, run: runnable, missing, unrunnable: unknown(wanted) }
     : { mode: "all", rulesSha, run: runnable, missing: [],
-        unrunnable: missing.map((audit) => ({ id: audit.id, test: audit.test })) });
+        unrunnable: [...missing.map((audit) => ({ id: audit.id, test: audit.test })), ...unknown(wanted)] });
   if (options.all) return allMode(null);
   let selection;
   try {
@@ -300,8 +377,8 @@ function planRun(options, audits, log) {
     return allMode(null);
   }
   const rulesSha = typeof selection.rules_sha256 === "string" ? selection.rules_sha256 : null;
-  if (selection.mode === "all") return allMode(rulesSha);
   const wanted = Array.isArray(selection.audits) ? selection.audits : [];
+  if (selection.mode === "all") return allMode(rulesSha, wanted);
   const byTest = new Map(audits.map((audit) => [audit.test, audit]));
   const run = [];
   // A selected audit the checkout cannot run fails (so does a declared one in all-mode, unless
@@ -343,6 +420,130 @@ export function assertPristine(cwd, when, { inGit = false } = {}) {
   }
 }
 
+function git(cwd, args, input) {
+  return execFileSync("git", ["-C", cwd, ...args], {
+    encoding: "utf8",
+    input,
+    stdio: [input === undefined ? "ignore" : "pipe", "pipe", "ignore"],
+    maxBuffer: 64 * 1024 * 1024,
+  });
+}
+
+// The exact commit a run reports on, captured before any audit runs: the commit, its tree, and every
+// tracked blob's path, mode and id, read from the object database rather than from the mutable index.
+export function snapshotCommit(cwd) {
+  const commit = git(cwd, ["rev-parse", "--verify", "HEAD^{commit}"]).trim();
+  const tree = git(cwd, ["rev-parse", "--verify", `${commit}^{tree}`]).trim();
+  const entries = git(cwd, ["ls-tree", "-r", "-z", "--full-tree", commit]).split("\0").filter(Boolean).map((line) => {
+    const tab = line.indexOf("\t");
+    const [mode, type, id] = line.slice(0, tab).split(" ");
+    return { mode, type, id, file: line.slice(tab + 1) };
+  });
+  return { commit, tree, entries };
+}
+
+// How the checkout differs from the snapshot in ways git status cannot show: a moved HEAD (checkout or
+// reset to another commit), index entries that are not plainly tracked (assume-unchanged, skip-worktree
+// or unmerged, which hide worktree edits from git status), and tracked files whose bytes on disk no
+// longer hash to the snapshot's blobs. Empty means the checkout is still the snapshot. Any git failure
+// counts as drift, so the check fails closed.
+export function exactHeadDrift(cwd, snapshot) {
+  const drift = [];
+  try {
+    const head = git(cwd, ["rev-parse", "--verify", "HEAD^{commit}"]).trim();
+    if (head !== snapshot.commit) drift.push(`HEAD moved to ${head.slice(0, 12)} from ${snapshot.commit.slice(0, 12)}`);
+  } catch {
+    drift.push("HEAD unreadable");
+  }
+  try {
+    const flagged = git(cwd, ["ls-files", "-v", "-z"]).split("\0").filter((line) => line && !line.startsWith("H "));
+    if (flagged.length > 0) {
+      const shown = flagged.slice(0, 3).map((line) => line.slice(2)).join(", ") + (flagged.length > 3 ? ", …" : "");
+      drift.push(`index entries not plainly tracked (assume-unchanged, skip-worktree or unmerged): ${shown}`);
+    }
+  } catch {
+    drift.push("index unreadable");
+  }
+  const regular = [];
+  for (const entry of snapshot.entries.filter((item) => item.type === "blob")) {
+    const full = path.join(cwd, entry.file);
+    let stat;
+    try {
+      stat = lstatSync(full);
+    } catch {
+      drift.push(`${entry.file} is missing`);
+      continue;
+    }
+    if (entry.mode === "120000") {
+      let same = false;
+      try {
+        same = stat.isSymbolicLink() && readlinkSync(full) === git(cwd, ["cat-file", "blob", entry.id]);
+      } catch {
+        same = false;
+      }
+      if (!same) drift.push(`${entry.file} (symlink) changed`);
+    } else if (!stat.isFile()) {
+      drift.push(`${entry.file} is no longer a regular file`);
+    } else {
+      regular.push(entry);
+    }
+  }
+  if (regular.length > 0) {
+    try {
+      const ids = git(cwd, ["hash-object", "--no-filters", "--stdin-paths"], `${regular.map((entry) => entry.file).join("\n")}\n`)
+        .trim().split("\n");
+      regular.forEach((entry, index) => {
+        if (ids[index] !== entry.id) drift.push(`${entry.file} content changed`);
+      });
+    } catch {
+      drift.push("tracked files could not be hashed");
+    }
+  }
+  return drift;
+}
+
+// The run's exact-head invariant, checked before, between and after the audits: git status is clean
+// (assertPristine) and nothing has drifted from the snapshot.
+export function assertExactHead(cwd, snapshot, when) {
+  assertPristine(cwd, when, { inGit: true });
+  const drift = exactHeadDrift(cwd, snapshot);
+  if (drift.length > 0) {
+    const shown = drift.slice(0, 5).join("; ") + (drift.length > 5 ? "; …" : "");
+    throw new Error(`the checkout drifted from exact head ${snapshot.commit.slice(0, 12)} ${when} (${shown}); refusing to report exact-head results`);
+  }
+}
+
+// A file identity an audit cannot put back: device, inode and change time. The kernel sets ctime on
+// every write, truncate, rename, link, chmod or utimes, through any path, and user code cannot set it.
+function fileIdentity(file) {
+  try {
+    const stat = lstatSync(file, { bigint: true });
+    return `${stat.dev}:${stat.ino}:${stat.ctimeNs}`;
+  } catch {
+    return "missing";
+  }
+}
+
+// git's own HEAD and index files for this checkout (a linked worktree keeps them outside it).
+function gitStateFiles(cwd) {
+  return ["HEAD", "index"].map((name) => path.resolve(cwd, git(cwd, ["rev-parse", "--git-path", name]).trim()));
+}
+
+// Identities of every tracked file in the snapshot, plus any extra files (git's HEAD and index).
+export function checkoutFingerprint(cwd, snapshot, extraFiles = []) {
+  const ids = new Map();
+  for (const entry of snapshot.entries) {
+    if (entry.type === "blob") ids.set(entry.file, fileIdentity(path.join(cwd, entry.file)));
+  }
+  for (const file of extraFiles) ids.set(`git:${path.basename(file)}`, fileIdentity(file));
+  return ids;
+}
+
+// Keys whose identity differs between two fingerprints.
+export function fingerprintChanges(before, after) {
+  return [...before.keys()].filter((key) => before.get(key) !== after.get(key));
+}
+
 function headOf(cwd) {
   try {
     return execFileSync("git", ["-C", cwd, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -375,9 +576,24 @@ export async function runSourceAudits({
     throw new Error(`the checkout at ${cwd} is ${actualHead ?? "not a git checkout"}, not HEAD_SHA ${env.HEAD_SHA}`);
   }
   const headSha = actualHead ?? env.HEAD_SHA ?? null;
-  if (actualHead) assertPristine(cwd, "before the audits", { inGit: true });
-  const audits = resolveAudits(manifest, workingTree(cwd));
-  const plan = planRun(options, audits, print);
+  // Every later check compares against this snapshot, never against whatever HEAD is at the time.
+  const snapshot = actualHead ? snapshotCommit(cwd) : null;
+  if (snapshot && snapshot.commit !== actualHead) {
+    throw new Error("HEAD moved while the run started; refusing to report exact-head results");
+  }
+  if (actualHead) assertExactHead(cwd, snapshot, "before the audits");
+  // An audit could change the checkout, run from the changed state and put everything back before it
+  // exits. Post-run checks cannot see that, so every attempt is bracketed by identities it cannot
+  // restore, and the whole run by the tracked files' identities at this point.
+  const gitFiles = actualHead ? gitStateFiles(cwd) : [];
+  const runPrint = actualHead ? checkoutFingerprint(cwd, snapshot) : null;
+  const extras = env.BASE_SHA ? pullRequestExtras(cwd, snapshot, env.BASE_SHA, manifest)
+    : { removed: [], untrusted: [], enabled: [] };
+  const enabledTests = new Set(extras.enabled.map((audit) => audit.test));
+  const audits = resolveAudits(manifest, workingTree(cwd))
+    .map((audit) => (enabledTests.has(audit.test) ? { ...audit, network: true, enabled: true } : audit));
+  const plan = planRun(options, audits, print, [...extras.removed, ...extras.untrusted],
+    audits.filter((audit) => audit.enabled));
 
   // Per-run scratch space. RUNNER_TEMP is per job on GitHub, so the nightly's main and develop
   // runs share one cache; locally everything is removed at the end.
@@ -396,7 +612,13 @@ export async function runSourceAudits({
     const result = { id: entry.id, test: entry.test, status: "missing", attempts: 0, head_sha: headSha,
       command: null, stdout_sha256: null, pass_line: null, failure_class: null, ncbi: null };
     results.push({ ...result, attempt_log: [], duration_ms: 0 });
-    print(`::error title=Selected source audit missing::${entry.test} is not in this checkout`);
+    if (entry.why === REMOVED_WHY) {
+      print(`::error title=Source audit removed::${entry.test} is a discovered audit at the merge base and is gone at head; declare it with "network": false on the base branch before deleting it`);
+    } else if (entry.why === UNTRUSTED_WHY) {
+      print(`::error title=Untrusted source audit::${entry.test} cannot run from the trusted manifest: the pull request's manifest declares it as a network audit at a path the trusted manifest does not know (it can run once that declaration is on the base branch)`);
+    } else {
+      print(`::error title=Selected source audit missing::${entry.test} cannot run from the trusted manifest (missing at head, or declared only in the head manifest)`);
+    }
     print(`SOURCE-AUDIT RESULT ${JSON.stringify(result)}`);
   }
   for (const audit of plan.missing) {
@@ -409,10 +631,11 @@ export async function runSourceAudits({
 
   try {
     for (const audit of plan.run) {
-      if (actualHead) assertPristine(cwd, `before ${audit.id}`, { inGit: true });
+      if (actualHead) assertExactHead(cwd, snapshot, `before ${audit.id}`);
       const command = audit.command[0] === "node" ? [process.execPath, ...audit.command.slice(1)] : audit.command;
       const attemptLog = [];
       let final = null;
+      let transient = [];
       const auditStarted = Date.now();
       for (let attempt = 1; attempt <= options.attempts; attempt += 1) {
         const waitSeconds = backoffBefore(attempt, options.backoffSeconds);
@@ -436,10 +659,16 @@ export async function runSourceAudits({
           RADULATOR_SOURCE_AUDIT_ATTEMPT: String(attempt),
         };
         for (const name of WORKFLOW_FILE_VARIABLES) delete childEnv[name];
+        const before = actualHead ? checkoutFingerprint(cwd, snapshot, gitFiles) : null;
         const run = await runAttempt({ command, cwd, env: childEnv, timeoutMs });
-        // The attempt is judged on the tree it leaves behind: one that rewrote tracked files never
-        // passes, whatever its exit code.
-        const changed = actualHead ? changesInCheckout(cwd) : [];
+        // Taken before the runner runs any git command itself (git status can rewrite the index).
+        const touched = actualHead ? fingerprintChanges(before, checkoutFingerprint(cwd, snapshot, gitFiles)) : [];
+        if (touched.length > 0) transient = touched;
+        // The attempt is judged on the checkout it leaves behind: one that rewrote tracked files, moved
+        // HEAD or hid edits behind index flags never passes, whatever its exit code.
+        const changed = actualHead
+          ? [...touched.map((key) => `${key} changed while the audit ran`), ...changesInCheckout(cwd), ...exactHeadDrift(cwd, snapshot)]
+          : [];
         const combined = `${run.stdout}\n${run.stderr}`;
         const leaks = findLeaks(combined, key);
         const fetchLog = readFetchLog(fetchLogFile);
@@ -503,13 +732,24 @@ export async function runSourceAudits({
       results.push({ ...result, attempt_log: attemptLog, duration_ms: Date.now() - auditStarted });
       print(`SOURCE-AUDIT RESULT ${JSON.stringify(result)}`);
       // Stop the run here: no further audit, summary or results file for a tree that is not the head.
-      if (actualHead) assertPristine(cwd, `after ${audit.id}`, { inGit: true });
+      // A change still present is named by assertExactHead; one put back before exit, by its ctime trail.
+      if (actualHead) assertExactHead(cwd, snapshot, `after ${audit.id}`);
+      if (transient.length > 0) {
+        const shown = transient.slice(0, 5).join(", ") + (transient.length > 5 ? ", …" : "");
+        throw new Error(`the checkout changed while ${audit.id} ran (${shown}); refusing to report exact-head results`);
+      }
     }
   } finally {
     if (!tempRoot) rmSync(scratch, { recursive: true, force: true });
   }
   // Once more before anything is reported, in case a process the audits started outlived them.
-  if (actualHead) assertPristine(cwd, "before reporting results", { inGit: true });
+  if (actualHead) {
+    assertExactHead(cwd, snapshot, "before reporting results");
+    const late = fingerprintChanges(runPrint, checkoutFingerprint(cwd, snapshot));
+    if (late.length > 0) {
+      throw new Error(`tracked files changed during the run (${late.slice(0, 5).join(", ")}); refusing to report exact-head results`);
+    }
+  }
 
   const counted = results.filter((result) => !result.informational);
   const passed = counted.filter((result) => result.status === "pass").map((result) => result.id);
