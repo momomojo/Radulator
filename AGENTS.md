@@ -58,6 +58,8 @@ npm run lint      # must match main's baseline (no NEW errors)
 npm run check:invariants  # Radulator-specific metadata/guardrail checks
 npm test          # full Playwright suite (required for calculator-logic changes)
 npm run test:smoke
+npm run test:source-audits           # every network clinical source audit (CI: "Clinical Source Audits (exact head)")
+npm run test:source-audit-selection  # offline tests for the audit selector, runner and drift reporter
 scripts/dev-local.sh up    # local app-driving QA server in tmux
 npm run proof:feature -- --route '/#/tirads' --expect-text 'TI-RADS'
 ```
