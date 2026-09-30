@@ -454,6 +454,8 @@ export function selectSourceAudits({
     coverageOf.set(audit.test, coverage);
     // R5: the audit itself changed or is new.
     if (changed.has(audit.test)) why.push(added.has(audit.test) ? "R5 new audit" : "R5 audit test changed");
+    // Enabled by the head manifest: selected whatever the diff says (the runner forces it too).
+    if (audit.enabled) why.push("enabled by the head manifest");
     const companion = companionOf(audit.test);
     if (companion && changed.has(companion)) why.push("R5 companion module changed");
     // R3: a changed file is in the audit's coverage. The registry is matched per record (R6).

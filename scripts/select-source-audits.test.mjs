@@ -457,6 +457,11 @@ assert.deepEqual(
     assert.equal(selection.offline.includes("offline-pins"), false, label);
     assert.match(selection.reason, /audit\(s\) enabled by the head manifest: offline-pins/, label);
   }
+  // In diff mode too (say the base disabled it after this pull request branched, so the manifest is
+  // not in the diff): selected whatever the diff says; the runner forces it as well.
+  const diffMode = select({ headManifest: enabling, changes: ["src/components/calculators/BIRADS.jsx"] });
+  assert.deepEqual(diffMode.audits.find((entry) => entry.id === "offline-pins")?.reasons, ["enabled by the head manifest"]);
+  assert.deepEqual(ids(diffMode).sort(), ["birads", "offline-pins"]);
   // It runs with the trusted command: a command in the head manifest is ignored.
   const rewired = validateManifest({ ...structuredClone(MANIFEST_SOURCE), audits: MANIFEST_SOURCE.audits.map((audit) =>
     (audit.id === "offline-pins" ? { ...audit, network: true, command: ["node", "--inspect", "elsewhere.mjs"] } : audit)) });

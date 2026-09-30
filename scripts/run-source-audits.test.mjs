@@ -655,6 +655,31 @@ try {
     assert.equal(pins.command, "node ops/pins-audit.test.mjs", "the trusted command, not the head's");
     const nightly = await runAt(["--selection", selectionFile("declared-all-nobase", [], "all")], {});
     assert.equal(nightly.resultLines.some((result) => result.id === "pins"), false, "without BASE_SHA the head manifest is not read");
+    // Primary judge on #325: in every mode, whatever the selection says. A valid selection that omits
+    // it, or an empty one, still runs it, with the trusted command.
+    for (const [label, argv] of [
+      ["a selection that omits it", ["--selection", selectionFile("enabled-keep", ["keep"])]],
+      ["an empty selection", ["--selection", selectionFile("enabled-none", [], "none")]],
+    ]) {
+      const outcome = await runAt(argv);
+      assert.equal(outcome.ok, true, `${label}: ${outcome.log}`);
+      const forced = outcome.resultLines.find((result) => result.id === "pins");
+      assert.equal(forced?.status, "pass", label);
+      assert.equal(forced.command, "node ops/pins-audit.test.mjs", `${label}: the trusted command`);
+      assert.notEqual(outcome.results.mode, "none", label);
+    }
+    // Enabled but missing at head: it fails in every mode.
+    rmSync(path.join(repo, "ops/pins-audit.test.mjs"));
+    git("commit", "-q", "-am", "enable pins without its test");
+    for (const [label, argv] of [
+      ["all-mode", ["--selection", selectionFile("enabled-missing-all", [], "all")]],
+      ["a selection that omits it", ["--selection", selectionFile("enabled-missing-keep", ["keep"])]],
+      ["an empty selection", ["--selection", selectionFile("enabled-missing-none", [], "none")]],
+    ]) {
+      const outcome = await runAt(argv);
+      assert.equal(outcome.ok, false, label);
+      assert.equal(outcome.resultLines.find((result) => result.id === "pins")?.status, "missing", label);
+    }
 
     // The pull request declares a custom-path network audit: it fails in every mode and never runs.
     headManifest([...trusted.audits, { id: "sneaky", test: "ops/sneaky.test.mjs", command: ["node", "ops/sneaky.test.mjs"] }]);

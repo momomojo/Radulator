@@ -60,6 +60,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 import {
+  ENABLED_MISSING_WHY,
   MANIFEST_PATH,
   REMOVED_WHY,
   SELECTION_SCHEMA,
@@ -329,15 +330,24 @@ export function pullRequestExtras(cwd, snapshot, baseSha, manifest) {
   return { removed, ...headDeclarations(manifest, headManifest, pathTree(headPaths)) };
 }
 
-// Which audits to run. A selection that cannot be read runs every audit (fail safe). The required
-// entries (removed and untrusted audits, each with its why) are unrunnable in every mode.
-function planRun(options, audits, log, required = []) {
+// Which audits to run. A selection that cannot be read runs every audit (fail safe). In every mode,
+// whatever the selection says: the required entries (removed and untrusted audits, each with its
+// why) are unrunnable, and each forced audit (enabled by the pull request's manifest) runs, or is
+// unrunnable when its test is missing at head.
+function planRun(options, audits, log, required = [], forced = []) {
   const plan = selectPlan(options, audits, log);
-  if (required.length === 0) return plan;
+  if (required.length === 0 && forced.length === 0) return plan;
   const whyOf = new Map(required.map((entry) => [entry.test, entry.why]));
   const listed = plan.unrunnable.map((entry) => (whyOf.has(entry.test) ? { ...entry, why: whyOf.get(entry.test) } : entry));
-  const extra = required.filter((entry) => !plan.unrunnable.some((known) => known.test === entry.test));
-  return { ...plan, mode: plan.mode === "none" ? "selected" : plan.mode, unrunnable: [...listed, ...extra] };
+  const unrunnable = [...listed, ...required.filter((entry) => !listed.some((known) => known.test === entry.test))];
+  const run = [...plan.run];
+  for (const audit of forced) {
+    if (run.some((entry) => entry.test === audit.test) || unrunnable.some((entry) => entry.test === audit.test)) continue;
+    if (audit.present) run.push(audit);
+    else unrunnable.push({ id: audit.id, test: audit.test, why: ENABLED_MISSING_WHY });
+  }
+  const mode = plan.mode === "none" && (run.length || unrunnable.length) ? "selected" : plan.mode;
+  return { ...plan, mode, run, unrunnable };
 }
 
 function selectPlan(options, audits, log) {
@@ -582,7 +592,8 @@ export async function runSourceAudits({
   const enabledTests = new Set(extras.enabled.map((audit) => audit.test));
   const audits = resolveAudits(manifest, workingTree(cwd))
     .map((audit) => (enabledTests.has(audit.test) ? { ...audit, network: true, enabled: true } : audit));
-  const plan = planRun(options, audits, print, [...extras.removed, ...extras.untrusted]);
+  const plan = planRun(options, audits, print, [...extras.removed, ...extras.untrusted],
+    audits.filter((audit) => audit.enabled));
 
   // Per-run scratch space. RUNNER_TEMP is per job on GitHub, so the nightly's main and develop
   // runs share one cache; locally everything is removed at the end.
