@@ -205,6 +205,8 @@ assert.equal(selectStep.env.AUDIT_MODE, "${{ vars.RADULATOR_SOURCE_AUDIT_MODE }}
 const runStep = audits.steps.find((step) => step.name === "Run selected source audits with bounded retries");
 assert.equal(runStep.env.NCBI_API_KEY, "${{ github.event_name != 'pull_request' && secrets.NCBI_API_KEY || '' }}",
   "pull-request runs never receive the NCBI key: their audit code comes from the head");
+assert.equal(runStep.env.BASE_SHA, "${{ github.event.pull_request.base.sha }}",
+  "the runner knows the PR's base, so a removed discovered audit fails in every mode");
 const installStep = audits.steps.find((step) => /^Install dependencies/.test(step.name ?? ""));
 assert.equal(installStep.run, "npm ci --ignore-scripts", "no npm lifecycle scripts run in the audit lane");
 assert.match(runStep.run, /^runner="\$RUNNER_TEMP\/source-audit-trusted\/run-source-audits\.mjs"$/m, "the runner comes from the base");

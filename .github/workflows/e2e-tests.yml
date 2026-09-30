@@ -297,6 +297,9 @@ jobs:
           # The only step that can see the key, and never on a pull request (head-controlled code).
           NCBI_API_KEY: ${{ github.event_name != 'pull_request' && secrets.NCBI_API_KEY || '' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          # The PR's base: the runner fails any discovered audit the PR removed, whatever the
+          # selection says (also after a selector error or under the owner override).
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           runner="$RUNNER_TEMP/source-audit-trusted/run-source-audits.mjs"
           if [ ! -s "$runner" ]; then
