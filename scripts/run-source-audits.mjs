@@ -20,9 +20,14 @@
 //   env: NCBI_API_KEY (optional; passed to the audits), HEAD_SHA (optional; must match the checkout),
 //        BASE_SHA (the pull request's base; optional), GITHUB_STEP_SUMMARY (optional), RUNNER_TEMP (optional)
 //
-// With BASE_SHA, a discovered audit that the merge base has and the checked-out commit does not
-// (the pull request deleted or renamed it away) fails the run in every mode, whatever the selection
-// says, so the all-audits fallback cannot pass without it either.
+// With BASE_SHA (a pull request), the runner also checks, in every mode and whatever the selection
+// says (so the all-audits fallback and the owner override are covered too):
+//   - a discovered audit that the merge base has and the checked-out commit does not (the pull
+//     request deleted or renamed it away) fails;
+//   - the pull request's own manifest, read as data from the checked-out commit: a network audit it
+//     declares at a path the trusted manifest does not know fails (its command is never run), and
+//     an audit the trusted manifest declares offline but the pull request enables runs as a network
+//     audit with the trusted command. A manifest there that cannot be parsed fails the run.
 //
 // Each audit gets RADULATOR_SOURCE_CACHE_DIR (a cache shared by this run only),
 // RADULATOR_SOURCE_FETCH_LOG (JSONL, one record per request) and RADULATOR_NCBI_RATE_FILE (request
@@ -55,8 +60,12 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 import {
+  ENABLED_MISSING_WHY,
+  MANIFEST_PATH,
   REMOVED_WHY,
   SELECTION_SCHEMA,
+  UNTRUSTED_WHY,
+  headDeclarations,
   pathTree,
   removedAudits,
   resolveAudits,
@@ -304,15 +313,41 @@ export function removedSinceBase(cwd, snapshot, baseSha, manifest) {
   return removedAudits(manifest, pathTree(basePaths), pathTree(headPaths));
 }
 
-// Which audits to run. A selection that cannot be read runs every audit (fail safe). Removed audits
-// (removedSinceBase) are unrunnable in every mode.
-function planRun(options, audits, log, removed = []) {
+// What a pull request adds to the run (see the header): removed audits, and the untrusted and
+// enabled declarations of its own manifest. The manifest is read from the snapshot commit, never
+// from the working tree.
+export function pullRequestExtras(cwd, snapshot, baseSha, manifest) {
+  const removed = removedSinceBase(cwd, snapshot, baseSha, manifest);
+  const headPaths = new Set(snapshot.entries.map((entry) => entry.file));
+  let headManifest = null;
+  if (headPaths.has(MANIFEST_PATH)) {
+    try {
+      headManifest = validateManifest(JSON.parse(git(cwd, ["show", `${snapshot.commit}:${MANIFEST_PATH}`])));
+    } catch (error) {
+      throw new Error(`the pull request's ${MANIFEST_PATH} cannot be read as a manifest (${error.message})`);
+    }
+  }
+  return { removed, ...headDeclarations(manifest, headManifest, pathTree(headPaths)) };
+}
+
+// Which audits to run. A selection that cannot be read runs every audit (fail safe). In every mode,
+// whatever the selection says: the required entries (removed and untrusted audits, each with its
+// why) are unrunnable, and each forced audit (enabled by the pull request's manifest) runs, or is
+// unrunnable when its test is missing at head.
+function planRun(options, audits, log, required = [], forced = []) {
   const plan = selectPlan(options, audits, log);
-  if (removed.length === 0) return plan;
-  const removedTests = new Set(removed.map((entry) => entry.test));
-  const listed = plan.unrunnable.map((entry) => (removedTests.has(entry.test) ? { ...entry, why: REMOVED_WHY } : entry));
-  const extra = removed.filter((entry) => !plan.unrunnable.some((known) => known.test === entry.test));
-  return { ...plan, mode: plan.mode === "none" ? "selected" : plan.mode, unrunnable: [...listed, ...extra] };
+  if (required.length === 0 && forced.length === 0) return plan;
+  const whyOf = new Map(required.map((entry) => [entry.test, entry.why]));
+  const listed = plan.unrunnable.map((entry) => (whyOf.has(entry.test) ? { ...entry, why: whyOf.get(entry.test) } : entry));
+  const unrunnable = [...listed, ...required.filter((entry) => !listed.some((known) => known.test === entry.test))];
+  const run = [...plan.run];
+  for (const audit of forced) {
+    if (run.some((entry) => entry.test === audit.test) || unrunnable.some((entry) => entry.test === audit.test)) continue;
+    if (audit.present) run.push(audit);
+    else unrunnable.push({ id: audit.id, test: audit.test, why: ENABLED_MISSING_WHY });
+  }
+  const mode = plan.mode === "none" && (run.length || unrunnable.length) ? "selected" : plan.mode;
+  return { ...plan, mode, run, unrunnable };
 }
 
 function selectPlan(options, audits, log) {
@@ -552,9 +587,13 @@ export async function runSourceAudits({
   // restore, and the whole run by the tracked files' identities at this point.
   const gitFiles = actualHead ? gitStateFiles(cwd) : [];
   const runPrint = actualHead ? checkoutFingerprint(cwd, snapshot) : null;
-  const audits = resolveAudits(manifest, workingTree(cwd));
-  const removed = env.BASE_SHA ? removedSinceBase(cwd, snapshot, env.BASE_SHA, manifest) : [];
-  const plan = planRun(options, audits, print, removed);
+  const extras = env.BASE_SHA ? pullRequestExtras(cwd, snapshot, env.BASE_SHA, manifest)
+    : { removed: [], untrusted: [], enabled: [] };
+  const enabledTests = new Set(extras.enabled.map((audit) => audit.test));
+  const audits = resolveAudits(manifest, workingTree(cwd))
+    .map((audit) => (enabledTests.has(audit.test) ? { ...audit, network: true, enabled: true } : audit));
+  const plan = planRun(options, audits, print, [...extras.removed, ...extras.untrusted],
+    audits.filter((audit) => audit.enabled));
 
   // Per-run scratch space. RUNNER_TEMP is per job on GitHub, so the nightly's main and develop
   // runs share one cache; locally everything is removed at the end.
@@ -573,9 +612,13 @@ export async function runSourceAudits({
     const result = { id: entry.id, test: entry.test, status: "missing", attempts: 0, head_sha: headSha,
       command: null, stdout_sha256: null, pass_line: null, failure_class: null, ncbi: null };
     results.push({ ...result, attempt_log: [], duration_ms: 0 });
-    print(entry.why === REMOVED_WHY
-      ? `::error title=Source audit removed::${entry.test} is a discovered audit at the merge base and is gone at head; declare it with "network": false on the base branch before deleting it`
-      : `::error title=Selected source audit missing::${entry.test} cannot run from the trusted manifest (missing at head, or declared only in the head manifest)`);
+    if (entry.why === REMOVED_WHY) {
+      print(`::error title=Source audit removed::${entry.test} is a discovered audit at the merge base and is gone at head; declare it with "network": false on the base branch before deleting it`);
+    } else if (entry.why === UNTRUSTED_WHY) {
+      print(`::error title=Untrusted source audit::${entry.test} cannot run from the trusted manifest: the pull request's manifest declares it as a network audit at a path the trusted manifest does not know (it can run once that declaration is on the base branch)`);
+    } else {
+      print(`::error title=Selected source audit missing::${entry.test} cannot run from the trusted manifest (missing at head, or declared only in the head manifest)`);
+    }
     print(`SOURCE-AUDIT RESULT ${JSON.stringify(result)}`);
   }
   for (const audit of plan.missing) {

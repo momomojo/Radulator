@@ -202,6 +202,8 @@ assert.match(selectStep.run, /\{"schema":"radulator-source-audit-selection\/v1",
 assert.match(selectStep.run, /rm -f "\$trusted"\/\*/, "partial base copies are never used");
 assert.equal(selectStep.env.BASE_SHA, "${{ github.event.pull_request.base.sha }}");
 assert.equal(selectStep.env.AUDIT_MODE, "${{ vars.RADULATOR_SOURCE_AUDIT_MODE }}");
+assert.doesNotMatch(selectStep.run, /AUDIT_MODE" != "all"/,
+  "the owner override is applied inside the selector (it only widens), so the selector always runs");
 const runStep = audits.steps.find((step) => step.name === "Run selected source audits with bounded retries");
 assert.equal(runStep.env.NCBI_API_KEY, "${{ github.event_name != 'pull_request' && secrets.NCBI_API_KEY || '' }}",
   "pull-request runs never receive the NCBI key: their audit code comes from the head");
