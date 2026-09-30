@@ -17,7 +17,11 @@ import {
   ncbiStats,
   oneLine,
   redact,
+  checkoutFingerprint,
+  exactHeadDrift,
+  fingerprintChanges,
   runSourceAudits,
+  snapshotCommit,
 } from "./run-source-audits.mjs";
 import { MANIFEST_SCHEMA, SELECTION_SCHEMA, selectSourceAudits, validateManifest } from "./select-source-audits.mjs";
 
@@ -417,6 +421,131 @@ try {
       assert.equal(existsSync(path.join(checkout, "untrusted-ran")), false, `${label}: its head-supplied command never ran`);
       assert.ok(outcome.lines.some((line) => line.includes("cannot run from the trusted manifest")), label);
     }
+  }
+
+  // Regression (primary judge, #320): an audit that moves HEAD or hides edits behind index flags, then
+  // exits 0, cannot pass. Every check compares against the snapshot taken before the audits (the
+  // commit, its tree and each tracked blob id), never against the current HEAD or index.
+  {
+    const makeRepo = (name, auditBody) => {
+      const repo = path.join(root, name);
+      const put = (file, text) => {
+        mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+        writeFileSync(path.join(repo, file), text);
+      };
+      const git = (...args) => execFileSync("git", ["-C", repo, "-c", "user.email=t@example.com", "-c", "user.name=t", ...args],
+        { stdio: ["ignore", "pipe", "ignore"] });
+      put("src/runtime.mjs", "export const minimum = 1;\n");
+      put("scripts/audit-sneak-source.test.mjs", auditBody);
+      git("init", "-q");
+      git("add", ".");
+      git("commit", "-q", "-m", "an older commit");
+      put("src/runtime.mjs", "export const minimum = 2;\n");
+      git("commit", "-q", "-am", "the reviewed head");
+      return repo;
+    };
+    const sneak = (steps) => [
+      'import { execFileSync } from "node:child_process";',
+      'import fs from "node:fs";',
+      ...steps,
+      'console.log("sneak audit verified the pinned source");',
+    ].join("\n") + "\n";
+    const edit = 'fs.writeFileSync("src/runtime.mjs", "export const minimum = 0;\\n");';
+    const cases = [
+      ["checks out another commit", ['execFileSync("git", ["checkout", "-q", "HEAD~1"]);']],
+      ["resets to another commit", ['execFileSync("git", ["reset", "-q", "--hard", "HEAD~1"]);']],
+      ["hides an edit behind assume-unchanged", [edit, 'execFileSync("git", ["update-index", "--assume-unchanged", "src/runtime.mjs"]);']],
+      ["hides an edit behind skip-worktree", [edit, 'execFileSync("git", ["update-index", "--skip-worktree", "src/runtime.mjs"]);']],
+    ];
+    for (const [label, steps] of cases) {
+      const slug = label.replace(/[^a-z]+/g, "-");
+      const repo = makeRepo(`sneak-${slug}`, sneak(steps));
+      const lines = [];
+      await assert.rejects(
+        run(["--selection", selectionFile(`sneak-${slug}`, ["sneak"])], { cwd: repo, lines }),
+        /the checkout drifted from exact head [0-9a-f]{12} after sneak \(.+\); refusing to report exact-head results/,
+        label,
+      );
+      const reported = lines.filter((line) => line.startsWith("SOURCE-AUDIT RESULT ")).map((line) => JSON.parse(line.slice(20)));
+      assert.deepEqual(reported.map((result) => [result.id, result.status, result.pass_line]), [["sneak", "tampered", null]], label);
+      assert.equal(lines.some((line) => line.startsWith("SOURCE-AUDIT SUMMARY ")), false, `${label}: no summary`);
+      assert.ok(lines.includes("| sneak audit verified the pinned source"), `${label}: the audit did claim success`);
+    }
+    // Primary judge on #321: an audit that changes the checkout, runs from the changed state and puts
+    // everything back before exiting 0 must still be rejected. Each attempt is bracketed by file
+    // identities it cannot restore (inode and ctime of every tracked file, and of git's HEAD and index).
+    const runsIt = 'const { minimum } = await import(new URL(`../src/runtime.mjs?t=${Date.now()}`, import.meta.url)); console.log("ran with minimum " + minimum);';
+    const restoring = [
+      ["edits a tracked file, runs it and restores the bytes", [
+        'const original = fs.readFileSync("src/runtime.mjs");',
+        'fs.writeFileSync("src/runtime.mjs", "export const minimum = 0;\\n");',
+        runsIt,
+        'fs.writeFileSync("src/runtime.mjs", original);',
+      ]],
+      ["checks out another commit, runs it and returns to the reviewed one", [
+        'execFileSync("git", ["checkout", "-q", "HEAD~1"]);',
+        runsIt,
+        'execFileSync("git", ["checkout", "-q", "-"]);',
+      ]],
+      ["edits through a hard link outside the checkout and restores", [
+        'import os from "node:os"; import path from "node:path";',
+        'const link = path.join(os.tmpdir(), `sneak-link-${process.pid}`);',
+        'fs.linkSync("src/runtime.mjs", link);',
+        'const original = fs.readFileSync(link);',
+        'fs.writeFileSync(link, "export const minimum = 0;\\n");',
+        runsIt,
+        'fs.writeFileSync(link, original);',
+        'fs.unlinkSync(link);',
+      ]],
+      ["sets an index flag and clears it again", [
+        'execFileSync("git", ["update-index", "--assume-unchanged", "src/runtime.mjs"]);',
+        'execFileSync("git", ["update-index", "--no-assume-unchanged", "src/runtime.mjs"]);',
+      ]],
+    ];
+    for (const [label, steps] of restoring) {
+      const slug = label.replace(/[^a-z]+/g, "-").slice(0, 40);
+      const repo = makeRepo(`back-${slug}`, sneak(steps));
+      const reviewedHead = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+      const lines = [];
+      await assert.rejects(
+        run(["--selection", selectionFile(`back-${slug}`, ["sneak"])], { cwd: repo, lines }),
+        /the checkout changed while sneak ran \(.+\); refusing to report exact-head results/,
+        label,
+      );
+      const reported = lines.filter((line) => line.startsWith("SOURCE-AUDIT RESULT ")).map((line) => JSON.parse(line.slice(20)));
+      assert.deepEqual(reported.map((result) => [result.id, result.status, result.pass_line]), [["sneak", "tampered", null]], label);
+      assert.equal(lines.some((line) => line.startsWith("SOURCE-AUDIT SUMMARY ")), false, `${label}: no summary`);
+      // Everything really was put back: only the change trail gives it away.
+      assert.equal(execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(), reviewedHead, label);
+      assert.equal(execFileSync("git", ["-C", repo, "status", "--porcelain"], { encoding: "utf8" }), "", label);
+    }
+
+    // A clean checkout has no drift, and the snapshot comes from the commit, not the index.
+    const clean = makeRepo("sneak-clean", sneak([]));
+    const snapshot = snapshotCommit(clean);
+    assert.deepEqual(exactHeadDrift(clean, snapshot), []);
+    assert.deepEqual(snapshot.entries.map((entry) => entry.file).sort(), ["scripts/audit-sneak-source.test.mjs", "src/runtime.mjs"]);
+    // Each check stands on its own: a different recorded commit, a different recorded blob, a flag.
+    assert.match(exactHeadDrift(clean, { ...snapshot, commit: "0".repeat(40) }).join("; "), /^HEAD moved to [0-9a-f]{12} from 000000000000$/);
+    const otherBlob = snapshot.entries.map((entry) => (entry.file === "src/runtime.mjs" ? { ...entry, id: "1".repeat(40) } : entry));
+    assert.deepEqual(exactHeadDrift(clean, { ...snapshot, entries: otherBlob }), ["src/runtime.mjs content changed"]);
+    execFileSync("git", ["-C", clean, "update-index", "--assume-unchanged", "src/runtime.mjs"]);
+    assert.match(exactHeadDrift(clean, snapshot).join("; "), /not plainly tracked/, "a flag alone is drift");
+    execFileSync("git", ["-C", clean, "update-index", "--no-assume-unchanged", "src/runtime.mjs"]);
+    // Fingerprints are stable for an untouched checkout and change on any write, even an identical one.
+    const printA = checkoutFingerprint(clean, snapshot);
+    assert.deepEqual(fingerprintChanges(printA, checkoutFingerprint(clean, snapshot)), []);
+    writeFileSync(path.join(clean, "src/runtime.mjs"), readFileSync(path.join(clean, "src/runtime.mjs")));
+    assert.deepEqual(fingerprintChanges(printA, checkoutFingerprint(clean, snapshot)), ["src/runtime.mjs"]);
+    // From the CLI, the job step fails.
+    const cliRepo = makeRepo("sneak-cli", sneak(['execFileSync("git", ["checkout", "-q", "HEAD~1"]);']));
+    const cli = spawnSync(process.execPath,
+      [RUNNER, "--manifest", manifestFile, "--cwd", cliRepo, "--selection", selectionFile("sneak-cli", ["sneak"])],
+      { encoding: "utf8", env: { PATH: process.env.PATH } });
+    assert.equal(cli.status, 1, cli.stdout + cli.stderr);
+    assert.match(cli.stdout, /^SOURCE-AUDIT RESULT \{"id":"sneak","test":"scripts\/audit-sneak-source\.test\.mjs","status":"tampered"/m);
+    assert.match(cli.stdout, /^SOURCE-AUDIT ERROR the checkout drifted from exact head /m);
+    assert.doesNotMatch(cli.stdout, /^SOURCE-AUDIT SUMMARY /m);
   }
 
   // An unreadable selection runs every audit rather than none.
