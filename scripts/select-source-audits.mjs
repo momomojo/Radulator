@@ -29,9 +29,11 @@
 //       (manifest registry_ids, or the record's calculator file is in the audit's coverage); a
 //       top-level registry change or a parse failure selects every registry-dependent audit
 //   any error                                                 -> every audit
-// In every mode, a pull request also requires each declared network audit missing at head, each
-// network audit declared only in its own manifest, and each discovered audit its merge base has and
-// its head lacks (removedAudits); the base-loaded runner fails all three.
+// In every mode, a pull request (to develop or main) also requires each declared network audit
+// missing at head, each network audit declared only in its own manifest, and each discovered audit
+// its merge base has and its head lacks (removedAudits); the base-loaded runner fails all three. An
+// audit the trusted manifest declares offline and the pull request's manifest enables runs as a
+// network audit with the trusted command (headDeclarations).
 // AUDIT_MODE=all (repository variable RADULATOR_SOURCE_AUDIT_MODE) is an owner override that can
 // only widen the selection.
 import { execFileSync } from "node:child_process";
@@ -199,6 +201,31 @@ export function removedAudits(manifest, baseTree, headTree) {
     .map((audit) => ({ id: audit.id, test: audit.test, why: REMOVED_WHY }));
 }
 
+export const UNTRUSTED_WHY = "declared only in the head manifest; not trusted until it is on the base";
+export const ENABLED_MISSING_WHY = "enabled by the head manifest but missing at head";
+
+// What a pull request's own manifest asks for beyond the trusted one. It is read as data for every
+// pull request (to develop or to main, with or without the owner override) and can only widen:
+//   untrusted  a network audit at a path neither the trusted manifest nor the discovery glob covers.
+//              Its path and command come from the pull request, so it never runs; it is required,
+//              and the runner fails it until the declaration is on the base branch.
+//   enabled    a network audit the trusted manifest declares with "network": false. It runs as a
+//              network audit with the trusted declaration's command (or fails as missing if its
+//              test is not at head).
+//   headTree: { exists, list } for the head (see resolveAudits)
+export function headDeclarations(manifest, headManifest, headTree) {
+  const trusted = new Map(resolveAudits(manifest, headTree).map((audit) => [audit.test, audit]));
+  const untrusted = [];
+  const enabled = [];
+  for (const entry of headManifest?.audits ?? []) {
+    if (!entry.network) continue;
+    const audit = trusted.get(entry.test);
+    if (!audit) untrusted.push({ id: entry.id, test: entry.test, why: UNTRUSTED_WHY });
+    else if (!audit.network) enabled.push({ ...audit, network: true, enabled: true });
+  }
+  return { untrusted: untrusted.sort(byId), enabled: enabled.sort(byId) };
+}
+
 // A resolveAudits() tree over a set of repo paths (a commit's `git ls-tree -r --name-only`).
 export function pathTree(paths) {
   return {
@@ -360,20 +387,17 @@ export function selectSourceAudits({
   readHead,
   readBase,
 }) {
-  const audits = resolveAudits(manifest, tree);
+  // The head manifest can declare untrusted audits (required, never run) and enable trusted offline
+  // ones (run with the trusted command); see headDeclarations.
+  const { untrusted, enabled } = headDeclarations(manifest, headManifest, tree);
+  const enabledTests = new Set(enabled.map((audit) => audit.test));
+  const audits = resolveAudits(manifest, tree)
+    .map((audit) => (enabledTests.has(audit.test) ? enabled.find((entry) => entry.test === audit.test) : audit));
   const runnable = audits.filter((audit) => audit.network && audit.present);
   const missing = audits.filter((audit) => audit.network && !audit.present)
-    .map((audit) => ({ id: audit.id, test: audit.test, why: "declared test is missing at head" }));
+    .map((audit) => ({ id: audit.id, test: audit.test,
+      why: audit.enabled ? ENABLED_MISSING_WHY : "declared test is missing at head" }));
   const offline = audits.filter((audit) => !audit.network).map((audit) => audit.id);
-  // A network audit declared only in the head manifest, at a path neither the base manifest nor the
-  // discovery glob covers, is untrusted: its path and command come from the pull request. It is
-  // required all the same, and the runner (loaded from the base) cannot resolve it, so the lane
-  // fails until the declaration is on the base branch. Its head-supplied command never runs.
-  const known = new Set(audits.map((audit) => audit.test));
-  const untrusted = (headManifest?.audits ?? [])
-    .filter((entry) => entry.network && !known.has(entry.test))
-    .map((entry) => ({ id: entry.id, test: entry.test, why: "declared only in the head manifest; not trusted until it is on the base" }))
-    .sort(byId);
   const removed = baseTree ? removedAudits(manifest, baseTree, tree) : [];
   const changed = new Set((changes ?? []).flatMap((change) => [change.path, change.oldPath]).filter(Boolean));
   // A declared network audit missing at head is always selected, so the runner fails it: a pull
@@ -387,6 +411,7 @@ export function selectSourceAudits({
       missing.length ? `declared audit(s) missing at head: ${missing.map((entry) => entry.id).join(", ")}` : null,
       untrusted.length ? `audit(s) declared only in the head manifest: ${untrusted.map((entry) => entry.id).join(", ")}` : null,
       removed.length ? `discovered audit(s) removed since the merge base: ${removed.map((entry) => entry.id).join(", ")}` : null,
+      enabled.length ? `audit(s) enabled by the head manifest: ${enabled.map((entry) => entry.id).join(", ")}` : null,
     ].filter(Boolean);
     return {
     mode: required.length === 0 ? "none" : selected.length === 0 ? "selected" : mode,
@@ -569,13 +594,13 @@ export function runCli({ argv, env, cwd = process.cwd(), selfPath = fileURLToPat
     manifestBytes = readFileSync(args.manifest);
     const manifest = validateManifest(JSON.parse(manifestBytes.toString("utf8")));
     // Every pull request, including one to main or under the owner override, is read against its
-    // merge base, whose tree names the discovered audits the pull request removed. Only a PR to
-    // develop without the override selects from the diff and reads its own manifest (R3 to R6).
+    // merge base, whose tree names the discovered audits the pull request removed, and its own
+    // manifest is read as data, which can only add required audits (headDeclarations). Only a PR to
+    // develop without the override selects from the diff (R3 to R6).
     const context = eventName === "pull_request" ? gitContext(env.BASE_SHA, env.HEAD_SHA) : null;
-    const needsDiff = context !== null && baseRef !== "main" && env.AUDIT_MODE !== "all";
     mergeBase = context?.mergeBase ?? null;
     let headManifest = null;
-    if (needsDiff) {
+    if (context) {
       try {
         const text = context.readHead(MANIFEST_PATH);
         headManifest = text === null ? null : validateManifest(JSON.parse(text));

@@ -617,6 +617,71 @@ try {
     assert.match(cli.stdout, /^SOURCE-AUDIT RESULT \{"id":"doomed","test":"scripts\/audit-doomed-source\.test\.mjs","status":"missing"/m);
   }
 
+  // Regression (verification judge, #324): given BASE_SHA, the runner reads the pull request's own
+  // manifest from the checked-out commit, in every mode. A network audit it declares at a path the
+  // trusted manifest does not know fails and its command never runs; an audit the trusted manifest
+  // declares offline and the pull request enables runs with the trusted command; a manifest there
+  // that cannot be parsed fails the run. Without BASE_SHA (the nightly) it is not read.
+  {
+    const repo = path.join(root, "declared-repo");
+    const put = (file, text) => {
+      mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+      writeFileSync(path.join(repo, file), text);
+    };
+    const git = (...args) => execFileSync("git", ["-C", repo, "-c", "user.email=t@example.com", "-c", "user.name=t", ...args],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const trusted = { ...JSON.parse(readFileSync(manifestFile, "utf8")),
+      audits: [{ id: "pins", test: "ops/pins-audit.test.mjs", network: false }] };
+    const trustedManifest = path.join(root, "declared-trusted-manifest.json");
+    writeFileSync(trustedManifest, JSON.stringify(trusted));
+    const headManifest = (audits) => put("scripts/source-audit-manifest.json", JSON.stringify({ ...trusted, audits }));
+    put("scripts/audit-keep-source.test.mjs", 'console.log("keep audit verified the pinned source");\n');
+    put("ops/pins-audit.test.mjs", 'console.log("pins audit verified the pinned source");\n');
+    put("ops/sneaky.test.mjs", 'import fs from "node:fs";\nfs.writeFileSync("sneaky-ran", "1");\nconsole.log("sneaky audit verified the pinned source");\n');
+    headManifest(trusted.audits);
+    git("init", "-q");
+    git("add", ".");
+    git("commit", "-q", "-m", "base");
+    const baseSha = git("rev-parse", "HEAD");
+    const runAt = (argv, env = { BASE_SHA: baseSha }) => run([...argv, "--manifest", trustedManifest], { cwd: repo, env });
+
+    // The pull request enables pins: it runs with the trusted command (not the head's) and passes.
+    headManifest([{ id: "pins", test: "ops/pins-audit.test.mjs", network: true, command: ["node", "--eval", "process.exit(0)"] }]);
+    git("commit", "-q", "-am", "enable pins");
+    const enabled = await runAt(["--selection", selectionFile("declared-all", [], "all")]);
+    assert.equal(enabled.ok, true, enabled.log);
+    const pins = enabled.resultLines.find((result) => result.id === "pins");
+    assert.equal(pins?.status, "pass");
+    assert.equal(pins.command, "node ops/pins-audit.test.mjs", "the trusted command, not the head's");
+    const nightly = await runAt(["--selection", selectionFile("declared-all-nobase", [], "all")], {});
+    assert.equal(nightly.resultLines.some((result) => result.id === "pins"), false, "without BASE_SHA the head manifest is not read");
+
+    // The pull request declares a custom-path network audit: it fails in every mode and never runs.
+    headManifest([...trusted.audits, { id: "sneaky", test: "ops/sneaky.test.mjs", command: ["node", "ops/sneaky.test.mjs"] }]);
+    git("commit", "-q", "-am", "declare a custom audit");
+    const bogus = path.join(root, "declared-bogus.selection.json");
+    writeFileSync(bogus, "{ nope");
+    for (const [label, argv] of [
+      ["all-mode", ["--selection", selectionFile("declared-all-2", [], "all")]],
+      ["a selection that omits it", ["--selection", selectionFile("declared-keep", ["keep"])]],
+      ["an unreadable selection", ["--selection", bogus]],
+      ["an empty selection", ["--selection", selectionFile("declared-none", [], "none")]],
+    ]) {
+      const outcome = await runAt(argv);
+      assert.equal(outcome.ok, false, label);
+      assert.notEqual(outcome.results.mode, "none", label);
+      const sneaky = outcome.resultLines.find((result) => result.test === "ops/sneaky.test.mjs");
+      assert.equal(sneaky?.status, "missing", label);
+      assert.ok(outcome.lines.some((line) => line.startsWith("::error title=Untrusted source audit::ops/sneaky.test.mjs")), label);
+      assert.equal(existsSync(path.join(repo, "sneaky-ran")), false, `${label}: its command never ran`);
+    }
+
+    // A manifest in the pull request that cannot be parsed fails the run.
+    put("scripts/source-audit-manifest.json", "{ not json");
+    git("commit", "-q", "-am", "break the manifest");
+    await assert.rejects(runAt(["--all"]), /cannot be read as a manifest/);
+  }
+
   // An unreadable selection runs every audit rather than none.
   {
     const bogus = path.join(root, "bogus.selection.json");
