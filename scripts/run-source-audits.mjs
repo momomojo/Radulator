@@ -443,6 +443,37 @@ export function assertExactHead(cwd, snapshot, when) {
   }
 }
 
+// A file identity an audit cannot put back: device, inode and change time. The kernel sets ctime on
+// every write, truncate, rename, link, chmod or utimes, through any path, and user code cannot set it.
+function fileIdentity(file) {
+  try {
+    const stat = lstatSync(file, { bigint: true });
+    return `${stat.dev}:${stat.ino}:${stat.ctimeNs}`;
+  } catch {
+    return "missing";
+  }
+}
+
+// git's own HEAD and index files for this checkout (a linked worktree keeps them outside it).
+function gitStateFiles(cwd) {
+  return ["HEAD", "index"].map((name) => path.resolve(cwd, git(cwd, ["rev-parse", "--git-path", name]).trim()));
+}
+
+// Identities of every tracked file in the snapshot, plus any extra files (git's HEAD and index).
+export function checkoutFingerprint(cwd, snapshot, extraFiles = []) {
+  const ids = new Map();
+  for (const entry of snapshot.entries) {
+    if (entry.type === "blob") ids.set(entry.file, fileIdentity(path.join(cwd, entry.file)));
+  }
+  for (const file of extraFiles) ids.set(`git:${path.basename(file)}`, fileIdentity(file));
+  return ids;
+}
+
+// Keys whose identity differs between two fingerprints.
+export function fingerprintChanges(before, after) {
+  return [...before.keys()].filter((key) => before.get(key) !== after.get(key));
+}
+
 function headOf(cwd) {
   try {
     return execFileSync("git", ["-C", cwd, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -481,6 +512,11 @@ export async function runSourceAudits({
     throw new Error("HEAD moved while the run started; refusing to report exact-head results");
   }
   if (actualHead) assertExactHead(cwd, snapshot, "before the audits");
+  // An audit could change the checkout, run from the changed state and put everything back before it
+  // exits. Post-run checks cannot see that, so every attempt is bracketed by identities it cannot
+  // restore, and the whole run by the tracked files' identities at this point.
+  const gitFiles = actualHead ? gitStateFiles(cwd) : [];
+  const runPrint = actualHead ? checkoutFingerprint(cwd, snapshot) : null;
   const audits = resolveAudits(manifest, workingTree(cwd));
   const plan = planRun(options, audits, print);
 
@@ -518,6 +554,7 @@ export async function runSourceAudits({
       const command = audit.command[0] === "node" ? [process.execPath, ...audit.command.slice(1)] : audit.command;
       const attemptLog = [];
       let final = null;
+      let transient = [];
       const auditStarted = Date.now();
       for (let attempt = 1; attempt <= options.attempts; attempt += 1) {
         const waitSeconds = backoffBefore(attempt, options.backoffSeconds);
@@ -541,10 +578,16 @@ export async function runSourceAudits({
           RADULATOR_SOURCE_AUDIT_ATTEMPT: String(attempt),
         };
         for (const name of WORKFLOW_FILE_VARIABLES) delete childEnv[name];
+        const before = actualHead ? checkoutFingerprint(cwd, snapshot, gitFiles) : null;
         const run = await runAttempt({ command, cwd, env: childEnv, timeoutMs });
+        // Taken before the runner runs any git command itself (git status can rewrite the index).
+        const touched = actualHead ? fingerprintChanges(before, checkoutFingerprint(cwd, snapshot, gitFiles)) : [];
+        if (touched.length > 0) transient = touched;
         // The attempt is judged on the checkout it leaves behind: one that rewrote tracked files, moved
         // HEAD or hid edits behind index flags never passes, whatever its exit code.
-        const changed = actualHead ? [...changesInCheckout(cwd), ...exactHeadDrift(cwd, snapshot)] : [];
+        const changed = actualHead
+          ? [...touched.map((key) => `${key} changed while the audit ran`), ...changesInCheckout(cwd), ...exactHeadDrift(cwd, snapshot)]
+          : [];
         const combined = `${run.stdout}\n${run.stderr}`;
         const leaks = findLeaks(combined, key);
         const fetchLog = readFetchLog(fetchLogFile);
@@ -608,13 +651,24 @@ export async function runSourceAudits({
       results.push({ ...result, attempt_log: attemptLog, duration_ms: Date.now() - auditStarted });
       print(`SOURCE-AUDIT RESULT ${JSON.stringify(result)}`);
       // Stop the run here: no further audit, summary or results file for a tree that is not the head.
+      // A change still present is named by assertExactHead; one put back before exit, by its ctime trail.
       if (actualHead) assertExactHead(cwd, snapshot, `after ${audit.id}`);
+      if (transient.length > 0) {
+        const shown = transient.slice(0, 5).join(", ") + (transient.length > 5 ? ", …" : "");
+        throw new Error(`the checkout changed while ${audit.id} ran (${shown}); refusing to report exact-head results`);
+      }
     }
   } finally {
     if (!tempRoot) rmSync(scratch, { recursive: true, force: true });
   }
   // Once more before anything is reported, in case a process the audits started outlived them.
-  if (actualHead) assertExactHead(cwd, snapshot, "before reporting results");
+  if (actualHead) {
+    assertExactHead(cwd, snapshot, "before reporting results");
+    const late = fingerprintChanges(runPrint, checkoutFingerprint(cwd, snapshot));
+    if (late.length > 0) {
+      throw new Error(`tracked files changed during the run (${late.slice(0, 5).join(", ")}); refusing to report exact-head results`);
+    }
+  }
 
   const counted = results.filter((result) => !result.informational);
   const passed = counted.filter((result) => result.status === "pass").map((result) => result.id);
