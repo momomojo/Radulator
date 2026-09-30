@@ -18,7 +18,11 @@
 //     --audit-timeout-seconds <s>    per attempt, default 600
 //     --budget-seconds <s>           for the whole run, default 3000
 //   env: NCBI_API_KEY (optional; passed to the audits), HEAD_SHA (optional; must match the checkout),
-//        GITHUB_STEP_SUMMARY (optional), RUNNER_TEMP (optional)
+//        BASE_SHA (the pull request's base; optional), GITHUB_STEP_SUMMARY (optional), RUNNER_TEMP (optional)
+//
+// With BASE_SHA, a discovered audit that the merge base has and the checked-out commit does not
+// (the pull request deleted or renamed it away) fails the run in every mode, whatever the selection
+// says, so the all-audits fallback cannot pass without it either.
 //
 // Each audit gets RADULATOR_SOURCE_CACHE_DIR (a cache shared by this run only),
 // RADULATOR_SOURCE_FETCH_LOG (JSONL, one record per request) and RADULATOR_NCBI_RATE_FILE (request
@@ -50,7 +54,16 @@ import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
-import { SELECTION_SCHEMA, resolveAudits, sha256, validateManifest, workingTree } from "./select-source-audits.mjs";
+import {
+  REMOVED_WHY,
+  SELECTION_SCHEMA,
+  pathTree,
+  removedAudits,
+  resolveAudits,
+  sha256,
+  validateManifest,
+  workingTree,
+} from "./select-source-audits.mjs";
 
 export const RESULTS_SCHEMA = "radulator-source-audit-results/v1";
 const REDACTED = "[REDACTED]";
@@ -279,8 +292,30 @@ export function parseArgs(argv, selfDir) {
   return options;
 }
 
-// Which audits to run. A selection that cannot be read runs every audit (fail safe).
-function planRun(options, audits, log) {
+// Discovered audits the pull request removed: in the merge base of BASE_SHA and the snapshot commit,
+// not in the snapshot commit. Both trees come from git objects. Any git failure throws, so the run
+// fails closed rather than skip the check.
+export function removedSinceBase(cwd, snapshot, baseSha, manifest) {
+  if (!snapshot) throw new Error(`BASE_SHA is set but ${cwd} is not a git checkout`);
+  if (!/^[0-9a-f]{40}$/.test(baseSha)) throw new Error("BASE_SHA must be a full commit SHA");
+  const mergeBase = git(cwd, ["merge-base", baseSha, snapshot.commit]).trim();
+  const basePaths = new Set(git(cwd, ["ls-tree", "-r", "-z", "--name-only", mergeBase]).split("\0").filter(Boolean));
+  const headPaths = new Set(snapshot.entries.map((entry) => entry.file));
+  return removedAudits(manifest, pathTree(basePaths), pathTree(headPaths));
+}
+
+// Which audits to run. A selection that cannot be read runs every audit (fail safe). Removed audits
+// (removedSinceBase) are unrunnable in every mode.
+function planRun(options, audits, log, removed = []) {
+  const plan = selectPlan(options, audits, log);
+  if (removed.length === 0) return plan;
+  const removedTests = new Set(removed.map((entry) => entry.test));
+  const listed = plan.unrunnable.map((entry) => (removedTests.has(entry.test) ? { ...entry, why: REMOVED_WHY } : entry));
+  const extra = removed.filter((entry) => !plan.unrunnable.some((known) => known.test === entry.test));
+  return { ...plan, mode: plan.mode === "none" ? "selected" : plan.mode, unrunnable: [...listed, ...extra] };
+}
+
+function selectPlan(options, audits, log) {
   const runnable = audits.filter((audit) => audit.network && audit.present);
   const missing = audits.filter((audit) => audit.network && !audit.present);
   // A declared network audit missing from the checkout fails the run: a pull request must not
@@ -518,7 +553,8 @@ export async function runSourceAudits({
   const gitFiles = actualHead ? gitStateFiles(cwd) : [];
   const runPrint = actualHead ? checkoutFingerprint(cwd, snapshot) : null;
   const audits = resolveAudits(manifest, workingTree(cwd));
-  const plan = planRun(options, audits, print);
+  const removed = env.BASE_SHA ? removedSinceBase(cwd, snapshot, env.BASE_SHA, manifest) : [];
+  const plan = planRun(options, audits, print, removed);
 
   // Per-run scratch space. RUNNER_TEMP is per job on GitHub, so the nightly's main and develop
   // runs share one cache; locally everything is removed at the end.
@@ -537,7 +573,9 @@ export async function runSourceAudits({
     const result = { id: entry.id, test: entry.test, status: "missing", attempts: 0, head_sha: headSha,
       command: null, stdout_sha256: null, pass_line: null, failure_class: null, ncbi: null };
     results.push({ ...result, attempt_log: [], duration_ms: 0 });
-    print(`::error title=Selected source audit missing::${entry.test} cannot run from the trusted manifest (missing at head, or declared only in the head manifest)`);
+    print(entry.why === REMOVED_WHY
+      ? `::error title=Source audit removed::${entry.test} is a discovered audit at the merge base and is gone at head; declare it with "network": false on the base branch before deleting it`
+      : `::error title=Selected source audit missing::${entry.test} cannot run from the trusted manifest (missing at head, or declared only in the head manifest)`);
     print(`SOURCE-AUDIT RESULT ${JSON.stringify(result)}`);
   }
   for (const audit of plan.missing) {

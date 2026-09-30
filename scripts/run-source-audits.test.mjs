@@ -548,6 +548,75 @@ try {
     assert.doesNotMatch(cli.stdout, /^SOURCE-AUDIT SUMMARY /m);
   }
 
+  // Regression (primary judge, #322): given the pull request's base (BASE_SHA), the runner fails a
+  // discovered audit the pull request deleted, in every mode and whatever the selection says: one
+  // that omits it (an older selector), one that lists it, the all-audits fallback, an unreadable
+  // selection and an empty one. Retiring it through a trusted "network": false entry passes.
+  {
+    const repo = path.join(root, "removed-repo");
+    const put = (file, text) => {
+      mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+      writeFileSync(path.join(repo, file), text);
+    };
+    const git = (...args) => execFileSync("git", ["-C", repo, "-c", "user.email=t@example.com", "-c", "user.name=t", ...args],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    put("scripts/audit-keep-source.test.mjs", 'console.log("keep audit verified the pinned source");\n');
+    put("scripts/audit-doomed-source.test.mjs", 'console.log("doomed audit verified the pinned source");\n');
+    git("init", "-q");
+    git("add", ".");
+    git("commit", "-q", "-m", "base");
+    const baseSha = git("rev-parse", "HEAD");
+    git("rm", "-q", "scripts/audit-doomed-source.test.mjs");
+    git("commit", "-q", "-m", "delete a discovered audit");
+    const manifestSource = JSON.parse(readFileSync(manifestFile, "utf8"));
+    const bareManifest = path.join(root, "removed-manifest.json");
+    writeFileSync(bareManifest, JSON.stringify({ ...manifestSource, audits: [] }));
+    const DOOMED = "scripts/audit-doomed-source.test.mjs";
+    const runAgainst = (argv, { env = { BASE_SHA: baseSha }, manifest = bareManifest } = {}) =>
+      run([...argv, "--manifest", manifest], { cwd: repo, env });
+    const listed = selectionFile("removed-listed", []);
+    writeFileSync(listed, JSON.stringify({ schema: SELECTION_SCHEMA, mode: "selected", rules_sha256: "f".repeat(64),
+      audits: [{ id: "doomed", test: DOOMED, why: "discovered audit removed since the merge base" }] }));
+    const bogus = path.join(root, "removed-bogus.selection.json");
+    writeFileSync(bogus, "{ nope");
+    for (const [label, argv] of [
+      ["a selection that omits it", ["--selection", selectionFile("removed-keep", ["keep"])]],
+      ["a selection that lists it", ["--selection", listed]],
+      ["all-mode", ["--selection", selectionFile("removed-all", [], "all")]],
+      ["an unreadable selection", ["--selection", bogus]],
+      ["an empty selection", ["--selection", selectionFile("removed-none", [], "none")]],
+    ]) {
+      const outcome = await runAgainst(argv);
+      assert.equal(outcome.ok, false, label);
+      assert.notEqual(outcome.results.mode, "none", `${label}: a run with a failure is never reported as mode none`);
+      const doomed = outcome.resultLines.find((result) => result.test === DOOMED);
+      assert.equal(doomed?.status, "missing", label);
+      assert.ok(outcome.results.summary.failed_ids.includes(doomed.id), label);
+      assert.ok(outcome.lines.some((line) => line.startsWith(`::error title=Source audit removed::${DOOMED} is a discovered audit`)), label);
+      assert.equal(outcome.resultLines.filter((result) => result.test === DOOMED).length, 1, `${label}: reported once`);
+    }
+    // The audits that are still there run as usual.
+    const omitted = await runAgainst(["--selection", selectionFile("removed-keep-2", ["keep"])]);
+    assert.equal(omitted.resultLines.find((result) => result.id === "keep").status, "pass");
+    // Without BASE_SHA (the nightly, local runs) there is nothing to compare, and it passes.
+    assert.equal((await runAgainst(["--selection", selectionFile("removed-nobase", ["keep"])], { env: {} })).ok, true);
+    // Retiring it: a trusted "network": false entry makes the deletion legitimate.
+    const retiredManifest = path.join(root, "retired-manifest.json");
+    writeFileSync(retiredManifest, JSON.stringify({ ...manifestSource, audits: [{ id: "doomed", test: DOOMED, network: false }] }));
+    assert.equal((await runAgainst(["--selection", selectionFile("removed-retired", ["keep"])], { manifest: retiredManifest })).ok, true);
+    // A BASE_SHA that cannot be resolved fails the run instead of skipping the check.
+    await assert.rejects(runAgainst(["--all"], { env: { BASE_SHA: "0".repeat(40) } }), /Command failed: git/);
+    await assert.rejects(runAgainst(["--all"], { env: { BASE_SHA: "not-a-sha" } }), /BASE_SHA must be a full commit SHA/);
+    await assert.rejects(run(["--all"], { env: { BASE_SHA: baseSha }, cwd: path.join(root, "not-a-repo") }),
+      /BASE_SHA is set but .* is not a git checkout/);
+    // From the CLI, the job step fails.
+    const cli = spawnSync(process.execPath,
+      [RUNNER, "--manifest", bareManifest, "--cwd", repo, "--selection", selectionFile("removed-cli", ["keep"])],
+      { encoding: "utf8", env: { PATH: process.env.PATH, BASE_SHA: baseSha } });
+    assert.equal(cli.status, 1, cli.stdout + cli.stderr);
+    assert.match(cli.stdout, /^SOURCE-AUDIT RESULT \{"id":"doomed","test":"scripts\/audit-doomed-source\.test\.mjs","status":"missing"/m);
+  }
+
   // An unreadable selection runs every audit rather than none.
   {
     const bogus = path.join(root, "bogus.selection.json");

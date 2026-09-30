@@ -10,12 +10,14 @@ import { fileURLToPath } from "node:url";
 
 import {
   MANIFEST_SCHEMA,
+  REMOVED_WHY,
   SELECTION_SCHEMA,
   auditCoverage,
   calculatorIdFromSource,
   extractReferences,
   parseNameStatus,
   registryChanges,
+  removedAudits,
   resolveAudits,
   selectSourceAudits,
   validateManifest,
@@ -120,8 +122,9 @@ function repo(files) {
   };
 }
 
+// The merge base has the same audit files as HEAD_FILES unless a test says otherwise.
 function select({ changes, eventName = "pull_request", baseRef = "develop", auditMode = "", headFiles = HEAD_FILES,
-  baseRegistry = registry(BASE_RECORDS), headManifest = null, manifest = MANIFEST }) {
+  baseFiles = HEAD_FILES, baseRegistry = registry(BASE_RECORDS), headManifest = null, manifest = MANIFEST }) {
   const head = repo(headFiles);
   return selectSourceAudits({
     eventName,
@@ -131,6 +134,7 @@ function select({ changes, eventName = "pull_request", baseRef = "develop", audi
     headManifest,
     changes: changes.map((change) => (typeof change === "string" ? { status: "M", path: change, oldPath: null } : change)),
     tree: head.tree,
+    baseTree: baseFiles === null ? null : repo(baseFiles).tree,
     readHead: head.readHead,
     readBase: (file) => (file === REGISTRY ? baseRegistry : null),
   });
@@ -362,6 +366,58 @@ assert.deepEqual(
   assert.deepEqual(ids(deletion), ["cac"]);
 }
 
+// Regression (primary judge, #322): a discovered audit (no manifest entry) that a pull request
+// deletes or renames away is named by neither the manifest nor the head tree, only by the merge
+// base. It is required like a declared audit missing at head, in every mode, so the runner fails it.
+{
+  const LIRADS = "scripts/audit-lirads-lrm-source.test.mjs";
+  const { [LIRADS]: _deleted, ...headFiles } = HEAD_FILES;
+  const removed = { id: "lirads-lrm", test: LIRADS, why: REMOVED_WHY };
+  const removedOf = (selection) => selection.audits.filter((entry) => entry.why === REMOVED_WHY);
+
+  // Its only change is the deletion: selected, never "none" and never skipped.
+  const deletion = select({ headFiles, changes: [{ status: "D", path: LIRADS, oldPath: null }] });
+  assert.equal(deletion.mode, "selected");
+  assert.deepEqual(deletion.audits, [removed]);
+  assert.equal(deletion.skipped.some((entry) => entry.test === LIRADS), false);
+  assert.match(deletion.reason, /discovered audit\(s\) removed since the merge base: lirads-lrm/);
+  // Alongside a change that selects another audit, and with nothing else selected at all.
+  assert.deepEqual(ids(select({ headFiles, changes: ["src/components/calculators/BIRADS.jsx", { status: "D", path: LIRADS }] })),
+    ["birads", "lirads-lrm"]);
+  assert.deepEqual(removedOf(select({ headFiles, changes: ["README.md"] })), [removed], "whatever the diff says");
+  // Renamed away: the new name runs as a new audit and the old one is still required.
+  const renamedFiles = { ...headFiles, "scripts/audit-lirads-renamed-source.test.mjs": HEAD_FILES[LIRADS] };
+  const rename = select({ headFiles: renamedFiles,
+    changes: [{ status: "R", path: "scripts/audit-lirads-renamed-source.test.mjs", oldPath: LIRADS }] });
+  assert.deepEqual(ids(rename), ["lirads-renamed", "lirads-lrm"]);
+  assert.deepEqual(removedOf(rename), [removed]);
+  // Every mode: R1 (a PR to main), R2 (the toolchain changed), the owner override, and R0.
+  for (const options of [{ baseRef: "main" }, { changes: ["package.json"] }, { auditMode: "all" }, { eventName: "push" }]) {
+    const selection = select({ headFiles, changes: ["README.md"], ...options });
+    assert.equal(selection.mode, "all", JSON.stringify(options));
+    assert.deepEqual(removedOf(selection), [removed], JSON.stringify(options));
+    assert.deepEqual(ids(selection), [...NETWORK_AUDITS.filter((id) => id !== "lirads-lrm"), "lirads-lrm"]);
+  }
+  // Nothing to compare without a merge base (the runner has no BASE_SHA then either).
+  assert.deepEqual(removedOf(select({ headFiles, baseFiles: null, changes: ["README.md"] })), []);
+  // An audit the pull request adds is new, not removed; one the base never had is not required.
+  assert.deepEqual(removedOf(select({ baseFiles: headFiles, changes: [{ status: "A", path: LIRADS }] })), []);
+  // Retiring one: once the trusted manifest declares it offline, deleting it is not a removal, and a
+  // declared audit missing at head is reported once, as declared-missing.
+  const retired = validateManifest({ ...structuredClone(MANIFEST_SOURCE),
+    audits: [...MANIFEST_SOURCE.audits, { id: "lirads-lrm", test: LIRADS, network: false }] });
+  const retirement = select({ manifest: retired, headFiles, changes: [{ status: "D", path: LIRADS }] });
+  assert.equal(retirement.mode, "none");
+  assert.deepEqual(retirement.audits, []);
+  const declared = validateManifest({ ...structuredClone(MANIFEST_SOURCE),
+    audits: [...MANIFEST_SOURCE.audits, { id: "lirads-lrm", test: LIRADS }] });
+  assert.deepEqual(select({ manifest: declared, headFiles, changes: [{ status: "D", path: LIRADS }] }).audits,
+    [{ id: "lirads-lrm", test: LIRADS, why: "declared test is missing at head" }]);
+  // The helper on its own.
+  assert.deepEqual(removedAudits(MANIFEST, repo(HEAD_FILES).tree, repo(headFiles).tree), [removed]);
+  assert.deepEqual(removedAudits(MANIFEST, repo(HEAD_FILES).tree, repo(HEAD_FILES).tree), []);
+}
+
 // NCBI flag: set when a selected audit declares an NCBI host or declares no hosts.
 assert.equal(select({ changes: ["src/components/calculators/BIRADS.jsx"] }).ncbi, false);
 assert.equal(select({ changes: ["src/components/calculators/ALBIScore.jsx"] }).ncbi, true);
@@ -525,6 +581,22 @@ for (const [change, pattern] of [
     assert.equal(JSON.parse(readFileSync(path.join(root, "selection-4.json"), "utf8")).mode, "all");
     const usage = spawnSync(process.execPath, [path.join(here, "select-source-audits.mjs"), "--manifest"], { encoding: "utf8" });
     assert.notEqual(usage.status, 0, "bad arguments fail, so the workflow falls back to every audit");
+
+    // Regression (primary judge, #322), end to end: a commit that deletes a discovered audit, in a
+    // pull request to develop and in one to main.
+    git("rm", "-q", "scripts/audit-lirads-lrm-source.test.mjs");
+    git("commit", "-q", "-m", "delete a discovered audit");
+    const deletedSha = git("rev-parse", "HEAD");
+    for (const [baseRef, mode] of [["develop", "selected"], ["main", "all"]]) {
+      const output = path.join(root, `selection-removed-${baseRef}.json`);
+      const removedRun = run({ BASE_REF: baseRef, HEAD_SHA: deletedSha }, output);
+      assert.equal(removedRun.status, 0, removedRun.stderr);
+      const removedSelection = JSON.parse(readFileSync(output, "utf8"));
+      assert.equal(removedSelection.mode, mode, baseRef);
+      assert.deepEqual(removedSelection.audits.filter((entry) => entry.why === REMOVED_WHY),
+        [{ id: "lirads-lrm", test: "scripts/audit-lirads-lrm-source.test.mjs", why: REMOVED_WHY }], baseRef);
+      assert.equal(removedSelection.merge_base, baseSha, baseRef);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
