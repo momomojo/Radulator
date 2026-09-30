@@ -255,7 +255,7 @@ const EXPECTED_LITERAL_SOURCE_VERIFICATION = {
   claim_count: 12,
   locator_assertion_count: 27,
   required_snippet_count: 37,
-  trusted_exact_head_check: "Smoke Tests",
+  trusted_exact_head_check: "Clinical Source Audits (exact head)",
 };
 
 export const EXPECTED_TABLES = Object.freeze({

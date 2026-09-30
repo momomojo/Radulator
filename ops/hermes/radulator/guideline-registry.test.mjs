@@ -1122,7 +1122,7 @@ async function assertExecutableImplementationEvidence(record, calculator) {
         claim_count: 12,
         locator_assertion_count: 27,
         required_snippet_count: 37,
-        trusted_exact_head_check: "Smoke Tests",
+        trusted_exact_head_check: "Clinical Source Audits (exact head)",
       },
       `${label}.source_audit.literal_source_verification`,
     );

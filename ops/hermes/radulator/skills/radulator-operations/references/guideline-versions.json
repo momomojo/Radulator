@@ -608,7 +608,7 @@
           "schema": "radulator-live-source-audit/v1",
           "command": "npm run test:cac-drs-source",
           "authority": "2023 Multimodality Appropriate Use Criteria and Maron et al. CAC staging proposal",
-          "trusted_exact_head_check": "Hermes Release Control Tests",
+          "trusted_exact_head_check": "Clinical Source Audits (exact head)",
           "source_urls": [
             "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC10585920/unicode",
             "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC11462328/unicode"
@@ -1254,7 +1254,7 @@
             "claim_count": 12,
             "locator_assertion_count": 27,
             "required_snippet_count": 37,
-            "trusted_exact_head_check": "Smoke Tests"
+            "trusted_exact_head_check": "Clinical Source Audits (exact head)"
           }
         },
         "claims": [
