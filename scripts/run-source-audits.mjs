@@ -36,9 +36,11 @@
 import { execFileSync, spawn } from "node:child_process";
 import {
   appendFileSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readlinkSync,
   realpathSync,
   rmSync,
   writeFileSync,
@@ -348,6 +350,130 @@ export function assertPristine(cwd, when, { inGit = false } = {}) {
   }
 }
 
+function git(cwd, args, input) {
+  return execFileSync("git", ["-C", cwd, ...args], {
+    encoding: "utf8",
+    input,
+    stdio: [input === undefined ? "ignore" : "pipe", "pipe", "ignore"],
+    maxBuffer: 64 * 1024 * 1024,
+  });
+}
+
+// The exact commit a run reports on, captured before any audit runs: the commit, its tree, and every
+// tracked blob's path, mode and id, read from the object database rather than from the mutable index.
+export function snapshotCommit(cwd) {
+  const commit = git(cwd, ["rev-parse", "--verify", "HEAD^{commit}"]).trim();
+  const tree = git(cwd, ["rev-parse", "--verify", `${commit}^{tree}`]).trim();
+  const entries = git(cwd, ["ls-tree", "-r", "-z", "--full-tree", commit]).split("\0").filter(Boolean).map((line) => {
+    const tab = line.indexOf("\t");
+    const [mode, type, id] = line.slice(0, tab).split(" ");
+    return { mode, type, id, file: line.slice(tab + 1) };
+  });
+  return { commit, tree, entries };
+}
+
+// How the checkout differs from the snapshot in ways git status cannot show: a moved HEAD (checkout or
+// reset to another commit), index entries that are not plainly tracked (assume-unchanged, skip-worktree
+// or unmerged, which hide worktree edits from git status), and tracked files whose bytes on disk no
+// longer hash to the snapshot's blobs. Empty means the checkout is still the snapshot. Any git failure
+// counts as drift, so the check fails closed.
+export function exactHeadDrift(cwd, snapshot) {
+  const drift = [];
+  try {
+    const head = git(cwd, ["rev-parse", "--verify", "HEAD^{commit}"]).trim();
+    if (head !== snapshot.commit) drift.push(`HEAD moved to ${head.slice(0, 12)} from ${snapshot.commit.slice(0, 12)}`);
+  } catch {
+    drift.push("HEAD unreadable");
+  }
+  try {
+    const flagged = git(cwd, ["ls-files", "-v", "-z"]).split("\0").filter((line) => line && !line.startsWith("H "));
+    if (flagged.length > 0) {
+      const shown = flagged.slice(0, 3).map((line) => line.slice(2)).join(", ") + (flagged.length > 3 ? ", …" : "");
+      drift.push(`index entries not plainly tracked (assume-unchanged, skip-worktree or unmerged): ${shown}`);
+    }
+  } catch {
+    drift.push("index unreadable");
+  }
+  const regular = [];
+  for (const entry of snapshot.entries.filter((item) => item.type === "blob")) {
+    const full = path.join(cwd, entry.file);
+    let stat;
+    try {
+      stat = lstatSync(full);
+    } catch {
+      drift.push(`${entry.file} is missing`);
+      continue;
+    }
+    if (entry.mode === "120000") {
+      let same = false;
+      try {
+        same = stat.isSymbolicLink() && readlinkSync(full) === git(cwd, ["cat-file", "blob", entry.id]);
+      } catch {
+        same = false;
+      }
+      if (!same) drift.push(`${entry.file} (symlink) changed`);
+    } else if (!stat.isFile()) {
+      drift.push(`${entry.file} is no longer a regular file`);
+    } else {
+      regular.push(entry);
+    }
+  }
+  if (regular.length > 0) {
+    try {
+      const ids = git(cwd, ["hash-object", "--no-filters", "--stdin-paths"], `${regular.map((entry) => entry.file).join("\n")}\n`)
+        .trim().split("\n");
+      regular.forEach((entry, index) => {
+        if (ids[index] !== entry.id) drift.push(`${entry.file} content changed`);
+      });
+    } catch {
+      drift.push("tracked files could not be hashed");
+    }
+  }
+  return drift;
+}
+
+// The run's exact-head invariant, checked before, between and after the audits: git status is clean
+// (assertPristine) and nothing has drifted from the snapshot.
+export function assertExactHead(cwd, snapshot, when) {
+  assertPristine(cwd, when, { inGit: true });
+  const drift = exactHeadDrift(cwd, snapshot);
+  if (drift.length > 0) {
+    const shown = drift.slice(0, 5).join("; ") + (drift.length > 5 ? "; …" : "");
+    throw new Error(`the checkout drifted from exact head ${snapshot.commit.slice(0, 12)} ${when} (${shown}); refusing to report exact-head results`);
+  }
+}
+
+// A file identity an audit cannot put back: device, inode and change time. The kernel sets ctime on
+// every write, truncate, rename, link, chmod or utimes, through any path, and user code cannot set it.
+function fileIdentity(file) {
+  try {
+    const stat = lstatSync(file, { bigint: true });
+    return `${stat.dev}:${stat.ino}:${stat.ctimeNs}`;
+  } catch {
+    return "missing";
+  }
+}
+
+// git's own HEAD and index files for this checkout (a linked worktree keeps them outside it).
+function gitStateFiles(cwd) {
+  return ["HEAD", "index"].map((name) => path.resolve(cwd, git(cwd, ["rev-parse", "--git-path", name]).trim()));
+}
+
+// Identities of every tracked file in the snapshot, plus any extra files (git's HEAD and index).
+export function checkoutFingerprint(cwd, snapshot, extraFiles = []) {
+  const ids = new Map();
+  for (const entry of snapshot.entries) {
+    if (entry.type === "blob") ids.set(entry.file, fileIdentity(path.join(cwd, entry.file)));
+  }
+  for (const file of extraFiles) ids.set(`git:${path.basename(file)}`, fileIdentity(file));
+  return ids;
+}
+
+// Keys whose identity differs between two fingerprints.
+export function fingerprintChanges(before, after) {
+  return [...before.keys()].filter((key) => before.get(key) !== after.get(key));
+}
+
 function headOf(cwd) {
   try {
     return execFileSync("git", ["-C", cwd, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -380,7 +506,17 @@ export async function runSourceAudits({
     throw new Error(`the checkout at ${cwd} is ${actualHead ?? "not a git checkout"}, not HEAD_SHA ${env.HEAD_SHA}`);
   }
   const headSha = actualHead ?? env.HEAD_SHA ?? null;
-  if (actualHead) assertPristine(cwd, "before the audits", { inGit: true });
+  // Every later check compares against this snapshot, never against whatever HEAD is at the time.
+  const snapshot = actualHead ? snapshotCommit(cwd) : null;
+  if (snapshot && snapshot.commit !== actualHead) {
+    throw new Error("HEAD moved while the run started; refusing to report exact-head results");
+  }
+  if (actualHead) assertExactHead(cwd, snapshot, "before the audits");
+  // An audit could change the checkout, run from the changed state and put everything back before it
+  // exits. Post-run checks cannot see that, so every attempt is bracketed by identities it cannot
+  // restore, and the whole run by the tracked files' identities at this point.
+  const gitFiles = actualHead ? gitStateFiles(cwd) : [];
+  const runPrint = actualHead ? checkoutFingerprint(cwd, snapshot) : null;
   const audits = resolveAudits(manifest, workingTree(cwd));
   const plan = planRun(options, audits, print);
 
@@ -414,10 +550,11 @@ export async function runSourceAudits({
 
   try {
     for (const audit of plan.run) {
-      if (actualHead) assertPristine(cwd, `before ${audit.id}`, { inGit: true });
+      if (actualHead) assertExactHead(cwd, snapshot, `before ${audit.id}`);
       const command = audit.command[0] === "node" ? [process.execPath, ...audit.command.slice(1)] : audit.command;
       const attemptLog = [];
       let final = null;
+      let transient = [];
       const auditStarted = Date.now();
       for (let attempt = 1; attempt <= options.attempts; attempt += 1) {
         const waitSeconds = backoffBefore(attempt, options.backoffSeconds);
@@ -441,10 +578,16 @@ export async function runSourceAudits({
           RADULATOR_SOURCE_AUDIT_ATTEMPT: String(attempt),
         };
         for (const name of WORKFLOW_FILE_VARIABLES) delete childEnv[name];
+        const before = actualHead ? checkoutFingerprint(cwd, snapshot, gitFiles) : null;
         const run = await runAttempt({ command, cwd, env: childEnv, timeoutMs });
-        // The attempt is judged on the tree it leaves behind: one that rewrote tracked files never
-        // passes, whatever its exit code.
-        const changed = actualHead ? changesInCheckout(cwd) : [];
+        // Taken before the runner runs any git command itself (git status can rewrite the index).
+        const touched = actualHead ? fingerprintChanges(before, checkoutFingerprint(cwd, snapshot, gitFiles)) : [];
+        if (touched.length > 0) transient = touched;
+        // The attempt is judged on the checkout it leaves behind: one that rewrote tracked files, moved
+        // HEAD or hid edits behind index flags never passes, whatever its exit code.
+        const changed = actualHead
+          ? [...touched.map((key) => `${key} changed while the audit ran`), ...changesInCheckout(cwd), ...exactHeadDrift(cwd, snapshot)]
+          : [];
         const combined = `${run.stdout}\n${run.stderr}`;
         const leaks = findLeaks(combined, key);
         const fetchLog = readFetchLog(fetchLogFile);
@@ -508,13 +651,24 @@ export async function runSourceAudits({
       results.push({ ...result, attempt_log: attemptLog, duration_ms: Date.now() - auditStarted });
       print(`SOURCE-AUDIT RESULT ${JSON.stringify(result)}`);
       // Stop the run here: no further audit, summary or results file for a tree that is not the head.
-      if (actualHead) assertPristine(cwd, `after ${audit.id}`, { inGit: true });
+      // A change still present is named by assertExactHead; one put back before exit, by its ctime trail.
+      if (actualHead) assertExactHead(cwd, snapshot, `after ${audit.id}`);
+      if (transient.length > 0) {
+        const shown = transient.slice(0, 5).join(", ") + (transient.length > 5 ? ", …" : "");
+        throw new Error(`the checkout changed while ${audit.id} ran (${shown}); refusing to report exact-head results`);
+      }
     }
   } finally {
     if (!tempRoot) rmSync(scratch, { recursive: true, force: true });
   }
   // Once more before anything is reported, in case a process the audits started outlived them.
-  if (actualHead) assertPristine(cwd, "before reporting results", { inGit: true });
+  if (actualHead) {
+    assertExactHead(cwd, snapshot, "before reporting results");
+    const late = fingerprintChanges(runPrint, checkoutFingerprint(cwd, snapshot));
+    if (late.length > 0) {
+      throw new Error(`tracked files changed during the run (${late.slice(0, 5).join(", ")}); refusing to report exact-head results`);
+    }
+  }
 
   const counted = results.filter((result) => !result.informational);
   const passed = counted.filter((result) => result.status === "pass").map((result) => result.id);
