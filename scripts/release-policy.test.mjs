@@ -160,6 +160,20 @@ for (const filename of [
   "scripts/write-release-marker.mjs",
   "ops/hermes/radulator/judge-candidates.mjs",
   "ops/hermes/radulator/judge-attest.mjs",
+  ".github/workflows/source-audit-nightly.yml",
+  "scripts/ci-scope.mjs",
+  "scripts/ci-scope.test.mjs",
+  "scripts/select-source-audits.mjs",
+  "scripts/select-source-audits.test.mjs",
+  "scripts/run-source-audits.mjs",
+  "scripts/run-source-audits.test.mjs",
+  "scripts/source-audit-manifest.json",
+  "scripts/report-source-audit-drift.mjs",
+  "scripts/report-source-audit-drift.test.mjs",
+  "scripts/promotion-chain.mjs",
+  "scripts/promotion-chain.test.mjs",
+  "ops/hermes/radulator/release_batch_remediator.py",
+  "ops/hermes/radulator/tests/test_release_batch_remediator.py",
   ".npmrc",
   "npm-shrinkwrap.json",
   "package.json",
@@ -175,12 +189,35 @@ for (const filename of [
   }]);
   assert.equal(releaseControlRisk.tier, "high", `${filename} can weaken trusted release evidence`);
   assert.ok(releaseControlRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"));
+  assert.equal(
+    releaseControlRisk.reasonCodes.some((code) => code.startsWith("CLINICAL_")),
+    false,
+    `${filename} is release control only, so changing it never mixes trust domains`,
+  );
 }
 assert.equal(
   releasePolicy.RISK_CLASSIFIER_VERSION,
-  "radulator-clinical-risk/v6",
-  "expanding the signed classifier to clinical evidence and prompt-harness files requires a new policy version",
+  "radulator-clinical-risk/v7",
+  "classifying the source-audit lane, promotion chain and CI scope rules requires a new policy version",
 );
+
+// The protected source-audit lane ships as one release-control change: its workflow, rules, runner,
+// manifest, drift reporter, judge rubric and notes must never classify as a mixed trust domain.
+const sourceAuditLaneRisk = classifyRisk([
+  ".github/workflows/e2e-tests.yml",
+  ".github/workflows/source-audit-nightly.yml",
+  "scripts/select-source-audits.mjs",
+  "scripts/run-source-audits.mjs",
+  "scripts/source-audit-manifest.json",
+  "scripts/report-source-audit-drift.mjs",
+  "scripts/release-policy.mjs",
+  "scripts/release-workflow-permissions.test.mjs",
+  "package.json",
+  "ops/hermes/radulator/skills/radulator-clinical-judge/SKILL.md",
+  "ops/hermes/radulator/README.md",
+  "AGENTS.md",
+].map((filename) => ({ filename, status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" })));
+assert.deepEqual(sourceAuditLaneRisk.reasonCodes, ["RELEASE_CONTROL_CHANGE"]);
 
 for (const filename of [
   "ops/hermes/radulator/cac-drs-auc-boundary.test.mjs",
@@ -221,6 +258,8 @@ for (const filename of [
   "scripts/generate-mesa-cac-reference.mjs",
   "scripts/generate-mesa-cac-reference.test.mjs",
   "scripts/jsx-loader.mjs",
+  "scripts/lib/ncbi-fetch.mjs",
+  "scripts/lib/ncbi-fetch.test.mjs",
   "scripts/run-compute-tests.mjs",
   "scripts/register-jsx-loader.mjs",
   "tests/kbrc-math.test.mjs",

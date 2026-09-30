@@ -132,14 +132,25 @@ for (const { calculatorId, command } of roadmapEvidence) {
 }
 assert.match(
   e2eWorkflow,
-  /name: Verify roadmap clinical source audits at exact head[\s\S]*?export LC_ALL=C\s+for audit in scripts\/audit-\*-source\.test\.mjs; do\s+test -f "\$audit"\s+if \[ "\$audit" = "scripts\/audit-bosniak-primary-source\.test\.mjs" \]; then[\s\S]*?continue\s+fi\s+node "\$audit"\s+done[\s\S]*?npm run test:hermes-guideline-registry/,
-  "the required exact-head Smoke job must discover conventional source audits, delegate Bosniak to protected CI, and retain the registry check",
+  /name: Verify offline clinical evidence at exact head[\s\S]*?npm run test:hermes-guideline-registry/,
+  "the required exact-head Smoke job must retain the registry check",
+);
+assert.match(
+  e2eWorkflow,
+  /name: Clinical Source Audits \(exact head\)[\s\S]*?node "\$runner" --selection /,
+  "exact-head CI must run the selected source audits in the protected lane",
+);
+assert.equal(
+  JSON.parse(fs.readFileSync("scripts/source-audit-manifest.json", "utf8")).discovery_glob,
+  "scripts/audit-*-source.test.mjs",
+  "the protected lane must discover conventional source audits",
 );
 assert.equal(
   packageJson.scripts["test:primary-source"],
-  'export LC_ALL=C; for audit in scripts/audit-*-source.test.mjs; do test -f "$audit" && node "$audit" || exit; done; npm run test:cac-drs-source',
-  "the local primary-source aggregate must discover the same conventional audits as exact-head CI",
+  "npm run test:source-audits",
+  "the local primary-source aggregate must run the same discovered audits as exact-head CI",
 );
+assert.equal(packageJson.scripts["test:source-audits"], "node scripts/run-source-audits.mjs --all");
 assert.ok(
   fs.readdirSync("scripts").includes("audit-fleischner-primary-source.test.mjs"),
   "the Fleischner audit must remain discoverable by local and exact-head source aggregates",

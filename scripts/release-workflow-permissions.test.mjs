@@ -113,68 +113,154 @@ assert.match(
   /(?:^|\n)\s*npm run test:hermes-install-core\s*(?:\n|$)/,
   "the protected exact-head check must execute the offline installer aggregate",
 );
-assert.match(
-  releaseControlEvidence.run,
-  /(?:^|\n)\s*npm run test:cac-drs-source\s*(?:\n|$)/,
-  "the protected exact-head check must execute the CAC primary-source audit",
+
+// Network source audits run only in "Clinical Source Audits (exact head)". Smoke and Hermes Release
+// Control Tests keep the offline evidence and the lane's own unit tests.
+const NETWORK_AUDIT_COMMAND =
+  /npm run test:(?:[a-z-]+-source|primary-source|source-audits)\b|scripts\/run-source-audits\.mjs|cac-drs-auc-boundary\.test\.mjs|audit-\*-source|audit-(?!fleischner-nlm-pinned-)[a-z0-9-]+-source\.test\.mjs/;
+for (const jobId of ["smoke-tests", "hermes-release-control-tests"]) {
+  for (const step of e2e.jobs[jobId].steps) {
+    assert.doesNotMatch(step.run ?? "", NETWORK_AUDIT_COMMAND, `${jobId} step "${step.name}" must not run a network source audit`);
+  }
+}
+const guardedSelectionTests =
+  "if [ -f scripts/select-source-audits.test.mjs ]; then npm run test:source-audit-selection; fi";
+for (const [jobId, stepName] of [
+  ["smoke-tests", "Run tooling checks"],
+  ["hermes-release-control-tests", "Run release-control, intake, and production dependency evidence"],
+]) {
+  const lines = e2e.jobs[jobId].steps.find((step) => step.name === stepName).run.split("\n").map((line) => line.trim());
+  assert.equal(
+    lines.filter((line) => line === guardedSelectionTests).length,
+    1,
+    `${jobId} runs the lane's unit tests exactly once, guarded for heads that predate the lane`,
+  );
+  assert.equal(lines.filter((line) => line.includes("test:source-audit-selection")).length, 1);
+}
+const offlineEvidence = e2e.jobs["smoke-tests"].steps.find(
+  (step) => step.name === "Verify offline clinical evidence at exact head",
+);
+assert.equal(offlineEvidence.if, undefined, "deterministic offline evidence runs on every head");
+assert.equal(
+  offlineEvidence.run.trim(),
+  [
+    "npm run test:hermes-guideline-registry",
+    "node tests/roadmap-guideline-status.test.mjs",
+    "# Guarded: some open PR heads predate this offline audit (the old glob loop skipped them too).",
+    "if [ -f scripts/audit-fleischner-nlm-pinned-source.test.mjs ]; then node scripts/audit-fleischner-nlm-pinned-source.test.mjs; fi",
+    "for test_file in scripts/lib/*.test.mjs; do",
+    '  [ -e "$test_file" ] || continue',
+    '  node "$test_file"',
+    "done",
+    "echo \"Network source audits for this head: see job 'Clinical Source Audits (exact head)' in this run.\"",
+  ].join("\n"),
+  "the exact-head Smoke evidence body must stay deterministic and offline",
 );
 assert.equal(
-  (releaseControlEvidence.run.match(/npm run test:cac-drs-source/g) ?? []).length,
-  1,
-  "the protected exact-head check must run the CAC primary-source audit exactly once",
+  e2e.jobs["smoke-tests"].steps.some((step) => step.name === "Verify roadmap clinical source audits at exact head"),
+  false,
+  "Smoke no longer loops over the network audits",
 );
-const protectedBosniakCommandLines = releaseControlEvidence.run
-  .split(/\r?\n/)
-  .filter((line) => line.trim() === "npm run test:bosniak-source");
+
+// The protected source-audit lane.
+const sourceAuditManifest = JSON.parse(await readFile(new URL("./source-audit-manifest.json", import.meta.url), "utf8"));
+const audits = e2e.jobs["source-audits"];
+assert.ok(audits, "the E2E workflow has the protected source-audit job");
+assert.equal(audits.name, "Clinical Source Audits (exact head)");
+assert.equal(audits.name, sourceAuditManifest.trusted_exact_head_check, "the manifest names the job the judges cite");
+assert.equal(audits.if, "github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'");
+assert.equal(audits.permissions, undefined, "the audit job keeps the workflow's read-only token");
+assert.ok(Number.isInteger(audits["timeout-minutes"]) && audits["timeout-minutes"] <= 60);
+const jobOrder = Object.keys(e2e.jobs);
+assert.ok(
+  jobOrder.indexOf("source-audits") > jobOrder.indexOf("hermes-release-control-tests"),
+  "the lane follows Hermes Release Control Tests, whose workflow slice other contract tests read",
+);
+for (const [jobId, job] of Object.entries(e2e.jobs)) {
+  assert.equal(job["continue-on-error"], undefined, `${jobId} must never continue on error`);
+  for (const step of job.steps) {
+    assert.equal(step["continue-on-error"], undefined, `${jobId} step "${step.name}" must never continue on error`);
+  }
+}
+const auditCheckout = audits.steps.find((step) => step.name === "Checkout exact PR head");
 assert.equal(
-  protectedBosniakCommandLines.length,
-  1,
-  "the protected exact-head check must contain exactly one standalone Bosniak primary-source command",
+  auditCheckout.with.ref,
+  "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
+  "the lane executes the exact PR head",
 );
-assert.equal(
-  (releaseControlEvidence.run.match(/npm run test:bosniak-source/g) ?? []).length,
-  1,
-  "the protected exact-head check must not duplicate the Bosniak primary-source command",
-);
-const sourceAuditEvidence = e2e.jobs["smoke-tests"].steps.find(
-  (step) => step.name === "Verify roadmap clinical source audits at exact head",
-);
-const expectedSourceAuditBody = [
-  "export LC_ALL=C",
-  "for audit in scripts/audit-*-source.test.mjs; do",
-  '  test -f "$audit"',
-  '  if [ "$audit" = "scripts/audit-bosniak-primary-source.test.mjs" ]; then',
-  "    # Bosniak runs only in the protected exact-head lane to avoid duplicate live-source fetches.",
-  "    continue",
-  "  fi",
-  '  node "$audit"',
-  "done",
-  "# CAC runs only in the protected exact-head lane (test:cac-drs-source) to avoid duplicate live-source fetches.",
-  "npm run test:hermes-guideline-registry",
-  "node tests/roadmap-guideline-status.test.mjs",
-].join("\n");
-assert.equal(
-  sourceAuditEvidence.run.trim(),
-  expectedSourceAuditBody,
-  "the exact-head Smoke source-audit body must remain deterministic and fail closed",
-);
-assert.equal(
-  (sourceAuditEvidence.run.match(/audit-bosniak-primary-source\.test\.mjs/g) ?? []).length,
-  1,
-  "Smoke must name the Bosniak audit exactly once as the protected-lane exclusion",
-);
-assert.doesNotMatch(
-  sourceAuditEvidence.run,
-  /^\s*(?:node\s+.*audit-bosniak-primary-source\.test\.mjs|npm run\s+test:bosniak-source)\s*$/m,
-  "Smoke must not invoke the Bosniak live audit a second time",
-);
-for (const step of e2e.jobs["smoke-tests"].steps) {
-  assert.doesNotMatch(
-    step.run ?? "",
-    /^\s*(?:node\s+.*cac-drs-auc-boundary\.test\.mjs|npm run\s+test:cac-drs-source)\s*$/m,
-    `Smoke step "${step.name}" must not invoke the CAC live audit; the protected exact-head lane owns it`,
+assert.equal(auditCheckout.with["fetch-depth"], 0, "the selector needs the merge base");
+const selectStep = audits.steps.find((step) => step.name === "Select source audits for this exact head");
+for (const file of ["select-source-audits.mjs", "run-source-audits.mjs", "source-audit-manifest.json"]) {
+  assert.ok(
+    selectStep.run.includes(`git show "$BASE_SHA:scripts/${file}"`),
+    `${file} is read from the PR's BASE commit`,
   );
 }
+assert.doesNotMatch(selectStep.run, /node\s+(?:\.\/)?scripts\/select-source-audits\.mjs/, "the PR head never selects its own audits");
+assert.match(selectStep.run, /node "\$trusted\/select-source-audits\.mjs" --manifest "\$trusted\/source-audit-manifest\.json"/);
+assert.match(selectStep.run, /\{"schema":"radulator-source-audit-selection\/v1","mode":"all"/, "any failure runs every audit");
+assert.match(selectStep.run, /rm -f "\$trusted"\/\*/, "partial base copies are never used");
+assert.equal(selectStep.env.BASE_SHA, "${{ github.event.pull_request.base.sha }}");
+assert.equal(selectStep.env.AUDIT_MODE, "${{ vars.RADULATOR_SOURCE_AUDIT_MODE }}");
+const runStep = audits.steps.find((step) => step.name === "Run selected source audits with bounded retries");
+assert.equal(runStep.env.NCBI_API_KEY, "${{ github.event_name != 'pull_request' && secrets.NCBI_API_KEY || '' }}",
+  "pull-request runs never receive the NCBI key: their audit code comes from the head");
+assert.equal(runStep.env.BASE_SHA, "${{ github.event.pull_request.base.sha }}",
+  "the runner knows the PR's base, so a removed discovered audit fails in every mode");
+const installStep = audits.steps.find((step) => /^Install dependencies/.test(step.name ?? ""));
+assert.equal(installStep.run, "npm ci --ignore-scripts", "no npm lifecycle scripts run in the audit lane");
+assert.match(runStep.run, /^runner="\$RUNNER_TEMP\/source-audit-trusted\/run-source-audits\.mjs"$/m, "the runner comes from the base");
+assert.match(
+  runStep.run,
+  /if \[ ! -s "\$runner" \]; then\n(?:\s*#[^\n]*\n)*\s*runner=scripts\/run-source-audits\.mjs\n\s*fi/,
+  "the checked-out runner is only a bootstrap fallback when the base has none",
+);
+for (const flag of ["--attempts 3", "--backoff-seconds 60,180", "--audit-timeout-seconds 600", "--budget-seconds 3000"]) {
+  assert.ok(runStep.run.includes(flag), `the runner is bounded by ${flag}`);
+}
+const e2eText = await readFile(new URL("../.github/workflows/e2e-tests.yml", import.meta.url), "utf8");
+assert.equal((e2eText.match(/secrets\.NCBI_API_KEY/g) ?? []).length, 1, "the NCBI key reaches the runner step only");
+assert.equal(e2e.env, undefined, "no workflow-level environment");
+const uploadStep = audits.steps.find((step) => step.name === "Upload source-audit evidence");
+assert.equal(uploadStep.if, "always()");
+assert.equal(uploadStep.with["retention-days"], 90);
+assert.match(uploadStep.with.path, /source-audit-results\.json/);
+
+// The nightly drift lane.
+const nightly = await workflow("../.github/workflows/source-audit-nightly.yml");
+const nightlyText = await readFile(new URL("../.github/workflows/source-audit-nightly.yml", import.meta.url), "utf8");
+assert.deepEqual(Object.keys(nightly.on).sort(), ["schedule", "workflow_dispatch"], "the nightly never runs for pull requests");
+assert.deepEqual(nightly.on.schedule, [{ cron: "23 9 * * *" }]);
+assert.deepEqual(nightly.permissions, { contents: "read" });
+const nightlyAudit = nightly.jobs.audit;
+assert.equal(nightlyAudit.permissions, undefined, "the job that runs audits cannot write issues");
+assert.equal(
+  nightlyAudit.steps.find((step) => step.name === "Checkout trusted runner (default branch)").with.ref,
+  "${{ github.event.repository.default_branch }}",
+);
+const nightlyRuns = nightlyAudit.steps.filter((step) => (step.run ?? "").includes("run-source-audits.mjs"));
+assert.equal(nightlyRuns.length, 2, "main and develop each get one full run");
+for (const step of nightlyRuns) {
+  assert.match(step.run, /^node controller\/scripts\/run-source-audits\.mjs --all --allow-missing --manifest controller\/scripts\/source-audit-manifest\.json /);
+  assert.equal(step.env.NCBI_API_KEY, "${{ secrets.NCBI_API_KEY }}");
+}
+assert.equal((nightlyText.match(/secrets\.NCBI_API_KEY/g) ?? []).length, 2, "the NCBI key reaches the two audit steps only");
+assert.match(nightlyText, /gh run list --repo "\$REPO" --workflow source-audit-nightly\.yml --event schedule /, "the streak compares scheduled nightlies only");
+assert.equal(nightlyAudit.steps.find((step) => step.name === "Upload nightly results").with["retention-days"], 90);
+const report = nightly.jobs.report;
+assert.equal(report.needs, "audit");
+assert.equal(report.if, "${{ !cancelled() }}");
+assert.deepEqual(report.permissions, { contents: "read", issues: "write", actions: "read" });
+assert.equal(
+  report.steps.find((step) => step.name === "Checkout trusted reporter (default branch)").with.ref,
+  "${{ github.event.repository.default_branch }}",
+);
+assert.match(report.steps.at(-1).run, /node scripts\/report-source-audit-drift\.mjs /);
+for (const job of Object.values(nightly.jobs)) {
+  assert.equal(job["continue-on-error"], undefined);
+  for (const step of job.steps) assert.equal(step["continue-on-error"], undefined, `nightly step "${step.name}"`);
+}
+
 assert.match(
   clinicalJudgeSkill,
   /Never run a candidate-declared source-audit command from the judge checkout/,
@@ -194,6 +280,18 @@ assert.match(
   clinicalJudgeSkill,
   /trusted exact-head CI check ran that audit/i,
   "the judge protocol must bind deterministic audit execution to trusted exact-head CI",
+);
+assert.match(
+  clinicalJudgeSkill,
+  /`Clinical Source Audits \(exact head\)`/,
+  "the judge protocol names the job that holds network source-audit evidence",
+);
+assert.match(clinicalJudgeSkill, /SOURCE-AUDIT SELECTION/, "the judge protocol explains the selection record");
+assert.match(clinicalJudgeSkill, /SOURCE-AUDIT RESULT/, "the judge protocol explains the per-audit results");
+assert.match(
+  clinicalJudgeSkill,
+  /that a network source audit covers but that has no selected `PASS` at `headSha` is `NEEDS_FIX`/,
+  "a covered clinical change without a selected exact-head audit PASS fails closed",
 );
 
 console.log("release workflow permission contract tests passed");

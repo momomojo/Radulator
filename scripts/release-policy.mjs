@@ -2,7 +2,7 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
 
 export const ATTESTATION_SCHEMA = "radulator-clinical-attestation/v1";
-export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v6";
+export const RISK_CLASSIFIER_VERSION = "radulator-clinical-risk/v7";
 export const EXPLICIT_HIGH_RISK_MARKER = "<!-- radulator-risk: high -->";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
@@ -41,6 +41,8 @@ const CLINICAL_EVIDENCE_FILES = new Set([
   "scripts/calculator-verification-inventory.mjs",
   "scripts/calculator-verification-inventory.test.mjs",
   "scripts/jsx-loader.mjs",
+  "scripts/lib/ncbi-fetch.mjs",
+  "scripts/lib/ncbi-fetch.test.mjs",
   "scripts/run-compute-tests.mjs",
   "scripts/register-jsx-loader.mjs",
   "tests/kbrc-math.test.mjs",
@@ -67,25 +69,33 @@ const RELEASE_CONTROL_PREFIXES = [
   "ops/hermes/radulator/lifecycle_controller.",
   "ops/hermes/radulator/public-keys.",
   "ops/hermes/radulator/publisher_service_install.",
+  "ops/hermes/radulator/release_batch_remediator",
   "ops/hermes/radulator/release_promoter",
   "ops/hermes/radulator/skills/radulator-clinical-judge/",
   "ops/hermes/radulator/skills/radulator-release-controller/",
   "ops/hermes/radulator/tests/test_install.",
   "ops/hermes/radulator/tests/test_lifecycle_controller.",
   "ops/hermes/radulator/tests/test_publisher_service_install.",
+  "ops/hermes/radulator/tests/test_release_batch_remediator.",
   "ops/hermes/radulator/tests/test_release_promoter.",
   "ops/hermes/radulator/tests/test_trusted_publisher.",
   "ops/hermes/radulator/trusted_publisher",
   "playwright.config.",
   "scripts/authorize-deployment",
   "scripts/auto-merge",
+  "scripts/ci-scope",
   "scripts/deployment-run-identity",
   "scripts/independent-review-gate",
   "scripts/post-deploy-smoke",
+  "scripts/promotion-chain",
   "scripts/reconcile-deployment",
   "scripts/release-policy",
+  "scripts/report-source-audit-drift",
   "scripts/rollback-request",
+  "scripts/run-source-audits",
   "scripts/select-rollback-deployment",
+  "scripts/select-source-audits",
+  "scripts/source-audit-manifest",
   "scripts/spec-map",
   "scripts/write-release-marker",
   "vite.config.",

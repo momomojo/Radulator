@@ -1,0 +1,85 @@
+{
+  "schema": "radulator-source-audit-manifest/v1",
+  "trusted_exact_head_check": "Clinical Source Audits (exact head)",
+  "discovery_glob": "scripts/audit-*-source.test.mjs",
+  "default_command": ["node", "{test}"],
+  "registry_path": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+  "dependency_depth": 3,
+  "all_audits_when_changed": [
+    ".github/workflows/e2e-tests.yml",
+    ".npmrc",
+    "npm-shrinkwrap.json",
+    "package-lock.json",
+    "package.json",
+    "scripts/jsx-loader.mjs",
+    "scripts/register-jsx-loader.mjs",
+    "scripts/run-source-audits.mjs",
+    "scripts/select-source-audits.mjs",
+    "scripts/source-audit-manifest.json"
+  ],
+  "leaf_files": [
+    "scripts/release-policy.mjs"
+  ],
+  "ncbi_hosts": [
+    "eutils.ncbi.nlm.nih.gov",
+    "pmc.ncbi.nlm.nih.gov",
+    "pubmed.ncbi.nlm.nih.gov",
+    "www.ncbi.nlm.nih.gov"
+  ],
+  "audits": [
+    {
+      "id": "fleischner-nlm-pinned",
+      "test": "scripts/audit-fleischner-nlm-pinned-source.test.mjs",
+      "network": false
+    },
+    {
+      "id": "cac-drs",
+      "test": "ops/hermes/radulator/cac-drs-auc-boundary.test.mjs",
+      "command": ["node", "--import", "./scripts/register-jsx-loader.mjs", "ops/hermes/radulator/cac-drs-auc-boundary.test.mjs"],
+      "registry_ids": ["cac-mesa"],
+      "hosts": ["pmc.ncbi.nlm.nih.gov", "www.ncbi.nlm.nih.gov"]
+    },
+    {
+      "id": "bosniak",
+      "test": "scripts/audit-bosniak-primary-source.test.mjs",
+      "registry_ids": ["bosniak"],
+      "hosts": ["pmc.ncbi.nlm.nih.gov"]
+    },
+    {
+      "id": "albi",
+      "test": "scripts/audit-albi-primary-source.test.mjs",
+      "registry_ids": ["albi-score"],
+      "hosts": ["pmc.ncbi.nlm.nih.gov"]
+    },
+    {
+      "id": "fleischner",
+      "test": "scripts/audit-fleischner-primary-source.test.mjs",
+      "registry_ids": ["fleischner"],
+      "hosts": ["api.crossref.org", "pubs.rsna.org", "web.archive.org", "www.ncbi.nlm.nih.gov"]
+    },
+    {
+      "id": "nirads-legacy-rates",
+      "test": "scripts/audit-nirads-legacy-rates-source.test.mjs",
+      "registry_ids": ["nirads"],
+      "hosts": ["eutils.ncbi.nlm.nih.gov"]
+    },
+    {
+      "id": "kbrc",
+      "test": "scripts/audit-kbrc-primary-source.test.mjs",
+      "registry_ids": ["kidney-biopsy-bleeding-risk"],
+      "hosts": ["ars.els-cdn.com", "pmc.ncbi.nlm.nih.gov", "www.ebi.ac.uk"]
+    },
+    {
+      "id": "contrast-2026",
+      "test": "scripts/audit-acr-contrast-2026-source.test.mjs",
+      "registry_ids": ["contrast-dosing"],
+      "hosts": ["edge.sitecorecloud.io"]
+    },
+    {
+      "id": "birads-fda",
+      "test": "scripts/audit-birads-fda-source.test.mjs",
+      "registry_ids": ["birads"],
+      "hosts": ["edge.sitecorecloud.io"]
+    }
+  ]
+}
