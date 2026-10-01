@@ -97,8 +97,12 @@ test.describe("LI-RADS v2018 Calculator", () => {
 
       await page.click('button:has-text("Calculate")');
 
-      await expect(results.locator("text=LR-TIV")).toBeVisible();
-      await expect(results.locator("text=Tumor in Vein")).toBeVisible();
+      await expect(results.getByText("LR-TIV (Tumor in Vein)", { exact: true })).toBeVisible();
+      // The definition is the Core's any-vein criterion (printed p. 21), not only portal or hepatic veins.
+      await expect(
+        results.getByText(/^Definite tumor in vein: unequivocal enhancing soft tissue in a vein, with or without a visible parenchymal mass$/),
+      ).toBeVisible();
+      await expect(results.getByText(/portal or hepatic veins/)).toHaveCount(0);
       await expect(
         results.locator("text=Contraindication to liver transplantation"),
       ).toBeVisible();
