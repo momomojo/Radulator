@@ -7,6 +7,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSy
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
+import { inspect } from "node:util";
 
 import {
   API_KEY_HOSTS,
@@ -576,10 +577,24 @@ await check("the key never appears in the final URL, errors, retry notes, the fe
     fetchImpl: async (url) => makeResponse({ url, body: Buffer.alloc(BODY.length, 0x2e) }),
     verify: (bytes, response) => assert.fail(`drifted at ${response.url} with ${KEY}`),
   })));
+  // Primary judge on #316: the whole error object, not only its message. Neither error carries the
+  // original as a cause, and nothing an inspection or log of it prints contains the key.
+  for (const error of [exhausted, drift]) {
+    assert.equal(error.cause, undefined, `${error.code}: no cause is attached`);
+    assert.equal("cause" in error, false, `${error.code}: no cause property`);
+  }
   const everything = [
     result.finalUrl,
     exhausted.message,
     drift.message,
+    exhausted.stack,
+    drift.stack,
+    String(exhausted),
+    String(drift),
+    inspect(exhausted, { depth: 10, showHidden: true }),
+    inspect(drift, { depth: 10, showHidden: true }),
+    JSON.stringify({ ...exhausted }),
+    JSON.stringify({ ...drift }),
     ...notes,
     readFileSync(logFile, "utf8"),
     ...readdirSync(cacheDir).map((name) => readFileSync(path.join(cacheDir, name)).toString("utf8")),

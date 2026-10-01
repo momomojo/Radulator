@@ -26,7 +26,9 @@
 //              provenance is "live" or "cache". The source-audit runner classifies failures from it.
 //   API key    NCBI_API_KEY is read from the environment only and appended as the last api_key
 //              parameter, only for API_KEY_HOSTS. It is redacted from every error, retry note, log
-//              line, cache sidecar and returned URL; audits print only their canonical URLs.
+//              line, cache sidecar and returned URL; audits print only their canonical URLs. An
+//              NcbiFetchError carries only its redacted message, never the original error as a
+//              cause, so inspecting or logging the whole error object cannot show the key either.
 //
 // A fetch implementation passed in (by a test) makes the call hermetic unless the caller also
 // passes them: no environment (so no key, cache or fetch log), no pacing and no retry notes.
@@ -74,8 +76,9 @@ const LOCK_MAX_TRIES = 1_000;
 
 export class NcbiFetchError extends Error {
   // code: "transport" (attempts exhausted), "drift" (pin miss) or "http" (status not retried).
-  constructor(message, { code, attempts, status = null, cause } = {}) {
-    super(message, cause === undefined ? undefined : { cause });
+  // No cause: the original error's message and stack can carry the key (see "API key" above).
+  constructor(message, { code, attempts, status = null } = {}) {
+    super(message);
     this.name = "NcbiFetchError";
     this.code = code;
     this.attempts = attempts;
@@ -539,7 +542,7 @@ export async function fetchPinned(options) {
     } catch (error) {
       const message = safe(error instanceof Error ? error.message : String(error));
       log({ ...base, status, outcome: "drift", bytes: bytes.length, reason: message });
-      throw new NcbiFetchError(message, { code: "drift", attempts: attempt, status, cause: error });
+      throw new NcbiFetchError(message, { code: "drift", attempts: attempt, status });
     }
     const digest = sha256(bytes);
     log({ ...base, status, outcome: "ok", bytes: bytes.length, sha256: digest });
