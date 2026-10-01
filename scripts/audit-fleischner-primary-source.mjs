@@ -8,6 +8,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import process from "node:process";
 import { getDocument as getPdfDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { fetchPinned } from "./lib/ncbi-fetch.mjs";
 import { digest } from "./release-policy.mjs";
 
 const GUIDELINE_DOI = "10.1148/radiol.2017161659";
@@ -1261,23 +1262,50 @@ async function loadCrossref(doi) {
   return crossrefMetadata(body.message);
 }
 
-export async function loadNlmTable(url, objectId, { fetchImpl, sleepImpl } = {}) {
+/**
+ * Fetch one NLM Bookshelf table page through the shared NCBI helper
+ * (scripts/lib/ncbi-fetch.mjs): request spacing, and up to 5 attempts 1, 2,
+ * 4 and 8 s apart for network errors, 429/5xx, a wrong final URL or media
+ * type, and an implausibly short page. The recognised reCAPTCHA interstitial
+ * is handed back at once, as before, for verifyNlmTableEvidence() to check
+ * against the verified pinned copy. The page is dynamic, so the pin is the
+ * table fragment's bytes and SHA-256, which verifyNlmTableEvidence() checks.
+ */
+export async function loadNlmTable(url, objectId, { fetchImpl, sleepImpl, env } = {}) {
+  const label = `NLM ${objectId}`;
   const expectedPath = `/books/NBK553863/table/${objectId}/`;
-  const { body } = await fetchParsedResource(url, {
-    label: `NLM ${objectId}`,
-    parseAs: "text",
-    expectedContentType: "text/html",
-    validateFinalUrl(finalUrl) {
-      assert.equal(finalUrl.protocol, "https:");
-      assert.equal(finalUrl.hostname, "www.ncbi.nlm.nih.gov");
-      assert.equal(finalUrl.pathname, expectedPath);
-      assert.equal(finalUrl.searchParams.get("report"), "objectonly");
+  const { bytes } = await fetchPinned({
+    url,
+    label,
+    isChallenge: (body) => detectNlmBotChallenge(body.toString("utf8")).challenged,
+    challenge: "return",
+    minBytes: 501,
+    checkResponse(response) {
+      try {
+        const finalUrl = new URL(response.url);
+        assert.equal(finalUrl.protocol, "https:");
+        assert.equal(finalUrl.hostname, "www.ncbi.nlm.nih.gov");
+        assert.equal(finalUrl.pathname, expectedPath);
+        assert.equal(finalUrl.searchParams.get("report"), "objectonly");
+      } catch (error) {
+        throw new Error(`${label}: unexpected final URL ${response.url} (${error.message.replace(/\s+/g, " ").trim()})`);
+      }
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.toLowerCase().includes("text/html")) {
+        throw new Error(`${label}: unexpected content-type ${contentType || "<missing>"}`);
+      }
     },
+    headers: {
+      accept: "text/html,application/xhtml+xml",
+      "user-agent": "Radulator-Fleischner-source-audit/3",
+    },
+    redirect: "follow",
+    timeoutMs: 15_000,
     fetchImpl,
-    sleepImpl,
+    sleep: sleepImpl,
+    env,
   });
-  assert.ok(body.length > 500, `NLM ${objectId}: implausibly short HTML`);
-  return body;
+  return bytes.toString("utf8");
 }
 
 /**
