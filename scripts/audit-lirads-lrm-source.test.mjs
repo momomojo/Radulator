@@ -231,6 +231,7 @@ assert.deepEqual(
     ["sublabel-high-risk-population", ["getting-started-population"]],
     ["sublabel-study-adequate", ["categories-lr-nc", "step1-diagnostic-algorithm"]],
     ["sublabel-tumor-in-vein", ["tumor-in-vein-definition", "step3-tiebreaking"]],
+    ["result-tumor-in-vein-definition", ["tumor-in-vein-definition"]],
     ["sublabel-has-lrm-features", ["lrm-criteria"]],
     [
       "threshold-growth-v2018",
@@ -257,6 +258,10 @@ assert.deepEqual(bindings.get("nontargetoid-lrm-only-if-not-lr5"), {
   major_features_visible_when_nontargetoid: true,
 });
 assert.equal(bindings.get("targetoid-mass-is-lrm").vectors, 521);
+assert.deepEqual(bindings.get("result-tumor-in-vein-definition"), {
+  category: "LR-TIV (Tumor in Vein)",
+  definition: "Definite tumor in vein: unequivocal enhancing soft tissue in a vein, with or without a visible parenchymal mass",
+});
 assert.equal(bindings.get("tiebreak-note-lrm-vs-lr5").results_checked, 128);
 assert.equal(bindings.get("lrm-decided-before-ancillary-features").lr5_then_benign_downgrade, "LR-4 (Probably HCC)");
 assert.deepEqual(bindings.get("threshold-growth-v2018"), {
@@ -433,6 +438,13 @@ const runtimeMutants = [
         : field,
     ),
     /tumor_in_vein subLabel drifted/,
+  ],
+  [
+    "LR-TIV result definition narrowed to portal or hepatic veins (Codex review on #302)",
+    computeMutant((vals, result) =>
+      String(result["LI-RADS Category"] ?? "").startsWith("LR-TIV") ? { ...result, Definition: "Definite tumor invasion of portal or hepatic veins" } : result,
+    ),
+    /LR-TIV result definition drifted/,
   ],
   [
     "threshold-growth subLabel reverted to the v2017 definition",

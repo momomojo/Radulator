@@ -405,6 +405,9 @@ export const RUNTIME_SUBLABELS = Object.freeze({
   has_lrm_features:
     "Targetoid mass, or a nontargetoid mass not meeting LR-5 criteria with infiltrative appearance, marked diffusion restriction, necrosis/severe ischemia, or another non-HCC feature",
 });
+// The LR-TIV result states the same any-vein definition as the field (Core printed p. 21).
+export const RUNTIME_TIV_DEFINITION =
+  "Definite tumor in vein: unequivocal enhancing soft tissue in a vein, with or without a visible parenchymal mass";
 export const RUNTIME_THRESHOLD_GROWTH = Object.freeze({
   subLabel:
     "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
@@ -477,6 +480,10 @@ export const CLAIM_BINDINGS = Object.freeze([
   Object.freeze({
     claim_id: "sublabel-tumor-in-vein",
     source_statement_ids: ["tumor-in-vein-definition", "step3-tiebreaking"],
+  }),
+  Object.freeze({
+    claim_id: "result-tumor-in-vein-definition",
+    source_statement_ids: ["tumor-in-vein-definition"],
   }),
   Object.freeze({
     claim_id: "sublabel-has-lrm-features",
@@ -1070,6 +1077,12 @@ export function verifyRuntime(calculator, table = EXPECTED_TABLE) {
   bindings["sublabel-study-adequate"] = { field: "study_adequate", subLabel: RUNTIME_SUBLABELS.study_adequate };
   bindings["sublabel-tumor-in-vein"] = { field: "tumor_in_vein", subLabel: RUNTIME_SUBLABELS.tumor_in_vein };
   bindings["sublabel-has-lrm-features"] = { field: "has_lrm_features", subLabel: RUNTIME_SUBLABELS.has_lrm_features };
+
+  // The LR-TIV result repeats the field's definition: tumor in any vein, not only portal or hepatic.
+  const tiv = compute({ high_risk_population: true, study_adequate: true, tumor_in_vein: true });
+  assert.equal(tiv["LI-RADS Category"], "LR-TIV (Tumor in Vein)", "tumor in vein is LR-TIV");
+  assert.equal(tiv.Definition, RUNTIME_TIV_DEFINITION, "LR-TIV result definition drifted");
+  bindings["result-tumor-in-vein-definition"] = { category: tiv["LI-RADS Category"], definition: tiv.Definition };
 
   // Threshold growth (v2018): the field, the result note and the subthreshold-growth option.
   assert.equal(

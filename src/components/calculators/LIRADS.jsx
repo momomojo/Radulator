@@ -417,7 +417,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
     if (tumor_in_vein) {
       return {
         "LI-RADS Category": "LR-TIV (Tumor in Vein)",
-        Definition: "Definite tumor invasion of portal or hepatic veins",
+        Definition: "Definite tumor in vein: unequivocal enhancing soft tissue in a vein, with or without a visible parenchymal mass",
         "Clinical Significance": "Indicates advanced disease stage",
         "Transplant Eligibility": "Contraindication to liver transplantation",
         Recommendation: "Multidisciplinary discussion required",
