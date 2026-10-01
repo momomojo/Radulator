@@ -10,7 +10,65 @@
  * - Chernyak V, et al. Radiology. 2018;289(3):816-830 (LI-RADS v2018)
  * - Cerny M, et al. RadioGraphics. 2018;38(7):1973-2001 (Ancillary Features)
  * - Marrero JA, et al. Hepatology. 2018;68(2):723-750 (AASLD Guidelines)
+ *
+ * Categorization order follows the ACR CT/MRI LI-RADS v2018 Core, Step 1
+ * (printed p. 8): LR-NC, LR-TIV, LR-1, LR-2, LR-M, then the diagnostic table;
+ * Step 2 ancillary features (p. 9); Step 3 tiebreaking (p. 10). LR-M criteria
+ * are on printed p. 22. See docs/evidence/lirads-lrm-order.md.
  */
+
+// LR-M criteria (v2018 Core, printed p. 22). A targetoid mass is LR-M. A
+// nontargetoid mass is LR-M only if it has one of these features AND does not
+// meet LR-5 criteria (tumor in vein is already LR-TIV earlier in Step 1).
+const TARGETOID_LRM_FEATURES = [
+  ["lrm_rim_aphe", "Rim APHE"],
+  ["lrm_peripheral_washout", "Peripheral washout"],
+  ["lrm_delayed_central_enhancement", "Delayed central enhancement"],
+  ["lrm_targetoid_restriction", "Targetoid restriction on DWI"],
+  ["lrm_targetoid_hbp", "Targetoid transitional/HBP appearance"],
+];
+const NONTARGETOID_LRM_FEATURES = [
+  ["lrm_infiltrative", "Infiltrative appearance"],
+  ["lrm_marked_restriction", "Marked diffusion restriction"],
+  ["lrm_necrosis", "Necrosis/severe ischemia"],
+  ["lrm_other", "Other non-HCC malignancy features"],
+];
+
+// Visibility chain. Each predicate includes its parents' conditions, so a
+// field is shown only while every field it depends on is shown.
+const reachesLrmStep = (vals) =>
+  Boolean(vals.high_risk_population) &&
+  Boolean(vals.study_adequate) &&
+  !vals.tumor_in_vein &&
+  vals.benign_status === "indeterminate";
+
+const showsLrmFeatureList = (vals) =>
+  reachesLrmStep(vals) && Boolean(vals.has_lrm_features);
+
+const hasTargetoidLrmFeature = (vals) =>
+  showsLrmFeatureList(vals) &&
+  TARGETOID_LRM_FEATURES.some(([id]) => Boolean(vals[id]));
+
+// Major features stay visible unless a targetoid feature already makes the
+// mass LR-M: nontargetoid LR-M features need them to check LR-5 criteria.
+const showsMajorFeatures = (vals) =>
+  reachesLrmStep(vals) && !hasTargetoidLrmFeature(vals);
+
+const showsNonrimFeatures = (vals) =>
+  showsMajorFeatures(vals) && vals.aphe !== "rim";
+
+const lrmResult = (features, basis) => ({
+  "LI-RADS Category": "LR-M (Probably/Definitely Malignant, Not HCC-Specific)",
+  "Malignancy Probability": "93-100%",
+  "HCC Probability": "29-44%",
+  Definition: "Malignant features present but not specific for HCC",
+  "LR-M Features Identified": features.join("; "),
+  "LR-M Basis": basis,
+  "Differential Diagnosis":
+    "Atypical HCC, intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
+  Recommendation: "Biopsy recommended; multidisciplinary discussion",
+  _severity: "danger",
+});
 
 export const LIRADS = {
   id: "lirads",
@@ -53,7 +111,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       id: "high_risk_population",
       label: "Patient in LI-RADS At-Risk Population",
       subLabel:
-        "Cirrhosis, chronic hepatitis B, or current/prior HCC (required)",
+        "Adults (≥18 y) with cirrhosis, chronic hepatitis B, or current/prior HCC; excludes cirrhosis from congenital hepatic fibrosis or vascular disorders (required)",
       type: "checkbox",
     },
 
@@ -61,7 +119,8 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
     {
       id: "study_adequate",
       label: "Study Technically Adequate",
-      subLabel: "Image quality sufficient for evaluation",
+      subLabel:
+        "No image omission or degradation that prevents categorization (otherwise LR-NC)",
       type: "checkbox",
       showIf: (vals) => vals.high_risk_population,
     },
@@ -71,7 +130,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       id: "tumor_in_vein",
       label: "Definite Tumor in Vein (LR-TIV)",
       subLabel:
-        "Unequivocal enhancing soft tissue within portal or hepatic vein",
+        "Unequivocal enhancing soft tissue within a vein, with or without a visible parenchymal mass; if unsure, leave unchecked",
       type: "checkbox",
       showIf: (vals) => vals.high_risk_population && vals.study_adequate,
     },
@@ -104,13 +163,10 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
     {
       id: "has_lrm_features",
       label: "LR-M Features Present",
-      subLabel: "Features suggesting malignancy but not specific for HCC",
+      subLabel:
+        "Targetoid mass, or a nontargetoid mass not meeting LR-5 criteria with infiltrative appearance, marked diffusion restriction, necrosis/severe ischemia, or another non-HCC feature",
       type: "checkbox",
-      showIf: (vals) =>
-        vals.high_risk_population &&
-        vals.study_adequate &&
-        !vals.tumor_in_vein &&
-        vals.benign_status === "indeterminate",
+      showIf: reachesLrmStep,
     },
 
     // LR-M Targetoid Features
@@ -118,31 +174,31 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       id: "lrm_rim_aphe",
       label: "Rim arterial phase hyperenhancement",
       type: "checkbox",
-      showIf: (vals) => vals.has_lrm_features,
+      showIf: showsLrmFeatureList,
     },
     {
       id: "lrm_peripheral_washout",
       label: "Peripheral washout",
       type: "checkbox",
-      showIf: (vals) => vals.has_lrm_features,
+      showIf: showsLrmFeatureList,
     },
     {
       id: "lrm_delayed_central_enhancement",
       label: "Delayed central enhancement",
       type: "checkbox",
-      showIf: (vals) => vals.has_lrm_features,
+      showIf: showsLrmFeatureList,
     },
     {
       id: "lrm_targetoid_restriction",
       label: "Targetoid restriction on DWI",
       type: "checkbox",
-      showIf: (vals) => vals.has_lrm_features,
+      showIf: showsLrmFeatureList,
     },
     {
       id: "lrm_targetoid_hbp",
       label: "Targetoid transitional/hepatobiliary phase appearance",
       type: "checkbox",
-      showIf: (vals) => vals.has_lrm_features,
+      showIf: showsLrmFeatureList,
     },
 
     // LR-M Non-targetoid Features
@@ -150,25 +206,25 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       id: "lrm_infiltrative",
       label: "Infiltrative appearance",
       type: "checkbox",
-      showIf: (vals) => vals.has_lrm_features,
+      showIf: showsLrmFeatureList,
     },
     {
       id: "lrm_marked_restriction",
       label: "Marked diffusion restriction",
       type: "checkbox",
-      showIf: (vals) => vals.has_lrm_features,
+      showIf: showsLrmFeatureList,
     },
     {
       id: "lrm_necrosis",
       label: "Necrosis or severe ischemia",
       type: "checkbox",
-      showIf: (vals) => vals.has_lrm_features,
+      showIf: showsLrmFeatureList,
     },
     {
       id: "lrm_other",
       label: "Other features suggesting non-HCC malignancy",
       type: "checkbox",
-      showIf: (vals) => vals.has_lrm_features,
+      showIf: showsLrmFeatureList,
     },
 
     // SECTION 6: MAJOR FEATURES (for diagnostic table)
@@ -177,12 +233,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       label: "Observation Size (mm)",
       subLabel: "Largest outer-to-outer dimension; include capsule if present",
       type: "number",
-      showIf: (vals) =>
-        vals.high_risk_population &&
-        vals.study_adequate &&
-        !vals.tumor_in_vein &&
-        vals.benign_status === "indeterminate" &&
-        !vals.has_lrm_features,
+      showIf: showsMajorFeatures,
     },
 
     {
@@ -197,12 +248,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         },
         { value: "rim", label: "Rim APHE → suggests LR-M" },
       ],
-      showIf: (vals) =>
-        vals.high_risk_population &&
-        vals.study_adequate &&
-        !vals.tumor_in_vein &&
-        vals.benign_status === "indeterminate" &&
-        !vals.has_lrm_features,
+      showIf: showsMajorFeatures,
     },
 
     {
@@ -215,13 +261,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         { value: "absent", label: "Absent" },
         { value: "present", label: "Present" },
       ],
-      showIf: (vals) =>
-        vals.high_risk_population &&
-        vals.study_adequate &&
-        !vals.tumor_in_vein &&
-        vals.benign_status === "indeterminate" &&
-        !vals.has_lrm_features &&
-        vals.aphe !== "rim",
+      showIf: showsNonrimFeatures,
     },
 
     {
@@ -234,31 +274,20 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         { value: "absent", label: "Absent" },
         { value: "present", label: "Present" },
       ],
-      showIf: (vals) =>
-        vals.high_risk_population &&
-        vals.study_adequate &&
-        !vals.tumor_in_vein &&
-        vals.benign_status === "indeterminate" &&
-        !vals.has_lrm_features &&
-        vals.aphe !== "rim",
+      showIf: showsNonrimFeatures,
     },
 
     {
       id: "threshold_growth",
       label: "Threshold Growth",
-      subLabel: "Size increase ≥50% in ≤6 months, or new observation ≥10mm",
+      subLabel:
+        "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
       type: "radio",
       opts: [
         { value: "absent", label: "Absent" },
         { value: "present", label: "Present" },
       ],
-      showIf: (vals) =>
-        vals.high_risk_population &&
-        vals.study_adequate &&
-        !vals.tumor_in_vein &&
-        vals.benign_status === "indeterminate" &&
-        !vals.has_lrm_features &&
-        vals.aphe !== "rim",
+      showIf: showsNonrimFeatures,
     },
 
     // SECTION 7: ANCILLARY FEATURES
@@ -271,7 +300,11 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       opts: [
         { value: "none", label: "None" },
         { value: "us_visible", label: "US visibility as discrete nodule" },
-        { value: "subthreshold_growth", label: "Subthreshold growth" },
+        {
+          value: "subthreshold_growth",
+          label:
+            "Subthreshold growth (growth below threshold, e.g. new ≥10 mm observation in ≤24 months or ≥100% over >6 months)",
+        },
         { value: "corona", label: "Corona enhancement" },
         { value: "fat_sparing", label: "Fat sparing in focal fat" },
         { value: "restricted_diffusion", label: "Restricted diffusion" },
@@ -286,13 +319,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         },
         { value: "hbp_hypo", label: "Hepatobiliary phase hypointensity" },
       ],
-      showIf: (vals) =>
-        vals.high_risk_population &&
-        vals.study_adequate &&
-        !vals.tumor_in_vein &&
-        vals.benign_status === "indeterminate" &&
-        !vals.has_lrm_features &&
-        vals.aphe !== "rim",
+      showIf: showsNonrimFeatures,
     },
 
     {
@@ -312,13 +339,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
           label: "Fat in mass (more than adjacent liver)",
         },
       ],
-      showIf: (vals) =>
-        vals.high_risk_population &&
-        vals.study_adequate &&
-        !vals.tumor_in_vein &&
-        vals.benign_status === "indeterminate" &&
-        !vals.has_lrm_features &&
-        vals.aphe !== "rim",
+      showIf: showsNonrimFeatures,
     },
 
     {
@@ -337,32 +358,25 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         { value: "marked_t2", label: "Marked T2 hyperintensity" },
         { value: "hbp_iso", label: "Hepatobiliary phase isointensity" },
       ],
-      showIf: (vals) =>
-        vals.high_risk_population &&
-        vals.study_adequate &&
-        !vals.tumor_in_vein &&
-        vals.benign_status === "indeterminate" &&
-        !vals.has_lrm_features &&
-        vals.aphe !== "rim",
+      showIf: showsNonrimFeatures,
     },
   ],
 
   compute: (vals) => {
+    // Hidden fields keep their last values in form state. Read only the inputs
+    // that the form currently shows (same showIf chain), so a stale hidden
+    // value can never change the category.
+    const shown = Object.fromEntries(
+      LIRADS.fields
+        .filter((field) => !field.showIf || field.showIf(vals))
+        .map((field) => [field.id, vals[field.id]]),
+    );
     const {
       high_risk_population = false,
       study_adequate = false,
       tumor_in_vein = false,
       benign_status = "",
       has_lrm_features = false,
-      lrm_rim_aphe = false,
-      lrm_peripheral_washout = false,
-      lrm_delayed_central_enhancement = false,
-      lrm_targetoid_restriction = false,
-      lrm_targetoid_hbp = false,
-      lrm_infiltrative = false,
-      lrm_marked_restriction = false,
-      lrm_necrosis = false,
-      lrm_other = false,
       observation_size = "",
       aphe = "",
       washout = "",
@@ -371,7 +385,11 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       ancillary_malignancy = "none",
       ancillary_hcc = "none",
       ancillary_benign = "none",
-    } = vals;
+    } = shown;
+    const selected = (features) =>
+      features.filter(([id]) => Boolean(shown[id])).map(([, label]) => label);
+    const targetoidFeatures = selected(TARGETOID_LRM_FEATURES);
+    const nontargetoidFeatures = selected(NONTARGETOID_LRM_FEATURES);
 
     // Step 1: Check if patient is in LI-RADS population
     if (!high_risk_population) {
@@ -399,7 +417,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
     if (tumor_in_vein) {
       return {
         "LI-RADS Category": "LR-TIV (Tumor in Vein)",
-        Definition: "Definite tumor invasion of portal or hepatic veins",
+        Definition: "Definite tumor in vein: unequivocal enhancing soft tissue in a vein, with or without a visible parenchymal mass",
         "Clinical Significance": "Indicates advanced disease stage",
         "Transplant Eligibility": "Contraindication to liver transplantation",
         Recommendation: "Multidisciplinary discussion required",
@@ -433,40 +451,36 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       };
     }
 
-    // Step 5: Check for LR-M features
-    if (has_lrm_features) {
-      const lrmFeatures = [];
-      if (lrm_rim_aphe) lrmFeatures.push("Rim APHE");
-      if (lrm_peripheral_washout) lrmFeatures.push("Peripheral washout");
-      if (lrm_delayed_central_enhancement)
-        lrmFeatures.push("Delayed central enhancement");
-      if (lrm_targetoid_restriction)
-        lrmFeatures.push("Targetoid restriction on DWI");
-      if (lrm_targetoid_hbp)
-        lrmFeatures.push("Targetoid transitional/HBP appearance");
-      if (lrm_infiltrative) lrmFeatures.push("Infiltrative appearance");
-      if (lrm_marked_restriction)
-        lrmFeatures.push("Marked diffusion restriction");
-      if (lrm_necrosis) lrmFeatures.push("Necrosis/severe ischemia");
-      if (lrm_other) lrmFeatures.push("Other non-HCC malignancy features");
-
-      if (lrmFeatures.length > 0) {
-        return {
-          "LI-RADS Category":
-            "LR-M (Probably/Definitely Malignant, Not HCC-Specific)",
-          "Malignancy Probability": "93-100%",
-          "HCC Probability": "29-44%",
-          Definition: "Malignant features present but not specific for HCC",
-          "LR-M Features Identified": lrmFeatures.join("; "),
-          "Differential Diagnosis":
-            "Atypical HCC, intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
-          Recommendation: "Biopsy recommended; multidisciplinary discussion",
-          _severity: "danger",
-        };
-      }
+    // LR-M and the diagnostic table apply only to an indeterminate observation;
+    // until one is chosen, those inputs are hidden.
+    if (benign_status !== "indeterminate") {
+      return {
+        Error:
+          "Select an Observation Benignity option to continue (Indeterminate opens the LR-M and major-feature inputs).",
+      };
     }
 
-    // Check for rim APHE (redirects to LR-M)
+    // Step 5: LR-M criteria (v2018 Core p. 22)
+    if (
+      has_lrm_features &&
+      targetoidFeatures.length === 0 &&
+      nontargetoidFeatures.length === 0
+    ) {
+      return {
+        Error:
+          '"LR-M Features Present" is checked but no LR-M feature is selected. Select each LR-M feature present, or uncheck "LR-M Features Present" to use the diagnostic table.',
+      };
+    }
+
+    // A targetoid mass is LR-M whatever its major features.
+    if (targetoidFeatures.length > 0) {
+      return lrmResult(
+        [...targetoidFeatures, ...nontargetoidFeatures],
+        "Targetoid mass",
+      );
+    }
+
+    // Check for rim APHE (redirects to LR-M): rim APHE is a targetoid appearance
     if (aphe === "rim") {
       return {
         "LI-RADS Category":
@@ -476,6 +490,9 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         Definition:
           "Rim arterial phase hyperenhancement suggests non-HCC malignancy",
         "Key Feature": "Rim APHE (peripheral > central enhancement)",
+        ...(nontargetoidFeatures.length > 0 && {
+          "LR-M Features Identified": nontargetoidFeatures.join("; "),
+        }),
         "Differential Diagnosis":
           "Intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
         Recommendation: "Biopsy recommended; multidisciplinary discussion",
@@ -485,6 +502,12 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
 
     // Step 6: Apply diagnostic table
     if (!observation_size || !aphe) {
+      if (nontargetoidFeatures.length > 0) {
+        return {
+          Error:
+            "Nontargetoid LR-M features make the observation LR-M only if it does not meet LR-5 criteria. Complete observation size, APHE, washout, capsule and threshold growth so LR-5 criteria can be checked.",
+        };
+      }
       return {
         Error:
           "Please complete observation size and APHE assessment to determine LI-RADS category.",
@@ -537,8 +560,25 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       }
     }
 
-    // Set category details
+    // Step 5 (continued): a nontargetoid mass with an LR-M feature is LR-M
+    // unless it meets LR-5 criteria. Decided in Step 1, so ancillary features
+    // are not applied to it.
+    if (nontargetoidFeatures.length > 0 && baseCategory !== "LR-5") {
+      return lrmResult(
+        nontargetoidFeatures,
+        `Nontargetoid mass with LR-M feature(s); LR-5 criteria not met (diagnostic table: ${baseCategory})`,
+      );
+    }
+
+    // Set category details (LR-2 is reachable here only by the one-step
+    // ancillary downgrade of LR-3; texts match the probably-benign result above)
     const categoryDetails = {
+      "LR-2": {
+        name: "Probably Benign",
+        hcc: "~14%",
+        recommendation:
+          "Return to routine surveillance; option for alternate imaging modality",
+      },
       "LR-3": {
         name: "Intermediate Probability",
         hcc: "38-40%",
@@ -590,7 +630,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
           "Ancillary features favor malignancy but cannot upgrade beyond LR-4";
       }
     } else if (hasFavoringBenignity && !hasFavoringMalignancy) {
-      // Downgrade by 1
+      // Downgrade by exactly 1 category (v2018 Core p. 9), including LR-3 to LR-2
       if (baseCategory === "LR-5") {
         finalCategory = "LR-4";
         ancillaryAdjustment =
@@ -599,9 +639,10 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         finalCategory = "LR-3";
         ancillaryAdjustment =
           "Downgraded from LR-4 to LR-3 based on ancillary features favoring benignity";
-      } else {
+      } else if (baseCategory === "LR-3") {
+        finalCategory = "LR-2";
         ancillaryAdjustment =
-          "Ancillary features favor benignity but no further downgrade possible";
+          "Downgraded from LR-3 to LR-2 based on ancillary features favoring benignity";
       }
     }
 
@@ -639,8 +680,20 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       result["Ancillary Adjustment"] = ancillaryAdjustment;
     }
 
+    // Nontargetoid LR-M features reach this point only when LR-5 criteria are met.
+    if (nontargetoidFeatures.length > 0) {
+      result["Nontargetoid LR-M Features"] =
+        `${nontargetoidFeatures.join("; ")} (LR-M not assigned: LR-5 criteria met)`;
+    }
+
     // Add clinical notes for specific findings
     const notes = [];
+
+    if (nontargetoidFeatures.length > 0) {
+      notes.push(
+        "Nontargetoid LR-M features give LR-M only when LR-5 criteria are not met. If unsure between LR-M and this category, choose LR-M (v2018 tiebreaking: lower certainty of hepatocellular origin)",
+      );
+    }
 
     if (size < 10 && hasAPHE && additionalFeatures >= 2) {
       notes.push(
@@ -663,7 +716,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
 
     if (hasThresholdGrowth) {
       notes.push(
-        "Threshold growth defined as ≥50% size increase in ≤6 months or new observation ≥10mm",
+        "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
       );
     }
 
@@ -678,7 +731,12 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       result["Clinical Notes"] = notes.join("; ");
     }
 
-    result._severity = finalCategory === "LR-3" ? "warning" : "danger";
+    result._severity =
+      finalCategory === "LR-2"
+        ? "success"
+        : finalCategory === "LR-3"
+          ? "warning"
+          : "danger";
     return result;
   },
 
@@ -721,7 +779,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
     },
     {
       t: "ACR LI-RADS - Liver Imaging Reporting and Data System",
-      u: "https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/LI-RADS",
+      u: "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/LI-RADS",
     },
   ],
 };
