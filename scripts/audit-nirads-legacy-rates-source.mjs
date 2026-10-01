@@ -16,10 +16,16 @@
 // carries no DTD header or retrieval metadata, so it changes only when the record itself changes.
 // Each statement is also pinned by the SHA-256 of the exact normalized span between two short markers.
 // No source prose is committed.
+//
+// Retrieval goes through the shared NCBI helper (scripts/lib/ncbi-fetch.mjs): request spacing, up to 5
+// attempts 1, 2, 4 and 8 s apart for transport failures, and NCBI_API_KEY (E-utilities only) kept out
+// of every message.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { fetchPinned } from "./lib/ncbi-fetch.mjs";
 
 const EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi";
 
@@ -94,9 +100,6 @@ export const INFO_HEADING_PREFIX = "Legacy NI-RADS recurrence rates by category 
 export const INFO_SCOPE =
   "These rates come from a 2017 study that predates MRI v2025, so they are not MRI v2025 estimates.";
 export const INFO_MRI_OUTPUT = "MRI v2025 results in this calculator show no estimated recurrence risk.";
-
-const FETCH_ATTEMPTS = 5;
-const FETCH_MAX_DELAY_MS = 20_000;
 
 export function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -315,49 +318,26 @@ export function verifyResponse(pmid, { finalUrl, contentType }) {
   assert.equal(mediaType, SOURCE_MEDIA_TYPE, `PMID ${pmid}: media type ${contentType ?? "<missing>"}`);
 }
 
-// Retry-After (seconds) is honoured only when the header is present; the caller caps every wait at
-// FETCH_MAX_DELAY_MS. Without it the exponential backoff applies: Number(null) is 0, so an absent header
-// must not be parsed as an immediate retry.
-function retryDelayMs(response, attempt) {
-  const header = response?.headers?.get?.("retry-after");
-  const retryAfter = header == null || String(header).trim() === "" ? Number.NaN : Number(header);
-  if (Number.isFinite(retryAfter) && retryAfter >= 0) return retryAfter * 1_000;
-  return 1_500 * 2 ** (attempt - 1);
-}
-
-// Retries transport failures only: network errors, HTTP 400 (NCBI returns it transiently for valid
-// requests), 429 and 5xx. A 200 response that misses its URL, media-type, length or digest pin is a
-// changed source and fails at once.
-export async function fetchSource(pmid, { fetchImpl = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+// Retries transport failures only: network errors, HTTP 400 (E-utilities returns it transiently for
+// valid requests), 429 and 5xx, and a 200 response with the wrong final URL or media type (an
+// interstitial page). A 200 response that misses its length or digest pin is a changed source and
+// fails at once. `fetchImpl`, `sleep` and `env` are for tests; an injected fetch runs hermetically.
+export async function fetchSource(pmid, { fetchImpl, sleep, env } = {}) {
   const source = SOURCES[pmid];
-  let lastFailure = "unknown retrieval failure";
-  let made = 0;
-  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
-    made = attempt;
-    let response;
-    try {
-      response = await fetchImpl(source.url, {
-        headers: { accept: "text/plain", "user-agent": "Radulator-NIRADS-legacy-rates-audit/2" },
-        redirect: "follow",
-        signal: AbortSignal.timeout(30_000),
-      });
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error);
-    }
-    if (response?.ok) {
-      verifyResponse(pmid, { finalUrl: response.url, contentType: response.headers.get("content-type") });
-      const bytes = Buffer.from(await response.arrayBuffer());
-      verifySourceBytes(pmid, bytes, source);
-      return bytes;
-    }
-    if (response) {
-      lastFailure = `HTTP ${response.status}`;
-      await response.body?.cancel?.();
-      if (response.status !== 400 && response.status !== 429 && response.status < 500) break;
-    }
-    if (attempt < FETCH_ATTEMPTS) await sleep(Math.min(retryDelayMs(response, attempt), FETCH_MAX_DELAY_MS));
-  }
-  assert.fail(`PMID ${pmid}: PubMed retrieval failed after ${made} of ${FETCH_ATTEMPTS} attempts (${lastFailure})`);
+  const { bytes } = await fetchPinned({
+    url: source.url,
+    label: `PMID ${pmid}: PubMed`,
+    pin: { bytes: source.bytes, sha256: source.sha256 },
+    verify: (body) => verifySourceBytes(pmid, body, source),
+    checkResponse: (response) =>
+      verifyResponse(pmid, { finalUrl: response.url, contentType: response.headers.get("content-type") }),
+    headers: { accept: "text/plain", "user-agent": "Radulator-NIRADS-legacy-rates-audit/2" },
+    redirect: "follow",
+    fetchImpl,
+    sleep,
+    env,
+  });
+  return bytes;
 }
 
 export async function fetchSources(options) {

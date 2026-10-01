@@ -2,9 +2,13 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import process from "node:process";
 import { RenalCystBosniak } from "../src/components/calculators/RenalCystBosniak.jsx";
+import { MAX_ATTEMPTS, fetchPinned } from "./lib/ncbi-fetch.mjs";
 
 const FIXTURE_PATH = "tests/fixtures/compute/bosniak.json";
 const CLASSIFICATION_SOURCE_URL =
@@ -94,14 +98,11 @@ const SOURCE_TEXT_VERIFICATION = Object.freeze({
   ]),
 });
 const SOURCE_MAX_BYTES = 1_000_000;
-const RETRY_ATTEMPTS = 3;
 const BOUND_VECTOR_IDS = Object.freeze([
   "exactly-70-hu-homogeneous-noncontrast-mass-category-ii",
   "exactly-4-mm-obtuse-margin-enhancing-nodule-category-iv",
   "minimally-thick-enhancing-wall-category-iif",
 ]);
-
-const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -133,121 +134,43 @@ function assertMediaType(response, expectedMediaType, label) {
   assert.equal(mediaType, expectedMediaType, `${label} media type`);
 }
 
-async function cancelResponseBody(response) {
-  try {
-    await response.body?.cancel();
-  } catch {
-    // Cleanup errors cannot replace the authoritative URL, status, or media failure.
-  }
+// PMC answers some automated requests with a proof-of-work page ("Preparing to download...") that has
+// none of the article's citation metadata. Such a page is a challenge, not the article.
+function isPmcChallengePage(bytes) {
+  return !/<meta\b[^>]*\bname\s*=\s*["']citation_doi["']/i.test(bytes.toString("utf8"));
 }
 
-async function readBoundedBody(response, maxBytes, label) {
-  const contentLength = response.headers.get("content-length");
-  if (contentLength !== null) {
-    const declaredLength = Number(contentLength);
-    if (!Number.isSafeInteger(declaredLength) || declaredLength < 0) {
-      await cancelResponseBody(response);
-      throw new Error(`${label} content-length is malformed`);
-    }
-    if (declaredLength > maxBytes) {
-      await cancelResponseBody(response);
-      throw new Error(`${label} body exceeds the ${maxBytes}-byte boundary`);
-    }
-  }
-  if (!response.body || typeof response.body.getReader !== "function") {
-    await cancelResponseBody(response);
-    throw new Error(`${label} response body is not stream-readable`);
-  }
-  let reader;
-  try {
-    reader = response.body.getReader();
-  } catch (error) {
-    await cancelResponseBody(response);
-    throw error;
-  }
-  const chunks = [];
-  let totalBytes = 0;
-  let cancelled = false;
-  const cancel = async () => {
-    if (cancelled) return;
-    cancelled = true;
-    try {
-      await reader.cancel();
-    } catch {
-      // The size failure remains authoritative if the body is already closed.
-    }
-  };
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!(value instanceof ArrayBuffer) && !ArrayBuffer.isView(value)) {
-        await cancel();
-        throw new Error(`${label} response body yielded a malformed chunk`);
-      }
-      totalBytes += value.byteLength;
-      if (totalBytes > maxBytes) {
-        await cancel();
-        throw new Error(`${label} body exceeds the ${maxBytes}-byte boundary`);
-      }
-      chunks.push(
-        value instanceof ArrayBuffer
-          ? Buffer.from(value)
-          : Buffer.from(value.buffer, value.byteOffset, value.byteLength),
-      );
-    }
-  } catch (error) {
-    await cancel();
-    throw error;
-  } finally {
-    reader.releaseLock();
-  }
-  return Buffer.concat(chunks, totalBytes);
-}
-
-async function fetchArtifact(
-  source,
-  { fetchImpl = globalThis.fetch, sleepImpl = wait, validate },
-) {
-  let lastFailure = "unknown retrieval failure";
-  let attemptsMade = 0;
-  for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt += 1) {
-    attemptsMade = attempt;
-    try {
-      const response = await fetchImpl(source.url, {
-        headers: { "user-agent": source.userAgent },
-        redirect: "error",
-        signal: AbortSignal.timeout(30_000),
-      });
-      if (response.redirected === true) {
-        lastFailure = "redirected response";
-        await cancelResponseBody(response);
-      } else if (response.status !== 200) {
-        lastFailure = `HTTP ${response.status}`;
-        await cancelResponseBody(response);
-        if (response.status !== 429 && response.status >= 300 && response.status < 500) break;
-      } else {
-        try {
-          assertExactFinalUrl(response, source.url, source.label);
-          assertMediaType(response, source.mediaType, source.label);
-        } catch (error) {
-          await cancelResponseBody(response);
-          throw error;
-        }
-        const bytes = await readBoundedBody(response, source.maxBytes, source.label);
-        return await validate({ bytes, response });
-      }
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error);
-    }
-    if (attempt < RETRY_ATTEMPTS) {
-      await sleepImpl(attempt * 500);
-    }
-  }
-  const attemptWord = attemptsMade === 1 ? "attempt" : "attempts";
-  throw new Error(
-    `${source.label} retrieval failed after ${attemptsMade} ${attemptWord} (${lastFailure})`,
-  );
+// Retrieval goes through the shared NCBI helper (scripts/lib/ncbi-fetch.mjs): request spacing, up to 5
+// attempts 1, 2, 4 and 8 s apart for transport failures (network errors, 429 and 5xx, a redirected or
+// wrong-URL or wrong-media-type response, and a challenge page: one under the raw size floor or
+// without citation metadata), and NCBI_API_KEY never sent to PMC. Each article page is validated
+// (identity, canonical text digest, locators) before it is used; a 200 page that fails validation is a
+// changed source and fails at once. `fetchImpl`, `sleepImpl` and `env` are for tests.
+async function fetchArtifact(source, { fetchImpl, sleepImpl, env, verifyDigest = true, validate }) {
+  let validated;
+  await fetchPinned({
+    url: source.url,
+    label: source.label,
+    // The pinned canonical text digest, recomputed by validate(); fixture tests turn it off.
+    pin: verifyDigest ? { kind: "canonical", sha256: source.canonicalSha256 } : null,
+    verify: async (bytes) => {
+      validated = await validate({ bytes });
+    },
+    isChallenge: (bytes) => isPmcChallengePage(bytes),
+    checkResponse: (response) => {
+      if (response.redirected) throw new Error("redirected response");
+      assertExactFinalUrl(response, source.url, source.label);
+      assertMediaType(response, source.mediaType, source.label);
+    },
+    minBytes: source.minBytes,
+    maxBytes: source.maxBytes,
+    headers: { "user-agent": source.userAgent },
+    redirect: "error",
+    fetchImpl,
+    sleep: sleepImpl,
+    env,
+  });
+  return validated;
 }
 
 function decodeHtmlEntities(value) {
@@ -496,10 +419,12 @@ async function validateManagementHtml({ bytes, verifyDigest = true } = {}) {
 
 const fetchClassificationHtml = (options = {}) => fetchArtifact(CLASSIFICATION_SOURCE, {
   ...options,
+  verifyDigest: options.verifyDigest !== false,
   validate: ({ bytes }) => validateClassification({ bytes, verifyDigest: options.verifyDigest !== false }),
 });
 const fetchManagementHtml = (options = {}) => fetchArtifact(MANAGEMENT_SOURCE, {
   ...options,
+  verifyDigest: options.verifyDigest !== false,
   validate: ({ bytes }) => validateManagementHtml({ bytes, verifyDigest: options.verifyDigest !== false }),
 });
 
@@ -653,46 +578,68 @@ async function runSelfTests() {
     "volatile CUA HTML wrapper bytes must not be treated as its canonical digest",
   );
 
+  // Retrieval policy (scripts/lib/ncbi-fetch.mjs). A 200 page that fails validation is a changed
+  // source and fails at once; a wrong final URL or media type, a redirect, and a challenge page are
+  // retried, five attempts in all; a terminal status stops at once.
+  const cancelCounts = (responses) => responses.map(({ stats }) => stats.cancelCount);
+  const retriedResponses = (make) => Array.from({ length: MAX_ATTEMPTS }, make);
+
+  // Pin mutations served with HTTP 200. The fixture's canonical text has the pinned CUA length, so a
+  // same-length semantic edit must fail the digest, and a one-character insertion must fail the length.
   const semanticChangeFixture = cuaHtmlFixture.replace("yearly if the cyst is stable", "yearly if the cyst is stably");
-  const semanticChangeResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
-    mockResponse({ body: semanticChangeFixture, url: MANAGEMENT_SOURCE.url }),
+  assert.equal(
+    Buffer.byteLength(articleBodyText(semanticChangeFixture, "CUA 2023 PMC")),
+    MANAGEMENT_SOURCE.canonicalBytes,
+    "the semantic-change fixture keeps the pinned canonical length",
   );
   const semanticChangeCalls = [];
   await assert.rejects(
     fetchManagementHtml({
-      fetchImpl: sequenceFetch(semanticChangeResponses, semanticChangeCalls),
+      fetchImpl: sequenceFetch([mockResponse({ body: semanticChangeFixture, url: MANAGEMENT_SOURCE.url })], semanticChangeCalls),
       sleepImpl: noWait,
     }),
-    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 canonical article text SHA256 drifted/,
+    /CUA 2023 canonical article text SHA256 drifted/,
     "semantic CUA article changes fail the pinned canonical digest",
   );
-  assert.equal(semanticChangeCalls.length, RETRY_ATTEMPTS, "semantic digest drift uses bounded retries");
+  assert.equal(semanticChangeCalls.length, 1, "a same-length digest drift is a changed source, never retried");
   const semanticChangeCanonical = Buffer.from(articleBodyText(semanticChangeFixture, "CUA 2023 PMC"), "utf8");
   assert.notEqual(
     cuaFixtureResult.canonicalSha256,
     sha256(semanticChangeCanonical),
     "semantic CUA article changes alter the canonical digest",
   );
-
-  const wrongCuaIdentityResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
-    mockResponse({
-      body: cuaHtmlFixture.replace("10.5489/cuaj.8389", "10.5489/cuaj.wrong"),
-      url: MANAGEMENT_SOURCE.url,
-    }),
+  const lengthDriftFixture = cuaHtmlFixture.replace("yearly if the cyst is stable", "yearly if the cyst is stables");
+  assert.equal(
+    Buffer.byteLength(articleBodyText(lengthDriftFixture, "CUA 2023 PMC")),
+    MANAGEMENT_SOURCE.canonicalBytes + 1,
+    "the length-drift fixture is one canonical byte longer than the pin",
   );
+  const lengthDriftCalls = [];
+  await assert.rejects(
+    fetchManagementHtml({
+      fetchImpl: sequenceFetch([mockResponse({ body: lengthDriftFixture, url: MANAGEMENT_SOURCE.url })], lengthDriftCalls),
+      sleepImpl: noWait,
+    }),
+    /CUA 2023 canonical article text length drifted/,
+    "a canonical length change fails the pinned canonical length",
+  );
+  assert.equal(lengthDriftCalls.length, 1, "a length drift is a changed source, never retried");
+
   const wrongCuaIdentityCalls = [];
   await assert.rejects(
     fetchManagementHtml({
-      fetchImpl: sequenceFetch(wrongCuaIdentityResponses, wrongCuaIdentityCalls),
+      fetchImpl: sequenceFetch([
+        mockResponse({ body: cuaHtmlFixture.replace("10.5489/cuaj.8389", "10.5489/cuaj.wrong"), url: MANAGEMENT_SOURCE.url }),
+      ], wrongCuaIdentityCalls),
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 DOI identity drifted/,
+    /CUA 2023 DOI identity drifted/,
     "CUA PMC HTML identity drift is rejected",
   );
-  assert.equal(wrongCuaIdentityCalls.length, RETRY_ATTEMPTS);
+  assert.equal(wrongCuaIdentityCalls.length, 1);
 
-  const wrongCuaUrlResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+  const wrongCuaUrlResponses = retriedResponses(() =>
     mockResponse({
       body: cuaHtmlFixture,
       url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10263289/?report=reader&variant=1",
@@ -705,55 +652,35 @@ async function runSelfTests() {
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 PMC HTML final URL is not exact/,
+    /CUA 2023 PMC HTML retrieval failed after 5 of 5 attempts \(CUA 2023 PMC HTML final URL is not exact/,
     "CUA PMC HTML wrong final URL is rejected",
   );
-  assert.equal(wrongCuaUrlCalls.length, RETRY_ATTEMPTS);
+  assert.equal(wrongCuaUrlCalls.length, MAX_ATTEMPTS);
   assert.deepEqual(
-    wrongCuaUrlResponses.map(({ stats }) => stats.cancelCount),
-    [1, 1, 1],
+    cancelCounts(wrongCuaUrlResponses),
+    [1, 1, 1, 1, 1],
     "every CUA wrong-final-URL response cancels its unread body",
   );
 
-  const movedCuaLocatorFixture = cuaHtmlFixture.replace('id="sec15"', 'id="sec99"');
-  const movedCuaLocatorResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
-    mockResponse({ body: movedCuaLocatorFixture, url: MANAGEMENT_SOURCE.url }),
-  );
-  const movedCuaLocatorCalls = [];
-  await assert.rejects(
-    fetchManagementHtml({
-      fetchImpl: sequenceFetch(movedCuaLocatorResponses, movedCuaLocatorCalls),
-      sleepImpl: noWait,
-      verifyDigest: false,
-    }),
-    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 PMC HTML locator section#sec15 must occur exactly once \(found 0\)/,
-    "CUA recommendations moved out of sec15 are rejected",
-  );
-  assert.equal(movedCuaLocatorCalls.length, RETRY_ATTEMPTS);
-
-  const duplicateCuaLocatorFixture = cuaHtmlFixture.replace(
-    "</article>",
-    '<section id="sec15">duplicate locator</section></article>',
-  );
-  const duplicateCuaLocatorResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
-    mockResponse({ body: duplicateCuaLocatorFixture, url: MANAGEMENT_SOURCE.url }),
-  );
-  const duplicateCuaLocatorCalls = [];
-  await assert.rejects(
-    fetchManagementHtml({
-      fetchImpl: sequenceFetch(duplicateCuaLocatorResponses, duplicateCuaLocatorCalls),
-      sleepImpl: noWait,
-      verifyDigest: false,
-    }),
-    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 PMC HTML locator section#sec15 must occur exactly once \(found 2\)/,
-    "duplicate CUA section IDs are rejected",
-  );
-  assert.equal(duplicateCuaLocatorCalls.length, RETRY_ATTEMPTS);
+  for (const [fixture, found] of [
+    [cuaHtmlFixture.replace('id="sec15"', 'id="sec99"'), 0],
+    [cuaHtmlFixture.replace("</article>", '<section id="sec15">duplicate locator</section></article>'), 2],
+  ]) {
+    const calls = [];
+    await assert.rejects(
+      fetchManagementHtml({
+        fetchImpl: sequenceFetch([mockResponse({ body: fixture, url: MANAGEMENT_SOURCE.url })], calls),
+        sleepImpl: noWait,
+        verifyDigest: false,
+      }),
+      new RegExp(`CUA 2023 PMC HTML locator section#sec15 must occur exactly once \\(found ${found}\\)`),
+      found === 0 ? "CUA recommendations moved out of sec15 are rejected" : "duplicate CUA section IDs are rejected",
+    );
+    assert.equal(calls.length, 1);
+  }
 
   const cuaChallenge = `${"<html><title>Preparing to download...</title>"}${"x".repeat(MANAGEMENT_SOURCE.minBytes)}</html>`;
-  const cuaChallengeResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
-    mockResponse({ body: cuaChallenge, url: MANAGEMENT_SOURCE.url }),
-  );
+  const cuaChallengeResponses = retriedResponses(() => mockResponse({ body: cuaChallenge, url: MANAGEMENT_SOURCE.url }));
   const cuaChallengeCalls = [];
   await assert.rejects(
     fetchManagementHtml({
@@ -761,41 +688,32 @@ async function runSelfTests() {
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 journal identity drifted/,
-    "CUA PMC challenge/variant body is rejected",
+    /CUA 2023 PMC HTML retrieval failed after 5 of 5 attempts \(CUA 2023 PMC HTML served a challenge page/,
+    "CUA PMC challenge/variant body is retried, then rejected",
   );
-  assert.equal(cuaChallengeCalls.length, RETRY_ATTEMPTS);
+  assert.equal(cuaChallengeCalls.length, MAX_ATTEMPTS);
   assert.deepEqual(
-    cuaChallengeResponses.map(({ stats }) => stats.cancelCount),
-    [0, 0, 0],
+    cancelCounts(cuaChallengeResponses),
+    [0, 0, 0, 0, 0],
     "fully consumed CUA challenge bodies do not require a second cleanup",
   );
   const misplacedClassificationFixture = fixtureOne
     .replace('id="s5"', 'id="swapped-s5"')
     .replace('id="sec17"', 'id="s5"')
     .replace('id="swapped-s5"', 'id="sec17"');
+  const misplacedCalls = [];
   await assert.rejects(
     fetchClassificationHtml({
       fetchImpl: sequenceFetch([
-        mockResponse({
-          body: misplacedClassificationFixture,
-          url: CLASSIFICATION_SOURCE.url,
-        }),
-        mockResponse({
-          body: misplacedClassificationFixture,
-          url: CLASSIFICATION_SOURCE.url,
-        }),
-        mockResponse({
-          body: misplacedClassificationFixture,
-          url: CLASSIFICATION_SOURCE.url,
-        }),
-      ]),
+        mockResponse({ body: misplacedClassificationFixture, url: CLASSIFICATION_SOURCE.url }),
+      ], misplacedCalls),
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /Silverman PMC HTML retrieval failed after 3 attempts \(Silverman publication lacks HTML section #s5/,
+    /Silverman publication lacks HTML section #s5/,
     "Silverman locator verification rejects matching text in a different section",
   );
+  assert.equal(misplacedCalls.length, 1);
   const first = await fetchClassificationHtml({
     fetchImpl: sequenceFetch([
       mockResponse({
@@ -821,25 +739,34 @@ async function runSelfTests() {
 
   const challenge = `${"<html><title>Preparing to download...</title>"}${"x".repeat(CLASSIFICATION_RAW_MIN_BYTES)}</html>`;
   const challengeCalls = [];
-  const challengeResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
-    mockResponse({ body: challenge, url: CLASSIFICATION_SOURCE.url }),
-  );
+  const challengeResponses = retriedResponses(() => mockResponse({ body: challenge, url: CLASSIFICATION_SOURCE.url }));
   await assert.rejects(
     fetchClassificationHtml({
       fetchImpl: sequenceFetch(challengeResponses, challengeCalls),
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /Silverman PMC HTML retrieval failed after 3 attempts \(Silverman journal identity drifted/,
+    /Silverman PMC HTML retrieval failed after 5 of 5 attempts \(Silverman PMC HTML served a challenge page/,
   );
-  assert.equal(challengeCalls.length, RETRY_ATTEMPTS, "PoW/variant body uses bounded retry count");
+  assert.equal(challengeCalls.length, MAX_ATTEMPTS, "PoW/variant body uses bounded retry count");
   assert.deepEqual(
-    challengeResponses.map(({ stats }) => stats.cancelCount),
-    [0, 0, 0],
+    cancelCounts(challengeResponses),
+    [0, 0, 0, 0, 0],
     "fully consumed variant bodies do not require a second cleanup",
   );
+  const recoveredCalls = [];
+  const recovered = await fetchClassificationHtml({
+    fetchImpl: sequenceFetch([
+      mockResponse({ body: "<html><title>Preparing to download...</title></html>", url: CLASSIFICATION_SOURCE.url }),
+      mockResponse({ body: fixtureOne, url: CLASSIFICATION_SOURCE.url }),
+    ], recoveredCalls),
+    sleepImpl: noWait,
+    verifyDigest: false,
+  });
+  assert.equal(recovered.canonicalSha256, first.canonicalSha256, "a page under the size floor is retried until the article arrives");
+  assert.equal(recoveredCalls.length, 2);
 
-  const wrongUrlResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+  const wrongUrlResponses = retriedResponses(() =>
     mockResponse({
       body: fixtureOne,
       url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6677285/?report=reader&variant=1",
@@ -852,16 +779,16 @@ async function runSelfTests() {
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /Silverman PMC HTML retrieval failed after 3 attempts \(Silverman PMC HTML final URL is not exact/,
+    /Silverman PMC HTML retrieval failed after 5 of 5 attempts \(Silverman PMC HTML final URL is not exact/,
   );
-  assert.equal(wrongUrlCalls.length, RETRY_ATTEMPTS, "wrong final URL uses bounded retries");
+  assert.equal(wrongUrlCalls.length, MAX_ATTEMPTS, "wrong final URL uses bounded retries");
   assert.deepEqual(
-    wrongUrlResponses.map(({ stats }) => stats.cancelCount),
-    [1, 1, 1],
+    cancelCounts(wrongUrlResponses),
+    [1, 1, 1, 1, 1],
     "every wrong-final-URL response cancels its unread body",
   );
 
-  const wrongMediaResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+  const wrongMediaResponses = retriedResponses(() =>
     mockResponse({
       body: "wrong media body",
       url: MANAGEMENT_SOURCE.url,
@@ -875,16 +802,16 @@ async function runSelfTests() {
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /CUA 2023 PMC HTML retrieval failed after 3 attempts \(CUA 2023 PMC HTML media type/,
+    /CUA 2023 PMC HTML retrieval failed after 5 of 5 attempts \(CUA 2023 PMC HTML media type/,
   );
-  assert.equal(wrongMediaCalls.length, RETRY_ATTEMPTS, "wrong media type uses bounded retries");
+  assert.equal(wrongMediaCalls.length, MAX_ATTEMPTS, "wrong media type uses bounded retries");
   assert.deepEqual(
-    wrongMediaResponses.map(({ stats }) => stats.cancelCount),
-    [1, 1, 1],
+    cancelCounts(wrongMediaResponses),
+    [1, 1, 1, 1, 1],
     "every wrong-media response cancels its unread body",
   );
 
-  const redirectedResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
+  const redirectedResponses = retriedResponses(() =>
     mockResponse({
       body: "redirected",
       url: MANAGEMENT_SOURCE.url,
@@ -900,12 +827,12 @@ async function runSelfTests() {
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /retrieval failed after 3 attempts \(redirected response\)/,
+    /retrieval failed after 5 of 5 attempts \(redirected response\)/,
   );
-  assert.equal(redirectedCalls.length, RETRY_ATTEMPTS, "redirect rejection retries exactly three times");
+  assert.equal(redirectedCalls.length, MAX_ATTEMPTS, "redirect rejection retries within the five-attempt bound");
   assert.deepEqual(
-    redirectedResponses.map(({ stats }) => stats.cancelCount),
-    [1, 1, 1],
+    cancelCounts(redirectedResponses),
+    [1, 1, 1, 1, 1],
     "redirect cleanup is attempted even when cancellation rejects",
   );
 
@@ -923,35 +850,60 @@ async function runSelfTests() {
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /retrieval failed after 1 attempt \(HTTP 404\)/,
+    /retrieval failed after 1 of 5 attempts \(HTTP 404\)/,
   );
   assert.equal(notFoundCalls.length, 1, "non-retryable HTTP 404 makes one request");
   assert.equal(notFound.stats.cancelCount, 1, "HTTP failure cleanup is attempted even when cancellation rejects");
 
-  const oversizedResponses = Array.from({ length: RETRY_ATTEMPTS }, () =>
-    mockResponse({
-      body: Buffer.alloc(SOURCE_MAX_BYTES + 65_536, 0x78),
-      url: CLASSIFICATION_SOURCE.url,
-      contentLength: null,
-      chunkSize: 32_768,
-    }),
-  );
+  const oversized = mockResponse({
+    body: Buffer.alloc(SOURCE_MAX_BYTES + 65_536, 0x78),
+    url: CLASSIFICATION_SOURCE.url,
+    contentLength: null,
+    chunkSize: 32_768,
+  });
   const oversizedCalls = [];
   await assert.rejects(
     fetchClassificationHtml({
-      fetchImpl: sequenceFetch(oversizedResponses, oversizedCalls),
+      fetchImpl: sequenceFetch([oversized], oversizedCalls),
       sleepImpl: noWait,
       verifyDigest: false,
     }),
-    /retrieval failed after 3 attempts \(Silverman PMC HTML body exceeds the 1000000-byte boundary\)/,
+    /Silverman PMC HTML body exceeds the 1000000-byte boundary/,
   );
-  assert.equal(oversizedCalls.length, RETRY_ATTEMPTS, "oversized stream retries within the bound");
-  for (const response of oversizedResponses) {
-    assert.equal(response.stats.cancelCount, 1, "oversized stream cancels its reader");
-    assert.ok(
-      response.stats.bytesEnqueued < SOURCE_MAX_BYTES + 65_536,
-      "oversized stream stops before full body",
-    );
+  assert.equal(oversizedCalls.length, 1, "an oversized page is a changed source, never retried");
+  assert.equal(oversized.stats.cancelCount, 1, "oversized stream cancels its reader");
+  assert.ok(oversized.stats.bytesEnqueued < SOURCE_MAX_BYTES + 65_536, "oversized stream stops before full body");
+
+  // NCBI_API_KEY hygiene: PMC is not a key host, so requests go to the exact canonical URL, and no
+  // error or fetch-log line ever carries the key.
+  const keyScratch = mkdtempSync(path.join(os.tmpdir(), "bosniak-ncbi-key-"));
+  try {
+    const fakeKey = "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b";
+    const env = { NCBI_API_KEY: fakeKey, RADULATOR_SOURCE_FETCH_LOG: path.join(keyScratch, "fetch-log.jsonl") };
+    const requested = [];
+    await fetchManagementHtml({
+      env,
+      sleepImpl: noWait,
+      verifyDigest: false,
+      fetchImpl: async (url) => {
+        requested.push(url);
+        return mockResponse({ body: cuaHtmlFixture, url });
+      },
+    });
+    assert.equal(requested.length === 1 && requested[0] === MANAGEMENT_SOURCE.url, true, "PMC must never receive NCBI_API_KEY");
+    const exhausted = await fetchClassificationHtml({
+      env,
+      sleepImpl: noWait,
+      fetchImpl: async (url) => {
+        throw new TypeError(`request to ${url}&api_key=${fakeKey} failed`);
+      },
+    }).then(() => null, (error) => error);
+    assert.ok(exhausted instanceof Error, "an exhausted retrieval fails loudly");
+    const surfaces = `${exhausted.message}\n${readFileSync(env.RADULATOR_SOURCE_FETCH_LOG, "utf8")}`;
+    assert.equal(surfaces.includes(fakeKey), false, "NCBI_API_KEY must never reach output");
+    assert.equal(/api_key=(?!\[REDACTED\])/.test(surfaces), false, "no api_key value may reach output");
+  } finally {
+    rmSync(keyScratch, { recursive: true, force: true });
   }
 }
 

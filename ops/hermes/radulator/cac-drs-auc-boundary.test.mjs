@@ -3,7 +3,10 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fetchPinned } from "../../../scripts/lib/ncbi-fetch.mjs";
 import { CACMesa } from "../../../src/components/calculators/CACMesa.jsx";
 
 const AUC_PUBLICATION_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585920/";
@@ -38,7 +41,6 @@ const EXPECTED_MARON_BIOC_RAW_SHA256 =
 const EXPECTED_MARON_BIOC_CANONICAL_BYTES = 25_322;
 const EXPECTED_MARON_BIOC_CANONICAL_SHA256 =
   "9fc8b5ffb054f03de2539911da77296e5435a9c60848859b6728c98cd81cf997";
-const RETRY_ATTEMPTS = 3;
 const BIOC_MAX_BYTES = 1_000_000;
 
 const BIOC_SPECS = Object.freeze({
@@ -86,7 +88,6 @@ const maronStageVectors = [
   ["maron-stage-4-lower", "1000", "4", "Extensive calcified atherosclerotic burden"],
 ];
 
-const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const noWait = async () => {};
 
 function sha256(bytes) {
@@ -97,6 +98,8 @@ function fail(message) {
   throw new Error(message);
 }
 
+// response.url is the final URL with any api_key removed by scripts/lib/ncbi-fetch.mjs, so this exact
+// comparison keeps holding if the BioC API is ever given NCBI_API_KEY.
 function assertExactFinalUrl(response, expectedUrl, label) {
   if (response.url !== expectedUrl) {
     fail(`${label} final URL is not the exact requested URL: ${response.url}`);
@@ -114,111 +117,6 @@ function assertMediaType(response, expectedMediaType, label) {
   if (mediaType !== expectedMediaType) {
     fail(`${label} media type must be ${expectedMediaType}, got ${contentType || "missing"}`);
   }
-}
-
-async function cancelResponseBody(response) {
-  try {
-    await response.body?.cancel();
-  } catch {
-    // Cleanup failure must not replace the redirect or HTTP failure being reported.
-  }
-}
-
-async function readBoundedBody(response, maxBytes, label) {
-  const contentLength = response.headers.get("content-length");
-  if (contentLength !== null) {
-    const declaredLength = Number(contentLength);
-    if (!Number.isSafeInteger(declaredLength) || declaredLength < 0) {
-      await response.body?.cancel();
-      fail(`${label} content-length is malformed`);
-    }
-    if (declaredLength > maxBytes) {
-      await response.body?.cancel();
-      fail(`${label} body exceeds the exact ${maxBytes}-byte content boundary`);
-    }
-  }
-  if (!response.body || typeof response.body.getReader !== "function") {
-    fail(`${label} response body is not stream-readable`);
-  }
-  const reader = response.body.getReader();
-  const chunks = [];
-  let totalBytes = 0;
-  let cancelled = false;
-  const cancel = async () => {
-    if (cancelled) return;
-    cancelled = true;
-    try {
-      await reader.cancel();
-    } catch {
-      // The read may already have closed the body; the size failure remains authoritative.
-    }
-  };
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!(value instanceof ArrayBuffer) && !ArrayBuffer.isView(value)) {
-        await cancel();
-        fail(`${label} response body yielded a malformed chunk`);
-      }
-      totalBytes += value.byteLength;
-      if (totalBytes > maxBytes) {
-        await cancel();
-        fail(`${label} body exceeds the exact ${maxBytes}-byte content boundary`);
-      }
-      chunks.push(value instanceof ArrayBuffer
-        ? Buffer.from(value)
-        : Buffer.from(value.buffer, value.byteOffset, value.byteLength));
-    }
-  } catch (error) {
-    await cancel();
-    throw error;
-  } finally {
-    reader.releaseLock();
-  }
-  return Buffer.concat(chunks, totalBytes);
-}
-
-async function retrieveWithRetries({ url, label, userAgent, mediaType, maxBytes, validate, fetchImpl = globalThis.fetch, sleepImpl = wait }) {
-  let lastFailure = "unknown retrieval failure";
-  let attemptsMade = 0;
-  for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt += 1) {
-    attemptsMade = attempt;
-    try {
-      const response = await fetchImpl(url, {
-        headers: { "user-agent": userAgent },
-        redirect: "error",
-        signal: AbortSignal.timeout(30_000),
-      });
-      if (response.redirected === true) {
-        lastFailure = "redirected response";
-        await cancelResponseBody(response);
-      } else if (response.status !== 200) {
-        lastFailure = `HTTP ${response.status}`;
-        await cancelResponseBody(response);
-        if (response.status !== 429 && response.status >= 300 && response.status < 500) break;
-      } else {
-        try {
-          assertExactFinalUrl(response, url, label);
-          assertMediaType(response, mediaType, label);
-        } catch (error) {
-          try {
-            await response.body?.cancel();
-          } catch {
-            // The URL or media-type failure remains authoritative.
-          }
-          throw error;
-        }
-        const bytes = await readBoundedBody(response, maxBytes, label);
-        return await validate({ bytes, response });
-      }
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error);
-    }
-    if (attempt < RETRY_ATTEMPTS) await sleepImpl(attempt * 500);
-  }
-  const attemptWord = attemptsMade === 1 ? "attempt" : "attempts";
-  throw new Error(`${label} retrieval failed after ${attemptsMade} ${attemptWord} (${lastFailure})`);
 }
 
 function decodeHtmlEntities(value) {
@@ -321,7 +219,7 @@ function validateAucBioc({ bytes, source = BIOC_SPECS.auc, verifyDigest = true }
   ]) assert.match(text, row, `${source.label} Tab2 lacks ${row}`);
   const canonical = canonicalJsonBytes(collection);
   assertCanonicalDigest(canonical, source, verifyDigest);
-  return { collection, document, table, canonical, canonicalSha256: sha256(canonical) };
+  return { bytes, collection, document, table, canonical, canonicalSha256: sha256(canonical) };
 }
 
 function validateMaronBioc({ bytes, source = BIOC_SPECS.maron, verifyDigest = true } = {}) {
@@ -341,20 +239,34 @@ function validateMaronBioc({ bytes, source = BIOC_SPECS.maron, verifyDigest = tr
   ]) assert.match(text, row, `${source.label} tbl1 lacks ${row}`);
   const canonical = canonicalJsonBytes(collection);
   assertCanonicalDigest(canonical, source, verifyDigest);
-  return { collection, document, table, canonical, canonicalSha256: sha256(canonical) };
+  return { bytes, collection, document, table, canonical, canonicalSha256: sha256(canonical) };
 }
 
-async function fetchBioc(source, validate, { fetchImpl = globalThis.fetch, sleepImpl = wait, verifyDigest = true } = {}) {
-  return retrieveWithRetries({
+// Retrieval goes through the shared NCBI helper (scripts/lib/ncbi-fetch.mjs): request spacing, up to 5
+// attempts 1, 2, 4 and 8 s apart for transport failures (network errors, 429 and 5xx, a redirected or
+// wrong-URL or wrong-media-type response, a challenge page), and nothing parsed before the raw byte
+// length and SHA-256 pass. A 200 response that misses them is a changed source and fails at once, as
+// does any identity, table or canonical-digest failure of the pinned bytes. Fixture tests that feed
+// minimal BioC documents pass verifyDigest: false, which drops the raw pin.
+async function fetchBioc(source, validate, { fetchImpl, sleepImpl, verifyDigest = true, env } = {}) {
+  const { bytes } = await fetchPinned({
     url: source.url,
     label: source.label,
-    userAgent: source.userAgent,
-    mediaType: source.mediaType,
+    pin: verifyDigest ? { bytes: source.rawBytes, sha256: source.rawSha256 } : null,
+    verify: verifyDigest ? (body) => assertPinnedDigest(body, source, true) : undefined,
+    checkResponse: (response) => {
+      if (response.redirected) throw new Error("redirected response");
+      assertExactFinalUrl(response, source.url, source.label);
+      assertMediaType(response, source.mediaType, source.label);
+    },
     maxBytes: BIOC_MAX_BYTES,
+    headers: { "user-agent": source.userAgent },
+    redirect: "error",
     fetchImpl,
-    sleepImpl,
-    validate: ({ bytes }) => validate({ bytes, source, verifyDigest }),
+    sleep: sleepImpl,
+    env,
   });
+  return validate({ bytes, source, verifyDigest });
 }
 const fetchAucBiocJson = (options = {}) => fetchBioc(BIOC_SPECS.auc, validateAucBioc, options);
 const fetchMaronBiocJson = (options = {}) => fetchBioc(BIOC_SPECS.maron, validateMaronBioc, options);
@@ -461,12 +373,19 @@ assert.equal(maronBioc.document.id, "PMC11462328");
 assert.equal(maronBioc.canonical.length, EXPECTED_MARON_BIOC_CANONICAL_BYTES);
 assert.equal(maronBioc.canonicalSha256, EXPECTED_MARON_BIOC_CANONICAL_SHA256);
 
+// Retrieval policy (scripts/lib/ncbi-fetch.mjs). A response that is not the expected artifact (wrong
+// final URL, port or media type, or a followed redirect) is an interstitial and is retried, five
+// attempts in all, cancelling each unread body. A terminal status fails at once. A 200 body that is not
+// the pinned document fails at once.
+const RETRIED = /retrieval failed after 5 of 5 attempts/;
 for (const source of Object.values(BIOC_SPECS)) {
   const fixture = source.id === BIOC_SPECS.auc.id ? MINIMAL_AUC_BIOC_JSON : MINIMAL_MARON_BIOC_JSON;
   const fetchSource = source.id === BIOC_SPECS.auc.id ? fetchAucBiocJson : fetchMaronBiocJson;
   for (const [failure, responseUrl, contentType] of [["wrong final URL", `${source.url}?unexpected=1`, source.mediaType], ["wrong media type", source.url, "application/octet-stream"]]) {
     const streamStats = { enqueuedBytes: 0, cancelCount: 0 };
-    await assert.rejects(fetchSource({ fetchImpl: sequenceFetch([mockResponse({ body: fixture, url: responseUrl, contentType, streamStats })]), sleepImpl: noWait, verifyDigest: false }), /retrieval failed after 3 attempts/, `${source.label} ${failure} must fail closed`);
+    const calls = [];
+    await assert.rejects(fetchSource({ fetchImpl: sequenceFetch([mockResponse({ body: fixture, url: responseUrl, contentType, streamStats })], calls), sleepImpl: noWait, verifyDigest: false }), RETRIED, `${source.label} ${failure} must fail closed`);
+    assert.equal(calls.length, 5, `${source.label} ${failure} is retried within the five-attempt bound`);
     assert.ok(streamStats.cancelCount >= 1, `${source.label} ${failure} must cancel its unread response body: ${JSON.stringify(streamStats)}`);
   }
 }
@@ -480,15 +399,11 @@ for (const source of Object.values(BIOC_SPECS)) {
     followedRedirectCalls.push({ url, options });
     return mockResponse({ body: fixture, url: source.url, contentType: source.mediaType, redirected: true, streamStats: redirectCleanupStats, cancelError: new Error("redirect body cleanup failed") });
   };
-  await assert.rejects(fetchSource({ fetchImpl: redirectFetch, sleepImpl: noWait, verifyDigest: false }), /retrieval failed after 3 attempts \(redirected response\)/, `${source.label} followed redirect must preserve the redirect failure when body cleanup rejects`);
-  assert.equal(followedRedirectCalls.length, 3);
+  await assert.rejects(fetchSource({ fetchImpl: redirectFetch, sleepImpl: noWait, verifyDigest: false }), /retrieval failed after 5 of 5 attempts \(redirected response\)/, `${source.label} followed redirect must preserve the redirect failure when body cleanup rejects`);
+  assert.equal(followedRedirectCalls.length, 5);
   assert.ok(redirectCleanupStats.cancelCount >= 1, `${source.label} must attempt cleanup before retrying a redirect response`);
   assert.ok(followedRedirectCalls.every(({ options }) => options.redirect === "error"), `${source.label} fetches must disable redirect following`);
 }
-
-const malformedAucCalls = [];
-await assert.rejects(fetchAucBiocJson({ fetchImpl: sequenceFetch([mockResponse({ body: MINIMAL_AUC_BIOC_JSON.replace(AUC_DOI, "10.0000/wrong"), url: AUC_BIOC_JSON_URL, contentType: AUC_BIOC_MEDIA_TYPE })], malformedAucCalls), sleepImpl: noWait, verifyDigest: false }), /retrieval failed after 3 attempts/, "malformed AUC BioC identity must consume exactly three attempts");
-assert.equal(malformedAucCalls.length, 3);
 
 for (const [label, status] of [["raw redirect", 302], ["non-retryable client error", 404]]) {
   const nonRetryableCalls = [];
@@ -497,7 +412,7 @@ for (const [label, status] of [["raw redirect", 302], ["non-retryable client err
     nonRetryableCalls.push({ url, options });
     return mockResponse({ body: MINIMAL_AUC_BIOC_JSON, status, url: AUC_BIOC_JSON_URL, contentType: AUC_BIOC_MEDIA_TYPE, streamStats: cleanupStats, cancelError: new Error("status body cleanup failed") });
   };
-  await assert.rejects(fetchAucBiocJson({ fetchImpl: statusFetch, sleepImpl: noWait, verifyDigest: false }), new RegExp(`retrieval failed after 1 attempt \\(HTTP ${status}\\)`), `${label} must preserve the HTTP failure when body cleanup rejects`);
+  await assert.rejects(fetchAucBiocJson({ fetchImpl: statusFetch, sleepImpl: noWait, verifyDigest: false }), new RegExp(`retrieval failed after 1 of 5 attempts \\(HTTP ${status}\\)`), `${label} must preserve the HTTP failure when body cleanup rejects`);
   assert.equal(nonRetryableCalls.length, 1, `${label} must not consume retry attempts`);
   assert.equal(cleanupStats.cancelCount, 1, `${label} must attempt cleanup once before stopping`);
 }
@@ -512,35 +427,93 @@ for (const source of Object.values(BIOC_SPECS)) {
       calls += 1;
       return mockResponse({ body: oversized, url: source.url, contentType: source.mediaType, contentLength, chunkSize: 1_024, streamStats });
     };
-    await assert.rejects(fetchSource({ fetchImpl, sleepImpl: noWait, verifyDigest: false }), /retrieval failed after 3 attempts/, `${source.label} ${lengthLabel} oversized stream must fail closed`);
-    assert.equal(calls, 3);
+    await assert.rejects(fetchSource({ fetchImpl, sleepImpl: noWait, verifyDigest: false }), new RegExp(`${source.label} body exceeds the ${BIOC_MAX_BYTES}-byte boundary`), `${source.label} ${lengthLabel} oversized stream must fail closed`);
+    assert.equal(calls, 1, `${source.label} ${lengthLabel} oversized body is a changed source, never retried`);
     assert.ok(streamStats.cancelCount >= 1, `${source.label} ${lengthLabel} oversized stream must be cancelled promptly: ${JSON.stringify(streamStats)}`);
     assert.ok(streamStats.enqueuedBytes < Buffer.byteLength(oversized), `${source.label} oversized stream must cut off before full body`);
   }
 }
 
-for (const [name, response] of [
-  ["port", mockResponse({ body: MINIMAL_AUC_BIOC_JSON, url: "https://www.ncbi.nlm.nih.gov:8443/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC10585920/unicode", contentType: AUC_BIOC_MEDIA_TYPE })],
-  ["media", mockResponse({ body: MINIMAL_AUC_BIOC_JSON, url: AUC_BIOC_JSON_URL, contentType: "text/plain" })],
-  ["identity", mockResponse({ body: MINIMAL_AUC_BIOC_JSON.replace(AUC_DOI, "10.0000/wrong"), url: AUC_BIOC_JSON_URL, contentType: AUC_BIOC_MEDIA_TYPE })],
-  ["206", mockResponse({ body: MINIMAL_AUC_BIOC_JSON, status: 206, url: AUC_BIOC_JSON_URL, contentType: AUC_BIOC_MEDIA_TYPE })],
-  ["malformed-200", mockResponse({ body: "{not-json", url: AUC_BIOC_JSON_URL, contentType: AUC_BIOC_MEDIA_TYPE })],
-  ["wrong-table", mockResponse({ body: MINIMAL_AUC_BIOC_JSON.replaceAll('"id":"Tab2"', '"id":"Tab1"'), url: AUC_BIOC_JSON_URL, contentType: AUC_BIOC_MEDIA_TYPE })],
+for (const [fetchSource, fixture, url, doi, [tableId, wrongTableId], label] of [
+  [fetchAucBiocJson, MINIMAL_AUC_BIOC_JSON, AUC_BIOC_JSON_URL, AUC_DOI, ["Tab2", "Tab1"], BIOC_SPECS.auc.label],
+  [fetchMaronBiocJson, MINIMAL_MARON_BIOC_JSON, MARON_BIOC_JSON_URL, MARON_DOI, ["tbl1", "wrong"], BIOC_SPECS.maron.label],
 ]) {
-  const attemptsMade = response.status >= 300 && response.status < 500 && response.status !== 429 ? 1 : 3;
-  await assert.rejects(fetchAucBiocJson({ fetchImpl: sequenceFetch([response]), sleepImpl: noWait, verifyDigest: false }), new RegExp(`retrieval failed after ${attemptsMade} attempt${attemptsMade === 1 ? "" : "s"}`), `AUC BioC negative case must fail closed: ${name}`);
+  for (const [name, response, pattern, attempts] of [
+    ["port", mockResponse({ body: fixture, url: url.replace("www.ncbi.nlm.nih.gov", "www.ncbi.nlm.nih.gov:8443"), contentType: "application/json" }), RETRIED, 5],
+    ["media", mockResponse({ body: fixture, url, contentType: "text/plain" }), RETRIED, 5],
+    ["identity", mockResponse({ body: fixture.replace(doi, "10.0000/wrong"), url, contentType: "application/json" }), new RegExp(`${label} DOI drifted`), 1],
+    ["206", mockResponse({ body: fixture, status: 206, url, contentType: "application/json" }), /retrieval failed after 1 of 5 attempts \(HTTP 206\)/, 1],
+    ["malformed-200", mockResponse({ body: "{not-json", url, contentType: "application/json" }), new RegExp(`${label} is malformed: `), 1],
+    ["wrong-table", mockResponse({ body: fixture.replaceAll(`"id":"${tableId}"`, `"id":"${wrongTableId}"`), url, contentType: "application/json" }), new RegExp(`${label} ${tableId} caption identity is not unique`), 1],
+  ]) {
+    const calls = [];
+    await assert.rejects(fetchSource({ fetchImpl: sequenceFetch([response], calls), sleepImpl: noWait, verifyDigest: false }), pattern, `${label} negative case must fail closed: ${name}`);
+    assert.equal(calls.length, attempts, `${label} ${name} makes ${attempts} request(s)`);
+  }
 }
 
-for (const [name, response] of [
-  ["port", mockResponse({ body: MINIMAL_MARON_BIOC_JSON, url: "https://www.ncbi.nlm.nih.gov:8443/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC11462328/unicode", contentType: MARON_BIOC_MEDIA_TYPE })],
-  ["media", mockResponse({ body: MINIMAL_MARON_BIOC_JSON, url: MARON_BIOC_JSON_URL, contentType: "text/plain" })],
-  ["identity", mockResponse({ body: MINIMAL_MARON_BIOC_JSON.replace(MARON_DOI, "10.0000/wrong"), url: MARON_BIOC_JSON_URL, contentType: MARON_BIOC_MEDIA_TYPE })],
-  ["206", mockResponse({ body: MINIMAL_MARON_BIOC_JSON, status: 206, url: MARON_BIOC_JSON_URL, contentType: MARON_BIOC_MEDIA_TYPE })],
-  ["malformed-200", mockResponse({ body: "{not-json", url: MARON_BIOC_JSON_URL, contentType: MARON_BIOC_MEDIA_TYPE })],
-  ["wrong-table", mockResponse({ body: MINIMAL_MARON_BIOC_JSON.replaceAll('"id":"tbl1"', '"id":"wrong"'), url: MARON_BIOC_JSON_URL, contentType: MARON_BIOC_MEDIA_TYPE })],
+// Pin mutations of the live artifacts served with HTTP 200: a same-length digest drift and a
+// byte-length drift each fail at once, with one request and no retry.
+for (const [source, live, fetchSource] of [
+  [BIOC_SPECS.auc, aucBioc.bytes, fetchAucBiocJson],
+  [BIOC_SPECS.maron, maronBioc.bytes, fetchMaronBiocJson],
 ]) {
-  const attemptsMade = response.status >= 300 && response.status < 500 && response.status !== 429 ? 1 : 3;
-  await assert.rejects(fetchMaronBiocJson({ fetchImpl: sequenceFetch([response]), sleepImpl: noWait, verifyDigest: false }), new RegExp(`retrieval failed after ${attemptsMade} attempt${attemptsMade === 1 ? "" : "s"}`), `Maron BioC negative case must fail closed: ${name}`);
+  const sameLength = Buffer.from(live);
+  const at = sameLength.indexOf("PMC");
+  assert.ok(at >= 0, `${source.label} live bytes name PMC`);
+  sameLength[at] = "Q".charCodeAt(0);
+  for (const [mutation, body, pattern] of [
+    ["same-length digest drift", sameLength, new RegExp(`${source.label} raw SHA256 drifted`)],
+    ["byte-length drift", Buffer.concat([live, Buffer.from(" ")]), new RegExp(`${source.label} raw byte length drifted`)],
+  ]) {
+    const calls = [];
+    await assert.rejects(fetchSource({ fetchImpl: sequenceFetch([mockResponse({ body, url: source.url, contentType: source.mediaType })], calls), sleepImpl: noWait }), pattern, `${source.label} ${mutation} must be detected`);
+    assert.equal(calls.length, 1, `${source.label} ${mutation} is a changed source, never retried`);
+  }
+}
+
+// NCBI_API_KEY hygiene: the BioC API is not a key host, so requests go to the exact canonical URL, and
+// no error, fetch-log line or cache sidecar ever carries the key.
+{
+  const keyScratch = mkdtempSync(path.join(os.tmpdir(), "cac-ncbi-key-"));
+  try {
+    const fakeKey = "9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f";
+    const env = {
+      NCBI_API_KEY: fakeKey,
+      RADULATOR_SOURCE_FETCH_LOG: path.join(keyScratch, "fetch-log.jsonl"),
+      RADULATOR_SOURCE_CACHE_DIR: path.join(keyScratch, "cache"),
+    };
+    const requested = [];
+    const keyed = await fetchAucBiocJson({
+      env,
+      sleepImpl: noWait,
+      fetchImpl: async (url) => {
+        requested.push(url);
+        return mockResponse({ body: aucBioc.bytes, url, contentType: AUC_BIOC_MEDIA_TYPE });
+      },
+    });
+    assert.equal(keyed.canonicalSha256, EXPECTED_BIOC_CANONICAL_SHA256);
+    assert.equal(requested.length, 1);
+    assert.equal(requested[0] === AUC_BIOC_JSON_URL, true, "the BioC API must never receive NCBI_API_KEY");
+    const exhausted = await fetchMaronBiocJson({
+      env,
+      sleepImpl: noWait,
+      fetchImpl: async (url) => {
+        throw new TypeError(`request to ${url}?api_key=${fakeKey} failed`);
+      },
+    }).then(() => null, (error) => error);
+    assert.ok(exhausted instanceof Error, "an exhausted retrieval fails loudly");
+    const cacheDir = env.RADULATOR_SOURCE_CACHE_DIR;
+    const surfaces = [
+      exhausted.message,
+      readFileSync(env.RADULATOR_SOURCE_FETCH_LOG, "utf8"),
+      ...readdirSync(cacheDir).filter((name) => name.endsWith(".json")).map((name) => readFileSync(path.join(cacheDir, name), "utf8")),
+    ].join("\n");
+    assert.equal(surfaces.includes(fakeKey), false, "NCBI_API_KEY must never reach output");
+    assert.equal(/api_key=(?!\[REDACTED\])/.test(surfaces), false, "no api_key value may reach output");
+  } finally {
+    rmSync(keyScratch, { recursive: true, force: true });
+  }
 }
 
 console.log(`CAC-DRS and Maron boundaries verified from exact AUC and Maron NCBI PMC BioC JSON artifacts (AUC canonical SHA256 ${EXPECTED_BIOC_CANONICAL_SHA256}; Maron canonical SHA256 ${EXPECTED_MARON_BIOC_CANONICAL_SHA256}).`);
