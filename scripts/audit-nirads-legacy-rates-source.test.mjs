@@ -3,6 +3,8 @@
 // check fails when its source bytes, statement, runtime text or runtime output is changed.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -143,7 +145,9 @@ await audit.fetchSource(KRIEGER, {
   sleep: async (ms) => { transientSleeps.push(ms); },
 });
 assert.equal(transientCalls, 4, "400, 429 and 5xx are retried");
-assert.deepEqual(transientSleeps, [1_500, 3_000, 6_000], "without Retry-After the exponential backoff applies, never an immediate retry");
+// The shared helper (scripts/lib/ncbi-fetch.mjs) owns the schedule: 1, 2, 4, 8 s; a Retry-After header can only
+// lengthen a wait, never below the schedule or above 30 s, and an absent or empty header never means "retry now".
+assert.deepEqual(transientSleeps, [1_000, 2_000, 4_000], "without Retry-After the backoff applies, never an immediate retry");
 const retryAfterSleeps = [];
 let retryAfterCalls = 0;
 const retryAfterHeaders = ["2", "120", ""];
@@ -157,7 +161,7 @@ await audit.fetchSource(KRIEGER, {
   },
   sleep: async (ms) => { retryAfterSleeps.push(ms); },
 });
-assert.deepEqual(retryAfterSleeps, [2_000, 20_000, 6_000], "Retry-After is honoured, capped at 20 s, and an empty header falls back to backoff");
+assert.deepEqual(retryAfterSleeps, [2_000, 30_000, 4_000], "Retry-After lengthens the wait, capped at 30 s, and an empty header falls back to backoff");
 let permanentCalls = 0;
 await failsAsync(
   audit.fetchSource(KRIEGER, {
@@ -171,5 +175,65 @@ await failsAsync(
   "404 fails at once with the real attempt count",
 );
 assert.equal(permanentCalls, 1, "404 is not retried");
+
+// 7. Retrieval through the shared NCBI helper (offline, not counted as mutations): a byte-length drift
+// served with HTTP 200 also fails at once, and NCBI_API_KEY goes to E-utilities as the last parameter
+// but never reaches an error, the fetch log, the cache or the PASS line.
+let lengthDriftCalls = 0;
+await assert.rejects(
+  audit.fetchSource(KRIEGER, {
+    fetchImpl: async () => {
+      lengthDriftCalls += 1;
+      return response(Buffer.concat([sources[KRIEGER], Buffer.from("\n")]));
+    },
+    sleep: async () => {},
+  }),
+  /source byte length drifted/,
+);
+assert.equal(lengthDriftCalls, 1, "a byte-length drift served with HTTP 200 is never retried");
+const keyScratch = mkdtempSync(path.join(os.tmpdir(), "nirads-ncbi-key-"));
+try {
+  const fakeKey = "4d2c0e1f3a5b6978a1b2c3d4e5f60718293a";
+  const keyEnv = {
+    NCBI_API_KEY: fakeKey,
+    RADULATOR_SOURCE_FETCH_LOG: path.join(keyScratch, "fetch-log.jsonl"),
+    RADULATOR_SOURCE_CACHE_DIR: path.join(keyScratch, "cache"),
+  };
+  const requested = [];
+  const keyed = await audit.fetchSource(KRIEGER, {
+    env: keyEnv,
+    sleep: async () => {},
+    fetchImpl: async (url) => {
+      requested.push(url);
+      // The server echoes the request URL, key included, as the final URL.
+      return requested.length === 1 ? response(Buffer.from("busy"), 429, { url }) : response(sources[KRIEGER], 200, { url });
+    },
+  });
+  assert.ok(keyed.equals(sources[KRIEGER]), "the keyed request returns the pinned record");
+  assert.equal(requested.length, 2);
+  assert.ok(
+    requested.every((url) => url === `${audit.SOURCES[KRIEGER].url}&api_key=${fakeKey}`),
+    "E-utilities requests carry the key as the last parameter",
+  );
+  const exhausted = await audit.fetchSource(BUNCH, {
+    env: keyEnv,
+    sleep: async () => {},
+    fetchImpl: async (url) => {
+      throw new TypeError(`request to ${url} failed`);
+    },
+  }).then(() => null, (error) => error);
+  assert.ok(exhausted instanceof Error, "an exhausted retrieval fails loudly");
+  const cacheDir = keyEnv.RADULATOR_SOURCE_CACHE_DIR;
+  const surfaces = [
+    exhausted.message,
+    readFileSync(keyEnv.RADULATOR_SOURCE_FETCH_LOG, "utf8"),
+    ...readdirSync(cacheDir).map((name) => readFileSync(path.join(cacheDir, name), "utf8")),
+    audit.passLine(result),
+  ].join("\n");
+  assert.equal(surfaces.includes(fakeKey), false, "NCBI_API_KEY must never reach output");
+  assert.equal(/api_key=(?!\[REDACTED\])/.test(surfaces), false, "no api_key value may reach output");
+} finally {
+  rmSync(keyScratch, { recursive: true, force: true });
+}
 
 console.log(`NI-RADS legacy-rate audit mutations: ${detected}/${detected} detected`);
