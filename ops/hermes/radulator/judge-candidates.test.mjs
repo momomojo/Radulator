@@ -615,6 +615,7 @@ function signedCarrier(keyId, role, profile, privateKey, state, verdict = "PASS"
     citations: ["https://example.org/source"],
     judge: { key_id: keyId, role, profile, model: "gpt-5.6-sol", provider: "openai-codex" },
     reviewed_at: overrides.reviewedAt || "2026-08-23T20:01:00Z",
+    ...(overrides.review !== undefined ? { review: overrides.review } : {}),
   };
   record.signature = sign(null, Buffer.from(canonicalJson(record)), privateKey).toString("base64");
   return {
@@ -988,6 +989,35 @@ async function collectMany(role, states, { developHead = null } = {}) {
     now: "2026-08-23T20:02:00Z",
   });
   assert.deepEqual(failing.map((item) => item.pr), [303, 110, 120, 150], "an unreadable develop head only drops the tiebreak");
+}
+
+// ---- Promotions: approvals bind the review mode and chain (Codex on #317) -----------------------------
+{
+  const [batch] = await collectMany("primary", [promotionState(303)]);
+  assert.deepEqual(batch.exactState.review, { mode: "batch", promotion_chain_sha256: verifiedChain.digest },
+    "the exact state carries the binding the record signs");
+  const changedChain = { ...verifiedChain, digest: "e".repeat(64) };
+  const [rebound] = await collectMany("primary", [promotionState(303, { chain: changedChain })]);
+  assert.notEqual(rebound.candidateId, batch.candidateId, "a changed chain is a new candidate");
+  const [escaped] = await collectMany("primary", [promotionState(303, { labels: ["ready-for-gate", "promotion-full-review"] })]);
+  assert.deepEqual(escaped.exactState.review, { mode: "full", promotion_chain_sha256: verifiedChain.digest });
+  const [hotfix] = await collectMany("primary", [promotionState(304, { headRef: "hotfix/live-outage" })]);
+  assert.equal(hotfix.exactState.review, undefined, "a hotfix carries no binding");
+
+  const approved = (chain, verdict = "PASS") => {
+    const state = promotionState(303, { chain });
+    state.reviews = [signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, state, verdict, {
+      review: { mode: "batch", promotion_chain_sha256: verifiedChain.digest },
+    })];
+    return state;
+  };
+  assert.deepEqual(await collectMany("primary", [approved(verifiedChain)]), [], "a batch PASS for the current chain needs no new review");
+  const [again] = await collectMany("primary", [approved(changedChain)]);
+  assert.equal(again?.pr, 303, "a batch PASS for another chain no longer counts, so the promotion is judged again");
+  assert.deepEqual(again.exactState.review, { mode: "batch", promotion_chain_sha256: changedChain.digest });
+  const [full] = await collectMany("primary", [approved({ ...verifiedChain, ok: false, reasonCode: "CHAIN_TREE_MISMATCH" })]);
+  assert.equal(full?.reviewMode, "full", "a chain that stops verifying sends the promotion to a full review");
+  assert.deepEqual(await collectMany("primary", [approved(changedChain, "NEEDS_FIX")]), [], "a batch NEEDS_FIX stands after the chain changes");
 }
 
 const temp = await mkdtemp(path.join(os.tmpdir(), "radulator-candidate-test-"));

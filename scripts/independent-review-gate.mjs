@@ -6,6 +6,7 @@ import {
   LABEL_FULL_REVIEW,
   LABEL_URGENT,
   loadPromotionChain,
+  promotionExactStateReview,
   summarizePromotionChain,
 } from "./promotion-chain.mjs";
 import {
@@ -498,11 +499,13 @@ function promotionChainLine(chain) {
   return `Promotion chain (${chain.enforcement}): ${outcome}.`;
 }
 
-// Promotions only: the result and check output carry the chain summary. In report mode it stays
-// outside the fingerprint, so the gate's published check and the controller's in-process evaluation
-// (separate processes that each load the chain) can never disagree because of the chain alone. In
-// enforce mode it gates the verdict, so it is bound into the fingerprint. Results for every other
-// PR are byte-identical to the gate without the chain.
+// Promotions only: the result and check output carry the chain summary. In report mode the summary
+// stays outside the fingerprint; the chain still decides whether a batch approval counts (see
+// evaluateGateCore), so the gate's published check and the controller's in-process evaluation
+// (separate processes that each load the chain) can disagree only when one of them no longer counts
+// a batch approval, and the controller refuses a fingerprint mismatch. In enforce mode the summary
+// gates the verdict, so it is bound into the fingerprint. Results for every other PR are
+// byte-identical to the gate without the chain.
 function withPromotionChain(result, promotionChain, mode) {
   const chain = {
     ...summarizePromotionChain(promotionChain),
@@ -563,7 +566,9 @@ function evaluateGateCore({ pr, requiredCi, ci, files, reviews, publicKeys, prom
       { risk },
     );
   }
-  const state = exactState(pr, ci, risk);
+  // A promotion's exact state carries the review binding of the chain loaded now, so a batch approval counts only
+  // while that is still the verified chain it was signed against (in report mode too).
+  const state = { ...exactState(pr, ci, risk), ...promotionExactStateReview(pr, promotionChain) };
   const carriers = attestationRecords(reviews);
   const quorum = evaluateAttestationQuorum(carriers, publicKeys, state);
   if (!quorum.ok) {

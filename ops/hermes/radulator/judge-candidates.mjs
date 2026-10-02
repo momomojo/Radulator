@@ -17,7 +17,7 @@ import {
 } from "../../../scripts/independent-review-gate.mjs";
 import {
   isPromotionPr,
-  promotionReviewMode,
+  promotionExactStateReview,
 } from "../../../scripts/promotion-chain.mjs";
 import {
   analyzeRisk,
@@ -385,6 +385,8 @@ function exactState(state, risk) {
     risk,
     ci: state.ci.evidence,
     ciSha256: digest(state.ci.evidence),
+    // Promotions: the review mode and chain digest, so the candidate id and the signed record change with the chain.
+    ...promotionExactStateReview(state.pr, state.promotionChain),
   };
 }
 
@@ -452,6 +454,7 @@ function candidate(repository, role, state, risk, riskDetails, exact, now) {
   const candidateId = digest({ repository, role, exact });
   // Promotions carry the chain proof and the review mode the judge rubric keys off: "batch" only
   // for a verified chain without the promotion-full-review label, otherwise "full". Other PRs: null.
+  // The mode comes from the exact state's review binding, which the attestation signs.
   const promotion = isPromotionPr(state.pr);
   return {
     schema: CANDIDATE_SCHEMA,
@@ -472,7 +475,7 @@ function candidate(repository, role, state, risk, riskDetails, exact, now) {
     exactState: exact,
     files: state.files,
     ci: state.ci,
-    reviewMode: promotion ? promotionReviewMode(state.promotionChain, state.pr.labels) : null,
+    reviewMode: promotion ? exact.review.mode : null,
     promotionChain: promotion ? state.promotionChain ?? null : null,
   };
 }

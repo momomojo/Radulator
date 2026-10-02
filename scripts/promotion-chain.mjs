@@ -82,6 +82,10 @@ const SHA = /^[0-9a-f]{40}$/;
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const CONTROLLER_MERGE_TITLE = /^PR #([1-9]\d*): exact-head clinical gate passed$/;
 const CONTROLLER_COMMITTER_LOGIN = "web-flow";
+// The controller merges with the workflow token, so GitHub records github-actions[bot] as the PR's merger. The title
+// and the web-flow signature are the same for anyone who squash-merges with that title; merged_by is not.
+const CONTROLLER_MERGER_ID = 41898282;
+const CONTROLLER_MERGER_LOGIN = "github-actions[bot]";
 const GATE_STATUS_CREATOR_ID = 41898282;
 const GATE_STATUS_CREATOR_LOGIN = "github-actions[bot]";
 const GATE_PASS_DESCRIPTION = /^PASS [0-9a-f]{64}$/;
@@ -154,11 +158,17 @@ export function decodeAttestedLabels(labelsSha256) {
   };
 }
 
-export function riskDomain(reasonCodes) {
+// Every non-neutral risk domain the reason codes name; riskDomain picks one of them for batch accounting.
+export function riskDomains(reasonCodes) {
   const codes = Array.isArray(reasonCodes) ? reasonCodes : [];
-  if (codes.some((code) => typeof code === "string" && code.startsWith("CLINICAL_"))) return "clinical";
-  if (codes.includes("RELEASE_CONTROL_CHANGE")) return "release-control";
-  return "neutral";
+  const domains = [];
+  if (codes.some((code) => typeof code === "string" && code.startsWith("CLINICAL_"))) domains.push("clinical");
+  if (codes.includes("RELEASE_CONTROL_CHANGE")) domains.push("release-control");
+  return domains;
+}
+
+export function riskDomain(reasonCodes) {
+  return riskDomains(reasonCodes)[0] || "neutral";
 }
 
 export function isHighRiskClinical(entry) {
@@ -339,6 +349,14 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
   ) {
     fail("CHAIN_PR_MISMATCH", `PR #${prNumber} is not the merged develop PR behind ${commit.sha} on base ${parentSha}.`, at);
   }
+  // c2. GitHub recorded the trusted controller as the merger (a person's merge records that person).
+  if (pr.merged_by?.id !== CONTROLLER_MERGER_ID || pr.merged_by?.login !== CONTROLLER_MERGER_LOGIN) {
+    fail(
+      "CHAIN_COMMIT_NOT_CONTROLLER_MERGE",
+      `PR #${prNumber} was merged by ${pr.merged_by?.login || "an unrecorded account"}, not the trusted controller.`,
+      at,
+    );
+  }
   const headSha = pr.head.sha;
   // d. The squash tree is the attested head tree.
   if (loaded.headCommit?.sha !== headSha || loaded.headCommit?.tree?.sha !== treeSha) {
@@ -386,6 +404,17 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
   }
   if (analyzed.tier === "high" && recorded.risk?.tier !== "high") {
     fail("CHAIN_RISK_UNDERSTATED", `PR #${prNumber} was judged ${recorded.risk?.tier}, but its landed diff is high risk.`, at);
+  }
+  // Nor do the recorded reason codes miss a risk domain the landed diff has: the batch's domain and high-risk clinical
+  // count come from the recorded codes, so older or incomplete codes must not understate them.
+  const recordedDomains = riskDomains(recorded.risk?.reasonCodes);
+  const unrecorded = riskDomains(analyzed.reasonCodes).filter((domain) => !recordedDomains.includes(domain));
+  if (unrecorded.length) {
+    fail(
+      "CHAIN_RISK_UNDERSTATED",
+      `PR #${prNumber}'s attestation records no ${unrecorded.join(" or ")} risk, but its landed diff has it.`,
+      at,
+    );
   }
   // i. The attested labels decode to the release flags.
   const labels = decodeAttestedLabels(recorded.labels_sha256);
@@ -680,6 +709,22 @@ export function promotionReviewMode(chain, labels = []) {
     : "full";
 }
 
+// The review binding a promotion's exact state carries and its attestations sign: the review mode and the digest of
+// the chain it came from. release-policy.mjs counts a batch approval only while the live binding is the same verified
+// chain in batch mode, so a chain that changes or stops verifying after a batch review sends the promotion back to the
+// judges. Other PRs carry no binding.
+export function promotionReviewBinding(chain, labels = []) {
+  const digested = chain?.schema === PROMOTION_CHAIN_SCHEMA && /^[0-9a-f]{64}$/.test(chain.digest || "");
+  return {
+    mode: digested ? promotionReviewMode(chain, labels) : "full",
+    promotion_chain_sha256: digested ? chain.digest : null,
+  };
+}
+
+export function promotionExactStateReview(pr, chain) {
+  return isPromotionPr(pr) ? { review: promotionReviewBinding(chain, pr.labels) } : {};
+}
+
 function limitedList(values) {
   const list = Array.isArray(values) ? values : [];
   return { count: list.length, items: list.slice(0, SUMMARY_LIST_LIMIT) };
@@ -782,6 +827,7 @@ function pickPr(pr) {
     state: pr?.state ?? null,
     merged: pr?.merged === true,
     merged_at: pr?.merged_at ?? null,
+    merged_by: { id: pr?.merged_by?.id ?? null, login: pr?.merged_by?.login ?? null },
     merge_commit_sha: pr?.merge_commit_sha ?? null,
     title: typeof pr?.title === "string" ? pr.title : "",
     base: {

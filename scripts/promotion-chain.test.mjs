@@ -14,8 +14,11 @@ import {
   loadPromotionChain,
   loadPromotionChainFacts,
   PROMOTION_CHAIN_SCHEMA,
+  promotionExactStateReview,
+  promotionReviewBinding,
   promotionReviewMode,
   riskDomain,
+  riskDomains,
   summarizePromotionChain,
   unavailablePromotionChain,
   verifyPromotionChain,
@@ -215,6 +218,7 @@ function world({
       state: "closed",
       merged: true,
       merged_at: committedAt,
+      merged_by: { login: "github-actions[bot]", id: 41898282, type: "Bot" },
       merge_commit_sha: squash,
       title: spec.title,
       base: { ref: "develop", sha: parent, repo: { id: REPO_ID, full_name: REPO } },
@@ -411,6 +415,9 @@ assert.equal(ENFORCEMENT_CONTEXT, gate.ENFORCEMENT_CONTEXT, "the chain reads the
   assert.equal(riskDomain(["RELEASE_CONTROL_CHANGE", "EXPLICIT_HIGH_RISK"]), "release-control");
   assert.equal(riskDomain(["EXPLICIT_HIGH_RISK"]), "neutral");
   assert.equal(riskDomain(["NO_HIGH_RISK_CHANGE"]), "neutral");
+  assert.deepEqual(riskDomains(["RELEASE_CONTROL_CHANGE", "CLINICAL_EVIDENCE_CHANGE"]), ["clinical", "release-control"]);
+  assert.deepEqual(riskDomains(["EXPLICIT_HIGH_RISK"]), []);
+  assert.deepEqual(riskDomains(null), []);
 
   const promotionPr = {
     baseRef: "main",
@@ -479,6 +486,23 @@ const baseline = world();
   assert.equal(promotionReviewMode(chain, ["ready-for-gate", "promotion-full-review"]), "full", "the escape label forces a full review");
   assert.equal(promotionReviewMode({ ...chain, ok: false }, []), "full");
   assert.equal(promotionReviewMode(null, []), "full", "a missing chain is a full review");
+
+  // Codex on #317: the binding a promotion attestation signs is the review mode plus the chain it came from.
+  assert.deepEqual(promotionReviewBinding(chain, ["ready-for-gate"]), { mode: "batch", promotion_chain_sha256: chain.digest });
+  assert.deepEqual(promotionReviewBinding(chain, ["promotion-full-review"]), { mode: "full", promotion_chain_sha256: chain.digest });
+  assert.deepEqual(promotionReviewBinding({ ...chain, ok: false }), { mode: "full", promotion_chain_sha256: chain.digest });
+  assert.deepEqual(promotionReviewBinding(null), { mode: "full", promotion_chain_sha256: null });
+  assert.deepEqual(promotionReviewBinding({ ...chain, digest: "not-a-digest" }), { mode: "full", promotion_chain_sha256: null },
+    "batch review needs a chain digest to bind");
+  const promotionPr = {
+    baseRef: "main",
+    headRef: "release/promote-484c9ee59ce2-6d7f8d95a462",
+    headRepoFullName: REPO,
+    repositoryFullName: REPO,
+    labels: ["ready-for-gate"],
+  };
+  assert.deepEqual(promotionExactStateReview(promotionPr, chain), { review: { mode: "batch", promotion_chain_sha256: chain.digest } });
+  assert.deepEqual(promotionExactStateReview({ ...promotionPr, baseRef: "develop" }, chain), {}, "other PRs carry no binding");
 }
 
 // Range mode (the controller and promoter): no promotion head, no content step.
@@ -586,6 +610,21 @@ for (const [label, mutateCommit] of [
       mutateCommit(responses[`${ROOT}/compare/${fixture.M}...${fixture.D}`].commits[0]);
     },
   }, label);
+}
+// Codex on #317: a person who squash-merges with the controller's title gets the same title, web-flow committer and
+// GitHub signature, so only GitHub's own merged_by record tells the controller's merge apart.
+for (const [label, mergedBy] of [
+  ["a maintainer's squash merge with the controller's title", { login: "momomojo", id: 12345, type: "User" }],
+  ["a merger with the bot's login but another account id", { login: "github-actions[bot]", id: 5, type: "Bot" }],
+  ["a merge with no recorded merger", null],
+]) {
+  const chain = await expectReason("CHAIN_COMMIT_NOT_CONTROLLER_MERGE", {
+    mutate(responses) {
+      responses[`${ROOT}/pulls/102`].merged_by = mergedBy;
+    },
+  }, label);
+  assert.equal(chain.failure.pr, 102, `${label}: the failure names the PR`);
+  assert.match(chain.summary, /not the trusted controller/);
 }
 for (const [label, mutatePr] of [
   ["an unmerged PR", (pr) => { pr.merged = false; }],
@@ -970,6 +1009,44 @@ const neutral = (pr, overrides = {}) => entrySpec(pr, {
   ])));
   assert.equal(soloUrgent.ok, true, "an urgent PR may release with remediation PRs");
   assert.equal(soloUrgent.counts.urgent, 1);
+}
+
+// ---- Step 2h again: recorded codes name every domain the landed diff has ----------------------------
+{
+  // Codex on #317: the batch's domain and high-risk clinical count come from the recorded reason codes, so a high-risk
+  // attestation whose (older or incomplete) codes miss a domain the landed files have fails closed.
+  const spread = (specs) => specs.map((spec, index) => ({ ...spec, start: minutes("2026-09-27T08:00:00Z", index * 30) }));
+  const recode = (pr, reasonCodes) => (responses) => {
+    for (const [index, key] of [[0, PRIMARY], [1, VERIFICATION]]) {
+      const comment = responses[`${ROOT}/issues/${pr}/comments`].find((item) => item.id === pr * 10 + index);
+      const { risk } = JSON.parse(comment.body.slice(comment.body.indexOf("```json") + 7, comment.body.lastIndexOf("```")));
+      resignComment(responses, pr, index, key, { risk: { ...risk, reasonCodes: reasonCodes(risk.reasonCodes) } });
+    }
+  };
+  // Without the check, #511 counted as neutral and the batch with a release-control PR verified unmixed.
+  const hiddenMix = await expectReason("CHAIN_RISK_UNDERSTATED", {
+    fixture: batch(spread([clinicalA(511), releaseControl(512)])),
+    mutate: recode(511, () => ["EXPLICIT_HIGH_RISK"]),
+  }, "a clinical PR recorded with no clinical code, batched with a release-control PR");
+  assert.equal(hiddenMix.failure.pr, 511);
+  assert.match(hiddenMix.summary, /records no clinical risk/);
+  // Without the check, #522 did not count toward M=1 and two high-risk clinical PRs verified.
+  await expectReason("CHAIN_RISK_UNDERSTATED", {
+    fixture: batch(spread([clinicalA(521), clinicalA(522)])),
+    policy: { ...BATCH_POLICY, maxHighRiskClinical: 1 },
+    mutate: recode(522, () => ["EXPLICIT_HIGH_RISK"]),
+  }, "a high-risk clinical PR recorded without a clinical code under M=1");
+  const wrongDomain = await expectReason("CHAIN_RISK_UNDERSTATED", {
+    fixture: batch(spread([releaseControl(531)])),
+    mutate: recode(531, () => ["CLINICAL_EVIDENCE_CHANGE"]),
+  }, "a release-control PR recorded as clinical");
+  assert.match(wrongDomain.summary, /records no release-control risk/);
+  // Recorded codes may name more than the re-classification finds.
+  const { chain: broader } = await run(batch(spread([clinicalA(541)])), {
+    mutate: recode(541, (codes) => [...codes, "RELEASE_CONTROL_CHANGE"]),
+  });
+  assert.equal(broader.ok, true, broader.summary);
+  assert.equal(broader.entries[0].domain, "clinical");
 }
 
 // ---- Malformed inputs fail closed ------------------------------------------------------------------

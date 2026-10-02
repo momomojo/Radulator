@@ -15,6 +15,7 @@ import {
   verifyKeyPairFiles,
 } from "./judge-attest.mjs";
 import { loadPublicKeysFile } from "./public-keys.mjs";
+import { PROMOTION_CHAIN_SCHEMA } from "../../../scripts/promotion-chain.mjs";
 import { classifyRisk, digest, verifyAttestation } from "../../../scripts/release-policy.mjs";
 
 const HEAD = "a".repeat(40);
@@ -355,6 +356,86 @@ try {
       async createComment() { throw new Error("must not post stale evidence"); },
     },
   }), /stale/i);
+
+  // Promotions (Codex on #317): the record signs the candidate's review binding, and a batch approval is posted only
+  // while the live chain is the one it was signed against.
+  const chainDigest = "c".repeat(64);
+  const binding = { mode: "batch", promotion_chain_sha256: chainDigest };
+  const MAIN_REQUIRED_CI = ["Smoke Tests", "Targeted Calculator Tests", "Full Test Suite"];
+  const mainCi = MAIN_REQUIRED_CI.map((name, index) => ({ name, completed_at: `2026-08-23T20:00:0${index}Z` }));
+  const promotionExact = { ...candidate.exactState, baseRef: "main", ci: mainCi, ciSha256: digest(mainCi) };
+  const promotionCandidate = candidateFixture({
+    baseRef: "main",
+    reviewMode: "batch",
+    ci: { ok: true, evidence: mainCi },
+    exactState: { ...promotionExact, review: binding },
+  });
+  const identity = { keyId: "primary-2026-08", role: "primary", profile: "radulator", model: "gpt-5.6-sol", provider: "openai-codex" };
+  const signPromotion = (item) => signCandidate({
+    candidate: item,
+    decision: { ...decision, candidate_id: item.candidateId },
+    identity,
+    privateKey,
+    reviewedAt: "2026-08-23T20:02:00Z",
+  });
+  const promotionRecord = signPromotion(promotionCandidate);
+  assert.deepEqual(promotionRecord.review, binding, "the record signs the review binding");
+  assert.equal(verifyAttestation(promotionRecord, keys, promotionCandidate.exactState).ok, true);
+  assert.equal(record.review, undefined, "a develop record carries no binding");
+  for (const [label, broken] of [
+    ["a promotion candidate without a binding",
+      candidateFixture({ baseRef: "main", reviewMode: "batch", exactState: promotionExact })],
+    ["a binding for another mode",
+      candidateFixture({ baseRef: "main", reviewMode: "full", exactState: { ...promotionExact, review: binding } })],
+    ["a binding on a candidate without a review mode",
+      candidateFixture({ reviewMode: null, exactState: { ...candidate.exactState, review: binding } })],
+  ]) {
+    assert.throws(() => signPromotion(broken), /review binding/, label);
+  }
+  const chainFixture = { schema: PROMOTION_CHAIN_SCHEMA, ok: true, reasonCode: "CHAIN_VERIFIED", digest: chainDigest };
+  const livePromotion = (chain) => ({
+    pr: {
+      repositoryId: candidate.exactState.repositoryId,
+      number: candidate.pr,
+      changedFiles: candidate.files.length,
+      headSha: candidate.headSha,
+      baseSha: candidate.baseSha,
+      baseRef: "main",
+      headRef: "release/promote-484c9ee59ce2-6d7f8d95a462",
+      headRepoFullName: "momomojo/Radulator",
+      repositoryFullName: "momomojo/Radulator",
+      stateEpoch: { eventId: 88, eventCreatedAt: "2026-08-23T19:55:00Z" },
+      labels: ["ready-for-gate"],
+      labelsDigest: candidate.exactState.labelsSha256,
+    },
+    requiredCi: MAIN_REQUIRED_CI,
+    ci: promotionCandidate.ci,
+    files: candidate.files,
+    promotionChain: chain,
+  });
+  const postedPromotion = await postAttestation({
+    record: promotionRecord,
+    publicKeys: keys,
+    api: {
+      async loadGateState() { return livePromotion(chainFixture); },
+      async createComment(body) { return { id: 78, body }; },
+      async getComment() { return { id: 78, body: formatAttestationCarrier(promotionRecord) }; },
+    },
+  });
+  assert.equal(postedPromotion.commentId, 78, "a batch approval posts while the chain is unchanged");
+  for (const [label, chain] of [
+    ["another chain", { ...chainFixture, digest: "f".repeat(64) }],
+    ["a chain that stopped verifying", { ...chainFixture, ok: false, reasonCode: "CHAIN_TREE_MISMATCH" }],
+  ]) {
+    await assert.rejects(() => postAttestation({
+      record: promotionRecord,
+      publicKeys: keys,
+      api: {
+        async loadGateState() { return livePromotion(chain); },
+        async createComment() { throw new Error(`must not post a batch approval for ${label}`); },
+      },
+    }), /stale or invalid attestation: ATTESTATION_STATE_MISMATCH/, label);
+  }
 } finally {
   await rm(temp, { recursive: true, force: true });
 }

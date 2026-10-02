@@ -1158,7 +1158,7 @@ function promotionFixture({ labels = ["ready-for-gate", "promotion"], promotionC
   assert.equal(
     reported.fingerprint,
     result.fingerprint,
-    "in report mode a different chain view (for example a transient load error in one process) cannot change the published fingerprint",
+    "in report mode a different chain view (for example a transient load error in one process) cannot change the published fingerprint of full-review approvals",
   );
 
   const withoutChain = (() => {
@@ -1235,6 +1235,49 @@ function promotionFixture({ labels = ["ready-for-gate", "promotion"], promotionC
     gateStateFingerprint({ ...promotionState, pr: { ...promotionState.pr, headRef: "release/promote-other" } }),
     "the head ref is part of the state fingerprint",
   );
+}
+
+// ---- Batch approvals count only for the chain they were signed against (Codex on #317) ----------------
+{
+  const chain = verifiedChain();
+  const batchBinding = { mode: "batch", promotion_chain_sha256: chain.digest };
+  const bound = ({ review = batchBinding, verdict = "PASS", ...options } = {}) => {
+    const fixture = promotionFixture({ promotionChain: chain, ...options });
+    const state = exactState(fixture.pr, fixture.ci, fixture.files);
+    const finding = verdict === "PASS" ? {} : { verdict, clinical_analysis: "The merged management text contradicts the source." };
+    const primary = signedRecord(PRIMARY, state, { review, ...finding });
+    const verification = signedRecord(VERIFICATION, state, { review, reviewed_at: "2026-08-23T20:01:30Z" });
+    return { ...fixture, reviews: [carrier(primary), carrier(verification, 813)] };
+  };
+  const pass = evaluateGate(bound());
+  assert.equal(pass.reasonCode, "PASS", "a batch approval counts for the chain it was signed against");
+  assert.equal(evaluateGate(bound(), { promotionChainEnforcement: "enforce" }).reasonCode, "PASS");
+  for (const [label, promotionChain] of [
+    ["the chain stops verifying", verifiedChain({ ok: false, reasonCode: "CHAIN_ATTESTATION_MISSING" })],
+    ["the chain changes", verifiedChain({ integrationMergedPaths: [] })],
+    ["the chain cannot be loaded", unavailablePromotionChain({ repository: REPOSITORY, mainSha: BASE, promotionHeadSha: HEAD, error: "rate limited" })],
+  ]) {
+    const result = evaluateGate({ ...bound(), promotionChain });
+    assert.equal(result.reasonCode, "MISSING_JUDGE_ROLE", `report mode: a batch approval no longer counts when ${label}`);
+    assert.equal(result.conclusion, "neutral", `${label}: the promotion waits for a fresh review`);
+    assert.notEqual(result.fingerprint, pass.fingerprint, `${label}: the controller's fingerprint check refuses the merge`);
+  }
+  const withoutChain = bound();
+  delete withoutChain.promotionChain;
+  assert.equal(evaluateGate(withoutChain).reasonCode, "MISSING_JUDGE_ROLE", "a batch approval needs a loaded chain");
+  // A full review never relied on the chain.
+  const unverified = verifiedChain({ ok: false, reasonCode: "CHAIN_TREE_MISMATCH" });
+  const fullReview = bound({ review: { mode: "full", promotion_chain_sha256: unverified.digest }, promotionChain: unverified });
+  assert.equal(evaluateGate(fullReview).reasonCode, "PASS", "a full-review approval counts whatever the chain");
+  assert.equal(evaluateGate({ ...fullReview, promotionChain: chain }).reasonCode, "PASS");
+  // A batch NEEDS_FIX stands after the chain changes.
+  const rejected = bound({ verdict: "NEEDS_FIX" });
+  assert.equal(evaluateGate({ ...rejected, promotionChain: verifiedChain({ integrationMergedPaths: [] }) }).reasonCode, "NEEDS_FIX");
+  // Only promotions carry a binding: on a develop PR a bound record is malformed and never counts.
+  const developState = gateFixture();
+  const developExact = exactState(developState.pr, developState.ci, developState.files);
+  const developBound = signedRecord(PRIMARY, developExact, { review: batchBinding });
+  assert.equal(evaluateGate({ ...developState, reviews: [carrier(developBound)] }).reasonCode, "MISSING_JUDGE_ROLE");
 }
 
 // loadGateState loads the chain for promotions only, memoized, and a chain-loading error never throws.

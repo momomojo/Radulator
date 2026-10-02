@@ -21,6 +21,8 @@ A promotion merges one exact develop commit into `main`. Its candidate carries `
 
 When `reviewMode` is anything other than `"batch"` (the chain is not verified, no chain was loaded, or the PR has the `promotion-full-review` label), review the promotion like any high-risk PR, over its whole diff.
 
+The attestation signs the candidate's `exactState.review` (the review mode and `promotion_chain_sha256`, the digest of `promotionChain`). A batch PASS counts only while the gate's freshly loaded chain is that same verified chain; if the chain changes or stops verifying, the promotion comes back as a new candidate. Review the candidate you were given; never edit its `exactState`.
+
 When `reviewMode` is `"batch"`:
 
 1. Confirm the chain matches the PR body's `<!-- radulator-batch-promotion/v1 -->` manifest when one is present, and that the head's parents are exactly [`baseSha`, `promotionChain.D`]. On any mismatch return `NEEDS_FIX` attributed to `chain`.
