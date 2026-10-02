@@ -41,6 +41,11 @@ export const LABEL_FULL_REVIEW = "promotion-full-review";
 // maxPrs (N) counts non-remediation PRs; maxHighRiskClinical (M) counts non-remediation high-tier
 // PRs with a CLINICAL_* reason code. N starts at 2 for the live test plan and is raised later.
 // maxChainCommits bounds the loader's API use (about five requests per commit).
+// maxAgeHours bounds the batch's age: its oldest constituent merged at most maxAgeHours before its newest. Both
+// times are GitHub's merged_at, already verified for every entry, so the bound is deterministic and needs no clock
+// (wall-clock time differs between judges and gate runs, and the promotion head's commit date is an unsigned value
+// set by whoever pushed it). The promoter opens a ripe batch within 2 hours, so this only stops a batch that kept
+// growing (each superseding promotion adds the newest merge) from keeping batch review past a day.
 export const BATCH_POLICY = Object.freeze({
   maxPrs: 2,
   maxHighRiskClinical: 2,
@@ -51,6 +56,7 @@ export const BATCH_POLICY = Object.freeze({
 
 export const CHAIN_REASON_CODES = Object.freeze([
   "CHAIN_VERIFIED",
+  "BATCH_TOO_OLD",
   "NOTHING_TO_RELEASE",
   "CHAIN_EVIDENCE_UNAVAILABLE",
   "CHAIN_TOO_LARGE",
@@ -522,6 +528,19 @@ function verifyLimits(entries, policy) {
   if (batchDomain(entries) === "mixed") fail("BATCH_DOMAIN_MIXED", "The batch mixes clinical and release-control PRs.", at);
   if (counts.urgent > 0 && counts.nonRemediation > 1) {
     fail("BATCH_URGENT_NOT_SOLO", "A release-urgent PR must release without other non-remediation PRs.", at);
+  }
+  // Batch age (see BATCH_POLICY): every entry counts, remediation included, so the check fails toward full review.
+  const merged = entries.map((entry) => time(entry.mergedAt));
+  if (merged.some((value) => Number.isNaN(value))) {
+    fail("CHAIN_EVIDENCE_UNAVAILABLE", "A batch entry has no merge time, so the batch age cannot be checked.", at);
+  }
+  const spanMs = merged.length ? Math.max(...merged) - Math.min(...merged) : 0;
+  if (spanMs > policy.maxAgeHours * 3_600_000) {
+    fail(
+      "BATCH_TOO_OLD",
+      `The batch's oldest PR merged ${(spanMs / 3_600_000).toFixed(2)} h before its newest (limit ${policy.maxAgeHours} h).`,
+      at,
+    );
   }
 }
 

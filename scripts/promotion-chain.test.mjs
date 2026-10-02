@@ -921,6 +921,26 @@ const neutral = (pr, overrides = {}) => entrySpec(pr, {
     fixture: batch(spread([clinicalA(411), clinicalA(412)])),
     policy: { ...BATCH_POLICY, maxPrs: 4, maxHighRiskClinical: 1 },
   }, "two high-risk clinical PRs over M=1");
+  // Primary judge on #317: maxAgeHours is enforced against the batch's own newest GitHub merged_at (deterministic,
+  // already verified). Just inside, exactly at and just outside 24 h; an expired batch gets full review.
+  const pair = (secondStart) => batch([
+    clinicalA(431, { start: "2026-09-27T08:00:00Z" }),
+    clinicalA(432, { start: secondStart }),
+  ]);
+  const { chain: inside } = await run(pair("2026-09-28T07:59:59Z"));
+  assert.equal(inside.ok, true, `23:59:59 apart passes: ${inside.summary}`);
+  const { chain: atLimit } = await run(pair("2026-09-28T08:00:00Z"));
+  assert.equal(atLimit.ok, true, `exactly 24 h apart passes: ${atLimit.summary}`);
+  const expired = await expectReason("BATCH_TOO_OLD", { fixture: pair("2026-09-28T08:00:01Z") }, "24 h + 1 s apart");
+  assert.match(expired.summary, /merged 24\.00 h before its newest \(limit 24 h\)/);
+  assert.equal(promotionReviewMode(expired), "full", "an expired batch never gets batch review");
+  const { chain: widened } = await run(pair("2026-09-28T08:00:01Z"), { policy: { ...BATCH_POLICY, maxAgeHours: 25 } });
+  assert.equal(widened.ok, true, "the bound follows the judged policy");
+  const remediationTooOld = batch([
+    clinicalA(441, { start: "2026-09-27T08:00:00Z" }),
+    clinicalA(442, { start: "2026-09-28T09:00:00Z", labels: ["ready-for-gate", "release-remediation"] }),
+  ]);
+  await expectReason("BATCH_TOO_OLD", { fixture: remediationTooOld }, "remediation entries count toward the age too");
   const withRemediation = batch(spread([
     clinicalA(421),
     clinicalA(422),
