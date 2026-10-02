@@ -171,6 +171,30 @@ assert.deepEqual(
       39,
       ["395:35587bc5aec1467370a80a59e46c5b7262ba3526ea2de69958a3e2de249ae116"],
     ],
+    [
+      "management-lrm-tailored-workup",
+      "LI-RADS-Based Management table, LR-M row",
+      17,
+      14,
+      ["39:07c9637198ea4193633feeda1045f9a8e21f130a4eb573004d6097b7255c6b9e"],
+    ],
+    [
+      "management-lr2-surveillance",
+      "LI-RADS-Based Management table, LR-2 row",
+      17,
+      14,
+      [
+        "51:31efdfa5d5de1fc4e4a380d777b3f9f0b56b4ceafbadc221453ae3bc4cfb1226",
+        "44:4963e0c42568a1fac5d4432242344a3c664235923115ddbfe0a6920454173d52",
+      ],
+    ],
+    [
+      "reporting-avoid-compelling-biopsy",
+      "Reporting considerations, biopsy language",
+      19,
+      16,
+      ["54:daedd395c0bfeb5e5a4478ee99f57e03589022b907eaf3f142795e4832b85835"],
+    ],
   ],
 );
 for (const statement of audit.source_statements) {
@@ -199,6 +223,7 @@ assert.deepEqual(audit.layout.step2_ladder, {
   upgrade_label_y: 580.3,
   downgrade_label_y: 463.9,
 });
+const bindings0 = (id) => audit.claim_bindings.find((binding) => binding.claim_id === id)?.runtime;
 // In-memory edits of the real page text must each break the named statement's pin.
 assert.deepEqual(audit.source_mutations, [
   { statement_id: "whats-new-threshold-growth", find: "≥ 50%", replace: "≥ 40%", detected: true },
@@ -207,6 +232,9 @@ assert.deepEqual(audit.source_mutations, [
   { statement_id: "ancillary-subthreshold-growth", find: "less than threshold", replace: "more than threshold", detected: true },
   { statement_id: "step2-ancillary-features", find: "downgrade by 1", replace: "downgrade by 2", detected: true },
   { statement_id: "lrm-criteria", find: "Not meeting LR", replace: "Meeting LR", detected: true },
+  { statement_id: "management-lrm-tailored-workup", find: "Often includes biopsy", replace: "Requires biopsy", detected: true },
+  { statement_id: "management-lr2-surveillance", find: "≤ 6 months", replace: "≤ 3 months", detected: true },
+  { statement_id: "reporting-avoid-compelling-biopsy", find: "compels biopsy", replace: "recommends biopsy", detected: true },
 ]);
 assert.deepEqual(audit.layout.lrm_condition_box, {
   targetoid_line_y: 640.9,
@@ -244,8 +272,18 @@ assert.deepEqual(
     ],
     ["benign-ancillary-downgrade-one-category", ["step2-ancillary-features"]],
     ["acr-reference-is-live-landing-page", ["core-identity"]],
+    ["lrm-management-tailored-workup", ["management-lrm-tailored-workup", "reporting-avoid-compelling-biopsy"]],
+    ["lr2-management-surveillance", ["management-lr2-surveillance"]],
   ],
 );
+assert.deepEqual(bindings0("lrm-management-tailored-workup"), {
+  recommendation: "Multidisciplinary discussion for tailored workup, which often includes biopsy",
+  paths: ["targetoid", "nontargetoid"],
+});
+assert.deepEqual(bindings0("lr2-management-surveillance"), {
+  recommendation: "Return to surveillance in 6 months; consider repeat diagnostic imaging in ≤6 months",
+  paths: ["probably benign", "LR-3 downgraded"],
+});
 const bindings = new Map(audit.claim_bindings.map(({ claim_id, runtime }) => [claim_id, runtime]));
 assert.deepEqual(bindings.get("step1-order"), {
   runtime_order: ["LR-NC", "LR-TIV", "LR-1", "LR-2", "LR-M", "diagnostic-table"],
@@ -266,9 +304,9 @@ assert.equal(bindings.get("tiebreak-note-lrm-vs-lr5").results_checked, 128);
 assert.equal(bindings.get("lrm-decided-before-ancillary-features").lr5_then_benign_downgrade, "LR-4 (Probably HCC)");
 assert.deepEqual(bindings.get("threshold-growth-v2018"), {
   field_subLabel:
-    "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
+    "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
   result_note:
-    "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
+    "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
   subthreshold_option:
     "Subthreshold growth (growth below threshold, e.g. new ≥10 mm observation in ≤24 months or ≥100% over >6 months)",
   subthreshold_vectors: 104,
@@ -454,6 +492,40 @@ const runtimeMutants = [
         : field,
     ),
     /threshold_growth subLabel drifted/,
+  ],
+  [
+    "threshold-growth subLabel without the 24-month boundary (primary judge on #330)",
+    withFields((field) =>
+      field.id === "threshold_growth" ? { ...field, subLabel: field.subLabel.replace(" in ≤24 months", "") } : field,
+    ),
+    /threshold_growth subLabel drifted/,
+  ],
+  [
+    "threshold-growth result note without the 24-month boundary (primary judge on #330)",
+    computeMutant((vals, result) =>
+      result["Clinical Notes"]?.includes(RUNTIME_THRESHOLD_GROWTH.note)
+        ? { ...result, "Clinical Notes": result["Clinical Notes"].replace(" in ≤24 months", "") }
+        : result,
+    ),
+    /threshold growth note missing/,
+  ],
+  [
+    "LR-M recommendation compels biopsy again (primary judge on #330)",
+    computeMutant((vals, result) =>
+      String(result["LI-RADS Category"] ?? "").startsWith("LR-M")
+        ? { ...result, Recommendation: "Biopsy recommended; multidisciplinary discussion" }
+        : result,
+    ),
+    /LR-M recommendation drifted/,
+  ],
+  [
+    "LR-2 recommendation without the source's intervals (primary judge on #330)",
+    computeMutant((vals, result) =>
+      String(result["LI-RADS Category"] ?? "").startsWith("LR-2")
+        ? { ...result, Recommendation: "Return to routine surveillance; option for alternate imaging modality" }
+        : result,
+    ),
+    /LR-2 recommendation drifted/,
   ],
   [
     "threshold-growth result note reverted to the v2017 definition",

@@ -147,7 +147,7 @@ test("nontargetoid LR-M feature without LR-5 criteria is LR-M", () => {
         `Nontargetoid mass with LR-M feature(s); LR-5 criteria not met (diagnostic table: ${tableCategory})`,
         `${id} / ${cell}`,
       );
-      assert.equal(result.Recommendation, "Biopsy recommended; multidisciplinary discussion");
+      assert.equal(result.Recommendation, "Multidisciplinary discussion for tailored workup, which often includes biopsy");
       assert.equal(result._severity, "danger");
     }
   }
@@ -447,9 +447,9 @@ test("diagnostic table is unchanged when no LR-M feature is present", () => {
 });
 
 const TG_SUBLABEL =
-  "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth";
+  "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth";
 const TG_NOTE =
-  "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4";
+  "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4";
 const SUBTHRESHOLD_LABEL =
   "Subthreshold growth (growth below threshold, e.g. new ≥10 mm observation in ≤24 months or ≥100% over >6 months)";
 const BENIGN_AF = ["size_stability", "size_reduction", "parallels_blood_pool", "undistorted_vessels", "iron_in_mass", "marked_t2", "hbp_iso"];
@@ -534,7 +534,7 @@ test("ancillary features favoring benignity downgrade exactly one category, incl
   const lr2 = LIRADS.compute({ ...indeterminate, ...majors(15, "none"), ancillary_benign: "size_stability" });
   assert.equal(lr2["LI-RADS Category"], LR2_LABEL);
   assert.equal(lr2["HCC Probability"], "~14%");
-  assert.equal(lr2.Recommendation, "Return to routine surveillance; option for alternate imaging modality");
+  assert.equal(lr2.Recommendation, "Return to surveillance in 6 months; consider repeat diagnostic imaging in ≤6 months");
   assert.equal(lr2._severity, "success");
 
   // Malignancy side unchanged: up one category, never to LR-5.
