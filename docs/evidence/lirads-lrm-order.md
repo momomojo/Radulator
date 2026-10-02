@@ -49,7 +49,15 @@ one-category downgrade of LR-3 to LR-2, and the ACR reference link.
 | Bytes | 1,840,136 |
 | SHA-256 | `89fddfbd66641f37055fc16082f338bc4fec880f3d3e0042a7a9b6b69f4acfb4` |
 | Pages | 61 (PDF page N is printed page N - 3) |
-| Retrieved | 2026-09-28 UTC, plain HTTPS GET, no bot check or login |
+| Parser | `pdfjs-dist` 4.10.38, legacy build; the audit fails on any other version |
+| Retrieved | 2026-09-28 UTC, plain HTTPS GET, no bot check or login; rechecked 2026-10-02 (HTTP 200, same type and length) |
+| Not the source | The older `www.acr.org/-/media/ACR/Files/RADS/LI-RADS/...` PDF path now redirects to an HTML app |
+
+Each exact-head run of `scripts/audit-lirads-lrm-source.test.mjs` ends with one
+line naming what it measured on the response it parsed: final URL, HTTP status,
+media type, byte length, SHA-256 and parser version. That line is the runner's
+`pass_line` in the `SOURCE-AUDIT RESULT` record of the `Clinical Source Audits
+(exact head)` job.
 
 **Corroboration (retrieved, not pinned in CI).** The same ACR page links the
 LI-RADS v2018 CT/MRI Manual, Chapter 8 "Diagnostic Categories":

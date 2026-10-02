@@ -25,7 +25,7 @@ import { resolve } from "node:path";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { getDocument, version as PDFJS_VERSION } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { LIRADS } from "../src/components/calculators/LIRADS.jsx";
 
 const CALCULATOR_PATH = "src/components/calculators/LIRADS.jsx";
@@ -35,18 +35,38 @@ const BASE_BACKOFF_MS = 2_000;
 export const MAX_RETRY_AFTER_MS = 60_000;
 const FETCH_TIMEOUT_MS = 90_000;
 
+// The source manifest. retrieve() fetches `url` over HTTPS and accepts only an HTTP 200 whose final URL has exactly this
+// host, path and query, whose media type is `media_type` with a %PDF- header, and whose raw bytes match `bytes` and
+// `sha256`, all before anything is parsed. pdfPages() then reads the text with exactly `parser`. main() reports what it
+// measured on that response, so the exact-head CI log shows the artifact this run verified.
 export const SOURCE = Object.freeze({
   key: "acr-lirads-ctmri-v2018-core",
   authority: "American College of Radiology",
   document: "ACR CT/MRI LI-RADS v2018 Core",
+  // The official page whose "CT/MRI v2018 Core" link is `url`.
   landing_page:
     "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/LI-RADS",
+  // ACR's media CDN serves the PDF itself. The older www.acr.org/-/media/... PDF path now redirects to an HTML app.
   url: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/LI-RADS/LI-RADS-CT-MRI-2018-Core.pdf",
   media_type: "application/pdf",
   pin: "raw-bytes",
   bytes: 1_840_136,
   sha256: "89fddfbd66641f37055fc16082f338bc4fec880f3d3e0042a7a9b6b69f4acfb4",
   pages: 61,
+  // package.json pins this exact version; assertParserPin() fails the audit on any other.
+  parser: Object.freeze({ package: "pdfjs-dist", version: "4.10.38", entry: "pdfjs-dist/legacy/build/pdf.mjs" }),
+});
+
+// The retrieval restrictions retrieve() applies, reported with every run.
+export const RETRIEVAL = Object.freeze({
+  protocol: "https:",
+  final_url: "redirects are followed, then the final URL must have exactly the host, path and query of SOURCE.url",
+  user_agent: USER_AGENT,
+  timeout_ms: FETCH_TIMEOUT_MS,
+  max_attempts: MAX_ATTEMPTS,
+  retried: `network errors, aborted body reads and HTTP 408/425/429/5xx, with backoff from ${BASE_BACKOFF_MS / 1_000} s and Retry-After up to ${MAX_RETRY_AFTER_MS / 1_000} s`,
+  never_retried: "other HTTP errors, and an HTTP 200 that misses any pin",
+  checked_before_parsing: Object.freeze(["final URL", "media type", "%PDF- header", "byte length", "SHA-256"]),
 });
 
 // Each span runs from the `from` marker to the next `to` marker on the PDF page, after
@@ -626,6 +646,7 @@ export async function retrieve(
       });
       if (response.ok) {
         completed = {
+          status: response.status,
           bytes: Buffer.from(await response.arrayBuffer()),
           finalUrl: new URL(response.url || source.url),
           contentType: response.headers.get("content-type") ?? "",
@@ -1326,7 +1347,23 @@ export function verifyGuardrails(calculator) {
 // ---------------------------------------------------------------------------------------------
 // PDF extraction and the audit run
 
-export async function pdfPages(bytes, wanted) {
+// The verified artifact on one line of at most 300 characters, so the source-audit runner's pass_line (the last
+// stdout line, capped at 300) carries all of it.
+export function manifestLine(measured, source = SOURCE) {
+  const mediaType = `${measured.content_type}`.split(";")[0].trim();
+  return `LI-RADS source PASS: ${measured.final_url} HTTP ${measured.status} ${mediaType} ${measured.bytes} bytes sha256 ${measured.sha256} ${source.parser.package} ${measured.parser_version}`;
+}
+
+export function assertParserPin(version = PDFJS_VERSION, source = SOURCE) {
+  assert.equal(
+    version,
+    source.parser.version,
+    `${source.key}: PDF parser drifted from ${source.parser.package} ${source.parser.version}`,
+  );
+}
+
+export async function pdfPages(bytes, wanted, { parserVersion = PDFJS_VERSION } = {}) {
+  assertParserPin(parserVersion);
   const document = await getDocument({
     data: new Uint8Array(bytes),
     disableWorker: true,
@@ -1468,8 +1505,19 @@ async function main() {
       bytes: SOURCE.bytes,
       sha256: SOURCE.sha256,
       pages: SOURCE.pages,
+      parser: { ...SOURCE.parser },
       retrieval_attempts: retrieved.attempts,
+      // Measured on the response this run parsed (retrieve() has already required each to equal its pin).
+      measured: {
+        status: retrieved.status,
+        final_url: retrieved.finalUrl.href,
+        content_type: retrieved.contentType,
+        bytes: retrieved.bytes.length,
+        sha256: sha256(retrieved.bytes),
+        parser_version: PDFJS_VERSION,
+      },
     },
+    retrieval: { ...RETRIEVAL, checked_before_parsing: [...RETRIEVAL.checked_before_parsing] },
     source_statements: [...verified.values()],
     source_mutations: sourceMutations,
     layout,
@@ -1483,7 +1531,7 @@ async function main() {
       not_asserted: [
         "ancillary-feature adjustment of LR-1 and LR-2 chosen directly in the benignity question",
         "LR-M and LR-5 probability figures",
-        "management recommendations",
+        "management recommendations other than LR-M and LR-2",
         "whole-calculator clinical acceptance",
       ],
     },
@@ -1496,6 +1544,7 @@ async function main() {
     console.log(
       `LI-RADS LR-M primary-source audit passed: 1 pinned artifact, ${verified.size} source statements, ${CLAIM_BINDINGS.length} runtime claim bindings, ${runtime.bindings["lr5-criteria-are-the-diagnostic-table"].table_vectors} table vectors and ${runtime.guardrails.hidden_field_mutations} hidden-field mutations.`,
     );
+    console.log(manifestLine(audit.source.measured));
   }
 }
 

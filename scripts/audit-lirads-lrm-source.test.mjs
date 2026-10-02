@@ -32,7 +32,7 @@ assert.equal(audit.calculator_path, "src/components/calculators/LIRADS.jsx");
 
 const PDF_URL =
   "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/LI-RADS/LI-RADS-CT-MRI-2018-Core.pdf";
-const { retrieval_attempts: attempts, ...source } = audit.source;
+const { retrieval_attempts: attempts, measured, ...source } = audit.source;
 assert.ok(Number.isInteger(attempts) && attempts >= 1);
 assert.deepEqual(source, {
   key: "acr-lirads-ctmri-v2018-core",
@@ -47,6 +47,24 @@ assert.deepEqual(source, {
   bytes: 1840136,
   sha256: "89fddfbd66641f37055fc16082f338bc4fec880f3d3e0042a7a9b6b69f4acfb4",
   pages: 61,
+  parser: { package: "pdfjs-dist", version: "4.10.38", entry: "pdfjs-dist/legacy/build/pdf.mjs" },
+});
+// What this run measured on the response it parsed equals every pin.
+assert.equal(measured.status, 200);
+assert.equal(measured.final_url, PDF_URL);
+assert.equal(measured.content_type.split(";")[0].trim().toLowerCase(), "application/pdf");
+assert.equal(measured.bytes, 1840136);
+assert.equal(measured.sha256, "89fddfbd66641f37055fc16082f338bc4fec880f3d3e0042a7a9b6b69f4acfb4");
+assert.equal(measured.parser_version, "4.10.38");
+assert.deepEqual(audit.retrieval, {
+  protocol: "https:",
+  final_url: "redirects are followed, then the final URL must have exactly the host, path and query of SOURCE.url",
+  user_agent: "Radulator-LI-RADS-LRM-source-audit/1",
+  timeout_ms: 90000,
+  max_attempts: 4,
+  retried: "network errors, aborted body reads and HTTP 408/425/429/5xx, with backoff from 2 s and Retry-After up to 60 s",
+  never_retried: "other HTTP errors, and an HTTP 200 that misses any pin",
+  checked_before_parsing: ["final URL", "media type", "%PDF- header", "byte length", "SHA-256"],
 });
 
 // Each source statement is pinned by the SHA-256 of its exact normalized span at the locator.
@@ -340,7 +358,7 @@ assert.deepEqual(audit.scope, {
   not_asserted: [
     "ancillary-feature adjustment of LR-1 and LR-2 chosen directly in the benignity question",
     "LR-M and LR-5 probability figures",
-    "management recommendations",
+    "management recommendations other than LR-M and LR-2",
     "whole-calculator clinical acceptance",
   ],
 });
@@ -371,9 +389,27 @@ const {
   checkTiebreakLabelPlacement,
   checkStep2Ladder,
   assertBindingsCoverStatements,
+  assertParserPin,
+  manifestLine,
   parseRetryAfter,
   retrieve,
 } = auditModule;
+
+// The parser pin: any other pdfjs-dist version fails the audit before anything is parsed.
+assertParserPin();
+assert.throws(() => assertParserPin("4.10.39"), /PDF parser drifted from pdfjs-dist 4\.10\.38/);
+assert.throws(() => assertParserPin("5.0.0"), /PDF parser drifted/);
+await assert.rejects(
+  auditModule.pdfPages(Buffer.from("%PDF-1.7 synthetic"), [1], { parserVersion: "4.10.39" }),
+  /PDF parser drifted/,
+  "pdfPages checks the parser pin before it parses anything",
+);
+// The verified artifact fits the source-audit runner's 300-character pass_line.
+const sourceLine = manifestLine(measured);
+assert.ok(sourceLine.length <= 300, `the manifest line has ${sourceLine.length} characters`);
+for (const part of [PDF_URL, "HTTP 200", "application/pdf", "1840136 bytes", `sha256 ${SOURCE.sha256}`, "pdfjs-dist 4.10.38"]) {
+  assert.ok(sourceLine.includes(part), `the manifest line names ${part}`);
+}
 
 // 3a. Runtime mutants: each reintroduces one defect and must fail the runtime binding.
 verifyRuntime(LIRADS, EXPECTED_TABLE);
@@ -809,6 +845,7 @@ const recovered = await retrieve(SYNTHETIC_SOURCE, {
   sleep: noSleep,
 });
 assert.equal(recovered.attempts, 3);
+assert.equal(recovered.status, 200, "the accepted response's status is reported");
 assert.deepEqual(recovered.waits, [7_000, 4_000], "Retry-After must be honored, then exponential backoff");
 assert.ok(recovered.bytes.equals(syntheticBody), "only pin-verified bytes are returned");
 
@@ -873,3 +910,5 @@ for (const [name, source, drifted, message] of driftedOk) {
 console.log(
   `LI-RADS LR-M primary-source audit verified 1 pinned ACR PDF (raw bytes checked before parsing), ${audit.source_statements.length} digest-pinned source statements, ${audit.source_mutations.length} in-memory source mutations caught, ${Object.keys(audit.layout).length} layout checks, ${audit.claim_bindings.length} runtime claim bindings and the actual-export tests; ${runtimeMutants.length} runtime mutants, ${driftedOk.length} drifted-200 mutants (each failed on the first fetch, never retried) and the source, artifact, layout and retrieval mutants were all rejected.`,
 );
+// Last, so the runner's pass_line records the artifact this exact-head run verified.
+console.log(sourceLine);
