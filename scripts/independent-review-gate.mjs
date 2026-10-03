@@ -2,6 +2,15 @@
 import { fileURLToPath } from "node:url";
 
 import {
+  isPromotionPr,
+  LABEL_FULL_REVIEW,
+  LABEL_URGENT,
+  loadPromotionChain,
+  PROMOTION_BATCH_REVIEW,
+  promotionExactStateReview,
+  summarizePromotionChain,
+} from "./promotion-chain.mjs";
+import {
   classifyRisk,
   digest,
   evaluateAttestationQuorum,
@@ -14,6 +23,12 @@ export const ENFORCEMENT_CONTEXT = "Radulator Clinical Release Authorization";
 export const MAX_PR_FILES = 3000;
 export const RECORD_SCHEMA = "radulator-clinical-gate-result/v1";
 export const ATTESTATION_MARKER = "<!-- radulator-clinical-attestation/v1 -->";
+// Promotions to main carry the promotion chain proof (scripts/promotion-chain.mjs) in the gate
+// result and check output. "report" publishes it without changing any verdict (the live test plan
+// observes real promotions first). "enforce" refuses a promotion whose chain is not verified unless
+// it carries the promotion-full-review label, which binds a full review into the attestations.
+// Changing this constant is a judged release-control change.
+export const PROMOTION_CHAIN_ENFORCEMENT = "report";
 
 const E2E_WORKFLOW_PATH = ".github/workflows/e2e-tests.yml";
 const E2E_WORKFLOW_FILE = "e2e-tests.yml";
@@ -31,12 +46,14 @@ const HOLD_LABELS = new Set([
   "cancelled",
   "canceled",
 ]);
-const RELEVANT_LABELS = new Set([
+export const RELEVANT_LABELS = new Set([
   "ready-for-gate",
   "release-remediation",
+  LABEL_URGENT,
+  LABEL_FULL_REVIEW,
   ...HOLD_LABELS,
 ]);
-const RELEVANT_TIMELINE_EVENTS = new Set([
+export const RELEVANT_TIMELINE_EVENTS = new Set([
   "closed",
   "reopened",
   "convert_to_draft",
@@ -435,7 +452,7 @@ function newestRequiredRecords(records, roles, state, publicKeys) {
   return selected;
 }
 
-export function gateStateFingerprint({ pr, ci, files, reviews }) {
+export function gateStateFingerprint({ pr, ci, files, reviews, promotionChain }) {
   return digest({
     pr: {
       repositoryId: pr.repositoryId,
@@ -448,10 +465,13 @@ export function gateStateFingerprint({ pr, ci, files, reviews }) {
       headSha: pr.headSha,
       baseSha: pr.baseSha,
       baseRef: pr.baseRef,
+      headRef: pr.headRef ?? null,
+      headRepoFullName: pr.headRepoFullName ?? null,
       stateEpoch: pr.stateEpoch,
       labels: [...(pr.labels || [])].sort(),
       labelsDigest: pr.labelsDigest,
     },
+    promotionChain: promotionChain?.digest ?? null,
     ci,
     files: (files || []).map((file) => ({
       filename: file.filename,
@@ -468,7 +488,46 @@ export function gateStateFingerprint({ pr, ci, files, reviews }) {
   });
 }
 
-export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys }) {
+function promotionChainEnforced(mode) {
+  // Anything but the explicit report mode enforces (fail closed).
+  return mode !== "report";
+}
+
+function promotionChainLine(chain) {
+  const outcome = chain.ok
+    ? `verified, ${chain.counts?.prs ?? 0} PR(s), digest ${`${chain.digest}`.slice(0, 12)}`
+    : `${chain.reasonCode}`;
+  return `Promotion chain (${chain.enforcement}): ${outcome}.`;
+}
+
+// Promotions only: the result and check output carry the chain summary. In report mode the summary
+// stays outside the fingerprint; the chain still decides whether a batch approval counts (see
+// evaluateGateCore), so the gate's published check and the controller's in-process evaluation
+// (separate processes that each load the chain) can disagree only when one of them no longer counts
+// a batch approval, and the controller refuses a fingerprint mismatch. In enforce mode the summary
+// gates the verdict, so it is bound into the fingerprint. Results for every other PR are
+// byte-identical to the gate without the chain.
+function withPromotionChain(result, promotionChain, mode) {
+  const chain = {
+    ...summarizePromotionChain(promotionChain),
+    enforcement: promotionChainEnforced(mode) ? "enforce" : "report",
+  };
+  if (chain.enforcement === "report") return { ...result, promotionChain: chain };
+  const { fingerprint: _previous, ...core } = result;
+  const next = { ...core, summary: `${core.summary} ${promotionChainLine(chain)}`, promotionChain: chain };
+  next.fingerprint = digest(next);
+  return next;
+}
+
+export function evaluateGate(state, {
+  promotionChainEnforcement = PROMOTION_CHAIN_ENFORCEMENT,
+  promotionBatchReview = PROMOTION_BATCH_REVIEW,
+} = {}) {
+  const result = evaluateGateCore(state, promotionChainEnforcement, promotionBatchReview);
+  return isPromotionPr(state?.pr) ? withPromotionChain(result, state.promotionChain, promotionChainEnforcement) : result;
+}
+
+function evaluateGateCore({ pr, requiredCi, ci, files, reviews, publicKeys, promotionChain }, promotionChainEnforcement, promotionBatchReview) {
   if (!pr || !positiveInteger(pr.repositoryId) || !positiveInteger(pr.number) || !sha(pr.headSha) || !sha(pr.baseSha)) {
     return failure(pr?.headSha || "", pr?.baseSha || "", "Malformed PR/repository identity or head/base SHA; refusing PASS.", "MALFORMED_PR");
   }
@@ -499,7 +558,21 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
     return blocked(pr.headSha, pr.baseSha, ciPolicy.summary, ciPolicy.reasonCode, ciPolicy.risk ? { risk: ciPolicy.risk } : {});
   }
   const risk = ciPolicy.risk;
-  const state = exactState(pr, ci, risk);
+  if (
+    promotionChainEnforced(promotionChainEnforcement) && isPromotionPr(pr) &&
+    promotionChain?.ok !== true && !labels.has(LABEL_FULL_REVIEW)
+  ) {
+    return failure(
+      pr.headSha,
+      pr.baseSha,
+      `Promotion chain is not verified (${promotionChain?.reasonCode || "CHAIN_EVIDENCE_UNAVAILABLE"}); a full review requires the ${LABEL_FULL_REVIEW} label.`,
+      "PROMOTION_CHAIN_UNVERIFIED",
+      { risk },
+    );
+  }
+  // A promotion's exact state carries the review binding of the chain loaded now, so a batch approval counts only
+  // while that is still the verified chain it was signed against (in report mode too).
+  const state = { ...exactState(pr, ci, risk), ...promotionExactStateReview(pr, promotionChain, { batchReview: promotionBatchReview }) };
   const carriers = attestationRecords(reviews);
   const quorum = evaluateAttestationQuorum(carriers, publicKeys, state);
   if (!quorum.ok) {
@@ -609,6 +682,8 @@ function normalizePr(data, stateEpoch = null) {
     headSha: data.head.sha,
     baseSha: data.base.sha,
     baseRef: data.base.ref,
+    headRef: typeof data.head.ref === "string" ? data.head.ref : null,
+    headRepoFullName: typeof data.head.repo?.full_name === "string" ? data.head.repo.full_name : null,
     author: data.user.login,
     authorId: data.user.id,
     authorType: data.user.type,
@@ -679,7 +754,7 @@ export async function loadGateState(token, owner, repo, prNumber, config) {
     expectedCiAppId: config.expectedCiAppId,
     expectedRepositoryFullName: `${owner}/${repo}`,
   });
-  return {
+  const state = {
     pr,
     requiredCi,
     ci,
@@ -687,6 +762,21 @@ export async function loadGateState(token, owner, repo, prNumber, config) {
     reviews: comments.map(normalizeComment),
     publicKeys: config.publicKeys,
   };
+  if (isPromotionPr(pr)) {
+    // Memoized per process: the before/after/post loads of one run see the same chain. A loading
+    // error becomes a not-ok chain (CHAIN_EVIDENCE_UNAVAILABLE), never an evaluation error.
+    state.promotionChain = await loadPromotionChain({
+      api: {
+        request: (path) => githubRequest(token, path),
+        paged: (path, key = null) => paged(token, path, key),
+      },
+      repository: `${owner}/${repo}`,
+      mainSha: pr.baseSha,
+      promotionHeadSha: pr.headSha,
+      publicKeys: config.publicKeys,
+    });
+  }
+  return state;
 }
 
 export function configuredPublicKeys(env = process.env) {
@@ -723,7 +813,9 @@ export function checkCompletionPayload(result) {
       title: result.eligible
         ? "Clinical release gate passed"
         : result.conclusion === "neutral" ? "Clinical release gate waiting" : "Clinical release gate blocked",
-      summary: result.summary,
+      summary: result.promotionChain?.enforcement === "report"
+        ? `${result.summary}\n\n${promotionChainLine(result.promotionChain)} Report only: it does not change this verdict.`
+        : result.summary,
       text: JSON.stringify({
         schema: RECORD_SCHEMA,
         policy_mode: "active",
@@ -734,6 +826,7 @@ export function checkCompletionPayload(result) {
         risk_tier: result.risk?.tier || null,
         judge_roles: result.judgeRoles || [],
         evaluation_fingerprint: result.fingerprint,
+        ...(result.promotionChain ? { promotion_chain: result.promotionChain } : {}),
       }),
     },
   };
