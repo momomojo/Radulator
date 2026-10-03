@@ -777,9 +777,17 @@ export function unavailablePromotionChain({
   return result;
 }
 
-// Review mode for a promotion candidate: anything but a verified chain without the escape label is a
-// full review.
-export function promotionReviewMode(chain, labels = []) {
+// Batch review of promotions is off in A1: every promotion candidate is a full review, and no batch approval counts
+// (the gate, the collector and the poster all build the review binding through promotionReviewMode). A2 turns it on,
+// once batch candidates carry exact evidence for every path the batch rubric requires the judge to inspect (including
+// an integration-merged path that resolves to main's blob and so is absent from the promotion diff). It is a code
+// constant, so it changes only through a judged release-control PR.
+export const PROMOTION_BATCH_REVIEW = "off";
+
+// Review mode for a promotion candidate: with batch review on, a verified chain without the escape label is a batch
+// review; anything else is a full review.
+export function promotionReviewMode(chain, labels = [], { batchReview = PROMOTION_BATCH_REVIEW } = {}) {
+  if (batchReview !== "on") return "full";
   const labelSet = new Set((labels || []).map((label) => `${label}`.toLowerCase()));
   return chain?.schema === PROMOTION_CHAIN_SCHEMA && chain.ok === true && !labelSet.has(LABEL_FULL_REVIEW)
     ? "batch"
@@ -790,16 +798,16 @@ export function promotionReviewMode(chain, labels = []) {
 // the chain it came from. release-policy.mjs counts a batch approval only while the live binding is the same verified
 // chain in batch mode, so a chain that changes or stops verifying after a batch review sends the promotion back to the
 // judges. Other PRs carry no binding.
-export function promotionReviewBinding(chain, labels = []) {
+export function promotionReviewBinding(chain, labels = [], options = {}) {
   const digested = chain?.schema === PROMOTION_CHAIN_SCHEMA && /^[0-9a-f]{64}$/.test(chain.digest || "");
   return {
-    mode: digested ? promotionReviewMode(chain, labels) : "full",
+    mode: digested ? promotionReviewMode(chain, labels, options) : "full",
     promotion_chain_sha256: digested ? chain.digest : null,
   };
 }
 
-export function promotionExactStateReview(pr, chain) {
-  return isPromotionPr(pr) ? { review: promotionReviewBinding(chain, pr.labels) } : {};
+export function promotionExactStateReview(pr, chain, options = {}) {
+  return isPromotionPr(pr) ? { review: promotionReviewBinding(chain, pr.labels, options) } : {};
 }
 
 function limitedList(values) {

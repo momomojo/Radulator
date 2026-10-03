@@ -6,6 +6,7 @@ import {
   LABEL_FULL_REVIEW,
   LABEL_URGENT,
   loadPromotionChain,
+  PROMOTION_BATCH_REVIEW,
   promotionExactStateReview,
   summarizePromotionChain,
 } from "./promotion-chain.mjs";
@@ -518,12 +519,15 @@ function withPromotionChain(result, promotionChain, mode) {
   return next;
 }
 
-export function evaluateGate(state, { promotionChainEnforcement = PROMOTION_CHAIN_ENFORCEMENT } = {}) {
-  const result = evaluateGateCore(state, promotionChainEnforcement);
+export function evaluateGate(state, {
+  promotionChainEnforcement = PROMOTION_CHAIN_ENFORCEMENT,
+  promotionBatchReview = PROMOTION_BATCH_REVIEW,
+} = {}) {
+  const result = evaluateGateCore(state, promotionChainEnforcement, promotionBatchReview);
   return isPromotionPr(state?.pr) ? withPromotionChain(result, state.promotionChain, promotionChainEnforcement) : result;
 }
 
-function evaluateGateCore({ pr, requiredCi, ci, files, reviews, publicKeys, promotionChain }, promotionChainEnforcement) {
+function evaluateGateCore({ pr, requiredCi, ci, files, reviews, publicKeys, promotionChain }, promotionChainEnforcement, promotionBatchReview) {
   if (!pr || !positiveInteger(pr.repositoryId) || !positiveInteger(pr.number) || !sha(pr.headSha) || !sha(pr.baseSha)) {
     return failure(pr?.headSha || "", pr?.baseSha || "", "Malformed PR/repository identity or head/base SHA; refusing PASS.", "MALFORMED_PR");
   }
@@ -568,7 +572,7 @@ function evaluateGateCore({ pr, requiredCi, ci, files, reviews, publicKeys, prom
   }
   // A promotion's exact state carries the review binding of the chain loaded now, so a batch approval counts only
   // while that is still the verified chain it was signed against (in report mode too).
-  const state = { ...exactState(pr, ci, risk), ...promotionExactStateReview(pr, promotionChain) };
+  const state = { ...exactState(pr, ci, risk), ...promotionExactStateReview(pr, promotionChain, { batchReview: promotionBatchReview }) };
   const carriers = attestationRecords(reviews);
   const quorum = evaluateAttestationQuorum(carriers, publicKeys, state);
   if (!quorum.ok) {

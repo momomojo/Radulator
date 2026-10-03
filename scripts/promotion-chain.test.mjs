@@ -16,6 +16,7 @@ import {
   loadPromotionChain,
   loadPromotionChainFacts,
   PROMOTION_CHAIN_SCHEMA,
+  PROMOTION_BATCH_REVIEW,
   promotionExactStateReview,
   promotionReviewBinding,
   promotionReviewMode,
@@ -497,17 +498,24 @@ const baseline = world();
   assert.deepEqual(summary.integrationMergedPaths, { count: 1, items: ["docs/verification/calculator-inventory.json"] });
   assert.equal(summarizePromotionChain(null).reasonCode, "CHAIN_EVIDENCE_UNAVAILABLE");
 
-  assert.equal(promotionReviewMode(chain, ["ready-for-gate", "promotion"]), "batch");
-  assert.equal(promotionReviewMode(chain, ["ready-for-gate", "promotion-full-review"]), "full", "the escape label forces a full review");
-  assert.equal(promotionReviewMode({ ...chain, ok: false }, []), "full");
-  assert.equal(promotionReviewMode(null, []), "full", "a missing chain is a full review");
+  // Verification judge on #317 (373d003): batch review is off in A1, so every promotion is a full review.
+  assert.equal(PROMOTION_BATCH_REVIEW, "off");
+  assert.equal(promotionReviewMode(chain, ["ready-for-gate", "promotion"]), "full", "batch review is off by default");
+  assert.deepEqual(promotionReviewBinding(chain, ["ready-for-gate"]), { mode: "full", promotion_chain_sha256: chain.digest });
+  assert.equal(promotionReviewMode(chain, [], { batchReview: "unexpected" }), "full", "only \"on\" enables batch review");
+  // With batch review on (A2), a verified chain without the escape label is a batch review.
+  const on = { batchReview: "on" };
+  assert.equal(promotionReviewMode(chain, ["ready-for-gate", "promotion"], on), "batch");
+  assert.equal(promotionReviewMode(chain, ["ready-for-gate", "promotion-full-review"], on), "full", "the escape label forces a full review");
+  assert.equal(promotionReviewMode({ ...chain, ok: false }, [], on), "full");
+  assert.equal(promotionReviewMode(null, [], on), "full", "a missing chain is a full review");
 
   // Codex on #317: the binding a promotion attestation signs is the review mode plus the chain it came from.
-  assert.deepEqual(promotionReviewBinding(chain, ["ready-for-gate"]), { mode: "batch", promotion_chain_sha256: chain.digest });
-  assert.deepEqual(promotionReviewBinding(chain, ["promotion-full-review"]), { mode: "full", promotion_chain_sha256: chain.digest });
-  assert.deepEqual(promotionReviewBinding({ ...chain, ok: false }), { mode: "full", promotion_chain_sha256: chain.digest });
-  assert.deepEqual(promotionReviewBinding(null), { mode: "full", promotion_chain_sha256: null });
-  assert.deepEqual(promotionReviewBinding({ ...chain, digest: "not-a-digest" }), { mode: "full", promotion_chain_sha256: null },
+  assert.deepEqual(promotionReviewBinding(chain, ["ready-for-gate"], on), { mode: "batch", promotion_chain_sha256: chain.digest });
+  assert.deepEqual(promotionReviewBinding(chain, ["promotion-full-review"], on), { mode: "full", promotion_chain_sha256: chain.digest });
+  assert.deepEqual(promotionReviewBinding({ ...chain, ok: false }, [], on), { mode: "full", promotion_chain_sha256: chain.digest });
+  assert.deepEqual(promotionReviewBinding(null, [], on), { mode: "full", promotion_chain_sha256: null });
+  assert.deepEqual(promotionReviewBinding({ ...chain, digest: "not-a-digest" }, [], on), { mode: "full", promotion_chain_sha256: null },
     "batch review needs a chain digest to bind");
   const promotionPr = {
     baseRef: "main",
@@ -516,7 +524,8 @@ const baseline = world();
     repositoryFullName: REPO,
     labels: ["ready-for-gate"],
   };
-  assert.deepEqual(promotionExactStateReview(promotionPr, chain), { review: { mode: "batch", promotion_chain_sha256: chain.digest } });
+  assert.deepEqual(promotionExactStateReview(promotionPr, chain), { review: { mode: "full", promotion_chain_sha256: chain.digest } });
+  assert.deepEqual(promotionExactStateReview(promotionPr, chain, on), { review: { mode: "batch", promotion_chain_sha256: chain.digest } });
   assert.deepEqual(promotionExactStateReview({ ...promotionPr, baseRef: "develop" }, chain), {}, "other PRs carry no binding");
 }
 
@@ -1130,7 +1139,7 @@ const neutral = (pr, overrides = {}) => entrySpec(pr, {
   assert.equal(atLimit.ok, true, `exactly 24 h apart passes: ${atLimit.summary}`);
   const expired = await expectReason("BATCH_TOO_OLD", { fixture: pair("2026-09-28T08:00:01Z") }, "24 h + 1 s apart");
   assert.match(expired.summary, /merged 24\.00 h before its newest \(limit 24 h\)/);
-  assert.equal(promotionReviewMode(expired), "full", "an expired batch never gets batch review");
+  assert.equal(promotionReviewMode(expired, [], { batchReview: "on" }), "full", "an expired batch never gets batch review");
   const { chain: widened } = await run(pair("2026-09-28T08:00:01Z"), { policy: { ...BATCH_POLICY, maxAgeHours: 25 } });
   assert.equal(widened.ok, true, "the bound follows the judged policy");
   const remediationTooOld = batch([
@@ -1169,7 +1178,7 @@ const neutral = (pr, overrides = {}) => entrySpec(pr, {
   const withClinical = await expectReason("BATCH_DOMAIN_MIXED", { fixture: batch(spread([clinicalA(472), bothDomains(473)])) },
     "a two-domain PR batched with a clinical PR");
   assert.match(withClinical.summary, /\(#473 changes both\)/);
-  assert.equal(promotionReviewMode(withClinical), "full");
+  assert.equal(promotionReviewMode(withClinical, [], { batchReview: "on" }), "full");
   const { chain: withNeutral } = await run(batch(spread([releaseControl(441), neutral(442)])));
   assert.equal(withNeutral.ok, true, "a standard-risk neutral PR joins any batch");
   assert.equal(withNeutral.domain, "release-control");

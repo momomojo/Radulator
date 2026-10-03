@@ -1272,30 +1272,36 @@ function promotionFixture({ labels = ["ready-for-gate", "promotion"], promotionC
     const verification = signedRecord(VERIFICATION, state, { review, reviewed_at: "2026-08-23T20:01:30Z" });
     return { ...fixture, reviews: [carrier(primary), carrier(verification, 813)] };
   };
-  const pass = evaluateGate(bound());
+  // Verification judge on #317 (373d003): batch review is off in A1, so a batch approval never counts there; the
+  // vectors below run with it on, as A2 will.
+  assert.equal(evaluateGate(bound()).reasonCode, "MISSING_JUDGE_ROLE", "batch review is off by default: a batch approval does not count");
+  const on = { promotionBatchReview: "on" };
+  const pass = evaluateGate(bound(), on);
   assert.equal(pass.reasonCode, "PASS", "a batch approval counts for the chain it was signed against");
-  assert.equal(evaluateGate(bound(), { promotionChainEnforcement: "enforce" }).reasonCode, "PASS");
+  assert.equal(evaluateGate(bound(), { ...on, promotionChainEnforcement: "enforce" }).reasonCode, "PASS");
   for (const [label, promotionChain] of [
     ["the chain stops verifying", verifiedChain({ ok: false, reasonCode: "CHAIN_ATTESTATION_MISSING" })],
     ["the chain changes", verifiedChain({ integrationMergedPaths: [] })],
     ["the chain cannot be loaded", unavailablePromotionChain({ repository: REPOSITORY, mainSha: BASE, promotionHeadSha: HEAD, error: "rate limited" })],
   ]) {
-    const result = evaluateGate({ ...bound(), promotionChain });
+    const result = evaluateGate({ ...bound(), promotionChain }, on);
     assert.equal(result.reasonCode, "MISSING_JUDGE_ROLE", `report mode: a batch approval no longer counts when ${label}`);
     assert.equal(result.conclusion, "neutral", `${label}: the promotion waits for a fresh review`);
     assert.notEqual(result.fingerprint, pass.fingerprint, `${label}: the controller's fingerprint check refuses the merge`);
   }
   const withoutChain = bound();
   delete withoutChain.promotionChain;
-  assert.equal(evaluateGate(withoutChain).reasonCode, "MISSING_JUDGE_ROLE", "a batch approval needs a loaded chain");
+  assert.equal(evaluateGate(withoutChain, on).reasonCode, "MISSING_JUDGE_ROLE", "a batch approval needs a loaded chain");
   // A full review never relied on the chain.
   const unverified = verifiedChain({ ok: false, reasonCode: "CHAIN_TREE_MISMATCH" });
   const fullReview = bound({ review: { mode: "full", promotion_chain_sha256: unverified.digest }, promotionChain: unverified });
-  assert.equal(evaluateGate(fullReview).reasonCode, "PASS", "a full-review approval counts whatever the chain");
-  assert.equal(evaluateGate({ ...fullReview, promotionChain: chain }).reasonCode, "PASS");
+  assert.equal(evaluateGate(fullReview, on).reasonCode, "PASS", "a full-review approval counts whatever the chain");
+  assert.equal(evaluateGate({ ...fullReview, promotionChain: chain }, on).reasonCode, "PASS");
+  assert.equal(evaluateGate(fullReview).reasonCode, "PASS", "with batch review off, a full-review approval counts");
   // A batch NEEDS_FIX stands after the chain changes.
   const rejected = bound({ verdict: "NEEDS_FIX" });
-  assert.equal(evaluateGate({ ...rejected, promotionChain: verifiedChain({ integrationMergedPaths: [] }) }).reasonCode, "NEEDS_FIX");
+  assert.equal(evaluateGate({ ...rejected, promotionChain: verifiedChain({ integrationMergedPaths: [] }) }, on).reasonCode, "NEEDS_FIX");
+  assert.equal(evaluateGate(rejected).reasonCode, "NEEDS_FIX", "with batch review off, a batch NEEDS_FIX still stands");
   // Only promotions carry a binding: on a develop PR a bound record is malformed and never counts.
   const developState = gateFixture();
   const developExact = exactState(developState.pr, developState.ci, developState.files);

@@ -19,7 +19,9 @@ Judge only the candidate records printed by the attached collector. The candidat
 
 A promotion merges one exact develop commit into `main`. Its candidate carries `promotionChain` (from `scripts/promotion-chain.mjs`) and `reviewMode`. A verified chain (`ok: true`) proves from immutable history and signed records that every develop commit being released is a trusted-controller squash merge of a PR whose exact head had a signed judge quorum, exact-head CI and a gate authorization before it merged; that each squash landed exactly the attested diff; and that the promotion head's content is develop's attested content, except `integrationMergedPaths` (paths `main` changed differently since the merge base, merged three ways). Other PRs to `main` (hotfixes) have `reviewMode: null`; judge them under the rules above.
 
-When `reviewMode` is anything other than `"batch"` (the chain is not verified, no chain was loaded, or the PR has the `promotion-full-review` label), review the promotion like any high-risk PR, over its whole diff.
+Batch review is off (`PROMOTION_BATCH_REVIEW = "off"` in `scripts/promotion-chain.mjs`): every promotion candidate has `reviewMode: "full"`, and no batch approval counts. The batch steps below apply only after a judged change turns it on.
+
+When `reviewMode` is anything other than `"batch"` (batch review is off, the chain is not verified, no chain was loaded, or the PR has the `promotion-full-review` label), review the promotion like any high-risk PR, over its whole diff.
 
 The attestation signs the candidate's `exactState.review` (the review mode and `promotion_chain_sha256`, the digest of `promotionChain`). A batch PASS counts only while the gate's freshly loaded chain is that same verified chain; if the chain changes or stops verifying, the promotion comes back as a new candidate. Review the candidate you were given; never edit its `exactState`.
 

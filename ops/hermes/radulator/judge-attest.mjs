@@ -13,7 +13,7 @@ import {
   loadGateState,
   validateCiPolicy,
 } from "../../../scripts/independent-review-gate.mjs";
-import { promotionExactStateReview } from "../../../scripts/promotion-chain.mjs";
+import { PROMOTION_BATCH_REVIEW, promotionExactStateReview } from "../../../scripts/promotion-chain.mjs";
 import {
   ATTESTATION_SCHEMA,
   canonicalJson,
@@ -168,7 +168,7 @@ export function formatAttestationCarrier(record) {
   return body;
 }
 
-function exactStateFromLive(state) {
+function exactStateFromLive(state, { batchReview = PROMOTION_BATCH_REVIEW } = {}) {
   if (!completeFileList(state.pr, state.files)) {
     throw new Error("Live changed-file evidence is incomplete or exceeds the review limit.");
   }
@@ -189,13 +189,13 @@ function exactStateFromLive(state) {
     ci: state.ci.evidence,
     ciSha256: digest(state.ci.evidence),
     // A batch approval is posted only while the live chain is the one it was signed against.
-    ...promotionExactStateReview(state.pr, state.promotionChain),
+    ...promotionExactStateReview(state.pr, state.promotionChain, { batchReview }),
   };
 }
 
-export async function postAttestation({ record, publicKeys, api }) {
+export async function postAttestation({ record, publicKeys, api, promotionBatchReview = PROMOTION_BATCH_REVIEW }) {
   const live = await api.loadGateState(record.pr);
-  const verified = verifyAttestation(record, publicKeys, exactStateFromLive(live));
+  const verified = verifyAttestation(record, publicKeys, exactStateFromLive(live, { batchReview: promotionBatchReview }));
   if (!verified.ok) throw new Error(`Refusing stale or invalid attestation: ${verified.reasonCode}`);
   const body = formatAttestationCarrier(record);
   const existing = (live.reviews || []).find((review) => Number.isSafeInteger(review?.id) && review.body === body);

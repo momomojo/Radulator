@@ -934,8 +934,9 @@ function developState(number, baseSha = BASE) {
   return state;
 }
 
-async function collectMany(role, states, { developHead = null } = {}) {
+async function collectMany(role, states, { developHead = null, batchReview } = {}) {
   return collectCandidates({
+    ...(batchReview === undefined ? {} : { promotionBatchReview: batchReview }),
     repository: "momomojo/Radulator",
     role,
     publicKeys: PUBLIC_KEYS,
@@ -948,18 +949,33 @@ async function collectMany(role, states, { developHead = null } = {}) {
   });
 }
 
+// Verification judge on #317 (373d003): batch review is off in A1. By default a verified chain is a full review, and
+// a batch approval does not count; the promotion vectors below run with batch review on, as A2 will.
+const collectOn = (role, states) => collectMany(role, states, { batchReview: "on" });
 {
-  const [batch] = await collectMany("primary", [promotionState(303)]);
+  const [offByDefault] = await collectMany("primary", [promotionState(303)]);
+  assert.equal(offByDefault.reviewMode, "full", "batch review is off by default");
+  assert.deepEqual(offByDefault.exactState.review, { mode: "full", promotion_chain_sha256: verifiedChain.digest });
+  const batchApproved = promotionState(303);
+  batchApproved.reviews = [signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, batchApproved, "PASS", {
+    review: { mode: "batch", promotion_chain_sha256: verifiedChain.digest },
+  })];
+  const [requeued] = await collectMany("primary", [batchApproved]);
+  assert.equal(requeued?.reviewMode, "full", "with batch review off, a batch approval does not count and the promotion is judged in full");
+}
+
+{
+  const [batch] = await collectOn("primary", [promotionState(303)]);
   assert.equal(batch.reviewMode, "batch", "a verified chain without the escape label is a batch review");
   assert.deepEqual(batch.promotionChain, verifiedChain, "judges receive the whole chain, including attribution files");
-  const [escaped] = await collectMany("primary", [promotionState(303, { labels: ["ready-for-gate", "promotion-full-review"] })]);
+  const [escaped] = await collectOn("primary", [promotionState(303, { labels: ["ready-for-gate", "promotion-full-review"] })]);
   assert.equal(escaped.reviewMode, "full", "promotion-full-review forces a full review");
-  const [unverified] = await collectMany("primary", [promotionState(303, { chain: { ...verifiedChain, ok: false, reasonCode: "CHAIN_TREE_MISMATCH" } })]);
+  const [unverified] = await collectOn("primary", [promotionState(303, { chain: { ...verifiedChain, ok: false, reasonCode: "CHAIN_TREE_MISMATCH" } })]);
   assert.equal(unverified.reviewMode, "full", "an unverified chain is a full review");
-  const [unloaded] = await collectMany("primary", [promotionState(303, { chain: null })]);
+  const [unloaded] = await collectOn("primary", [promotionState(303, { chain: null })]);
   assert.equal(unloaded.reviewMode, "full", "a promotion without a chain is a full review");
   assert.equal(unloaded.promotionChain, null);
-  const [hotfix] = await collectMany("primary", [promotionState(304, { headRef: "hotfix/live-outage" })]);
+  const [hotfix] = await collectOn("primary", [promotionState(304, { headRef: "hotfix/live-outage" })]);
   assert.equal(hotfix.reviewMode, null, "a hotfix to main is judged as an ordinary high-risk PR");
   assert.equal(hotfix.promotionChain, null);
 }
@@ -993,15 +1009,15 @@ async function collectMany(role, states, { developHead = null } = {}) {
 
 // ---- Promotions: approvals bind the review mode and chain (Codex on #317) -----------------------------
 {
-  const [batch] = await collectMany("primary", [promotionState(303)]);
+  const [batch] = await collectOn("primary", [promotionState(303)]);
   assert.deepEqual(batch.exactState.review, { mode: "batch", promotion_chain_sha256: verifiedChain.digest },
     "the exact state carries the binding the record signs");
   const changedChain = { ...verifiedChain, digest: "e".repeat(64) };
-  const [rebound] = await collectMany("primary", [promotionState(303, { chain: changedChain })]);
+  const [rebound] = await collectOn("primary", [promotionState(303, { chain: changedChain })]);
   assert.notEqual(rebound.candidateId, batch.candidateId, "a changed chain is a new candidate");
-  const [escaped] = await collectMany("primary", [promotionState(303, { labels: ["ready-for-gate", "promotion-full-review"] })]);
+  const [escaped] = await collectOn("primary", [promotionState(303, { labels: ["ready-for-gate", "promotion-full-review"] })]);
   assert.deepEqual(escaped.exactState.review, { mode: "full", promotion_chain_sha256: verifiedChain.digest });
-  const [hotfix] = await collectMany("primary", [promotionState(304, { headRef: "hotfix/live-outage" })]);
+  const [hotfix] = await collectOn("primary", [promotionState(304, { headRef: "hotfix/live-outage" })]);
   assert.equal(hotfix.exactState.review, undefined, "a hotfix carries no binding");
 
   const approved = (chain, verdict = "PASS") => {
@@ -1011,13 +1027,13 @@ async function collectMany(role, states, { developHead = null } = {}) {
     })];
     return state;
   };
-  assert.deepEqual(await collectMany("primary", [approved(verifiedChain)]), [], "a batch PASS for the current chain needs no new review");
-  const [again] = await collectMany("primary", [approved(changedChain)]);
+  assert.deepEqual(await collectOn("primary", [approved(verifiedChain)]), [], "a batch PASS for the current chain needs no new review");
+  const [again] = await collectOn("primary", [approved(changedChain)]);
   assert.equal(again?.pr, 303, "a batch PASS for another chain no longer counts, so the promotion is judged again");
   assert.deepEqual(again.exactState.review, { mode: "batch", promotion_chain_sha256: changedChain.digest });
-  const [full] = await collectMany("primary", [approved({ ...verifiedChain, ok: false, reasonCode: "CHAIN_TREE_MISMATCH" })]);
+  const [full] = await collectOn("primary", [approved({ ...verifiedChain, ok: false, reasonCode: "CHAIN_TREE_MISMATCH" })]);
   assert.equal(full?.reviewMode, "full", "a chain that stops verifying sends the promotion to a full review");
-  assert.deepEqual(await collectMany("primary", [approved(changedChain, "NEEDS_FIX")]), [], "a batch NEEDS_FIX stands after the chain changes");
+  assert.deepEqual(await collectOn("primary", [approved(changedChain, "NEEDS_FIX")]), [], "a batch NEEDS_FIX stands after the chain changes");
 }
 
 const temp = await mkdtemp(path.join(os.tmpdir(), "radulator-candidate-test-"));

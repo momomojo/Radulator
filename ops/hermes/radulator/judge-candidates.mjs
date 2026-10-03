@@ -17,6 +17,7 @@ import {
 } from "../../../scripts/independent-review-gate.mjs";
 import {
   isPromotionPr,
+  PROMOTION_BATCH_REVIEW,
   promotionExactStateReview,
 } from "../../../scripts/promotion-chain.mjs";
 import {
@@ -373,7 +374,7 @@ function completeReviewEvidence(files, headSha, baseSha) {
   return true;
 }
 
-function exactState(state, risk) {
+function exactState(state, risk, { batchReview = PROMOTION_BATCH_REVIEW } = {}) {
   return {
     repositoryId: state.pr.repositoryId,
     pr: state.pr.number,
@@ -386,7 +387,7 @@ function exactState(state, risk) {
     ci: state.ci.evidence,
     ciSha256: digest(state.ci.evidence),
     // Promotions: the review mode and chain digest, so the candidate id and the signed record change with the chain.
-    ...promotionExactStateReview(state.pr, state.promotionChain),
+    ...promotionExactStateReview(state.pr, state.promotionChain, { batchReview }),
   };
 }
 
@@ -498,7 +499,14 @@ async function currentDevelopHead(api) {
   }
 }
 
-export async function collectCandidates({ repository, role, publicKeys, api, now = new Date().toISOString() }) {
+export async function collectCandidates({
+  repository,
+  role,
+  publicKeys,
+  api,
+  now = new Date().toISOString(),
+  promotionBatchReview = PROMOTION_BATCH_REVIEW,
+}) {
   if (!["primary", "verification"].includes(role)) throw new Error("role must be primary or verification.");
   const open = await api.listOpenPrs();
   const candidates = [];
@@ -532,7 +540,7 @@ export async function collectCandidates({ repository, role, publicKeys, api, now
     completeReviewEvidence(state.files, state.pr.headSha, state.pr.baseSha);
     if (!validateCiPolicy(state).ok) continue;
     const { risk, details: riskDetails } = analyzeRisk(state.files, state.pr);
-    const exact = exactState(state, risk);
+    const exact = exactState(state, risk, { batchReview: promotionBatchReview });
     const existing = newestByRole(state, publicKeys, exact);
     if (shouldReview(role, risk, existing)) {
       candidates.push(candidate(repository, role, state, risk, riskDetails, exact, now));

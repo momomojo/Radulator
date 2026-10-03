@@ -413,9 +413,19 @@ try {
     files: candidate.files,
     promotionChain: chain,
   });
+  // Verification judge on #317 (373d003): batch review is off in A1, so the poster refuses a batch approval by default.
+  await assert.rejects(() => postAttestation({
+    record: promotionRecord,
+    publicKeys: keys,
+    api: {
+      async loadGateState() { return livePromotion(chainFixture); },
+      async createComment() { throw new Error("must not post a batch approval while batch review is off"); },
+    },
+  }), /stale or invalid attestation: ATTESTATION_STATE_MISMATCH/, "batch review is off by default");
   const postedPromotion = await postAttestation({
     record: promotionRecord,
     publicKeys: keys,
+    promotionBatchReview: "on",
     api: {
       async loadGateState() { return livePromotion(chainFixture); },
       async createComment(body) { return { id: 78, body }; },
@@ -430,6 +440,7 @@ try {
     await assert.rejects(() => postAttestation({
       record: promotionRecord,
       publicKeys: keys,
+      promotionBatchReview: "on",
       api: {
         async loadGateState() { return livePromotion(chain); },
         async createComment() { throw new Error(`must not post a batch approval for ${label}`); },
