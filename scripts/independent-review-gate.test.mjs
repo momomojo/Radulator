@@ -23,6 +23,8 @@ import {
   digest,
 } from "./release-policy.mjs";
 import {
+  GATE_CHECK_CONTEXT,
+  gatePassFingerprint,
   PROMOTION_CHAIN_SCHEMA,
   unavailablePromotionChain,
 } from "./promotion-chain.mjs";
@@ -1235,6 +1237,27 @@ function promotionFixture({ labels = ["ready-for-gate", "promotion"], promotionC
     gateStateFingerprint({ ...promotionState, pr: { ...promotionState.pr, headRef: "release/promote-other" } }),
     "the head ref is part of the state fingerprint",
   );
+}
+
+// ---- The chain recomputes the gate's develop PASS fingerprint (primary judge on #317) --------------------
+{
+  assert.equal(GATE_CHECK_CONTEXT, REQUIRED_CONTEXT);
+  const standard = evaluateGate(gateFixture());
+  const high = gateFixture({ files: HIGH_FILES });
+  const highState = exactState(high.pr, high.ci, high.files);
+  high.reviews = [
+    carrier(signedRecord(PRIMARY, highState)),
+    carrier(signedRecord(VERIFICATION, highState, { reviewed_at: "2026-08-23T20:01:30Z" }), 813),
+  ];
+  const highResult = evaluateGate(high);
+  for (const [label, result, pr] of [["standard", standard, gateFixture().pr], ["high", highResult, high.pr]]) {
+    assert.equal(result.reasonCode, "PASS", `${label} fixture passes`);
+    assert.equal(
+      gatePassFingerprint({ headSha: pr.headSha, baseSha: pr.baseSha, risk: result.risk }),
+      result.fingerprint,
+      `${label}: promotion-chain.mjs recomputes the gate's exact PASS fingerprint`,
+    );
+  }
 }
 
 // ---- Batch approvals count only for the chain they were signed against (Codex on #317) ----------------

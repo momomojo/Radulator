@@ -31,6 +31,7 @@ export const PROMOTION_CHAIN_FACTS_SCHEMA = "radulator-promotion-chain-facts/v1"
 // the gate can import this module without an import cycle.
 export const ATTESTATION_MARKER = "<!-- radulator-clinical-attestation/v1 -->";
 export const ENFORCEMENT_CONTEXT = "Radulator Clinical Release Authorization";
+export const GATE_CHECK_CONTEXT = "Radulator Clinical Release Gate (exact head)";
 export const PROMOTION_BRANCH_PREFIX = "release/promote-";
 export const LABEL_READY = "ready-for-gate";
 export const LABEL_REMEDIATION = "release-remediation";
@@ -70,6 +71,7 @@ export const CHAIN_REASON_CODES = Object.freeze([
   "CHAIN_RISK_UNDERSTATED",
   "CHAIN_LABELS_UNDECODABLE",
   "CHAIN_GATE_AUTHORIZATION_MISSING",
+  "CHAIN_GATE_STATE_AMBIGUOUS",
   "PROMOTION_HEAD_NOT_EXACT_MERGE",
   "PROMOTION_UNATTESTED_PATH",
   "PROMOTION_CONTENT_MISMATCH",
@@ -302,6 +304,29 @@ function ciIsExact(record, headSha) {
   return required.every((name) => names.has(name));
 }
 
+// The fingerprint the gate publishes for a develop PR's PASS (independent-review-gate.mjs success(); the gate's own
+// tests assert they agree): head, base, risk and judge roles. It covers neither the label set nor the state epoch.
+export function gatePassFingerprint({ headSha, baseSha, risk }) {
+  const roles = requiredJudgeRoles(risk?.tier);
+  return digest({
+    context: GATE_CHECK_CONTEXT,
+    conclusion: "success",
+    eligible: true,
+    reasonCode: "PASS",
+    headSha,
+    baseSha,
+    summary: `${risk.tier} risk: exact CI and ${roles.join(" + ")} judge attestation passed.`,
+    risk,
+    judgeRoles: roles,
+  });
+}
+
+// The release flags batch accounting reads from an attested label set.
+function releaseFlags(labelsSha256) {
+  const labels = decodeAttestedLabels(labelsSha256);
+  return labels ? `remediation=${labels.remediation} urgent=${labels.urgent}` : "undecodable";
+}
+
 function latestGateAuthorization(statuses, mergedAt) {
   return (statuses || [])
     .filter((status) => status?.context === ENFORCEMENT_CONTEXT && time(status.created_at) <= mergedAt)
@@ -395,9 +420,44 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
   if (!exact.length) {
     fail("CHAIN_CI_NOT_EXACT", `PR #${prNumber}'s attested CI is not exact-head green with its tier's checks.`, at);
   }
-  const group = exact[0];
+  // h. The gate authorized one of these attested states before the merge. The latest authorization status at or
+  //    before the merge is the gate's PASS, and its fingerprint is the PASS fingerprint of an exact state (head, base,
+  //    risk and judge roles). The fingerprint does not cover labels or the state epoch, but the gate passes only the
+  //    PR's current state, so the authorized state is the newest attested epoch at or before the PASS. States
+  //    sharing that epoch must agree on the release flags.
+  const authorization = latestGateAuthorization(loaded.statuses, mergedAt);
+  if (
+    authorization?.state !== "success" || authorization.creator?.id !== GATE_STATUS_CREATOR_ID ||
+    authorization.creator?.login !== GATE_STATUS_CREATOR_LOGIN || !GATE_PASS_DESCRIPTION.test(authorization.description || "")
+  ) {
+    fail("CHAIN_GATE_AUTHORIZATION_MISSING", `PR #${prNumber} head ${headSha} had no gate PASS authorization at merge time.`, at);
+  }
+  const passFingerprint = authorization.description.slice("PASS ".length);
+  const fingerprinted = exact.filter((candidate) =>
+    gatePassFingerprint({ headSha, baseSha: parentSha, risk: candidate.record.risk }) === passFingerprint);
+  if (!fingerprinted.length) {
+    fail("CHAIN_GATE_AUTHORIZATION_MISSING", `PR #${prNumber}'s gate PASS fingerprint matches no attested state at head ${headSha}.`, at);
+  }
+  const passAt = time(authorization.created_at);
+  const epochAt = (candidate) => time(candidate.record.state_epoch?.event_created_at);
+  const epochId = (candidate) => (Number.isSafeInteger(candidate.record.state_epoch?.event_id) ? candidate.record.state_epoch.event_id : -1);
+  const published = fingerprinted.filter((candidate) => epochAt(candidate) <= passAt);
+  if (!published.length) {
+    fail("CHAIN_GATE_AUTHORIZATION_MISSING", `PR #${prNumber} has no attested state from before its gate PASS.`, at);
+  }
+  const newestAt = Math.max(...published.map(epochAt));
+  const newestId = Math.max(...published.filter((candidate) => epochAt(candidate) === newestAt).map(epochId));
+  const authorized = published.filter((candidate) => epochAt(candidate) === newestAt && epochId(candidate) === newestId);
+  if (new Set(authorized.map((candidate) => releaseFlags(candidate.record.labels_sha256))).size > 1) {
+    fail(
+      "CHAIN_GATE_STATE_AMBIGUOUS",
+      `PR #${prNumber} has attested states with one epoch but different release labels, so its gate PASS cannot tell which one it authorized.`,
+      at,
+    );
+  }
+  const group = authorized[0];
   const recorded = group.record;
-  // h. The recorded tier is not lower than a conservative re-classification of the landed diff.
+  // i. The recorded tier is not lower than a conservative re-classification of the landed diff.
   const files = Array.isArray(headCompare.files) ? headCompare.files : null;
   if (!files) fail("CHAIN_EVIDENCE_UNAVAILABLE", `PR #${prNumber}'s changed files were not loaded.`, at);
   if (files.length >= policy.maxCompareFiles) {
@@ -423,17 +483,9 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
       at,
     );
   }
-  // i. The attested labels decode to the release flags.
+  // j. The attested labels decode to the release flags.
   const labels = decodeAttestedLabels(recorded.labels_sha256);
   if (!labels) fail("CHAIN_LABELS_UNDECODABLE", `PR #${prNumber}'s attested label set is not a PASS-eligible release label set.`, at);
-  // j. The gate authorized this head before the merge.
-  const authorization = latestGateAuthorization(loaded.statuses, mergedAt);
-  if (
-    authorization?.state !== "success" || authorization.creator?.id !== GATE_STATUS_CREATOR_ID ||
-    authorization.creator?.login !== GATE_STATUS_CREATOR_LOGIN || !GATE_PASS_DESCRIPTION.test(authorization.description || "")
-  ) {
-    fail("CHAIN_GATE_AUTHORIZATION_MISSING", `PR #${prNumber} head ${headSha} had no gate PASS authorization at merge time.`, at);
-  }
   // k. The verified entry. Its domains are every domain its recorded or re-classified codes name; a PR whose own diff
   // spans clinical and release control is "mixed" by itself.
   const reasonCodes = Array.isArray(recorded.risk?.reasonCodes) ? [...recorded.risk.reasonCodes].sort() : [];

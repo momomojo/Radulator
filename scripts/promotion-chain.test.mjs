@@ -10,6 +10,8 @@ import {
   clearPromotionChainCache,
   decodeAttestedLabels,
   ENFORCEMENT_CONTEXT,
+  GATE_CHECK_CONTEXT,
+  gatePassFingerprint,
   isPromotionPr,
   loadPromotionChain,
   loadPromotionChainFacts,
@@ -249,7 +251,7 @@ function world({
         id: spec.pr * 10 + 2,
         state: "success",
         context: ENFORCEMENT_CONTEXT,
-        description: `PASS ${hex64(`pass-${spec.pr}`)}`,
+        description: `PASS ${gatePassFingerprint({ headSha: head, baseSha: parent, risk })}`,
         created_at: minutes(spec.start, 4),
         creator: { id: 41898282, login: "github-actions[bot]" },
       },
@@ -342,6 +344,18 @@ async function expectReason(reasonCode, options, message) {
   return chain;
 }
 
+function attestedRecord(responses, pr, index) {
+  const comment = responses[`${ROOT}/issues/${pr}/comments`].find((item) => item.id === pr * 10 + index);
+  return JSON.parse(comment.body.slice(comment.body.indexOf("```json") + 7, comment.body.lastIndexOf("```")));
+}
+
+// Re-publishes a PR's gate PASS for its current attested risk, as the gate would after the re-review.
+function repass(responses, pr) {
+  const { head, base } = responses[`${ROOT}/pulls/${pr}`];
+  const pass = responses[`${ROOT}/commits/${head.sha}/statuses`].find((status) => status.state === "success" && status.context === ENFORCEMENT_CONTEXT);
+  pass.description = `PASS ${gatePassFingerprint({ headSha: head.sha, baseSha: base.sha, risk: attestedRecord(responses, pr, 0).risk })}`;
+}
+
 function resignComment(responses, pr, index, key, overrides) {
   const path = `${ROOT}/issues/${pr}/comments`;
   const comment = responses[path].find((item) => item.id === pr * 10 + index);
@@ -355,6 +369,7 @@ function resignComment(responses, pr, index, key, overrides) {
 // ---- The constants stay equal to the gate's own ----------------------------------------------------
 assert.equal(ATTESTATION_MARKER, gate.ATTESTATION_MARKER, "the chain parses the gate's attestation carriers");
 assert.equal(ENFORCEMENT_CONTEXT, gate.ENFORCEMENT_CONTEXT, "the chain reads the gate's authorization status");
+assert.equal(GATE_CHECK_CONTEXT, gate.REQUIRED_CONTEXT, "the chain recomputes the gate's PASS for its check context");
 
 // ---- verifyAttestationRecord: record-only verification, verifyAttestation unchanged -------------
 {
@@ -741,7 +756,7 @@ for (const [label, mutateCi] of [
   }, label);
 }
 
-// ---- Step 2h: risk -----------------------------------------------------------------------------------
+// ---- Step 2i: risk -----------------------------------------------------------------------------------
 {
   // The attestation recorded standard risk for a non-semantic clinical-document edit; with patches
   // withheld the chain classifies the landed diff conservatively as high and fails closed.
@@ -763,7 +778,7 @@ for (const [label, mutateCi] of [
   assert.equal(tooLarge.failure.pr, 101);
 }
 
-// ---- Step 2i: labels ---------------------------------------------------------------------------------
+// ---- Step 2j: labels ---------------------------------------------------------------------------------
 await expectReason("CHAIN_LABELS_UNDECODABLE", {
   mutate(responses) {
     const labelsSha256 = gate.relevantLabelsDigest(["ready-for-gate", "do-not-merge"]).sha256;
@@ -772,7 +787,7 @@ await expectReason("CHAIN_LABELS_UNDECODABLE", {
   },
 }, "an attested label set that could never pass the gate");
 
-// ---- Step 2j: gate authorization ---------------------------------------------------------------------
+// ---- Step 2h: gate authorization ---------------------------------------------------------------------
 for (const [label, mutateStatuses] of [
   ["no authorization status", (statuses) => statuses.splice(0)],
   ["a revoked authorization before the merge", (statuses) => statuses.push({
@@ -801,6 +816,102 @@ for (const [label, mutateStatuses] of [
       mutateStatuses(responses[`${ROOT}/commits/${fixture.heads[101].head}/statuses`]);
     },
   }, label);
+}
+// Primary judge on #317 (82a3b65): the PASS must be the gate's fingerprint for an attested state. The fingerprint does
+// not cover labels, so when the states it matches disagree on the release flags the chain fails closed.
+assert.equal(
+  baseline.responses[`${ROOT}/commits/${baseline.heads[101].head}/statuses`].find((status) => status.state === "success").description,
+  `PASS ${gatePassFingerprint({
+    headSha: baseline.heads[101].head,
+    baseSha: baseline.S0,
+    risk: attestedRecord(baseline.responses, 101, 0).risk,
+  })}`,
+  "the fixture publishes the gate's real PASS fingerprint",
+);
+for (const [label, fingerprint] of [
+  ["a PASS fingerprint that belongs to no attested state", () => hex64("another-state")],
+  ["the PASS of another risk classification of the same head", (responses, fixture) => gatePassFingerprint({
+    headSha: fixture.heads[101].head,
+    baseSha: fixture.S0,
+    risk: { ...attestedRecord(responses, 101, 0).risk, tier: "standard" },
+  })],
+]) {
+  const chain = await expectReason("CHAIN_GATE_AUTHORIZATION_MISSING", {
+    mutate(responses, fixture) {
+      const pass = responses[`${ROOT}/commits/${fixture.heads[101].head}/statuses`].find((status) => status.state === "success");
+      pass.description = `PASS ${fingerprint(responses, fixture)}`;
+    },
+  }, label);
+  assert.match(chain.summary, /matches no attested state/);
+}
+{
+  // #101's fixture: epoch 10:00, quorum 10:02/10:03, gate PASS 10:04, merge 10:05. A second state signs a second
+  // quorum (same head, risk and CI) with other labels; its epoch and review times decide which state the PASS is for.
+  const otherState = (labels, { epochAt, eventId = 999, reviewedAt, replace = false }) => (responses) => {
+    const comments = responses[`${ROOT}/issues/101/comments`];
+    for (const [index, key, at] of [[0, PRIMARY, reviewedAt[0]], [1, VERIFICATION, reviewedAt[1]]]) {
+      const { signature: _signature, ...unsigned } = attestedRecord(responses, 101, index);
+      const next = {
+        ...unsigned,
+        labels_sha256: gate.relevantLabelsDigest(labels).sha256,
+        state_epoch: { event_id: eventId, event_created_at: epochAt },
+        reviewed_at: at,
+      };
+      next.signature = sign(null, Buffer.from(canonicalJson(next)), key.privateKey).toString("base64");
+      if (replace) Object.assign(comments.find((item) => item.id === 1010 + index), carrier(next, 1010 + index));
+      else comments.push(carrier(next, 1020 + index));
+    }
+  };
+  const remediation = ["ready-for-gate", "release-remediation"];
+  // The label changed before the PASS (as on real #245): the PASS is for the newer, remediation state.
+  const { chain: relabelled } = await run(baseline, {
+    mutate: otherState(remediation, { epochAt: "2026-09-27T10:02:30Z", reviewedAt: ["2026-09-27T10:03:10Z", "2026-09-27T10:03:20Z"] }),
+  });
+  assert.equal(relabelled.ok, true, relabelled.summary);
+  assert.deepEqual(relabelled.entries[0].attestationCommentIds, [1020, 1021]);
+  assert.equal(relabelled.entries[0].remediation, true, "the state current at the PASS sets the release flags");
+  // The judge's vector: a remediation state signed after the PASS (but before the merge) is not what the PASS
+  // authorized, although its records are the newest. The chain keeps the PASS's state (the old code took the newest).
+  const { chain: afterPass } = await run(baseline, {
+    mutate: otherState(remediation, { epochAt: "2026-09-27T10:04:30Z", reviewedAt: ["2026-09-27T10:04:40Z", "2026-09-27T10:04:50Z"] }),
+  });
+  assert.equal(afterPass.ok, true, afterPass.summary);
+  assert.deepEqual(afterPass.entries[0].attestationCommentIds, [1010, 1011], "the state the PASS authorized is used");
+  assert.equal(afterPass.entries[0].remediation, false, "a later remediation label cannot change the accounting");
+  // Two states with one epoch but different release labels: the PASS cannot tell them apart.
+  const ambiguous = await expectReason("CHAIN_GATE_STATE_AMBIGUOUS", {
+    mutate: otherState(remediation, {
+      epochAt: "2026-09-27T10:00:00Z",
+      eventId: 707,
+      reviewedAt: ["2026-09-27T10:03:10Z", "2026-09-27T10:03:20Z"],
+    }),
+  }, "one epoch attested with two release-label sets");
+  assert.equal(ambiguous.failure.pr, 101);
+  await expectReason("CHAIN_GATE_STATE_AMBIGUOUS", {
+    mutate: otherState(["ready-for-gate", "release-urgent"], {
+      epochAt: "2026-09-27T10:00:00Z",
+      eventId: 707,
+      reviewedAt: ["2026-09-27T10:03:10Z", "2026-09-27T10:03:20Z"],
+    }),
+  }, "one epoch attested with and without release-urgent");
+  // Same epoch, same release flags: not ambiguous.
+  const { chain: sameFlags } = await run(baseline, {
+    mutate: otherState(["ready-for-gate", "promotion-full-review"], {
+      epochAt: "2026-09-27T10:00:00Z",
+      eventId: 707,
+      reviewedAt: ["2026-09-27T10:03:10Z", "2026-09-27T10:03:20Z"],
+    }),
+  });
+  assert.equal(sameFlags.ok, true, sameFlags.summary);
+  // Every attested state is newer than the PASS: nothing the PASS could have authorized.
+  const tooLate = await expectReason("CHAIN_GATE_AUTHORIZATION_MISSING", {
+    mutate: otherState(["ready-for-gate"], {
+      epochAt: "2026-09-27T10:04:20Z",
+      reviewedAt: ["2026-09-27T10:04:30Z", "2026-09-27T10:04:40Z"],
+      replace: true,
+    }),
+  }, "attested states that all postdate the gate PASS");
+  assert.match(tooLate.summary, /no attested state from before its gate PASS/);
 }
 
 // ---- Step 4: promotion content -----------------------------------------------------------------------
@@ -1029,7 +1140,7 @@ const neutral = (pr, overrides = {}) => entrySpec(pr, {
   assert.equal(soloUrgent.counts.urgent, 1);
 }
 
-// ---- Step 2h again: recorded codes name every domain the landed diff has ----------------------------
+// ---- Step 2i again: recorded codes name every domain the landed diff has ----------------------------
 {
   // Codex on #317: the batch's domain and high-risk clinical count come from the recorded reason codes, so a high-risk
   // attestation whose (older or incomplete) codes miss a domain the landed files have fails closed.
@@ -1040,6 +1151,7 @@ const neutral = (pr, overrides = {}) => entrySpec(pr, {
       const { risk } = JSON.parse(comment.body.slice(comment.body.indexOf("```json") + 7, comment.body.lastIndexOf("```")));
       resignComment(responses, pr, index, key, { risk: { ...risk, reasonCodes: reasonCodes(risk.reasonCodes) } });
     }
+    repass(responses, pr);
   };
   // Without the check, #511 counted as neutral and the batch with a release-control PR verified unmixed.
   const hiddenMix = await expectReason("CHAIN_RISK_UNDERSTATED", {
