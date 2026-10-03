@@ -182,7 +182,7 @@ test.describe("LI-RADS v2018 Calculator", () => {
       await expect(results.locator("text=LR-M").first()).toBeVisible();
       await expect(results.locator("text=Not HCC-Specific")).toBeVisible();
       await expect(results.locator("text=93-100%")).toBeVisible();
-      await expect(results.locator("text=Biopsy recommended")).toBeVisible();
+      await expect(results.getByText("Multidisciplinary discussion for tailored workup, which often includes biopsy", { exact: true })).toBeVisible();
       await expect(results.getByText("Targetoid mass", { exact: true })).toBeVisible();
     });
 

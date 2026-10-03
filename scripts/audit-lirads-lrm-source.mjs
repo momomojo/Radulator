@@ -25,7 +25,7 @@ import { resolve } from "node:path";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { getDocument, version as PDFJS_VERSION } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { LIRADS } from "../src/components/calculators/LIRADS.jsx";
 
 const CALCULATOR_PATH = "src/components/calculators/LIRADS.jsx";
@@ -35,18 +35,38 @@ const BASE_BACKOFF_MS = 2_000;
 export const MAX_RETRY_AFTER_MS = 60_000;
 const FETCH_TIMEOUT_MS = 90_000;
 
+// The source manifest. retrieve() fetches `url` over HTTPS and accepts only an HTTP 200 whose final URL has exactly this
+// host, path and query, whose media type is `media_type` with a %PDF- header, and whose raw bytes match `bytes` and
+// `sha256`, all before anything is parsed. pdfPages() then reads the text with exactly `parser`. main() reports what it
+// measured on that response, so the exact-head CI log shows the artifact this run verified.
 export const SOURCE = Object.freeze({
   key: "acr-lirads-ctmri-v2018-core",
   authority: "American College of Radiology",
   document: "ACR CT/MRI LI-RADS v2018 Core",
+  // The official page whose "CT/MRI v2018 Core" link is `url`.
   landing_page:
     "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/LI-RADS",
+  // ACR's media CDN serves the PDF itself. The older www.acr.org/-/media/... PDF path now redirects to an HTML app.
   url: "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/LI-RADS/LI-RADS-CT-MRI-2018-Core.pdf",
   media_type: "application/pdf",
   pin: "raw-bytes",
   bytes: 1_840_136,
   sha256: "89fddfbd66641f37055fc16082f338bc4fec880f3d3e0042a7a9b6b69f4acfb4",
   pages: 61,
+  // package.json pins this exact version; assertParserPin() fails the audit on any other.
+  parser: Object.freeze({ package: "pdfjs-dist", version: "4.10.38", entry: "pdfjs-dist/legacy/build/pdf.mjs" }),
+});
+
+// The retrieval restrictions retrieve() applies, reported with every run.
+export const RETRIEVAL = Object.freeze({
+  protocol: "https:",
+  final_url: "redirects are followed, then the final URL must have exactly the host, path and query of SOURCE.url",
+  user_agent: USER_AGENT,
+  timeout_ms: FETCH_TIMEOUT_MS,
+  max_attempts: MAX_ATTEMPTS,
+  retried: `network errors, aborted body reads and HTTP 408/425/429/5xx, with backoff from ${BASE_BACKOFF_MS / 1_000} s and Retry-After up to ${MAX_RETRY_AFTER_MS / 1_000} s`,
+  never_retried: "other HTTP errors, and an HTTP 200 that misses any pin",
+  checked_before_parsing: Object.freeze(["final URL", "media type", "%PDF- header", "byte length", "SHA-256"]),
 });
 
 // Each span runs from the `from` marker to the next `to` marker on the PDF page, after
@@ -335,6 +355,57 @@ export const STATEMENTS = Object.freeze([
       },
     ],
   }),
+  Object.freeze({
+    id: "management-lrm-tailored-workup",
+    pdf_page: 17,
+    printed_page: 14,
+    locator: "LI-RADS-Based Management table, LR-M row",
+    paraphrase: "For LR-M, management is multidisciplinary discussion for a tailored workup, which often includes biopsy.",
+    spans: [
+      {
+        from: "for tailored workup Often includes biopsy",
+        to: "LR-M",
+        length: 39,
+        sha256: "07c9637198ea4193633feeda1045f9a8e21f130a4eb573004d6097b7255c6b9e",
+      },
+    ],
+  }),
+  Object.freeze({
+    id: "management-lr2-surveillance",
+    pdf_page: 17,
+    printed_page: 14,
+    locator: "LI-RADS-Based Management table, LR-2 row",
+    paraphrase: "For LR-2, return to surveillance in 6 months and consider repeat diagnostic imaging in 6 months or less.",
+    spans: [
+      {
+        from: "If biopsy Return to surveillance",
+        to: "Consider repeat",
+        length: 51,
+        sha256: "31efdfa5d5de1fc4e4a380d777b3f9f0b56b4ceafbadc221453ae3bc4cfb1226",
+      },
+      {
+        from: "Consider repeat diagnostic imaging",
+        to: "6 months LR-2",
+        length: 44,
+        sha256: "4963e0c42568a1fac5d4432242344a3c664235923115ddbfe0a6920454173d52",
+      },
+    ],
+  }),
+  Object.freeze({
+    id: "reporting-avoid-compelling-biopsy",
+    pdf_page: 19,
+    printed_page: 16,
+    locator: "Reporting considerations, biopsy language",
+    paraphrase: "Reports should avoid language that compels biopsy or another invasive procedure.",
+    spans: [
+      {
+        from: "Avoid language that compels biopsy",
+        to: "or other invasive procedure",
+        length: 54,
+        sha256: "daedd395c0bfeb5e5a4478ee99f57e03589022b907eaf3f142795e4832b85835",
+      },
+    ],
+  }),
 ]);
 
 // Step 1 branches in the order the flowchart draws them (top to bottom). Each marker is the
@@ -406,12 +477,15 @@ export const RUNTIME_SUBLABELS = Object.freeze({
     "Targetoid mass, or a nontargetoid mass not meeting LR-5 criteria with infiltrative appearance, marked diffusion restriction, necrosis/severe ischemia, or another non-HCC feature",
 });
 // The LR-TIV result states the same any-vein definition as the field (Core printed p. 21).
+// Management wording for LR-M and LR-2 (Core printed p. 14 management table; p. 16: no language that compels biopsy).
+export const RUNTIME_LRM_RECOMMENDATION = "Multidisciplinary discussion for tailored workup, which often includes biopsy";
+export const RUNTIME_LR2_RECOMMENDATION = "Return to surveillance in 6 months; consider repeat diagnostic imaging in ≤6 months";
 export const RUNTIME_TIV_DEFINITION =
   "Definite tumor in vein: unequivocal enhancing soft tissue in a vein, with or without a visible parenchymal mass";
 export const RUNTIME_THRESHOLD_GROWTH = Object.freeze({
   subLabel:
-    "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
-  note: "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
+    "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
+  note: "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
   subthresholdOption:
     "Subthreshold growth (growth below threshold, e.g. new ≥10 mm observation in ≤24 months or ≥100% over >6 months)",
 });
@@ -506,6 +580,14 @@ export const CLAIM_BINDINGS = Object.freeze([
     claim_id: "acr-reference-is-live-landing-page",
     source_statement_ids: ["core-identity"],
   }),
+  Object.freeze({
+    claim_id: "lrm-management-tailored-workup",
+    source_statement_ids: ["management-lrm-tailored-workup", "reporting-avoid-compelling-biopsy"],
+  }),
+  Object.freeze({
+    claim_id: "lr2-management-surveillance",
+    source_statement_ids: ["management-lr2-surveillance"],
+  }),
 ]);
 
 // In-memory edits of the real extracted page text (never written anywhere). Each must break the
@@ -517,6 +599,9 @@ export const SOURCE_MUTATIONS = Object.freeze([
   Object.freeze({ statement_id: "ancillary-subthreshold-growth", find: "less than threshold", replace: "more than threshold" }),
   Object.freeze({ statement_id: "step2-ancillary-features", find: "downgrade by 1", replace: "downgrade by 2" }),
   Object.freeze({ statement_id: "lrm-criteria", find: "Not meeting LR", replace: "Meeting LR" }),
+  Object.freeze({ statement_id: "management-lrm-tailored-workup", find: "Often includes biopsy", replace: "Requires biopsy" }),
+  Object.freeze({ statement_id: "management-lr2-surveillance", find: "≤ 6 months", replace: "≤ 3 months" }),
+  Object.freeze({ statement_id: "reporting-avoid-compelling-biopsy", find: "compels biopsy", replace: "recommends biopsy" }),
 ]);
 
 function sha256(value) {
@@ -561,6 +646,7 @@ export async function retrieve(
       });
       if (response.ok) {
         completed = {
+          status: response.status,
           bytes: Buffer.from(await response.arrayBuffer()),
           finalUrl: new URL(response.url || source.url),
           contentType: response.headers.get("content-type") ?? "",
@@ -1174,6 +1260,22 @@ export function verifyRuntime(calculator, table = EXPECTED_TABLE) {
   assert.ok(!refUrls.includes(DEAD_ACR_REFERENCE), "ACR reference still points to the dead page");
   bindings["acr-reference-is-live-landing-page"] = { reference_url: SOURCE.landing_page };
 
+  // Management wording (Core printed p. 14; p. 16 forbids language that compels biopsy): every LR-M result, targetoid
+  // or nontargetoid, and both LR-2 results (probably benign, and the one-step downgrade of LR-3) state it exactly.
+  const lrmTargetoid = compute({ ...INDETERMINATE, has_lrm_features: true, lrm_necrosis: true, observation_size: "25", aphe: "rim" });
+  const lrmNontargetoid = compute({ ...INDETERMINATE, has_lrm_features: true, lrm_necrosis: true, ...majors("15", "none") });
+  for (const [label, result] of [["targetoid", lrmTargetoid], ["nontargetoid", lrmNontargetoid]]) {
+    assert.equal(result["LI-RADS Category"], LRM_CATEGORY, `${label} LR-M vector`);
+    assert.equal(result.Recommendation, RUNTIME_LRM_RECOMMENDATION, `LR-M recommendation drifted (${label})`);
+  }
+  bindings["lrm-management-tailored-workup"] = { recommendation: RUNTIME_LRM_RECOMMENDATION, paths: ["targetoid", "nontargetoid"] };
+  const lr2Direct = compute({ ...INDETERMINATE, benign_status: "probably_benign" });
+  for (const [label, result] of [["probably benign", lr2Direct], ["LR-3 downgraded", lr2]]) {
+    assert.equal(result["LI-RADS Category"], LR2_LABEL, `${label} LR-2 vector`);
+    assert.equal(result.Recommendation, RUNTIME_LR2_RECOMMENDATION, `LR-2 recommendation drifted (${label})`);
+  }
+  bindings["lr2-management-surveillance"] = { recommendation: RUNTIME_LR2_RECOMMENDATION, paths: ["probably benign", "LR-3 downgraded"] };
+
   return { bindings, guardrails: verifyGuardrails(calculator) };
 }
 
@@ -1245,7 +1347,23 @@ export function verifyGuardrails(calculator) {
 // ---------------------------------------------------------------------------------------------
 // PDF extraction and the audit run
 
-export async function pdfPages(bytes, wanted) {
+// The verified artifact on one line of at most 300 characters, so the source-audit runner's pass_line (the last
+// stdout line, capped at 300) carries all of it.
+export function manifestLine(measured, source = SOURCE) {
+  const mediaType = `${measured.content_type}`.split(";")[0].trim();
+  return `LI-RADS source PASS: ${measured.final_url} HTTP ${measured.status} ${mediaType} ${measured.bytes} bytes sha256 ${measured.sha256} ${source.parser.package} ${measured.parser_version}`;
+}
+
+export function assertParserPin(version = PDFJS_VERSION, source = SOURCE) {
+  assert.equal(
+    version,
+    source.parser.version,
+    `${source.key}: PDF parser drifted from ${source.parser.package} ${source.parser.version}`,
+  );
+}
+
+export async function pdfPages(bytes, wanted, { parserVersion = PDFJS_VERSION } = {}) {
+  assertParserPin(parserVersion);
   const document = await getDocument({
     data: new Uint8Array(bytes),
     disableWorker: true,
@@ -1387,8 +1505,19 @@ async function main() {
       bytes: SOURCE.bytes,
       sha256: SOURCE.sha256,
       pages: SOURCE.pages,
+      parser: { ...SOURCE.parser },
       retrieval_attempts: retrieved.attempts,
+      // Measured on the response this run parsed (retrieve() has already required each to equal its pin).
+      measured: {
+        status: retrieved.status,
+        final_url: retrieved.finalUrl.href,
+        content_type: retrieved.contentType,
+        bytes: retrieved.bytes.length,
+        sha256: sha256(retrieved.bytes),
+        parser_version: PDFJS_VERSION,
+      },
     },
+    retrieval: { ...RETRIEVAL, checked_before_parsing: [...RETRIEVAL.checked_before_parsing] },
     source_statements: [...verified.values()],
     source_mutations: sourceMutations,
     layout,
@@ -1402,7 +1531,7 @@ async function main() {
       not_asserted: [
         "ancillary-feature adjustment of LR-1 and LR-2 chosen directly in the benignity question",
         "LR-M and LR-5 probability figures",
-        "management recommendations",
+        "management recommendations other than LR-M and LR-2",
         "whole-calculator clinical acceptance",
       ],
     },
@@ -1415,6 +1544,7 @@ async function main() {
     console.log(
       `LI-RADS LR-M primary-source audit passed: 1 pinned artifact, ${verified.size} source statements, ${CLAIM_BINDINGS.length} runtime claim bindings, ${runtime.bindings["lr5-criteria-are-the-diagnostic-table"].table_vectors} table vectors and ${runtime.guardrails.hidden_field_mutations} hidden-field mutations.`,
     );
+    console.log(manifestLine(audit.source.measured));
   }
 }
 

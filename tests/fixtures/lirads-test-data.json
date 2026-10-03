@@ -104,7 +104,7 @@
         "LI-RADS Category": "LR-2 (Probably Benign)",
         "HCC Probability": "~14%",
         "Definition": "High probability benign; distinctive nodule <20mm without major HCC features",
-        "Recommendation": "Return to routine surveillance; option for alternate imaging modality"
+        "Recommendation": "Return to surveillance in 6 months; consider repeat diagnostic imaging in ≤6 months"
       },
       "calculationSteps": "Step 1: Check prerequisites - all pass. Step 2: Check benign_status = 'probably_benign'. Step 3: Return LR-2 category with ~14% HCC probability.",
       "medicalReference": "LI-RADS v2018 - Probably benign observations"
@@ -129,7 +129,7 @@
         "Definition": "Rim arterial phase hyperenhancement suggests non-HCC malignancy",
         "Key Feature": "Rim APHE (peripheral > central enhancement)",
         "Differential Diagnosis": "Intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
-        "Recommendation": "Biopsy recommended; multidisciplinary discussion"
+        "Recommendation": "Multidisciplinary discussion for tailored workup, which often includes biopsy"
       },
       "calculationSteps": "Step 1: Check prerequisites - all pass. Step 2: Check indeterminate status and no explicit LR-M features checked. Step 3: Detect aphe = 'rim'. Step 4: Return LR-M category due to rim APHE.",
       "medicalReference": "LI-RADS v2018 - LR-M targetoid features"
@@ -161,7 +161,7 @@
         "Definition": "Malignant features present but not specific for HCC",
         "LR-M Features Identified": "Rim APHE; Peripheral washout; Delayed central enhancement",
         "Differential Diagnosis": "Atypical HCC, intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
-        "Recommendation": "Biopsy recommended; multidisciplinary discussion"
+        "Recommendation": "Multidisciplinary discussion for tailored workup, which often includes biopsy"
       },
       "calculationSteps": "Step 1: Check prerequisites - all pass. Step 2: Check has_lrm_features = true. Step 3: Collect checked LR-M features: rim APHE, peripheral washout, delayed central enhancement. Step 4: Return LR-M category with feature list.",
       "medicalReference": "Cerny M, et al. RadioGraphics. 2018;38(7):1973-2001"
@@ -193,7 +193,7 @@
         "Definition": "Malignant features present but not specific for HCC",
         "LR-M Features Identified": "Infiltrative appearance",
         "Differential Diagnosis": "Atypical HCC, intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
-        "Recommendation": "Biopsy recommended; multidisciplinary discussion"
+        "Recommendation": "Multidisciplinary discussion for tailored workup, which often includes biopsy"
       },
       "calculationSteps": "Step 1: Check prerequisites - all pass. Step 2: Check has_lrm_features = true. Step 3: Only infiltrative appearance checked. Step 4: Return LR-M category with infiltrative feature.",
       "medicalReference": "LI-RADS v2018 - Non-targetoid LR-M features"
@@ -967,7 +967,7 @@
         "Definition": "Malignant features present but not specific for HCC",
         "LR-M Features Identified": "Infiltrative appearance; Marked diffusion restriction; Necrosis/severe ischemia; Other non-HCC malignancy features",
         "Differential Diagnosis": "Atypical HCC, intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
-        "Recommendation": "Biopsy recommended; multidisciplinary discussion"
+        "Recommendation": "Multidisciplinary discussion for tailored workup, which often includes biopsy"
       },
       "calculationSteps": "Step 1: Check prerequisites - all pass. Step 2: has_lrm_features = true. Step 3: Collect non-targetoid features: infiltrative, marked restriction, necrosis, other. Step 4: Return LR-M with all 4 features listed.",
       "medicalReference": "LI-RADS v2018 - Non-targetoid LR-M features"
