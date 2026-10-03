@@ -1102,7 +1102,7 @@
         "status": "verified",
         "lastVerified": "2026-08-25",
         "reviewScope": "source-derived evidence (3 claim(s))",
-        "justification": "The open primary publication confirms the adult diagnostic kidney-biopsy population and major-bleeding outcome; its direct supplementary PDF exposes the refit equation, predictor units, coefficients, and spline knots used by the executable source-model regression vectors.",
+        "justification": "Primary study and supplement support the adult diagnostic-biopsy major-bleeding refit, units, coefficients and spline tests, not full baseline acceptance. See docs/verification/calculators/kidney-biopsy-bleeding-risk.md for the weight-input correction, test/release evidence and unresolved other input-bound and extrapolation limits.",
         "sourceReferences": [
           {
             "authority": "Thorne et al.",
@@ -1111,10 +1111,11 @@
             "url": "https://doi.org/10.1016/j.xkme.2026.101352"
           },
           {
-            "authority": "Thorne et al. via NCBI PMC OAI-PMH",
-            "title": "Open full-text JATS XML with supplementary material manifest for PMCID PMC13156734",
+            "authority": "Thorne et al. via NCBI E-utilities",
+            "title": "Byte-pinned open full-text JATS XML (efetch) with supplementary material manifest for PMCID PMC13156734",
             "role": "primary-publication",
-            "url": "https://pmc.ncbi.nlm.nih.gov/api/oai/v1/mh/?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:13156734&metadataPrefix=pmc"
+            "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=13156734&retmode=xml&tool=radulator-kbrc-source-audit",
+            "artifactSha256": "b7610352254424f1da36127082993ff981abb72cf090acff624b0e5b993209c7"
           },
           {
             "authority": "Thorne et al. via Elsevier",

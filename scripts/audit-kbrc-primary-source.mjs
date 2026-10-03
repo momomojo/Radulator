@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import process from "node:process";
-import { inflateRawSync } from "node:zlib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
   KBRC_CALIBRATION_WARNING_THRESHOLD,
@@ -56,72 +55,18 @@ async function fetchBuffer(url) {
 }
 
 async function fetchSupplement(artifact) {
-  try {
-    const direct = await fetchBuffer(artifact.direct_pdf_url);
-    assert.equal(direct.length, artifact.archive_member_bytes, "direct supplement size");
-    assert.equal(sha256(direct), artifact.archive_member_sha256, "direct supplement digest");
-    return { bytes: direct, retrieval: "direct-publisher-pdf" };
-  } catch (directError) {
-    const archive = await fetchBuffer(artifact.archive_url);
-    const member = findZipMember(archive, artifact.archive_member);
-    assert.equal(member.length, artifact.archive_member_bytes, "fallback supplement size");
-    assert.equal(sha256(member), artifact.archive_member_sha256, "fallback supplement digest");
-    return {
-      bytes: member,
-      retrieval: "europe-pmc-archive-fallback",
-      direct_error: directError instanceof Error ? directError.message : String(directError),
-    };
-  }
-}
-
-function findZipMember(archive, memberName) {
-  const minimumEocdOffset = Math.max(0, archive.length - 65557);
-  let eocdOffset = -1;
-  for (let offset = archive.length - 22; offset >= minimumEocdOffset; offset -= 1) {
-    if (archive.readUInt32LE(offset) === 0x06054b50) {
-      eocdOffset = offset;
-      break;
-    }
-  }
-  assert.notEqual(eocdOffset, -1, "supplement archive lacks a ZIP end record");
-
-  const entryCount = archive.readUInt16LE(eocdOffset + 10);
-  let offset = archive.readUInt32LE(eocdOffset + 16);
-  for (let index = 0; index < entryCount; index += 1) {
-    assert.equal(
-      archive.readUInt32LE(offset),
-      0x02014b50,
-      `invalid ZIP central-directory entry ${index}`,
-    );
-    const compression = archive.readUInt16LE(offset + 10);
-    const compressedBytes = archive.readUInt32LE(offset + 20);
-    const uncompressedBytes = archive.readUInt32LE(offset + 24);
-    const nameBytes = archive.readUInt16LE(offset + 28);
-    const extraBytes = archive.readUInt16LE(offset + 30);
-    const commentBytes = archive.readUInt16LE(offset + 32);
-    const localOffset = archive.readUInt32LE(offset + 42);
-    const name = archive.subarray(offset + 46, offset + 46 + nameBytes).toString("utf8");
-
-    if (name === memberName) {
-      assert.equal(archive.readUInt32LE(localOffset), 0x04034b50, `${name}: invalid local header`);
-      const localNameBytes = archive.readUInt16LE(localOffset + 26);
-      const localExtraBytes = archive.readUInt16LE(localOffset + 28);
-      const dataOffset = localOffset + 30 + localNameBytes + localExtraBytes;
-      const compressed = archive.subarray(dataOffset, dataOffset + compressedBytes);
-      const member =
-        compression === 0
-          ? Buffer.from(compressed)
-          : compression === 8
-            ? inflateRawSync(compressed)
-            : null;
-      assert.ok(member, `${name}: unsupported ZIP compression method ${compression}`);
-      assert.equal(member.length, uncompressedBytes, `${name}: uncompressed length`);
-      return member;
-    }
-
-    offset += 46 + nameBytes + extraBytes + commentBytes;
-  }
-  assert.fail(`supplement archive is missing ${memberName}`);
+  // Only the publisher PDF is retrieved. The Europe PMC supplementary archive embeds per-request
+  // timestamps, so its bytes cannot be pinned and would have to be parsed (as a ZIP) before any
+  // verification. A drifted publisher PDF therefore fails at once instead of falling back.
+  const direct = await fetchBuffer(artifact.direct_pdf_url);
+  return {
+    bytes: verifyPinnedBytes(
+      direct,
+      { bytes: artifact.archive_member_bytes, sha256: artifact.archive_member_sha256 },
+      "supplement PDF",
+    ),
+    retrieval: "direct-publisher-pdf",
+  };
 }
 
 async function pdfText(pdfBytes) {
@@ -384,6 +329,377 @@ function assertRuntimeAndFixtures(vectors, fixture) {
   }
 }
 
+// Every retrieved artifact is pinned by exact byte length and SHA-256, and verified before any
+// parsing. A drifted HTTP 200 fails at once: verification runs after retrieval returns, so content
+// drift is never retried.
+function verifyPinnedBytes(bytes, pin, label) {
+  assert.ok(
+    Number.isSafeInteger(pin?.bytes) && pin.bytes > 0,
+    `${label}: the registry lacks a pinned byte length`,
+  );
+  assert.match(String(pin?.sha256 ?? ""), /^[0-9a-f]{64}$/, `${label}: the registry lacks a pinned SHA-256`);
+  assert.equal(
+    bytes.length,
+    pin.bytes,
+    `${label}: byte length drifted from the pin (${bytes.length} bytes, pinned ${pin.bytes})`,
+  );
+  const digest = sha256(bytes);
+  assert.equal(digest, pin.sha256, `${label}: SHA-256 drifted from the pin (${digest})`);
+  return bytes;
+}
+
+// Weight-input evidence for the runtime "Input Review" output and info text. The source models
+// BMI (kg/m2), not weight, as a continuous restricted-cubic-spline predictor with no cutoffs,
+// mentions weight only where it lists weight and height as collected variables, and reports BMI
+// only as a median (IQR). It publishes no weight or BMI validity domain, so the 30-130 kg interval
+// is a Radulator entry-review aid, not a model claim. Source prose is not reproduced here: each
+// statement is located by paragraph (or supplement page) and key terms, and bound to the SHA-256
+// of its text inside the byte-pinned artifact (XML tags removed and whitespace collapsed, or all
+// whitespace removed for the PDF text layer). The runtime is then bound at the old weight limits
+// against an oracle evaluated from the Item S1 terms, and the binding must detect representative
+// regressions.
+const WEIGHT_XML_STATEMENTS = [
+  {
+    id: "derivation-variables-weight-height",
+    paragraph: "p0030",
+    terms: ["derivation", "weight", "height"],
+    sha256: "51c44ab46c16785b204b67277337c04aeee46665820d43573981d00e0c583b2a",
+  },
+  {
+    id: "bmi-continuous-spline",
+    paragraph: "p0050",
+    terms: ["BMI", "restricted cubic splines", "3 knots"],
+    sha256: "38eb635fa905e18639037a3ffc09702a44fbdee015ddc4c26ab20a27657183c4",
+  },
+  {
+    id: "no-arbitrary-cutoffs",
+    paragraph: "p0050",
+    terms: ["dichotomized", "categorized", "arbitrary cutoffs"],
+    sha256: "3edc662aad097233d73509c1d4111eb0f28d5361396717cae485847fc5056767",
+  },
+];
+// Item S1 footnote (supplement page 5): the unit statement for the BMI input.
+const ITEM_S1_BMI_UNIT = {
+  id: "item-s1-bmi-unit",
+  page: 5,
+  terms: ["BMI", "kg/m2"],
+  sha256: "7c026216f9f696ce042003f6faa8585c1c558ed9dbe32058b68a2536b1efa0ab",
+};
+// Table S1, Predictor Modeling Approach (supplement page 6): every modeled predictor label, with
+// whitespace removed, and its modeling approach. Weight and height are not predictors.
+const TABLE_S1 = {
+  id: "table-s1-predictors",
+  page: 6,
+  approaches: new Map([
+    ["Continuous,restrictedcubicspline(3knots)", "continuous restricted cubic spline, 3 knots"],
+    ["Binary,reference:allograft", "binary, reference allograft"],
+  ]),
+  predictors: {
+    "Age(years)": "continuous restricted cubic spline, 3 knots",
+    "Kidneylength(cm)": "continuous restricted cubic spline, 3 knots",
+    "Pre-procedurehemoglobin(g/L)": "continuous restricted cubic spline, 3 knots",
+    "Plateletcount(x109/L)": "continuous restricted cubic spline, 3 knots",
+    "Bodymassindex(kg/m2)": "continuous restricted cubic spline, 3 knots",
+    "Targetkidney(Nativevs.Allograft)": "binary, reference allograft",
+  },
+};
+const ANTHROPOMETRIC_TERM = String.raw`\bweigh\w*|\b(?:obes\w*|overweight|underweight)\b|\bkg\b(?!\s*\/\s*m)`;
+const SUPPLEMENT_PAGE_COUNT = 7;
+const WEIGHT_REVIEW_INTERVAL_KG = [30, 130];
+const WEIGHT_REVIEW_PROBES_KG = [29.99, 30, 30.01, 129.99, 130, 130.01];
+const RISK_KEY = "Estimated major bleeding risk after kidney biopsy";
+
+function xmlParagraph(xml, id) {
+  const paragraph = xml.match(new RegExp(`<p id="${id}">([\\s\\S]*?)</p>`))?.[1];
+  assert.ok(paragraph, `full-text XML lacks paragraph ${id}`);
+  return decodeXmlText(paragraph);
+}
+
+// The one segment that contains every key term must hash to the pinned statement digest.
+function assertPinnedStatement(segments, { id, terms, sha256: pinned }, locator) {
+  const matches = segments.filter((segment) => terms.every((term) => segment.includes(term)));
+  assert.equal(
+    matches.length,
+    1,
+    `${locator} ${id}: expected exactly one statement containing ${terms.join(" + ")}, found ${matches.length}`,
+  );
+  const digest = sha256(matches[0]);
+  assert.equal(digest, pinned, `${locator} ${id}: statement digest ${digest} does not match the pin`);
+  return { id, locator, sha256: digest };
+}
+
+function assertXmlWeightEvidence(xml) {
+  const statements = WEIGHT_XML_STATEMENTS.map((statement) =>
+    assertPinnedStatement(
+      xmlParagraph(xml, statement.paragraph).split(/(?<=\.)\s+(?=[A-Z])/),
+      statement,
+      `full-text XML paragraph ${statement.paragraph}`,
+    ),
+  );
+
+  // Closed world over the whole article (text, tables, captions and references): body weight,
+  // obesity and kilogram values appear only where weight and height are listed as collected
+  // variables, so the article states no weight range, limit or domain.
+  const articleStart = xml.indexOf("<article");
+  const articleEnd = xml.lastIndexOf("</article>");
+  assert.ok(articleStart !== -1 && articleEnd > articleStart, "full-text XML lacks the article element");
+  const articleText = decodeXmlText(xml.slice(articleStart, articleEnd));
+  const anthropometricMentions = [...articleText.matchAll(new RegExp(ANTHROPOMETRIC_TERM, "gi"))];
+  for (const mention of anthropometricMentions) {
+    assert.match(
+      articleText.slice(Math.max(0, mention.index - 5), mention.index + 15),
+      /age, weight, height/,
+      `the article mentions "${mention[0]}" outside a collected-variable list; re-review the weight-review interval against the source`,
+    );
+  }
+  const weightMentions = [...xml.matchAll(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/g)]
+    .filter((match) => new RegExp(ANTHROPOMETRIC_TERM, "i").test(decodeXmlText(match[1])))
+    .map((match) => {
+      const id = match[0].match(/^<p\s[^>]*\bid="([^"]+)"/)?.[1];
+      if (id) return id;
+      return xml.lastIndexOf("<abstract", match.index) > xml.lastIndexOf("</abstract>", match.index)
+        ? "abstract"
+        : "unlabelled paragraph";
+    });
+  assert.deepEqual(
+    weightMentions,
+    ["abstract", "p0030"],
+    "the article's weight mentions changed; re-review the weight-review interval against the source",
+  );
+  assert.equal(
+    anthropometricMentions.length,
+    weightMentions.length,
+    "the article's weight mentions changed; re-review the weight-review interval against the source",
+  );
+
+  // Table 1 reports BMI as median (IQR) and has no weight or height row.
+  const table = xml.match(/<table-wrap\b[^>]*\bid="tbl1"[^>]*>[\s\S]*?<\/table-wrap>/)?.[0];
+  assert.ok(table, "full-text XML lacks Table 1");
+  const rows = [...table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((match) =>
+    [...match[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map((cell) =>
+      decodeXmlText(cell[1]),
+    ),
+  );
+  const bmiRow = rows.find(([name]) => /^Body mass index \(kg\/m ?2 ?\)$/.test(name ?? ""));
+  assert.ok(bmiRow, "Table 1 lacks the body mass index row");
+  const combined = bmiRow.at(-1).match(/^(\d+\.\d+) \((\d+\.\d+)-(\d+\.\d+)\)$/);
+  assert.ok(combined, `Table 1 combined BMI is not a median (IQR): ${bmiRow.at(-1)}`);
+  const anthropometricRows = rows.filter(([name]) => /weight|height/i.test(name ?? ""));
+  assert.equal(
+    anthropometricRows.length,
+    0,
+    "Table 1 now reports weight or height; re-review the weight-review interval against the source",
+  );
+  const footnote = decodeXmlText(
+    table.match(/<table-wrap-foot>([\s\S]*?)<\/table-wrap-foot>/)?.[1] ?? "",
+  );
+  assert.match(
+    footnote,
+    /\bContinuous variables\b.*\bmedian \(IQR\)/,
+    "Table 1 footnote no longer reports continuous variables as median (IQR)",
+  );
+  return {
+    statements,
+    weightMentions,
+    table1Bmi: { median: Number(combined[1]), iqr: [Number(combined[2]), Number(combined[3])] },
+    anthropometricRows: anthropometricRows.length,
+  };
+}
+
+function assertPdfWeightEvidence(supplementText, sourceTerms) {
+  const pages = supplementText.split("\n");
+  assert.equal(pages.length, SUPPLEMENT_PAGE_COUNT, "supplement PDF page count");
+  const compact = (value) => value.replace(/\s+/g, "");
+
+  const itemS1Footnote = compact(pages[ITEM_S1_BMI_UNIT.page - 1]).split("Footnote:")[1];
+  assert.ok(itemS1Footnote, `supplement PDF page ${ITEM_S1_BMI_UNIT.page} lacks the Item S1 footnote`);
+  const statements = [
+    assertPinnedStatement(
+      itemS1Footnote.split("."),
+      ITEM_S1_BMI_UNIT,
+      `mmc1.pdf page ${ITEM_S1_BMI_UNIT.page} Item S1 footnote`,
+    ),
+  ];
+
+  const tableS1 = compact(pages[TABLE_S1.page - 1]);
+  const title = "TableS1:PredictorModelingApproach";
+  assert.ok(tableS1.includes(title), `supplement PDF page ${TABLE_S1.page} lacks Table S1`);
+  const cells = tableS1
+    .slice(tableS1.lastIndexOf("Approach") + "Approach".length)
+    .split(/(Continuous,restrictedcubicspline\(3knots\)|Binary,reference:allograft)/);
+  assert.equal(cells.at(-1), "", "Table S1 has content after its last predictor row");
+  const predictors = {};
+  for (let index = 0; index + 1 < cells.length; index += 2) {
+    predictors[cells[index]] = TABLE_S1.approaches.get(cells[index + 1]);
+  }
+  assert.deepEqual(
+    predictors,
+    TABLE_S1.predictors,
+    "Table S1 predictors or modeling approaches drifted; weight must not be a modeled predictor",
+  );
+  statements.push({ id: TABLE_S1.id, locator: `mmc1.pdf page ${TABLE_S1.page} Table S1`, predictors });
+
+  for (const page of [5, 6]) {
+    assert.doesNotMatch(
+      pages[page - 1],
+      /weight|height/i,
+      `supplement PDF page ${page} now names weight or height as a model input`,
+    );
+  }
+  const inputs = [...new Set(sourceTerms.map(({ input }) => input))].sort();
+  assert.deepEqual(
+    inputs,
+    ["age", "bmi", "constant", "hemoglobin", "kidneySize", "native", "platelets"],
+    "Item S1 predictors changed; weight must enter the model only through BMI",
+  );
+  return { statements, modelInputs: inputs.filter((input) => input !== "constant") };
+}
+
+// Oracle evaluated directly from the parsed Item S1 terms, independent of the runtime function.
+function sourceProbability(terms, vector) {
+  let linearPredictor = 0;
+  for (const { sign, coefficient, input, positive_part_cubic_knot: knot } of terms) {
+    const value = input === "constant" ? 1 : Number(vector[input]);
+    const basis = knot === undefined ? value : Math.max(value - knot, 0) ** 3;
+    linearPredictor += (sign === "-" ? -coefficient : coefficient) * basis;
+  }
+  return 1 / (1 + Math.exp(-linearPredictor));
+}
+
+function assertWeightReviewBinding(compute, sourceTerms, example) {
+  assert.equal(example?.id, "paper-lower-risk-allograft", "p0115 lower-risk example is missing");
+  assert.equal(example.bmi, 30, "p0115 lower-risk example BMI drifted");
+  const profile = {
+    age: example.age,
+    platelets: example.platelets,
+    hemoglobin: example.hemoglobin,
+    kidney_size: example.kidneySize,
+    kidney_type: example.native ? "native" : "allograft",
+  };
+  const [low, high] = WEIGHT_REVIEW_INTERVAL_KG;
+  const reviewFlags = WEIGHT_REVIEW_PROBES_KG.map((weight) => {
+    const height = 170;
+    const result = compute({ ...profile, weight, height });
+    assert.equal(result.Error, undefined, `weight ${weight} kg must be estimated, not rejected`);
+    const bmi = weight / (height / 100) ** 2;
+    assert.ok(
+      Math.abs(result._probability - sourceProbability(sourceTerms, { ...example, bmi })) <= 1e-12,
+      `weight ${weight} kg: estimate must equal Item S1 at BMI ${bmi.toFixed(4)} (no clamp or cutoff)`,
+    );
+    const review = result["Input Review"];
+    const outside = weight < low || weight > high;
+    assert.equal(
+      Boolean(review),
+      outside,
+      `weight ${weight} kg: Input Review must appear only outside ${low}-${high} kg`,
+    );
+    if (outside) {
+      assert.match(review, /Radulator entry-review interval/, "review must attribute the interval to Radulator");
+      assert.match(review, /not a validated model domain/, "review must not present the interval as a model domain");
+      assert.match(review, /Check weight, height and units/, "review must ask for an entry check");
+      assert.match(review, /clinical judgment/, "review must leave applicability to clinical judgment");
+    }
+    return outside;
+  });
+
+  // The published BMI-30 example keeps its displayed risk whether BMI 30 comes from 86.7 kg and
+  // 170 cm or from 132.3 kg and 210 cm; only the weight outside the interval is reviewed.
+  const pair = [[86.7, 170], [132.3, 210]].map(([weight, height]) =>
+    compute({ ...profile, weight, height }),
+  );
+  for (const result of pair) {
+    assert.equal(result.Error, undefined, "equal-BMI example must be estimated");
+    assert.equal(result[RISK_KEY], example.display, "equal-BMI example drifted from the p0115 display");
+    assert.ok(
+      Math.abs(result._probability - sourceProbability(sourceTerms, example)) <= 1e-12,
+      "equal-BMI example must equal Item S1 at BMI 30",
+    );
+  }
+  assert.equal(pair[0]["Input Review"], undefined, "86.7 kg must not be reviewed");
+  assert.ok(pair[1]["Input Review"], "132.3 kg must be reviewed");
+
+  for (const weight of [0, -1]) {
+    assert.match(
+      compute({ ...profile, weight, height: 170 }).Error ?? "",
+      /Weight must be above zero/,
+      `weight ${weight} kg cannot form a BMI and must be rejected`,
+    );
+  }
+
+  // Every other numeric entry limit remains an enforced Radulator guardrail.
+  const base = { ...profile, weight: 86.7, height: 170 };
+  for (const [field, { min, max, action }] of Object.entries(KBRC_INPUT_LIMITS)) {
+    if (field === "weight") {
+      assert.equal(action, "warn", "weight entry limits must review, not reject");
+      continue;
+    }
+    assert.equal(action, undefined, `${field} entry limits must remain enforced`);
+    for (const value of [min - 0.01, max + 0.01]) {
+      assert.match(
+        compute({ ...base, [field]: value }).Error ?? "",
+        /not publication-derived model-validation bounds/,
+        `${field} ${value} must be rejected`,
+      );
+    }
+    for (const value of [min, max]) {
+      assert.equal(compute({ ...base, [field]: value }).Error, undefined, `${field} ${value} must be accepted`);
+    }
+  }
+  return reviewFlags;
+}
+
+function assertWeightReviewText(calculatorSource) {
+  assert.match(
+    calculatorSource,
+    /BMI, not weight alone, is the model predictor/,
+    "info text must identify BMI (Item S1, Table S1, p0050) as the predictor",
+  );
+  assert.match(
+    calculatorSource,
+    /Values outside 30–130 kg prompt an input-review warning rather than rejection/,
+    "info text must describe the weight interval as review-only",
+  );
+}
+
+// Representative regressions the weight binding must catch: the old hard cutoff, clamping, a
+// missing review, and review wording that presents the interval as a model domain.
+const WEIGHT_BINDING_REGRESSIONS = {
+  "hard-weight-cutoff": (compute) => (values) =>
+    Number(values.weight) < 30 || Number(values.weight) > 130
+      ? { Error: "Weight must be 30–130 kg." }
+      : compute(values),
+  "weight-clamped": (compute) => (values) =>
+    compute({ ...values, weight: Math.min(130, Math.max(30, Number(values.weight))) }),
+  "input-review-removed": (compute) => (values) => {
+    const result = { ...compute(values) };
+    delete result["Input Review"];
+    return result;
+  },
+  "input-review-claims-model-domain": (compute) => (values) => {
+    const result = compute(values);
+    return result["Input Review"]
+      ? {
+          ...result,
+          "Input Review": result["Input Review"].replace(
+            "not a validated model domain",
+            "the validated model domain",
+          ),
+        }
+      : result;
+  },
+};
+
+function weightRegressionsDetected(compute, sourceTerms, example) {
+  return Object.entries(WEIGHT_BINDING_REGRESSIONS).map(([id, mutate]) => {
+    assert.throws(
+      () => assertWeightReviewBinding(mutate(compute), sourceTerms, example),
+      assert.AssertionError,
+      `the weight-review binding did not detect the ${id} regression`,
+    );
+    return id;
+  });
+}
+
 async function main() {
   const [registryBytes, fixtureBytes, calculatorBytes] = await Promise.all([
     readFile(REGISTRY_PATH),
@@ -398,8 +714,14 @@ async function main() {
   const artifact = record?.implementation_evidence?.source_artifact;
   assert.ok(artifact, "KBRC registry lacks source_artifact metadata");
 
+  // The article XML comes from NCBI E-utilities efetch, whose response is byte-stable (the OAI-PMH
+  // envelope carries a per-request responseDate). Its pinned length and digest are verified before
+  // the bytes are decoded or parsed.
+  const xmlPin = { bytes: artifact.full_text_xml_bytes, sha256: artifact.full_text_xml_sha256 };
   const [xmlBytes, supplement] = await Promise.all([
-    fetchBuffer(artifact.full_text_xml_url),
+    fetchBuffer(artifact.full_text_xml_url).then((bytes) =>
+      verifyPinnedBytes(bytes, xmlPin, "article XML"),
+    ),
     fetchSupplement(artifact),
   ]);
   const xml = xmlBytes.toString("utf8");
@@ -410,7 +732,8 @@ async function main() {
   const member = supplement.bytes;
   assert.equal(member.length, artifact.archive_member_bytes, "supplement member size");
   assert.equal(sha256(member), artifact.archive_member_sha256, "supplement member digest");
-  const sourceTerms = parseSourceEquation(await pdfText(member));
+  const supplementText = await pdfText(member);
+  const sourceTerms = parseSourceEquation(supplementText);
   const runtimeTerms = parseRuntimeEquation(calculatorBytes.toString("utf8"));
   assert.equal(sourceTerms.length, 22, "Item S1 equation term count");
   assert.deepEqual(runtimeTerms, sourceTerms, "runtime equation drifted from Item S1");
@@ -423,6 +746,20 @@ async function main() {
     calculatorBytes.toString("utf8"),
     fixture,
   );
+  const pdfWeightEvidence = assertPdfWeightEvidence(supplementText, sourceTerms);
+  const xmlWeightEvidence = assertXmlWeightEvidence(xml);
+  const lowerRiskExample = vectors.find(({ id }) => id === "paper-lower-risk-allograft");
+  const reviewFlags = assertWeightReviewBinding(
+    computeKidneyBiopsyBleedingRisk,
+    sourceTerms,
+    lowerRiskExample,
+  );
+  assertWeightReviewText(calculatorBytes.toString("utf8"));
+  const regressionsDetected = weightRegressionsDetected(
+    computeKidneyBiopsyBleedingRisk,
+    sourceTerms,
+    lowerRiskExample,
+  );
   const inputLimitValues = Object.fromEntries(
     Object.entries(KBRC_INPUT_LIMITS).map(([field, { min, max, unit }]) => [
       field,
@@ -432,6 +769,9 @@ async function main() {
   const audit = {
     schema: "radulator-kbrc-primary-source-audit/v1",
     article_pmcid: "PMC13156734",
+    article_xml_url: artifact.full_text_xml_url,
+    article_xml_bytes: xmlBytes.length,
+    article_xml_sha256: sha256(xmlBytes),
     archive_member: artifact.archive_member,
     direct_pdf_url: artifact.direct_pdf_url,
     supplement_retrieval: supplement.retrieval,
@@ -445,9 +785,27 @@ async function main() {
     input_limits: {
       provenance: KBRC_INPUT_LIMIT_PROVENANCE,
       publication_derived: false,
+      enforcement: Object.fromEntries(
+        Object.entries(KBRC_INPUT_LIMITS).map(([field, { action }]) => [field, action || "reject"]),
+      ),
       values: inputLimitValues,
     },
     runtime_input_limit_claims_match: true,
+    weight_input_evidence: {
+      model_inputs: pdfWeightEvidence.modelInputs,
+      xml_statements: xmlWeightEvidence.statements,
+      pdf_statements: pdfWeightEvidence.statements,
+      weight_mentions: xmlWeightEvidence.weightMentions,
+      table1_bmi_combined: xmlWeightEvidence.table1Bmi,
+      table1_weight_or_height_rows: xmlWeightEvidence.anthropometricRows,
+      publication_defines_weight_domain: false,
+      review_interval_kg: WEIGHT_REVIEW_INTERVAL_KG,
+      review_probes_kg: WEIGHT_REVIEW_PROBES_KG,
+      review_flags: reviewFlags,
+      equal_bmi_pair_display: lowerRiskExample.display,
+      regressions_detected: regressionsDetected,
+    },
+    runtime_weight_review_match: true,
     runtime_equation_match: true,
     runtime_vector_match: true,
     fixture_vector_match: true,
