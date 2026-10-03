@@ -57,11 +57,12 @@ function extractCalcMeta() {
 function extractRefs(content) {
   const refsBlock = content.match(/refs:\s*\[([\s\S]*?)\n\s*\]/)?.[1] || "";
   const refs = [];
-  const refRe = /\{\s*t:\s*"([^"]+)"\s*,\s*u:\s*"([^"]+)"/g;
+  // `u` is optional: a citation kept without a link is rendered as plain text.
+  const refRe = /\{\s*t:\s*"([^"]+)"\s*(?:,\s*u:\s*"([^"]+)")?/g;
   let match;
 
   while ((match = refRe.exec(refsBlock)) !== null) {
-    refs.push({ t: match[1], u: match[2] });
+    refs.push(match[2] ? { t: match[1], u: match[2] } : { t: match[1] });
   }
 
   return refs;
@@ -216,7 +217,7 @@ function buildStaticCalculatorShell(data) {
   const refs = data.refs || [];
   const related = data.related || [];
   const refsHtml = refs.length > 0
-    ? `<section aria-labelledby="static-references-heading" class="rounded-lg border border-border bg-muted/30 p-5"><h2 id="static-references-heading" class="text-lg font-semibold text-foreground">References</h2><ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">${refs.map((ref) => `<li><a href="${escapeHtml(ref.u)}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${escapeHtml(ref.t)}</a></li>`).join("")}</ol></section>`
+    ? `<section aria-labelledby="static-references-heading" class="rounded-lg border border-border bg-muted/30 p-5"><h2 id="static-references-heading" class="text-lg font-semibold text-foreground">References</h2><ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">${refs.map((ref) => `<li>${ref.u ? `<a href="${escapeHtml(ref.u)}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${escapeHtml(ref.t)}</a>` : escapeHtml(ref.t)}</li>`).join("")}</ol></section>`
     : "";
   const relatedHtml = related.length > 0
     ? `<section aria-labelledby="static-related-heading" class="rounded-lg border border-border bg-card p-5"><h2 id="static-related-heading" class="text-lg font-semibold text-foreground">Related calculators</h2><ul class="mt-3 grid gap-2 sm:grid-cols-2">${related.map((calc) => `<li><a href="/calculators/${escapeHtml(calc.id)}/" class="block rounded-md border border-border px-3 py-2 text-sm font-medium text-primary hover:bg-muted hover:underline">${escapeHtml(calc.name)}</a></li>`).join("")}</ul></section>`
