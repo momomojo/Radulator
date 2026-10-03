@@ -26,6 +26,7 @@ import {
   classifyRisk,
   digest,
 } from "../../../scripts/release-policy.mjs";
+import { PROMOTION_CHAIN_SCHEMA } from "../../../scripts/promotion-chain.mjs";
 
 const HEAD = "a".repeat(40);
 const BASE = "b".repeat(40);
@@ -614,6 +615,7 @@ function signedCarrier(keyId, role, profile, privateKey, state, verdict = "PASS"
     citations: ["https://example.org/source"],
     judge: { key_id: keyId, role, profile, model: "gpt-5.6-sol", provider: "openai-codex" },
     reviewed_at: overrides.reviewedAt || "2026-08-23T20:01:00Z",
+    ...(overrides.review !== undefined ? { review: overrides.review } : {}),
   };
   record.signature = sign(null, Buffer.from(canonicalJson(record)), privateKey).toString("base64");
   return {
@@ -888,6 +890,151 @@ const needsFixState = stateFixture(HIGH_FILES, [], {
 });
 needsFixState.reviews = [signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, needsFixState, "NEEDS_FIX")];
 assert.deepEqual(await collect("verification", needsFixState), [], "verification never overrides a primary NEEDS_FIX");
+
+// ---- Promotions: chain, review mode, and judge order ----------------------------------------------
+assert.equal(standard[0].reviewMode, null, "develop candidates have no promotion review mode");
+assert.equal(standard[0].promotionChain, null);
+assert.equal(
+  standard[0].candidateId,
+  digest({ repository: "momomojo/Radulator", role: "primary", exact: standard[0].exactState }),
+  "the new candidate fields never change the exact-state candidate id",
+);
+
+const PROMOTION_HEAD_REF = "release/promote-484c9ee59ce2-6d7f8d95a462";
+const verifiedChain = {
+  schema: PROMOTION_CHAIN_SCHEMA,
+  ok: true,
+  reasonCode: "CHAIN_VERIFIED",
+  entries: [{ pr: 274, files: ["src/components/calculators/NIRADS.jsx"] }],
+  overlappingFiles: [],
+  integrationMergedPaths: ["docs/verification/calculator-inventory.json"],
+  digest: "c".repeat(64),
+};
+
+function promotionState(number, { chain = verifiedChain, labels = ["ready-for-gate"], headRef = PROMOTION_HEAD_REF } = {}) {
+  const state = stateFixture(HIGH_FILES, [], { requiredCi: HIGH_REQUIRED_CI, evidenceNames: HIGH_REQUIRED_CI });
+  const labelState = relevantLabelsDigest(labels);
+  state.pr = {
+    ...state.pr,
+    number,
+    baseRef: "main",
+    headRef,
+    headRepoFullName: "momomojo/Radulator",
+    repositoryFullName: "momomojo/Radulator",
+    labels: labelState.labels,
+    labelsDigest: labelState.sha256,
+  };
+  if (chain !== null) state.promotionChain = chain;
+  return state;
+}
+
+function developState(number, baseSha = BASE) {
+  const state = stateFixture();
+  state.pr = { ...state.pr, number, baseSha };
+  return state;
+}
+
+async function collectMany(role, states, { developHead = null, batchReview } = {}) {
+  return collectCandidates({
+    ...(batchReview === undefined ? {} : { promotionBatchReview: batchReview }),
+    repository: "momomojo/Radulator",
+    role,
+    publicKeys: PUBLIC_KEYS,
+    api: {
+      async listOpenPrs() { return states.map((state) => ({ number: state.pr.number, labels: [{ name: "ready-for-gate" }] })); },
+      async loadGateState(number) { return structuredClone(states.find((state) => state.pr.number === number)); },
+      ...(developHead ? { async getDevelopHead() { return developHead; } } : {}),
+    },
+    now: "2026-08-23T20:02:00Z",
+  });
+}
+
+// Verification judge on #317 (373d003): batch review is off in A1. By default a verified chain is a full review, and
+// a batch approval does not count; the promotion vectors below run with batch review on, as A2 will.
+const collectOn = (role, states) => collectMany(role, states, { batchReview: "on" });
+{
+  const [offByDefault] = await collectMany("primary", [promotionState(303)]);
+  assert.equal(offByDefault.reviewMode, "full", "batch review is off by default");
+  assert.deepEqual(offByDefault.exactState.review, { mode: "full", promotion_chain_sha256: verifiedChain.digest });
+  const batchApproved = promotionState(303);
+  batchApproved.reviews = [signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, batchApproved, "PASS", {
+    review: { mode: "batch", promotion_chain_sha256: verifiedChain.digest },
+  })];
+  const [requeued] = await collectMany("primary", [batchApproved]);
+  assert.equal(requeued?.reviewMode, "full", "with batch review off, a batch approval does not count and the promotion is judged in full");
+}
+
+{
+  const [batch] = await collectOn("primary", [promotionState(303)]);
+  assert.equal(batch.reviewMode, "batch", "a verified chain without the escape label is a batch review");
+  assert.deepEqual(batch.promotionChain, verifiedChain, "judges receive the whole chain, including attribution files");
+  const [escaped] = await collectOn("primary", [promotionState(303, { labels: ["ready-for-gate", "promotion-full-review"] })]);
+  assert.equal(escaped.reviewMode, "full", "promotion-full-review forces a full review");
+  const [unverified] = await collectOn("primary", [promotionState(303, { chain: { ...verifiedChain, ok: false, reasonCode: "CHAIN_TREE_MISMATCH" } })]);
+  assert.equal(unverified.reviewMode, "full", "an unverified chain is a full review");
+  const [unloaded] = await collectOn("primary", [promotionState(303, { chain: null })]);
+  assert.equal(unloaded.reviewMode, "full", "a promotion without a chain is a full review");
+  assert.equal(unloaded.promotionChain, null);
+  const [hotfix] = await collectOn("primary", [promotionState(304, { headRef: "hotfix/live-outage" })]);
+  assert.equal(hotfix.reviewMode, null, "a hotfix to main is judged as an ordinary high-risk PR");
+  assert.equal(hotfix.promotionChain, null);
+}
+
+{
+  const otherBase = "d".repeat(40);
+  const states = [developState(150), developState(110, otherBase), promotionState(303), developState(120)];
+  assert.deepEqual(
+    (await collectMany("primary", states, { developHead: BASE })).map((item) => item.pr),
+    [303, 120, 150, 110],
+    "promotions first, then develop PRs on the current develop head, then the rest by number",
+  );
+  assert.deepEqual(
+    (await collectMany("primary", states)).map((item) => item.pr),
+    [303, 110, 120, 150],
+    "without a develop head the develop PRs keep number order",
+  );
+  const failing = await collectCandidates({
+    repository: "momomojo/Radulator",
+    role: "primary",
+    publicKeys: PUBLIC_KEYS,
+    api: {
+      async listOpenPrs() { return states.map((state) => ({ number: state.pr.number, labels: [{ name: "ready-for-gate" }] })); },
+      async loadGateState(number) { return structuredClone(states.find((state) => state.pr.number === number)); },
+      async getDevelopHead() { throw new Error("rate limited"); },
+    },
+    now: "2026-08-23T20:02:00Z",
+  });
+  assert.deepEqual(failing.map((item) => item.pr), [303, 110, 120, 150], "an unreadable develop head only drops the tiebreak");
+}
+
+// ---- Promotions: approvals bind the review mode and chain (Codex on #317) -----------------------------
+{
+  const [batch] = await collectOn("primary", [promotionState(303)]);
+  assert.deepEqual(batch.exactState.review, { mode: "batch", promotion_chain_sha256: verifiedChain.digest },
+    "the exact state carries the binding the record signs");
+  const changedChain = { ...verifiedChain, digest: "e".repeat(64) };
+  const [rebound] = await collectOn("primary", [promotionState(303, { chain: changedChain })]);
+  assert.notEqual(rebound.candidateId, batch.candidateId, "a changed chain is a new candidate");
+  const [escaped] = await collectOn("primary", [promotionState(303, { labels: ["ready-for-gate", "promotion-full-review"] })]);
+  assert.deepEqual(escaped.exactState.review, { mode: "full", promotion_chain_sha256: verifiedChain.digest });
+  const [hotfix] = await collectOn("primary", [promotionState(304, { headRef: "hotfix/live-outage" })]);
+  assert.equal(hotfix.exactState.review, undefined, "a hotfix carries no binding");
+
+  const approved = (chain, verdict = "PASS") => {
+    const state = promotionState(303, { chain });
+    state.reviews = [signedCarrier(PRIMARY_ID, "primary", "radulator", primaryKeys.privateKey, state, verdict, {
+      review: { mode: "batch", promotion_chain_sha256: verifiedChain.digest },
+    })];
+    return state;
+  };
+  assert.deepEqual(await collectOn("primary", [approved(verifiedChain)]), [], "a batch PASS for the current chain needs no new review");
+  const [again] = await collectOn("primary", [approved(changedChain)]);
+  assert.equal(again?.pr, 303, "a batch PASS for another chain no longer counts, so the promotion is judged again");
+  assert.deepEqual(again.exactState.review, { mode: "batch", promotion_chain_sha256: changedChain.digest });
+  const [full] = await collectOn("primary", [approved({ ...verifiedChain, ok: false, reasonCode: "CHAIN_TREE_MISMATCH" })]);
+  assert.equal(full?.reviewMode, "full", "a chain that stops verifying sends the promotion to a full review");
+  assert.deepEqual(await collectOn("primary", [approved(changedChain, "NEEDS_FIX")]), [], "a batch NEEDS_FIX stands after the chain changes");
+}
 
 const temp = await mkdtemp(path.join(os.tmpdir(), "radulator-candidate-test-"));
 try {

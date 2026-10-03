@@ -24,6 +24,10 @@ import {
 } from "../../../helpers/calculator-test-helper.js";
 
 const CALCULATOR_NAME = "ACR NI-RADS";
+const LEGACY_RATES_HEADING =
+  "Legacy NI-RADS recurrence rates by category (Krieger et al., AJNR 2017; positive disease across 618 primary-site and neck targets):";
+const LEGACY_RATES_SCOPE =
+  "These rates come from a 2017 study that predates MRI v2025, so they are not MRI v2025 estimates.";
 
 /**
  * Helper to select a radio option by its exact label text within the calculator form
@@ -79,22 +83,20 @@ test.describe("ACR NI-RADS Calculator", () => {
         infoSection.getByText("PRIMARY TUMOR SITE").first(),
       ).toBeVisible();
       await expect(infoSection.getByText("CERVICAL LYMPH NODES")).toBeVisible();
+      // Legacy recurrence percentages carry their source (Krieger 2017) and are never read as MRI v2025 risks.
+      await expect(infoSection).toContainText(LEGACY_RATES_HEADING);
+      await expect(infoSection).toContainText(LEGACY_RATES_SCOPE);
       await expect(infoSection.getByText("NI-RADS 0")).toBeVisible();
       await expect(infoSection.getByText("NI-RADS 1")).toBeVisible();
     });
 
     test("should have imaging modality selection", async ({ page }) => {
-      await expect(
-        page.locator("main").getByText("Imaging Modality"),
-      ).toBeVisible();
-      await expect(
-        page.locator("main").getByText("Contrast-Enhanced CT"),
-      ).toBeVisible();
-      // Use exact match for MRI to avoid matching "Adrenal MRI CSI" in sidebar
-      await expect(
-        page.locator("main").getByText("MRI", { exact: true }),
-      ).toBeVisible();
-      await expect(page.locator("main").getByText("PET/CT")).toBeVisible();
+      const legacyModality = page.getByRole("radiogroup", { name: "Imaging Modality" });
+      await expect(legacyModality).toBeVisible();
+      await expect(legacyModality.getByRole("radio", { name: "Contrast-Enhanced CT" })).toBeVisible();
+      await expect(legacyModality.getByRole("radio", { name: "PET/CT" })).toBeVisible();
+      // The 2018 CT/PET-CT system has no MRI option; MRI surveillance uses the 2025 MRI path.
+      await expect(legacyModality.getByRole("radio", { name: "MRI", exact: true })).toHaveCount(0);
     });
 
     test("should have prior imaging availability selection", async ({
@@ -181,8 +183,7 @@ test.describe("ACR NI-RADS Calculator", () => {
     test("should calculate NI-RADS 1 for residual stable nodal tissue", async ({
       page,
     }) => {
-      // Use exact match for MRI within main area
-      await selectRadioOption(page, "MRI");
+      await selectRadioOption(page, "Contrast-Enhanced CT");
       await selectRadioOption(page, "Yes - prior available");
 
       await selectRadioOption(
@@ -267,7 +268,7 @@ test.describe("ACR NI-RADS Calculator", () => {
     test("should calculate NI-RADS 2 for new/enlarging neck node without necrosis", async ({
       page,
     }) => {
-      await selectRadioOption(page, "MRI");
+      await selectRadioOption(page, "Contrast-Enhanced CT");
       await selectRadioOption(page, "Yes - prior available");
 
       // Primary site: expected changes
@@ -327,7 +328,7 @@ test.describe("ACR NI-RADS Calculator", () => {
     test("should calculate NI-RADS 3 for neck node with necrosis", async ({
       page,
     }) => {
-      await selectRadioOption(page, "MRI");
+      await selectRadioOption(page, "Contrast-Enhanced CT");
       await selectRadioOption(page, "Yes - prior available");
 
       // Primary site: expected changes
@@ -416,7 +417,7 @@ test.describe("ACR NI-RADS Calculator", () => {
     test("should calculate NI-RADS 4 for pathologically proven nodal recurrence", async ({
       page,
     }) => {
-      await selectRadioOption(page, "MRI");
+      await selectRadioOption(page, "Contrast-Enhanced CT");
       await selectRadioOption(page, "Yes - prior available");
 
       // Primary site: expected changes
@@ -606,7 +607,7 @@ test.describe("ACR NI-RADS Calculator", () => {
     test("should use higher category for overall assessment", async ({
       page,
     }) => {
-      await selectRadioOption(page, "MRI");
+      await selectRadioOption(page, "Contrast-Enhanced CT");
       await selectRadioOption(page, "Yes - prior available");
 
       // Primary site: NI-RADS 2a
@@ -658,6 +659,27 @@ test.describe("ACR NI-RADS Calculator", () => {
   });
 
   test.describe("Input Validation", () => {
+    test("should ask for CT or PET/CT and show no 2018 result when modality not selected", async ({
+      page,
+    }) => {
+      // Skip the modality; everything else would otherwise give NI-RADS 1 (~4%).
+      await selectRadioOption(page, "Yes - prior available");
+      await selectRadioOption(
+        page,
+        "Expected post-treatment changes only (distortion, scar, diffuse linear enhancement)",
+      );
+      await selectRadioOption(page, "No abnormal lymph nodes");
+
+      await page.click('button:has-text("Calculate")');
+
+      const resultSection = page.getByRole('status', { name: 'Calculator results' });
+      await expect(
+        resultSection.getByText("Please select the imaging modality (Contrast-Enhanced CT or PET/CT)."),
+      ).toBeVisible();
+      await expect(resultSection.getByText("1 - No Evidence of Recurrence")).toHaveCount(0);
+      await expect(resultSection.getByText("~4%")).toHaveCount(0);
+    });
+
     test("should show error when primary site findings not selected", async ({
       page,
     }) => {
@@ -834,6 +856,73 @@ test.describe("ACR NI-RADS Calculator", () => {
   });
 
   test.describe("MRI v2025 reviewed pathway", () => {
+    test("the 2018 CT/PET-CT path offers no MRI modality and points MRI users to 2025 MRI", async ({
+      page,
+    }) => {
+      const legacyModality = page.getByRole("radiogroup", { name: "Imaging Modality" });
+      await expect(legacyModality).toBeVisible();
+      await expect(legacyModality.getByRole("radio", { name: "Contrast-Enhanced CT" })).toBeVisible();
+      await expect(legacyModality.getByRole("radio", { name: "PET/CT" })).toBeVisible();
+      await expect(legacyModality.getByRole("radio", { name: "MRI", exact: true })).toHaveCount(0);
+      await expect(page.locator("main")).toContainText(
+        "CT or PET/CT only. For MRI, choose 2025 MRI under NI-RADS Modality / Version.",
+      );
+    });
+
+    test("shows MRI users that the recurrence rates are sourced legacy data, not MRI v2025 estimates", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await expect(
+        page.getByRole("radiogroup", {
+          name: "Is imaging being performed during active treatment?",
+        }),
+      ).toBeVisible();
+
+      const infoSection = page.getByTestId("calculator-info");
+      await expect(infoSection.getByText(LEGACY_RATES_HEADING).first()).toBeVisible();
+      await expect(infoSection.getByText(LEGACY_RATES_SCOPE).first()).toBeVisible();
+
+      // Every percentage in the info text sits under the sourced legacy heading, never before it.
+      const text = await infoSection.innerText();
+      const scope = text.indexOf(LEGACY_RATES_HEADING);
+      expect(scope).toBeGreaterThan(-1);
+      expect(text.search(/~\d+%/)).toBeGreaterThan(scope);
+    });
+
+    test("MRI v2025 results show no estimated recurrence risk while 2018 CT/PET-CT results keep it", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Primary Site");
+      await selectRadioOption(page, "Known primary site");
+      await selectRadioOption(page, "Yes — assessable");
+      await selectRadioOption(page, "Available now");
+      await selectRadioOption(
+        page,
+        "NI-RADS 2a: Focal reduced diffusion at a superficial or mucosal site",
+      );
+      await page.getByRole("button", { name: "Calculate" }).click();
+      const mriResults = page.getByRole("status", { name: "Calculator results" });
+      await expect(mriResults.getByText("2a - Low Suspicion")).toBeVisible();
+      await expect(mriResults).not.toContainText("Estimated Recurrence Risk");
+      await expect(mriResults).not.toContainText(/~\d+%/);
+
+      await selectRadioOption(page, "2018 CT/PET-CT");
+      await selectRadioOption(page, "Contrast-Enhanced CT");
+      await selectRadioOption(page, "Yes - prior available");
+      await selectRadioOption(
+        page,
+        "Expected post-treatment changes only (distortion, scar, diffuse linear enhancement)",
+      );
+      await selectRadioOption(page, "No abnormal lymph nodes");
+      await page.getByRole("button", { name: "Calculate" }).click();
+      const legacyResults = page.getByRole("status", { name: "Calculator results" });
+      await expect(legacyResults).toContainText("Estimated Recurrence Risk");
+      await expect(legacyResults).toContainText("~4%");
+    });
+
     test("exposes an accessible modality/version selector and switches paths", async ({
       page,
     }) => {
@@ -972,6 +1061,33 @@ test.describe("ACR NI-RADS Calculator", () => {
       const results = page.getByRole("status", { name: "Calculator results" });
       await expect(results.getByText("2 - Low Suspicion")).toBeVisible();
       await expect(results.getByText("Short-interval MRI or PET.")).toBeVisible();
+    });
+
+    test("refuses a normal-node finding for a node declared new or enlarging instead of returning neck 1", async ({
+      page,
+    }) => {
+      await selectRadioOption(page, "2025 MRI");
+      await selectRadioOption(page, "No — post-treatment surveillance");
+      await selectRadioOption(page, "Neck Nodes");
+      await selectRadioOption(page, "Yes — assessable");
+      await selectRadioOption(page, "Available now");
+      await selectRadioOption(page, "New or enlarging node");
+      await selectRadioOption(page, "NI-RADS 1: No abnormal cervical nodes");
+      await page.getByRole("button", { name: "Calculate" }).click();
+
+      const results = page.getByRole("status", { name: "Calculator results" });
+      await expect(
+        results.getByText("A new or enlarging node is at least NI-RADS 2.", { exact: false }),
+      ).toBeVisible();
+      await expect(results.getByText("Neck NI-RADS")).toHaveCount(0);
+
+      // Definitive recurrence remains a valid finding for a new or enlarging node.
+      await selectRadioOption(
+        page,
+        "NI-RADS 4: Pathologically proven recurrence or definite radiologic and clinical progression",
+      );
+      await page.getByRole("button", { name: "Calculate" }).click();
+      await expect(results.getByText("4 - Definitive Recurrence")).toBeVisible();
     });
 
     test("fails closed for insufficient inputs and FDG avidity while preventing conflicts", async ({
