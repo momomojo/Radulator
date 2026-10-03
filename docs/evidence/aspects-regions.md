@@ -29,10 +29,22 @@ Each fetched artifact is pinned by its exact byte length and the SHA-256 of its
 raw bytes. `retrieve()` checks the pins, the final URL and the media type
 before it returns, so nothing is parsed until every pin holds.
 
-A 200 response that misses a pin fails at once and is never retried. Only
-transport failures are retried: network errors, timeouts, and HTTP 408, 429
-and 5xx. The policy matches the ALBI and KBRC audits: five attempts, 1, 2, 4
-and 8 s backoff, and Retry-After honoured and clamped to 30 s.
+A 200 response that misses a pin fails at once and is never retried, however
+short it is. Requests go one at a time through the shared NCBI helper,
+`scripts/lib/ncbi-fetch.mjs` (Codex review on #305):
+- it spaces requests across every audit in the run, and writes each one to the
+  runner's fetch log;
+- it retries only transport failures: network errors, timeouts, and HTTP 408,
+  425, 429 and 5xx. There are up to five attempts, 1, 2, 4 and 8 s apart, or
+  longer when Retry-After asks, never over 30 s;
+- redirects are refused, not followed, so the audit never contacts another
+  host;
+- with `NCBI_API_KEY` set, it sends the key to E-utilities only and redacts it
+  everywhere. The final URL is compared with the key removed.
+
+The helper's default retries a 200 with a wrong final URL or media type. This
+audit checks those pins with the byte pins instead, so such a response fails
+at once.
 
 The repository stores no copied source passages. Each fetched statement is
 pinned by the SHA-256 of its exact normalized text between two markers of at
@@ -175,12 +187,16 @@ SHA-256 values:
   - the NCBI-only host rule;
   - transport retries (network error, 503 with Retry-After, 429, 500), and
     403/404/410, which are not retried;
-  - the Retry-After clamp;
+  - Retry-After lengthening a wait but never shortening it, and the 30 s cap;
+  - one request at a time, each booked in the shared request spacing and
+    written to the fetch log;
+  - a redirect, which is never followed;
   - a reverted calculator (old grouping, old note trigger, old M3 text, the
     reviewer's IC text, a level-repeating M1 or M3 subLabel, and "(-1 point)");
   - that every documented claim is listed here.
 
-  It also writes weakened copies of the audit (retrying a pin miss, no length
-  check, no SHA-256 check, no media-type check) to a temporary directory. It
-  shows that each copy lets a drift through, or fails on a different pin, so
-  the failure-mode tests would go red.
+  It also writes weakened copies of the audit to a temporary directory:
+  retrying a pin miss, following redirects, sending both requests at once, no
+  length check, no SHA-256 check, and no media-type check. It shows that each
+  copy lets a drift through or fails on a different check, so the tests above
+  would go red.

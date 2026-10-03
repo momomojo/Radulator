@@ -23,10 +23,13 @@
 // Pins. Every fetched artifact is pinned by the exact byte length and SHA-256 of the raw
 // response body. retrieve() checks the pins, the final URL (protocol, host, path, query) and
 // the media type before it returns, so nothing is parsed until every pin holds. A 200 response
-// that misses any pin fails at once and is never retried. Only transport failures are retried
-// (network errors, timeouts, HTTP 408, 429 and 5xx), up to five attempts with 1, 2, 4 and 8 s
-// backoff; Retry-After is honoured and clamped to 30 s. After the pins hold, each artifact's
-// identity (PMID, PMCID, DOI, title, licence) is checked.
+// that misses any pin fails at once and is never retried. Requests go one at a time through the
+// shared NCBI helper (scripts/lib/ncbi-fetch.mjs): it spaces them across every audit in the run,
+// writes each one to the runner's fetch log, and retries only transport failures (network
+// errors, timeouts, HTTP 408, 425, 429 and 5xx), up to five attempts 1, 2, 4 and 8 s apart, or
+// longer when Retry-After asks, never over 30 s. Redirects are refused, so the audit never
+// contacts another host. After the pins hold, each artifact's identity (PMID, PMCID, DOI, title,
+// licence) is checked.
 //
 // Statements. Each source statement is pinned by the length and SHA-256 of the exact
 // normalized span that runs from a short `from` marker to the next `to` marker inside its
@@ -37,7 +40,9 @@
 // depend on that grouping, the unchanged 10-minus-regions arithmetic, and the region labels,
 // subLabels and info text. Any drift exits non-zero.
 //
-// NCBI requests identify the tool (tool=radulator-aspects-audit) and send no e-mail address.
+// NCBI requests identify the tool (tool=radulator-aspects-audit) and send no e-mail address. With
+// NCBI_API_KEY set, the helper sends the key to E-utilities and redacts it everywhere; the final
+// URL is compared with the key removed.
 
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
@@ -45,18 +50,16 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
-import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { ASPECTSScore } from "../src/components/calculators/ASPECTSScore.jsx";
+import { MAX_ATTEMPTS, fetchPinned } from "./lib/ncbi-fetch.mjs";
 
 export const CALCULATOR_PATH = "src/components/calculators/ASPECTSScore.jsx";
 const USER_AGENT = "Radulator-ASPECTS-region-source-audit/2";
 const NCBI_TOOL = "radulator-aspects-audit";
 // The only host this audit may contact.
 export const ALLOWED_HOSTS = Object.freeze(["eutils.ncbi.nlm.nih.gov"]);
-export const FETCH_ATTEMPTS = 5;
-const ATTEMPT_TIMEOUT_MS = 30_000;
-const MAX_RETRY_DELAY_MS = 30_000;
+export const FETCH_ATTEMPTS = MAX_ATTEMPTS;
 
 export const SOURCES = Object.freeze({
   barber2000: Object.freeze({
@@ -499,70 +502,53 @@ export function dubeyFigure1Caption(xml) {
 
 // ---- Retrieval --------------------------------------------------------------------------------
 
-export function retryDelayMs(response, attempt, now = Date.now()) {
-  const retryAfter = response?.headers?.get?.("retry-after");
-  if (retryAfter) {
-    const seconds = Number(retryAfter);
-    if (Number.isFinite(seconds)) return Math.min(Math.max(seconds * 1_000, 0), MAX_RETRY_DELAY_MS);
-    const date = Date.parse(retryAfter);
-    if (Number.isFinite(date)) return Math.min(Math.max(date - now, 0), MAX_RETRY_DELAY_MS);
-  }
-  return Math.min(1_000 * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS);
-}
-
-export function isRetryableStatus(status) {
-  return status === 408 || status === 429 || status >= 500;
-}
-
-// Retries only transport failures: network errors, timeouts, body-read failures and HTTP 408,
-// 429 and 5xx. Every 200 response is checked against all of its source's pins (final URL,
-// media type, byte length, SHA-256) before it is returned, so nothing is parsed unverified. A
-// 200 that misses any pin is a changed source, not a transient failure: it fails at once and
-// is never retried.
-export async function retrieve(source, { fetchImpl = fetch, sleep = delay, attempts = FETCH_ATTEMPTS } = {}) {
+// Retrieval goes through the shared NCBI helper (scripts/lib/ncbi-fetch.mjs, Codex review on
+// #305): its request spacing across the run's audits, its fetch log, and its retry policy for
+// transport failures (network errors, timeouts, HTTP 408, 425, 429 and 5xx; 1, 2, 4 and 8 s
+// apart, or longer when Retry-After asks, never over 30 s). Redirects are refused, not
+// followed, so no request ever reaches another host. Every 200 response is checked against all
+// of its source's pins (final URL, media type, byte length, SHA-256) in verify(), before it is
+// returned, so nothing is parsed unverified. That is stricter than the helper's default, which
+// retries a wrong final URL or media type: here a 200 that misses any pin, however short, is a
+// changed source, not a transient failure, so it fails at once and is never retried.
+// `fetchImpl`, `sleep`, `env` and `gate` are for tests.
+export async function retrieve(source, { fetchImpl, sleep, env, gate } = {}) {
   assert.ok(
     ALLOWED_HOSTS.includes(new URL(source.url).hostname),
     `${source.key}: ${new URL(source.url).hostname} is not an allowed audit host`,
   );
-  let lastFailure = "unknown retrieval failure";
-  let made = 0;
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    made = attempt;
-    let response;
-    try {
-      response = await fetchImpl(source.url, {
-        headers: { "user-agent": USER_AGENT },
-        redirect: "follow",
-        signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
-      });
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error);
-    }
-    if (response?.ok) {
-      let bytes;
-      try {
-        bytes = Buffer.from(await response.arrayBuffer());
-      } catch (error) {
-        lastFailure = `body read failed (${error instanceof Error ? error.message : String(error)})`;
-      }
-      if (bytes) {
-        const artifact = {
-          bytes,
+  const fetched = await fetchPinned({
+    url: source.url,
+    label: source.key,
+    pin: { sha256: source.sha256, bytes: source.bytes },
+    verify: (bytes, response) => {
+      // A cache hit has no response: the run's cache holds only bytes that passed these checks,
+      // under the pinned SHA-256.
+      if (response) {
+        assertArtifactIdentity(source, {
           finalUrl: response.url,
-          contentType: response.headers.get("content-type") ?? "",
-          attempts: attempt,
-        };
-        verifyPinnedArtifact(source, artifact);
-        return artifact;
+          contentType: response.headers?.get?.("content-type") ?? "",
+        });
       }
-    } else if (response) {
-      lastFailure = `HTTP ${response.status}`;
-      await response.body?.cancel?.();
-      if (!isRetryableStatus(response.status)) break;
-    }
-    if (attempt < attempts) await sleep(retryDelayMs(response, attempt));
-  }
-  assert.fail(`${source.key}: primary-source retrieval failed after ${made} attempt(s) (${lastFailure})`);
+      assertRawBytePin(source, bytes);
+    },
+    checkResponse: (response) => {
+      if (response.redirected) throw new Error(`${source.key}: redirected response`);
+    },
+    minBytes: 0,
+    headers: { "user-agent": USER_AGENT },
+    redirect: "error",
+    fetchImpl,
+    sleep,
+    env,
+    gate,
+  });
+  return {
+    bytes: fetched.bytes,
+    finalUrl: fetched.finalUrl,
+    contentType: fetched.contentType ?? "",
+    attempts: fetched.attempts,
+  };
 }
 
 // ---- Verification -----------------------------------------------------------------------------
@@ -968,11 +954,11 @@ export function buildAudit(retrieved, { calculator = ASPECTSScore, calculatorSou
   };
 }
 
-export async function retrieveAll({ fetchImpl = fetch, sleep = delay } = {}) {
-  const entries = await Promise.all(
-    Object.values(SOURCES).map(async (source) => [source.key, await retrieve(source, { fetchImpl, sleep })]),
-  );
-  return Object.fromEntries(entries);
+// One request at a time (Codex review on #305), each through the helper's request spacing.
+export async function retrieveAll(options = {}) {
+  const retrieved = {};
+  for (const source of Object.values(SOURCES)) retrieved[source.key] = await retrieve(source, options);
+  return retrieved;
 }
 
 async function main(argv) {

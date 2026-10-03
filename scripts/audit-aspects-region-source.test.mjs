@@ -3,8 +3,9 @@
 // Runs the ASPECTS region source audit once against the live NCBI sources and checks its JSON
 // report. It then replays the bytes that run fetched, offline and with targeted mutations, to
 // show that every raw-byte pin holds, that a drifted 200 response fails at once without a
-// retry, and that weakened copies of the audit would let those drifts through. The fetched
-// bytes and the weakened copies live only in temporary directories deleted at the end.
+// retry, that requests go one at a time through the shared NCBI helper with redirects refused,
+// and that weakened copies of the audit would let those drifts through. The fetched bytes and
+// the weakened copies live only in temporary directories deleted at the end.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -522,24 +523,40 @@ test("the rendering guardrail rejects nested parentheses and a repeated level", 
 });
 
 // Each weakened copy of the audit removes one protection. The real audit rejects the input;
-// the weakened copy lets it through, or fails on a different pin than the failure-mode test
-// expects. Either way the failure-mode tests above would go red, so they guard the protection.
+// the weakened copy lets it through, or fails on a different check than the failure-mode test
+// expects. Either way the tests above would go red, so they guard the protection.
 test("weakened copies of the audit are caught by the failure-mode checks", async () => {
   const calculatorImport = '"../src/components/calculators/ASPECTSScore.jsx"';
   const calculatorUrl = JSON.stringify(new URL("../src/components/calculators/ASPECTSScore.jsx", import.meta.url).href);
   assert.equal(auditSource.split(calculatorImport).length, 2, "calculator import anchor must occur once");
+  const helperImport = '"./lib/ncbi-fetch.mjs"';
+  const helperUrl = JSON.stringify(new URL("./lib/ncbi-fetch.mjs", import.meta.url).href);
+  assert.equal(auditSource.split(helperImport).length, 2, "NCBI helper import anchor must occur once");
 
   async function weakened(id, from, to) {
     assert.equal(auditSource.split(from).length, 2, `${id}: mutation anchor must occur exactly once`);
     const file = join(mutantDir, `${id}.mjs`);
-    writeFileSync(file, auditSource.replace(from, () => to).replace(calculatorImport, () => calculatorUrl));
+    writeFileSync(
+      file,
+      auditSource
+        .replace(from, () => to)
+        .replace(calculatorImport, () => calculatorUrl)
+        .replace(helperImport, () => helperUrl),
+    );
     return import(pathToFileURL(file).href);
   }
 
+  // A pin miss treated as a challenge page is retried by the shared helper.
   const retrying = await weakened(
     "retry-on-pin-miss",
-    "        verifyPinnedArtifact(source, artifact);\n        return artifact;",
-    "        try {\n          verifyPinnedArtifact(source, artifact);\n          return artifact;\n        } catch (error) {\n          lastFailure = error.message;\n        }",
+    "    minBytes: 0,\n",
+    "    minBytes: 0,\n    isChallenge: (bytes) => sha256(bytes) !== source.sha256,\n",
+  );
+  const following = await weakened("follow-redirects", '    redirect: "error",\n', '    redirect: "follow",\n');
+  const concurrent = await weakened(
+    "concurrent-retrieval",
+    "  for (const source of Object.values(SOURCES)) retrieved[source.key] = await retrieve(source, options);\n",
+    "  await Promise.all(\n    Object.values(SOURCES).map(async (source) => {\n      retrieved[source.key] = await retrieve(source, options);\n    }),\n  );\n",
   );
   const noDigest = await weakened(
     "no-sha256-check",
@@ -570,9 +587,14 @@ test("weakened copies of the audit are caught by the failure-mode checks", async
     await assert.rejects(audit.retrieve(source, { fetchImpl: strict.fetchImpl, sleep: noRetry }), /SHA-256 drifted/);
     assert.equal(strict.calls(), 1, `${key}: the real audit does not retry`);
 
-    // 2. No SHA-256 check: a same-length drift is accepted.
+    // 2. No SHA-256 check: a same-length drift gets past the audit's own pins and is caught only
+    // by the shared helper's second raw-pin check, under the helper's message, so failure mode 1
+    // (which requires the audit's message) goes red.
     const drifted = serving(saved, { bytes: sameLengthDrift(saved.bytes) });
-    await noDigest.retrieve(source, { fetchImpl: drifted.fetchImpl, sleep: noRetry });
+    await assert.rejects(
+      noDigest.retrieve(source, { fetchImpl: drifted.fetchImpl, sleep: noRetry }),
+      (error) => /SHA-256 drifted/.test(error.message) && !new RegExp(`${key}: artifact SHA-256 drifted`).test(error.message),
+    );
 
     // 3. No byte-length check: a length drift is caught only by the digest, under the wrong
     // message, so failure mode 2 goes red.
@@ -585,7 +607,122 @@ test("weakened copies of the audit are caught by the failure-mode checks", async
     // 4. No media-type check: a drifted content type is accepted.
     const html = serving(saved, { contentType: "text/html; charset=UTF-8" });
     await noMediaType.retrieve(source, { fetchImpl: html.fetchImpl, sleep: noRetry });
+
+    // 5. Following redirects: the request would follow a redirect to another host.
+    const modes = [];
+    await following.retrieve(source, {
+      fetchImpl: async (url, init) => {
+        modes.push(init.redirect);
+        return fakeResponse({ url: saved.finalUrl, contentType: saved.contentType, bytes: saved.bytes });
+      },
+      sleep: noRetry,
+    });
+    assert.deepEqual(modes, ["follow"], `${key}: the weakened audit would follow a redirect`);
   }
+
+  // 6. Concurrent retrieval: both requests are in flight together.
+  const counted = inFlightFetch(artifacts);
+  await concurrent.retrieveAll({ fetchImpl: counted.fetchImpl, sleep: noRetry });
+  assert.equal(counted.maxInFlight(), 2, "the weakened audit sends both requests at once");
+});
+
+// A fetch that serves the saved artifacts by URL and records how many requests overlap.
+function inFlightFetch(artifacts) {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const requested = [];
+  return {
+    fetchImpl: async (url, init) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      requested.push([url, init.redirect]);
+      await new Promise((resolve) => setImmediate(resolve));
+      inFlight -= 1;
+      const key = SOURCE_KEYS.find((candidate) => audit.SOURCES[candidate].url === url);
+      assert.ok(key, `unexpected request ${url}`);
+      const saved = artifacts[key];
+      return fakeResponse({ url: saved.finalUrl, contentType: saved.contentType, bytes: saved.bytes });
+    },
+    maxInFlight: () => maxInFlight,
+    requested: () => requested,
+  };
+}
+
+test("requests go one at a time through the shared NCBI gate and fetch log (Codex review on #305)", async () => {
+  const artifacts = savedArtifacts();
+  const logDir = mkdtempSync(join(tmpdir(), "aspects-region-fetch-log-"));
+  try {
+    const log = join(logDir, "fetch.jsonl");
+    const counted = inFlightFetch(artifacts);
+    const booked = [];
+    const gate = {
+      reserve: async (host, keyed) => {
+        booked.push([host, keyed]);
+        return 0;
+      },
+    };
+    const retrieved = await audit.retrieveAll({
+      fetchImpl: counted.fetchImpl,
+      sleep: noRetry,
+      gate,
+      env: { RADULATOR_SOURCE_FETCH_LOG: log },
+    });
+    assert.deepEqual(Object.keys(retrieved), SOURCE_KEYS);
+    assert.equal(counted.maxInFlight(), 1, "one request at a time");
+    assert.deepEqual(
+      booked,
+      SOURCE_KEYS.map(() => ["eutils.ncbi.nlm.nih.gov", false]),
+      "every request books a slot in the shared request spacing",
+    );
+    assert.deepEqual(
+      counted.requested(),
+      SOURCE_KEYS.map((key) => [audit.SOURCES[key].url, "error"]),
+      "only the pinned URLs are requested, with redirects refused",
+    );
+    const lines = readFileSync(log, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+    assert.deepEqual(
+      lines.map(({ label, host, status, outcome, provenance }) => [label, host, status, outcome, provenance]),
+      SOURCE_KEYS.map((key) => [key, "eutils.ncbi.nlm.nih.gov", 200, "ok", "live"]),
+      "each request is in the runner's fetch log",
+    );
+  } finally {
+    rmSync(logDir, { recursive: true, force: true });
+  }
+});
+
+test("a redirect is never followed, so no other host is contacted (Codex review on #305)", async () => {
+  const source = audit.SOURCES.dubey2013;
+  const saved = savedArtifacts().dubey2013;
+  // With redirect "error", fetch rejects a 3xx instead of following it: a transport failure,
+  // retried and then reported, with no request to the redirect target.
+  const requested = [];
+  await assert.rejects(
+    audit.retrieve(source, {
+      fetchImpl: async (url, init) => {
+        requested.push([url, init.redirect]);
+        throw new TypeError("fetch failed (unexpected redirect)");
+      },
+      sleep: noSleep,
+    }),
+    /dubey2013 retrieval failed after 5 of 5 attempts \(fetch failed \(unexpected redirect\)\)/,
+  );
+  assert.deepEqual(requested, Array.from({ length: audit.FETCH_ATTEMPTS }, () => [source.url, "error"]));
+  // A response that reports a redirect is never accepted either.
+  let calls = 0;
+  await assert.rejects(
+    audit.retrieve(source, {
+      fetchImpl: async () => {
+        calls += 1;
+        return {
+          ...fakeResponse({ url: saved.finalUrl, contentType: saved.contentType, bytes: saved.bytes }),
+          redirected: true,
+        };
+      },
+      sleep: noSleep,
+    }),
+    /dubey2013: redirected response/,
+  );
+  assert.equal(calls, audit.FETCH_ATTEMPTS);
 });
 
 test("retrieval retries transport failures only", async () => {
@@ -619,7 +756,7 @@ test("retrieval retries transport failures only", async () => {
         },
         sleep,
       }),
-      new RegExp(`dubey2013: primary-source retrieval failed after 1 attempt\\(s\\) \\(HTTP ${status}\\)`),
+      new RegExp(`dubey2013 retrieval failed after 1 of 5 attempts \\(HTTP ${status}\\)`),
     );
     assert.equal(calls, 1, `HTTP ${status} is not retried`);
   }
@@ -634,18 +771,21 @@ test("retrieval retries transport failures only", async () => {
       },
       sleep,
     }),
-    /after 5 attempt\(s\) \(fetch failed\)/,
+    /dubey2013 retrieval failed after 5 of 5 attempts \(fetch failed\)/,
   );
   assert.equal(calls, audit.FETCH_ATTEMPTS);
   assert.deepEqual(sleeps, [1000, 2000, 4000, 8000]);
-  assert.deepEqual(
-    [408, 429, 500, 503, 404, 403].map((status) => audit.isRetryableStatus(status)),
-    [true, true, true, true, false, false],
-  );
-  const now = Date.parse("2026-09-28T00:00:00Z");
-  const withRetryAfter = (value) => ({ headers: new Headers({ "retry-after": value }) });
-  assert.equal(audit.retryDelayMs(withRetryAfter("120"), 1, now), 30_000, "Retry-After is clamped to 30 s");
-  assert.equal(audit.retryDelayMs(withRetryAfter("Sun, 28 Sep 2026 00:00:10 GMT"), 1, now), 10_000);
-  assert.equal(audit.retryDelayMs(withRetryAfter("Sat, 27 Sep 2026 00:00:00 GMT"), 1, now), 0);
-  assert.equal(audit.retryDelayMs(null, 9), 30_000, "backoff is capped");
+
+  // Retry-After can lengthen a wait, never shorten it, and never past 30 s (Codex review on
+  // #305): a 1 s Retry-After on attempt 4 still waits the scheduled 8 s.
+  calls = 0;
+  sleeps.length = 0;
+  const throttled = async (url) => {
+    calls += 1;
+    if (calls === 1) return fakeResponse({ status: 429, url, retryAfter: "120" });
+    if (calls < 5) return fakeResponse({ status: 429, url, retryAfter: "1" });
+    return fakeResponse({ url: saved.finalUrl, contentType: saved.contentType, bytes: saved.bytes });
+  };
+  assert.equal((await audit.retrieve(source, { fetchImpl: throttled, sleep })).attempts, 5);
+  assert.deepEqual(sleeps, [30_000, 2000, 4000, 8000]);
 });
