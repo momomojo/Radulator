@@ -9,6 +9,11 @@
  * - Wells PS, et al. Thromb Haemost. 2000;83(3):416-420
  * - Wells PS, et al. Ann Intern Med. 2001;135(2):98-107
  * - van Belle A, et al. JAMA. 2006;295(2):172-179 (CHRISTOPHER study)
+ *
+ * Criterion wording follows NICE NG158 recommendation 1.1.17, Table 2 (two-level PE Wells
+ * score, adapted from Wells 2000). Weights, cut points and the cohort figures in the info text
+ * and results are bound to the PubMed abstracts by scripts/audit-wells-pe-source.mjs.
+ * Evidence and locators: docs/evidence/wells-pe-wording.md
  */
 
 export const WellsPE = {
@@ -25,40 +30,43 @@ export const WellsPE = {
   info: {
     text: `The Wells Criteria for Pulmonary Embolism is a validated clinical decision rule used to estimate the pre-test probability of PE.
 
-Two scoring interpretations are available:
+Wells et al. (2000) defined two ways to read the score:
 
-ORIGINAL 3-TIER MODEL:
-• Low probability: 0-1 points (~3.6% PE prevalence)
-• Moderate probability: 2-6 points (~20.5% PE prevalence)
-• High probability: >6 points (~66.7% PE prevalence)
+3-TIER MODEL:
+• Low probability: <2 points
+• Moderate probability: 2–6 points
+• High probability: >6 points
+In the Wells 2001 emergency department cohort (930 patients), PE was found in 1.3% of low, 16.2% of moderate and 37.5% of high probability patients.
 
-SIMPLIFIED 2-TIER MODEL (Recommended):
-• PE Unlikely: ≤4 points (~8% PE prevalence)
-• PE Likely: >4 points (~34% PE prevalence)
+2-TIER MODEL (Recommended):
+• PE Unlikely: ≤4 points (PE in 7.8% of these patients in Wells 2000)
+• PE Likely: >4 points
 
-The 2-tier model is preferred as it directly guides the diagnostic algorithm:
-• PE Unlikely + negative D-dimer = PE excluded (NPV >99%)
-• PE Likely = proceed directly to CT pulmonary angiography
+The 2-tier model directly guides the diagnostic pathway:
+• PE Unlikely: D-dimer first. In the Christopher Study (van Belle 2006), 1,028 PE-unlikely patients with a normal D-dimer were left untreated; 0.5% (95% CI 0.2–1.1%) had nonfatal VTE over 3 months of follow-up. With the SimpliRED D-dimer in Wells 2000, PE occurred in 2.2% (derivation) and 1.7% (validation) of PE-unlikely patients with a negative result.
+• PE Likely: proceed directly to CT pulmonary angiography.
 
-This calculator follows the 2001 Wells criteria with PERC rule integration.`,
+This calculator implements the Wells 2000 score (seven items and both cut-point schemes); item wording follows NICE NG158 Table 2. PERC is not scored here; a note suggests it for low-probability results.`,
     link: {
       label: "View Original Wells PE Study",
-      url: "https://doi.org/10.1160/TH00-08-0302",
+      url: "https://doi.org/10.1055/s-0037-1613830",
     },
   },
 
   fields: [
     // CLINICAL SIGNS AND SYMPTOMS
+    // Wording: NICE NG158 Table 2 (adapted from Wells 2000); see docs/evidence/wells-pe-wording.md
     {
       id: "clinical_dvt",
       label: "Clinical signs/symptoms of DVT",
-      subLabel: "Leg swelling, pain with palpation of deep veins",
+      subLabel: "Must include both leg swelling and pain on palpation of the deep veins",
       type: "checkbox",
     },
     {
+      // Strictly "less likely": an alternative diagnosis judged equally likely scores 0.
       id: "alternative_less_likely",
-      label: "PE is #1 diagnosis OR equally likely",
-      subLabel: "Alternative diagnosis is less likely than PE",
+      label: "Alternative diagnosis less likely than PE",
+      subLabel: "PE judged more likely than every alternative diagnosis; a tie does not count",
       type: "checkbox",
     },
     {
@@ -70,13 +78,12 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
       id: "immobilization_surgery",
       label: "Immobilization or surgery in past 4 weeks",
       subLabel:
-        "Bedrest ≥3 days OR surgery requiring general/regional anesthesia in past 4 weeks",
+        "Immobilization lasting more than 3 days, or surgery, within the previous 4 weeks",
       type: "checkbox",
     },
     {
       id: "previous_pe_dvt",
       label: "Previous PE or DVT",
-      subLabel: "Objectively diagnosed",
       type: "checkbox",
     },
     {
@@ -87,7 +94,7 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
     {
       id: "malignancy",
       label: "Malignancy",
-      subLabel: "Active cancer (treatment within 6 months or palliative)",
+      subLabel: "Under treatment, treated within the past 6 months, or palliative",
       type: "checkbox",
     },
   ],
@@ -113,7 +120,7 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
     }
     if (alternative_less_likely) {
       score += 3;
-      breakdown.push("PE #1 diagnosis or equally likely: +3.0");
+      breakdown.push("Alternative diagnosis less likely than PE: +3.0");
     }
     if (heart_rate) {
       score += 1.5;
@@ -136,34 +143,33 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
       breakdown.push("Malignancy: +1.0");
     }
 
-    // Determine risk category - 3-tier model
+    // 3-tier model, Wells 2000 cut points: low <2, moderate 2-6, high >6.
+    // Cohort PE rates by tier: Wells 2001 emergency department cohort.
     let threeTierCategory = "";
-    let threeTierPrevalence = "";
+    let threeTierRate = "";
 
-    if (score <= 1) {
+    if (score < 2) {
       threeTierCategory = "Low";
-      threeTierPrevalence = "~3.6%";
+      threeTierRate = "1.3%";
     } else if (score <= 6) {
       threeTierCategory = "Moderate";
-      threeTierPrevalence = "~20.5%";
+      threeTierRate = "16.2%";
     } else {
       threeTierCategory = "High";
-      threeTierPrevalence = "~66.7%";
+      threeTierRate = "37.5%";
     }
 
-    // Determine risk category - 2-tier model (recommended)
-    let twoTierCategory = "";
-    let twoTierPrevalence = "";
+    // 2-tier model (recommended), Wells 2000 split: PE unlikely <=4, likely >4.
+    // Negative D-dimer outcome: Christopher Study (van Belle 2006), not an NPV claim.
+    let twoTierAssessment = "";
     let recommendation = "";
 
     if (score <= 4) {
-      twoTierCategory = "PE Unlikely";
-      twoTierPrevalence = "~8%";
+      twoTierAssessment = "PE Unlikely (Wells 2000: PE in 7.8%)";
       recommendation =
-        "D-dimer testing recommended. If negative, PE is effectively excluded (NPV >99%). If positive, proceed to CTPA.";
+        "D-dimer testing recommended. If positive, proceed to CTPA. If negative: in the Christopher Study, PE-unlikely patients with a normal D-dimer were left untreated, and 0.5% (95% CI 0.2–1.1%) had nonfatal VTE over 3 months of follow-up.";
     } else {
-      twoTierCategory = "PE Likely";
-      twoTierPrevalence = "~34%";
+      twoTierAssessment = "PE Likely";
       recommendation =
         "Proceed directly to CT pulmonary angiography (CTPA). D-dimer testing is not recommended as it cannot safely exclude PE at this probability.";
     }
@@ -171,8 +177,8 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
     // Build result
     const result = {
       "Wells Score": `${score} points`,
-      "2-Tier Assessment (Recommended)": `${twoTierCategory} (prevalence ${twoTierPrevalence})`,
-      "3-Tier Assessment": `${threeTierCategory} Probability (prevalence ${threeTierPrevalence})`,
+      "2-Tier Assessment (Recommended)": twoTierAssessment,
+      "3-Tier Assessment": `${threeTierCategory} Probability (Wells 2001 cohort: PE in ${threeTierRate})`,
       Recommendation: recommendation,
     };
 
@@ -185,9 +191,10 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
     // Additional clinical notes
     const notes = [];
 
-    if (score <= 4) {
+    // Same low band as the 3-tier model (<2); ACP 2015 advice 2 applies PERC to low pretest probability.
+    if (score < 2) {
       notes.push(
-        "Consider PERC rule in very low-risk patients (score 0-1) to avoid unnecessary D-dimer testing",
+        "Consider the PERC rule in low-probability patients (score <2) to avoid unnecessary D-dimer testing",
       );
     }
 
@@ -222,6 +229,10 @@ This calculator follows the 2001 Wells criteria with PERC rule integration.`,
     {
       t: "Wells PS, Anderson DR, Rodger M, et al. Derivation of a simple clinical model to categorize patients probability of pulmonary embolism. Thromb Haemost. 2000;83(3):416-420.",
       u: "https://pubmed.ncbi.nlm.nih.gov/10744147/",
+    },
+    {
+      t: "NICE NG158. Recommendation 1.1.17, Table 2: two-level PE Wells score and criterion definitions, adapted from Wells et al. 2000.",
+      u: "https://www.nice.org.uk/guidance/ng158/chapter/Recommendations",
     },
     {
       t: "Wells PS, Anderson DR, Rodger M, et al. Excluding pulmonary embolism at the bedside without diagnostic imaging. Ann Intern Med. 2001;135(2):98-107.",
