@@ -121,6 +121,8 @@ jobs:
           npm run test:ci-scope
           # Guarded: older PR heads run this workflow file before they contain the source-audit lane.
           if [ -f scripts/select-source-audits.test.mjs ]; then npm run test:source-audit-selection; fi
+          # Guarded: older PR heads run this workflow file before they contain the promotion chain proof.
+          if [ -f scripts/promotion-chain.test.mjs ]; then npm run test:promotion-chain; fi
           npm run test:authorize-deployment
           npm run test:reconcile-deployment
           npm run test:post-deploy-smoke
@@ -216,6 +218,8 @@ jobs:
           npm run test:release-workflow-permissions
           # Guarded: older PR heads run this workflow file before they contain the source-audit lane.
           if [ -f scripts/select-source-audits.test.mjs ]; then npm run test:source-audit-selection; fi
+          # Guarded: older PR heads run this workflow file before they contain the promotion chain proof.
+          if [ -f scripts/promotion-chain.test.mjs ]; then npm run test:promotion-chain; fi
           npm run test:authorize-deployment
           npm run test:reconcile-deployment
           npm run test:post-deploy-smoke

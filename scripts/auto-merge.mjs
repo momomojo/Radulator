@@ -19,6 +19,16 @@ import {
   REQUIRED_CONTEXT,
 } from "./independent-review-gate.mjs";
 import {
+  BATCH_POLICY,
+  isPromotionPr,
+  LABEL_FULL_REVIEW,
+  LABEL_REMEDIATION,
+  LABEL_URGENT,
+  loadPromotionChain,
+  PROMOTION_BRANCH_PREFIX,
+  riskDomain,
+} from "./promotion-chain.mjs";
+import {
   deploymentAuthorizationSucceeded,
   liveSmokePassed,
 } from "./select-rollback-deployment.mjs";
@@ -31,6 +41,91 @@ const PRODUCTION_BASE_URL = "https://radulator.com";
 
 function blocked(reasonCode, summary) {
   return { ok: false, reasonCode, summary };
+}
+
+// The owner's switch, repository variable RADULATOR_BATCH_PROMOTIONS_ENABLED:
+//   unset, "false", or any other value -> "disabled": one develop merge per release (today's rule);
+//   "shadow" -> the same decisions, plus a logged `shadow` record of what batch mode would decide;
+//   "true"   -> bounded batches admitted by the verified promotion chain.
+export function batchPromotionMode(env = process.env) {
+  const value = env.RADULATOR_BATCH_PROMOTIONS_ENABLED;
+  if (value === "true") return "true";
+  if (value === "shadow") return "shadow";
+  return "disabled";
+}
+
+function hasLabel(pr, label) {
+  return (pr?.labels || []).some((item) => `${item}`.toLowerCase() === label);
+}
+
+function shadowRecord(decision) {
+  return { reasonCode: decision.reasonCode, summary: decision.summary };
+}
+
+// Batch admission for a non-remediation develop PR while develop holds unreleased commits (plan 2.4,
+// checks 2-9). The caller applies the production checks afterwards (check 10).
+export function evaluateBatchAdmission({ pr, batch, openPromotions, prRisk, now, policy = BATCH_POLICY }) {
+  if (batch?.ok !== true) {
+    return blocked(
+      "BATCH_CHAIN_UNVERIFIED",
+      `Develop's unreleased chain is not verified (${batch?.reasonCode || "not loaded"}); release it before admitting more PRs.`,
+    );
+  }
+  if (!Array.isArray(openPromotions) || openPromotions.length > 0) {
+    return blocked("PROMOTION_IN_FLIGHT", "A promotion to main is open; only release-remediation PRs merge until it releases.");
+  }
+  if (batch.counts?.urgent > 0) {
+    return blocked("URGENT_RELEASE_PENDING", "An urgent PR is waiting to release alone; no other PR may join it.");
+  }
+  if (hasLabel(pr, LABEL_URGENT)) {
+    return blocked("UNRELEASED_DEVELOP_HEAD", "A release-urgent PR merges only when develop is released, so it releases alone.");
+  }
+  if (!prRisk || !["standard", "high"].includes(prRisk.tier)) {
+    return blocked("UNRELEASED_DEVELOP_HEAD", "The PR's trusted risk classification is unavailable; it waits for the current release.");
+  }
+  if (!(batch.counts?.nonRemediation < policy.maxPrs)) {
+    return blocked("BATCH_FULL", `The batch already holds ${batch.counts?.nonRemediation} of ${policy.maxPrs} PRs.`);
+  }
+  const prDomain = riskDomain(prRisk.reasonCodes);
+  if (prRisk.tier === "high" && prDomain === "clinical" && !(batch.counts?.highRiskClinical < policy.maxHighRiskClinical)) {
+    return blocked(
+      "BATCH_HIGH_RISK_FULL",
+      `The batch already holds ${batch.counts?.highRiskClinical} of ${policy.maxHighRiskClinical} high-risk clinical PRs.`,
+    );
+  }
+  const oldest = Date.parse(batch.firstMergedAt || "");
+  if (!Number.isFinite(oldest) || !Number.isFinite(now) || now - oldest >= policy.maxAgeHours * 3_600_000) {
+    return blocked("BATCH_WINDOW_CLOSED", `The oldest unreleased PR merged ${policy.maxAgeHours} h or more ago; release the batch first.`);
+  }
+  if (prDomain !== "neutral" && !["neutral", prDomain].includes(batch.domain)) {
+    return blocked("BATCH_DOMAIN_MISMATCH", `A ${prDomain} PR cannot join a ${batch.domain} batch.`);
+  }
+  return {
+    ok: true,
+    reasonCode: "BATCH_LANE_OPEN",
+    batch: {
+      digest: batch.digest,
+      prs: (batch.entries || []).map((entry) => entry.pr),
+      nonRemediation: batch.counts.nonRemediation,
+      highRiskClinical: batch.counts.highRiskClinical,
+      domain: batch.domain,
+    },
+  };
+}
+
+// A promotion merge in batch mode needs a verified chain or the promotion-full-review escape label.
+// The gate reports the chain (A1); in "true" mode the controller enforces it before merging.
+export function evaluatePromotionMergeChain({ pr, gateResult, batchMode }) {
+  if (batchMode === "disabled" || !isPromotionPr(pr)) return { ok: true };
+  const chain = gateResult?.promotionChain;
+  const decision = chain?.ok === true || hasLabel(pr, LABEL_FULL_REVIEW)
+    ? { ok: true }
+    : blocked(
+      "PROMOTION_CHAIN_UNVERIFIED",
+      `The promotion chain is not verified (${chain?.reasonCode || "not loaded"}); add ${LABEL_FULL_REVIEW} for a full review.`,
+    );
+  if (batchMode === "true") return decision;
+  return decision.ok ? { ok: true } : { ok: true, shadow: shadowRecord(decision) };
 }
 
 function checkSort(left, right) {
@@ -48,6 +143,14 @@ function deploymentRunSort(left, right) {
   return time || (right.id || 0) - (left.id || 0);
 }
 
+function developIsReleased(comparison, developSha) {
+  return !(
+    comparison?.status !== "ahead" && comparison?.status !== "identical" ||
+    comparison?.behind_by !== 0 ||
+    comparison?.merge_base_commit?.sha !== developSha
+  );
+}
+
 export function evaluateProductionSingleFlight({
   pr,
   mainRef,
@@ -57,6 +160,11 @@ export function evaluateProductionSingleFlight({
   deployRun,
   deployJobs,
   marker,
+  batchMode = "disabled",
+  batch = null,
+  openPromotions = null,
+  prRisk = null,
+  now = null,
 }) {
   const mainSha = mainRef?.object?.sha;
   const developSha = developRef?.object?.sha;
@@ -66,18 +174,41 @@ export function evaluateProductionSingleFlight({
   if (pr?.baseRef !== "develop" || pr.baseSha !== developSha) {
     return blocked("DEVELOP_BASE_DRIFT", "Feature PR is not based on the exact current develop head.");
   }
-  const developReleased = !(
-    comparison?.status !== "ahead" && comparison?.status !== "identical" ||
-    comparison?.behind_by !== 0 ||
-    comparison?.merge_base_commit?.sha !== developSha
-  );
-  const releaseRemediation = (pr.labels || []).includes("release-remediation");
+  const developReleased = developIsReleased(comparison, developSha);
+  const releaseRemediation = (pr.labels || []).includes(LABEL_REMEDIATION);
+  const lane = { mainSha, developSha, deployWorkflow, deployRun, deployJobs, marker };
   if (!developReleased && !releaseRemediation) {
-    return blocked(
+    const unreleased = blocked(
       "UNRELEASED_DEVELOP_HEAD",
       "Current develop is not contained in current main; finish the active production release first.",
     );
+    if (batchMode !== "true" && batchMode !== "shadow") return unreleased;
+    const admission = evaluateBatchAdmission({ pr, batch, openPromotions, prRisk, now });
+    const production = admission.ok ? productionLaneBlock(lane) : null;
+    const decision = !admission.ok ? admission : production || {
+      ok: true,
+      reasonCode: "BATCH_LANE_OPEN",
+      mainSha,
+      developSha,
+      deployRunId: deployRun.id,
+      batch: admission.batch,
+    };
+    return batchMode === "true" ? decision : { ...unreleased, shadow: shadowRecord(decision) };
   }
+  return productionLaneBlock(lane) || {
+    ok: true,
+    reasonCode: developReleased
+      ? "PRODUCTION_LANE_OPEN"
+      : "PRODUCTION_REMEDIATION_LANE_OPEN",
+    mainSha,
+    developSha,
+    deployRunId: deployRun.id,
+  };
+}
+
+// The existing production checks: the current main deployment must be complete, authorized,
+// smoke-green, and serving the exact release marker. Returns the first block, or null.
+function productionLaneBlock({ mainSha, deployWorkflow, deployRun, deployJobs, marker }) {
   if (
     !Number.isSafeInteger(deployWorkflow?.id) || deployWorkflow.id <= 0 ||
     deployWorkflow.path !== DEPLOY_WORKFLOW_PATH ||
@@ -107,18 +238,13 @@ export function evaluateProductionSingleFlight({
   ) {
     return blocked("CURRENT_MAIN_MARKER_MISMATCH", "Production does not serve the exact current-main release marker.");
   }
-  return {
-    ok: true,
-    reasonCode: developReleased
-      ? "PRODUCTION_LANE_OPEN"
-      : "PRODUCTION_REMEDIATION_LANE_OPEN",
-    mainSha,
-    developSha,
-    deployRunId: deployRun.id,
-  };
+  return null;
 }
 
-export async function loadProductionSingleFlightEvidence(api, pr) {
+// In "shadow" and "true" batch modes, while develop is unreleased and the PR is not a remediation,
+// the evidence also carries the develop batch (the promotion chain over main..develop, without the
+// promotion-content step) and the open release/promote-* PRs. Disabled mode reads nothing extra.
+export async function loadProductionSingleFlightEvidence(api, pr, { batchMode = "disabled" } = {}) {
   const [mainRef, developRef, deployWorkflow] = await Promise.all([
     api.getRef("main"),
     api.getRef("develop"),
@@ -142,7 +268,7 @@ export async function loadProductionSingleFlightEvidence(api, pr) {
     deploymentSourceRef(run) === mainSha).sort(deploymentRunSort);
   const deployRun = trustedRuns[0] || null;
   const deployJobs = deployRun ? await api.getRunJobs(deployRun.id) : [];
-  return {
+  const evidence = {
     pr,
     mainRef,
     developRef,
@@ -152,6 +278,21 @@ export async function loadProductionSingleFlightEvidence(api, pr) {
     deployJobs,
     marker,
   };
+  if (
+    (batchMode === "true" || batchMode === "shadow") &&
+    !developIsReleased(comparison, developSha) &&
+    !(pr?.labels || []).includes(LABEL_REMEDIATION)
+  ) {
+    if (typeof api.loadBatchChain !== "function" || typeof api.listOpenPromotions !== "function") {
+      return { ...evidence, batch: null, openPromotions: null };
+    }
+    const [batch, openPromotions] = await Promise.all([
+      api.loadBatchChain(mainSha, developSha),
+      api.listOpenPromotions(),
+    ]);
+    return { ...evidence, batch, openPromotions };
+  }
+  return evidence;
 }
 
 async function requestBaseRefresh(client, prNumber, headSha, extras = {}) {
@@ -305,8 +446,24 @@ function defaultApi(env) {
       });
       return { accepted: true, eventType: "radulator-auto-merge-deploy" };
     },
+    // Batch mode only: the develop batch's chain (memoized per process) and the open promotions.
+    loadBatchChain: (mainSha, developSha) => loadPromotionChain({
+      api: {
+        request: (path) => githubRequest(token, path),
+        paged: (path, key = null) => paged(token, path, key),
+      },
+      repository: `${owner}/${repo}`,
+      mainSha,
+      developSha,
+      publicKeys: config.publicKeys,
+    }),
+    listOpenPromotions: async () => (await paged(token, `/repos/${owner}/${repo}/pulls?state=open&base=main`))
+      .filter((pull) =>
+        typeof pull?.head?.ref === "string" && pull.head.ref.startsWith(PROMOTION_BRANCH_PREFIX) &&
+        pull.head?.repo?.full_name === `${owner}/${repo}`)
+      .map((pull) => ({ number: pull.number, headRef: pull.head.ref, headSha: pull.head.sha })),
   };
-  api.loadProductionSingleFlightEvidence = (pr) => loadProductionSingleFlightEvidence(api, pr);
+  api.loadProductionSingleFlightEvidence = (pr, options = {}) => loadProductionSingleFlightEvidence(api, pr, options);
   return api;
 }
 
@@ -315,10 +472,18 @@ export async function runAutoMerge({
   api = null,
   evaluateGateImpl = evaluateGate,
   fingerprintImpl = gateStateFingerprint,
+  clock = () => Date.now(),
 } = {}) {
   const client = api || defaultApi(env);
+  const batchMode = batchPromotionMode(env);
   const prNumbers = await client.findPullNumbers();
   const results = [];
+  const developLane = async (state, gateResult) => evaluateProductionSingleFlight({
+    ...(await client.loadProductionSingleFlightEvidence(state.pr, { batchMode })),
+    batchMode,
+    prRisk: gateResult?.risk ?? null,
+    now: clock(),
+  });
 
   for (const prNumber of prNumbers) {
     const before = await client.loadGateState(prNumber);
@@ -349,16 +514,20 @@ export async function runAutoMerge({
       continue;
     }
     if (current.pr.baseRef === "develop") {
-      const lane = evaluateProductionSingleFlight(
-        await client.loadProductionSingleFlightEvidence(current.pr),
-      );
+      const lane = await developLane(current, gateResult);
       if (!lane.ok) {
         results.push(lane);
         continue;
       }
     }
+    const promotionChain = evaluatePromotionMergeChain({ pr: current.pr, gateResult, batchMode });
+    if (!promotionChain.ok) {
+      results.push(promotionChain);
+      continue;
+    }
+    const shadow = promotionChain.shadow ? { shadow: promotionChain.shadow } : {};
     if (env.RADULATOR_AUTO_MERGE_ENABLED !== "true") {
-      results.push({ ...decision, dryRun: true });
+      results.push({ ...decision, dryRun: true, ...shadow });
       continue;
     }
 
@@ -395,13 +564,16 @@ export async function runAutoMerge({
       continue;
     }
     if (finalState.pr.baseRef === "develop") {
-      const lane = evaluateProductionSingleFlight(
-        await client.loadProductionSingleFlightEvidence(finalState.pr),
-      );
+      const lane = await developLane(finalState, finalGate);
       if (!lane.ok) {
         results.push(lane);
         continue;
       }
+    }
+    const finalPromotionChain = evaluatePromotionMergeChain({ pr: finalState.pr, gateResult: finalGate, batchMode });
+    if (!finalPromotionChain.ok) {
+      results.push(finalPromotionChain);
+      continue;
     }
 
     let merged;
@@ -447,6 +619,7 @@ export async function runAutoMerge({
       mergeSha: merged.sha,
       headSha: finalState.pr.headSha,
       deploymentDispatched,
+      ...shadow,
     });
   }
   return results;

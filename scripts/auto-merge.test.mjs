@@ -539,3 +539,307 @@ console.log("approval-bound automatic merge tests passed");
 }
 
 console.log("automatic merge runtime orchestration tests passed");
+
+// ---- Batched promotions (RADULATOR_BATCH_PROMOTIONS_ENABLED) ---------------------------------------
+{
+  const {
+    batchPromotionMode,
+    evaluateBatchAdmission,
+    evaluatePromotionMergeChain,
+  } = await import("./auto-merge.mjs");
+  const { BATCH_POLICY } = await import("./promotion-chain.mjs");
+
+  assert.equal(batchPromotionMode({}), "disabled", "unset keeps one develop merge per release");
+  for (const value of ["", "false", "TRUE", "True", "yes", "1", " true"]) {
+    assert.equal(batchPromotionMode({ RADULATOR_BATCH_PROMOTIONS_ENABLED: value }), "disabled", `"${value}" is not a mode`);
+  }
+  assert.equal(batchPromotionMode({ RADULATOR_BATCH_PROMOTIONS_ENABLED: "shadow" }), "shadow");
+  assert.equal(batchPromotionMode({ RADULATOR_BATCH_PROMOTIONS_ENABLED: "true" }), "true");
+
+  const NOW = Date.parse("2026-09-28T12:00:00Z");
+  const unreleased = {
+    status: "behind",
+    ahead_by: 0,
+    behind_by: 1,
+    merge_base_commit: { sha: "f".repeat(40) },
+  };
+  const clinicalRisk = { tier: "high", reasonCodes: ["CLINICAL_RUNTIME_CHANGE"] };
+  function batchFixture({ counts = {}, ...overrides } = {}) {
+    return {
+      ok: true,
+      reasonCode: "CHAIN_VERIFIED",
+      digest: "9".repeat(64),
+      entries: [{ pr: 274 }],
+      domain: "clinical",
+      firstMergedAt: "2026-09-28T10:00:00Z",
+      ...overrides,
+      counts: { nonRemediation: 1, remediation: 0, urgent: 0, highRiskClinical: 1, ...counts },
+    };
+  }
+  function lane(batchMode, overrides = {}) {
+    return evaluateProductionSingleFlight(productionLaneFixture({
+      comparison: unreleased,
+      batchMode,
+      batch: batchFixture(),
+      openPromotions: [],
+      prRisk: clinicalRisk,
+      now: NOW,
+      ...overrides,
+    }));
+  }
+
+  // Disabled: exactly today's decision, even with batch evidence present.
+  assert.deepEqual(lane("disabled"), {
+    ok: false,
+    reasonCode: "UNRELEASED_DEVELOP_HEAD",
+    summary: "Current develop is not contained in current main; finish the active production release first.",
+  });
+
+  // True: the admission order of plan section 2.4.
+  const open = lane("true");
+  assert.equal(open.ok, true);
+  assert.equal(open.reasonCode, "BATCH_LANE_OPEN");
+  assert.deepEqual(open.batch.prs, [274]);
+  assert.equal(open.deployRunId, 8001);
+  const cases = [
+    ["BATCH_CHAIN_UNVERIFIED", { batch: null }],
+    ["BATCH_CHAIN_UNVERIFIED", { batch: batchFixture({ ok: false, reasonCode: "CHAIN_ATTESTATION_MISSING" }) }],
+    ["PROMOTION_IN_FLIGHT", { openPromotions: [{ number: 303 }] }],
+    ["PROMOTION_IN_FLIGHT", { openPromotions: null }],
+    ["URGENT_RELEASE_PENDING", { batch: batchFixture({ counts: { urgent: 1 } }) }],
+    ["UNRELEASED_DEVELOP_HEAD", { pr: prFixture({ labels: ["ready-for-gate", "release-urgent"] }) }],
+    ["UNRELEASED_DEVELOP_HEAD", { prRisk: null }],
+    ["BATCH_FULL", { batch: batchFixture({ counts: { nonRemediation: BATCH_POLICY.maxPrs } }) }],
+    ["BATCH_WINDOW_CLOSED", { batch: batchFixture({ firstMergedAt: "2026-09-27T12:00:00Z" }) }],
+    ["BATCH_WINDOW_CLOSED", { batch: batchFixture({ firstMergedAt: null }) }],
+    ["BATCH_DOMAIN_MISMATCH", { prRisk: { tier: "high", reasonCodes: ["RELEASE_CONTROL_CHANGE"] } }],
+    ["CURRENT_MAIN_MARKER_MISMATCH", { marker: { ok: false, status: 404, data: null } }],
+    ["DEVELOP_BASE_DRIFT", { pr: prFixture({ baseSha: "e".repeat(40) }) }],
+  ];
+  for (const [reasonCode, overrides] of cases) {
+    assert.equal(lane("true", overrides).reasonCode, reasonCode, `${reasonCode}: ${JSON.stringify(Object.keys(overrides))}`);
+  }
+  assert.equal(
+    lane("true", { batch: batchFixture({ counts: { urgent: 1 } }), openPromotions: [{ number: 303 }] }).reasonCode,
+    "PROMOTION_IN_FLIGHT",
+    "an open promotion is checked before urgency",
+  );
+  assert.equal(
+    lane("true", { batch: batchFixture({ firstMergedAt: "2026-09-27T12:00:01Z" }) }).reasonCode,
+    "BATCH_LANE_OPEN",
+    "a batch just under 24 h still admits",
+  );
+  // Neutral PRs join any batch; any PR joins a neutral batch; a clinical PR joins a clinical batch.
+  assert.equal(lane("true", { prRisk: { tier: "standard", reasonCodes: ["NO_HIGH_RISK_CHANGE"] } }).reasonCode, "BATCH_LANE_OPEN");
+  assert.equal(lane("true", {
+    batch: batchFixture({ domain: "neutral", counts: { highRiskClinical: 0 } }),
+    prRisk: { tier: "high", reasonCodes: ["RELEASE_CONTROL_CHANGE"] },
+  }).reasonCode, "BATCH_LANE_OPEN");
+  // Remediation bypasses the freeze, size, age and urgency, but not base drift or production checks.
+  const remediation = prFixture({ labels: ["ready-for-gate", "release-remediation"] });
+  assert.equal(lane("true", { pr: remediation, openPromotions: [{ number: 303 }], batch: null }).reasonCode, "PRODUCTION_REMEDIATION_LANE_OPEN");
+  assert.equal(lane("true", {
+    pr: remediation,
+    marker: { ok: false, status: 404, data: null },
+  }).reasonCode, "CURRENT_MAIN_MARKER_MISMATCH");
+  // A released develop opens the ordinary lane in every mode.
+  assert.equal(lane("true", { comparison: productionLaneFixture().comparison, batch: null }).reasonCode, "PRODUCTION_LANE_OPEN");
+
+  // M counts high-risk clinical PRs only.
+  const admission = (overrides) => evaluateBatchAdmission({
+    pr: prFixture(),
+    batch: batchFixture(),
+    openPromotions: [],
+    prRisk: clinicalRisk,
+    now: NOW,
+    policy: { ...BATCH_POLICY, maxPrs: 4, maxHighRiskClinical: 1 },
+    ...overrides,
+  });
+  assert.equal(admission({}).reasonCode, "BATCH_HIGH_RISK_FULL");
+  assert.equal(admission({ prRisk: { tier: "standard", reasonCodes: ["NO_HIGH_RISK_CHANGE"] } }).reasonCode, "BATCH_LANE_OPEN");
+  assert.equal(admission({ prRisk: { tier: "high", reasonCodes: ["EXPLICIT_HIGH_RISK"] } }).reasonCode, "BATCH_LANE_OPEN",
+    "a marker-only high-risk PR is not clinical");
+
+  // Shadow: today's decision, plus what batch mode would have decided.
+  const shadowOpen = lane("shadow");
+  assert.equal(shadowOpen.ok, false);
+  assert.equal(shadowOpen.reasonCode, "UNRELEASED_DEVELOP_HEAD");
+  assert.deepEqual(Object.keys(shadowOpen.shadow).sort(), ["reasonCode", "summary"]);
+  assert.equal(shadowOpen.shadow.reasonCode, "BATCH_LANE_OPEN");
+  assert.equal(lane("shadow", { openPromotions: [{ number: 303 }] }).shadow.reasonCode, "PROMOTION_IN_FLIGHT");
+  assert.equal(lane("shadow", { marker: { ok: false, status: 404, data: null } }).shadow.reasonCode, "CURRENT_MAIN_MARKER_MISMATCH");
+  assert.equal(lane("shadow", { comparison: productionLaneFixture().comparison }).shadow, undefined, "nothing to shadow on a released develop");
+
+  // Evidence: the chain and open promotions are read only in batch modes, while develop is unreleased,
+  // and never for remediation PRs.
+  const reads = [];
+  const evidenceApi = {
+    async getRef(branch) { return branch === "main" ? { object: { sha: MAIN } } : { object: { sha: BASE } }; },
+    async getDeployWorkflow() { return productionLaneFixture().deployWorkflow; },
+    async compare() { return unreleased; },
+    async listDeployRuns() { return [productionLaneFixture().deployRun]; },
+    async getReleaseMarker() { return productionLaneFixture().marker; },
+    async getRunJobs() { return productionLaneFixture().deployJobs; },
+    async loadBatchChain(mainSha, developSha) { reads.push(["chain", mainSha, developSha]); return batchFixture(); },
+    async listOpenPromotions() { reads.push(["promotions"]); return []; },
+  };
+  const disabledEvidence = await loadProductionSingleFlightEvidence(evidenceApi, prFixture());
+  assert.equal(Object.hasOwn(disabledEvidence, "batch"), false);
+  assert.deepEqual(reads, [], "disabled mode reads no chain");
+  const trueEvidence = await loadProductionSingleFlightEvidence(evidenceApi, prFixture(), { batchMode: "true" });
+  assert.deepEqual(reads, [["chain", MAIN, BASE], ["promotions"]]);
+  assert.equal(trueEvidence.batch.ok, true);
+  assert.deepEqual(trueEvidence.openPromotions, []);
+  reads.length = 0;
+  await loadProductionSingleFlightEvidence(evidenceApi, remediation, { batchMode: "true" });
+  await loadProductionSingleFlightEvidence({ ...evidenceApi, async compare() { return productionLaneFixture().comparison; } }, prFixture(), { batchMode: "shadow" });
+  assert.deepEqual(reads, [], "remediation PRs and a released develop read no chain");
+  await loadProductionSingleFlightEvidence(evidenceApi, prFixture(), { batchMode: "shadow" });
+  assert.deepEqual(reads, [["chain", MAIN, BASE], ["promotions"]], "shadow mode reads the batch to log its decision");
+  const missingApi = { ...evidenceApi, loadBatchChain: undefined };
+  const missing = await loadProductionSingleFlightEvidence(missingApi, prFixture(), { batchMode: "true" });
+  assert.equal(missing.batch, null, "an API without the chain loader fails closed");
+
+  // Promotion merges: in "true" mode the controller enforces the chain the gate reports.
+  const promotionPr = prFixture({
+    baseRef: "main",
+    headRef: "release/promote-484c9ee59ce2-6d7f8d95a462",
+    headRepoFullName: "momomojo/Radulator",
+    repositoryFullName: "momomojo/Radulator",
+    labels: ["ready-for-gate"],
+  });
+  const unverified = gateFixture({ promotionChain: { ok: false, reasonCode: "CHAIN_TREE_MISMATCH", enforcement: "report" } });
+  const verified = gateFixture({ promotionChain: { ok: true, reasonCode: "CHAIN_VERIFIED", enforcement: "report" } });
+  assert.deepEqual(evaluatePromotionMergeChain({ pr: promotionPr, gateResult: unverified, batchMode: "disabled" }), { ok: true });
+  assert.equal(evaluatePromotionMergeChain({ pr: promotionPr, gateResult: unverified, batchMode: "true" }).reasonCode, "PROMOTION_CHAIN_UNVERIFIED");
+  assert.equal(evaluatePromotionMergeChain({ pr: promotionPr, gateResult: gateFixture(), batchMode: "true" }).reasonCode, "PROMOTION_CHAIN_UNVERIFIED",
+    "a promotion without a reported chain fails closed");
+  assert.deepEqual(evaluatePromotionMergeChain({ pr: promotionPr, gateResult: verified, batchMode: "true" }), { ok: true });
+  assert.deepEqual(evaluatePromotionMergeChain({
+    pr: { ...promotionPr, labels: ["ready-for-gate", "promotion-full-review"] },
+    gateResult: unverified,
+    batchMode: "true",
+  }), { ok: true }, "promotion-full-review is the escape");
+  assert.deepEqual(evaluatePromotionMergeChain({ pr: prFixture({ baseRef: "main", headRef: "hotfix/x" }), gateResult: unverified, batchMode: "true" }), { ok: true },
+    "hotfixes to main are unaffected");
+  const shadowPromotion = evaluatePromotionMergeChain({ pr: promotionPr, gateResult: unverified, batchMode: "shadow" });
+  assert.equal(shadowPromotion.ok, true);
+  assert.equal(shadowPromotion.shadow.reasonCode, "PROMOTION_CHAIN_UNVERIFIED");
+
+  // runAutoMerge wiring: mode from the environment, risk from the fresh gate result, the clock.
+  function runtimeApi({ pr = prFixture(), lanes = {}, merges = [] } = {}) {
+    const state = {
+      pr,
+      requiredCi: ["Smoke Tests", "Targeted Calculator Tests"],
+      ci: { ok: true, evidence: [] },
+      files: [],
+      reviews: [],
+      publicKeys: {},
+    };
+    return {
+      async findPullNumbers() { return [123]; },
+      async loadGateState() { return structuredClone(state); },
+      async getBranchRules() { return decisionFixture().branchRules; },
+      async listCheckRuns() { return [checkFixture()]; },
+      async listCommitStatuses() { return [statusFixture()]; },
+      async loadProductionSingleFlightEvidence(currentPr, options) {
+        lanes.options = options;
+        return productionLaneFixture({ pr: currentPr, comparison: unreleased, batch: lanes.batch ?? batchFixture(), openPromotions: [] });
+      },
+      async getMergeability() { return { mergeable: true, mergeable_state: "clean", head: { sha: HEAD } }; },
+      async merge(number, payload) { merges.push({ number, payload }); return { merged: true, sha: "e".repeat(40) }; },
+      async getPr() { return { merged: true, state: "closed", merge_commit_sha: "e".repeat(40) }; },
+      async dispatchDeployment() { return { accepted: true, eventType: "radulator-auto-merge-deploy" }; },
+    };
+  }
+  {
+    const lanes = {};
+    const merges = [];
+    const [result] = await runAutoMerge({
+      env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_BATCH_PROMOTIONS_ENABLED: "true" },
+      api: runtimeApi({ lanes, merges }),
+      evaluateGateImpl: () => gateFixture({ risk: clinicalRisk }),
+      fingerprintImpl: () => "stable",
+      clock: () => NOW,
+    });
+    assert.equal(result.reasonCode, "MERGED", "an admissible PR merges into an open batch");
+    assert.deepEqual(lanes.options, { batchMode: "true" });
+    assert.equal(merges.length, 1);
+  }
+  {
+    const merges = [];
+    const [result] = await runAutoMerge({
+      env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_BATCH_PROMOTIONS_ENABLED: "true" },
+      api: runtimeApi({ merges, lanes: { batch: batchFixture({ counts: { nonRemediation: 2 } }) } }),
+      evaluateGateImpl: () => gateFixture({ risk: clinicalRisk }),
+      fingerprintImpl: () => "stable",
+      clock: () => NOW,
+    });
+    assert.equal(result.reasonCode, "BATCH_FULL");
+    assert.equal(merges.length, 0);
+  }
+  {
+    const [result] = await runAutoMerge({
+      env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_BATCH_PROMOTIONS_ENABLED: "true" },
+      api: runtimeApi(),
+      evaluateGateImpl: () => gateFixture({ risk: clinicalRisk }),
+      fingerprintImpl: () => "stable",
+      clock: () => Date.parse("2026-09-29T12:00:00Z"),
+    });
+    assert.equal(result.reasonCode, "BATCH_WINDOW_CLOSED", "the controller's clock closes the 24 h window");
+  }
+  {
+    const [result] = await runAutoMerge({
+      env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_BATCH_PROMOTIONS_ENABLED: "shadow" },
+      api: runtimeApi(),
+      evaluateGateImpl: () => gateFixture({ risk: clinicalRisk }),
+      fingerprintImpl: () => "stable",
+      clock: () => NOW,
+    });
+    assert.equal(result.reasonCode, "UNRELEASED_DEVELOP_HEAD", "shadow mode never merges into a batch");
+    assert.equal(result.shadow.reasonCode, "BATCH_LANE_OPEN", "shadow mode logs the batch decision");
+  }
+  {
+    const merges = [];
+    const blockedPromotion = await runAutoMerge({
+      env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_BATCH_PROMOTIONS_ENABLED: "true" },
+      api: runtimeApi({ pr: promotionPr, merges }),
+      evaluateGateImpl: () => unverified,
+      fingerprintImpl: () => "stable",
+      clock: () => NOW,
+    });
+    assert.equal(blockedPromotion[0].reasonCode, "PROMOTION_CHAIN_UNVERIFIED");
+    assert.equal(merges.length, 0);
+    const shadowDry = await runAutoMerge({
+      env: { RADULATOR_AUTO_MERGE_ENABLED: "false", RADULATOR_BATCH_PROMOTIONS_ENABLED: "shadow" },
+      api: runtimeApi({ pr: promotionPr, merges }),
+      evaluateGateImpl: () => unverified,
+      fingerprintImpl: () => "stable",
+      clock: () => NOW,
+    });
+    assert.equal(shadowDry[0].dryRun, true);
+    assert.equal(shadowDry[0].shadow.reasonCode, "PROMOTION_CHAIN_UNVERIFIED");
+    const merged = await runAutoMerge({
+      env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_BATCH_PROMOTIONS_ENABLED: "true" },
+      api: runtimeApi({ pr: promotionPr, merges }),
+      evaluateGateImpl: () => verified,
+      fingerprintImpl: () => "stable",
+      clock: () => NOW,
+    });
+    assert.equal(merged[0].reasonCode, "MERGED", "a verified promotion merges in batch mode");
+    assert.equal(Object.hasOwn(merged[0], "shadow"), false);
+    const evaluations = [verified, unverified];
+    const mergesBefore = merges.length;
+    const lateBreak = await runAutoMerge({
+      env: { RADULATOR_AUTO_MERGE_ENABLED: "true", RADULATOR_BATCH_PROMOTIONS_ENABLED: "true" },
+      api: runtimeApi({ pr: promotionPr, merges }),
+      evaluateGateImpl: () => evaluations.shift() ?? unverified,
+      fingerprintImpl: () => "stable",
+      clock: () => NOW,
+    });
+    assert.equal(lateBreak[0].reasonCode, "PROMOTION_CHAIN_UNVERIFIED", "the chain is re-checked immediately before the merge");
+    assert.equal(merges.length, mergesBefore);
+  }
+}
+
+console.log("batched promotion controller tests passed");

@@ -16,6 +16,10 @@ import {
   validateCiPolicy,
 } from "../../../scripts/independent-review-gate.mjs";
 import {
+  isPromotionPr,
+  promotionReviewMode,
+} from "../../../scripts/promotion-chain.mjs";
+import {
   analyzeRisk,
   canonicalJson,
   digest,
@@ -446,6 +450,9 @@ function shouldReview(role, risk, existing) {
 function candidate(repository, role, state, risk, riskDetails, exact, now) {
   const requiredRoles = requiredJudgeRoles(risk.tier);
   const candidateId = digest({ repository, role, exact });
+  // Promotions carry the chain proof and the review mode the judge rubric keys off: "batch" only
+  // for a verified chain without the promotion-full-review label, otherwise "full". Other PRs: null.
+  const promotion = isPromotionPr(state.pr);
   return {
     schema: CANDIDATE_SCHEMA,
     candidateId,
@@ -465,7 +472,27 @@ function candidate(repository, role, state, risk, riskDetails, exact, now) {
     exactState: exact,
     files: state.files,
     ci: state.ci,
+    reviewMode: promotion ? promotionReviewMode(state.promotionChain, state.pr.labels) : null,
+    promotionChain: promotion ? state.promotionChain ?? null : null,
   };
+}
+
+// Judge order: promotions first (a release blocks every develop merge), then develop PRs already
+// based on the current develop head (mergeable without a refresh), then the rest by PR number.
+function candidateRank(item, developHead) {
+  if (item.reviewMode !== null) return 0;
+  if (item.baseRef === "develop" && developHead && item.baseSha === developHead) return 1;
+  return 2;
+}
+
+async function currentDevelopHead(api) {
+  if (typeof api.getDevelopHead !== "function") return null;
+  try {
+    const head = await api.getDevelopHead();
+    return GIT_OBJECT_PATTERN.test(head || "") ? head : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function collectCandidates({ repository, role, publicKeys, api, now = new Date().toISOString() }) {
@@ -508,7 +535,11 @@ export async function collectCandidates({ repository, role, publicKeys, api, now
       candidates.push(candidate(repository, role, state, risk, riskDetails, exact, now));
     }
   }
-  return candidates.sort((left, right) => left.pr - right.pr || left.candidateId.localeCompare(right.candidateId));
+  const developHead = candidates.length > 1 ? await currentDevelopHead(api) : null;
+  return candidates.sort((left, right) =>
+    candidateRank(left, developHead) - candidateRank(right, developHead) ||
+    left.pr - right.pr ||
+    left.candidateId.localeCompare(right.candidateId));
 }
 
 export function selectCandidateBatch(candidates, limit = 1) {
@@ -744,6 +775,10 @@ async function run() {
       return [...develop, ...main];
     },
     loadGateState: (prNumber) => loadGateState(token, owner, repo, prNumber, config),
+    async getDevelopHead() {
+      const ref = await githubRequest(token, `/repos/${owner}/${repo}/git/ref/heads/develop`);
+      return ref?.object?.sha ?? null;
+    },
     hydrateReviewEvidence: (pr, files) => hydratePatchlessReviewEvidence({
       token,
       owner,

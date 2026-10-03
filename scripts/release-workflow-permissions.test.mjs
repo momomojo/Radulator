@@ -65,6 +65,36 @@ assert.equal(
   "trusted gate checkout must follow the current protected base branch instead of a stale event SHA",
 );
 
+assert.equal(
+  merge.jobs.merge.env.RADULATOR_BATCH_PROMOTIONS_ENABLED,
+  "${{ vars.RADULATOR_BATCH_PROMOTIONS_ENABLED }}",
+  "the merge controller reads the owner's batched-promotion switch from the repository variable",
+);
+assert.equal(
+  gate.jobs.evaluate.env.RADULATOR_BATCH_PROMOTIONS_ENABLED,
+  undefined,
+  "the gate never reads the batch switch: it reports the promotion chain in every mode",
+);
+const mergeWorkflowText = await readFile(new URL("../.github/workflows/auto-merge.yml", import.meta.url), "utf8");
+assert.equal(
+  (mergeWorkflowText.match(/RADULATOR_BATCH_PROMOTIONS_ENABLED:/g) ?? []).length,
+  1,
+  "the batch switch is set once, on the merge job",
+);
+const guardedPromotionChainTests =
+  "if [ -f scripts/promotion-chain.test.mjs ]; then npm run test:promotion-chain; fi";
+for (const [jobId, stepName] of [
+  ["smoke-tests", "Run tooling checks"],
+  ["hermes-release-control-tests", "Run release-control, intake, and production dependency evidence"],
+]) {
+  const lines = e2e.jobs[jobId].steps.find((step) => step.name === stepName).run.split("\n").map((line) => line.trim());
+  assert.equal(
+    lines.filter((line) => line === guardedPromotionChainTests).length,
+    1,
+    `${jobId} runs the promotion chain tests exactly once, guarded for heads that predate them`,
+  );
+}
+
 assert.deepEqual(
   rollback.on.repository_dispatch?.types,
   ["radulator-live-smoke-rollback-request"],

@@ -53,6 +53,9 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ github.token }}
       RADULATOR_AUTO_MERGE_ENABLED: ${{ vars.RADULATOR_AUTO_MERGE_ENABLED }}
+      # Owner switch for batched promotions: unset or "false" keeps one develop merge per release,
+      # "shadow" logs what batch mode would decide, "true" admits bounded batches (scripts/auto-merge.mjs).
+      RADULATOR_BATCH_PROMOTIONS_ENABLED: ${{ vars.RADULATOR_BATCH_PROMOTIONS_ENABLED }}
       RADULATOR_E2E_WORKFLOW_ID: ${{ vars.RADULATOR_E2E_WORKFLOW_ID }}
       RADULATOR_CI_APP_ID: ${{ vars.RADULATOR_CI_APP_ID }}
       RADULATOR_JUDGE_PUBLIC_KEYS_JSON: ${{ vars.RADULATOR_JUDGE_PUBLIC_KEYS_JSON }}
