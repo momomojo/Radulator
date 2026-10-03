@@ -4,6 +4,75 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
 
+import {
+  SOURCE_FETCH_ATTEMPTS,
+  fetchWithRetry,
+  retryDelayMs,
+} from "./audit-kbrc-source-fetch.mjs";
+
+// Deterministic retrieval-policy tests (no network): a fake fetch, clock and sleep drive the same
+// fetchWithRetry the live audit below uses.
+function fakeResponse(status, retryAfter) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers(retryAfter === undefined ? {} : { "retry-after": String(retryAfter) }),
+    arrayBuffer: async () => new TextEncoder().encode("source-bytes").buffer,
+    body: { cancel: async () => {} },
+  };
+}
+async function drive(script) {
+  const queue = [...script];
+  const sleeps = [];
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    const next = queue.shift();
+    if (next instanceof Error) throw next;
+    return typeof next === "number" ? fakeResponse(next) : next;
+  };
+  try {
+    const bytes = await fetchWithRetry("https://source.example/kbrc.pdf", {
+      fetchImpl,
+      sleep: async (ms) => { sleeps.push(ms); },
+      now: () => 1_000_000,
+    });
+    return { ok: true, text: bytes.toString(), calls, sleeps };
+  } catch (error) {
+    return { ok: false, message: error.message, calls, sleeps };
+  }
+}
+
+let outcome = await drive([503, 503, 503, 503, 200]);
+assert.deepEqual([outcome.ok, outcome.text, outcome.calls], [true, "source-bytes", 5], "four 5xx then success");
+assert.deepEqual(outcome.sleeps, [1_000, 2_000, 4_000, 8_000], "exponential backoff 1/2/4/8 s");
+
+outcome = await drive([503, 503, 503, 503, 503, 200]);
+assert.equal(outcome.ok, false, "five failures exhaust the attempts");
+assert.equal(outcome.calls, SOURCE_FETCH_ATTEMPTS);
+assert.match(outcome.message, /retrieval failed after 5 attempts \(HTTP 503\)/, "fails loudly at the end");
+
+outcome = await drive([404, 200]);
+assert.deepEqual([outcome.ok, outcome.calls, outcome.sleeps], [false, 1, []], "non-retryable 4xx stops at once");
+assert.match(outcome.message, /HTTP 404/);
+
+outcome = await drive([fakeResponse(429, 3), 200]);
+assert.deepEqual([outcome.ok, outcome.sleeps], [true, [3_000]], "429 honours Retry-After seconds");
+
+outcome = await drive([fakeResponse(503, new Date(1_012_000).toUTCString()), 200]);
+assert.deepEqual(outcome.sleeps, [12_000], "Retry-After HTTP-date is measured from now");
+
+outcome = await drive([fakeResponse(503, 120), 200]);
+assert.deepEqual(outcome.sleeps, [30_000], "delays are clamped to 30 s");
+
+outcome = await drive([fakeResponse(503, new Date(0).toUTCString()), 200]);
+assert.deepEqual(outcome.sleeps, [0], "a past Retry-After date waits 0 s");
+
+outcome = await drive([new Error("socket hang up"), 200]);
+assert.deepEqual([outcome.ok, outcome.calls, outcome.sleeps], [true, 2, [1_000]], "network errors are retried");
+
+assert.equal(retryDelayMs(undefined, 3), 4_000);
+
 const run = spawnSync(
   process.execPath,
   [

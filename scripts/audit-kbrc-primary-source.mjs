@@ -14,6 +14,7 @@ import {
   calculateKbrcMajorBleedingProbability,
   computeKidneyBiopsyBleedingRisk,
 } from "../src/components/calculators/KidneyBiopsyBleedingRisk.jsx";
+import { fetchWithRetry } from "./audit-kbrc-source-fetch.mjs";
 
 const REGISTRY_PATH =
   "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json";
@@ -33,26 +34,7 @@ function sha256(bytes) {
 }
 
 async function fetchBuffer(url) {
-  let lastFailure = "unknown retrieval failure";
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      const response = await fetch(url, {
-        headers: { "user-agent": "Radulator-KBRC-primary-source-audit/1" },
-        redirect: "follow",
-        signal: AbortSignal.timeout(30_000),
-      });
-      if (response.ok) return Buffer.from(await response.arrayBuffer());
-      lastFailure = `HTTP ${response.status}`;
-      await response.body?.cancel();
-      if (response.status !== 429 && response.status < 500) break;
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error);
-    }
-    if (attempt < 3) {
-      await new Promise((resolve) => setTimeout(resolve, attempt * 500));
-    }
-  }
-  assert.fail(`${url}: primary-source retrieval failed after 3 attempts (${lastFailure})`);
+  return fetchWithRetry(url);
 }
 
 async function fetchSupplement(artifact) {
