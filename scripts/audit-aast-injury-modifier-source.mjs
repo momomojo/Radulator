@@ -365,7 +365,7 @@ export const PUBMED_IDENTITIES = Object.freeze([
 export const RUNTIME_TEXT = Object.freeze({
   multiple_label: "Multiple Injuries in Same Organ",
   multiple_sublabel:
-    "Multiple grade I–II injuries: advance one grade, up to Grade III (2018 liver/spleen OIS)",
+    "Multiple grade I–II injuries: advance one grade, up to Grade III (2018 liver/spleen OIS; 1990 AAST pancreas scale)",
   bilateral_label: "Bilateral Renal Injuries",
   bilateral_sublabel: "Both kidneys injured: advance one grade, up to Grade III (2018 kidney OIS)",
   kidney_2018_urinary_extrav_sublabel:
@@ -378,13 +378,14 @@ export const RUNTIME_TEXT = Object.freeze({
   kidney_2025_note:
     "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path because the revision's full text could not be verified for one. Clinical judgment applies.",
   pancreas_2024_note:
-    "No grade-advance modifier for multiple injuries is applied on the 2024 pancreas OIS path because the revision's full text could not be verified for one. The earlier 1990 AAST pancreas scale raised the grade by one, to at most Grade III, when multiple injuries were present. Clinical judgment applies.",
+    "The 2024 pancreas OIS revision's table notes could not be verified, so the multiple-injury advance of the earlier 1990 AAST pancreas scale is kept: multiple injuries raise a grade I–II result by one, to at most Grade III. Clinical judgment applies.",
   multiple_finding: "Multiple injuries (+1 grade)",
   bilateral_finding: "Bilateral renal injuries (+1 grade)",
   info_lines: [
     "• Liver and spleen: multiple grade I–II injuries advance one grade, up to Grade III",
     "• Kidney (2018 scale): bilateral renal injuries advance one grade, up to Grade III",
-    "• Kidney 2025 and pancreas 2024 paths: no grade-advance modifier is applied",
+    "• Pancreas: the 1990 scale's multiple-injury advance is kept, up to Grade III, until the 2024 revision's notes are verified",
+    "• Kidney 2025 path: no grade-advance modifier is applied",
   ],
   kozar_reference_prefix:
     "Kozar RA, Crandall M, Shanmuganathan K, et al. Organ injury scaling 2018 update: Spleen, liver, and kidney. J Trauma Acute Care Surg. 2018;85(6):1119-1122.",
@@ -450,7 +451,7 @@ export const OWNED_MODIFIER = Object.freeze({
   kidney2018: "kidney_2018_bilateral",
   kidney2025: null,
   kidneyDefault: null,
-  pancreas: null,
+  pancreas: "multiple_injuries", // the 1990 AAST pancreas scale's advance, kept until the 2024 notes are verified
 });
 const MODIFIER_FIELDS = Object.freeze(["multiple_injuries", "kidney_2018_bilateral"]);
 const NOTE_BY_PATH = Object.freeze({
@@ -502,12 +503,12 @@ export const CLAIM_BINDINGS = Object.freeze([
   }),
   Object.freeze({
     claim_id: "pancreas-2024-duct-location-required",
-    runtime: "a duct injury grades III (neck/body/tail) or IV (head); without a location compute returns only an Error",
+    runtime: "a duct injury grades III (neck/body/tail) or IV (head); without a location compute returns only an Error, unless a destructive head injury already makes it grade V",
     source_statement_ids: ["notrica2025-abstract-duct-location"],
   }),
   Object.freeze({
-    claim_id: "pancreas-2024-no-modifier-note-1990-sentence",
-    runtime: "pancreas grade I-II note states the 1990 scale's multiple-injury advance (ceiling III)",
+    claim_id: "pancreas-1990-multiple-injury-advance-kept",
+    runtime: "the pancreas keeps the 1990 scale's multiple-injury advance (base grade I-II +1, ceiling III) and its base grade I-II note says why",
     source_statement_ids: [
       "aast-scale-page-pancreas-multiple-injury-note",
       "aast-scale-page-pancreas-table-credit",
@@ -529,7 +530,7 @@ export const CLAIM_BINDINGS = Object.freeze([
 // App-owned fail-safe policy (provenance only, not a source claim): where no modifier is
 // verified, none is shown or applied, stale hidden values never change a grade, and grade I-II
 // results say so.
-export const FAIL_SAFE_PATHS = Object.freeze(["kidney2025", "kidneyDefault", "pancreas"]);
+export const FAIL_SAFE_PATHS = Object.freeze(["kidney2025", "kidneyDefault"]);
 
 // ---------------------------------------------------------------------------------------------
 // Text handling
@@ -964,9 +965,9 @@ export function verifyRuntime(calculator) {
     [{ organ: "kidney" }, false, false],
     [{ organ: "kidney", kidney_ois_version: "2025" }, false, false],
     [{ organ: "kidney", kidney_ois_version: "2018" }, false, true],
-    [{ organ: "pancreas" }, false, false],
+    [{ organ: "pancreas" }, true, false],
     [{ organ: "liver", kidney_ois_version: "2018" }, true, false],
-    [{ organ: "pancreas", kidney_ois_version: "2018" }, false, false],
+    [{ organ: "pancreas", kidney_ois_version: "2018" }, true, false],
   ];
   for (const [vals, showMultiple, showBilateral] of visibility) {
     assert.equal(Boolean(multiple.showIf(vals)), showMultiple, `multiple_injuries visibility for ${JSON.stringify(vals)}`);
@@ -1005,8 +1006,8 @@ export function verifyRuntime(calculator) {
           );
           assert.equal(
             result["Grade-Advance Note"],
-            expected <= 2 ? NOTE_BY_PATH[path] : undefined,
-            `${label}: no-modifier note`,
+            (path === "pancreas" ? base <= 2 : expected <= 2) ? NOTE_BY_PATH[path] : undefined,
+            `${label}: grade-advance note`,
           );
           vectors += 1;
         }
@@ -1030,12 +1031,17 @@ export function verifyRuntime(calculator) {
   // Pancreatic duct injuries: location decides grade III/IV; no location, no grade.
   for (const duct of DUCT_SUBGRADES) {
     for (const location of [undefined, "", "neck", "HEAD"]) {
-      for (const extra of [{}, { pancreas_parenchymal: "major_contusion" }, { pancreas_destructive: true }]) {
+      for (const extra of [{}, { pancreas_parenchymal: "major_contusion" }]) {
         const inputs = { organ: "pancreas", pancreas_duct: duct, ...extra };
         if (location !== undefined) inputs.pancreas_duct_location = location;
         assert.deepEqual(calculator.compute(inputs), { Error: RUNTIME_TEXT.duct_location_error }, `duct ${duct} without a location must fail closed`);
         vectors += 1;
       }
+      // A destructive head injury is Grade V whatever the duct location: it never waits for one.
+      const destructive = { organ: "pancreas", pancreas_duct: duct, pancreas_destructive: true };
+      if (location !== undefined) destructive.pancreas_duct_location = location;
+      assert.equal(gradeOf(calculator.compute(destructive), `duct ${duct} destructive`), 5, `duct ${duct}: a destructive head injury is grade V without a location`);
+      vectors += 1;
     }
     assert.equal(gradeOf(calculator.compute({ organ: "pancreas", pancreas_duct: duct, pancreas_duct_location: "body_tail" }), duct), 3, `${duct}: neck/body/tail is grade III`);
     assert.equal(gradeOf(calculator.compute({ organ: "pancreas", pancreas_duct: duct, pancreas_duct_location: "head" }), duct), 4, `${duct}: head is grade IV`);
@@ -1086,8 +1092,8 @@ export function verifyRuntime(calculator) {
       "liver-2018-grade-ii-laceration-length": { field: "liver_laceration", option: "1_3cm", label: RUNTIME_TEXT.liver_grade_ii_laceration_label, grade: 2 },
       "kidney-2018-urinary-extravasation-sublabel": { field: "kidney_2018_urinary_extrav", sublabel: RUNTIME_TEXT.kidney_2018_urinary_extrav_sublabel, grade: 4 },
       "pancreas-2024-grade-v-sublabel": { field: "pancreas_destructive", sublabel: RUNTIME_TEXT.pancreas_destructive_sublabel, grade: 5 },
-      "pancreas-2024-duct-location-required": { subgrades: [...DUCT_SUBGRADES], body_tail: 3, head: 4, missing_location: RUNTIME_TEXT.duct_location_error },
-      "pancreas-2024-no-modifier-note-1990-sentence": { path: "pancreas", grades: [1, 2], note: RUNTIME_TEXT.pancreas_2024_note },
+      "pancreas-2024-duct-location-required": { subgrades: [...DUCT_SUBGRADES], body_tail: 3, head: 4, destructive: 5, missing_location: RUNTIME_TEXT.duct_location_error },
+      "pancreas-1990-multiple-injury-advance-kept": { path: "pancreas", modifier: "multiple_injuries", base_grades: [1, 2, 3, 4, 5], ceiling: 3, note_base_grades: [1, 2], note: RUNTIME_TEXT.pancreas_2024_note },
       "reference-list-identities": {
         kozar_url: RUNTIME_TEXT.kozar_reference_url,
         keihani_url: RUNTIME_TEXT.keihani_reference_url,
@@ -1100,7 +1106,7 @@ export function verifyRuntime(calculator) {
       paths: [...FAIL_SAFE_PATHS],
       modifiers_shown: false,
       stale_values_applied: false,
-      grade_i_ii_note: { kidney2025: RUNTIME_TEXT.kidney_2025_note, pancreas: RUNTIME_TEXT.pancreas_2024_note },
+      grade_i_ii_note: { kidney2025: RUNTIME_TEXT.kidney_2025_note },
       aast_reference: { text: RUNTIME_TEXT.aast_reference_text, linked: false },
     },
   };

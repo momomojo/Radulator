@@ -71,7 +71,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should show the multiple injuries checkbox only for liver and spleen", async ({
+    test("should show the multiple injuries checkbox only for liver, spleen and pancreas", async ({
       page,
     }) => {
       const multiple = page.locator('label[for="multiple_injuries"]');
@@ -88,8 +88,9 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.locator('label[for="organ-kidney"]').click();
       await expect(multiple).toBeHidden();
 
+      // The pancreas keeps the 1990 AAST pancreas scale's advance (Codex on #304).
       await page.locator('label[for="organ-pancreas"]').click();
-      await expect(multiple).toBeHidden();
+      await expect(multiple).toBeVisible();
     });
   });
 
@@ -1464,11 +1465,12 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await expect(results.locator("text=Grade 4").first()).toBeVisible();
     });
 
-    // No grade-advance modifier is verified for the 2024 pancreas revision.
-    test("should not offer or apply a multiple-injury advance (2024 revision)", async ({
+    // Codex on #304: the 2024 revision's notes could not be verified, so the 1990 scale's
+    // multiple-injury advance is kept rather than removed without evidence.
+    test("keeps the 1990 multiple-injury advance on the 2024 revision path", async ({
       page,
     }) => {
-      await expect(page.locator('label[for="multiple_injuries"]')).toBeHidden();
+      await expect(page.locator('label[for="multiple_injuries"]')).toBeVisible();
       await expect(
         page.locator('label[for="kidney_2018_bilateral"]'),
       ).toBeHidden();
@@ -1476,21 +1478,37 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page
         .getByText("Major contusion without duct injury or tissue loss")
         .click();
+      await page.locator('label[for="multiple_injuries"]').click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(results.locator("text=Grade 2").first()).toBeVisible();
+      await expect(results.getByText("Grade 3", { exact: true }).first()).toBeVisible();
+      await expect(results.getByText("Multiple injuries (+1 grade)").first()).toBeVisible();
       await expect(
-        results.getByText("Multiple injuries (+1 grade)"),
-      ).toHaveCount(0);
-      await expect(results.getByText("Multiple Injury Adjustment")).toHaveCount(0);
+        results.getByText("Base grade 2 advanced to Grade 3 due to multiple injuries", { exact: true }),
+      ).toBeVisible();
       await expect(
         results
           .getByText(
-            "No grade-advance modifier for multiple injuries is applied on the 2024 pancreas OIS path",
+            "The 2024 pancreas OIS revision's table notes could not be verified, so the multiple-injury advance of the earlier 1990 AAST pancreas scale is kept",
           )
           .first(),
       ).toBeVisible();
+    });
+
+    // Codex on #304: the duct location separates Grades III and IV only.
+    test("grades a destructive head injury as V without a duct location", async ({
+      page,
+    }) => {
+      await page.getByText("Complete ductal transection").click();
+      await page.click('label[for="pancreas_destructive"]');
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results.getByText("Grade 5", { exact: true }).first()).toBeVisible();
+      await expect(
+        page.getByText("Select the Location of Duct Injury (neck/body/tail or head)", { exact: false }),
+      ).toHaveCount(0);
     });
   });
 

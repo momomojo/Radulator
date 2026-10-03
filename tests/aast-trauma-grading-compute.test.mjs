@@ -9,7 +9,9 @@ import { AASTTraumaGrading } from "../src/components/calculators/AASTTraumaGradi
 // docs/evidence/aast-injury-modifiers.md):
 //   liver 2018, spleen 2018 -> multiple grade I-II injuries: +1 grade, ceiling III
 //   kidney 2018             -> bilateral renal injuries:     +1 grade, ceiling III
-//   kidney 2025, pancreas 2024 -> no modifier verified: never applied
+//   pancreas 2024           -> the 1990 AAST pancreas scale's multiple-injury advance
+//                              (+1 grade, ceiling III), kept until the 2024 notes are verified
+//   kidney 2025             -> no modifier verified: never applied
 // The app passes hidden field values to compute(), so stale checkbox values must
 // never change a grade on a path that does not own the modifier.
 
@@ -76,7 +78,7 @@ const OWNED_MODIFIER = {
   kidney2018: "kidney_2018_bilateral",
   kidney2025: null,
   kidneyDefault: null,
-  pancreas: null,
+  pancreas: "multiple_injuries", // 1990 AAST pancreas scale, kept until the 2024 notes are verified
 };
 const MODIFIERS = ["multiple_injuries", "kidney_2018_bilateral"];
 const advanced = (base) => (base === 1 || base === 2 ? base + 1 : base);
@@ -146,7 +148,7 @@ test("each path applies only its own modifier, at the grade I-II boundaries with
   }
 });
 
-test("explicit boundary vectors: liver/spleen multiple and kidney 2018 bilateral", () => {
+test("explicit boundary vectors: liver/spleen/pancreas multiple and kidney 2018 bilateral", () => {
   const vectors = [
     // [inputs, expected grade]
     [{ ...BASE_VECTORS.liver[1], multiple_injuries: true }, 2],
@@ -165,7 +167,11 @@ test("explicit boundary vectors: liver/spleen multiple and kidney 2018 bilateral
     [{ ...BASE_VECTORS.kidney2018[2], multiple_injuries: true }, 2],
     [{ ...BASE_VECTORS.kidney2025[2], multiple_injuries: true }, 2],
     [{ ...BASE_VECTORS.kidneyDefault[1], multiple_injuries: true }, 1],
-    [{ ...BASE_VECTORS.pancreas[2], multiple_injuries: true }, 2],
+    // Codex on #304: the pancreas keeps the 1990 scale's advance (not removed without evidence).
+    [{ ...BASE_VECTORS.pancreas[1], multiple_injuries: true }, 2],
+    [{ ...BASE_VECTORS.pancreas[2], multiple_injuries: true }, 3],
+    [{ ...BASE_VECTORS.pancreas[3], multiple_injuries: true }, 3],
+    [{ ...BASE_VECTORS.pancreas[5], multiple_injuries: true }, 5],
   ];
   for (const [inputs, expected] of vectors) {
     assert.equal(gradeOf(compute(inputs)), expected, JSON.stringify(inputs));
@@ -198,15 +204,20 @@ test("after an advance, Grade Description describes the advanced grade (liver, s
 const DUCT_LOCATION_ERROR =
   "Select the Location of Duct Injury (neck/body/tail or head) to grade this pancreatic duct injury: it is Grade III in the neck, body or tail and Grade IV in the head.";
 
-test("a pancreatic duct injury without a location fails closed with an actionable error", () => {
+test("a pancreatic duct injury without a location fails closed, unless a destructive head injury makes it grade V", () => {
   for (const duct of ["deep_no_interrogation", "partial", "complete_transection"]) {
     for (const location of [undefined, "", "neck", "HEAD", "left"]) {
-      for (const extra of [{}, { pancreas_parenchymal: "major_contusion" }, { pancreas_destructive: true }]) {
+      for (const extra of [{}, { pancreas_parenchymal: "major_contusion" }]) {
         const inputs = { organ: "pancreas", pancreas_duct: duct, ...extra };
         if (location !== undefined) inputs.pancreas_duct_location = location;
         const result = compute(inputs);
         assert.deepEqual(result, { Error: DUCT_LOCATION_ERROR }, JSON.stringify(inputs));
       }
+      // Codex on #304: the location separates grades III and IV only, so a destructive head injury is
+      // grade V without one (its critical result and management never wait for an irrelevant answer).
+      const destructive = { organ: "pancreas", pancreas_duct: duct, pancreas_destructive: true };
+      if (location !== undefined) destructive.pancreas_duct_location = location;
+      assert.equal(gradeOf(compute(destructive)), 5, JSON.stringify(destructive));
     }
     // With a location, the 2024 location rule grades it.
     assert.equal(gradeOf(compute({ organ: "pancreas", pancreas_duct: duct, pancreas_duct_location: "body_tail" })), 3, duct);
@@ -229,16 +240,17 @@ test("a pancreatic duct injury without a location fails closed with an actionabl
 const KIDNEY_2025_NOTE =
   "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path because the revision's full text could not be verified for one. Clinical judgment applies.";
 const PANCREAS_2024_NOTE =
-  "No grade-advance modifier for multiple injuries is applied on the 2024 pancreas OIS path because the revision's full text could not be verified for one. The earlier 1990 AAST pancreas scale raised the grade by one, to at most Grade III, when multiple injuries were present. Clinical judgment applies.";
+  "The 2024 pancreas OIS revision's table notes could not be verified, so the multiple-injury advance of the earlier 1990 AAST pancreas scale is kept: multiple injuries raise a grade I–II result by one, to at most Grade III. Clinical judgment applies.";
 
-test("grade I-II results on the kidney 2025 and pancreas 2024 paths carry a visible no-modifier note", () => {
+test("kidney 2025 grade I-II results carry a no-modifier note; pancreas base grade I-II results say the 1990 advance is kept", () => {
   const expectedNote = { kidney2025: KIDNEY_2025_NOTE, kidneyDefault: KIDNEY_2025_NOTE, pancreas: PANCREAS_2024_NOTE };
   for (const [path, byGrade] of Object.entries(BASE_VECTORS)) {
     for (const [baseText, inputs] of Object.entries(byGrade)) {
       const base = Number(baseText);
       for (const stale of [{}, { multiple_injuries: true, kidney_2018_bilateral: true }]) {
         const result = compute({ ...inputs, ...stale });
-        const wanted = base <= 2 && gradeOf(result) <= 2 ? expectedNote[path] : undefined;
+        const shown = path === "pancreas" ? base <= 2 : base <= 2 && gradeOf(result) <= 2;
+        const wanted = shown ? expectedNote[path] : undefined;
         assert.equal(result["Grade-Advance Note"], wanted, `${path} base ${base} ${JSON.stringify(stale)}`);
       }
     }
@@ -268,14 +280,15 @@ test("stale hidden checkbox values never change a grade on a path that does not 
   assert.equal(gradeOf(compute({ ...BASE_VECTORS.spleen[2], kidney_2018_bilateral: true })), 2);
   // Kidney 2018: bilateral applies once, multiple never stacks on top.
   assert.equal(gradeOf(compute({ ...BASE_VECTORS.kidney2018[1], ...staleEverything })), 2);
-  // Kidney 2025 (explicit or default) and pancreas: nothing applies.
+  // Pancreas: only the multiple rule applies (1990 scale), once; a stale bilateral value is ignored.
+  assert.equal(gradeOf(compute({ ...BASE_VECTORS.pancreas[1], ...staleEverything })), 2);
+  assert.equal(gradeOf(compute({ ...BASE_VECTORS.pancreas[2], kidney_2018_bilateral: true })), 2);
+  // Kidney 2025 (explicit or default): nothing applies.
   for (const inputs of [
     BASE_VECTORS.kidney2025[1],
     BASE_VECTORS.kidney2025[2],
     BASE_VECTORS.kidneyDefault[1],
     BASE_VECTORS.kidneyDefault[2],
-    BASE_VECTORS.pancreas[1],
-    BASE_VECTORS.pancreas[2],
   ]) {
     const result = compute({ ...inputs, ...staleEverything });
     assert.equal(gradeOf(result), gradeOf(compute({ ...inputs })), JSON.stringify(inputs));
@@ -313,10 +326,10 @@ test("modifier checkboxes are shown only on the organ/version that owns them", (
     [{ organ: "kidney" }, false, false],
     [{ organ: "kidney", kidney_ois_version: "2025" }, false, false],
     [{ organ: "kidney", kidney_ois_version: "2018" }, false, true],
-    [{ organ: "pancreas" }, false, false],
+    [{ organ: "pancreas" }, true, false],
     // Version values left over from a kidney session do not expose either box elsewhere.
     [{ organ: "liver", kidney_ois_version: "2018" }, true, false],
-    [{ organ: "pancreas", kidney_ois_version: "2018" }, false, false],
+    [{ organ: "pancreas", kidney_ois_version: "2018" }, true, false],
   ];
   for (const [vals, showMultiple, showBilateral] of cases) {
     assert.equal(multiple.showIf(vals), showMultiple, `multiple ${JSON.stringify(vals)}`);
@@ -328,7 +341,7 @@ test("modifier and reworded subLabels are version-accurate", () => {
   assert.equal(field("multiple_injuries").label, "Multiple Injuries in Same Organ");
   assert.equal(
     field("multiple_injuries").subLabel,
-    "Multiple grade I–II injuries: advance one grade, up to Grade III (2018 liver/spleen OIS)",
+    "Multiple grade I–II injuries: advance one grade, up to Grade III (2018 liver/spleen OIS; 1990 AAST pancreas scale)",
   );
   assert.equal(field("kidney_2018_bilateral").label, "Bilateral Renal Injuries");
   assert.equal(

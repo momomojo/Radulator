@@ -300,7 +300,7 @@ test("the real calculator satisfies every runtime binding", () => {
   assert.equal(runtime.vectors, 312);
   assert.deepEqual(Object.keys(runtime.bindings).sort(), audit.CLAIM_BINDINGS.map((binding) => binding.claim_id).sort());
   assert.equal(runtime.fail_safe.publication_derived, false);
-  assert.deepEqual(runtime.fail_safe.paths, ["kidney2025", "kidneyDefault", "pancreas"]);
+  assert.deepEqual(runtime.fail_safe.paths, ["kidney2025", "kidneyDefault"]);
 });
 
 test("mutation checks: runtime regressions are rejected", () => {
@@ -315,10 +315,23 @@ test("mutation checks: runtime regressions are rejected", () => {
           ? computeWithRule((_, base) => base < 3)(vals)
           : AASTTraumaGrading.compute(vals),
     }),
-    "multiple-injury rule applied to the 2024 pancreas path": mutant({
+    // Codex on #304: the pancreas keeps the 1990 scale's multiple-injury advance until the 2024 notes are verified.
+    "multiple-injury advance dropped from the pancreas path": mutant({
       compute: (vals) =>
-        vals.organ === "pancreas"
-          ? computeWithRule((_, base) => vals.multiple_injuries === true && base < 3)(vals)
+        vals.organ === "pancreas" ? AASTTraumaGrading.compute({ ...vals, multiple_injuries: false }) : AASTTraumaGrading.compute(vals),
+    }),
+    "multiple-injury checkbox hidden on the pancreas": mutant({
+      fields: withField("multiple_injuries", (field) => ({
+        ...field,
+        showIf: (vals) => vals.organ === "liver" || vals.organ === "spleen",
+      })),
+    }),
+    // Codex on #304: a destructive head injury is Grade V whatever the duct location.
+    "a destructive pancreatic head waits for a duct location": mutant({
+      compute: (vals) =>
+        vals.organ === "pancreas" && vals.pancreas_destructive && vals.pancreas_duct && vals.pancreas_duct !== "none" &&
+        !["head", "body_tail"].includes(vals.pancreas_duct_location)
+          ? { Error: audit.RUNTIME_TEXT.duct_location_error }
           : AASTTraumaGrading.compute(vals),
     }),
     "multiple-injury checkbox shown for the kidney": mutant({
@@ -371,7 +384,7 @@ test("mutation checks: runtime regressions are rejected", () => {
         return rest;
       },
     }),
-    "no-modifier note shown at grade III and above": mutant({
+    "pancreas grade-advance note shown at base grade III and above": mutant({
       compute: (vals) => {
         const result = AASTTraumaGrading.compute(vals);
         return vals.organ === "pancreas" && !result.Error ? { ...result, "Grade-Advance Note": audit.RUNTIME_TEXT.pancreas_2024_note } : result;
@@ -540,7 +553,7 @@ test("live exact-head audit and the compute regression tests pass", () => {
       ["pancreas-2024-grade-v-sublabel", ["notrica2025-abstract-grade-v"]],
       ["pancreas-2024-duct-location-required", ["notrica2025-abstract-duct-location"]],
       [
-        "pancreas-2024-no-modifier-note-1990-sentence",
+        "pancreas-1990-multiple-injury-advance-kept",
         ["aast-scale-page-pancreas-multiple-injury-note", "aast-scale-page-pancreas-table-credit", "notrica2025-abstract-original-1990"],
       ],
       [
