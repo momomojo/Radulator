@@ -10,6 +10,9 @@ import test from "node:test";
 
 import { WellsPE } from "../src/components/calculators/WellsPE.jsx";
 
+const PERC_NOTE =
+  "Consider the PERC rule only if the overall clinical impression (history, examination and initial tests such as ECG or chest X-ray) gives low clinical suspicion of PE and other diagnoses are feasible (NICE NG158 1.1.16). A Wells score below 2 is not enough on its own. With a low pretest probability and all PERC criteria met, ACP 2015 advises against D-dimer testing or imaging. PERC is not validated in people with COVID-19.";
+
 // Item weights: Wells 2000 abstract (PMID 10744147) and NICE NG158 Table 2 agree.
 const ITEMS = [
   ["clinical_dvt", 3, "Clinical signs/symptoms of DVT: +3.0"],
@@ -151,16 +154,25 @@ test("the PERC note keys off the low band (score below 2), not 0-1 or the PE-unl
   ]) {
     const notes = WellsPE.compute(input)["Clinical Notes"] ?? "";
     assert.equal(/\bPERC\b/.test(notes), expected, `${score} points`);
-    if (expected) assert.match(notes, /score <2/);
-    assert.doesNotMatch(notes, /0-1/);
+    // NICE NG158 1.1.16's conditions and ACP 2015 advice 2, word for word (primary judge on #342).
+    if (expected) assert.ok(notes.split("; ").includes(PERC_NOTE), `${score} points: PERC note text`);
+    assert.doesNotMatch(notes, /0-1|score <2/);
   }
+});
+
+test("the PERC note states NICE's and ACP's conditions instead of presenting the score band as enough", () => {
+  assert.match(PERC_NOTE, /only if the overall clinical impression .* gives low clinical suspicion of PE/);
+  assert.match(PERC_NOTE, /other diagnoses are feasible \(NICE NG158 1\.1\.16\)/);
+  assert.match(PERC_NOTE, /A Wells score below 2 is not enough on its own\./);
+  assert.match(PERC_NOTE, /all PERC criteria met, ACP 2015 advises against D-dimer testing or imaging/);
+  assert.match(PERC_NOTE, /not validated in people with COVID-19/);
+  assert.doesNotMatch(PERC_NOTE, /; /, "the note stays one Clinical Notes entry");
 });
 
 test("the alternative-diagnosis item uses the strict sourced wording, and its 3 points can cross the >4 split", () => {
   const field = WellsPE.fields.find((candidate) => candidate.id === "alternative_less_likely");
   assert.equal(field.label, "Alternative diagnosis less likely than PE");
-  assert.match(field.subLabel, /more likely than every alternative diagnosis/);
-  assert.match(field.subLabel, /a tie does not count/);
+  assert.equal(field.subLabel, undefined);
 
   const everyText = JSON.stringify(WellsPE.fields);
   assert.doesNotMatch(everyText, /equally likely|#1/i);
@@ -173,31 +185,33 @@ test("the alternative-diagnosis item uses the strict sourced wording, and its 3 
   assertOutcome(select("previous_pe_dvt", "alternative_less_likely"), 4.5, LIKELY, MODERATE);
 });
 
-test("criterion definitions follow NICE NG158 Table 2", () => {
+test("criterion definitions follow NICE NG158 Table 2 and are part of the visible labels", () => {
   const byId = Object.fromEntries(WellsPE.fields.map((field) => [field.id, field]));
 
+  // Checkbox subLabels are not rendered, so each definition is in the label, in Table 2's own
+  // "name (definition)" layout, and no field keeps a hidden subLabel (primary judge on #342).
+  for (const field of WellsPE.fields) assert.equal(field.subLabel, undefined, `${field.id}: hidden subLabel`);
+
   // Signs of DVT: at minimum both leg swelling and pain on palpation of the deep veins.
-  assert.match(byId.clinical_dvt.subLabel, /\bboth leg swelling and pain on palpation of the deep veins\b/);
+  assert.equal(
+    byId.clinical_dvt.label,
+    "Clinical signs/symptoms of DVT (at minimum, leg swelling and pain on palpation of the deep veins)",
+  );
 
   // Immobilization must exceed 3 days; surgery also counts; 4-week window; no DVT-rule qualifiers.
-  assert.match(byId.immobilization_surgery.subLabel, /\bmore than 3 days\b/);
-  assert.match(byId.immobilization_surgery.subLabel, /\b4 weeks\b/);
-  assert.doesNotMatch(byId.immobilization_surgery.subLabel, /≥|at least|anesthesia|anaesthesia|bedrest/i);
+  assert.equal(
+    byId.immobilization_surgery.label,
+    "Immobilization or surgery in the previous 4 weeks (immobilization for more than 3 days)",
+  );
+  assert.doesNotMatch(byId.immobilization_surgery.label, /≥|at least|anesthesia|anaesthesia|bedrest/i);
 
   // Previous DVT/PE carries no extra qualifier in the cited source.
-  assert.equal(byId.previous_pe_dvt.subLabel, undefined);
+  assert.equal(byId.previous_pe_dvt.label, "Previous PE or DVT");
 
   // Malignancy: current treatment, treatment within 6 months, or palliative (not NICE's broader
   // glossary term "active cancer").
-  assert.match(byId.malignancy.subLabel, /\btreatment\b/);
-  assert.match(byId.malignancy.subLabel, /\b6 months\b/);
-  assert.match(byId.malignancy.subLabel, /\bpalliative\b/);
-  assert.doesNotMatch(byId.malignancy.subLabel, /active cancer/i);
-
-  // Labels render as "label (subLabel)"; keep subLabels free of nested parentheses.
-  for (const field of WellsPE.fields) {
-    if (field.subLabel !== undefined) assert.doesNotMatch(field.subLabel, /[()]/, field.id);
-  }
+  assert.equal(byId.malignancy.label, "Malignancy (under treatment, treated within the past 6 months, or palliative)");
+  assert.doesNotMatch(byId.malignancy.label, /active cancer/i);
 });
 
 test("citations: Wells 2000 DOI link and PubMed record, Wells 2001, Christopher Study and NICE NG158", () => {

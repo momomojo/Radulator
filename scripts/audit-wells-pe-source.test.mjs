@@ -164,6 +164,50 @@ fails(
   "PERC note shown outside the low band",
 );
 fails(() => audit.bindRuntime(withCompute((out) => { out.Prevalence = "~34%"; }), facts), /unsourced percentage 34%/, "unsourced output percentage");
+
+// 6b. Visible definitions and the PERC note's conditions (primary judge on #342).
+const withField = (id, change) => ({
+  ...wellsPE,
+  fields: wellsPE.fields.map((field) => (field.id === id ? { ...field, ...change } : field)),
+});
+fails(
+  () => audit.bindRuntime(withField("clinical_dvt", { label: "Clinical signs/symptoms of DVT" }), facts),
+  /runtime label for clinical_dvt must carry its NICE NG158 Table 2 definition/,
+  "DVT definition dropped from the visible label",
+);
+fails(
+  () => audit.bindRuntime(withField("immobilization_surgery", { label: "Immobilization or surgery in past 4 weeks" }), facts),
+  /runtime label for immobilization_surgery must carry its NICE NG158 Table 2 definition/,
+  "more-than-3-days threshold dropped from the visible label",
+);
+fails(
+  () => audit.bindRuntime(withField("malignancy", { label: "Malignancy" }), facts),
+  /runtime label for malignancy must carry its NICE NG158 Table 2 definition/,
+  "malignancy definition dropped from the visible label",
+);
+fails(
+  () => audit.bindRuntime(withField("malignancy", { subLabel: "Under treatment, treated within the past 6 months, or palliative" }), facts),
+  /malignancy must not keep a hidden subLabel/,
+  "hidden subLabel restored",
+);
+const withPercNote = (note) =>
+  withCompute((out) => {
+    if (!out["Clinical Notes"]) return;
+    out["Clinical Notes"] = out["Clinical Notes"]
+      .split("; ")
+      .map((entry) => (/\bPERC\b/.test(entry) ? note : entry))
+      .join("; ");
+  });
+fails(
+  () => audit.bindRuntime(withPercNote("Consider the PERC rule in low-probability patients (score <2) to avoid unnecessary D-dimer testing"), facts),
+  /the PERC note must state the NICE NG158 1\.1\.16 and ACP 2015 conditions exactly/,
+  "PERC note reverted to the score band alone",
+);
+fails(
+  () => audit.bindRuntime(withPercNote(audit.expectedText(facts).perc.replace(" PERC is not validated in people with COVID-19.", "")), facts),
+  /the PERC note must state the NICE NG158 1\.1\.16 and ACP 2015 conditions exactly/,
+  "PERC note without the COVID-19 caveat",
+);
 fails(() => audit.bindRuntime(withCompute((out) => { out["Clinical Notes"] = `${out["Clinical Notes"] ?? ""}; NPV >99% with a negative D-dimer`; }), facts), /must not claim NPV >99% or exclusion/, "NPV claim in an output note");
 
 // 7. Response identity and retry policy.
