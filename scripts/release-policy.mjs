@@ -300,8 +300,33 @@ function attestationFailure(reasonCode, summary) {
   return { ok: false, reasonCode, summary };
 }
 
+const REVIEW_MODES = new Set(["batch", "full"]);
+
+// A promotion attestation's review binding (promotion-chain.mjs promotionReviewBinding): the review mode and the digest
+// of the chain it came from. A batch review always names the verified chain it relied on.
+function validReviewBinding(review) {
+  return Boolean(review) && typeof review === "object" && !Array.isArray(review) &&
+    Object.keys(review).sort().join(",") === "mode,promotion_chain_sha256" &&
+    REVIEW_MODES.has(review.mode) &&
+    (review.promotion_chain_sha256 === null
+      ? review.mode === "full"
+      : DIGEST_PATTERN.test(`${review.promotion_chain_sha256}`));
+}
+
+// A batch PASS holds only while the live binding is the same verified chain in batch mode. A full review never relied
+// on the chain, and a NEEDS_FIX stands whichever review found it. A promotion attestation without a binding was signed
+// before batch review existed, so it is a full review. Only promotions carry a binding.
+function reviewBindingHolds(record, exactState) {
+  const live = exactState.review;
+  if (live === undefined) return record.review === undefined;
+  const review = record.review;
+  if (review === undefined || review.mode === "full" || record.verdict === "NEEDS_FIX") return true;
+  return live?.mode === "batch" && review.promotion_chain_sha256 === live.promotion_chain_sha256;
+}
+
 function matchesExactState(record, exactState) {
-  return record.repository_id === exactState.repositoryId &&
+  return reviewBindingHolds(record, exactState) &&
+    record.repository_id === exactState.repositoryId &&
     record.pr === exactState.pr &&
     record.head_sha === exactState.headSha &&
     record.base_sha === exactState.baseSha &&
@@ -313,7 +338,10 @@ function matchesExactState(record, exactState) {
     record.ci_sha256 === exactState.ciSha256;
 }
 
-export function verifyAttestation(record, publicKeys, exactState) {
+// Record-only verification: schema, fields, configured judge identity, and the signature over the
+// canonical record. It never compares the record with live PR state, so it can re-verify an
+// attestation on a merged PR, whose "closed" timeline event has since moved the live state epoch.
+export function verifyAttestationRecord(record, publicKeys) {
   if (!record || typeof record !== "object" || record.schema !== ATTESTATION_SCHEMA) {
     return attestationFailure("MALFORMED_ATTESTATION", "Attestation schema is missing or unsupported.");
   }
@@ -336,7 +364,8 @@ export function verifyAttestation(record, publicKeys, exactState) {
     typeof record.judge.profile !== "string" || !record.judge.profile ||
     typeof record.judge.model !== "string" || !record.judge.model ||
     typeof record.judge.provider !== "string" || !record.judge.provider ||
-    typeof record.signature !== "string" || !record.signature
+    typeof record.signature !== "string" || !record.signature ||
+    (record.review !== undefined && (record.base_ref !== "main" || !validReviewBinding(record.review)))
   ) return attestationFailure("MALFORMED_ATTESTATION", "Attestation fields are incomplete or malformed.");
 
   const configured = publicKeys?.[record.judge.key_id];
@@ -356,6 +385,12 @@ export function verifyAttestation(record, publicKeys, exactState) {
     signatureValid = false;
   }
   if (!signatureValid) return attestationFailure("INVALID_SIGNATURE", "Attestation signature is invalid.");
+  return { ok: true, reasonCode: "VALID_ATTESTATION_RECORD", record };
+}
+
+export function verifyAttestation(record, publicKeys, exactState) {
+  const verified = verifyAttestationRecord(record, publicKeys);
+  if (!verified.ok) return verified;
   if (!matchesExactState(record, exactState)) {
     return attestationFailure("ATTESTATION_STATE_MISMATCH", "Attestation does not bind the current exact PR state.");
   }
