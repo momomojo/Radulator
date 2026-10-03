@@ -90,26 +90,39 @@ SHA-256 values above are asserted by the audit and by the Hermes registry
 
 ## Retrieval and negative coverage
 
-Every request uses `redirect: "error"` and the audit rejects any response with
-`response.redirected === true`. It then requires HTTP 200, the exact final URL
-including protocol, host, port, path, query, and fragment, and the exact JSON
-media type before reading the body. Wrong final URLs, wrong ports, wrong media
-types, HTTP 206, malformed HTTP-200 JSON, wrong article identity, and wrong
-table identity are rejected for both AUC and Maron fixtures. URL/media failures
-cancel the unread response body and assert cleanup.
+Both artifacts are retrieved through the shared NCBI helper,
+`scripts/lib/ncbi-fetch.mjs`, which spaces requests to NCBI and never sends
+`NCBI_API_KEY` to the BioC API. Every request uses `redirect: "error"` and the
+audit rejects any response with `response.redirected === true`. It then
+requires HTTP 200, the exact final URL including protocol, host, port, path,
+query, and fragment, and the exact JSON media type before reading the body. The
+raw byte length and SHA-256 are checked before anything is parsed. Wrong final
+URLs, wrong ports, wrong media types, HTTP 206, malformed HTTP-200 JSON, wrong
+article identity, and wrong table identity are rejected for both AUC and Maron
+fixtures. URL/media failures cancel the unread response body and assert
+cleanup.
 
-Body reads are bounded at `1,000,000` bytes. A malformed or oversized
-`Content-Length` is rejected before reading; streams with an absent or
-understated length are cut off and cancelled as soon as the byte limit is
-crossed. Validator, malformed-body, identity, redirect, and oversized-stream
-fixtures exercise the three-attempt retry ceiling. Non-retryable client
-statuses such as HTTP 302 and 404 stop after one attempt. Cleanup is attempted
-on redirect and non-200 responses, but a rejecting cleanup cannot replace the
-authoritative redirect or HTTP error; the regression assertions cover that
-case and its call count.
+Retries follow the helper's policy: up to five attempts, 1, 2, 4 and 8 seconds
+apart (a `Retry-After` header can lengthen a wait, up to 30 seconds), for
+network errors, HTTP 429 and 5xx, a redirected, wrong-URL or wrong-media-type
+response, and a response under half the pinned length (a challenge page). An
+HTTP 200 body that is the wrong document fails at once and is never retried:
+a raw length or SHA-256 mismatch, including same-length digest drift and
+byte-length drift of the live artifacts, malformed JSON, a wrong identity or
+table, and a body over `1,000,000` bytes, whose stream is cut off and cancelled
+as soon as the limit is crossed. Non-retryable statuses such as HTTP 206, 302
+and 404 stop after one attempt. Cleanup is attempted on redirect and non-200
+responses, but a rejecting cleanup cannot replace the authoritative redirect
+or HTTP error; the regression assertions cover that case and its call count.
+An offline check also confirms that no error, fetch-log line or cache record
+carries the key.
 
-The protected exact-head `Hermes Release Control Tests` job runs the live audit
-on every protected PR head:
+The protected exact-head `Clinical Source Audits (exact head)` job runs the live
+audit at the PR head whenever its selection rules, loaded from the PR's base
+commit, select it: on every PR to `main`, and on every `develop` PR whose diff
+reaches this audit, the CAC calculator it imports, or the `cac-mesa` registry
+record. The nightly source-audit run also runs it against `main` and `develop`.
+It runs the same command as:
 
 ```bash
 npm run test:cac-drs-source

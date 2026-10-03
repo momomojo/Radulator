@@ -22,6 +22,15 @@ import {
   classifyRisk,
   digest,
 } from "./release-policy.mjs";
+import {
+  GATE_CHECK_CONTEXT,
+  gatePassFingerprint,
+  PROMOTION_CHAIN_SCHEMA,
+  STATE_EPOCH_EVENTS,
+  STATE_EPOCH_LABELS,
+  stateEpochAt,
+  unavailablePromotionChain,
+} from "./promotion-chain.mjs";
 
 const HEAD = "a".repeat(40);
 const BASE = "b".repeat(40);
@@ -274,12 +283,34 @@ function gateFixture(options = {}) {
   };
 }
 
+const TARGET = { html_url: "https://github.com/momomojo/Radulator/runs/5001" };
+
 function expectBlocked(reasonCode, options = {}) {
   const result = evaluateGate(gateFixture(options));
   assert.equal(result.context, REQUIRED_CONTEXT);
   assert.equal(result.conclusion, "failure");
   assert.equal(result.eligible, false);
   assert.equal(result.reasonCode, reasonCode);
+  assert.equal(checkCompletionPayload(result).output.title, "Clinical release gate blocked");
+  assert.equal(independentGate.authorizationStatusPayload(result, TARGET).state, "failure");
+  return result;
+}
+
+// Parked or in-flight states: a neutral check and a pending required authorization, so the PR still
+// cannot merge (the ruleset needs Authorization to be success) but is not reported as failing.
+function expectWaiting(reasonCode, options = {}) {
+  const result = evaluateGate(gateFixture(options));
+  assert.equal(result.context, REQUIRED_CONTEXT);
+  assert.equal(result.conclusion, "neutral");
+  assert.equal(result.eligible, false);
+  assert.equal(result.reasonCode, reasonCode);
+  const check = checkCompletionPayload(result);
+  assert.equal(check.conclusion, "neutral");
+  assert.equal(check.output.title, "Clinical release gate waiting");
+  assert.equal(JSON.parse(check.output.text).eligible, false);
+  const authorization = independentGate.authorizationStatusPayload(result, TARGET);
+  assert.equal(authorization.state, "pending", `${reasonCode} must never publish a success authorization`);
+  assert.equal(authorization.description, `${reasonCode} ${result.fingerprint}`);
   return result;
 }
 
@@ -703,13 +734,22 @@ function expectBlocked(reasonCode, options = {}) {
 
 expectBlocked("UNSUPPORTED_BASE", { pr: { baseRef: "feature" } });
 expectBlocked("PR_NOT_OPEN_READY", { pr: { state: "closed" } });
-expectBlocked("PR_NOT_OPEN_READY", { pr: { draft: true } });
-expectBlocked("READY_LABEL_MISSING", { pr: { labels: [] } });
+expectWaiting("PR_NOT_OPEN_READY", { pr: { draft: true } });
+expectBlocked("HOLD_PRESENT", { pr: { draft: true, labels: ["ready-for-gate", "hold"] } }); // a hold stays red on a draft
+expectBlocked("HOLD_PRESENT", { pr: { draft: true, labels: ["needs-fix"] } });
+expectWaiting("PR_NOT_OPEN_READY", { pr: { draft: true, labels: ["ready-for-gate"] } });
+expectBlocked("PR_NOT_OPEN_READY", { pr: { state: "closed", draft: true } });
+expectWaiting("READY_LABEL_MISSING", { pr: { labels: [] } });
 expectBlocked("HOLD_PRESENT", { pr: { labels: ["ready-for-gate", "hold"] } });
+expectBlocked("HOLD_PRESENT", { pr: { labels: ["needs-fix"] } }); // a hold stays red without ready-for-gate too
 expectBlocked("CI_NOT_EXACT_SUCCESS", { ci: { ok: false, summary: "latest run failed", evidence: [] } });
+expectWaiting("CI_NOT_EXACT_SUCCESS", {
+  ci: { ok: false, pending: true, summary: "Latest exact-head E2E run 1001 is in_progress/none.", evidence: [] },
+});
+expectBlocked("CI_NOT_EXACT_SUCCESS", { ci: { ok: false, pending: "true", summary: "not a boolean", evidence: [] } });
 expectBlocked("INCOMPLETE_FILE_LIST", { pr: { changedFiles: 2 } });
 expectBlocked("INCOMPLETE_FILE_LIST", { pr: { changedFiles: 3001 } });
-expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
+expectWaiting("MISSING_JUDGE_ROLE", { reviews: [] });
 
 {
   const base = gateFixture();
@@ -728,14 +768,20 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     clinical_analysis: "Evidence does not support the clinical wording.",
     reviewed_at: "2026-08-23T20:02:00Z",
   });
-  assert.equal(evaluateGate({ ...base, reviews: [carrier(pass), carrier(needsFix, 813)] }).reasonCode, "NEEDS_FIX");
+  const sentBack = evaluateGate({ ...base, reviews: [carrier(pass), carrier(needsFix, 813)] });
+  assert.equal(sentBack.reasonCode, "NEEDS_FIX");
+  assert.equal(sentBack.conclusion, "failure", "a NEEDS_FIX verdict stays red: someone has to act on it");
+  assert.equal(independentGate.authorizationStatusPayload(sentBack, TARGET).state, "failure");
 }
 
 {
   const base = gateFixture();
   const state = exactState(base.pr, base.ci, base.files);
   const stale = signedRecord(PRIMARY, state, { reviewed_at: "2026-08-23T19:59:00Z" });
-  assert.equal(evaluateGate({ ...base, reviews: [carrier(stale)] }).reasonCode, "STALE_ATTESTATION");
+  const staleResult = evaluateGate({ ...base, reviews: [carrier(stale)] });
+  assert.equal(staleResult.reasonCode, "STALE_ATTESTATION");
+  assert.equal(staleResult.conclusion, "neutral", "a review older than the current evidence waits for re-review");
+  assert.equal(independentGate.authorizationStatusPayload(staleResult, TARGET).state, "pending");
 }
 
 {
@@ -936,6 +982,24 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
     expectedCiAppId: CI_APP_ID,
     expectedRepositoryFullName: REPOSITORY,
   }).ok, false);
+  const ciFor = (workflowRuns) => resolveRequiredCi({
+    pr,
+    workflowRuns,
+    checkRuns: setup.checkRuns,
+    attemptJobs: setup.attemptJobs,
+    requiredCi: setup.requiredCi,
+    expectedWorkflowId: WORKFLOW_ID,
+    expectedCiAppId: CI_APP_ID,
+    expectedRepositoryFullName: REPOSITORY,
+  });
+  // A finished run that failed is not pending; a run still queued or running, or none yet, is.
+  assert.equal(ciFor([setup.workflowRuns[0], failedLatest]).pending, false);
+  for (const status of ["queued", "in_progress", "waiting"]) {
+    const running = workflowRun(pr, { id: 1003, check_suite_id: 702, created_at: "2026-08-23T20:04:00Z", status, conclusion: null });
+    const result = ciFor([setup.workflowRuns[0], running]);
+    assert.deepEqual([result.ok, result.pending], [false, true], `${status} latest run is pending`);
+  }
+  assert.deepEqual([ciFor([]).ok, ciFor([]).pending], [false, true], "no exact-head run yet is pending");
 
   const supplemental = checkRun(pr, "Hermes Release Control Tests", 3);
   const supplementalJob = workflowJob(pr, "Hermes Release Control Tests", 3);
@@ -1009,6 +1073,335 @@ expectBlocked("MISSING_JUDGE_ROLE", { reviews: [] });
       "incomplete file evidence may only fall back to the base minimum before completeFileList fails closed",
     );
   }
+}
+
+// ---- Promotions to main carry the promotion chain proof -------------------------------------------
+assert.deepEqual(
+  relevantLabelsDigest(["ready-for-gate", "release-urgent", "promotion-full-review", "promotion"]).labels,
+  ["promotion-full-review", "ready-for-gate", "release-urgent"],
+  "the urgent and full-review release labels are bound into attestations and the state epoch",
+);
+assert.equal(
+  deriveStateEpoch([
+    { id: 300, event: "labeled", created_at: "2026-08-23T19:52:00Z", label: { name: "promotion-full-review" } },
+  ], "2026-08-23T19:50:00Z").eventId,
+  300,
+  "adding promotion-full-review starts a new exact state, so batch-mode approvals cannot carry over",
+);
+assert.equal(independentGate.PROMOTION_CHAIN_ENFORCEMENT, "report", "A1 reports the chain before anything enforces it");
+
+const PROMOTION_HEAD_REF = "release/promote-484c9ee59ce2-6d7f8d95a462";
+
+function verifiedChain(overrides = {}) {
+  const chain = {
+    schema: PROMOTION_CHAIN_SCHEMA,
+    ok: true,
+    reasonCode: "CHAIN_VERIFIED",
+    summary: "2 controller merges verified.",
+    failure: null,
+    repository: REPOSITORY,
+    M: BASE,
+    D: "d".repeat(40),
+    S0: "e".repeat(40),
+    P: HEAD,
+    entries: [
+      { pr: 274, squash: "1".repeat(40), head: "2".repeat(40), tier: "high", domain: "clinical", remediation: false, urgent: false, roles: [{ role: "primary" }, { role: "verification" }] },
+      { pr: 295, squash: "3".repeat(40), head: "4".repeat(40), tier: "high", domain: "clinical", remediation: true, urgent: false, roles: [{ role: "primary" }, { role: "verification" }] },
+    ],
+    counts: { commits: 2, prs: 2, nonRemediation: 1, remediation: 1, urgent: 0, highRiskClinical: 1, domains: { clinical: 2, "release-control": 0, neutral: 0 } },
+    domain: "clinical",
+    overlappingFiles: ["src/components/calculators/NIRADS.jsx"],
+    integrationMergedPaths: ["docs/verification/calculator-inventory.json"],
+    policy: { maxPrs: 2, maxHighRiskClinical: 2, maxAgeHours: 24, maxChainCommits: 30, maxCompareFiles: 300 },
+    ...overrides,
+  };
+  chain.digest = digest(chain);
+  return chain;
+}
+
+function promotionFixture({ labels = ["ready-for-gate", "promotion"], promotionChain = verifiedChain(), pr = {} } = {}) {
+  const base = gateFixture({
+    pr: { baseRef: "main", headRef: PROMOTION_HEAD_REF, headRepoFullName: REPOSITORY, labels, ...pr },
+    files: HIGH_FILES,
+  });
+  const state = exactState(base.pr, base.ci, base.files);
+  const primary = signedRecord(PRIMARY, state);
+  const verification = signedRecord(VERIFICATION, state, { reviewed_at: "2026-08-23T20:01:30Z" });
+  return { ...base, reviews: [carrier(primary), carrier(verification, 813)], promotionChain };
+}
+
+{
+  const state = promotionFixture();
+  const result = evaluateGate(state);
+  assert.equal(result.reasonCode, "PASS");
+  assert.equal(result.promotionChain.ok, true);
+  assert.equal(result.promotionChain.enforcement, "report");
+  assert.equal(result.promotionChain.digest, state.promotionChain.digest);
+  assert.deepEqual(result.promotionChain.prs.map((entry) => entry.pr), [274, 295]);
+  const { fingerprint, promotionChain: _chain, ...unsigned } = result;
+  assert.equal(fingerprint, digest(unsigned), "report mode keeps the chain outside the fingerprint");
+  assert.equal(
+    result.summary,
+    "high risk: exact CI and primary + verification judge attestation passed.",
+    "report mode leaves the verdict summary unchanged",
+  );
+  const payload = checkCompletionPayload(result);
+  assert.match(payload.output.summary, /Promotion chain \(report\): verified, 2 PR\(s\), digest [0-9a-f]{12}\. Report only/);
+  const text = JSON.parse(payload.output.text);
+  assert.equal(text.promotion_chain.ok, true, "the check output reports the chain");
+  assert.equal(text.promotion_chain.reasonCode, "CHAIN_VERIFIED");
+  assert.equal(
+    independentGate.authorizationStatusPayload(result, { html_url: "https://github.com/momomojo/Radulator/runs/1" }).description,
+    `PASS ${result.fingerprint}`,
+  );
+
+  const unverified = verifiedChain({ ok: false, reasonCode: "CHAIN_ATTESTATION_MISSING", summary: "PR #274 has no valid signed quorum." });
+  const reported = evaluateGate(promotionFixture({ promotionChain: unverified }));
+  assert.equal(reported.reasonCode, "PASS", "report mode never changes the verdict");
+  assert.equal(reported.promotionChain.reasonCode, "CHAIN_ATTESTATION_MISSING");
+  assert.match(checkCompletionPayload(reported).output.summary, /Promotion chain \(report\): CHAIN_ATTESTATION_MISSING\./);
+  assert.equal(
+    reported.fingerprint,
+    result.fingerprint,
+    "in report mode a different chain view (for example a transient load error in one process) cannot change the published fingerprint of full-review approvals",
+  );
+
+  const withoutChain = (() => {
+    const state = promotionFixture();
+    delete state.promotionChain;
+    return state;
+  })();
+  const missing = evaluateGate(withoutChain);
+  assert.equal(missing.reasonCode, "PASS");
+  assert.equal(missing.promotionChain.reasonCode, "CHAIN_EVIDENCE_UNAVAILABLE", "a promotion without a loaded chain reports it as unavailable");
+
+  const blocked = evaluateGate(promotionFixture({ promotionChain: unverified }), { promotionChainEnforcement: "enforce" });
+  assert.equal(blocked.reasonCode, "PROMOTION_CHAIN_UNVERIFIED", "enforce mode refuses an unverified chain");
+  assert.equal(blocked.conclusion, "failure");
+  assert.equal(blocked.promotionChain.enforcement, "enforce");
+  assert.match(blocked.summary, /CHAIN_ATTESTATION_MISSING/);
+  assert.equal(
+    evaluateGate(withoutChain, { promotionChainEnforcement: "enforce" }).reasonCode,
+    "PROMOTION_CHAIN_UNVERIFIED",
+  );
+  assert.equal(
+    evaluateGate(promotionFixture({ promotionChain: unverified }), { promotionChainEnforcement: "unexpected" }).reasonCode,
+    "PROMOTION_CHAIN_UNVERIFIED",
+    "an unknown enforcement mode fails closed",
+  );
+  const enforcedPass = evaluateGate(promotionFixture(), { promotionChainEnforcement: "enforce" });
+  assert.equal(enforcedPass.reasonCode, "PASS", "a verified chain passes under enforcement");
+  assert.match(enforcedPass.summary, /Promotion chain \(enforce\): verified, 2 PR\(s\)/);
+  assert.equal(checkCompletionPayload(enforcedPass).output.summary, enforcedPass.summary);
+  assert.notEqual(
+    enforcedPass.fingerprint,
+    evaluateGate(promotionFixture({ promotionChain: verifiedChain({ integrationMergedPaths: [] }) }), { promotionChainEnforcement: "enforce" }).fingerprint,
+    "under enforcement the authorization binds the exact chain",
+  );
+  const escaped = evaluateGate(
+    promotionFixture({ promotionChain: unverified, labels: ["ready-for-gate", "promotion", "promotion-full-review"] }),
+    { promotionChainEnforcement: "enforce" },
+  );
+  assert.equal(escaped.reasonCode, "PASS", "the full-review label is the escape, bound into the attestations");
+
+  // Enforcement runs after the CI policy and before the judge quorum.
+  const unjudged = promotionFixture({ promotionChain: unverified });
+  assert.equal(evaluateGate({ ...unjudged, reviews: [] }, { promotionChainEnforcement: "enforce" }).reasonCode, "PROMOTION_CHAIN_UNVERIFIED");
+  assert.equal(evaluateGate({ ...unjudged, reviews: [] }).reasonCode, "MISSING_JUDGE_ROLE");
+  assert.equal(evaluateGate({ ...unjudged, reviews: [] }).promotionChain.reasonCode, "CHAIN_ATTESTATION_MISSING",
+    "a blocked promotion still reports its chain");
+  assert.equal(
+    evaluateGate({ ...unjudged, ci: { ok: false, summary: "running", evidence: [] } }, { promotionChainEnforcement: "enforce" }).reasonCode,
+    "CI_NOT_EXACT_SUCCESS",
+  );
+
+  // Hotfixes to main and cross-repository heads are not promotions: no chain, unchanged results.
+  for (const pr of [
+    { headRef: "hotfix/live-outage" },
+    { headRepoFullName: "someone/Radulator" },
+  ]) {
+    const hotfix = evaluateGate(promotionFixture({ promotionChain: unverified, pr }), { promotionChainEnforcement: "enforce" });
+    assert.equal(hotfix.reasonCode, "PASS");
+    assert.equal(Object.hasOwn(hotfix, "promotionChain"), false);
+    assert.equal(Object.hasOwn(JSON.parse(checkCompletionPayload(hotfix).output.text), "promotion_chain"), false);
+  }
+  // Develop PRs keep their exact results and fingerprints.
+  const developResult = evaluateGate(gateFixture());
+  assert.equal(Object.hasOwn(developResult, "promotionChain"), false);
+  const { fingerprint: developFingerprint, ...developUnsigned } = developResult;
+  assert.equal(developFingerprint, digest(developUnsigned));
+  assert.equal(developResult.summary, "standard risk: exact CI and primary judge attestation passed.");
+
+  const promotionState = promotionFixture();
+  const changedChain = { ...promotionState, promotionChain: verifiedChain({ integrationMergedPaths: [] }) };
+  assert.notEqual(gateStateFingerprint(promotionState), gateStateFingerprint(changedChain), "the chain digest is part of the state fingerprint");
+  assert.notEqual(
+    gateStateFingerprint(promotionState),
+    gateStateFingerprint({ ...promotionState, pr: { ...promotionState.pr, headRef: "release/promote-other" } }),
+    "the head ref is part of the state fingerprint",
+  );
+}
+
+// ---- The chain recomputes the gate's develop PASS fingerprint (primary judge on #317) --------------------
+{
+  assert.equal(GATE_CHECK_CONTEXT, REQUIRED_CONTEXT);
+  const standard = evaluateGate(gateFixture());
+  const high = gateFixture({ files: HIGH_FILES });
+  const highState = exactState(high.pr, high.ci, high.files);
+  high.reviews = [
+    carrier(signedRecord(PRIMARY, highState)),
+    carrier(signedRecord(VERIFICATION, highState, { reviewed_at: "2026-08-23T20:01:30Z" }), 813),
+  ];
+  const highResult = evaluateGate(high);
+  for (const [label, result, pr] of [["standard", standard, gateFixture().pr], ["high", highResult, high.pr]]) {
+    assert.equal(result.reasonCode, "PASS", `${label} fixture passes`);
+    assert.equal(
+      gatePassFingerprint({ headSha: pr.headSha, baseSha: pr.baseSha, risk: result.risk }),
+      result.fingerprint,
+      `${label}: promotion-chain.mjs recomputes the gate's exact PASS fingerprint`,
+    );
+  }
+}
+
+// ---- The chain derives the PR-state epoch exactly as the gate does (verification judge on #317) -------------
+{
+  assert.deepEqual([...STATE_EPOCH_LABELS].sort(), [...independentGate.RELEVANT_LABELS].sort(), "the chain's epoch labels are the gate's");
+  assert.deepEqual([...STATE_EPOCH_EVENTS].sort(), [...independentGate.RELEVANT_TIMELINE_EVENTS].sort(), "the chain's epoch events are the gate's");
+  const createdAt = "2026-08-23T19:00:00Z";
+  const timelines = [
+    [],
+    [{ id: 10, event: "labeled", created_at: "2026-08-23T19:10:00Z", label: { name: "ready-for-gate" } }],
+    [
+      { id: 10, event: "labeled", created_at: "2026-08-23T19:10:00Z", label: { name: "ready-for-gate" } },
+      { id: 11, event: "labeled", created_at: "2026-08-23T19:11:00Z", label: { name: "triage" } },
+      { id: 12, event: "commented", created_at: "2026-08-23T19:12:00Z" },
+      { id: 13, event: "ready_for_review", created_at: "2026-08-23T19:13:00Z" },
+      { id: 14, event: "unlabeled", created_at: "2026-08-23T19:14:00Z", label: { name: "Release-Remediation" } },
+    ],
+    [
+      { id: 21, event: "head_ref_force_pushed", created_at: "2026-08-23T19:21:00Z" },
+      { id: 20, event: "labeled", created_at: "2026-08-23T19:20:00Z", label: { name: "gate-hold" } },
+    ],
+  ];
+  for (const timeline of timelines) {
+    assert.deepEqual(stateEpochAt(timeline, createdAt), deriveStateEpoch(timeline, createdAt), JSON.stringify(timeline));
+  }
+  const malformed = [{ id: 30, event: "closed", created_at: "not a date" }];
+  assert.throws(() => deriveStateEpoch(malformed, createdAt));
+  assert.equal(stateEpochAt(malformed, createdAt), null, "a malformed relevant event fails closed in both");
+}
+
+// ---- Batch approvals count only for the chain they were signed against (Codex on #317) ----------------
+{
+  const chain = verifiedChain();
+  const batchBinding = { mode: "batch", promotion_chain_sha256: chain.digest };
+  const bound = ({ review = batchBinding, verdict = "PASS", ...options } = {}) => {
+    const fixture = promotionFixture({ promotionChain: chain, ...options });
+    const state = exactState(fixture.pr, fixture.ci, fixture.files);
+    const finding = verdict === "PASS" ? {} : { verdict, clinical_analysis: "The merged management text contradicts the source." };
+    const primary = signedRecord(PRIMARY, state, { review, ...finding });
+    const verification = signedRecord(VERIFICATION, state, { review, reviewed_at: "2026-08-23T20:01:30Z" });
+    return { ...fixture, reviews: [carrier(primary), carrier(verification, 813)] };
+  };
+  // Verification judge on #317 (373d003): batch review is off in A1, so a batch approval never counts there; the
+  // vectors below run with it on, as A2 will.
+  assert.equal(evaluateGate(bound()).reasonCode, "MISSING_JUDGE_ROLE", "batch review is off by default: a batch approval does not count");
+  const on = { promotionBatchReview: "on" };
+  const pass = evaluateGate(bound(), on);
+  assert.equal(pass.reasonCode, "PASS", "a batch approval counts for the chain it was signed against");
+  assert.equal(evaluateGate(bound(), { ...on, promotionChainEnforcement: "enforce" }).reasonCode, "PASS");
+  for (const [label, promotionChain] of [
+    ["the chain stops verifying", verifiedChain({ ok: false, reasonCode: "CHAIN_ATTESTATION_MISSING" })],
+    ["the chain changes", verifiedChain({ integrationMergedPaths: [] })],
+    ["the chain cannot be loaded", unavailablePromotionChain({ repository: REPOSITORY, mainSha: BASE, promotionHeadSha: HEAD, error: "rate limited" })],
+  ]) {
+    const result = evaluateGate({ ...bound(), promotionChain }, on);
+    assert.equal(result.reasonCode, "MISSING_JUDGE_ROLE", `report mode: a batch approval no longer counts when ${label}`);
+    assert.equal(result.conclusion, "neutral", `${label}: the promotion waits for a fresh review`);
+    assert.notEqual(result.fingerprint, pass.fingerprint, `${label}: the controller's fingerprint check refuses the merge`);
+  }
+  const withoutChain = bound();
+  delete withoutChain.promotionChain;
+  assert.equal(evaluateGate(withoutChain, on).reasonCode, "MISSING_JUDGE_ROLE", "a batch approval needs a loaded chain");
+  // A full review never relied on the chain.
+  const unverified = verifiedChain({ ok: false, reasonCode: "CHAIN_TREE_MISMATCH" });
+  const fullReview = bound({ review: { mode: "full", promotion_chain_sha256: unverified.digest }, promotionChain: unverified });
+  assert.equal(evaluateGate(fullReview, on).reasonCode, "PASS", "a full-review approval counts whatever the chain");
+  assert.equal(evaluateGate({ ...fullReview, promotionChain: chain }, on).reasonCode, "PASS");
+  assert.equal(evaluateGate(fullReview).reasonCode, "PASS", "with batch review off, a full-review approval counts");
+  // A batch NEEDS_FIX stands after the chain changes.
+  const rejected = bound({ verdict: "NEEDS_FIX" });
+  assert.equal(evaluateGate({ ...rejected, promotionChain: verifiedChain({ integrationMergedPaths: [] }) }, on).reasonCode, "NEEDS_FIX");
+  assert.equal(evaluateGate(rejected).reasonCode, "NEEDS_FIX", "with batch review off, a batch NEEDS_FIX still stands");
+  // Only promotions carry a binding: on a develop PR a bound record is malformed and never counts.
+  const developState = gateFixture();
+  const developExact = exactState(developState.pr, developState.ci, developState.files);
+  const developBound = signedRecord(PRIMARY, developExact, { review: batchBinding });
+  assert.equal(evaluateGate({ ...developState, reviews: [carrier(developBound)] }).reasonCode, "MISSING_JUDGE_ROLE");
+}
+
+// loadGateState loads the chain for promotions only, memoized, and a chain-loading error never throws.
+{
+  const promotionHead = "7".repeat(40);
+  const developHead = "8".repeat(40);
+  const mainHead = "9".repeat(40);
+  const calls = [];
+  const pullBody = (number, baseRef, headRef, headSha, baseSha) => ({
+    number,
+    changed_files: 1,
+    title: "release: promote develop to main (1 PRs: #274)",
+    body: "",
+    html_url: `https://github.com/${REPOSITORY}/pull/${number}`,
+    state: "open",
+    draft: false,
+    created_at: "2026-08-23T19:50:00Z",
+    head: { sha: headSha, ref: headRef, repo: { full_name: REPOSITORY } },
+    base: { sha: baseSha, ref: baseRef, repo: { id: 1027532341, full_name: REPOSITORY } },
+    user: { login: "promoter", id: 1, type: "User" },
+    labels: [{ name: "ready-for-gate" }],
+  });
+  const routes = new Map([
+    [`/repos/${REPOSITORY}/pulls/310`, pullBody(310, "main", PROMOTION_HEAD_REF, promotionHead, mainHead)],
+    [`/repos/${REPOSITORY}/pulls/311`, pullBody(311, "develop", "feature/x", developHead, mainHead)],
+  ]);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    calls.push(parsed.pathname);
+    if (routes.has(parsed.pathname)) return new Response(JSON.stringify(routes.get(parsed.pathname)), { status: 200 });
+    if (/\/(comments|timeline|files)$/.test(parsed.pathname)) return new Response("[]", { status: 200 });
+    if (parsed.pathname.endsWith("/runs")) return new Response(JSON.stringify({ workflow_runs: [] }), { status: 200 });
+    if (parsed.pathname.endsWith("/check-runs")) return new Response(JSON.stringify({ check_runs: [] }), { status: 200 });
+    return new Response(JSON.stringify({ message: "Not Found" }), { status: 404 });
+  };
+  try {
+    const config = { expectedWorkflowId: WORKFLOW_ID, expectedCiAppId: CI_APP_ID, publicKeys: PUBLIC_KEYS };
+    const first = await independentGate.loadGateState("token", "momomojo", "Radulator", 310, config);
+    const second = await independentGate.loadGateState("token", "momomojo", "Radulator", 310, config);
+    assert.equal(first.pr.headRef, PROMOTION_HEAD_REF);
+    assert.equal(first.pr.headRepoFullName, REPOSITORY);
+    assert.equal(first.promotionChain.ok, false);
+    assert.equal(first.promotionChain.reasonCode, "CHAIN_EVIDENCE_UNAVAILABLE", "an unreadable promotion head is reported, not thrown");
+    assert.equal(first.promotionChain.P, promotionHead);
+    assert.equal(second.promotionChain, first.promotionChain, "the chain is memoized for the process");
+    assert.equal(calls.filter((path) => path === `/repos/${REPOSITORY}/git/commits/${promotionHead}`).length, 1);
+    assert.equal(gateStateFingerprint(first), gateStateFingerprint(second), "memoization keeps before/after fingerprints equal");
+    const develop = await independentGate.loadGateState("token", "momomojo", "Radulator", 311, config);
+    assert.equal(Object.hasOwn(develop, "promotionChain"), false, "develop PRs never load a chain");
+    assert.ok(!calls.some((path) => path.includes(developHead) && path.includes("/git/commits/")));
+    const result = evaluateGate(first);
+    assert.equal(result.reasonCode, "INCOMPLETE_FILE_LIST", "the stubbed promotion still fails on its own evidence");
+    assert.equal(result.promotionChain.reasonCode, "CHAIN_EVIDENCE_UNAVAILABLE");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+// The chain helper used for unavailable evidence has the full result shape.
+{
+  const unavailable = unavailablePromotionChain({ repository: REPOSITORY, mainSha: BASE, promotionHeadSha: HEAD, error: new Error("rate limited") });
+  assert.equal(unavailable.schema, PROMOTION_CHAIN_SCHEMA);
+  assert.match(unavailable.summary, /rate limited/);
 }
 
 console.log("independent clinical exact-head gate tests passed");
