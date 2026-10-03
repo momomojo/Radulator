@@ -71,7 +71,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should show the multiple injuries checkbox only for liver, spleen and pancreas", async ({
+    test("should show the multiple injuries checkbox only on the paths that apply it", async ({
       page,
     }) => {
       const multiple = page.locator('label[for="multiple_injuries"]');
@@ -85,7 +85,11 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await page.locator('label[for="organ-spleen"]').click();
       await expect(multiple).toBeVisible();
 
+      // Kidney: shown on the 2025 path (also used with no version), hidden on the 2018 path, whose
+      // table's modifier is bilateral injury (primary judge on #304).
       await page.locator('label[for="organ-kidney"]').click();
+      await expect(multiple).toBeVisible();
+      await page.locator('label[for="kidney_ois_version-2018"]').click();
       await expect(multiple).toBeHidden();
 
       // The pancreas keeps the 1990 AAST pancreas scale's advance (Codex on #304).
@@ -609,40 +613,47 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).toHaveCount(0);
     });
 
-    test("kidney 2025 and no-version kidney: no modifier checkbox", async ({
+    // Primary judge on #304: the 2025 kidney path (also used with no version) keeps the calculator's earlier
+    // multiple-injury advance, unchanged until Keihani 2025's table notes are verified.
+    test("kidney 2025 and no-version kidney: multiple-injury checkbox kept, no bilateral checkbox", async ({
       page,
     }) => {
       await page.locator('label[for="organ-kidney"]').click();
       // No version chosen: the 2025 path is shown.
-      await expect(multiple(page)).toBeHidden();
+      await expect(multiple(page)).toBeVisible();
       await expect(bilateral(page)).toBeHidden();
       await page.locator('label[for="kidney_ois_version-2025"]').click();
-      await expect(multiple(page)).toBeHidden();
+      await expect(multiple(page)).toBeVisible();
       await expect(bilateral(page)).toBeHidden();
     });
 
-    test("a multiple-injury value left checked on liver never advances a kidney grade", async ({
+    test("kidney 2025: multiple injuries advance one grade, as before", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-kidney"]').click();
+      await page.locator('label[for="kidney_hematoma-contusion"]').click();
+      await multiple(page).click();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results(page).getByText("Grade 2", { exact: true }).first()).toBeVisible();
+      await expect(results(page).getByText("Multiple injuries (+1 grade)").first()).toBeVisible();
+    });
+
+    test("a multiple-injury value left checked on liver never advances a kidney 2018 grade", async ({
       page,
     }) => {
       await page.locator('label[for="organ-liver"]').click();
       await multiple(page).click();
       await page.locator('label[for="organ-kidney"]').click();
+      await page.locator('label[for="kidney_ois_version-2018"]').click();
       await expect(multiple(page)).toBeHidden();
-      await page.locator('label[for="kidney_hematoma-contusion"]').click();
+      await page.locator('label[for="kidney_2018_hematoma-contusion"]').click();
       await page.click('button:has-text("Calculate")');
 
-      await expect(results(page).locator("text=Grade 1").first()).toBeVisible();
+      await expect(results(page).getByText("Grade 1", { exact: true }).first()).toBeVisible();
       await expect(
         results(page).getByText("Multiple injuries (+1 grade)"),
       ).toHaveCount(0);
-      await expect(results(page).locator("text=2025").first()).toBeVisible();
-      await expect(
-        results(page)
-          .getByText(
-            "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path",
-          )
-          .first(),
-      ).toBeVisible();
     });
 
     test("a bilateral value left checked on kidney 2018 never advances the 2025 grade", async ({

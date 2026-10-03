@@ -365,7 +365,7 @@ export const PUBMED_IDENTITIES = Object.freeze([
 export const RUNTIME_TEXT = Object.freeze({
   multiple_label: "Multiple Injuries in Same Organ",
   multiple_sublabel:
-    "Multiple grade I–II injuries: advance one grade, up to Grade III (2018 liver/spleen OIS; 1990 AAST pancreas scale)",
+    "Multiple grade I–II injuries: advance one grade, up to Grade III",
   bilateral_label: "Bilateral Renal Injuries",
   bilateral_sublabel: "Both kidneys injured: advance one grade, up to Grade III (2018 kidney OIS)",
   kidney_2018_urinary_extrav_sublabel:
@@ -375,8 +375,6 @@ export const RUNTIME_TEXT = Object.freeze({
   liver_grade_ii_laceration_label: "1-3 cm parenchymal depth, ≤10 cm length (Grade II)",
   duct_location_error:
     "Select the Location of Duct Injury (neck/body/tail or head) to grade this pancreatic duct injury: it is Grade III in the neck, body or tail and Grade IV in the head.",
-  kidney_2025_note:
-    "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path because the revision's full text could not be verified for one. Clinical judgment applies.",
   pancreas_2024_note:
     "The 2024 pancreas OIS revision's table notes could not be verified, so the multiple-injury advance of the earlier 1990 AAST pancreas scale is kept: multiple injuries raise a grade I–II result by one, to at most Grade III. Clinical judgment applies.",
   multiple_finding: "Multiple injuries (+1 grade)",
@@ -385,7 +383,7 @@ export const RUNTIME_TEXT = Object.freeze({
     "• Liver and spleen: multiple grade I–II injuries advance one grade, up to Grade III",
     "• Kidney (2018 scale): bilateral renal injuries advance one grade, up to Grade III",
     "• Pancreas: the 1990 scale's multiple-injury advance is kept, up to Grade III, until the 2024 revision's notes are verified",
-    "• Kidney 2025 path: no grade-advance modifier is applied",
+    "• Kidney 2025 path: the earlier multiple-injury advance (up to Grade III) is unchanged until the 2025 revision's notes are verified",
   ],
   kozar_reference_prefix:
     "Kozar RA, Crandall M, Shanmuganathan K, et al. Organ injury scaling 2018 update: Spleen, liver, and kidney. J Trauma Acute Care Surg. 2018;85(6):1119-1122.",
@@ -449,14 +447,13 @@ export const OWNED_MODIFIER = Object.freeze({
   liver: "multiple_injuries",
   spleen: "multiple_injuries",
   kidney2018: "kidney_2018_bilateral",
-  kidney2025: null,
-  kidneyDefault: null,
+  // The calculator's earlier advance, unchanged until Keihani 2025's table notes are verified (primary judge on #304).
+  kidney2025: "multiple_injuries",
+  kidneyDefault: "multiple_injuries",
   pancreas: "multiple_injuries", // the 1990 AAST pancreas scale's advance, kept until the 2024 notes are verified
 });
 const MODIFIER_FIELDS = Object.freeze(["multiple_injuries", "kidney_2018_bilateral"]);
 const NOTE_BY_PATH = Object.freeze({
-  kidney2025: RUNTIME_TEXT.kidney_2025_note,
-  kidneyDefault: RUNTIME_TEXT.kidney_2025_note,
   pancreas: RUNTIME_TEXT.pancreas_2024_note,
 });
 const DUCT_SUBGRADES = Object.freeze(["deep_no_interrogation", "partial", "complete_transection"]);
@@ -530,7 +527,9 @@ export const CLAIM_BINDINGS = Object.freeze([
 // App-owned fail-safe policy (provenance only, not a source claim): where no modifier is
 // verified, none is shown or applied, stale hidden values never change a grade, and grade I-II
 // results say so.
-export const FAIL_SAFE_PATHS = Object.freeze(["kidney2025", "kidneyDefault"]);
+// Paths whose modifier behavior is the calculator's earlier one, unchanged because the current revision's notes could
+// not be verified (not publication-derived).
+export const UNCHANGED_PATHS = Object.freeze(["kidney2025", "kidneyDefault"]);
 
 // ---------------------------------------------------------------------------------------------
 // Text handling
@@ -962,8 +961,8 @@ export function verifyRuntime(calculator) {
     [{}, false, false],
     [{ organ: "liver" }, true, false],
     [{ organ: "spleen" }, true, false],
-    [{ organ: "kidney" }, false, false],
-    [{ organ: "kidney", kidney_ois_version: "2025" }, false, false],
+    [{ organ: "kidney" }, true, false],
+    [{ organ: "kidney", kidney_ois_version: "2025" }, true, false],
     [{ organ: "kidney", kidney_ois_version: "2018" }, false, true],
     [{ organ: "pancreas" }, true, false],
     [{ organ: "liver", kidney_ois_version: "2018" }, true, false],
@@ -1100,15 +1099,16 @@ export function verifyRuntime(calculator) {
         notrica_url: RUNTIME_TEXT.notrica_reference_url,
       },
     },
-    fail_safe: {
-      provenance: "radulator-fail-safe-policy",
+    unchanged: {
+      provenance: "radulator-unchanged-pending-primary-text",
       publication_derived: false,
-      paths: [...FAIL_SAFE_PATHS],
-      modifiers_shown: false,
-      stale_values_applied: false,
-      grade_i_ii_note: { kidney2025: RUNTIME_TEXT.kidney_2025_note },
-      aast_reference: { text: RUNTIME_TEXT.aast_reference_text, linked: false },
+      paths: [...UNCHANGED_PATHS],
+      modifier: "multiple_injuries",
+      ceiling: 3,
+      bilateral_applied: false,
+      reason: "Keihani 2025's table notes could not be retrieved, so the calculator's earlier multiple-injury advance is unchanged",
     },
+    aast_reference: { text: RUNTIME_TEXT.aast_reference_text, linked: false, publication_derived: false },
   };
 }
 
@@ -1179,7 +1179,7 @@ export async function runAudit({ calculator, fetchImpl = fetch, sleepImpl = dela
       source_statement_ids: [...binding.source_statement_ids],
       runtime: runtime.bindings[binding.claim_id],
     })),
-    runtime: { vectors: runtime.vectors, fail_safe: runtime.fail_safe },
+    runtime: { vectors: runtime.vectors, unchanged: runtime.unchanged, aast_reference: runtime.aast_reference },
     scope: {
       not_asserted: [
         "whether the 2025 kidney revision (Keihani 2025) keeps any grade-advance rule: full text not openly retrievable",

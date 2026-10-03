@@ -11,7 +11,8 @@ import { AASTTraumaGrading } from "../src/components/calculators/AASTTraumaGradi
 //   kidney 2018             -> bilateral renal injuries:     +1 grade, ceiling III
 //   pancreas 2024           -> the 1990 AAST pancreas scale's multiple-injury advance
 //                              (+1 grade, ceiling III), kept until the 2024 notes are verified
-//   kidney 2025             -> no modifier verified: never applied
+//   kidney 2025 / no version -> the calculator's earlier multiple-injury advance (+1 grade,
+//                              ceiling III), unchanged until Keihani 2025's notes are verified
 // The app passes hidden field values to compute(), so stale checkbox values must
 // never change a grade on a path that does not own the modifier.
 
@@ -76,8 +77,8 @@ const OWNED_MODIFIER = {
   liver: "multiple_injuries",
   spleen: "multiple_injuries",
   kidney2018: "kidney_2018_bilateral",
-  kidney2025: null,
-  kidneyDefault: null,
+  kidney2025: "multiple_injuries", // earlier advance, unchanged (Keihani 2025 notes not verified)
+  kidneyDefault: "multiple_injuries",
   pancreas: "multiple_injuries", // 1990 AAST pancreas scale, kept until the 2024 notes are verified
 };
 const MODIFIERS = ["multiple_injuries", "kidney_2018_bilateral"];
@@ -163,10 +164,12 @@ test("explicit boundary vectors: liver/spleen/pancreas multiple and kidney 2018 
     [{ ...BASE_VECTORS.kidney2018[2], kidney_2018_bilateral: true }, 3],
     [{ ...BASE_VECTORS.kidney2018[3], kidney_2018_bilateral: true }, 3],
     [{ ...BASE_VECTORS.kidney2018[4], kidney_2018_bilateral: true }, 4],
-    // The former bug: "multiple injuries" advanced a kidney grade.
+    // The former bug on the 2018 kidney path: "multiple injuries" advanced the grade (its table: highest grade).
     [{ ...BASE_VECTORS.kidney2018[2], multiple_injuries: true }, 2],
-    [{ ...BASE_VECTORS.kidney2025[2], multiple_injuries: true }, 2],
-    [{ ...BASE_VECTORS.kidneyDefault[1], multiple_injuries: true }, 1],
+    // Primary judge on #304: the 2025 kidney path (and no version) keeps the earlier advance, unchanged.
+    [{ ...BASE_VECTORS.kidney2025[2], multiple_injuries: true }, 3],
+    [{ ...BASE_VECTORS.kidneyDefault[1], multiple_injuries: true }, 2],
+    [{ ...BASE_VECTORS.kidney2025[2], kidney_2018_bilateral: true }, 2],
     // Codex on #304: the pancreas keeps the 1990 scale's advance (not removed without evidence).
     [{ ...BASE_VECTORS.pancreas[1], multiple_injuries: true }, 2],
     [{ ...BASE_VECTORS.pancreas[2], multiple_injuries: true }, 3],
@@ -237,20 +240,17 @@ test("a pancreatic duct injury without a location fails closed, unless a destruc
   assert.equal(gradeOf(compute({ ...BASE_VECTORS.liver[1], pancreas_duct: "partial" })), 1);
 });
 
-const KIDNEY_2025_NOTE =
-  "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path because the revision's full text could not be verified for one. Clinical judgment applies.";
 const PANCREAS_2024_NOTE =
   "The 2024 pancreas OIS revision's table notes could not be verified, so the multiple-injury advance of the earlier 1990 AAST pancreas scale is kept: multiple injuries raise a grade I–II result by one, to at most Grade III. Clinical judgment applies.";
 
-test("kidney 2025 grade I-II results carry a no-modifier note; pancreas base grade I-II results say the 1990 advance is kept", () => {
-  const expectedNote = { kidney2025: KIDNEY_2025_NOTE, kidneyDefault: KIDNEY_2025_NOTE, pancreas: PANCREAS_2024_NOTE };
+test("pancreas base grade I-II results say the 1990 advance is kept; no other path carries a grade-advance note", () => {
+  const expectedNote = { pancreas: PANCREAS_2024_NOTE };
   for (const [path, byGrade] of Object.entries(BASE_VECTORS)) {
     for (const [baseText, inputs] of Object.entries(byGrade)) {
       const base = Number(baseText);
       for (const stale of [{}, { multiple_injuries: true, kidney_2018_bilateral: true }]) {
         const result = compute({ ...inputs, ...stale });
-        const shown = path === "pancreas" ? base <= 2 : base <= 2 && gradeOf(result) <= 2;
-        const wanted = shown ? expectedNote[path] : undefined;
+        const wanted = path === "pancreas" && base <= 2 ? expectedNote[path] : undefined;
         assert.equal(result["Grade-Advance Note"], wanted, `${path} base ${base} ${JSON.stringify(stale)}`);
       }
     }
@@ -283,7 +283,8 @@ test("stale hidden checkbox values never change a grade on a path that does not 
   // Pancreas: only the multiple rule applies (1990 scale), once; a stale bilateral value is ignored.
   assert.equal(gradeOf(compute({ ...BASE_VECTORS.pancreas[1], ...staleEverything })), 2);
   assert.equal(gradeOf(compute({ ...BASE_VECTORS.pancreas[2], kidney_2018_bilateral: true })), 2);
-  // Kidney 2025 (explicit or default): nothing applies.
+  // Kidney 2025 (explicit or default): only the earlier multiple advance applies, once; a stale bilateral value
+  // (a 2018-only rule) never does.
   for (const inputs of [
     BASE_VECTORS.kidney2025[1],
     BASE_VECTORS.kidney2025[2],
@@ -291,9 +292,8 @@ test("stale hidden checkbox values never change a grade on a path that does not 
     BASE_VECTORS.kidneyDefault[2],
   ]) {
     const result = compute({ ...inputs, ...staleEverything });
-    assert.equal(gradeOf(result), gradeOf(compute({ ...inputs })), JSON.stringify(inputs));
-    assert.doesNotMatch(result["Key Findings"], /\+1 grade/, JSON.stringify(inputs));
-    assert.equal(result["Multiple Injury Adjustment"], undefined);
+    assert.equal(gradeOf(result), gradeOf(compute({ ...inputs })) + 1, JSON.stringify(inputs));
+    assert.equal(gradeOf(compute({ ...inputs, kidney_2018_bilateral: true })), gradeOf(compute({ ...inputs })), JSON.stringify(inputs));
     assert.equal(result["Bilateral Injury Adjustment"], undefined);
   }
   // Switching kidney 2018 -> 2025 with bilateral still checked must not advance.
@@ -323,8 +323,8 @@ test("modifier checkboxes are shown only on the organ/version that owns them", (
     [{}, false, false],
     [{ organ: "liver" }, true, false],
     [{ organ: "spleen" }, true, false],
-    [{ organ: "kidney" }, false, false],
-    [{ organ: "kidney", kidney_ois_version: "2025" }, false, false],
+    [{ organ: "kidney" }, true, false],
+    [{ organ: "kidney", kidney_ois_version: "2025" }, true, false],
     [{ organ: "kidney", kidney_ois_version: "2018" }, false, true],
     [{ organ: "pancreas" }, true, false],
     // Version values left over from a kidney session do not expose either box elsewhere.
@@ -341,7 +341,7 @@ test("modifier and reworded subLabels are version-accurate", () => {
   assert.equal(field("multiple_injuries").label, "Multiple Injuries in Same Organ");
   assert.equal(
     field("multiple_injuries").subLabel,
-    "Multiple grade I–II injuries: advance one grade, up to Grade III (2018 liver/spleen OIS; 1990 AAST pancreas scale)",
+    "Multiple grade I–II injuries: advance one grade, up to Grade III",
   );
   assert.equal(field("kidney_2018_bilateral").label, "Bilateral Renal Injuries");
   assert.equal(

@@ -299,8 +299,9 @@ test("the real calculator satisfies every runtime binding", () => {
   const runtime = audit.verifyRuntime(AASTTraumaGrading);
   assert.equal(runtime.vectors, 312);
   assert.deepEqual(Object.keys(runtime.bindings).sort(), audit.CLAIM_BINDINGS.map((binding) => binding.claim_id).sort());
-  assert.equal(runtime.fail_safe.publication_derived, false);
-  assert.deepEqual(runtime.fail_safe.paths, ["kidney2025", "kidneyDefault"]);
+  assert.equal(runtime.unchanged.publication_derived, false);
+  assert.deepEqual(runtime.unchanged.paths, ["kidney2025", "kidneyDefault"]);
+  assert.equal(runtime.aast_reference.linked, false);
 });
 
 test("mutation checks: runtime regressions are rejected", () => {
@@ -334,7 +335,7 @@ test("mutation checks: runtime regressions are rejected", () => {
           ? { Error: audit.RUNTIME_TEXT.duct_location_error }
           : AASTTraumaGrading.compute(vals),
     }),
-    "multiple-injury checkbox shown for the kidney": mutant({
+    "multiple-injury checkbox shown on the 2018 kidney path (and hidden on the pancreas)": mutant({
       fields: withField("multiple_injuries", (field) => ({
         ...field,
         showIf: (vals) => ["liver", "spleen", "kidney"].includes(vals.organ),
@@ -376,13 +377,18 @@ test("mutation checks: runtime regressions are rejected", () => {
           ? AASTTraumaGrading.compute({ ...vals, pancreas_duct_location: "body_tail" })
           : AASTTraumaGrading.compute(vals),
     }),
-    "no-modifier note missing on the 2025 kidney path": mutant({
-      compute: (vals) => {
-        const result = AASTTraumaGrading.compute(vals);
-        if (vals.organ !== "kidney") return result;
-        const { "Grade-Advance Note": _dropped, ...rest } = result;
-        return rest;
-      },
+    // Primary judge on #304: the 2025 kidney path keeps the calculator's earlier advance until Keihani 2025 is verified.
+    "multiple-injury advance dropped on the 2025 kidney path": mutant({
+      compute: (vals) =>
+        vals.organ === "kidney" && vals.kidney_ois_version !== "2018"
+          ? AASTTraumaGrading.compute({ ...vals, multiple_injuries: false })
+          : AASTTraumaGrading.compute(vals),
+    }),
+    "multiple-injury checkbox hidden on the 2025 kidney path": mutant({
+      fields: withField("multiple_injuries", (field) => ({
+        ...field,
+        showIf: (vals) => ["liver", "spleen", "pancreas"].includes(vals.organ),
+      })),
     }),
     "pancreas grade-advance note shown at base grade III and above": mutant({
       compute: (vals) => {
@@ -563,8 +569,8 @@ test("live exact-head audit and the compute regression tests pass", () => {
     ],
   );
   assert.equal(result.runtime.vectors, 312);
-  assert.equal(result.runtime.fail_safe.publication_derived, false);
-  assert.equal(result.runtime.fail_safe.aast_reference.linked, false);
+  assert.equal(result.runtime.unchanged.publication_derived, false);
+  assert.equal(result.runtime.aast_reference.linked, false);
   assert.deepEqual(result.scope.not_asserted, [
     "whether the 2025 kidney revision (Keihani 2025) keeps any grade-advance rule: full text not openly retrievable",
     "whether the 2024 pancreas revision (Notrica 2025) keeps any grade-advance rule: full text not openly retrievable",

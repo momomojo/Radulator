@@ -8,13 +8,17 @@
  * Kidney supports both 2018 and 2025 OIS revisions (version selector).
  * Pancreas uses 2024 OIS revision (ductal integrity as primary grading determinant).
  *
- * Grade-advance modifiers are bound to the table that states them (Kozar 2018,
- * Tables 1-3 notes; docs/evidence/aast-injury-modifiers.md):
- * - Liver and spleen 2018: multiple grade I-II injuries advance one grade (max III).
- * - Kidney 2018: bilateral renal injuries advance one grade (max III).
- * - Kidney 2025 and pancreas 2024: no modifier is applied (the revision full texts
- *   could not be checked for one), and hidden or stale checkbox values never
- *   change the grade.
+ * Grade-advance modifiers (docs/evidence/aast-injury-modifiers.md):
+ * - Liver and spleen 2018: multiple grade I-II injuries advance one grade (max III)
+ *   (Kozar 2018, Tables 1-2 notes).
+ * - Kidney 2018: bilateral renal injuries advance one grade (max III); several
+ *   injuries in one kidney take the highest grade (Kozar 2018, Table 3 notes).
+ * - Pancreas 2024: the 1990 AAST pancreas scale's multiple-injury advance (max III)
+ *   is kept; whether the 2024 revision keeps it is not verified.
+ * - Kidney 2025 (and no version chosen): the calculator's earlier multiple-injury
+ *   advance (max III) is unchanged; the 2025 revision's notes are not verified.
+ * Hidden or stale checkbox values never change the grade on a path that does not
+ * use them.
  *
  * Primary Sources:
  * - Kozar RA, et al. J Trauma Acute Care Surg. 2018;85(6):1119-1122 (2018 AAST-OIS Update)
@@ -63,7 +67,7 @@ GRADE-ADVANCE MODIFIERS (AAST OIS table notes):
 • Liver and spleen: multiple grade I–II injuries advance one grade, up to Grade III
 • Kidney (2018 scale): bilateral renal injuries advance one grade, up to Grade III
 • Pancreas: the 1990 scale's multiple-injury advance is kept, up to Grade III, until the 2024 revision's notes are verified
-• Kidney 2025 path: no grade-advance modifier is applied
+• Kidney 2025 path: the earlier multiple-injury advance (up to Grade III) is unchanged until the 2025 revision's notes are verified
 
 MANAGEMENT PRINCIPLES (WSES Guidelines):
 • Hemodynamic stability is the PRIMARY determinant of management
@@ -637,18 +641,24 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
     },
 
     // ============================================
-    // MULTIPLE-INJURY MODIFIER: liver and spleen (2018 table notes) and the
+    // MULTIPLE-INJURY MODIFIER: liver and spleen (2018 table notes); the
     // pancreas, where the 1990 AAST pancreas scale's advance is kept until the
-    // 2024 revision's table notes can be verified. Not offered for the kidney
-    // (its 2018 modifier is bilateral injury) or on the 2025 kidney path.
+    // 2024 revision's table notes can be verified; and the 2025 kidney path (also
+    // used with no version), where the calculator's earlier advance is unchanged
+    // until the 2025 revision's notes can be verified. Not offered on the 2018
+    // kidney path: its table's modifier is bilateral injury.
     // ============================================
     {
       id: "multiple_injuries",
       label: "Multiple Injuries in Same Organ",
       type: "checkbox",
       subLabel:
-        "Multiple grade I–II injuries: advance one grade, up to Grade III (2018 liver/spleen OIS; 1990 AAST pancreas scale)",
-      showIf: (vals) => vals.organ === "liver" || vals.organ === "spleen" || vals.organ === "pancreas",
+        "Multiple grade I–II injuries: advance one grade, up to Grade III",
+      showIf: (vals) =>
+        vals.organ === "liver" ||
+        vals.organ === "spleen" ||
+        vals.organ === "pancreas" ||
+        (vals.organ === "kidney" && vals.kidney_ois_version !== "2018"),
     },
   ],
 
@@ -1162,14 +1172,19 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
 
     // Grade-advance modifiers (Kozar 2018 table notes; for the pancreas, the 1990
     // AAST pancreas scale's note, kept until the 2024 revision's notes can be
-    // verified). Each applies only to the organ and version whose table states it,
-    // and only to a base grade of I or II (ceiling Grade III). The UI keeps hidden checkbox values, so the organ
+    // verified; on the 2025 kidney path, the calculator's earlier advance,
+    // unchanged until the 2025 revision's notes can be verified). Each applies only
+    // to its own organ and version, and only to a base grade of I or II (ceiling
+    // Grade III). The UI keeps hidden checkbox values, so the organ
     // and version are checked here as well: a stale value never changes a grade.
     const baseGrade = grade;
     let gradeAdvance = null;
     if (baseGrade > 0 && baseGrade < 3) {
       if (
-        (organ === "liver" || organ === "spleen" || organ === "pancreas") &&
+        (organ === "liver" ||
+          organ === "spleen" ||
+          organ === "pancreas" ||
+          (organ === "kidney" && kidney_ois_version !== "2018")) &&
         multiple_injuries === true
       ) {
         gradeAdvance = "multiple";
@@ -1425,10 +1440,6 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
     } else if (gradeAdvance === "bilateral") {
       result["Bilateral Injury Adjustment"] =
         `Base grade ${baseGrade} advanced to Grade ${grade} due to bilateral renal injuries (2018 kidney OIS)`;
-    } else if (grade <= 2 && organ === "kidney" && kidney_ois_version !== "2018") {
-      // Paths with no verified grade-advance modifier say so for grades I-II.
-      result["Grade-Advance Note"] =
-        "No grade-advance modifier (for multiple or bilateral injuries) is applied on the 2025 kidney OIS path because the revision's full text could not be verified for one. Clinical judgment applies.";
     }
     // The pancreas keeps the 1990 scale's advance; a base grade I-II result says
     // where it comes from, advanced or not.
