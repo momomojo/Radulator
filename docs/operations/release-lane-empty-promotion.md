@@ -22,5 +22,5 @@ On 2026-10-03 this happened with the `braces` advisory fix:
 
 ## Prevention
 
-- **Pair the counterpart with real content.** A develop PR whose content main already has must not be the only unreleased develop change. Merge it right after another develop change, or follow it with a `release-remediation` change, so its promotion is not empty.
+- **Pair the counterpart with real content.** A develop PR whose content main already has must not be the only unreleased develop change. Put real content in the same PR. Or give the counterpart the `release-remediation` label and merge it while another develop change is still unreleased. Without the label, the controller holds it as `UNRELEASED_DEVELOP_HEAD` as soon as that other change has merged. Either way, the promotion that carries it is not empty.
 - **Code fix (follow-up).** The controller could treat develop as released when the promotion of develop's exact head has main's tree. Until then, use the recovery above.
