@@ -4,7 +4,9 @@
 // scripts/audit-fleischner-primary-source.mjs. No network access.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 import {
   EXPECTED_TABLES,
@@ -286,30 +288,89 @@ test("non-challenge HTML without the table and non-challenge failures still fail
         return response({ status: 403, url, body: CHALLENGE_HTML });
       },
     }),
-    /NLM ch5\.Tab1: HTTP 403/,
+    /NLM ch5\.Tab1 retrieval failed after 1 of 5 attempts \(HTTP 403\)/,
     "a challenge that is not a successful response keeps failing",
   );
   assert.equal(forbiddenCalls, 1);
+  let networkCalls = 0;
   await assert.rejects(
     loadNlmTable(expected.url, expected.objectId, {
       sleepImpl: noSleep,
       fetchImpl: async () => {
+        networkCalls += 1;
         throw new TypeError("fetch failed");
       },
     }),
-    /NLM ch5\.Tab1: retrieval failed after 3 attempts/,
+    /NLM ch5\.Tab1 retrieval failed after 5 of 5 attempts \(fetch failed\)/,
   );
+  assert.equal(networkCalls, 5, "network errors are retried within the five-attempt bound");
+  let redirectedCalls = 0;
   await assert.rejects(
     loadNlmTable(expected.url, expected.objectId, {
       sleepImpl: noSleep,
-      fetchImpl: async () =>
-        response({
+      fetchImpl: async () => {
+        redirectedCalls += 1;
+        return response({
           url: "https://www.google.com/recaptcha/challengepage/",
           body: CHALLENGE_HTML,
-        }),
+        });
+      },
     }),
     /NLM ch5\.Tab1: unexpected final URL/,
   );
+  assert.equal(redirectedCalls, 5, "a page served from another URL is retried, then fails closed");
+});
+
+test("transient failures and implausibly short pages are retried through the shared NCBI helper", async () => {
+  const expected = EXPECTED_TABLES.solid;
+  const page = tablePage(recordTable(expected.objectId));
+  const sleeps = [];
+  let calls = 0;
+  const html = await loadNlmTable(expected.url, expected.objectId, {
+    sleepImpl: async (milliseconds) => sleeps.push(milliseconds),
+    fetchImpl: async (url) => {
+      calls += 1;
+      if (calls === 1) return response({ status: 503, url, body: "busy" });
+      if (calls === 2) return response({ url, body: "<html>short</html>" });
+      return response({ url, body: page.html });
+    },
+  });
+  assert.equal(calls, 3);
+  assert.deepEqual(sleeps, [1_000, 2_000]);
+  assert.equal(verifyNlmTableEvidence(html, liveSpec(expected, page.fragment), new Map()).mode, "live");
+});
+
+test("NCBI_API_KEY never reaches Bookshelf, an error or the fetch log", async () => {
+  const expected = EXPECTED_TABLES.subsolid;
+  const scratch = mkdtempSync(path.join(os.tmpdir(), "fleischner-ncbi-key-"));
+  try {
+    const fakeKey = "7f6e5d4c3b2a19087f6e5d4c3b2a19087f6e";
+    const env = { NCBI_API_KEY: fakeKey, RADULATOR_SOURCE_FETCH_LOG: path.join(scratch, "fetch-log.jsonl") };
+    const requested = [];
+    const html = await loadNlmTable(expected.url, expected.objectId, {
+      env,
+      sleepImpl: noSleep,
+      fetchImpl: async (url) => {
+        requested.push(url);
+        return response({ url, body: CHALLENGE_HTML });
+      },
+    });
+    assert.equal(detectNlmBotChallenge(html).challenged, true);
+    assert.equal(requested.length === 1 && requested[0] === expected.url, true, "Bookshelf must never receive NCBI_API_KEY");
+    const failure = await loadNlmTable(expected.url, expected.objectId, {
+      env,
+      sleepImpl: noSleep,
+      fetchImpl: async (url) => {
+        throw new TypeError(`request to ${url}&api_key=${fakeKey} failed`);
+      },
+    }).then(() => null, (error) => error);
+    assert.ok(failure instanceof Error, "an exhausted retrieval fails loudly");
+    const surfaces = `${failure.message}\n${readFileSync(env.RADULATOR_SOURCE_FETCH_LOG, "utf8")}`;
+    assert.equal(surfaces.includes(fakeKey), false, "NCBI_API_KEY must never reach output");
+    assert.equal(/api_key=(?!\[REDACTED\])/.test(surfaces), false, "no api_key value may reach output");
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
 });
 
 test("a pinned record hash mismatch fails", () => {

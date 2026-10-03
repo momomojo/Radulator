@@ -37,6 +37,19 @@ assert.equal(
   `ALBI modularity tests failed\nstdout:\n${coreTests.stdout}\nstderr:\n${coreTests.stderr}`,
 );
 
+// The retrieval policy (retries, backoff, challenge pages, loud exhaustion) is verified offline with an
+// injected fetch, sleep and clock, so it runs deterministically at the exact head.
+const fetchPolicyTests = spawnSync(
+  process.execPath,
+  ["--test", "tests/albi-source-fetch-compute.test.mjs"],
+  { cwd: process.cwd(), encoding: "utf8" },
+);
+assert.equal(
+  fetchPolicyTests.status,
+  0,
+  `ALBI source-fetch policy tests failed\nstdout:\n${fetchPolicyTests.stdout}\nstderr:\n${fetchPolicyTests.stderr}`,
+);
+
 const audit = JSON.parse(run.stdout);
 assert.equal(audit.schema, "radulator-albi-primary-source-audit/v1");
 assert.equal(audit.article_pmcid, "PMC4322258");
@@ -85,5 +98,5 @@ assert.equal(audit.unsupported_original_cohort_claims_removed, true);
 assert.equal(audit.source_bytes_committed, false);
 
 console.log(
-  "ALBI primary-source audit verified the published equation, units, grade boundaries, source scope, and executable vectors.",
+  "ALBI primary-source audit verified the published equation, units, grade boundaries, source scope, and executable vectors; offline retrieval-policy tests passed.",
 );

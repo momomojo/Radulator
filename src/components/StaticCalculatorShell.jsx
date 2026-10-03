@@ -63,15 +63,19 @@ export default function StaticCalculatorShell({ data = getStaticPageData() }) {
             </h2>
             <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
               {refs.map((ref) => (
-                <li key={ref.u}>
-                  <a
-                    href={ref.u}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    {ref.t}
-                  </a>
+                <li key={ref.u || ref.t}>
+                  {ref.u ? (
+                    <a
+                      href={ref.u}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {ref.t}
+                    </a>
+                  ) : (
+                    ref.t
+                  )}
                 </li>
               ))}
             </ol>

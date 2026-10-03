@@ -160,6 +160,20 @@ for (const filename of [
   "scripts/write-release-marker.mjs",
   "ops/hermes/radulator/judge-candidates.mjs",
   "ops/hermes/radulator/judge-attest.mjs",
+  ".github/workflows/source-audit-nightly.yml",
+  "scripts/ci-scope.mjs",
+  "scripts/ci-scope.test.mjs",
+  "scripts/select-source-audits.mjs",
+  "scripts/select-source-audits.test.mjs",
+  "scripts/run-source-audits.mjs",
+  "scripts/run-source-audits.test.mjs",
+  "scripts/source-audit-manifest.json",
+  "scripts/report-source-audit-drift.mjs",
+  "scripts/report-source-audit-drift.test.mjs",
+  "scripts/promotion-chain.mjs",
+  "scripts/promotion-chain.test.mjs",
+  "ops/hermes/radulator/release_batch_remediator.py",
+  "ops/hermes/radulator/tests/test_release_batch_remediator.py",
   ".npmrc",
   "npm-shrinkwrap.json",
   "package.json",
@@ -175,12 +189,35 @@ for (const filename of [
   }]);
   assert.equal(releaseControlRisk.tier, "high", `${filename} can weaken trusted release evidence`);
   assert.ok(releaseControlRisk.reasonCodes.includes("RELEASE_CONTROL_CHANGE"));
+  assert.equal(
+    releaseControlRisk.reasonCodes.some((code) => code.startsWith("CLINICAL_")),
+    false,
+    `${filename} is release control only, so changing it never mixes trust domains`,
+  );
 }
 assert.equal(
   releasePolicy.RISK_CLASSIFIER_VERSION,
-  "radulator-clinical-risk/v6",
-  "expanding the signed classifier to clinical evidence and prompt-harness files requires a new policy version",
+  "radulator-clinical-risk/v7",
+  "classifying the source-audit lane, promotion chain and CI scope rules requires a new policy version",
 );
+
+// The protected source-audit lane ships as one release-control change: its workflow, rules, runner,
+// manifest, drift reporter, judge rubric and notes must never classify as a mixed trust domain.
+const sourceAuditLaneRisk = classifyRisk([
+  ".github/workflows/e2e-tests.yml",
+  ".github/workflows/source-audit-nightly.yml",
+  "scripts/select-source-audits.mjs",
+  "scripts/run-source-audits.mjs",
+  "scripts/source-audit-manifest.json",
+  "scripts/report-source-audit-drift.mjs",
+  "scripts/release-policy.mjs",
+  "scripts/release-workflow-permissions.test.mjs",
+  "package.json",
+  "ops/hermes/radulator/skills/radulator-clinical-judge/SKILL.md",
+  "ops/hermes/radulator/README.md",
+  "AGENTS.md",
+].map((filename) => ({ filename, status: "modified", patch: "@@ -1 +1 @@\n-old\n+new" })));
+assert.deepEqual(sourceAuditLaneRisk.reasonCodes, ["RELEASE_CONTROL_CHANGE"]);
 
 for (const filename of [
   "ops/hermes/radulator/cac-drs-auc-boundary.test.mjs",
@@ -221,6 +258,8 @@ for (const filename of [
   "scripts/generate-mesa-cac-reference.mjs",
   "scripts/generate-mesa-cac-reference.test.mjs",
   "scripts/jsx-loader.mjs",
+  "scripts/lib/ncbi-fetch.mjs",
+  "scripts/lib/ncbi-fetch.test.mjs",
   "scripts/run-compute-tests.mjs",
   "scripts/register-jsx-loader.mjs",
   "tests/kbrc-math.test.mjs",
@@ -514,5 +553,55 @@ const wrongRole = signedRecord(PRIMARY, highState, {
   reviewed_at: "2026-08-23T20:04:00Z",
 });
 assert.equal(verifyAttestation(wrongRole, PUBLIC_KEYS, highState).reasonCode, "JUDGE_IDENTITY_MISMATCH");
+
+// Promotion review binding (Codex on #317): a batch approval holds only for the verified chain it was signed against.
+{
+  const chainA = "a".repeat(64);
+  const chainB = "b".repeat(64);
+  const live = (review) => ({ ...standardState, baseRef: "main", ...(review === undefined ? {} : { review }) });
+  const signedFor = (review, overrides = {}) =>
+    signedRecord(PRIMARY, live(), { ...(review === undefined ? {} : { review }), ...overrides });
+  const reason = (record, review) => verifyAttestation(record, PUBLIC_KEYS, live(review)).reasonCode;
+  const batchA = { mode: "batch", promotion_chain_sha256: chainA };
+  const batchPass = signedFor(batchA);
+
+  assert.equal(reason(batchPass, batchA), "VALID_ATTESTATION", "a batch PASS holds for the chain it was signed against");
+  assert.equal(evaluateAttestationQuorum([batchPass], PUBLIC_KEYS, live(batchA)).ok, true);
+  for (const [label, current] of [
+    ["another verified chain", { mode: "batch", promotion_chain_sha256: chainB }],
+    ["the same chain under the full-review label", { mode: "full", promotion_chain_sha256: chainA }],
+    ["a chain that no longer verifies", { mode: "full", promotion_chain_sha256: chainB }],
+    ["a chain that could not be loaded", { mode: "full", promotion_chain_sha256: null }],
+  ]) {
+    assert.equal(reason(batchPass, current), "ATTESTATION_STATE_MISMATCH", `a batch PASS does not hold for ${label}`);
+    assert.equal(evaluateAttestationQuorum([batchPass], PUBLIC_KEYS, live(current)).reasonCode, "MISSING_JUDGE_ROLE", label);
+  }
+  // A full review never relied on the chain; an unbound record predates batch review, so it is a full review.
+  for (const review of [{ mode: "full", promotion_chain_sha256: chainA }, { mode: "full", promotion_chain_sha256: null }, undefined]) {
+    const record = signedFor(review);
+    for (const current of [batchA, { mode: "full", promotion_chain_sha256: null }]) {
+      assert.equal(reason(record, current), "VALID_ATTESTATION", `a full review ${JSON.stringify(review)} holds for any chain`);
+    }
+  }
+  const batchNeedsFix = signedFor(batchA, { verdict: "NEEDS_FIX", clinical_analysis: "The merged text contradicts the source." });
+  assert.equal(
+    evaluateAttestationQuorum([batchPass, batchNeedsFix], PUBLIC_KEYS, live({ mode: "batch", promotion_chain_sha256: chainB })).reasonCode,
+    "NEEDS_FIX",
+    "a batch NEEDS_FIX stands after the chain changes",
+  );
+  assert.equal(reason(batchPass, undefined), "ATTESTATION_STATE_MISMATCH", "a state without a binding takes no bound record");
+  const { review: _review, ...stripped } = batchPass;
+  assert.equal(verifyAttestation(stripped, PUBLIC_KEYS, live(batchA)).reasonCode, "INVALID_SIGNATURE", "the signature covers the binding");
+  for (const [label, review, overrides] of [
+    ["a batch review without a chain", { mode: "batch", promotion_chain_sha256: null }],
+    ["an unknown mode", { mode: "partial", promotion_chain_sha256: chainA }],
+    ["an extra field", { ...batchA, note: "x" }],
+    ["a short digest", { mode: "batch", promotion_chain_sha256: "a".repeat(63) }],
+    ["an array", [batchA]],
+    ["a binding on a develop PR", batchA, { base_ref: "develop" }],
+  ]) {
+    assert.equal(reason(signedFor(review, overrides), batchA), "MALFORMED_ATTESTATION", label);
+  }
+}
 
 console.log("risk-tiered release policy tests passed");
