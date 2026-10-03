@@ -2,8 +2,26 @@
 
 Scope: the ten region checkboxes of `src/components/calculators/ASPECTSScore.jsx`
 (label, subLabel), the region list in the info text, and the "Regional Breakdown"
-result with the two clinical notes that depend on it. The score arithmetic
-(ASPECTS = 10 minus the number of affected regions) is unchanged.
+result. The score arithmetic (ASPECTS = 10 minus the number of affected regions)
+is unchanged.
+
+**Revised 2026-10-03 (primary judge on #305): two pattern notes removed.**
+- **The notes.** The "Predominantly subcortical involvement - consider
+  lenticulostriate territory infarction" note and the collateral note
+  ("Complete cortical MCA involvement suggests very poor collateral
+  circulation" on develop; "Complete M1-M6 cortical involvement ..." in an
+  earlier version of this PR) are removed.
+- **Why.** No cited source states their clinical associations or their region
+  boundaries. The grouping fix changed when the first one fired and what the
+  second one said, and a changed clinical statement needs a primary source.
+  Re-triggering them on develop's grouping would contradict the corrected
+  breakdown.
+- **What the audit checks.** It checks over all 1024 region combinations that
+  neither note, nor a reworded collateral-circulation or
+  predominantly-subcortical claim, appears.
+- **What stays.** The two other pattern notes (insular ribbon with lentiform
+  nucleus; caudate with internal capsule) are unchanged from develop and are
+  not asserted here (see the follow-up below).
 
 ## How this is checked
 
@@ -97,13 +115,11 @@ the earliest (2012) captures as in these 2016 captures. The redesigned site
 |---|---|---|---|
 | `breakdown-subcortical-is-c-l-ic` | "Regional Breakdown" counts C, L and IC as `Subcortical (C, L, IC): n/3`. Checked for all 1024 region combinations. | `dubey2013` Figure 1 caption | 3 of the 10 points go to the subcortical structures: caudate, lentiform nucleus, internal capsule. |
 | `breakdown-insula-is-ganglionic-cortex` | The insular ribbon moves from the old "Subcortical: n/4" to `Ganglionic cortical (I, M1-M3): n/4`; M4-M6 stay `Supraganglionic (M4-M6): n/3`. | `dubey2013` Figure 1 caption | The other 7 points go to MCA cortex: the insular cortex and M1-M6. The template defines M2 by its position beside the insular ribbon, so the ribbon lies on the lower cut with M1-M3. M4-M6 are the territories directly above M1-M3, higher than the basal ganglia. |
-| `subcortical-note-uses-corrected-grouping` | The "Predominantly subcortical involvement" rule text is unchanged. It now needs C, L and IC with no cortical region (I or M1-M6). Before, any 3 of C, L, IC and I with no M region triggered it. | as above | as above (grouping only; the note's clinical suggestion is not source-audited) |
-| `m1-m6-note-names-its-trigger` | The collateral note now reads "Complete M1-M6 cortical involvement ...". The trigger (M1-M6 all involved) is unchanged. | `dubey2013` Figure 1 caption | MCA cortex includes the insular cortex, so "complete cortical MCA involvement" overstated a trigger that never required the insula. |
 | `score-is-ten-minus-regions` | Ten region checkboxes; ASPECTS = 10 minus affected regions. Checked for all 1024 combinations; unchanged by this PR. | `barber2000` Abstract, Methods; `dubey2013` Figure 1 caption | The score splits the MCA territory into ten regions. The template gives 3 points to the three subcortical regions and 7 to the seven cortical ones, one point per region. |
 | `region-labels-name-template-regions` | The ten labels, e.g. "M1 - Anterior MCA Cortex (Ganglionic Level)" and "M4 - Anterior MCA Territory (Supraganglionic)" | `dubey2013` Figure 1 caption | The template key names C, I, IC and L; M1, M2 and M3 as the front, lateral and back MCA cortex; and M4, M5 and M6 as the matching territories above them. |
 | `two-levels-in-info-text` | Info text lists C, L, IC, I and M1-M3 under the ganglionic level and M4-M6 under the supraganglionic level. | `dubey2013` Figure 1 caption | M4-M6 lie directly above M1-M3, higher than the basal ganglia. |
 | `m2-lateral-to-insular-ribbon` | M2 subLabel "Anterior temporal lobe, lateral to insular ribbon" and info line: the "lateral to insular ribbon" part | `dubey2013` Figure 1 caption | M2 is the MCA cortex on the lateral side of the insular ribbon. |
-| `m3-posterior-mca-cortex-behind-m2` | M3 subLabel changes from "Posterior temporal lobe at ganglionic level" to "MCA cortex behind M2". The info line "M3 - Posterior temporal lobe (posterior MCA cortex)" becomes "M3 - Posterior MCA cortex (behind M2)". | `dubey2013` Figure 1 caption | M3 is the back part of the MCA cortex, after the front (M1) and lateral (M2) parts. No source equates M3 with the posterior temporal lobe. |
+| `m3-posterior-mca-cortex` | M3 subLabel changes from "Posterior temporal lobe at ganglionic level" to "Posterior MCA cortex", the template's own term. The info line "M3 - Posterior temporal lobe (posterior MCA cortex)" becomes "M3 - Posterior MCA cortex". An earlier version of this PR added "behind M2"; no source states that relation, so it was dropped (primary judge on #305). | `dubey2013` Figure 1 caption | The template key names M3 the posterior MCA cortex. No source equates M3 with the posterior temporal lobe. |
 | `m4-m6-immediately-superior` | M4-M6 subLabels "Immediately superior to M1/M2/M3" and info lines | `dubey2013` Figure 1 caption | M4-M6 are the front, lateral and back MCA territories directly above M1-M3. |
 | `insular-ribbon-is-insular-cortex` | I subLabel "Insular cortex / ..." and info line "I - Insular ribbon (insular cortex)" | `dubey2013` Figure 1 caption | The insular ribbon region is scored as insular cortex, one of the 7 cortical points. |
 
@@ -129,7 +145,7 @@ a marker of at most six words.
 | `caudate-head` | Label "C - Caudate Head"; info line "C - Caudate head" | `pexman2001` Fig 1 legend, starts at "C = caudate head;". Also `developers_site` "Insula and basal ganglia", Basal ganglia section, starts at "The caudate nucleus is assessed in". | The study-form key names the caudate head. The developers assess the caudate head on the ganglionic level, and its body and tail on the supraganglionic level. |
 | `one-point-subtracted-per-region` (supplements `score-is-ten-minus-regions`) | Info text: subtract 1 point for each affected region | `pexman2001` Methods, starts at "The ASPECTS was determined from two". Also `developers_site` "What is ASPECTS", How to compute ASPECTS, starts at "To compute the ASPECTS, 1 point". | ASPECTS is read on two standard cuts. The MCA territory is worth 10 points, and one point comes off for early ischemic change in each defined region. |
 | `level-assignment-at-caudate-head` (supplements `breakdown-insula-is-ganglionic-cortex`) | Breakdown and info text place I with M1-M3 on the ganglionic level | `developers_site` Training "M1-M6 regions", starts at "Any ischemic lesion on axial CT" and "Ischemic lesions above the level of" | A lesion at or below the caudate-head level is assigned to a ganglionic region (M1-M3, insula, caudate, lentiform nucleus, internal capsule). A lesion above it is assigned to M4-M6. |
-| `m-areas-geometric-and-sylvian-divisions` (supplements `m3-posterior-mca-cortex-behind-m2`) | M3 wording names no lobe | `pexman2001` Results, M-area paragraph, starts at "It was stressed that the M5". Also Discussion, paragraph on CT baselines, starts at "On the ganglionic level, the anatomic". | The M areas are geometric rather than anatomic, and on the ganglionic cut the developers drew the divisions from the two ends of the sylvian fissure. |
+| `m-areas-geometric-and-sylvian-divisions` (supplements `m3-posterior-mca-cortex`) | M3 wording names no lobe | `pexman2001` Results, M-area paragraph, starts at "It was stressed that the M5". Also Discussion, paragraph on CT baselines, starts at "On the ganglionic level, the anatomic". | The M areas are geometric rather than anatomic, and on the ganglionic cut the developers drew the divisions from the two ends of the sylvian fissure. |
 
 **Reference digests, not enforced.** When these documented statements were
 read on 2026-09-28, the extraction code in commit `806e37c`
@@ -154,9 +170,11 @@ SHA-256 values:
 
 - The lentiform subLabel "Putamen and globus pallidus". This is standard
   anatomy and none of these sources states it.
-- The clinical suggestions in the pattern notes (proximal M1 occlusion,
-  lenticulostriate territory, collateral status). Only their region grouping is
-  bound here.
+- The two remaining pattern notes: insular ribbon with lentiform nucleus
+  ("... suggests proximal M1 occlusion with poor collaterals"), and caudate with
+  internal capsule ("... may indicate lenticulostriate artery territory
+  infarction"). They are unchanged from develop and no cited source states them.
+  Sourcing or removing them is a separate follow-up.
 - Thrombectomy eligibility, time-window and trial-threshold text.
 - Whole-calculator clinical acceptance.
 
@@ -164,13 +182,14 @@ SHA-256 values:
 
 - `tests/aspects-regions-compute.test.mjs` covers:
   - the breakdown vectors;
-  - all 1024 region combinations (score, breakdown and both notes);
+  - all 1024 region combinations: score and breakdown, the two removed notes
+    never shown, and the two remaining notes firing exactly as on develop;
   - the exact subLabels;
   - the rendering guardrails (no parentheses, no repeated level);
   - the info-text region list.
 - `tests/e2e/calculators/neuroradiology/aspects-score.spec.js` covers the
-  visible breakdown, the isolated-insula case, the note boundary, the renamed
-  collateral note and the M3 info line.
+  visible breakdown, the isolated-insula case, the absence of both removed
+  notes (C, L and IC alone; all of M1-M6), and the M3 info line.
 - `scripts/audit-aspects-region-source.test.mjs` runs the live audit. It then
   replays the fetched bytes through `retrieve()` with a counting fake fetch.
   For both sources, each failure mode must fail at once with exactly one fetch
@@ -191,8 +210,10 @@ SHA-256 values:
   - one request at a time, each booked in the shared request spacing and
     written to the fetch log;
   - a redirect, which is never followed;
-  - a reverted calculator (old grouping, old note trigger, old M3 text, the
-    reviewer's IC text, a level-repeating M1 or M3 subLabel, and "(-1 point)");
+  - a reverted calculator: the old grouping; a removed note shown again, under
+    develop's trigger, the earlier PR trigger or reworded; "behind M2"; the old
+    M3 text; the reviewer's IC text; a level-repeating M1 or M3 subLabel; and
+    "(-1 point)";
   - that every documented claim is listed here.
 
   It also writes weakened copies of the audit to a temporary directory:

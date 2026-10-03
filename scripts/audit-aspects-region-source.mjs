@@ -222,7 +222,7 @@ export const RUNTIME_SUBLABELS = Object.freeze({
   insular: "Insular cortex / loss of insular ribbon",
   m1: "Frontal operculum",
   m2: "Anterior temporal lobe, lateral to insular ribbon",
-  m3: "MCA cortex behind M2",
+  m3: "Posterior MCA cortex",
   m4: "Immediately superior to M1",
   m5: "Immediately superior to M2",
   m6: "Immediately superior to M3",
@@ -234,7 +234,7 @@ export const RUNTIME_INFO_GANGLIONIC = Object.freeze([
   "• I - Insular ribbon (insular cortex)",
   "• M1 - Frontal operculum (anterior MCA cortex)",
   "• M2 - Anterior temporal lobe (lateral to insular ribbon)",
-  "• M3 - Posterior MCA cortex (behind M2)",
+  "• M3 - Posterior MCA cortex",
 ]);
 export const RUNTIME_INFO_SUPRAGANGLIONIC = Object.freeze([
   "• M4 - Anterior MCA territory (superior to M1)",
@@ -246,11 +246,14 @@ const SUBCORTICAL = Object.freeze(["caudate", "lentiform", "internal_capsule"]);
 const GANGLIONIC_CORTICAL = Object.freeze(["insular", "m1", "m2", "m3"]);
 const SUPRAGANGLIONIC_CORTICAL = Object.freeze(["m4", "m5", "m6"]);
 const REGION_IDS = Object.freeze([...SUBCORTICAL, ...GANGLIONIC_CORTICAL, ...SUPRAGANGLIONIC_CORTICAL]);
-const M1_TO_M6 = Object.freeze(["m1", "m2", "m3", "m4", "m5", "m6"]);
-export const PREDOMINANTLY_SUBCORTICAL_NOTE =
-  "Predominantly subcortical involvement - consider lenticulostriate territory infarction";
-export const COMPLETE_M1_M6_NOTE =
-  "Complete M1-M6 cortical involvement suggests very poor collateral circulation";
+// Pattern notes removed because no cited source states their clinical associations or their
+// region boundaries (primary judge on #305): the predominantly-subcortical (lenticulostriate)
+// note, and the collateral-circulation note in its develop and earlier-PR wording.
+export const REMOVED_PATTERN_NOTES = Object.freeze([
+  "Predominantly subcortical involvement - consider lenticulostriate territory infarction",
+  "Complete cortical MCA involvement suggests very poor collateral circulation",
+  "Complete M1-M6 cortical involvement suggests very poor collateral circulation",
+]);
 
 export function breakdownText(subcortical, ganglionicCortical, supraganglionic) {
   return `Subcortical (C, L, IC): ${subcortical}/3 | Ganglionic cortical (I, M1-M3): ${ganglionicCortical}/4 | Supraganglionic (M4-M6): ${supraganglionic}/3`;
@@ -273,16 +276,6 @@ export const CLAIM_BINDINGS = Object.freeze(
       basis:
         "the insular cortex is one of the 7 cortical points; the template defines M2 by its position beside the insular ribbon, so the ribbon lies on the lower cut with M1-M3, and M4-M6 are the territories above M1-M3, higher than the basal ganglia",
       source_statement_ids: ["dubey2013-fig1-cortex-seven-points", "dubey2013-fig1-region-definitions"],
-    },
-    {
-      claim_id: "subcortical-note-uses-corrected-grouping",
-      runtime: "the predominantly-subcortical note needs C, L and IC with no cortical region (I, M1-M6)",
-      source_statement_ids: ["dubey2013-fig1-subcortical-three-points", "dubey2013-fig1-cortex-seven-points"],
-    },
-    {
-      claim_id: "m1-m6-note-names-its-trigger",
-      runtime: "the collateral note fires on M1-M6 and names M1-M6 rather than all MCA cortex",
-      source_statement_ids: ["dubey2013-fig1-cortex-seven-points"],
     },
     {
       claim_id: "score-is-ten-minus-regions",
@@ -315,12 +308,10 @@ export const CLAIM_BINDINGS = Object.freeze(
       source_statement_ids: ["dubey2013-fig1-region-definitions"],
     },
     {
-      claim_id: "m3-posterior-mca-cortex-behind-m2",
-      runtime: "M3 subLabel and info line: posterior MCA cortex behind M2, no lobe named",
-      basis:
-        "the template names M1, M2 and M3 as the front, lateral and back parts of the MCA cortex, so M3 is the back part, behind M2",
+      claim_id: "m3-posterior-mca-cortex",
+      runtime: "M3 subLabel and info line: posterior MCA cortex, the template's own term, with no lobe named",
       sublabels: ["m3"],
-      info_lines: info("• M3 - Posterior MCA cortex (behind M2)"),
+      info_lines: info("• M3 - Posterior MCA cortex"),
       source_statement_ids: ["dubey2013-fig1-region-definitions"],
     },
     {
@@ -402,7 +393,7 @@ export const DOCUMENTED_ONLY = Object.freeze(
     {
       claim_id: "m-areas-geometric-and-sylvian-divisions",
       runtime: "M3 wording names no lobe",
-      supplements: "m3-posterior-mca-cortex-behind-m2",
+      supplements: "m3-posterior-mca-cortex",
       sources: [
         "pexman2001: Results, M-area paragraph (the M areas are geometric)",
         "pexman2001: Discussion, paragraph on CT baselines (ganglionic divisions follow the ends of the sylvian fissure)",
@@ -783,17 +774,14 @@ export function verifyRuntime(calculator = ASPECTSScore, calculatorSource = null
       breakdownText(subcortical, ganglionicCortical, supraganglionicCortical),
       `${label}: Regional Breakdown grouping`,
     );
-    assert.equal(
-      notes.includes(PREDOMINANTLY_SUBCORTICAL_NOTE),
-      subcortical === 3 && ganglionicCortical + supraganglionicCortical === 0,
-      `${label}: predominantly-subcortical note must follow the corrected grouping`,
+    for (const removed of REMOVED_PATTERN_NOTES) {
+      assert.ok(!notes.includes(removed), `${label}: removed pattern note is shown again: ${removed}`);
+    }
+    assert.doesNotMatch(
+      result["Clinical Notes"] ?? "",
+      /collateral circulation|predominantly subcortical/i,
+      `${label}: a removed pattern note's claim is shown again`,
     );
-    assert.equal(
-      notes.includes(COMPLETE_M1_M6_NOTE),
-      M1_TO_M6.every((id) => affected.includes(id)),
-      `${label}: M1-M6 note trigger`,
-    );
-    assert.doesNotMatch(result["Clinical Notes"] ?? "", /Complete cortical MCA involvement/, `${label}: old note text`);
     cells += 1;
   }
   assert.equal(cells, 1024, "all 1024 region combinations must be checked");
@@ -813,6 +801,8 @@ export function verifyRuntime(calculator = ASPECTSScore, calculatorSource = null
       "Subcortical: ${subcorticalAffected}/4",
       "(-1 point)",
       "at ganglionic level",
+      "behind M2",
+      ...REMOVED_PATTERN_NOTES,
     ]) {
       assert.ok(!calculatorSource.includes(removed), `calculator source still contains ${JSON.stringify(removed)}`);
     }
@@ -827,12 +817,6 @@ export function verifyRuntime(calculator = ASPECTSScore, calculatorSource = null
   };
   bindings["breakdown-subcortical-is-c-l-ic"] = { ...grouping };
   bindings["breakdown-insula-is-ganglionic-cortex"] = { ...grouping, cortical_points: 7 };
-  bindings["subcortical-note-uses-corrected-grouping"] = {
-    note: PREDOMINANTLY_SUBCORTICAL_NOTE,
-    requires: ["caudate", "lentiform", "internal_capsule"],
-    excludes_any: [...GANGLIONIC_CORTICAL, ...SUPRAGANGLIONIC_CORTICAL],
-  };
-  bindings["m1-m6-note-names-its-trigger"] = { note: COMPLETE_M1_M6_NOTE, requires: [...M1_TO_M6] };
   bindings["score-is-ten-minus-regions"] = {
     region_checkboxes: REGION_IDS.length,
     region_combinations_checked: cells,
@@ -854,7 +838,7 @@ export function verifyRuntime(calculator = ASPECTSScore, calculatorSource = null
   documented["one-point-subtracted-per-region"] = { info_rule: RUNTIME_INFO_SCORING_RULE };
   documented["level-assignment-at-caudate-head"] = { ...grouping };
   documented["m-areas-geometric-and-sylvian-divisions"] = runtimeTexts(
-    { sublabels: ["m3"], info_lines: ["• M3 - Posterior MCA cortex (behind M2)"] },
+    { sublabels: ["m3"], info_lines: ["• M3 - Posterior MCA cortex"] },
     labels,
     subLabels,
   );
@@ -945,10 +929,18 @@ export function buildAudit(retrieved, { calculator = ASPECTSScore, calculatorSou
       score_arithmetic_changed: false,
       not_asserted: [
         "lentiform nucleus composition (putamen and globus pallidus): standard anatomy, not stated by these sources",
-        "clinical pattern notes (proximal M1 occlusion, lenticulostriate territory, collateral status): only their region grouping is bound",
+        "the two remaining pattern notes (insular ribbon with lentiform nucleus: proximal M1 occlusion with poor collaterals; caudate with internal capsule: lenticulostriate territory) are unchanged from develop and not asserted",
         "thrombectomy eligibility, time-window and trial-threshold text",
         "whole-calculator clinical acceptance",
       ],
+    },
+    removed_notes: {
+      provenance: "radulator-scope-decision",
+      publication_derived: false,
+      reason:
+        "no cited source states these clinical associations or their region boundaries (primary judge on #305), so the notes are removed rather than re-triggered on the corrected grouping",
+      notes: [...REMOVED_PATTERN_NOTES],
+      region_combinations_checked: runtime.cells,
     },
     source_bytes_committed: false,
   };

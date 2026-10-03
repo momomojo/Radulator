@@ -55,10 +55,12 @@ test.describe("ASPECTS Score Calculator", () => {
     test("should describe M3 as posterior MCA cortex, not a named lobe", async ({
       page,
     }) => {
+      // The info line uses the template's own term (primary judge on #305).
       await expect(
-        page.getByText("M3 - Posterior MCA cortex (behind M2)").first(),
+        page.getByText("• M3 - Posterior MCA cortex").first(),
       ).toBeVisible();
       await expect(page.getByText("Posterior temporal lobe")).toHaveCount(0);
+      await expect(page.getByText("behind M2")).toHaveCount(0);
     });
 
     test("should have all 10 brain region checkboxes", async ({ page }) => {
@@ -429,7 +431,9 @@ test.describe("ASPECTS Score Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should limit the predominantly subcortical note to C, L and IC without cortical involvement", async ({
+    // The predominantly-subcortical and collateral-circulation notes were removed: no cited
+    // source states their clinical associations (primary judge on #305).
+    test("should not show the removed predominantly subcortical note for C, L and IC", async ({
       page,
     }) => {
       await page.locator('label[for="laterality-left"]').click();
@@ -439,11 +443,16 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results.locator("text=7 / 10").first()).toBeVisible();
       await expect(
-        results.locator("text=Predominantly subcortical involvement").first(),
+        results.locator("text=Predominantly subcortical involvement"),
+      ).toHaveCount(0);
+      // The unchanged caudate and internal capsule note still shows.
+      await expect(
+        results.locator("text=lenticulostriate artery territory").first(),
       ).toBeVisible();
 
-      // Adding the insular ribbon (cortex) removes the note.
+      // Adding the insular ribbon keeps the unchanged proximal-M1 note.
       await page.locator('label[for="insular"]').click();
       await page.click('button:has-text("Calculate")');
       await expect(results.locator("text=6 / 10").first()).toBeVisible();
@@ -457,7 +466,7 @@ test.describe("ASPECTS Score Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should show complete cortical involvement note", async ({ page }) => {
+    test("should not show a collateral-circulation note for M1-M6 involvement", async ({ page }) => {
       await page.locator('label[for="laterality-left"]').click();
       await page.locator('label[for="m1"]').click();
       await page.locator('label[for="m2"]').click();
@@ -468,12 +477,13 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results.locator("text=4 / 10").first()).toBeVisible();
       await expect(
-        results.locator("text=Complete M1-M6 cortical involvement").first(),
-      ).toBeVisible();
+        results.locator("text=Complete M1-M6 cortical involvement"),
+      ).toHaveCount(0);
       await expect(
-        results.locator("text=very poor collateral circulation").first(),
-      ).toBeVisible();
+        results.locator("text=collateral circulation"),
+      ).toHaveCount(0);
     });
   });
 

@@ -526,9 +526,9 @@
         "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 4/4 | Supraganglionic (M4-M6): 3/3",
         "Thrombectomy Eligibility": "Historically excluded from EVT trials; emerging data suggests some patients may benefit (individualized decision)",
         "Prognostic Implication": "Poor prognosis; high risk of hemorrhagic transformation; consider goals of care discussion",
-        "Clinical Notes": "Complete M1-M6 cortical involvement suggests very poor collateral circulation"
+        "Clinical Notes": "Involvement of both insular ribbon and lentiform nucleus suggests proximal M1 occlusion with poor collaterals; Caudate and internal capsule involvement may indicate lenticulostriate artery territory infarction"
       },
-      "calculationSteps": "Step 1: All 10 regions affected. Step 2: ASPECTS = 10 - 10 = 0. Step 3: Complete MCA territory infarction with poor collaterals.",
+      "calculationSteps": "Step 1: All 10 regions affected. Step 2: ASPECTS = 10 - 10 = 0. Step 3: Complete MCA territory involvement.",
       "medicalReference": "ASPECTS 0 indicates complete MCA territory early ischemic changes"
     },
     {
@@ -553,16 +553,15 @@
         "ASPECTS Score": "4 / 10",
         "Interpretation": "Large infarct core (ASPECTS 3-5)",
         "Regions Affected": "6 region(s): M1, M2, M3, M4, M5, M6",
-        "Regional Breakdown": "Subcortical (C, L, IC): 0/3 | Ganglionic cortical (I, M1-M3): 3/4 | Supraganglionic (M4-M6): 3/3",
-        "Clinical Notes": "Complete M1-M6 cortical involvement suggests very poor collateral circulation"
+        "Regional Breakdown": "Subcortical (C, L, IC): 0/3 | Ganglionic cortical (I, M1-M3): 3/4 | Supraganglionic (M4-M6): 3/3"
       },
       "calculationSteps": "Step 1: All 6 M regions (M1-M6) affected. Step 2: ASPECTS = 10 - 6 = 4. Step 3: Complete M1-M6 cortical involvement pattern.",
       "medicalReference": "Pure cortical involvement with subcortical sparing may indicate M2 division occlusion"
     },
     {
-      "testName": "Predominantly subcortical pattern (all 3: C, L, IC)",
+      "testName": "All three subcortical regions (C, L, IC), no cortical region",
       "category": "Clinical Patterns",
-      "description": "All three subcortical regions with no cortical involvement - lenticulostriate territory",
+      "description": "All three subcortical regions with no cortical involvement; the removed predominantly-subcortical note does not show",
       "inputs": {
         "laterality": "right",
         "caudate": true,
@@ -582,10 +581,10 @@
         "Interpretation": "Moderate early ischemic changes",
         "Regions Affected": "3 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule)",
         "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 0/4 | Supraganglionic (M4-M6): 0/3",
-        "Clinical Notes": "Predominantly subcortical involvement - consider lenticulostriate territory infarction"
+        "Clinical Notes": "Caudate and internal capsule involvement may indicate lenticulostriate artery territory infarction"
       },
-      "calculationSteps": "Step 1: C + L + IC affected (3 subcortical regions). Step 2: ASPECTS = 10 - 3 = 7. Step 3: Pattern suggests lenticulostriate territory.",
-      "medicalReference": "Lenticulostriate infarction may occur with M1 occlusion or perforator disease"
+      "calculationSteps": "Step 1: C + L + IC affected (3 subcortical regions). Step 2: ASPECTS = 10 - 3 = 7. Step 3: Only the unchanged caudate and internal capsule note shows.",
+      "medicalReference": "ASPECTS template: C, L and IC are the three subcortical points (Dubey 2013 Figure 1)"
     },
     {
       "testName": "Supraganglionic only pattern (M4-M6)",
@@ -809,7 +808,7 @@
       "I": "Insular ribbon - insular cortex, early MCA stroke indicator",
       "M1": "Frontal operculum - anterior MCA cortex at ganglionic level",
       "M2": "Anterior temporal lobe - lateral to insular ribbon",
-      "M3": "Posterior MCA cortex at ganglionic level - behind M2"
+      "M3": "Posterior MCA cortex at ganglionic level"
     },
     "supraganglionicCortical": {
       "M4": "Anterior MCA territory - immediately superior to M1",
@@ -854,7 +853,6 @@
     "Insular ribbon sign is often the earliest CT finding in MCA stroke",
     "Combined insular + lentiform involvement suggests proximal M1 occlusion with poor collaterals",
     "Caudate + internal capsule involvement suggests lenticulostriate territory infarction",
-    "Complete cortical (M1-M6) involvement indicates very poor collateral circulation",
     "ASPECTS >= 6 was the standard threshold for EVT in 2015 landmark trials",
     "Large core trials (SELECT2, ANGEL-ASPECT) extended EVT benefit to ASPECTS 3-5 in 2022-2023",
     "Time window assessment requires integration with clinical and perfusion imaging data"

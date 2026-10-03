@@ -11,12 +11,18 @@ const GANGLIONIC_CORTICAL = ["insular", "m1", "m2", "m3"];
 const SUPRAGANGLIONIC_CORTICAL = ["m4", "m5", "m6"];
 const REGION_IDS = [...SUBCORTICAL, ...GANGLIONIC_CORTICAL, ...SUPRAGANGLIONIC_CORTICAL];
 
-const PREDOMINANTLY_SUBCORTICAL_NOTE =
-  "Predominantly subcortical involvement - consider lenticulostriate territory infarction";
+// The two pattern notes unchanged from develop.
 const PROXIMAL_M1_NOTE =
   "Involvement of both insular ribbon and lentiform nucleus suggests proximal M1 occlusion with poor collaterals";
-const COMPLETE_M1_M6_NOTE =
-  "Complete M1-M6 cortical involvement suggests very poor collateral circulation";
+const LENTICULOSTRIATE_NOTE =
+  "Caudate and internal capsule involvement may indicate lenticulostriate artery territory infarction";
+// Removed: no cited source states their clinical associations or region boundaries (primary
+// judge on #305).
+const REMOVED_NOTES = [
+  "Predominantly subcortical involvement - consider lenticulostriate territory infarction",
+  "Complete cortical MCA involvement suggests very poor collateral circulation",
+  "Complete M1-M6 cortical involvement suggests very poor collateral circulation",
+];
 
 function inputsFor(affected) {
   const values = { laterality: "left", time_from_onset: "" };
@@ -82,52 +88,34 @@ test("all 1024 region combinations keep score = 10 - regions and a breakdown tha
     );
     assert.equal(subcortical + ganglionicCortical + supraganglionic, affected.length, `mask ${mask}`);
 
-    const predominantlySubcortical = subcortical === 3 && ganglionicCortical + supraganglionic === 0;
+    // The removed notes never appear; the two remaining pattern notes fire exactly as on develop.
+    const notes = clinicalNotes(result);
+    for (const removed of REMOVED_NOTES) assert.ok(!notes.includes(removed), `mask ${mask}: ${removed}`);
+    assert.doesNotMatch(result["Clinical Notes"] ?? "", /collateral circulation|predominantly subcortical/i, `mask ${mask}`);
     assert.equal(
-      clinicalNotes(result).includes(PREDOMINANTLY_SUBCORTICAL_NOTE),
-      predominantlySubcortical,
-      `mask ${mask}: predominantly-subcortical note`,
+      notes.includes(PROXIMAL_M1_NOTE),
+      affected.includes("insular") && affected.includes("lentiform"),
+      `mask ${mask}: proximal-M1 note`,
     );
     assert.equal(
-      clinicalNotes(result).includes(COMPLETE_M1_M6_NOTE),
-      ["m1", "m2", "m3", "m4", "m5", "m6"].every((id) => affected.includes(id)),
-      `mask ${mask}: complete M1-M6 note`,
+      notes.includes(LENTICULOSTRIATE_NOTE),
+      affected.includes("caudate") && affected.includes("internal_capsule"),
+      `mask ${mask}: caudate and internal capsule note`,
     );
   }
 });
 
-test("predominantly-subcortical note needs C, L and IC with no cortical region, insula included", () => {
-  const vectors = [
-    { id: "c-l-ic", affected: ["caudate", "lentiform", "internal_capsule"], note: true },
-    { id: "c-l-ic-i", affected: ["caudate", "lentiform", "internal_capsule", "insular"], note: false },
-    { id: "c-l-i", affected: ["caudate", "lentiform", "insular"], note: false },
-    { id: "c-ic-i", affected: ["caudate", "internal_capsule", "insular"], note: false },
-    { id: "l-ic-i", affected: ["lentiform", "internal_capsule", "insular"], note: false },
-    { id: "c-l-ic-m4", affected: ["caudate", "lentiform", "internal_capsule", "m4"], note: false },
-  ];
-  for (const vector of vectors) {
-    const notes = clinicalNotes(ASPECTSScore.compute(inputsFor(vector.affected)));
-    assert.equal(notes.includes(PREDOMINANTLY_SUBCORTICAL_NOTE), vector.note, vector.id);
-  }
-  // Insular + lentiform keeps the proximal-M1 note and no longer also offers a
-  // lenticulostriate-territory explanation for the same scan.
-  const notes = clinicalNotes(ASPECTSScore.compute(inputsFor(["caudate", "lentiform", "insular"])));
-  assert.ok(notes.includes(PROXIMAL_M1_NOTE));
-  assert.ok(!notes.includes(PREDOMINANTLY_SUBCORTICAL_NOTE));
-});
-
-test("complete M1-M6 note keeps its M1-M6 trigger and names those regions", () => {
-  const m1ToM6 = ["m1", "m2", "m3", "m4", "m5", "m6"];
-  assert.ok(clinicalNotes(ASPECTSScore.compute(inputsFor(m1ToM6))).includes(COMPLETE_M1_M6_NOTE));
-  assert.ok(!clinicalNotes(ASPECTSScore.compute(inputsFor(m1ToM6.slice(0, 5)))).includes(COMPLETE_M1_M6_NOTE));
-  for (let mask = 0; mask < 1 << REGION_IDS.length; mask += 1) {
-    const affected = REGION_IDS.filter((_, index) => mask & (1 << index));
-    assert.doesNotMatch(
-      ASPECTSScore.compute(inputsFor(affected))["Clinical Notes"] ?? "",
-      /Complete cortical MCA involvement/,
-      `mask ${mask}`,
-    );
-  }
+test("removed pattern notes: C, L and IC alone and all of M1-M6 show only the unchanged notes", () => {
+  // C + L + IC with no cortical region: only the unchanged caudate and internal capsule note.
+  assert.deepEqual(clinicalNotes(ASPECTSScore.compute(inputsFor(["caudate", "lentiform", "internal_capsule"]))), [
+    LENTICULOSTRIATE_NOTE,
+  ]);
+  // All of M1-M6: no collateral-circulation note.
+  assert.deepEqual(clinicalNotes(ASPECTSScore.compute(inputsFor(["m1", "m2", "m3", "m4", "m5", "m6"]))), []);
+  // Insular + lentiform keeps the unchanged proximal-M1 note.
+  assert.deepEqual(clinicalNotes(ASPECTSScore.compute(inputsFor(["caudate", "lentiform", "insular"]))), [
+    PROXIMAL_M1_NOTE,
+  ]);
 });
 
 test("region subLabels keep the audited wording and render without nested parentheses", () => {
@@ -144,7 +132,7 @@ test("region subLabels keep the audited wording and render without nested parent
     insular: "Insular cortex / loss of insular ribbon",
     m1: "Frontal operculum",
     m2: "Anterior temporal lobe, lateral to insular ribbon",
-    m3: "MCA cortex behind M2",
+    m3: "Posterior MCA cortex",
     m4: "Immediately superior to M1",
     m5: "Immediately superior to M2",
     m6: "Immediately superior to M3",
@@ -179,8 +167,9 @@ test("region subLabels keep the audited wording and render without nested parent
 
 test("info text keeps the region list consistent with the subLabels", () => {
   const text = ASPECTSScore.info.text;
-  assert.ok(text.includes("• M3 - Posterior MCA cortex (behind M2)"));
+  assert.ok(text.includes("• M3 - Posterior MCA cortex\n"));
   assert.doesNotMatch(text, /Posterior temporal lobe/);
+  assert.doesNotMatch(text, /behind M2/, "M3 uses the template's own term (primary judge on #305)");
   assert.ok(text.includes("• IC - Internal capsule (posterior limb)"));
   assert.ok(text.includes("subtract 1 point for each region"));
 });

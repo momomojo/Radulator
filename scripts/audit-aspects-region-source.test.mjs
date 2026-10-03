@@ -222,11 +222,6 @@ test("report pins every statement span by digest and binds every fetched stateme
         ["dubey2013-fig1-cortex-seven-points", "dubey2013-fig1-region-definitions"],
       ],
       [
-        "subcortical-note-uses-corrected-grouping",
-        ["dubey2013-fig1-subcortical-three-points", "dubey2013-fig1-cortex-seven-points"],
-      ],
-      ["m1-m6-note-names-its-trigger", ["dubey2013-fig1-cortex-seven-points"]],
-      [
         "score-is-ten-minus-regions",
         [
           "barber2000-abstract-ten-regions",
@@ -237,7 +232,7 @@ test("report pins every statement span by digest and binds every fetched stateme
       ["region-labels-name-template-regions", ["dubey2013-fig1-region-definitions"]],
       ["two-levels-in-info-text", ["dubey2013-fig1-region-definitions"]],
       ["m2-lateral-to-insular-ribbon", ["dubey2013-fig1-region-definitions"]],
-      ["m3-posterior-mca-cortex-behind-m2", ["dubey2013-fig1-region-definitions"]],
+      ["m3-posterior-mca-cortex", ["dubey2013-fig1-region-definitions"]],
       ["m4-m6-immediately-superior", ["dubey2013-fig1-region-definitions"]],
       ["insular-ribbon-is-insular-cortex", ["dubey2013-fig1-region-definitions", "dubey2013-fig1-cortex-seven-points"]],
     ],
@@ -251,13 +246,19 @@ test("report pins every statement span by digest and binds every fetched stateme
   assert.deepEqual(byClaim["breakdown-insula-is-ganglionic-cortex"].ganglionic_cortical, ["insular", "m1", "m2", "m3"]);
   assert.equal(byClaim["breakdown-insula-is-ganglionic-cortex"].cortical_points, 7);
   assert.equal(byClaim["score-is-ten-minus-regions"].region_combinations_checked, 1024);
-  assert.deepEqual(byClaim["m3-posterior-mca-cortex-behind-m2"].sublabels, { m3: "MCA cortex behind M2" });
+  assert.deepEqual(byClaim["m3-posterior-mca-cortex"].sublabels, { m3: "Posterior MCA cortex" });
+  assert.deepEqual(byClaim["m3-posterior-mca-cortex"].info_lines, ["• M3 - Posterior MCA cortex"]);
   assert.deepEqual(byClaim["m2-lateral-to-insular-ribbon"].sublabels, {
     m2: "Anterior temporal lobe, lateral to insular ribbon",
   });
   assert.equal(Object.keys(byClaim["region-labels-name-template-regions"].labels).length, 10);
   assert.equal(report.runtime.region_combinations_checked, 1024);
   assert.equal(report.scope.score_arithmetic_changed, false);
+  // The two pattern notes the primary judge on #305 found unsourced are removed, and their
+  // absence is checked over every region combination.
+  assert.deepEqual(report.removed_notes.notes, [...audit.REMOVED_PATTERN_NOTES]);
+  assert.equal(report.removed_notes.publication_derived, false);
+  assert.equal(report.removed_notes.region_combinations_checked, 1024);
 });
 
 test("documented-only claims are listed with their sources and pinned runtime text", () => {
@@ -271,7 +272,7 @@ test("documented-only claims are listed with their sources and pinned runtime te
       ["caudate-head", null],
       ["one-point-subtracted-per-region", "score-is-ten-minus-regions"],
       ["level-assignment-at-caudate-head", "breakdown-insula-is-ganglionic-cortex"],
-      ["m-areas-geometric-and-sylvian-divisions", "m3-posterior-mca-cortex-behind-m2"],
+      ["m-areas-geometric-and-sylvian-divisions", "m3-posterior-mca-cortex"],
     ],
   );
   const byClaim = Object.fromEntries(report.documented_only.map((claim) => [claim.claim_id, claim]));
@@ -449,20 +450,45 @@ test("runtime mutations fail the binding", () => {
   });
   assert.throws(() => audit.verifyRuntime(oldBreakdown), /Regional Breakdown grouping/);
 
-  // Old note trigger: any three of C, L, IC, I with no M region.
-  const oldNote = calculatorWith({
-    compute: (values) => {
-      const result = ASPECTSScore.compute(values);
-      const deep = ["caudate", "lentiform", "internal_capsule", "insular"].filter((id) => values[id]).length;
-      const m = ["m1", "m2", "m3", "m4", "m5", "m6"].filter((id) => values[id]).length;
-      const notes = (result["Clinical Notes"] ?? "").split("; ").filter(Boolean);
-      const without = notes.filter((note) => note !== audit.PREDOMINANTLY_SUBCORTICAL_NOTE);
-      if (deep >= 3 && m === 0) without.push(audit.PREDOMINANTLY_SUBCORTICAL_NOTE);
-      result["Clinical Notes"] = without.join("; ");
-      return result;
-    },
-  });
-  assert.throws(() => audit.verifyRuntime(oldNote), /predominantly-subcortical note/);
+  // The removed pattern notes (primary judge on #305) must not come back, under any trigger:
+  // develop's insula-as-subcortical trigger, the earlier PR trigger, or the collateral note.
+  const withNote = (note, fires) =>
+    calculatorWith({
+      compute: (values) => {
+        const result = ASPECTSScore.compute(values);
+        if (fires(values)) {
+          const notes = (result["Clinical Notes"] ?? "").split("; ").filter(Boolean);
+          result["Clinical Notes"] = [...notes, note].join("; ");
+        }
+        return result;
+      },
+    });
+  const count = (values, ids) => ids.filter((id) => values[id]).length;
+  const developSubcortical = (values) =>
+    count(values, ["caudate", "lentiform", "internal_capsule", "insular"]) >= 3 &&
+    count(values, ["m1", "m2", "m3", "m4", "m5", "m6"]) === 0;
+  const correctedSubcortical = (values) =>
+    count(values, ["caudate", "lentiform", "internal_capsule"]) === 3 &&
+    count(values, ["insular", "m1", "m2", "m3", "m4", "m5", "m6"]) === 0;
+  const allM = (values) => count(values, ["m1", "m2", "m3", "m4", "m5", "m6"]) === 6;
+  const [subcorticalNote, developCollateral, prCollateral] = audit.REMOVED_PATTERN_NOTES;
+  for (const [note, fires] of [
+    [subcorticalNote, developSubcortical],
+    [subcorticalNote, correctedSubcortical],
+    [developCollateral, allM],
+    [prCollateral, allM],
+  ]) {
+    assert.throws(() => audit.verifyRuntime(withNote(note, fires)), /removed pattern note is shown again/);
+  }
+  // A reworded version of either claim is caught too.
+  assert.throws(
+    () => audit.verifyRuntime(withNote("All six M regions involved: very poor collateral circulation", allM)),
+    /a removed pattern note's claim is shown again/,
+  );
+  assert.throws(
+    () => audit.verifyRuntime(withNote("Predominantly subcortical pattern", correctedSubcortical)),
+    /a removed pattern note's claim is shown again/,
+  );
 
   const withField = (id, change) =>
     calculatorWith({ fields: ASPECTSScore.fields.map((field) => (field.id === id ? { ...field, ...change } : field)) });
@@ -478,7 +504,7 @@ test("runtime mutations fail the binding", () => {
     /m1: subLabel repeats the label's level \(Ganglionic\)/,
   );
   assert.throws(
-    () => audit.verifyRuntime(withField("m3", { subLabel: "MCA cortex behind M2 at ganglionic level" })),
+    () => audit.verifyRuntime(withField("m3", { subLabel: "Posterior MCA cortex at ganglionic level" })),
     /m3: subLabel repeats the label's level \(Ganglionic\)/,
   );
   assert.throws(
@@ -492,13 +518,32 @@ test("runtime mutations fail the binding", () => {
           info: {
             ...ASPECTSScore.info,
             text: ASPECTSScore.info.text.replace(
-              "Posterior MCA cortex (behind M2)",
-              "Posterior temporal lobe (posterior MCA cortex)",
+              "M3 - Posterior MCA cortex\n",
+              "M3 - Posterior temporal lobe (posterior MCA cortex)\n",
             ),
           },
         }),
       ),
     /ganglionic-level region list drifted/,
+  );
+  // The unsourced "behind M2" gloss (primary judge on #305) fails in the info text, the subLabel
+  // and the calculator source.
+  assert.throws(
+    () =>
+      audit.verifyRuntime(
+        calculatorWith({
+          info: {
+            ...ASPECTSScore.info,
+            text: ASPECTSScore.info.text.replace("M3 - Posterior MCA cortex\n", "M3 - Posterior MCA cortex (behind M2)\n"),
+          },
+        }),
+      ),
+    /ganglionic-level region list drifted/,
+  );
+  assert.throws(() => audit.verifyRuntime(withField("m3", { subLabel: "MCA cortex behind M2" })), /subLabels drifted/);
+  assert.throws(
+    () => audit.verifyRuntime(ASPECTSScore, 'subLabel: "MCA cortex behind M2"'),
+    /calculator source still contains "behind M2"/,
   );
   assert.throws(
     () => audit.verifyRuntime(ASPECTSScore, 'subLabel: "Posterior limb of internal capsule (-1 point)"'),

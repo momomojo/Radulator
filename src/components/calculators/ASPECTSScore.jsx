@@ -35,7 +35,7 @@ GANGLIONIC LEVEL (at level of basal ganglia):
 • I - Insular ribbon (insular cortex)
 • M1 - Frontal operculum (anterior MCA cortex)
 • M2 - Anterior temporal lobe (lateral to insular ribbon)
-• M3 - Posterior MCA cortex (behind M2)
+• M3 - Posterior MCA cortex
 
 SUPRAGANGLIONIC LEVEL (above basal ganglia):
 • M4 - Anterior MCA territory (superior to M1)
@@ -113,7 +113,7 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
       id: "m3",
       label: "M3 - Posterior MCA Cortex (Ganglionic Level)",
       type: "checkbox",
-      subLabel: "MCA cortex behind M2",
+      subLabel: "Posterior MCA cortex",
     },
 
     // CORTICAL MCA REGIONS - SUPRAGANGLIONIC LEVEL (M4-M6)
@@ -328,28 +328,9 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
       );
     }
 
-    // Fires on M1-M6 only (the insular ribbon is not required), so the note
-    // names the six M regions rather than all MCA cortex.
-    if (m1 && m2 && m3 && m4 && m5 && m6) {
-      clinicalNotes.push(
-        "Complete M1-M6 cortical involvement suggests very poor collateral circulation",
-      );
-    }
-
     if (totalAffected === 0) {
       clinicalNotes.push(
         "Normal ASPECTS (10/10) - No early ischemic changes visible on NCCT. Note: Subtle changes may be missed within first 3 hours of symptom onset",
-      );
-    }
-
-    // All three subcortical regions (C, L, IC) and no cortical region
-    // (I, M1-M6).
-    if (
-      subcorticalAffected >= 3 &&
-      ganglionicCorticalAffected + supraganglionicCorticalAffected === 0
-    ) {
-      clinicalNotes.push(
-        "Predominantly subcortical involvement - consider lenticulostriate territory infarction",
       );
     }
 
