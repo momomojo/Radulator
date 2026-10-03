@@ -23,6 +23,45 @@ const VALID_NON_TARGET = new Set([
   "not_evaluated",
 ]);
 const VALID_NEW_LESION = new Set(["none", "unequivocal", "equivocal"]);
+
+// Organ groups for the two-targets-per-organ rule. EORTC's RECIST 1.1 clarifications count paired organs
+// ("lung", "kidney", "ovaries", "lymph nodes" etc) as one organ irrespective of their parts, and all lymph
+// nodes as one organ (at most two nodal targets). Grouping therefore uses this controlled list, never free
+// text, and every nodal target joins the one lymph-node group (primary judge on #277). Organs not on the
+// list fail closed: they all share the "other" group.
+export const RECIST_LYMPH_NODE_GROUP = "lymph_nodes";
+export const RECIST_ORGAN_GROUPS = Object.freeze(
+  [
+    { id: "lung", name: "Lung", note: "both lungs count as one organ" },
+    { id: "liver", name: "Liver" },
+    { id: "kidney", name: "Kidney", note: "both kidneys count as one organ" },
+    { id: "ovary", name: "Ovary", note: "both ovaries count as one organ" },
+    { id: "adrenal", name: "Adrenal glands", note: "both count as one organ" },
+    { id: "breast", name: "Breast", note: "both breasts count as one organ" },
+    { id: "pancreas", name: "Pancreas" },
+    { id: "spleen", name: "Spleen" },
+    { id: "bone", name: "Bone" },
+    { id: "pleura", name: "Pleura" },
+    { id: "peritoneum", name: "Peritoneum / omentum" },
+    { id: "brain", name: "Brain" },
+    { id: "soft_tissue", name: "Soft tissue / muscle" },
+    { id: "skin", name: "Skin / subcutaneous" },
+    { id: "other", name: "Other organ", note: "all organs not listed count as one organ here" },
+  ].map((group) => Object.freeze(group)),
+);
+const ORGAN_GROUP_IDS = new Set(RECIST_ORGAN_GROUPS.map((group) => group.id));
+const ORGAN_GROUP_NAMES = Object.freeze({
+  ...Object.fromEntries(RECIST_ORGAN_GROUPS.map((group) => [group.id, group.name])),
+  [RECIST_LYMPH_NODE_GROUP]: "Lymph nodes",
+});
+
+export function recistOrganGroup(lesion) {
+  return lesion.kind === "node" ? RECIST_LYMPH_NODE_GROUP : String(lesion.organ || "");
+}
+
+export function recistOrganName(groupId) {
+  return ORGAN_GROUP_NAMES[groupId] ?? "organ not entered";
+}
 const VALID_PRIOR_RESPONSE = new Set(["none", "PR", "CR"]);
 const VALID_REAPPEARANCE_COMPARTMENT = new Set([
   "none",
@@ -702,14 +741,28 @@ export function computeRecist11(inputs) {
       throw new Error("Each target lesion requires a unique stable identifier.");
     }
     stableIds.add(lesion.id);
-    const organ = String(lesion.organ || "").trim();
+    const organ = recistOrganGroup(lesion);
     if (!organ) throw new Error(`Target lesion ${index + 1} requires an organ.`);
-    const organKey = organ.toLocaleLowerCase();
-    const nextOrganCount = (organCounts.get(organKey) || 0) + 1;
-    organCounts.set(organKey, nextOrganCount);
-    if (nextOrganCount > 2) {
+    if (organ !== RECIST_LYMPH_NODE_GROUP && !ORGAN_GROUP_IDS.has(organ)) {
       throw new Error(
-        "RECIST 1.1 permits at most five target lesions and two per organ.",
+        `Target lesion ${index + 1}: choose its organ from the list; a free-text organ name cannot be grouped safely for the two-per-organ rule.`,
+      );
+    }
+    const nextOrganCount = (organCounts.get(organ) || 0) + 1;
+    organCounts.set(organ, nextOrganCount);
+    if (nextOrganCount > 2) {
+      if (organ === RECIST_LYMPH_NODE_GROUP) {
+        throw new Error(
+          "RECIST 1.1 counts all lymph nodes as one organ: at most two nodal target lesions.",
+        );
+      }
+      if (organ === "other") {
+        throw new Error(
+          "Organs not on the list count as one organ here: at most two such target lesions. Choose a listed organ if one fits.",
+        );
+      }
+      throw new Error(
+        "RECIST 1.1 permits at most five target lesions and two per organ; paired organs such as both lungs or both kidneys count as one organ.",
       );
     }
     if (!lesion.plane) {
@@ -743,6 +796,7 @@ export function computeRecist11(inputs) {
     lesionSummaries.push({
       id: lesion.id,
       organ,
+      organ_name: recistOrganName(organ),
       kind: lesion.kind,
       baseline_mm: baseline.toString(),
       current_status: lesion.currentStatus,
@@ -793,6 +847,7 @@ export function computeRecist11(inputs) {
     baseline_sum_mm: baselineSum.toString(),
     current_sum_mm: currentLowerBound.toString(),
     current_sum_is_measured_subset: !measurementsComplete,
+    missing_target_measurements: targetLesions.length - measuredCurrent.length,
     prior_nadir_sum_mm: priorNadir.toString(),
     lesion_summaries: lesionSummaries,
     non_target_status: nonTargetStatus,
@@ -895,6 +950,17 @@ export function buildRecistImpression(result) {
 
   if (result.mode === "non_target_only") {
     return `RECIST 1.1 time-point response: ${category}. Non-target lesions: ${NON_TARGET_LABELS[result.non_target_status]}. New lesions: ${NEW_LESION_LABELS[result.new_lesion_status]}.${driver}${caution}`;
+  }
+
+  if (result.current_sum_is_measured_subset) {
+    // Only a measured subset that already meets PD reaches here; anything else is NE above. The value is a
+    // lower bound for the full sum, so no percentage is presented as the target-lesion sum's (primary judge
+    // on #277). Adding the missing measurements can only raise the sum, so PD stands.
+    if (result.target_response !== "PD") {
+      return "RECIST 1.1 time-point response unresolved: a required target measurement is missing. Clinician/radiologist and protocol confirmation required.";
+    }
+    const missing = result.missing_target_measurements;
+    return `RECIST 1.1 time-point response: ${category}. Target-lesion sum incomplete: ${missing} target measurement${missing === 1 ? " is" : "s are"} missing. The measured targets alone sum to ${result.current_sum_mm} mm, a lower bound for the full sum, and that already meets target progression (at least 20% and at least 5 mm above the prior nadir of ${result.prior_nadir_sum_mm} mm), so the missing measurement${missing === 1 ? "" : "s"} cannot change it. Baseline sum ${result.baseline_sum_mm} mm. Non-target lesions: ${NON_TARGET_LABELS[result.non_target_status]}. New lesions: ${NEW_LESION_LABELS[result.new_lesion_status]}.${driver}${caution}`;
   }
 
   const nadirChange =
@@ -1097,14 +1163,16 @@ function Recist11Calculator() {
           {mode === "measurable" ? (
             <>
               <p className="text-sm text-muted-foreground">
-                Up to five targets total and two per organ. Non-nodal targets
+                Up to five targets total and two per organ; both lungs, both
+                kidneys, both ovaries and all lymph nodes each count as one
+                organ (EORTC RECIST 1.1 clarifications). Non-nodal targets
                 use longest diameter; nodes use short axis. Additional
                 restrictions for bone, cystic, brain, lymphoma, previously
                 treated, and disease-specific settings are outside this aid.
               </p>
               <div className="space-y-4">
                 {targetLesions.map((lesion, index) => {
-                  const identity = `Target lesion ${index + 1}, ${lesion.organ || "organ not entered"}, ${lesion.kind === "node" ? "node" : "non-nodal"}`;
+                  const identity = `Target lesion ${index + 1}, ${recistOrganName(recistOrganGroup(lesion))}, ${lesion.kind === "node" ? "node" : "non-nodal"}`;
                   return (
                     <fieldset
                       key={lesion.id}
@@ -1118,19 +1186,34 @@ function Recist11Calculator() {
                         {identity}; baseline and current time point
                       </p>
                       <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="min-w-0 space-y-1.5">
-                          <Label htmlFor={`${lesion.id}-organ`}>Organ</Label>
-                          <Input
+                        {lesion.kind === "node" ? (
+                          <div className="min-w-0 space-y-1.5">
+                            <p className="text-sm font-medium text-foreground">Organ</p>
+                            <p
+                              id={`${lesion.id}-organ`}
+                              className="flex min-h-11 items-center rounded-md border border-dashed border-input px-3 py-2 text-sm text-foreground"
+                            >
+                              Lymph nodes (all nodes count as one organ)
+                            </p>
+                          </div>
+                        ) : (
+                          <SelectControl
                             id={`${lesion.id}-organ`}
-                            className="min-h-11"
+                            label="Organ"
                             value={lesion.organ}
                             onChange={(event) =>
                               updateLesion(index, "organ", event.target.value)
                             }
-                            aria-label={`${identity} organ`}
-                            placeholder="e.g., liver"
-                          />
-                        </div>
+                            ariaLabel={`${identity} organ`}
+                          >
+                            <option value="">Choose organ</option>
+                            {RECIST_ORGAN_GROUPS.map((group) => (
+                              <option key={group.id} value={group.id}>
+                                {group.note ? `${group.name} (${group.note})` : group.name}
+                              </option>
+                            ))}
+                          </SelectControl>
+                        )}
                         <SelectControl
                           id={`${lesion.id}-kind`}
                           label="Lesion type"
@@ -1460,7 +1543,7 @@ function Recist11Calculator() {
                   {mode === "measurable"
                     ? targetLesions.map((lesion, index) => (
                         <option key={lesion.id} value={`target:${lesion.id}`}>
-                          Target lesion {index + 1}: {lesion.organ || "organ not entered"}
+                          Target lesion {index + 1}: {recistOrganName(recistOrganGroup(lesion))}
                         </option>
                       ))
                     : null}
@@ -1656,7 +1739,7 @@ function Recist11Calculator() {
                   <div>
                     <dt className="text-muted-foreground">
                       {result.current_sum_is_measured_subset
-                        ? "Measured target subset"
+                        ? `Measured target subset (lower bound; ${result.missing_target_measurements} missing)`
                         : "Current target sum"}
                     </dt>
                     <dd className="font-medium text-foreground">
@@ -1666,17 +1749,21 @@ function Recist11Calculator() {
                   <div>
                     <dt className="text-muted-foreground">Baseline denominator</dt>
                     <dd className="font-medium text-foreground">
-                      {result.baseline_sum_mm} mm ({withSign(result.display_baseline_change_1dp, "%")})
+                      {result.current_sum_is_measured_subset
+                        ? `${result.baseline_sum_mm} mm (no percentage: the current sum is incomplete)`
+                        : `${result.baseline_sum_mm} mm (${withSign(result.display_baseline_change_1dp, "%")})`}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Prior nadir denominator</dt>
                     <dd className="font-medium text-foreground">
-                      {result.prior_nadir_sum_mm} mm (
-                      {result.display_nadir_change_1dp === null
-                        ? "percentage not calculable"
-                        : withSign(result.display_nadir_change_1dp, "%")}
-                      ; {withSign(result.absolute_nadir_change_mm, " mm")})
+                      {result.current_sum_is_measured_subset
+                        ? `${result.prior_nadir_sum_mm} mm (the measured subset alone is at least ${withSign(result.display_nadir_change_1dp, "%")} and ${withSign(result.absolute_nadir_change_mm, " mm")} above it: progression)`
+                        : `${result.prior_nadir_sum_mm} mm (${
+                            result.display_nadir_change_1dp === null
+                              ? "percentage not calculable"
+                              : withSign(result.display_nadir_change_1dp, "%")
+                          }; ${withSign(result.absolute_nadir_change_mm, " mm")})`}
                     </dd>
                   </div>
                   <div>
@@ -1699,7 +1786,7 @@ function Recist11Calculator() {
                   <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                     {result.lesion_summaries.map((lesion, index) => (
                       <li key={lesion.id}>
-                        Lesion {index + 1} ({lesion.organ}; {lesion.kind === "node" ? "node" : "non-nodal"}): {CURRENT_STATUS_LABELS[lesion.current_status]}
+                        Lesion {index + 1} ({lesion.organ_name}; {lesion.kind === "node" ? "node" : "non-nodal"}): {CURRENT_STATUS_LABELS[lesion.current_status]}
                         {lesion.current_mm !== null ? `, ${lesion.current_mm} mm` : ""}
                       </li>
                     ))}

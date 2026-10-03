@@ -44,7 +44,7 @@ for (const vector of fixture.adversarialVectors) executeVector(vector);
 function targetLesion(overrides = {}) {
   return {
     id: "target-1",
-    organ: "Liver",
+    organ: "liver",
     kind: "non_nodal",
     modality: "CT",
     plane: "axial",
@@ -106,7 +106,7 @@ const missingSubsetPd = computeRecist11(
       }),
       targetLesion({
         id: "target-2",
-        organ: "Lung",
+        organ: "lung",
         baselineMeasurementMm: "50",
         currentStatus: "missing",
         currentMeasurementMm: "",
@@ -118,6 +118,17 @@ const missingSubsetPd = computeRecist11(
 assert.equal(missingSubsetPd.current_sum_is_measured_subset, true);
 assert.equal(missingSubsetPd.target_response, "PD");
 assert.equal(missingSubsetPd.pd_driver, "measured_subset_definite_pd");
+assert.equal(missingSubsetPd.missing_target_measurements, 1);
+// The copied impression calls the measured subset a lower bound, gives no percentage as the target-lesion
+// sum's, and says why the subset alone proves PD (primary judge on #277).
+const subsetCopy = buildRecistImpression(missingSubsetPd);
+assert.match(subsetCopy, /Target-lesion sum incomplete: 1 target measurement is missing\./);
+assert.match(subsetCopy, /The measured targets alone sum to 25 mm, a lower bound for the full sum/);
+assert.match(subsetCopy, /at least 20% and at least 5 mm above the prior nadir of 20 mm/);
+assert.match(subsetCopy, /so the missing measurement cannot change it/);
+assert.match(subsetCopy, /Baseline sum 100 mm\./);
+assert.doesNotMatch(subsetCopy, /Target-lesion sum \d/);
+assert.doesNotMatch(subsetCopy, /vs baseline|vs prior nadir/);
 
 assert.throws(
   () =>
@@ -131,6 +142,77 @@ assert.throws(
       }),
     ),
   /at most five target lesions and two per organ/,
+);
+
+// Organ grouping (primary judge on #277). EORTC counts paired organs and all lymph nodes as one organ each,
+// and grouping never uses free text.
+const lungTargets = (count, first = 1) =>
+  Array.from({ length: count }, (_, i) => targetLesion({ id: `target-${first + i}`, organ: "lung" }));
+assert.equal(
+  computeRecist11(measurableInputs({ targetLesions: lungTargets(2), priorNadirSumMm: "80" })).baseline_sum_mm,
+  "80",
+);
+assert.throws(
+  () => computeRecist11(measurableInputs({ targetLesions: lungTargets(3) })),
+  /paired organs such as both lungs or both kidneys count as one organ/,
+);
+assert.throws(
+  () =>
+    computeRecist11(
+      measurableInputs({
+        targetLesions: ["kidney", "kidney", "kidney"].map((organ, i) => targetLesion({ id: `target-${i + 1}`, organ })),
+      }),
+    ),
+  /paired organs such as both lungs or both kidneys count as one organ/,
+);
+// The former bypass: free-text "right lung" and "left lung" counted as two organs. Free text now fails closed.
+for (const organ of ["right lung", "Left lung", "Liver", " liver "]) {
+  assert.throws(
+    () => computeRecist11(measurableInputs({ targetLesions: [targetLesion({ organ })] })),
+    /choose its organ from the list; a free-text organ name cannot be grouped safely/,
+    organ,
+  );
+}
+// All lymph nodes are one organ, whatever their region or any organ entered for them.
+const nodeTarget = (id, organ) =>
+  targetLesion({ id, organ, kind: "node", baselineMeasurementMm: "20", currentMeasurementMm: "18" });
+assert.throws(
+  () =>
+    computeRecist11(
+      measurableInputs({
+        targetLesions: [nodeTarget("target-1", "liver"), nodeTarget("target-2", "lung"), nodeTarget("target-3", "")],
+      }),
+    ),
+  /counts all lymph nodes as one organ: at most two nodal target lesions/,
+);
+const fiveTargets = computeRecist11(
+  measurableInputs({
+    targetLesions: [
+      nodeTarget("target-1", ""),
+      nodeTarget("target-2", "kidney"),
+      ...lungTargets(2, 3),
+      targetLesion({ id: "target-5", organ: "kidney" }),
+    ],
+    priorNadirSumMm: "160",
+  }),
+);
+assert.deepEqual(
+  fiveTargets.lesion_summaries.map((lesion) => [lesion.organ, lesion.organ_name]),
+  [
+    ["lymph_nodes", "Lymph nodes"],
+    ["lymph_nodes", "Lymph nodes"],
+    ["lung", "Lung"],
+    ["lung", "Lung"],
+    ["kidney", "Kidney"],
+  ],
+);
+// Organs not on the list fail closed: they share one group, so at most two such targets.
+assert.throws(
+  () =>
+    computeRecist11(
+      measurableInputs({ targetLesions: [1, 2, 3].map((i) => targetLesion({ id: `target-${i}`, organ: "other" })) }),
+    ),
+  /Organs not on the list count as one organ here: at most two such target lesions/,
 );
 
 const targetNodalReappearance = computeRecist11(

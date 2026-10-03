@@ -9,7 +9,7 @@
         "targetLesions": [
           {
             "id": "target-1",
-            "organ": "Liver",
+            "organ": "liver",
             "kind": "non_nodal",
             "modality": "CT",
             "plane": "axial",
@@ -44,7 +44,7 @@
         "targetLesions": [
           {
             "id": "target-1",
-            "organ": "Liver",
+            "organ": "liver",
             "kind": "non_nodal",
             "modality": "CT",
             "plane": "axial",
@@ -55,7 +55,7 @@
           },
           {
             "id": "target-2",
-            "organ": "Lung",
+            "organ": "lung",
             "kind": "non_nodal",
             "modality": "CT",
             "plane": "axial",
@@ -78,7 +78,9 @@
         "noError": true,
         "fields": [
           { "key": "target_response", "equals": "PD" },
-          { "key": "pd_driver", "equals": "measured_subset_definite_pd" }
+          { "key": "pd_driver", "equals": "measured_subset_definite_pd" },
+          { "key": "current_sum_is_measured_subset", "equals": true },
+          { "key": "missing_target_measurements", "equals": 1 }
         ]
       }
     },
@@ -108,7 +110,7 @@
         "targetLesions": [
           {
             "id": "target-1",
-            "organ": "Liver",
+            "organ": "liver",
             "kind": "non_nodal",
             "modality": "CT",
             "plane": "axial",
