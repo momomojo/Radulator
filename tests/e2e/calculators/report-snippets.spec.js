@@ -111,9 +111,10 @@ test.describe("Report snippets", () => {
     expect(fullResultsText).toContain("DLP to Effective Dose");
     expect(fullResultsText).toContain("Effective Dose: 5.60 mSv");
     expect(fullResultsText).toContain("Dose Context");
-    expect(fullResultsText).toContain(
+    expect(fullResultsText).not.toContain(
       "Estimated Additional Lifetime Cancer Risk",
     );
+    expect(fullResultsText).toContain("does not determine an individual's cancer probability");
 
     await page.getByRole("button", { name: "Copy Report Snippet" }).click();
     const snippetText = await page.evaluate(() => navigator.clipboard.readText());
