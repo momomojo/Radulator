@@ -32,7 +32,7 @@ assert.equal(audit.calculator_path, "src/components/calculators/LIRADS.jsx");
 
 const PDF_URL =
   "https://edge.sitecorecloud.io/americancoldf5f-acrorgf92a-productioncb02-3650/media/ACR/Files/RADS/LI-RADS/LI-RADS-CT-MRI-2018-Core.pdf";
-const { retrieval_attempts: attempts, ...source } = audit.source;
+const { retrieval_attempts: attempts, measured, ...source } = audit.source;
 assert.ok(Number.isInteger(attempts) && attempts >= 1);
 assert.deepEqual(source, {
   key: "acr-lirads-ctmri-v2018-core",
@@ -47,6 +47,24 @@ assert.deepEqual(source, {
   bytes: 1840136,
   sha256: "89fddfbd66641f37055fc16082f338bc4fec880f3d3e0042a7a9b6b69f4acfb4",
   pages: 61,
+  parser: { package: "pdfjs-dist", version: "4.10.38", entry: "pdfjs-dist/legacy/build/pdf.mjs" },
+});
+// What this run measured on the response it parsed equals every pin.
+assert.equal(measured.status, 200);
+assert.equal(measured.final_url, PDF_URL);
+assert.equal(measured.content_type.split(";")[0].trim().toLowerCase(), "application/pdf");
+assert.equal(measured.bytes, 1840136);
+assert.equal(measured.sha256, "89fddfbd66641f37055fc16082f338bc4fec880f3d3e0042a7a9b6b69f4acfb4");
+assert.equal(measured.parser_version, "4.10.38");
+assert.deepEqual(audit.retrieval, {
+  protocol: "https:",
+  final_url: "redirects are followed, then the final URL must have exactly the host, path and query of SOURCE.url",
+  user_agent: "Radulator-LI-RADS-LRM-source-audit/1",
+  timeout_ms: 90000,
+  max_attempts: 4,
+  retried: "network errors, aborted body reads and HTTP 408/425/429/5xx, with backoff from 2 s and Retry-After up to 60 s",
+  never_retried: "other HTTP errors, and an HTTP 200 that misses any pin",
+  checked_before_parsing: ["final URL", "media type", "%PDF- header", "byte length", "SHA-256"],
 });
 
 // Each source statement is pinned by the SHA-256 of its exact normalized span at the locator.
@@ -171,6 +189,30 @@ assert.deepEqual(
       39,
       ["395:35587bc5aec1467370a80a59e46c5b7262ba3526ea2de69958a3e2de249ae116"],
     ],
+    [
+      "management-lrm-tailored-workup",
+      "LI-RADS-Based Management table, LR-M row",
+      17,
+      14,
+      ["39:07c9637198ea4193633feeda1045f9a8e21f130a4eb573004d6097b7255c6b9e"],
+    ],
+    [
+      "management-lr2-surveillance",
+      "LI-RADS-Based Management table, LR-2 row",
+      17,
+      14,
+      [
+        "51:31efdfa5d5de1fc4e4a380d777b3f9f0b56b4ceafbadc221453ae3bc4cfb1226",
+        "44:4963e0c42568a1fac5d4432242344a3c664235923115ddbfe0a6920454173d52",
+      ],
+    ],
+    [
+      "reporting-avoid-compelling-biopsy",
+      "Reporting considerations, biopsy language",
+      19,
+      16,
+      ["54:daedd395c0bfeb5e5a4478ee99f57e03589022b907eaf3f142795e4832b85835"],
+    ],
   ],
 );
 for (const statement of audit.source_statements) {
@@ -199,6 +241,7 @@ assert.deepEqual(audit.layout.step2_ladder, {
   upgrade_label_y: 580.3,
   downgrade_label_y: 463.9,
 });
+const bindings0 = (id) => audit.claim_bindings.find((binding) => binding.claim_id === id)?.runtime;
 // In-memory edits of the real page text must each break the named statement's pin.
 assert.deepEqual(audit.source_mutations, [
   { statement_id: "whats-new-threshold-growth", find: "≥ 50%", replace: "≥ 40%", detected: true },
@@ -207,6 +250,9 @@ assert.deepEqual(audit.source_mutations, [
   { statement_id: "ancillary-subthreshold-growth", find: "less than threshold", replace: "more than threshold", detected: true },
   { statement_id: "step2-ancillary-features", find: "downgrade by 1", replace: "downgrade by 2", detected: true },
   { statement_id: "lrm-criteria", find: "Not meeting LR", replace: "Meeting LR", detected: true },
+  { statement_id: "management-lrm-tailored-workup", find: "Often includes biopsy", replace: "Requires biopsy", detected: true },
+  { statement_id: "management-lr2-surveillance", find: "≤ 6 months", replace: "≤ 3 months", detected: true },
+  { statement_id: "reporting-avoid-compelling-biopsy", find: "compels biopsy", replace: "recommends biopsy", detected: true },
 ]);
 assert.deepEqual(audit.layout.lrm_condition_box, {
   targetoid_line_y: 640.9,
@@ -244,8 +290,18 @@ assert.deepEqual(
     ],
     ["benign-ancillary-downgrade-one-category", ["step2-ancillary-features"]],
     ["acr-reference-is-live-landing-page", ["core-identity"]],
+    ["lrm-management-tailored-workup", ["management-lrm-tailored-workup", "reporting-avoid-compelling-biopsy"]],
+    ["lr2-management-surveillance", ["management-lr2-surveillance"]],
   ],
 );
+assert.deepEqual(bindings0("lrm-management-tailored-workup"), {
+  recommendation: "Multidisciplinary discussion for tailored workup, which often includes biopsy",
+  paths: ["targetoid", "nontargetoid"],
+});
+assert.deepEqual(bindings0("lr2-management-surveillance"), {
+  recommendation: "Return to surveillance in 6 months; consider repeat diagnostic imaging in ≤6 months",
+  paths: ["probably benign", "LR-3 downgraded"],
+});
 const bindings = new Map(audit.claim_bindings.map(({ claim_id, runtime }) => [claim_id, runtime]));
 assert.deepEqual(bindings.get("step1-order"), {
   runtime_order: ["LR-NC", "LR-TIV", "LR-1", "LR-2", "LR-M", "diagnostic-table"],
@@ -266,9 +322,9 @@ assert.equal(bindings.get("tiebreak-note-lrm-vs-lr5").results_checked, 128);
 assert.equal(bindings.get("lrm-decided-before-ancillary-features").lr5_then_benign_downgrade, "LR-4 (Probably HCC)");
 assert.deepEqual(bindings.get("threshold-growth-v2018"), {
   field_subLabel:
-    "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
+    "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
   result_note:
-    "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
+    "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
   subthreshold_option:
     "Subthreshold growth (growth below threshold, e.g. new ≥10 mm observation in ≤24 months or ≥100% over >6 months)",
   subthreshold_vectors: 104,
@@ -302,7 +358,7 @@ assert.deepEqual(audit.scope, {
   not_asserted: [
     "ancillary-feature adjustment of LR-1 and LR-2 chosen directly in the benignity question",
     "LR-M and LR-5 probability figures",
-    "management recommendations",
+    "management recommendations other than LR-M and LR-2",
     "whole-calculator clinical acceptance",
   ],
 });
@@ -333,9 +389,27 @@ const {
   checkTiebreakLabelPlacement,
   checkStep2Ladder,
   assertBindingsCoverStatements,
+  assertParserPin,
+  manifestLine,
   parseRetryAfter,
   retrieve,
 } = auditModule;
+
+// The parser pin: any other pdfjs-dist version fails the audit before anything is parsed.
+assertParserPin();
+assert.throws(() => assertParserPin("4.10.39"), /PDF parser drifted from pdfjs-dist 4\.10\.38/);
+assert.throws(() => assertParserPin("5.0.0"), /PDF parser drifted/);
+await assert.rejects(
+  auditModule.pdfPages(Buffer.from("%PDF-1.7 synthetic"), [1], { parserVersion: "4.10.39" }),
+  /PDF parser drifted/,
+  "pdfPages checks the parser pin before it parses anything",
+);
+// The verified artifact fits the source-audit runner's 300-character pass_line.
+const sourceLine = manifestLine(measured);
+assert.ok(sourceLine.length <= 300, `the manifest line has ${sourceLine.length} characters`);
+for (const part of [PDF_URL, "HTTP 200", "application/pdf", "1840136 bytes", `sha256 ${SOURCE.sha256}`, "pdfjs-dist 4.10.38"]) {
+  assert.ok(sourceLine.includes(part), `the manifest line names ${part}`);
+}
 
 // 3a. Runtime mutants: each reintroduces one defect and must fail the runtime binding.
 verifyRuntime(LIRADS, EXPECTED_TABLE);
@@ -454,6 +528,40 @@ const runtimeMutants = [
         : field,
     ),
     /threshold_growth subLabel drifted/,
+  ],
+  [
+    "threshold-growth subLabel without the 24-month boundary (primary judge on #330)",
+    withFields((field) =>
+      field.id === "threshold_growth" ? { ...field, subLabel: field.subLabel.replace(" in ≤24 months", "") } : field,
+    ),
+    /threshold_growth subLabel drifted/,
+  ],
+  [
+    "threshold-growth result note without the 24-month boundary (primary judge on #330)",
+    computeMutant((vals, result) =>
+      result["Clinical Notes"]?.includes(RUNTIME_THRESHOLD_GROWTH.note)
+        ? { ...result, "Clinical Notes": result["Clinical Notes"].replace(" in ≤24 months", "") }
+        : result,
+    ),
+    /threshold growth note missing/,
+  ],
+  [
+    "LR-M recommendation compels biopsy again (primary judge on #330)",
+    computeMutant((vals, result) =>
+      String(result["LI-RADS Category"] ?? "").startsWith("LR-M")
+        ? { ...result, Recommendation: "Biopsy recommended; multidisciplinary discussion" }
+        : result,
+    ),
+    /LR-M recommendation drifted/,
+  ],
+  [
+    "LR-2 recommendation without the source's intervals (primary judge on #330)",
+    computeMutant((vals, result) =>
+      String(result["LI-RADS Category"] ?? "").startsWith("LR-2")
+        ? { ...result, Recommendation: "Return to routine surveillance; option for alternate imaging modality" }
+        : result,
+    ),
+    /LR-2 recommendation drifted/,
   ],
   [
     "threshold-growth result note reverted to the v2017 definition",
@@ -737,6 +845,7 @@ const recovered = await retrieve(SYNTHETIC_SOURCE, {
   sleep: noSleep,
 });
 assert.equal(recovered.attempts, 3);
+assert.equal(recovered.status, 200, "the accepted response's status is reported");
 assert.deepEqual(recovered.waits, [7_000, 4_000], "Retry-After must be honored, then exponential backoff");
 assert.ok(recovered.bytes.equals(syntheticBody), "only pin-verified bytes are returned");
 
@@ -801,3 +910,5 @@ for (const [name, source, drifted, message] of driftedOk) {
 console.log(
   `LI-RADS LR-M primary-source audit verified 1 pinned ACR PDF (raw bytes checked before parsing), ${audit.source_statements.length} digest-pinned source statements, ${audit.source_mutations.length} in-memory source mutations caught, ${Object.keys(audit.layout).length} layout checks, ${audit.claim_bindings.length} runtime claim bindings and the actual-export tests; ${runtimeMutants.length} runtime mutants, ${driftedOk.length} drifted-200 mutants (each failed on the first fetch, never retried) and the source, artifact, layout and retrieval mutants were all rejected.`,
 );
+// Last, so the runner's pass_line records the artifact this exact-head run verified.
+console.log(sourceLine);

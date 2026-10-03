@@ -13,7 +13,10 @@ one-category downgrade of LR-3 to LR-2, and the ACR reference link.
   LR-M before the diagnostic table was consulted.
   - Example: a 25 mm observation with nonrim APHE, washout and necrosis was
     reported as LR-M instead of LR-5.
-  - That usually changes management from treatment to biopsy.
+  - The two categories lead to different management (Core printed p. 14): LR-5
+    is multidisciplinary discussion for consensus management, LR-M is
+    multidisciplinary discussion for a tailored workup, which often includes
+    biopsy.
 - **Hidden major features.** Ticking "LR-M Features Present" hid every
   major-feature input, even when only nontargetoid features were selected.
   - Those are exactly the inputs needed to check LR-5 criteria.
@@ -24,8 +27,9 @@ one-category downgrade of LR-3 to LR-2, and the ACR reference link.
   - The app passes every stored value to `compute`, including values of hidden
     fields.
 - **Threshold growth used the v2017 wording.** The subLabel and result note
-  counted a new observation of 10 mm or more as threshold growth. In v2018 that
-  is subthreshold growth, an ancillary feature.
+  counted a new observation of 10 mm or more as threshold growth. In v2018 a new
+  observation of 10 mm or more in 24 months or less is subthreshold growth, an
+  ancillary feature.
   - Following the subLabel could make a new 10-19 mm nonrim-APHE observation
     LR-5 instead of LR-4 at most.
 - **LR-3 downgrade missing.** A feature favoring benignity left LR-3 unchanged
@@ -45,7 +49,15 @@ one-category downgrade of LR-3 to LR-2, and the ACR reference link.
 | Bytes | 1,840,136 |
 | SHA-256 | `89fddfbd66641f37055fc16082f338bc4fec880f3d3e0042a7a9b6b69f4acfb4` |
 | Pages | 61 (PDF page N is printed page N - 3) |
-| Retrieved | 2026-09-28 UTC, plain HTTPS GET, no bot check or login |
+| Parser | `pdfjs-dist` 4.10.38, legacy build; the audit fails on any other version |
+| Retrieved | 2026-09-28 UTC, plain HTTPS GET, no bot check or login; rechecked 2026-10-02 (HTTP 200, same type and length) |
+| Not the source | The older `www.acr.org/-/media/ACR/Files/RADS/LI-RADS/...` PDF path now redirects to an HTML app |
+
+Each exact-head run of `scripts/audit-lirads-lrm-source.test.mjs` ends with one
+line naming what it measured on the response it parsed: final URL, HTTP status,
+media type, byte length, SHA-256 and parser version. That line is the runner's
+`pass_line` in the `SOURCE-AUDIT RESULT` record of the `Clinical Source Audits
+(exact head)` job.
 
 **Corroboration (retrieved, not pinned in CI).** The same ACR page links the
 LI-RADS v2018 CT/MRI Manual, Chapter 8 "Diagnostic Categories":
@@ -138,8 +150,10 @@ Printed pages refer to the Core unless noted.
 | subLabel `tumor_in_vein` | Printed p. 21 (PDF p. 24), and printed p. 10. Statements `tumor-in-vein-definition`, `step3-tiebreaking` | Tumor in vein is unequivocal enhancing soft tissue in a vein, with or without a visible parenchymal mass. It is not limited to portal or hepatic veins. If uncertain, do not assign LR-TIV. | Claim `sublabel-tumor-in-vein`. |
 | result `LR-TIV` Definition | Printed p. 21 (PDF p. 24). Statement `tumor-in-vein-definition` | The LR-TIV result states the same definition as the field: unequivocal enhancing soft tissue in a vein, with or without a visible parenchymal mass. It is not limited to portal or hepatic veins. | Claim `result-tumor-in-vein-definition`. |
 | subLabel `has_lrm_features` | Printed p. 22 (PDF p. 25). Statement `lrm-criteria` | The LR-M criteria as above: targetoid mass, or a nontargetoid mass not meeting LR-5 criteria with one of the four nontargetoid features. | Claim `sublabel-has-lrm-features`. |
-| Threshold growth follows v2018. The subLabel and result note no longer count a new ≥10 mm observation, or ≥100% growth over >6 months, as threshold growth. The subthreshold-growth ancillary option names those cases. | Printed p. 4 (PDF p. 7) `whats-new-threshold-growth`; printed p. 20 (PDF p. 23) `threshold-growth-definition`; printed p. 24 (PDF p. 27) `ancillary-subthreshold-growth`; printed p. 9 `step2-ancillary-features` | v2018 narrowed threshold growth to growth of a mass by at least 50% within 6 months, judged against a prior CT or MRI. A new observation of 10 mm or more within 24 months, or growth of 100% or more across exams over 6 months apart, is now subthreshold growth. That is an ancillary feature favoring malignancy, which can raise the category by one step but never to LR-5. | Claim `threshold-growth-v2018`: exact field, note and option texts; 104 subthreshold vectors (LR-3 to LR-4, never LR-5); a new 10-19 mm nonrim-APHE observation stays LR-4. |
+| Threshold growth follows v2018. The subLabel and result note no longer count a new ≥10 mm observation in ≤24 months, or ≥100% growth over >6 months, as threshold growth; both state the ≤24-month boundary, as the subthreshold-growth option does. The subthreshold-growth ancillary option names those cases. | Printed p. 4 (PDF p. 7) `whats-new-threshold-growth`; printed p. 20 (PDF p. 23) `threshold-growth-definition`; printed p. 24 (PDF p. 27) `ancillary-subthreshold-growth`; printed p. 9 `step2-ancillary-features` | v2018 narrowed threshold growth to growth of a mass by at least 50% within 6 months, judged against a prior CT or MRI. A new observation of 10 mm or more within 24 months, or growth of 100% or more across exams over 6 months apart, is now subthreshold growth. That is an ancillary feature favoring malignancy, which can raise the category by one step but never to LR-5. | Claim `threshold-growth-v2018`: exact field, note and option texts; 104 subthreshold vectors (LR-3 to LR-4, never LR-5); a new 10-19 mm nonrim-APHE observation stays LR-4. |
 | A feature favoring benignity moves LR-3 down to LR-2: one category, never to LR-1. Unchanged: LR-5 to LR-4, LR-4 to LR-3, and no change when both kinds are present. | Printed p. 9 (PDF p. 12) `step2-ancillary-features`; layout check `step2_ladder` (bar LR-1..LR-5 at y 515.0; the only forbidden move at x 422.8, between LR-4 and LR-5). Corroborated by Manual Ch. 8 printed p. 8-9 | At least one feature favoring benignity moves the category down one step. The figure forbids only the upgrade into LR-5, and the Manual lists an LR-3 moved down to LR-2 as a pathway to LR-2. | Claim `benign-ancillary-downgrade-one-category` (728 vectors, 7 benign features); the LR-2 result uses the probably-benign texts and severity. |
+| LR-M management: "Multidisciplinary discussion for tailored workup, which often includes biopsy", on every LR-M result (targetoid and nontargetoid). It no longer says biopsy is recommended. | Printed p. 14 (PDF p. 17), management table, LR-M row `management-lrm-tailored-workup`; printed p. 16 (PDF p. 19) `reporting-avoid-compelling-biopsy` | LR-M calls for multidisciplinary discussion for a tailored workup that often includes biopsy; reports should avoid language that compels biopsy or another invasive procedure. | Claim `lrm-management-tailored-workup` (both LR-M paths checked exactly). |
+| LR-2 management: "Return to surveillance in 6 months; consider repeat diagnostic imaging in ≤6 months", on both LR-2 results (probably benign, and the one-step downgrade of LR-3). | Printed p. 14 (PDF p. 17), management table, LR-2 row `management-lr2-surveillance` | Return to surveillance in 6 months; consider repeat diagnostic imaging in 6 months or less. | Claim `lr2-management-surveillance` (both LR-2 paths checked exactly). |
 | The ACR reference points to the live LI-RADS page | The page that links the pinned Core (see Source). On 2026-09-28 it returned HTTP 200; the old path returned HTTP 404 | Not applicable | Claim `acr-reference-is-live-landing-page`; the e2e spec checks the exact link. |
 | LR-M box ticked with no feature: an actionable message, and the major features are shown. Benignity not chosen: a message pointing to that input. Nontargetoid feature with size or APHE missing: a message asking for the major features. | Radulator data-entry guardrail, not derived from the publication | Not applicable | The audit's `app_guardrails` (three actionable errors). Compute tests "dead end" and "unselected benignity". |
 | `compute` never reads a field that the form hides | Radulator data-entry guardrail, not derived from the publication | Not applicable | `compute` reads values only through the same `showIf` chain as the form; every predicate includes its parents. 547 hidden-field mutations change no result (audit), plus the compute-test sweep. |

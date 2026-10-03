@@ -66,7 +66,7 @@ const lrmResult = (features, basis) => ({
   "LR-M Basis": basis,
   "Differential Diagnosis":
     "Atypical HCC, intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
-  Recommendation: "Biopsy recommended; multidisciplinary discussion",
+  Recommendation: "Multidisciplinary discussion for tailored workup, which often includes biopsy",
   _severity: "danger",
 });
 
@@ -281,7 +281,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
       id: "threshold_growth",
       label: "Threshold Growth",
       subLabel:
-        "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
+        "Mass size up ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months, or ≥100% growth over >6 months, is subthreshold growth (ancillary feature), not threshold growth",
       type: "radio",
       opts: [
         { value: "absent", label: "Absent" },
@@ -446,7 +446,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         Definition:
           "High probability benign; distinctive nodule <20mm without major HCC features",
         Recommendation:
-          "Return to routine surveillance; option for alternate imaging modality",
+          "Return to surveillance in 6 months; consider repeat diagnostic imaging in ≤6 months",
         _severity: "success",
       };
     }
@@ -495,7 +495,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
         }),
         "Differential Diagnosis":
           "Intrahepatic cholangiocarcinoma (iCCA), combined HCC-CCA, metastases",
-        Recommendation: "Biopsy recommended; multidisciplinary discussion",
+        Recommendation: "Multidisciplinary discussion for tailored workup, which often includes biopsy",
         _severity: "danger",
       };
     }
@@ -571,13 +571,14 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
     }
 
     // Set category details (LR-2 is reachable here only by the one-step
-    // ancillary downgrade of LR-3; texts match the probably-benign result above)
+    // ancillary downgrade of LR-3; texts match the probably-benign result above).
+    // Management wording follows the Core's management table (printed p. 14).
     const categoryDetails = {
       "LR-2": {
         name: "Probably Benign",
         hcc: "~14%",
         recommendation:
-          "Return to routine surveillance; option for alternate imaging modality",
+          "Return to surveillance in 6 months; consider repeat diagnostic imaging in ≤6 months",
       },
       "LR-3": {
         name: "Intermediate Probability",
@@ -716,7 +717,7 @@ Major features used: Arterial phase hyperenhancement (APHE), size, washout, enha
 
     if (hasThresholdGrowth) {
       notes.push(
-        "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
+        "Threshold growth (v2018): a mass grew ≥50% within ≤6 months vs a prior CT/MRI. A new ≥10 mm observation in ≤24 months or ≥100% growth over >6 months is subthreshold growth instead, an ancillary feature that upgrades at most to LR-4",
       );
     }
 
