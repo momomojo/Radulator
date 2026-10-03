@@ -677,7 +677,7 @@ for (const [label, change] of [
   }, label);
 }
 
-// ---- Step 2f: attestations ------------------------------------------------------------------------
+// ---- Step 2g: attestations ------------------------------------------------------------------------
 for (const [label, mutate] of [
   ["no carriers", (responses) => { responses[`${ROOT}/issues/101/comments`] = []; }],
   ["a tampered verification PASS", (responses) => {
@@ -733,7 +733,7 @@ for (const [label, mutate] of [
   assert.deepEqual(chain.entries[0].attestationCommentIds, [1020, 1021]);
 }
 
-// ---- Step 2g: CI -------------------------------------------------------------------------------------
+// ---- Step 2h: CI -------------------------------------------------------------------------------------
 for (const [label, mutateCi] of [
   ["CI from another head", (ci) => { ci[0].head_sha = hex("other-head"); }],
   ["a failed attested check", (ci) => { ci[1].conclusion = "failure"; }],
@@ -756,7 +756,7 @@ for (const [label, mutateCi] of [
   }, label);
 }
 
-// ---- Step 2i: risk -----------------------------------------------------------------------------------
+// ---- Step 2j: risk -----------------------------------------------------------------------------------
 {
   // The attestation recorded standard risk for a non-semantic clinical-document edit; with patches
   // withheld the chain classifies the landed diff conservatively as high and fails closed.
@@ -778,7 +778,7 @@ for (const [label, mutateCi] of [
   assert.equal(tooLarge.failure.pr, 101);
 }
 
-// ---- Step 2j: labels ---------------------------------------------------------------------------------
+// ---- Step 2k: labels ---------------------------------------------------------------------------------
 await expectReason("CHAIN_LABELS_UNDECODABLE", {
   mutate(responses) {
     const labelsSha256 = gate.relevantLabelsDigest(["ready-for-gate", "do-not-merge"]).sha256;
@@ -787,7 +787,7 @@ await expectReason("CHAIN_LABELS_UNDECODABLE", {
   },
 }, "an attested label set that could never pass the gate");
 
-// ---- Step 2h: gate authorization ---------------------------------------------------------------------
+// ---- Step 2f and 2i: gate authorization ---------------------------------------------------------------------
 for (const [label, mutateStatuses] of [
   ["no authorization status", (statuses) => statuses.splice(0)],
   ["a revoked authorization before the merge", (statuses) => statuses.push({
@@ -904,14 +904,61 @@ for (const [label, fingerprint] of [
   });
   assert.equal(sameFlags.ok, true, sameFlags.summary);
   // Every attested state is newer than the PASS: nothing the PASS could have authorized.
-  const tooLate = await expectReason("CHAIN_GATE_AUTHORIZATION_MISSING", {
+  const tooLate = await expectReason("CHAIN_ATTESTATION_MISSING", {
     mutate: otherState(["ready-for-gate"], {
       epochAt: "2026-09-27T10:04:20Z",
       reviewedAt: ["2026-09-27T10:04:30Z", "2026-09-27T10:04:40Z"],
       replace: true,
     }),
   }, "attested states that all postdate the gate PASS");
-  assert.match(tooLate.summary, /no attested state from before its gate PASS/);
+  assert.match(tooLate.summary, /existed before its gate PASS/);
+
+  // Primary judge on #317 (896fbce): the quorum must have existed, unedited, when the gate published its PASS.
+  // (1) The only quorum, for the PASS's own pre-PASS epoch, was reviewed and posted after the PASS.
+  await expectReason("CHAIN_ATTESTATION_MISSING", {
+    mutate: otherState(["ready-for-gate"], {
+      epochAt: "2026-09-27T10:00:00Z",
+      eventId: 707,
+      reviewedAt: ["2026-09-27T10:04:20Z", "2026-09-27T10:04:30Z"],
+      replace: true,
+    }),
+  }, "a pre-PASS epoch whose only quorum was reviewed after the PASS");
+  // (1b) A record signed with a backdated reviewed_at, in a comment posted after the PASS.
+  await expectReason("CHAIN_ATTESTATION_MISSING", {
+    mutate(responses) {
+      const comment = responses[`${ROOT}/issues/101/comments`].find((item) => item.id === 1011);
+      comment.created_at = "2026-09-27T10:04:30Z";
+      comment.updated_at = "2026-09-27T10:04:30Z";
+    },
+  }, "a backdated verification PASS posted after the gate PASS");
+  // (2) A comment that existed before the PASS, edited after it to carry a newly signed record.
+  await expectReason("CHAIN_ATTESTATION_MISSING", {
+    mutate(responses) {
+      resignComment(responses, 101, 1, VERIFICATION, { clinical_analysis: "Re-signed after the gate PASS." });
+      const comment = responses[`${ROOT}/issues/101/comments`].find((item) => item.id === 1011);
+      comment.created_at = "2026-09-27T10:03:00Z";
+      comment.updated_at = "2026-09-27T10:04:30Z";
+    },
+  }, "a pre-PASS comment edited after the PASS to carry a new signed record");
+  // (3) Carrier times that are missing or malformed never count.
+  for (const [label, change] of [
+    ["a carrier without created_at", (comment) => { delete comment.created_at; }],
+    ["a carrier without updated_at", (comment) => { comment.updated_at = null; }],
+    ["a carrier with a malformed updated_at", (comment) => { comment.updated_at = "not a date"; }],
+  ]) {
+    await expectReason("CHAIN_ATTESTATION_MISSING", {
+      mutate(responses) {
+        change(responses[`${ROOT}/issues/101/comments`].find((item) => item.id === 1011));
+      },
+    }, label);
+  }
+  // A carrier posted before the PASS and edited only before it still counts.
+  const { chain: editedEarly } = await run(baseline, {
+    mutate(responses) {
+      responses[`${ROOT}/issues/101/comments`].find((item) => item.id === 1011).updated_at = "2026-09-27T10:03:50Z";
+    },
+  });
+  assert.equal(editedEarly.ok, true, editedEarly.summary);
 }
 
 // ---- Step 4: promotion content -----------------------------------------------------------------------
@@ -1140,7 +1187,7 @@ const neutral = (pr, overrides = {}) => entrySpec(pr, {
   assert.equal(soloUrgent.counts.urgent, 1);
 }
 
-// ---- Step 2i again: recorded codes name every domain the landed diff has ----------------------------
+// ---- Step 2j again: recorded codes name every domain the landed diff has ----------------------------
 {
   // Codex on #317: the batch's domain and high-risk clinical count come from the recorded reason codes, so a high-risk
   // attestation whose (older or incomplete) codes miss a domain the landed files have fails closed.

@@ -225,7 +225,7 @@ function validPolicy(policy) {
     .every((key) => positiveInteger(policy[key]));
 }
 
-// -- Attestation groups (step f and g) ------------------------------------------------------------
+// -- Attestation groups (steps g and h) -----------------------------------------------------------
 
 function attestationGroups({ comments, repositoryId, prNumber, headSha, baseSha, publicKeys }) {
   const groups = new Map();
@@ -245,12 +245,14 @@ function attestationGroups({ comments, repositoryId, prNumber, headSha, baseSha,
       ci_sha256: record.ci_sha256,
     });
     if (!groups.has(key)) groups.set(key, { key, records: [] });
-    groups.get(key).records.push({ record, commentId: comment.id });
+    groups.get(key).records.push({ record, commentId: comment.id, createdAt: comment.created_at, updatedAt: comment.updated_at });
   }
   return [...groups.values()];
 }
 
-function evaluateGroup(group, { publicKeys, committedAt }) {
+// `deadline` is the gate PASS (bounded by the merge): a required-role PASS counts only when it was reviewed, and its
+// carrier comment was posted and last edited, at or before it. A missing or malformed time never counts.
+function evaluateGroup(group, { publicKeys, deadline }) {
   const sample = group.records[0].record;
   let roles;
   try {
@@ -269,10 +271,11 @@ function evaluateGroup(group, { publicKeys, committedAt }) {
   const newestEvidenceAt = Math.max(epochAt, ...ciTimes);
   const selected = [];
   for (const role of roles) {
-    const passes = group.records.filter(({ record }) =>
+    const passes = group.records.filter(({ record, createdAt, updatedAt }) =>
       record.judge.role === role && record.verdict === "PASS" &&
-      time(record.reviewed_at) >= newestEvidenceAt && time(record.reviewed_at) <= committedAt);
-    if (!passes.length) return { valid: false, why: `no ${role} PASS between the evidence and the merge` };
+      time(record.reviewed_at) >= newestEvidenceAt && time(record.reviewed_at) <= deadline &&
+      time(createdAt) <= deadline && time(updatedAt) <= deadline);
+    if (!passes.length) return { valid: false, why: `no ${role} PASS between the evidence and the gate PASS` };
     const newestAt = Math.max(...passes.map(({ record }) => time(record.reviewed_at)));
     const newest = new Map(passes
       .filter(({ record }) => time(record.reviewed_at) === newestAt)
@@ -402,29 +405,8 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
   ) {
     fail("CHAIN_HEAD_NOT_UP_TO_DATE", `PR #${prNumber} head ${headSha} did not contain its base ${parentSha}.`, at);
   }
-  // f. A valid signed quorum for one exact state, dated between the evidence and the merge.
-  const groups = attestationGroups({
-    comments: Array.isArray(loaded.comments) ? loaded.comments : [],
-    repositoryId: pr.base.repo.id,
-    prNumber,
-    headSha,
-    baseSha: parentSha,
-    publicKeys,
-  }).map((group) => evaluateGroup(group, { publicKeys, committedAt })).filter((group) => group.valid);
-  if (!groups.length) {
-    fail("CHAIN_ATTESTATION_MISSING", `PR #${prNumber} has no valid signed quorum at head ${headSha} before its merge.`, at);
-  }
-  // g. The attested CI is exact-head green with the tier's required checks.
-  const exact = groups.filter((group) => ciIsExact(group.record, headSha))
-    .sort((left, right) => right.newestPassAt - left.newestPassAt || digest(left.record).localeCompare(digest(right.record)));
-  if (!exact.length) {
-    fail("CHAIN_CI_NOT_EXACT", `PR #${prNumber}'s attested CI is not exact-head green with its tier's checks.`, at);
-  }
-  // h. The gate authorized one of these attested states before the merge. The latest authorization status at or
-  //    before the merge is the gate's PASS, and its fingerprint is the PASS fingerprint of an exact state (head, base,
-  //    risk and judge roles). The fingerprint does not cover labels or the state epoch, but the gate passes only the
-  //    PR's current state, so the authorized state is the newest attested epoch at or before the PASS. States
-  //    sharing that epoch must agree on the release flags.
+  // f. The gate authorized this head before the merge: the latest authorization status at or before the merge is the
+  //    gate's PASS. Every record and carrier used below must predate it.
   const authorization = latestGateAuthorization(loaded.statuses, mergedAt);
   if (
     authorization?.state !== "success" || authorization.creator?.id !== GATE_STATUS_CREATOR_ID ||
@@ -432,22 +414,41 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
   ) {
     fail("CHAIN_GATE_AUTHORIZATION_MISSING", `PR #${prNumber} head ${headSha} had no gate PASS authorization at merge time.`, at);
   }
+  const passAt = time(authorization.created_at);
+  // g. A valid signed quorum for one exact state, which the gate could have evaluated: every required-role PASS was
+  //    reviewed after the evidence, and it and its carrier comment existed, unedited, by the gate PASS.
+  const groups = attestationGroups({
+    comments: Array.isArray(loaded.comments) ? loaded.comments : [],
+    repositoryId: pr.base.repo.id,
+    prNumber,
+    headSha,
+    baseSha: parentSha,
+    publicKeys,
+  }).map((group) => evaluateGroup(group, { publicKeys, deadline: Math.min(passAt, committedAt) })).filter((group) => group.valid);
+  if (!groups.length) {
+    fail("CHAIN_ATTESTATION_MISSING", `PR #${prNumber} has no valid signed quorum at head ${headSha} that existed before its gate PASS.`, at);
+  }
+  // h. The attested CI is exact-head green with the tier's required checks.
+  const exact = groups.filter((group) => ciIsExact(group.record, headSha))
+    .sort((left, right) => right.newestPassAt - left.newestPassAt || digest(left.record).localeCompare(digest(right.record)));
+  if (!exact.length) {
+    fail("CHAIN_CI_NOT_EXACT", `PR #${prNumber}'s attested CI is not exact-head green with its tier's checks.`, at);
+  }
+  // i. The gate's PASS is for one of these states: its fingerprint is the PASS fingerprint of an exact state (head,
+  //    base, risk and judge roles). The fingerprint covers neither labels nor the state epoch, but the gate passes only
+  //    the PR's current state, and every state left existed before the PASS, so the authorized state is the newest
+  //    attested epoch. States sharing that epoch must agree on the release flags.
   const passFingerprint = authorization.description.slice("PASS ".length);
   const fingerprinted = exact.filter((candidate) =>
     gatePassFingerprint({ headSha, baseSha: parentSha, risk: candidate.record.risk }) === passFingerprint);
   if (!fingerprinted.length) {
     fail("CHAIN_GATE_AUTHORIZATION_MISSING", `PR #${prNumber}'s gate PASS fingerprint matches no attested state at head ${headSha}.`, at);
   }
-  const passAt = time(authorization.created_at);
   const epochAt = (candidate) => time(candidate.record.state_epoch?.event_created_at);
   const epochId = (candidate) => (Number.isSafeInteger(candidate.record.state_epoch?.event_id) ? candidate.record.state_epoch.event_id : -1);
-  const published = fingerprinted.filter((candidate) => epochAt(candidate) <= passAt);
-  if (!published.length) {
-    fail("CHAIN_GATE_AUTHORIZATION_MISSING", `PR #${prNumber} has no attested state from before its gate PASS.`, at);
-  }
-  const newestAt = Math.max(...published.map(epochAt));
-  const newestId = Math.max(...published.filter((candidate) => epochAt(candidate) === newestAt).map(epochId));
-  const authorized = published.filter((candidate) => epochAt(candidate) === newestAt && epochId(candidate) === newestId);
+  const newestAt = Math.max(...fingerprinted.map(epochAt));
+  const newestId = Math.max(...fingerprinted.filter((candidate) => epochAt(candidate) === newestAt).map(epochId));
+  const authorized = fingerprinted.filter((candidate) => epochAt(candidate) === newestAt && epochId(candidate) === newestId);
   if (new Set(authorized.map((candidate) => releaseFlags(candidate.record.labels_sha256))).size > 1) {
     fail(
       "CHAIN_GATE_STATE_AMBIGUOUS",
@@ -457,7 +458,7 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
   }
   const group = authorized[0];
   const recorded = group.record;
-  // i. The recorded tier is not lower than a conservative re-classification of the landed diff.
+  // j. The recorded tier is not lower than a conservative re-classification of the landed diff.
   const files = Array.isArray(headCompare.files) ? headCompare.files : null;
   if (!files) fail("CHAIN_EVIDENCE_UNAVAILABLE", `PR #${prNumber}'s changed files were not loaded.`, at);
   if (files.length >= policy.maxCompareFiles) {
@@ -483,10 +484,10 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
       at,
     );
   }
-  // j. The attested labels decode to the release flags.
+  // k. The attested labels decode to the release flags.
   const labels = decodeAttestedLabels(recorded.labels_sha256);
   if (!labels) fail("CHAIN_LABELS_UNDECODABLE", `PR #${prNumber}'s attested label set is not a PASS-eligible release label set.`, at);
-  // k. The verified entry. Its domains are every domain its recorded or re-classified codes name; a PR whose own diff
+  // l. The verified entry. Its domains are every domain its recorded or re-classified codes name; a PR whose own diff
   // spans clinical and release control is "mixed" by itself.
   const reasonCodes = Array.isArray(recorded.risk?.reasonCodes) ? [...recorded.risk.reasonCodes].sort() : [];
   const domains = [...new Set([...riskDomains(reasonCodes), ...riskDomains(analyzed.reasonCodes)])].sort();
