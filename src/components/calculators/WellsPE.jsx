@@ -46,7 +46,7 @@ The 2-tier model directly guides the diagnostic pathway:
 • PE Unlikely: D-dimer first. In the Christopher Study (van Belle 2006), 1,028 PE-unlikely patients with a normal D-dimer were left untreated; 0.5% (95% CI 0.2–1.1%) had nonfatal VTE over 3 months of follow-up. With the SimpliRED D-dimer in Wells 2000, PE occurred in 2.2% (derivation) and 1.7% (validation) of PE-unlikely patients with a negative result.
 • PE Likely: proceed directly to CT pulmonary angiography.
 
-This calculator implements the Wells 2000 score (seven items and both cut-point schemes); item wording follows NICE NG158 Table 2. PERC is not scored here; a note suggests it for low-probability results.`,
+This calculator implements the Wells 2000 score (seven items and both cut-point schemes); item wording follows NICE NG158 Table 2. PERC is not scored here; for scores below 2, a note gives the NICE and ACP conditions for using it.`,
     link: {
       label: "View Original Wells PE Study",
       url: "https://doi.org/10.1055/s-0037-1613830",
@@ -55,18 +55,18 @@ This calculator implements the Wells 2000 score (seven items and both cut-point 
 
   fields: [
     // CLINICAL SIGNS AND SYMPTOMS
-    // Wording: NICE NG158 Table 2 (adapted from Wells 2000); see docs/evidence/wells-pe-wording.md
+    // Wording: NICE NG158 Table 2 (adapted from Wells 2000); see docs/evidence/wells-pe-wording.md.
+    // Each definition is part of the visible label, in Table 2's own layout: checkbox subLabels are
+    // not rendered (primary judge on #342).
     {
       id: "clinical_dvt",
-      label: "Clinical signs/symptoms of DVT",
-      subLabel: "Must include both leg swelling and pain on palpation of the deep veins",
+      label: "Clinical signs/symptoms of DVT (at minimum, leg swelling and pain on palpation of the deep veins)",
       type: "checkbox",
     },
     {
       // Strictly "less likely": an alternative diagnosis judged equally likely scores 0.
       id: "alternative_less_likely",
       label: "Alternative diagnosis less likely than PE",
-      subLabel: "PE judged more likely than every alternative diagnosis; a tie does not count",
       type: "checkbox",
     },
     {
@@ -76,9 +76,7 @@ This calculator implements the Wells 2000 score (seven items and both cut-point 
     },
     {
       id: "immobilization_surgery",
-      label: "Immobilization or surgery in past 4 weeks",
-      subLabel:
-        "Immobilization lasting more than 3 days, or surgery, within the previous 4 weeks",
+      label: "Immobilization or surgery in the previous 4 weeks (immobilization for more than 3 days)",
       type: "checkbox",
     },
     {
@@ -93,8 +91,7 @@ This calculator implements the Wells 2000 score (seven items and both cut-point 
     },
     {
       id: "malignancy",
-      label: "Malignancy",
-      subLabel: "Under treatment, treated within the past 6 months, or palliative",
+      label: "Malignancy (under treatment, treated within the past 6 months, or palliative)",
       type: "checkbox",
     },
   ],
@@ -191,10 +188,12 @@ This calculator implements the Wells 2000 score (seven items and both cut-point 
     // Additional clinical notes
     const notes = [];
 
-    // Same low band as the 3-tier model (<2); ACP 2015 advice 2 applies PERC to low pretest probability.
+    // Same low band as the 3-tier model (<2). The note states NICE NG158 1.1.16's conditions and ACP 2015
+    // Best Practice Advice 2, because a Wells score below 2 alone does not make PERC applicable (primary
+    // judge on #342). Sentences, not "; ", so the note stays one entry in "Clinical Notes".
     if (score < 2) {
       notes.push(
-        "Consider the PERC rule in low-probability patients (score <2) to avoid unnecessary D-dimer testing",
+        "Consider the PERC rule only if the overall clinical impression (history, examination and initial tests such as ECG or chest X-ray) gives low clinical suspicion of PE and other diagnoses are feasible (NICE NG158 1.1.16). A Wells score below 2 is not enough on its own. With a low pretest probability and all PERC criteria met, ACP 2015 advises against D-dimer testing or imaging. PERC is not validated in people with COVID-19.",
       );
     }
 

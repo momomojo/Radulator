@@ -30,6 +30,21 @@ test.describe("Wells Criteria for PE Calculator", () => {
       await expect(page.getByText("Malignancy")).toBeVisible();
     });
 
+    // Checkbox subLabels are not rendered, so each NICE NG158 Table 2 definition is part of the
+    // visible label (primary judge on #342).
+    test("should show each criterion's NICE NG158 definition in its visible label", async ({ page }) => {
+      for (const [id, text] of [
+        ["clinical_dvt", "Clinical signs/symptoms of DVT (at minimum, leg swelling and pain on palpation of the deep veins)"],
+        ["immobilization_surgery", "Immobilization or surgery in the previous 4 weeks (immobilization for more than 3 days)"],
+        ["malignancy", "Malignancy (under treatment, treated within the past 6 months, or palliative)"],
+        ["alternative_less_likely", "Alternative diagnosis less likely than PE"],
+      ]) {
+        const label = page.locator(`label[for="${id}"]`);
+        await expect(label).toBeVisible();
+        await expect(label).toContainText(text);
+      }
+    });
+
     test("should use the NICE NG158 / Wells 2000 wording for the alternative-diagnosis item", async ({
       page,
     }) => {
@@ -119,11 +134,19 @@ test.describe("Wells Criteria for PE Calculator", () => {
           "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
         ),
       ).toContainText("Low Probability");
-      await expect(
-        page.locator(
-          "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
-        ),
-      ).toContainText("PERC");
+      // The PERC note states NICE NG158 1.1.16's conditions and ACP 2015 advice 2 (primary judge on #342).
+      const notes = page.locator(
+        "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+      );
+      await expect(notes).toContainText(
+        "Consider the PERC rule only if the overall clinical impression",
+      );
+      await expect(notes).toContainText("gives low clinical suspicion of PE and other diagnoses are feasible (NICE NG158 1.1.16)");
+      await expect(notes).toContainText("A Wells score below 2 is not enough on its own.");
+      await expect(notes).toContainText(
+        "With a low pretest probability and all PERC criteria met, ACP 2015 advises against D-dimer testing or imaging.",
+      );
+      await expect(notes).toContainText("PERC is not validated in people with COVID-19.");
     });
 
     test("should attribute the negative D-dimer outcome and make no NPV >99% claim", async ({
