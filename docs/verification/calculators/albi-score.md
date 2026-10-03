@@ -75,7 +75,17 @@ features promised by the original ALBI calculator.
 | [Ho et al., PLOS ONE2017](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0180408), citation/abstract | Supporting HCC/TACE prognostic bibliography; no additional calculation |
 | [Hiraoka et al., JGH2016](https://doi.org/10.1111/jgh.13250), author-institution citation/abstract | Supporting retrospective Japanese HCC bibliography. Inaccessible full methods not used for ALBI-T or new output |
 | [Pinato et al., J Hepatol2017](https://doi.org/10.1016/j.jhep.2016.09.008), [Cambridge manuscript](https://www.repository.cam.ac.uk/bitstreams/57b9d9f0-4841-4458-ad3c-9554a0e2becb/download) pp.7–19 | Additional cohort-level prognosis, variable discrimination across cohorts, transplant exclusion; no individual survival numbers imported |
-| [Ho, Hsu, Liu et al., DDS2021;66:1730–1738](https://doi.org/10.1007/s10620-020-06384-2), publisher/author-institution citation and abstract | Correct fifth-reference identity. Multivariable TACE nomogram explicitly not implemented; full subscription methods not required for the retained original-model scope |
+| [Ho, Hsu, Liu et al., DDS2021;66(5):1730–1738](https://doi.org/10.1007/s10620-020-06384-2), [author-institution record](https://scholar.nycu.edu.tw/en/publications/albuminbilirubin-albi-grade-based-nomogram-for-patients-with-hepa/): title/byline, bibliographic fields and Cite this → Vancouver/RIS; Abstract → Methods/Results | Correct fifth-reference identity, also indexed as PMID32548811. The abstract describes a multivariate TACE survival nomogram using ALBI grade plus five other predictors, not the original two-laboratory ALBI calculation. This nomogram is not implemented; unseen subscription methods or coefficients are not claimed as reviewed |
+
+Production-review access repair2026-09-09: PR271's primary judge could not
+authenticate the fifth bibliography entry through the challenged publisher.
+The owner and a separate read-only reviewer independently read the linked
+NYCU author-institution record. Ordinary public HTTPS from the actual Mac mini
+also returned HTTP200. The citation and abstract locators above resolve that
+specific evidence-access gap; they do not validate new clinical outputs.
+No runtime code, expected answer, formula or threshold changes in this repair.
+The new production candidate requires fresh CI and both signed reviews; the
+previous NEEDS_FIX remains part of the release receipt's history.
 
 US current-version check: the [AASLD HCC page](https://www.aasld.org/practice-guidelines/management-hepatocellular-carcinoma)
 also links the 2025 Critical Update, DOI10.1097/HEP.0000000000001269,

@@ -108,16 +108,20 @@ test.describe("Feedback form", () => {
     await expect(page.locator("#calculator")).toContainText("Other / General");
   });
 
-  test("shows success state and preserves feedback_submitted analytics", async ({
+  test("shows success state without application telemetry", async ({
     page,
   }) => {
-    const consoleMessages = [];
     const requestBodies = [];
-    await page.addInitScript(() => {
-      window.__feedbackAnalyticsEvents = [];
-      window.gtag = (...args) => window.__feedbackAnalyticsEvents.push(args);
+    const telemetryRequests = [];
+    page.on("request", (request) => {
+      if (
+        /googletagmanager|google-analytics|analytics\.google|collect\?|gtag/i.test(
+          request.url(),
+        )
+      ) {
+        telemetryRequests.push(request.url());
+      }
     });
-    page.on("console", (message) => consoleMessages.push(message.text()));
     await page.route("**/f/xgvpkawo", async (route) => {
       expect(route.request().method()).toBe("POST");
       requestBodies.push(route.request().postData() || "");
@@ -141,22 +145,7 @@ test.describe("Feedback form", () => {
       }),
     ).toContainText("Thank you for your feedback!");
     expect(requestBodies.join("\n")).toContain("tirads");
-    await expect
-      .poll(async () => {
-        const gtagEvents = await page.evaluate(
-          () => window.__feedbackAnalyticsEvents || [],
-        );
-        return (
-          consoleMessages.some((message) =>
-            message.includes("[GA4 Dev] feedback_submitted"),
-          ) ||
-          gtagEvents.some(
-            ([command, eventName]) =>
-              command === "event" && eventName === "feedback_submitted",
-          )
-        );
-      })
-      .toBe(true);
+    expect(telemetryRequests).toEqual([]);
   });
 
   test("shows a safe generic submit error without leaking Formspree internals", async ({
