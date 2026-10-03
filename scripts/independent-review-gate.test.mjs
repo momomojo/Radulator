@@ -26,6 +26,9 @@ import {
   GATE_CHECK_CONTEXT,
   gatePassFingerprint,
   PROMOTION_CHAIN_SCHEMA,
+  STATE_EPOCH_EVENTS,
+  STATE_EPOCH_LABELS,
+  stateEpochAt,
   unavailablePromotionChain,
 } from "./promotion-chain.mjs";
 
@@ -1258,6 +1261,34 @@ function promotionFixture({ labels = ["ready-for-gate", "promotion"], promotionC
       `${label}: promotion-chain.mjs recomputes the gate's exact PASS fingerprint`,
     );
   }
+}
+
+// ---- The chain derives the PR-state epoch exactly as the gate does (verification judge on #317) -------------
+{
+  assert.deepEqual([...STATE_EPOCH_LABELS].sort(), [...independentGate.RELEVANT_LABELS].sort(), "the chain's epoch labels are the gate's");
+  assert.deepEqual([...STATE_EPOCH_EVENTS].sort(), [...independentGate.RELEVANT_TIMELINE_EVENTS].sort(), "the chain's epoch events are the gate's");
+  const createdAt = "2026-08-23T19:00:00Z";
+  const timelines = [
+    [],
+    [{ id: 10, event: "labeled", created_at: "2026-08-23T19:10:00Z", label: { name: "ready-for-gate" } }],
+    [
+      { id: 10, event: "labeled", created_at: "2026-08-23T19:10:00Z", label: { name: "ready-for-gate" } },
+      { id: 11, event: "labeled", created_at: "2026-08-23T19:11:00Z", label: { name: "triage" } },
+      { id: 12, event: "commented", created_at: "2026-08-23T19:12:00Z" },
+      { id: 13, event: "ready_for_review", created_at: "2026-08-23T19:13:00Z" },
+      { id: 14, event: "unlabeled", created_at: "2026-08-23T19:14:00Z", label: { name: "Release-Remediation" } },
+    ],
+    [
+      { id: 21, event: "head_ref_force_pushed", created_at: "2026-08-23T19:21:00Z" },
+      { id: 20, event: "labeled", created_at: "2026-08-23T19:20:00Z", label: { name: "gate-hold" } },
+    ],
+  ];
+  for (const timeline of timelines) {
+    assert.deepEqual(stateEpochAt(timeline, createdAt), deriveStateEpoch(timeline, createdAt), JSON.stringify(timeline));
+  }
+  const malformed = [{ id: 30, event: "closed", created_at: "not a date" }];
+  assert.throws(() => deriveStateEpoch(malformed, createdAt));
+  assert.equal(stateEpochAt(malformed, createdAt), null, "a malformed relevant event fails closed in both");
 }
 
 // ---- Batch approvals count only for the chain they were signed against (Codex on #317) ----------------

@@ -85,7 +85,11 @@ const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const CONTROLLER_MERGE_TITLE = /^PR #([1-9]\d*): exact-head clinical gate passed$/;
 const CONTROLLER_COMMITTER_LOGIN = "web-flow";
 // The controller merges with the workflow token, so GitHub records github-actions[bot] as the PR's merger. The title
-// and the web-flow signature are the same for anyone who squash-merges with that title; merged_by is not.
+// and the web-flow signature are the same for anyone who squash-merges with that title; merged_by is not. This binds
+// the merge to this repository's workflow identity, not to the controller workflow itself: any workflow here holding
+// a write token is the same github-actions[bot] (as is the gate's status creator below). Nothing relies on that
+// distinction while the chain is report-only and batch review is off; a controller-specific, workflow-bound receipt is
+// an A2 prerequisite before batch review relies on the chain.
 const CONTROLLER_MERGER_ID = 41898282;
 const CONTROLLER_MERGER_LOGIN = "github-actions[bot]";
 const GATE_STATUS_CREATOR_ID = 41898282;
@@ -330,6 +334,37 @@ function releaseFlags(labelsSha256) {
   return labels ? `remediation=${labels.remediation} urgent=${labels.urgent}` : "undecodable";
 }
 
+// The PR-state epoch as the gate derives it (independent-review-gate.mjs deriveStateEpoch; the gate's tests assert
+// these lists and the result agree): the newest relevant timeline event, or the PR's creation.
+export const STATE_EPOCH_LABELS = Object.freeze([
+  LABEL_READY, LABEL_REMEDIATION, LABEL_URGENT, LABEL_FULL_REVIEW,
+  "hold", "do-not-merge", "gate-hold", "needs-fix", "changes-requested", "security-hold", "cancelled", "canceled",
+]);
+export const STATE_EPOCH_EVENTS = Object.freeze([
+  "closed", "reopened", "convert_to_draft", "ready_for_review", "base_ref_changed",
+  "head_ref_force_pushed", "head_ref_deleted", "head_ref_restored",
+]);
+
+function stateEpochEvent(event) {
+  const name = event?.event;
+  if (name === "labeled" || name === "unlabeled") return STATE_EPOCH_LABELS.includes(`${event?.label?.name || ""}`.toLowerCase());
+  return STATE_EPOCH_EVENTS.includes(name);
+}
+
+// The epoch at `at`: the newest relevant event created at or before it. Null when a relevant event or the creation
+// time is malformed (the gate refuses those too).
+export function stateEpochAt(timeline, prCreatedAt, at = Number.POSITIVE_INFINITY) {
+  if (Number.isNaN(time(prCreatedAt))) return null;
+  const relevant = [];
+  for (const event of Array.isArray(timeline) ? timeline : []) {
+    if (!stateEpochEvent(event)) continue;
+    if (!positiveInteger(event.id) || Number.isNaN(time(event.created_at))) return null;
+    if (time(event.created_at) <= at) relevant.push({ eventId: event.id, eventCreatedAt: event.created_at });
+  }
+  relevant.sort((left, right) => right.eventId - left.eventId || `${right.eventCreatedAt}`.localeCompare(`${left.eventCreatedAt}`));
+  return relevant[0] || { eventId: 0, eventCreatedAt: prCreatedAt };
+}
+
 function latestGateAuthorization(statuses, mergedAt) {
   return (statuses || [])
     .filter((status) => status?.context === ENFORCEMENT_CONTEXT && time(status.created_at) <= mergedAt)
@@ -436,19 +471,27 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
   }
   // i. The gate's PASS is for one of these states: its fingerprint is the PASS fingerprint of an exact state (head,
   //    base, risk and judge roles). The fingerprint covers neither labels nor the state epoch, but the gate passes only
-  //    the PR's current state, and every state left existed before the PASS, so the authorized state is the newest
-  //    attested epoch. States sharing that epoch must agree on the release flags.
+  //    the PR's current state, so the authorized state is the one whose epoch is the PR's epoch at the PASS, derived as
+  //    the gate derives it from GitHub's immutable timeline. A deleted or missing quorum for that state therefore
+  //    fails rather than falling back to an older one. States sharing that epoch must agree on the release flags.
   const passFingerprint = authorization.description.slice("PASS ".length);
   const fingerprinted = exact.filter((candidate) =>
     gatePassFingerprint({ headSha, baseSha: parentSha, risk: candidate.record.risk }) === passFingerprint);
   if (!fingerprinted.length) {
     fail("CHAIN_GATE_AUTHORIZATION_MISSING", `PR #${prNumber}'s gate PASS fingerprint matches no attested state at head ${headSha}.`, at);
   }
-  const epochAt = (candidate) => time(candidate.record.state_epoch?.event_created_at);
-  const epochId = (candidate) => (Number.isSafeInteger(candidate.record.state_epoch?.event_id) ? candidate.record.state_epoch.event_id : -1);
-  const newestAt = Math.max(...fingerprinted.map(epochAt));
-  const newestId = Math.max(...fingerprinted.filter((candidate) => epochAt(candidate) === newestAt).map(epochId));
-  const authorized = fingerprinted.filter((candidate) => epochAt(candidate) === newestAt && epochId(candidate) === newestId);
+  const epochAtPass = stateEpochAt(loaded.timeline, pr.created_at, passAt);
+  if (!epochAtPass) fail("CHAIN_EVIDENCE_UNAVAILABLE", `PR #${prNumber}'s timeline or creation time is malformed.`, at);
+  const authorized = fingerprinted.filter((candidate) =>
+    candidate.record.state_epoch?.event_id === epochAtPass.eventId &&
+    time(candidate.record.state_epoch?.event_created_at) === time(epochAtPass.eventCreatedAt));
+  if (!authorized.length) {
+    fail(
+      "CHAIN_ATTESTATION_MISSING",
+      `PR #${prNumber} has no surviving quorum for the state it had at its gate PASS (epoch ${epochAtPass.eventId}).`,
+      at,
+    );
+  }
   if (new Set(authorized.map((candidate) => releaseFlags(candidate.record.labels_sha256))).size > 1) {
     fail(
       "CHAIN_GATE_STATE_AMBIGUOUS",
@@ -911,6 +954,7 @@ function pickPr(pr) {
     number: pr?.number ?? null,
     state: pr?.state ?? null,
     merged: pr?.merged === true,
+    created_at: pr?.created_at ?? null,
     merged_at: pr?.merged_at ?? null,
     merged_by: { id: pr?.merged_by?.id ?? null, login: pr?.merged_by?.login ?? null },
     merge_commit_sha: pr?.merge_commit_sha ?? null,
@@ -930,19 +974,29 @@ function pickPr(pr) {
 
 async function loadCommitFacts(api, root, prNumber, expectedParent) {
   const pr = pickPr(await api.request(`${root}/pulls/${prNumber}`));
-  const loaded = { pr, headCommit: null, headCompare: null, comments: [], statuses: [] };
+  const loaded = { pr, headCommit: null, headCompare: null, comments: [], statuses: [], timeline: [] };
   if (!sha(pr.head.sha)) return loaded;
-  const [headCommit, headCompare, comments, statuses] = await Promise.all([
+  const [headCommit, headCompare, comments, statuses, timeline] = await Promise.all([
     api.request(`${root}/git/commits/${pr.head.sha}`),
     api.request(`${root}/compare/${expectedParent}...${pr.head.sha}`),
     api.paged(`${root}/issues/${prNumber}/comments`),
     api.paged(`${root}/commits/${pr.head.sha}/statuses`),
+    api.paged(`${root}/issues/${prNumber}/timeline`),
   ]);
   loaded.headCommit = { sha: headCommit?.sha ?? null, tree: { sha: headCommit?.tree?.sha ?? null } };
   loaded.headCompare = pickCompare(headCompare);
   loaded.comments = (Array.isArray(comments) ? comments : [])
     .filter((comment) => typeof comment?.body === "string" && comment.body.includes(ATTESTATION_MARKER))
     .map((comment) => ({ id: comment.id, created_at: comment.created_at, updated_at: comment.updated_at, body: comment.body }));
+  // Only the events the state epoch reads (immutable GitHub records), kept as returned.
+  loaded.timeline = (Array.isArray(timeline) ? timeline : [])
+    .filter(stateEpochEvent)
+    .map((event) => ({
+      id: event.id ?? null,
+      event: event.event,
+      created_at: event.created_at ?? null,
+      ...(event.label ? { label: { name: event.label?.name ?? null } } : {}),
+    }));
   loaded.statuses = (Array.isArray(statuses) ? statuses : [])
     .filter((status) => status?.context === ENFORCEMENT_CONTEXT)
     .map((status) => ({

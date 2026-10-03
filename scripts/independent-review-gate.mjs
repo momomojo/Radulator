@@ -46,14 +46,14 @@ const HOLD_LABELS = new Set([
   "cancelled",
   "canceled",
 ]);
-const RELEVANT_LABELS = new Set([
+export const RELEVANT_LABELS = new Set([
   "ready-for-gate",
   "release-remediation",
   LABEL_URGENT,
   LABEL_FULL_REVIEW,
   ...HOLD_LABELS,
 ]);
-const RELEVANT_TIMELINE_EVENTS = new Set([
+export const RELEVANT_TIMELINE_EVENTS = new Set([
   "closed",
   "reopened",
   "convert_to_draft",

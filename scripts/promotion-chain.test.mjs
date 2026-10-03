@@ -218,6 +218,7 @@ function world({
     });
     responses[`${ROOT}/pulls/${spec.pr}`] = {
       number: spec.pr,
+      created_at: minutes(spec.start, -60),
       state: "closed",
       merged: true,
       merged_at: committedAt,
@@ -235,6 +236,19 @@ function world({
       merge_base_commit: { sha: parent },
       files: withoutPatch(spec.files),
     };
+    // The timeline the epoch comes from: one labeled event per relevant label, the newest at the attested epoch
+    // (id pr * 7), an irrelevant label, and the post-merge close (relevant, but after the PASS).
+    responses[`${ROOT}/issues/${spec.pr}/timeline`] = [
+      ...spec.labels.map((name, index) => ({
+        id: spec.pr * 7 - (spec.labels.length - 1 - index),
+        event: "labeled",
+        created_at: minutes(epochAt, -(spec.labels.length - 1 - index)),
+        label: { name },
+      })),
+      { id: spec.pr * 7 - spec.labels.length, event: "labeled", created_at: minutes(epochAt, -30), label: { name: "triage" } },
+      { id: spec.pr * 7 + 50, event: "commented", created_at: minutes(spec.start, 2) },
+      { id: spec.pr * 7 + 51, event: "closed", created_at: minutes(spec.start, 5) },
+    ];
     responses[`${ROOT}/issues/${spec.pr}/comments`] = [
       { id: spec.pr * 10 + 9, body: "Looks good to me.", created_at: epochAt, updated_at: epochAt },
       ...records.map((record, index) => carrier(record, spec.pr * 10 + index)),
@@ -723,10 +737,11 @@ for (const [label, mutate] of [
   await expectReason("CHAIN_ATTESTATION_MISSING", { mutate }, label);
 }
 {
-  // A second, later valid quorum for another exact state (for example after a label change) is fine,
-  // and the verified entry reports the newest one.
+  // A second, later valid quorum for another exact state after a label change (the timeline records it) is fine,
+  // and the verified entry reports the state current at the gate PASS.
   const { chain } = await run(baseline, {
     mutate(responses) {
+      responses[`${ROOT}/issues/101/timeline`].push({ id: 999, event: "labeled", created_at: "2026-09-27T10:02:30Z", label: { name: "ready-for-gate" } });
       const comments = responses[`${ROOT}/issues/101/comments`];
       for (const [index, key, at] of [[0, PRIMARY, "2026-09-27T10:03:10Z"], [1, VERIFICATION, "2026-09-27T10:03:20Z"]]) {
         const current = comments.find((item) => item.id === 1010 + index);
@@ -856,7 +871,8 @@ for (const [label, fingerprint] of [
 {
   // #101's fixture: epoch 10:00, quorum 10:02/10:03, gate PASS 10:04, merge 10:05. A second state signs a second
   // quorum (same head, risk and CI) with other labels; its epoch and review times decide which state the PASS is for.
-  const otherState = (labels, { epochAt, eventId = 999, reviewedAt, replace = false }) => (responses) => {
+  const otherState = (labels, { epochAt, eventId = 999, reviewedAt, replace = false, relabel = null }) => (responses) => {
+    if (relabel) responses[`${ROOT}/issues/101/timeline`].push({ id: eventId, event: "labeled", created_at: epochAt, label: { name: relabel } });
     const comments = responses[`${ROOT}/issues/101/comments`];
     for (const [index, key, at] of [[0, PRIMARY, reviewedAt[0]], [1, VERIFICATION, reviewedAt[1]]]) {
       const { signature: _signature, ...unsigned } = attestedRecord(responses, 101, index);
@@ -873,8 +889,9 @@ for (const [label, fingerprint] of [
   };
   const remediation = ["ready-for-gate", "release-remediation"];
   // The label changed before the PASS (as on real #245): the PASS is for the newer, remediation state.
+  const relabel = { relabel: "release-remediation" };
   const { chain: relabelled } = await run(baseline, {
-    mutate: otherState(remediation, { epochAt: "2026-09-27T10:02:30Z", reviewedAt: ["2026-09-27T10:03:10Z", "2026-09-27T10:03:20Z"] }),
+    mutate: otherState(remediation, { ...relabel, epochAt: "2026-09-27T10:02:30Z", reviewedAt: ["2026-09-27T10:03:10Z", "2026-09-27T10:03:20Z"] }),
   });
   assert.equal(relabelled.ok, true, relabelled.summary);
   assert.deepEqual(relabelled.entries[0].attestationCommentIds, [1020, 1021]);
@@ -882,7 +899,7 @@ for (const [label, fingerprint] of [
   // The judge's vector: a remediation state signed after the PASS (but before the merge) is not what the PASS
   // authorized, although its records are the newest. The chain keeps the PASS's state (the old code took the newest).
   const { chain: afterPass } = await run(baseline, {
-    mutate: otherState(remediation, { epochAt: "2026-09-27T10:04:30Z", reviewedAt: ["2026-09-27T10:04:40Z", "2026-09-27T10:04:50Z"] }),
+    mutate: otherState(remediation, { ...relabel, epochAt: "2026-09-27T10:04:30Z", reviewedAt: ["2026-09-27T10:04:40Z", "2026-09-27T10:04:50Z"] }),
   });
   assert.equal(afterPass.ok, true, afterPass.summary);
   assert.deepEqual(afterPass.entries[0].attestationCommentIds, [1010, 1011], "the state the PASS authorized is used");
@@ -968,6 +985,34 @@ for (const [label, fingerprint] of [
     },
   });
   assert.equal(editedEarly.ok, true, editedEarly.summary);
+
+  // Verification judge on #317 (1cdbbc1): the quorum of the state current at the PASS (relabelled before it, as the
+  // timeline shows) is deleted, while an older state's quorum survives. The chain fails instead of falling back to the
+  // older state's release flags.
+  const deleted = await expectReason("CHAIN_ATTESTATION_MISSING", {
+    mutate(responses) {
+      otherState(remediation, { ...relabel, epochAt: "2026-09-27T10:02:30Z", reviewedAt: ["2026-09-27T10:03:10Z", "2026-09-27T10:03:20Z"] })(responses);
+      responses[`${ROOT}/issues/101/comments`] = responses[`${ROOT}/issues/101/comments`].filter((item) => item.id !== 1020 && item.id !== 1021);
+    },
+  }, "the authorized state's quorum deleted while an older quorum survives");
+  assert.match(deleted.summary, /no surviving quorum for the state it had at its gate PASS \(epoch 999\)/);
+  // The timeline must be readable and well formed; irrelevant events are ignored.
+  await expectReason("CHAIN_EVIDENCE_UNAVAILABLE", {
+    mutate(responses) {
+      responses[`${ROOT}/issues/101/timeline`].push({ id: 990, event: "unlabeled", created_at: "not a date", label: { name: "gate-hold" } });
+    },
+  }, "a relevant timeline event with a malformed time");
+  await expectReason("CHAIN_EVIDENCE_UNAVAILABLE", {
+    mutate(responses) {
+      delete responses[`${ROOT}/issues/101/timeline`];
+    },
+  }, "an unreadable timeline");
+  const { chain: noise } = await run(baseline, {
+    mutate(responses) {
+      responses[`${ROOT}/issues/101/timeline`].push({ id: 995, event: "commented", created_at: "not a date" });
+    },
+  });
+  assert.equal(noise.ok, true, `an irrelevant malformed event is ignored: ${noise.summary}`);
 }
 
 // ---- Step 4: promotion content -----------------------------------------------------------------------
