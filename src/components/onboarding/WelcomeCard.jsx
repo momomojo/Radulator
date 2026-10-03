@@ -24,7 +24,7 @@ export function WelcomeCard({ onDismiss, onOpenGuide }) {
     >
       <p>
         <strong>Welcome to Radulator.</strong> {medicalCalculatorCount}{" "}
-        evidence-based medical calculators across 11 specialties.{" "}
+        evidence-based medical calculators across 12 specialties.{" "}
         <button
           type="button"
           onClick={handleOpenGuide}

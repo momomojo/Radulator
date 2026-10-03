@@ -23,6 +23,7 @@ const CATEGORY_ORDER = [
   "Cardiac Imaging",
   "Breast Imaging",
   "Women's Imaging",
+  "Oncology",
   "Clinical Decision",
   "Hepatology/Liver",
   "Urology",

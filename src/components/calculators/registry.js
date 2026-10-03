@@ -41,6 +41,7 @@ export const categoryOrder = [
   "Cardiac Imaging",
   "Breast Imaging",
   "Women's Imaging",
+  "Oncology",
   "Clinical Decision",
   "Hepatology/Liver",
   "Urology",

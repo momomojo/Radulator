@@ -9,7 +9,7 @@ export const guideContent = [
     id: "getting-started",
     title: "Getting Started",
     body: [
-      `Radulator is a suite of ${medicalCalculatorCount} evidence-based medical calculators spanning 11 clinical specialties, including radiology, neuroradiology, trauma surgery, cardiac imaging, breast imaging, women's imaging, hepatology, urology, interventional radiology, nephrology, and clinical decision support.`,
+      `Radulator is a suite of ${medicalCalculatorCount} evidence-based medical calculators spanning 12 clinical specialties, including radiology, neuroradiology, trauma surgery, cardiac imaging, breast imaging, women's imaging, hepatology, urology, interventional radiology, nephrology, oncology, and clinical decision support.`,
       "To begin, select any calculator from the sidebar. On mobile devices, tap the menu icon in the top-left corner to open the navigation panel. Each calculator is grouped under its respective specialty for rapid access.",
     ],
   },
@@ -17,7 +17,7 @@ export const guideContent = [
     id: "navigating-calculators",
     title: "Navigating Calculators",
     body: [
-      "The sidebar organizes all calculators by specialty. Categories include Radiology, Neuroradiology, Trauma, Cardiac Imaging, Breast Imaging, Women's Imaging, Clinical Decision, Hepatology/Liver, Urology, Interventional, and Nephrology.",
+      "The sidebar organizes all calculators by specialty. Categories include Radiology, Neuroradiology, Trauma, Cardiac Imaging, Breast Imaging, Women's Imaging, Clinical Decision, Hepatology/Liver, Urology, Interventional, Nephrology, and Oncology.",
       "On desktop, the sidebar is always visible. On mobile, tap the hamburger menu to open it, then tap any calculator name to navigate. The sidebar closes automatically after selection.",
     ],
   },

@@ -9,22 +9,22 @@
     "limitations": "Registry statuses are existing evidence claims. Fixture counts and browser-spec presence are inventory signals, not proof that tests passed, clinical review occurred, or a release is live."
   },
   "summary": {
-    "calculators": 42,
-    "medicalCalculators": 42,
+    "calculators": 43,
+    "medicalCalculators": 43,
     "excludedCalculators": 1,
     "registry": {
       "verified": 10,
-      "seedUnverified": 32,
+      "seedUnverified": 33,
       "missing": 0,
       "other": 0
     },
     "compute": {
-      "fixtureFiles": 12,
-      "cases": 313
+      "fixtureFiles": 13,
+      "cases": 317
     },
     "browser": {
-      "allSpecFiles": 45,
-      "calculatorSpecificSpecFiles": 42,
+      "allSpecFiles": 46,
+      "calculatorSpecificSpecFiles": 43,
       "sharedSpecFiles": 3
     }
   },
@@ -1696,6 +1696,64 @@
         "computeFixtures": [],
         "browserSpecs": [
           "tests/e2e/calculators/radiology/radiation-dose-converter.spec.js"
+        ]
+      }
+    },
+    {
+      "id": "recist-1-1",
+      "name": "RECIST 1.1 Tumor Response",
+      "category": "Oncology",
+      "guidelineVersion": "RECIST 1.1 (2009; official clarifications current through 2026-08-25)",
+      "sourcePath": "src/components/calculators/RECIST11.jsx",
+      "registry": {
+        "status": "seed-unverified",
+        "lastVerified": null,
+        "reviewScope": "registry row only; no implementation_evidence block",
+        "justification": "Implements RECIST 1.1 response categories from the 2009 revised guideline and the RECIST committee's 2016 clarification; the current-version claim still requires an audit against the RECIST Working Group's official guidance.",
+        "sourceReferences": [
+          {
+            "authority": "RECIST Working Group (EORTC)",
+            "title": "New response evaluation criteria in solid tumours: revised RECIST guideline (version 1.1)",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1016/j.ejca.2008.10.026"
+          },
+          {
+            "authority": "RECIST Working Group (EORTC)",
+            "title": "RECIST 1.1 current guidance and clarifications",
+            "role": "official-authority",
+            "url": "https://recist.eortc.org/recist-1-1/"
+          },
+          {
+            "authority": "RECIST Committee",
+            "title": "RECIST 1.1 - Update and clarification: From the RECIST committee",
+            "role": "supporting-publication",
+            "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5737828/"
+          }
+        ],
+        "implementationEvidence": null
+      },
+      "compute": {
+        "fixturePaths": [
+          "tests/fixtures/compute/recist-1-1.json"
+        ],
+        "caseCount": 4
+      },
+      "browser": {
+        "specPaths": [
+          "tests/e2e/calculators/oncology/recist-1-1.spec.js"
+        ],
+        "specCount": 1
+      },
+      "clinicalSignoff": "not established",
+      "releaseProof": "not established",
+      "sourcePointers": {
+        "calculator": "src/components/calculators/RECIST11.jsx",
+        "registry": "ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json",
+        "computeFixtures": [
+          "tests/fixtures/compute/recist-1-1.json"
+        ],
+        "browserSpecs": [
+          "tests/e2e/calculators/oncology/recist-1-1.spec.js"
         ]
       }
     },
