@@ -128,14 +128,15 @@ The calculator therefore states the Christopher Study event rate with its CI, gr
 
 `scripts/audit-wells-pe-source.mjs` and `.test.mjs` run in Smoke through the `scripts/audit-*-source.test.mjs` loop. They use only NCBI plain-text abstracts: Wells2000, Wells2001 and Christopher.
 
-**Retrieval checks.** Each record is one E-utilities request (`rettype=abstract&retmode=text&tool=radulator-wells-audit`, with no personal identifiers), spaced 400 ms apart. Before anything is parsed, the audit checks:
+**Retrieval checks.** Each record is one E-utilities request (`rettype=abstract&retmode=text&tool=radulator-wells-audit`, with no personal identifiers). Requests go one at a time through the shared NCBI helper, `scripts/lib/ncbi-fetch.mjs`, which spaces them across every audit in the run and writes each one to the runner's fetch log (Codex review on #305, applied here too). Before anything is parsed, the audit checks:
 - the final protocol, host, path and query;
 - the media type `text/plain`;
 - the exact byte length and SHA-256 (see "Retrieved artifacts").
 
 **Failure handling.**
 - **Changed source:** an HTTP 200 that misses any pin fails at once and is never retried.
-- **Transient errors:** HTTP 400, 429 and 5xx are retried, honouring `Retry-After`.
+- **Transient errors:** network errors, timeouts, and HTTP 400 (which E-utilities returns transiently for valid requests), 408, 425, 429 and 5xx are retried. There are up to five attempts, 1, 2, 4 and 8 s apart, or longer when `Retry-After` asks, never over 30 s.
+- **Redirects:** refused, not followed, so the audit never contacts another host.
 
 **Parsing and statement pins.**
 - The parser checks each record's abstract layout: the exact list of section labels.
@@ -156,13 +157,15 @@ The calculator therefore states the Christopher Study event rate with its CI, gr
 - the absence of any NPV, ">99" or "excluded" claim, and of any unsourced percentage;
 - `guidelineVersion` and the references.
 
-The test runs the live audit and then 31 mutations, each of which must fail:
+The test runs the live audit and then 33 mutations, each of which must fail:
 - **source bytes:** same-length digest drift, byte-length drift, a missing record, a drifted HTTP 200 (never retried);
 - **records and statements:** DOI, year and layout drift; a same-length edit inside a pinned span; a seven-word marker;
 - **runtime items:** item order, a reverted label, `guidelineVersion`, a missing reference;
 - **runtime text:** the low band reverted, a changed tier rate, a changed Christopher rate, the assay attribution removed, the NPV claim restored, an unsourced percentage, the description line reverted;
 - **runtime output:** a changed weight, 1.5 scored Moderate, 4 scored PE likely, the recommendation reverted, the PERC note outside the low band, an unsourced output percentage, an NPV claim in a note;
-- **response identity and retry:** wrong host, format or media type; 400, 429 and 5xx retried; 404 not retried.
+- **response identity and retry:** wrong host, format or media type; 400, 429 and 5xx retried; 404 not retried; a redirect followed instead of refused; a redirected response accepted.
+
+It also checks that `Retry-After` lengthens a wait but never shortens it (30 s cap), and that every request goes one at a time through the shared request spacing and the fetch log. Its last output line is the pinned summary, so the runner's `pass_line` records the three pinned records.
 
 ### Why NICE is not in the audit
 
@@ -171,7 +174,7 @@ Smoke runs every source audit on each clinical PR, and only a workflow change ca
 - **Outage.** On 2026-09-28, NICE's guidance service returned HTTP 500 for every guidance URL tried: the NG158 overview, recommendations chapter and PDF, and NG51 as a control.
   - An earlier review hit this before 03:40 UTC, and this review hit it again from 04:07 to 04:10 UTC, so the failures spanned at least half an hour.
   - The service had recovered by 04:34 UTC.
-  - The audits' retries last well under a minute.
+  - The audits' retries last about 15 seconds, or about 2 minutes at most when `Retry-After` asks for longer waits.
 - **Re-rendering.** NICE re-renders the PDF without changing its content. Compared with the 2026 file, the April 2024 render has a © NICE 2023 footer, 55 pages and 320,405 bytes, with identical Table 2 content. A raw-byte pin would fail at the next re-render with no change to the guidance.
 
 The NICE bytes and hashes above let a reviewer re-verify the criterion wording by hand.

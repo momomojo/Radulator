@@ -3,6 +3,8 @@
 // fails when its source bytes, record, statement, runtime text or runtime output is changed.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -34,7 +36,7 @@ assert.deepEqual([facts.lowBelow, facts.highAbove, facts.unlikelyAtMost], [2, 6,
 assert.deepEqual(facts.tierRates, ["1.3", "16.2", "37.5"]);
 assert.deepEqual(facts.christopher, { combined: 1057, untreated: 1028, events: 5, rate: "0.5", ciLow: "0.2", ciHigh: "1.1", months: 3 });
 assert.deepEqual(facts.lowTierNegativeDimer, { npv: "99.5", npvLow: "99.1", npvHigh: "100" });
-console.log(audit.passLine(result));
+const pass = audit.passLine(result);
 
 let detected = 0;
 const fails = (fn, pattern, label) => {
@@ -189,4 +191,84 @@ await failsAsync(
 );
 assert.equal(permanentCalls, 1, "404 is not retried");
 
+// 8. The shared NCBI helper (Codex review on #305, applied here too): redirects are refused, Retry-After
+// only lengthens a wait, and every request goes one at a time through the shared spacing and fetch log.
+const redirectModes = [];
+await failsAsync(
+  audit.fetchSource(WELLS_2000, {
+    fetchImpl: async (url, init) => {
+      redirectModes.push(init.redirect);
+      throw new TypeError("fetch failed (unexpected redirect)");
+    },
+    sleep: async () => {},
+  }),
+  /PMID 10744147 retrieval failed after 5 of 5 attempts \(fetch failed \(unexpected redirect\)\)/,
+  "a redirect followed instead of refused",
+);
+assert.deepEqual(redirectModes, ["error", "error", "error", "error", "error"], "every request refuses redirects");
+await failsAsync(
+  audit.fetchSource(WELLS_2000, {
+    fetchImpl: async () => response(WELLS_2000, sources[WELLS_2000], 200, { redirected: true }),
+    sleep: async () => {},
+  }),
+  /PMID 10744147: redirected response/,
+  "a redirected response accepted",
+);
+const waits = [];
+let throttledCalls = 0;
+const throttled = (retryAfter) =>
+  response(WELLS_2000, sources[WELLS_2000], 429, { headers: new Headers({ "retry-after": retryAfter }) });
+await audit.fetchSource(WELLS_2000, {
+  fetchImpl: async () => {
+    throttledCalls += 1;
+    if (throttledCalls === 1) return throttled("120");
+    if (throttledCalls < 5) return throttled("1");
+    return response(WELLS_2000, sources[WELLS_2000]);
+  },
+  sleep: async (ms) => {
+    waits.push(ms);
+  },
+});
+assert.deepEqual(waits, [30_000, 2_000, 4_000, 8_000], "Retry-After lengthens a wait, never shortens it, and is capped at 30 s");
+const logDir = mkdtempSync(path.join(os.tmpdir(), "wells-pe-fetch-log-"));
+try {
+  const log = path.join(logDir, "fetch.jsonl");
+  const pmids = Object.keys(audit.SOURCES);
+  const booked = [];
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const fetched = await audit.fetchSources({
+    fetchImpl: async (url) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((resolve) => setImmediate(resolve));
+      inFlight -= 1;
+      const pmid = pmids.find((id) => audit.SOURCES[id].url === url);
+      assert.ok(pmid, `unexpected request ${url}`);
+      return response(pmid, sources[pmid]);
+    },
+    sleep: async () => {},
+    gate: {
+      reserve: async (host, keyed) => {
+        booked.push([host, keyed]);
+        return 0;
+      },
+    },
+    env: { RADULATOR_SOURCE_FETCH_LOG: log },
+  });
+  assert.deepEqual(Object.keys(fetched), pmids);
+  assert.equal(maxInFlight, 1, "one request at a time");
+  assert.deepEqual(booked, pmids.map(() => ["eutils.ncbi.nlm.nih.gov", false]), "every request books the shared spacing");
+  const lines = readFileSync(log, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  assert.deepEqual(
+    lines.map(({ label, status, outcome }) => [label, status, outcome]),
+    pmids.map((pmid) => [`PMID ${pmid}`, 200, "ok"]),
+    "each request is in the runner's fetch log",
+  );
+} finally {
+  rmSync(logDir, { recursive: true, force: true });
+}
+
 console.log(`Wells PE source audit mutations: ${detected}/${detected} detected`);
+// Last, so the source-audit runner's pass_line records the pinned records this exact-head run verified.
+console.log(pass);

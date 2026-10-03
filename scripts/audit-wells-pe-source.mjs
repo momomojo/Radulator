@@ -17,10 +17,15 @@
 // is also pinned by the SHA-256 of the exact normalized span between two markers of at most six words.
 // No source prose is committed. NICE NG158, the source of the criterion wording, is deliberately not
 // fetched here (outages and byte-changing re-renders); see docs/evidence/wells-pe-wording.md.
+//
+// Requests go one at a time through the shared NCBI helper (scripts/lib/ncbi-fetch.mjs): its request
+// spacing across every audit in the run, its fetch log, and its retries for transport failures only.
+// Redirects are refused, so the audit never contacts another host.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { fetchPinned } from "./lib/ncbi-fetch.mjs";
 
 const EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi";
 const efetchUrl = (pmid) => `${EFETCH}?db=pubmed&id=${pmid}&rettype=abstract&retmode=text&tool=radulator-wells-audit`;
@@ -222,9 +227,6 @@ const ITEM_KEYS = Object.freeze([
 // Claims the calculator must not make: an NPV above 99% for PE-unlikely patients, or "excluded".
 export const FORBIDDEN_CLAIMS = /NPV|>\s*99|effectively excluded|PE excluded/i;
 
-const FETCH_ATTEMPTS = 5;
-const FETCH_MAX_DELAY_MS = 20_000;
-const FETCH_SPACING_MS = 400; // NCBI allows 3 requests per second without an API key.
 
 export function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -561,54 +563,43 @@ export function verifyResponse(pmid, { finalUrl, contentType }) {
   assert.equal(mediaType, SOURCE_MEDIA_TYPE, `PMID ${pmid}: media type ${contentType ?? "<missing>"}`);
 }
 
-function retryDelayMs(response, attempt) {
-  const retryAfter = Number(response?.headers?.get?.("retry-after"));
-  if (Number.isFinite(retryAfter) && retryAfter >= 0) return retryAfter * 1_000;
-  return 1_500 * 2 ** (attempt - 1);
-}
-
-// Retries transport failures only: network errors, HTTP 400 (NCBI returns it transiently for valid
-// requests), 429 and 5xx. A 200 response that misses its URL, media-type, length or digest pin is a
-// changed source and fails at once.
-export async function fetchSource(pmid, { fetchImpl = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+// Retrieval goes through the shared NCBI helper (Codex review on #305, applied here too): request
+// spacing across the run's audits, the fetch log and cache, and retries for transport failures only
+// (network errors, timeouts, HTTP 408, 425, 429 and 5xx, and HTTP 400, which E-utilities returns
+// transiently for valid requests): five attempts 1, 2, 4 and 8 s apart, or longer when Retry-After asks,
+// never over 30 s. Redirects are refused, not followed. A 200 response that misses its URL, media-type,
+// length or digest pin is a changed source and fails at once: those pins are checked in verify(), which
+// is stricter than the helper's default of retrying a wrong final URL or media type. `fetchImpl`,
+// `sleep`, `env` and `gate` are for tests.
+export async function fetchSource(pmid, { fetchImpl, sleep, env, gate } = {}) {
   const source = SOURCES[pmid];
-  let lastFailure = "unknown retrieval failure";
-  let made = 0;
-  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
-    made = attempt;
-    let response;
-    try {
-      response = await fetchImpl(source.url, {
-        headers: { accept: "text/plain", "user-agent": "Radulator-Wells-PE-audit/1" },
-        redirect: "follow",
-        signal: AbortSignal.timeout(30_000),
-      });
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error);
-    }
-    if (response?.ok) {
-      verifyResponse(pmid, { finalUrl: response.url, contentType: response.headers.get("content-type") });
-      const bytes = Buffer.from(await response.arrayBuffer());
+  const fetched = await fetchPinned({
+    url: source.url,
+    label: `PMID ${pmid}`,
+    pin: { sha256: source.sha256, bytes: source.bytes },
+    verify: (bytes, response) => {
+      // A cache hit has no response: the run's cache holds only bytes that passed these checks.
+      if (response) verifyResponse(pmid, { finalUrl: response.url, contentType: response.headers?.get?.("content-type") });
       verifySourceBytes(pmid, bytes, source);
-      return bytes;
-    }
-    if (response) {
-      lastFailure = `HTTP ${response.status}`;
-      await response.body?.cancel?.();
-      if (response.status !== 400 && response.status !== 429 && response.status < 500) break;
-    }
-    if (attempt < FETCH_ATTEMPTS) await sleep(Math.min(retryDelayMs(response, attempt), FETCH_MAX_DELAY_MS));
-  }
-  assert.fail(`PMID ${pmid}: PubMed retrieval failed after ${made} of ${FETCH_ATTEMPTS} attempts (${lastFailure})`);
+    },
+    checkResponse: (response) => {
+      if (response.redirected) throw new Error(`PMID ${pmid}: redirected response`);
+    },
+    minBytes: 0,
+    headers: { accept: "text/plain", "user-agent": "Radulator-Wells-PE-audit/1" },
+    redirect: "error",
+    fetchImpl,
+    sleep,
+    env,
+    gate,
+  });
+  return fetched.bytes;
 }
 
+// One request at a time; the helper spaces them.
 export async function fetchSources(options = {}) {
-  const sleep = options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const sources = {};
-  for (const [index, pmid] of Object.keys(SOURCES).entries()) {
-    if (index > 0) await sleep(FETCH_SPACING_MS);
-    sources[pmid] = await fetchSource(pmid, options);
-  }
+  for (const pmid of Object.keys(SOURCES)) sources[pmid] = await fetchSource(pmid, options);
   return sources;
 }
 
