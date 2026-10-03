@@ -2005,14 +2005,26 @@
       "id": "y90-radiation-segmentectomy",
       "name": "Y-90 Radioembolization Dosimetry",
       "category": "Hepatology/Liver",
-      "guidelineVersion": "MIRD Dosimetry (Ho 1996)",
+      "guidelineVersion": "EANM compartment dosimetry convention (49.67 J/GBq)",
       "sourcePath": "src/components/calculators/Y90RadiationSegmentectomy.jsx",
       "registry": {
         "status": "seed-unverified",
         "lastVerified": null,
         "reviewScope": "registry row only; no implementation_evidence block",
-        "justification": "Uses published MIRD and radioembolization dosimetry models rather than a single current guideline; consensus status remains queued for review.",
+        "justification": "Bounded correction of uniform/partition energy balance, shunt and residual accounting, planned in docs/verification/calculators/y90-radiation-segmentectomy.md. Reports treatment-time activity and assumed-mass lung dose, not vial ordering, target selection or treatment eligibility. Source-based AI review of these rules does not complete the broader product, entry-limit or historical-reference audit; restrictions and final live proof remain separately tracked.",
         "sourceReferences": [
+          {
+            "authority": "EANM (Weber et al.)",
+            "title": "EANM procedure guideline for the treatment of liver cancer and liver metastases with intra-arterial radioactive compounds",
+            "role": "primary-publication",
+            "url": "https://doi.org/10.1007/s00259-021-05600-z"
+          },
+          {
+            "authority": "FDA-hosted TheraSphere instructions for use",
+            "title": "P200029S011C: pages 20-23 and Appendix page 29; model equations and treatment-time versus calibration-time distinction",
+            "role": "primary-publication",
+            "url": "https://www.accessdata.fda.gov/cdrh_docs/pdf20/P200029S011C.pdf"
+          },
           {
             "authority": "Ho et al.",
             "title": "Partition model for estimating radiation doses from yttrium-90 microspheres",
