@@ -6,7 +6,7 @@
  *
  * Test Coverage:
  * - Score range 0-10 (10 regions)
- * - Regional breakdown (subcortical, ganglionic cortical, supraganglionic)
+ * - Regional breakdown (subcortical C/L/IC, ganglionic cortical I/M1-M3, supraganglionic)
  * - Thrombectomy eligibility thresholds (ASPECTS >= 6)
  * - Extended time window guidance (DAWN, DEFUSE-3)
  * - Large core trial references (SELECT2, ANGEL-ASPECT)
@@ -52,14 +52,25 @@ test.describe("ASPECTS Score Calculator", () => {
       ).toBeVisible();
     });
 
+    test("should describe M3 as posterior MCA cortex, not a named lobe", async ({
+      page,
+    }) => {
+      // The info line uses the template's own term (primary judge on #305).
+      await expect(
+        page.getByText("• M3 - Posterior MCA cortex").first(),
+      ).toBeVisible();
+      await expect(page.getByText("Posterior temporal lobe")).toHaveCount(0);
+      await expect(page.getByText("behind M2")).toHaveCount(0);
+    });
+
     test("should have all 10 brain region checkboxes", async ({ page }) => {
-      // Subcortical structures
+      // Subcortical structures (C, L, IC)
       await expect(page.locator('label[for="caudate"]')).toBeVisible();
       await expect(page.locator('label[for="lentiform"]')).toBeVisible();
       await expect(page.locator('label[for="internal_capsule"]')).toBeVisible();
-      await expect(page.locator('label[for="insular"]')).toBeVisible();
 
-      // Ganglionic level cortical
+      // Ganglionic level cortical (I, M1-M3)
+      await expect(page.locator('label[for="insular"]')).toBeVisible();
       await expect(page.locator('label[for="m1"]')).toBeVisible();
       await expect(page.locator('label[for="m2"]')).toBeVisible();
       await expect(page.locator('label[for="m3"]')).toBeVisible();
@@ -191,14 +202,33 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
+      // The insular ribbon is cortex (developers' template: C, L, IC = 3
+      // subcortical points; insular cortex + M1-M6 = 7 cortical points).
       await expect(
-        results.locator("text=Subcortical: 4/4").first(),
+        results.locator("text=Subcortical (C, L, IC): 3/3").first(),
       ).toBeVisible();
       await expect(
-        results.locator("text=Ganglionic cortical").first(),
+        results.locator("text=Ganglionic cortical (I, M1-M3): 1/4").first(),
       ).toBeVisible();
       await expect(
-        results.locator("text=Supraganglionic").first(),
+        results.locator("text=Supraganglionic (M4-M6): 0/3").first(),
+      ).toBeVisible();
+      await expect(results.locator("text=Subcortical: 4/4")).toHaveCount(0);
+    });
+
+    test("should count an isolated insular ribbon as ganglionic cortex", async ({
+      page,
+    }) => {
+      await page.locator('label[for="laterality-left"]').click();
+      await page.locator('label[for="insular"]').click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(
+        results.locator("text=Subcortical (C, L, IC): 0/3").first(),
+      ).toBeVisible();
+      await expect(
+        results.locator("text=Ganglionic cortical (I, M1-M3): 1/4").first(),
       ).toBeVisible();
     });
   });
@@ -401,7 +431,42 @@ test.describe("ASPECTS Score Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should show complete cortical involvement note", async ({ page }) => {
+    // The predominantly-subcortical and collateral-circulation notes were removed: no cited
+    // source states their clinical associations (primary judge on #305).
+    test("should not show the removed predominantly subcortical note for C, L and IC", async ({
+      page,
+    }) => {
+      await page.locator('label[for="laterality-left"]').click();
+      await page.locator('label[for="caudate"]').click();
+      await page.locator('label[for="lentiform"]').click();
+      await page.locator('label[for="internal_capsule"]').click();
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results.locator("text=7 / 10").first()).toBeVisible();
+      await expect(
+        results.locator("text=Predominantly subcortical involvement"),
+      ).toHaveCount(0);
+      // The unchanged caudate and internal capsule note still shows.
+      await expect(
+        results.locator("text=lenticulostriate artery territory").first(),
+      ).toBeVisible();
+
+      // Adding the insular ribbon keeps the unchanged proximal-M1 note.
+      await page.locator('label[for="insular"]').click();
+      await page.click('button:has-text("Calculate")');
+      await expect(results.locator("text=6 / 10").first()).toBeVisible();
+      await expect(
+        results.locator("text=Predominantly subcortical involvement"),
+      ).toHaveCount(0);
+      await expect(
+        results
+          .locator("text=proximal M1 occlusion with poor collaterals")
+          .first(),
+      ).toBeVisible();
+    });
+
+    test("should not show a collateral-circulation note for M1-M6 involvement", async ({ page }) => {
       await page.locator('label[for="laterality-left"]').click();
       await page.locator('label[for="m1"]').click();
       await page.locator('label[for="m2"]').click();
@@ -412,12 +477,13 @@ test.describe("ASPECTS Score Calculator", () => {
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results.locator("text=4 / 10").first()).toBeVisible();
       await expect(
-        results.locator("text=Complete cortical MCA involvement").first(),
-      ).toBeVisible();
+        results.locator("text=Complete M1-M6 cortical involvement"),
+      ).toHaveCount(0);
       await expect(
-        results.locator("text=very poor collateral circulation").first(),
-      ).toBeVisible();
+        results.locator("text=collateral circulation"),
+      ).toHaveCount(0);
     });
   });
 

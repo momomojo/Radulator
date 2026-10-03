@@ -34,7 +34,7 @@
         "Interpretation": "Small or no early ischemic changes",
         "Affected Hemisphere": "Left",
         "Regions Affected": "No regions affected (normal CT)",
-        "Regional Breakdown": "Subcortical: 0/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 0/3 | Ganglionic cortical (I, M1-M3): 0/4 | Supraganglionic (M4-M6): 0/3",
         "Thrombectomy Eligibility": "Good candidate for mechanical thrombectomy",
         "Time from Onset": "2 hours",
         "Time Window Assessment": "Within standard 6-hour window for thrombectomy - Standard eligibility criteria met (per 2015 landmark trials)",
@@ -95,7 +95,7 @@
         "ASPECTS Score": "9 / 10",
         "Interpretation": "Small or no early ischemic changes",
         "Regions Affected": "1 region(s): I (Insular)",
-        "Regional Breakdown": "Subcortical: 1/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 0/3 | Ganglionic cortical (I, M1-M3): 1/4 | Supraganglionic (M4-M6): 0/3",
         "Thrombectomy Eligibility": "Good candidate for mechanical thrombectomy",
         "Prognostic Implication": "Favorable prognosis with reperfusion therapy"
       },
@@ -125,7 +125,7 @@
         "Interpretation": "Small or no early ischemic changes",
         "Affected Hemisphere": "Right",
         "Regions Affected": "1 region(s): L (Lentiform)",
-        "Regional Breakdown": "Subcortical: 1/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 1/3 | Ganglionic cortical (I, M1-M3): 0/4 | Supraganglionic (M4-M6): 0/3",
         "Thrombectomy Eligibility": "Good candidate for mechanical thrombectomy"
       },
       "calculationSteps": "Step 1: Lentiform nucleus affected (1 region). Step 2: ASPECTS = 10 - 1 = 9.",
@@ -153,7 +153,7 @@
         "ASPECTS Score": "8 / 10",
         "Interpretation": "Small or no early ischemic changes",
         "Regions Affected": "2 region(s): L (Lentiform), I (Insular)",
-        "Regional Breakdown": "Subcortical: 2/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 1/3 | Ganglionic cortical (I, M1-M3): 1/4 | Supraganglionic (M4-M6): 0/3",
         "Thrombectomy Eligibility": "Good candidate for mechanical thrombectomy",
         "Clinical Notes": "Involvement of both insular ribbon and lentiform nucleus suggests proximal M1 occlusion with poor collaterals"
       },
@@ -182,7 +182,7 @@
         "ASPECTS Score": "8 / 10",
         "Interpretation": "Small or no early ischemic changes",
         "Regions Affected": "2 region(s): C (Caudate), IC (Internal Capsule)",
-        "Regional Breakdown": "Subcortical: 2/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 2/3 | Ganglionic cortical (I, M1-M3): 0/4 | Supraganglionic (M4-M6): 0/3",
         "Clinical Notes": "Caudate and internal capsule involvement may indicate lenticulostriate artery territory infarction"
       },
       "calculationSteps": "Step 1: Caudate + Internal capsule affected (2 regions). Step 2: ASPECTS = 10 - 2 = 8. Step 3: Pattern indicates lenticulostriate territory.",
@@ -210,7 +210,7 @@
         "ASPECTS Score": "7 / 10",
         "Interpretation": "Moderate early ischemic changes",
         "Regions Affected": "3 region(s): M1, M2, M3",
-        "Regional Breakdown": "Subcortical: 0/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 0/3 | Ganglionic cortical (I, M1-M3): 3/4 | Supraganglionic (M4-M6): 0/3",
         "Thrombectomy Eligibility": "May benefit from mechanical thrombectomy (meets standard threshold of ASPECTS >= 6)",
         "Prognostic Implication": "Moderate prognosis; treatment benefit supported by 2015 landmark trials (MR CLEAN, ESCAPE, SWIFT PRIME)"
       },
@@ -239,7 +239,7 @@
         "ASPECTS Score": "6 / 10",
         "Interpretation": "Moderate early ischemic changes",
         "Regions Affected": "4 region(s): L (Lentiform), I (Insular), M1, M2",
-        "Regional Breakdown": "Subcortical: 2/4 | Ganglionic cortical (M1-M3): 2/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 1/3 | Ganglionic cortical (I, M1-M3): 3/4 | Supraganglionic (M4-M6): 0/3",
         "Thrombectomy Eligibility": "May benefit from mechanical thrombectomy (meets standard threshold of ASPECTS >= 6)",
         "Time Window Assessment": "Within standard 6-hour window for thrombectomy - Standard eligibility criteria met (per 2015 landmark trials)"
       },
@@ -322,7 +322,7 @@
         "ASPECTS Score": "5 / 10",
         "Interpretation": "Large infarct core (ASPECTS 3-5)",
         "Regions Affected": "5 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1",
-        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 1/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 2/4 | Supraganglionic (M4-M6): 0/3",
         "Thrombectomy Eligibility": "Consider thrombectomy based on recent large core trials (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT)",
         "Prognostic Implication": "Higher risk of symptomatic hemorrhage, but EVT still shows benefit in recent RCTs",
         "Time Window Assessment": "Within standard 6-hour window for thrombectomy - Large core: consider SELECT2/ANGEL-ASPECT criteria"
@@ -333,7 +333,7 @@
     {
       "testName": "ASPECTS 5 - Complete subcortical involvement pattern",
       "category": "ASPECTS 3-5",
-      "description": "All subcortical structures plus one cortical region affected",
+      "description": "All subcortical structures (C, L, IC) plus two cortical regions (I, M4) affected",
       "inputs": {
         "laterality": "right",
         "caudate": true,
@@ -352,10 +352,10 @@
         "ASPECTS Score": "5 / 10",
         "Interpretation": "Large infarct core (ASPECTS 3-5)",
         "Regions Affected": "5 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M4",
-        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 1/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 1/4 | Supraganglionic (M4-M6): 1/3",
         "Thrombectomy Eligibility": "Consider thrombectomy based on recent large core trials (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT)"
       },
-      "calculationSteps": "Step 1: All 4 subcortical regions + M4 affected (5 regions). Step 2: ASPECTS = 10 - 5 = 5.",
+      "calculationSteps": "Step 1: All 3 subcortical regions (C, L, IC) + I + M4 affected (5 regions). Step 2: ASPECTS = 10 - 5 = 5.",
       "medicalReference": "Complete subcortical involvement indicates extensive lenticulostriate territory infarction"
     },
     {
@@ -380,7 +380,7 @@
         "ASPECTS Score": "4 / 10",
         "Interpretation": "Large infarct core (ASPECTS 3-5)",
         "Regions Affected": "6 region(s): C (Caudate), L (Lentiform), I (Insular), M1, M2, M3",
-        "Regional Breakdown": "Subcortical: 3/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 2/3 | Ganglionic cortical (I, M1-M3): 4/4 | Supraganglionic (M4-M6): 0/3",
         "Thrombectomy Eligibility": "Consider thrombectomy based on recent large core trials (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT)"
       },
       "calculationSteps": "Step 1: C + L + I + M1 + M2 + M3 affected (6 regions). Step 2: ASPECTS = 10 - 6 = 4. Step 3: Large core, EVT still considered per 2023 trials.",
@@ -408,11 +408,11 @@
         "ASPECTS Score": "3 / 10",
         "Interpretation": "Large infarct core (ASPECTS 3-5)",
         "Regions Affected": "7 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1, M2, M3",
-        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 4/4 | Supraganglionic (M4-M6): 0/3",
         "Thrombectomy Eligibility": "Consider thrombectomy based on recent large core trials (SELECT2, ANGEL-ASPECT, RESCUE-Japan LIMIT)",
         "Prognostic Implication": "Higher risk of symptomatic hemorrhage, but EVT still shows benefit in recent RCTs"
       },
-      "calculationSteps": "Step 1: All subcortical (4) + all ganglionic cortical (3) = 7 regions. Step 2: ASPECTS = 10 - 7 = 3. Step 3: At lower bound for SELECT2/ANGEL criteria.",
+      "calculationSteps": "Step 1: All subcortical (3: C, L, IC) + all ganglionic cortical (4: I, M1-M3) = 7 regions. Step 2: ASPECTS = 10 - 7 = 3. Step 3: At lower bound for SELECT2/ANGEL criteria.",
       "medicalReference": "SELECT2 included ASPECTS 3-5; ANGEL-ASPECT included ASPECTS 3-5"
     },
     {
@@ -465,7 +465,7 @@
         "ASPECTS Score": "2 / 10",
         "Interpretation": "Very large infarct core (ASPECTS 0-2)",
         "Regions Affected": "8 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1, M2, M3, M4",
-        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 1/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 4/4 | Supraganglionic (M4-M6): 1/3",
         "Thrombectomy Eligibility": "Historically excluded from EVT trials; emerging data suggests some patients may benefit (individualized decision)",
         "Prognostic Implication": "Poor prognosis; high risk of hemorrhagic transformation; consider goals of care discussion"
       },
@@ -494,7 +494,7 @@
         "ASPECTS Score": "1 / 10",
         "Interpretation": "Very large infarct core (ASPECTS 0-2)",
         "Regions Affected": "9 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1, M2, M3, M4, M5",
-        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 2/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 4/4 | Supraganglionic (M4-M6): 2/3",
         "Thrombectomy Eligibility": "Historically excluded from EVT trials; emerging data suggests some patients may benefit (individualized decision)",
         "Prognostic Implication": "Poor prognosis; high risk of hemorrhagic transformation; consider goals of care discussion"
       },
@@ -523,18 +523,18 @@
         "ASPECTS Score": "0 / 10",
         "Interpretation": "Very large infarct core (ASPECTS 0-2)",
         "Regions Affected": "10 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular), M1, M2, M3, M4, M5, M6",
-        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 3/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 4/4 | Supraganglionic (M4-M6): 3/3",
         "Thrombectomy Eligibility": "Historically excluded from EVT trials; emerging data suggests some patients may benefit (individualized decision)",
         "Prognostic Implication": "Poor prognosis; high risk of hemorrhagic transformation; consider goals of care discussion",
-        "Clinical Notes": "Complete cortical MCA involvement suggests very poor collateral circulation"
+        "Clinical Notes": "Involvement of both insular ribbon and lentiform nucleus suggests proximal M1 occlusion with poor collaterals; Caudate and internal capsule involvement may indicate lenticulostriate artery territory infarction"
       },
-      "calculationSteps": "Step 1: All 10 regions affected. Step 2: ASPECTS = 10 - 10 = 0. Step 3: Complete MCA territory infarction with poor collaterals.",
+      "calculationSteps": "Step 1: All 10 regions affected. Step 2: ASPECTS = 10 - 10 = 0. Step 3: Complete MCA territory involvement.",
       "medicalReference": "ASPECTS 0 indicates complete MCA territory early ischemic changes"
     },
     {
-      "testName": "Complete cortical involvement only (M1-M6)",
+      "testName": "Complete M1-M6 cortical involvement only",
       "category": "Clinical Patterns",
-      "description": "All cortical regions affected with spared subcortical structures",
+      "description": "All six M regions (M1-M6) affected; subcortical structures and insular ribbon spared",
       "inputs": {
         "laterality": "left",
         "caudate": false,
@@ -553,16 +553,15 @@
         "ASPECTS Score": "4 / 10",
         "Interpretation": "Large infarct core (ASPECTS 3-5)",
         "Regions Affected": "6 region(s): M1, M2, M3, M4, M5, M6",
-        "Regional Breakdown": "Subcortical: 0/4 | Ganglionic cortical (M1-M3): 3/3 | Supraganglionic (M4-M6): 3/3",
-        "Clinical Notes": "Complete cortical MCA involvement suggests very poor collateral circulation"
+        "Regional Breakdown": "Subcortical (C, L, IC): 0/3 | Ganglionic cortical (I, M1-M3): 3/4 | Supraganglionic (M4-M6): 3/3"
       },
-      "calculationSteps": "Step 1: All 6 cortical regions (M1-M6) affected. Step 2: ASPECTS = 10 - 6 = 4. Step 3: Complete cortical involvement pattern.",
+      "calculationSteps": "Step 1: All 6 M regions (M1-M6) affected. Step 2: ASPECTS = 10 - 6 = 4. Step 3: Complete M1-M6 cortical involvement pattern.",
       "medicalReference": "Pure cortical involvement with subcortical sparing may indicate M2 division occlusion"
     },
     {
-      "testName": "Predominantly subcortical pattern (3 of 4)",
+      "testName": "All three subcortical regions (C, L, IC), no cortical region",
       "category": "Clinical Patterns",
-      "description": "Three subcortical regions with no cortical involvement - lenticulostriate territory",
+      "description": "All three subcortical regions with no cortical involvement; the removed predominantly-subcortical note does not show",
       "inputs": {
         "laterality": "right",
         "caudate": true,
@@ -581,11 +580,11 @@
         "ASPECTS Score": "7 / 10",
         "Interpretation": "Moderate early ischemic changes",
         "Regions Affected": "3 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule)",
-        "Regional Breakdown": "Subcortical: 3/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
-        "Clinical Notes": "Predominantly subcortical involvement - consider lenticulostriate territory infarction"
+        "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 0/4 | Supraganglionic (M4-M6): 0/3",
+        "Clinical Notes": "Caudate and internal capsule involvement may indicate lenticulostriate artery territory infarction"
       },
-      "calculationSteps": "Step 1: C + L + IC affected (3 subcortical regions). Step 2: ASPECTS = 10 - 3 = 7. Step 3: Pattern suggests lenticulostriate territory.",
-      "medicalReference": "Lenticulostriate infarction may occur with M1 occlusion or perforator disease"
+      "calculationSteps": "Step 1: C + L + IC affected (3 subcortical regions). Step 2: ASPECTS = 10 - 3 = 7. Step 3: Only the unchanged caudate and internal capsule note shows.",
+      "medicalReference": "ASPECTS template: C, L and IC are the three subcortical points (Dubey 2013 Figure 1)"
     },
     {
       "testName": "Supraganglionic only pattern (M4-M6)",
@@ -609,7 +608,7 @@
         "ASPECTS Score": "7 / 10",
         "Interpretation": "Moderate early ischemic changes",
         "Regions Affected": "3 region(s): M4, M5, M6",
-        "Regional Breakdown": "Subcortical: 0/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 3/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 0/3 | Ganglionic cortical (I, M1-M3): 0/4 | Supraganglionic (M4-M6): 3/3",
         "Thrombectomy Eligibility": "May benefit from mechanical thrombectomy (meets standard threshold of ASPECTS >= 6)"
       },
       "calculationSteps": "Step 1: M4 + M5 + M6 affected (3 regions). Step 2: ASPECTS = 10 - 3 = 7.",
@@ -792,10 +791,10 @@
       "expectedOutputs": {
         "ASPECTS Score": "6 / 10",
         "Regions Affected": "4 region(s): C (Caudate), L (Lentiform), IC (Internal Capsule), I (Insular)",
-        "Regional Breakdown": "Subcortical: 4/4 | Ganglionic cortical (M1-M3): 0/3 | Supraganglionic (M4-M6): 0/3",
+        "Regional Breakdown": "Subcortical (C, L, IC): 3/3 | Ganglionic cortical (I, M1-M3): 1/4 | Supraganglionic (M4-M6): 0/3",
         "Clinical Notes": "Involvement of both insular ribbon and lentiform nucleus suggests proximal M1 occlusion with poor collaterals; Caudate and internal capsule involvement may indicate lenticulostriate artery territory infarction"
       },
-      "calculationSteps": "Step 1: All 4 subcortical regions affected. Step 2: ASPECTS = 6. Step 3: Both proximal M1 and lenticulostriate patterns identified.",
+      "calculationSteps": "Step 1: All 3 subcortical regions (C, L, IC) + insular ribbon affected. Step 2: ASPECTS = 6. Step 3: Both proximal M1 and lenticulostriate patterns identified.",
       "medicalReference": "Combined patterns indicate proximal M1 occlusion affecting both cortical and lenticulostriate territories"
     }
   ],
@@ -803,13 +802,13 @@
     "subcortical": {
       "C": "Caudate head - nuclei of the striatum",
       "L": "Lentiform nucleus - putamen and globus pallidus",
-      "IC": "Internal capsule - posterior limb containing motor fibers",
-      "I": "Insular ribbon - insular cortex, early MCA stroke indicator"
+      "IC": "Internal capsule - posterior limb containing motor fibers"
     },
     "ganglionicCortical": {
+      "I": "Insular ribbon - insular cortex, early MCA stroke indicator",
       "M1": "Frontal operculum - anterior MCA cortex at ganglionic level",
       "M2": "Anterior temporal lobe - lateral to insular ribbon",
-      "M3": "Posterior temporal lobe - posterior MCA cortex at ganglionic level"
+      "M3": "Posterior MCA cortex at ganglionic level"
     },
     "supraganglionicCortical": {
       "M4": "Anterior MCA territory - immediately superior to M1",
@@ -854,7 +853,6 @@
     "Insular ribbon sign is often the earliest CT finding in MCA stroke",
     "Combined insular + lentiform involvement suggests proximal M1 occlusion with poor collaterals",
     "Caudate + internal capsule involvement suggests lenticulostriate territory infarction",
-    "Complete cortical (M1-M6) involvement indicates very poor collateral circulation",
     "ASPECTS >= 6 was the standard threshold for EVT in 2015 landmark trials",
     "Large core trials (SELECT2, ANGEL-ASPECT) extended EVT benefit to ASPECTS 3-5 in 2022-2023",
     "Time window assessment requires integration with clinical and perfusion imaging data"
