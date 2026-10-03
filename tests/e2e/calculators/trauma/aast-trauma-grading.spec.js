@@ -18,6 +18,7 @@
  * - Reference verification
  */
 
+import { existsSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import {
   navigateToCalculator,
@@ -26,6 +27,7 @@ import {
 } from "../../../helpers/calculator-test-helper.js";
 
 const CALCULATOR_NAME = "AAST Trauma Grading";
+const STATIC_AAST_PAGE = "dist/calculators/aast-trauma-grading/index.html";
 
 test.describe("AAST Trauma Grading Calculator", () => {
   test.beforeEach(async ({ page }) => {
@@ -69,10 +71,30 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should have multiple injuries checkbox", async ({ page }) => {
-      await expect(
-        page.getByText("Multiple Injuries in Same Organ").first(),
-      ).toBeVisible();
+    test("should show the multiple injuries checkbox only on the paths that apply it", async ({
+      page,
+    }) => {
+      const multiple = page.locator('label[for="multiple_injuries"]');
+      // Hidden until an organ that owns the rule is chosen.
+      await expect(multiple).toBeHidden();
+
+      await page.locator('label[for="organ-liver"]').click();
+      await expect(multiple).toBeVisible();
+      await expect(multiple).toHaveText("Multiple Injuries in Same Organ");
+
+      await page.locator('label[for="organ-spleen"]').click();
+      await expect(multiple).toBeVisible();
+
+      // Kidney: shown on the 2025 path (also used with no version), hidden on the 2018 path, whose
+      // table's modifier is bilateral injury (primary judge on #304).
+      await page.locator('label[for="organ-kidney"]').click();
+      await expect(multiple).toBeVisible();
+      await page.locator('label[for="kidney_ois_version-2018"]').click();
+      await expect(multiple).toBeHidden();
+
+      // The pancreas keeps the 1990 AAST pancreas scale's advance (Codex on #304).
+      await page.locator('label[for="organ-pancreas"]').click();
+      await expect(multiple).toBeVisible();
     });
   });
 
@@ -122,7 +144,7 @@ test.describe("AAST Trauma Grading Calculator", () => {
     test("should classify Grade II liver injury - laceration 1-3 cm", async ({
       page,
     }) => {
-      await page.getByText("1-3 cm parenchymal depth, <10 cm length").click();
+      await page.getByText("1-3 cm parenchymal depth, ≤10 cm length").click();
 
       await page.click('button:has-text("Calculate")');
 
@@ -492,6 +514,15 @@ test.describe("AAST Trauma Grading Calculator", () => {
       await expect(
         results.locator("text=Base grade 1 advanced to Grade 2").first(),
       ).toBeVisible();
+      // The description follows the advanced grade, not the base grade.
+      await expect(
+        results
+          .locator("text=Moderate - Subcapsular 10-50% or laceration 1-3 cm")
+          .first(),
+      ).toBeVisible();
+      await expect(
+        results.locator("text=Minor - Subcapsular hematoma <10%"),
+      ).toHaveCount(0);
     });
 
     test("should not advance grade beyond III for multiple injuries", async ({
@@ -507,6 +538,139 @@ test.describe("AAST Trauma Grading Calculator", () => {
       // Grade III should not advance further due to multiple injuries rule
       await expect(results.locator("text=Grade 3").first()).toBeVisible();
       // Should not show advancement message since it's already >= Grade III
+    });
+  });
+
+  // Kozar 2018 table notes: liver/spleen advance for multiple grade I-II
+  // injuries, the kidney for bilateral injuries (both capped at Grade III).
+  // No modifier is verified for the 2025 kidney or 2024 pancreas revisions.
+  test.describe("Grade-Advance Modifiers by Organ and Version", () => {
+    const multiple = (page) => page.locator('label[for="multiple_injuries"]');
+    const bilateral = (page) =>
+      page.locator('label[for="kidney_2018_bilateral"]');
+    const results = (page) =>
+      page.getByRole("status", { name: "Calculator results" });
+
+    test("spleen: multiple grade II injuries advance to Grade III", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-spleen"]').click();
+      await expect(bilateral(page)).toBeHidden();
+      await page.locator('label[for="spleen_laceration-1_3cm"]').click();
+      await multiple(page).click();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results(page).locator("text=Grade 3").first()).toBeVisible();
+      await expect(
+        results(page).getByText("Base grade 2 advanced to Grade 3").first(),
+      ).toBeVisible();
+    });
+
+    test("kidney 2018: bilateral checkbox shown, multiple hidden", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-kidney"]').click();
+      await page.locator('label[for="kidney_ois_version-2018"]').click();
+      await expect(bilateral(page)).toBeVisible();
+      await expect(bilateral(page)).toHaveText("Bilateral Renal Injuries");
+      await expect(multiple(page)).toBeHidden();
+    });
+
+    test("kidney 2018: bilateral injuries advance Grade II to Grade III", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-kidney"]').click();
+      await page.locator('label[for="kidney_ois_version-2018"]').click();
+      await page
+        .locator('label[for="kidney_2018_hematoma-perirenal_gerota"]')
+        .click();
+      await bilateral(page).click();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results(page).locator("text=Grade 3").first()).toBeVisible();
+      await expect(
+        results(page).getByText("Bilateral renal injuries (+1 grade)").first(),
+      ).toBeVisible();
+      await expect(
+        results(page).getByText("Base grade 2 advanced to Grade 3").first(),
+      ).toBeVisible();
+    });
+
+    test("kidney 2018: bilateral injuries do not advance beyond Grade III", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-kidney"]').click();
+      await page.locator('label[for="kidney_ois_version-2018"]').click();
+      await page
+        .locator('label[for="kidney_2018_laceration-gt1cm_no_cs"]')
+        .click();
+      await bilateral(page).click();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results(page).locator("text=Grade 3").first()).toBeVisible();
+      await expect(
+        results(page).getByText("Bilateral renal injuries (+1 grade)"),
+      ).toHaveCount(0);
+    });
+
+    // Primary judge on #304: the 2025 kidney path (also used with no version) keeps the calculator's earlier
+    // multiple-injury advance, unchanged until Keihani 2025's table notes are verified.
+    test("kidney 2025 and no-version kidney: multiple-injury checkbox kept, no bilateral checkbox", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-kidney"]').click();
+      // No version chosen: the 2025 path is shown.
+      await expect(multiple(page)).toBeVisible();
+      await expect(bilateral(page)).toBeHidden();
+      await page.locator('label[for="kidney_ois_version-2025"]').click();
+      await expect(multiple(page)).toBeVisible();
+      await expect(bilateral(page)).toBeHidden();
+    });
+
+    test("kidney 2025: multiple injuries advance one grade, as before", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-kidney"]').click();
+      await page.locator('label[for="kidney_hematoma-contusion"]').click();
+      await multiple(page).click();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results(page).getByText("Grade 2", { exact: true }).first()).toBeVisible();
+      await expect(results(page).getByText("Multiple injuries (+1 grade)").first()).toBeVisible();
+    });
+
+    test("a multiple-injury value left checked on liver never advances a kidney 2018 grade", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-liver"]').click();
+      await multiple(page).click();
+      await page.locator('label[for="organ-kidney"]').click();
+      await page.locator('label[for="kidney_ois_version-2018"]').click();
+      await expect(multiple(page)).toBeHidden();
+      await page.locator('label[for="kidney_2018_hematoma-contusion"]').click();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results(page).getByText("Grade 1", { exact: true }).first()).toBeVisible();
+      await expect(
+        results(page).getByText("Multiple injuries (+1 grade)"),
+      ).toHaveCount(0);
+    });
+
+    test("a bilateral value left checked on kidney 2018 never advances the 2025 grade", async ({
+      page,
+    }) => {
+      await page.locator('label[for="organ-kidney"]').click();
+      await page.locator('label[for="kidney_ois_version-2018"]').click();
+      await bilateral(page).click();
+      await page.locator('label[for="kidney_ois_version-2025"]').click();
+      await expect(bilateral(page)).toBeHidden();
+      await page.locator('label[for="kidney_hematoma-contusion"]').click();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(results(page).locator("text=Grade 1").first()).toBeVisible();
+      await expect(
+        results(page).getByText("Bilateral renal injuries (+1 grade)"),
+      ).toHaveCount(0);
     });
   });
 
@@ -725,15 +889,67 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).toBeVisible();
     });
 
-    test("should have link to AAST official website", async ({ page }) => {
-      const expandBtn = page.locator(
-        '.references-section button:has-text("more reference")',
+    test("static page keeps the AAST citation as plain text and hydrates cleanly", async ({
+      page,
+      request,
+      baseURL,
+    }) => {
+      test.skip(
+        !existsSync(STATIC_AAST_PAGE),
+        "requires npm run build so generated static pages are available",
+      );
+      test.skip(
+        !baseURL?.includes("4173"),
+        "requires Vite preview so generated static pages are served",
+      );
+      const hydrationMessages = [];
+      page.on("console", (msg) => {
+        if (
+          msg.type() === "error" &&
+          /hydration|Hydration failed|did not match/i.test(msg.text())
+        ) {
+          hydrationMessages.push(msg.text());
+        }
+      });
+
+      const response = await request.get("/calculators/aast-trauma-grading/");
+      expect(response.ok()).toBe(true);
+      const html = await response.text();
+      expect(html).toContain(
+        "<li>AAST Official Website - Organ Injury Scale</li>",
+      );
+      expect(html).not.toContain('href="undefined"');
+      expect(html).not.toContain("resources-detail/injury-scoring-scale");
+
+      await page.goto("/calculators/aast-trauma-grading/");
+      await expect(page.getByTestId("calculator-title").first()).toContainText(
+        "AAST Trauma Grading",
+      );
+      expect(hydrationMessages).toEqual([]);
+    });
+
+    test("should keep the AAST website citation without its dead link", async ({
+      page,
+    }) => {
+      const refsSection = page.locator(".references-section");
+      const expandBtn = refsSection.locator(
+        'button:has-text("more reference")',
       );
       if (await expandBtn.isVisible()) {
         await expandBtn.click();
       }
-      const aastWebsite = page.locator('a[href*="aast.org"]');
-      await expect(aastWebsite).toBeVisible();
+      // The AAST scale page now serves only a reprint-permissions notice.
+      await expect(
+        refsSection.getByText("AAST Official Website - Organ Injury Scale"),
+      ).toBeVisible();
+      await expect(
+        refsSection.getByRole("link", {
+          name: "AAST Official Website - Organ Injury Scale",
+        }),
+      ).toHaveCount(0);
+      await expect(
+        page.locator('a[href*="resources-detail/injury-scoring-scale"]'),
+      ).toHaveCount(0);
     });
   });
 
@@ -1236,21 +1452,74 @@ test.describe("AAST Trauma Grading Calculator", () => {
       ).toBeVisible();
     });
 
-    // Multiple injury rule
-    test("should advance grade for multiple injuries (up to Grade III)", async ({
+    // The 2024 revision grades a duct injury by location, so none is assumed.
+    test("should ask for the duct injury location instead of grading", async ({
       page,
     }) => {
+      await page.getByText("Complete ductal transection").click();
+      await expect(
+        page.getByText("Location of Duct Injury").first(),
+      ).toBeVisible();
+      await page.click('button:has-text("Calculate")');
+
+      await expect(
+        page
+          .locator("text=Select the Location of Duct Injury (neck/body/tail or head)")
+          .first(),
+      ).toBeVisible();
+      await expect(page.locator("text=Grade 3")).toHaveCount(0);
+      await expect(page.locator("text=Grade 4")).toHaveCount(0);
+
+      await page.locator('label[for="pancreas_duct_location-head"]').click();
+      await page.click('button:has-text("Calculate")');
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results.locator("text=Grade 4").first()).toBeVisible();
+    });
+
+    // Codex on #304: the 2024 revision's notes could not be verified, so the 1990 scale's
+    // multiple-injury advance is kept rather than removed without evidence.
+    test("keeps the 1990 multiple-injury advance on the 2024 revision path", async ({
+      page,
+    }) => {
+      await expect(page.locator('label[for="multiple_injuries"]')).toBeVisible();
+      await expect(
+        page.locator('label[for="kidney_2018_bilateral"]'),
+      ).toBeHidden();
+
       await page
         .getByText("Major contusion without duct injury or tissue loss")
         .click();
-      await page.click('label[for="multiple_injuries"]');
+      await page.locator('label[for="multiple_injuries"]').click();
       await page.click('button:has-text("Calculate")');
 
       const results = page.getByRole('status', { name: 'Calculator results' });
-      await expect(results.locator("text=Grade 3").first()).toBeVisible();
+      await expect(results.getByText("Grade 3", { exact: true }).first()).toBeVisible();
+      await expect(results.getByText("Multiple injuries (+1 grade)").first()).toBeVisible();
       await expect(
-        results.locator("text=Multiple injuries").first(),
+        results.getByText("Base grade 2 advanced to Grade 3 due to multiple injuries", { exact: true }),
       ).toBeVisible();
+      await expect(
+        results
+          .getByText(
+            "The 2024 pancreas OIS revision's table notes could not be verified, so the multiple-injury advance of the earlier 1990 AAST pancreas scale is kept",
+          )
+          .first(),
+      ).toBeVisible();
+    });
+
+    // Codex on #304: the duct location separates Grades III and IV only.
+    test("grades a destructive head injury as V without a duct location", async ({
+      page,
+    }) => {
+      await page.getByText("Complete ductal transection").click();
+      await page.click('label[for="pancreas_destructive"]');
+      await page.click('button:has-text("Calculate")');
+
+      const results = page.getByRole('status', { name: 'Calculator results' });
+      await expect(results.getByText("Grade 5", { exact: true }).first()).toBeVisible();
+      await expect(
+        page.getByText("Select the Location of Duct Injury (neck/body/tail or head)", { exact: false }),
+      ).toHaveCount(0);
     });
   });
 

@@ -16,16 +16,20 @@ function CollapsibleReferences({ refs, calculatorId, onLinkClick }) {
       <h3 className="font-medium mb-2 text-foreground">References</h3>
       <ul className="list-disc pl-5 space-y-1 text-sm">
         {visibleRefs.map((r) => (
-          <li key={r.u} className="text-muted-foreground">
-            <a
-              href={r.u}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80 hover:underline transition-colors reference-link"
-              onClick={() => onLinkClick?.(r.u, "reference", calculatorId)}
-            >
-              {r.t}
-            </a>
+          <li key={r.u || r.t} className="text-muted-foreground">
+            {r.u ? (
+              <a
+                href={r.u}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:text-primary/80 hover:underline transition-colors reference-link"
+                onClick={() => onLinkClick?.(r.u, "reference", calculatorId)}
+              >
+                {r.t}
+              </a>
+            ) : (
+              r.t
+            )}
           </li>
         ))}
       </ul>

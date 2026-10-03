@@ -8,6 +8,18 @@
  * Kidney supports both 2018 and 2025 OIS revisions (version selector).
  * Pancreas uses 2024 OIS revision (ductal integrity as primary grading determinant).
  *
+ * Grade-advance modifiers (docs/evidence/aast-injury-modifiers.md):
+ * - Liver and spleen 2018: multiple grade I-II injuries advance one grade (max III)
+ *   (Kozar 2018, Tables 1-2 notes).
+ * - Kidney 2018: bilateral renal injuries advance one grade (max III); several
+ *   injuries in one kidney take the highest grade (Kozar 2018, Table 3 notes).
+ * - Pancreas 2024: the 1990 AAST pancreas scale's multiple-injury advance (max III)
+ *   is kept; whether the 2024 revision keeps it is not verified.
+ * - Kidney 2025 (and no version chosen): the calculator's earlier multiple-injury
+ *   advance (max III) is unchanged; the 2025 revision's notes are not verified.
+ * Hidden or stale checkbox values never change the grade on a path that does not
+ * use them.
+ *
  * Primary Sources:
  * - Kozar RA, et al. J Trauma Acute Care Surg. 2018;85(6):1119-1122 (2018 AAST-OIS Update)
  * - Keihani S, et al. J Trauma Acute Care Surg. 2025;98(3):448-451 (2025 Kidney OIS Update)
@@ -50,6 +62,12 @@ PANCREAS (2024 Revision):
 • Ductal integrity is the PRIMARY grading determinant
 • Location (head vs. body/tail) differentiates Grade III from IV
 • Head lacerations without duct injury reclassified from Grade IV to Grade II
+
+GRADE-ADVANCE MODIFIERS (AAST OIS table notes):
+• Liver and spleen: multiple grade I–II injuries advance one grade, up to Grade III
+• Kidney (2018 scale): bilateral renal injuries advance one grade, up to Grade III
+• Pancreas: the 1990 scale's multiple-injury advance is kept, up to Grade III, until the 2024 revision's notes are verified
+• Kidney 2025 path: the earlier multiple-injury advance (up to Grade III) is unchanged until the 2025 revision's notes are verified
 
 MANAGEMENT PRINCIPLES (WSES Guidelines):
 • Hemodynamic stability is the PRIMARY determinant of management
@@ -139,7 +157,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         },
         {
           value: "1_3cm",
-          label: "1-3 cm parenchymal depth, <10 cm length (Grade II)",
+          label: "1-3 cm parenchymal depth, ≤10 cm length (Grade II)",
         },
         { value: "gt3cm", label: ">3 cm parenchymal depth (Grade III)" },
         {
@@ -469,7 +487,8 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       id: "kidney_2018_urinary_extrav",
       label: "Urinary Extravasation",
       type: "checkbox",
-      subLabel: "Contrast extravasation on delayed phase → Grade IV",
+      subLabel:
+        "Excreted contrast leaking outside the collecting system on delayed (excretory) phase → Grade IV",
       showIf: (vals) =>
         vals.organ === "kidney" && vals.kidney_ois_version === "2018",
     },
@@ -522,6 +541,18 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
           label: "Devascularized kidney with active bleeding (Grade V)",
         },
       ],
+    },
+
+    // Kidney 2018 table note: the kidney's advance trigger is bilateral injury
+    // (not multiple injuries in one kidney, which take the highest grade).
+    {
+      id: "kidney_2018_bilateral",
+      label: "Bilateral Renal Injuries",
+      type: "checkbox",
+      subLabel:
+        "Both kidneys injured: advance one grade, up to Grade III (2018 kidney OIS)",
+      showIf: (vals) =>
+        vals.organ === "kidney" && vals.kidney_ois_version === "2018",
     },
 
     // ============================================
@@ -605,18 +636,29 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       label: "Destructive Pancreatic Head Injury",
       type: "checkbox",
       subLabel:
-        "Massive disruption of pancreatic head with nonviable parenchyma → Grade V",
+        "Pancreatic head destruction with nonviable parenchyma (2024 revision) → Grade V",
       showIf: (vals) => vals.organ === "pancreas",
     },
 
     // ============================================
-    // COMMON FIELDS
+    // MULTIPLE-INJURY MODIFIER: liver and spleen (2018 table notes); the
+    // pancreas, where the 1990 AAST pancreas scale's advance is kept until the
+    // 2024 revision's table notes can be verified; and the 2025 kidney path (also
+    // used with no version), where the calculator's earlier advance is unchanged
+    // until the 2025 revision's notes can be verified. Not offered on the 2018
+    // kidney path: its table's modifier is bilateral injury.
     // ============================================
     {
       id: "multiple_injuries",
       label: "Multiple Injuries in Same Organ",
       type: "checkbox",
-      subLabel: "Advance one grade for multiple injuries (up to Grade III)",
+      subLabel:
+        "Multiple grade I–II injuries: advance one grade, up to Grade III",
+      showIf: (vals) =>
+        vals.organ === "liver" ||
+        vals.organ === "spleen" ||
+        vals.organ === "pancreas" ||
+        (vals.organ === "kidney" && vals.kidney_ois_version !== "2018"),
     },
   ],
 
@@ -643,6 +685,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       kidney_2018_urinary_extrav = false,
       kidney_2018_vascular = "",
       kidney_2018_infarction = "",
+      kidney_2018_bilateral = false,
       // pancreas fields
       pancreas_parenchymal = "",
       pancreas_duct = "",
@@ -660,6 +703,8 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
     let grade = 0;
     let gradeFindings = [];
     let gradeDescription = "";
+    // Description table of the organ/version path; read after any grade advance.
+    let gradeDescriptions = {};
 
     // ============================================
     // LIVER GRADING
@@ -734,7 +779,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Major lobe disruption or intraperitoneal bleeding",
         5: "Critical - Massive disruption or juxtahepatic venous injury",
       };
-      gradeDescription = liverGrades[grade] || "";
+      gradeDescriptions = liverGrades;
     }
 
     // ============================================
@@ -821,7 +866,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Vascular injury (PSA/AVF) or >25% devascularization",
         5: "Critical - Shattered spleen or hilar avulsion or free bleeding",
       };
-      gradeDescription = spleenGrades[grade] || "";
+      gradeDescriptions = spleenGrades;
     }
 
     // ============================================
@@ -938,7 +983,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Active bleeding, pararenal extension, multifragmented, or UPJ disruption",
         5: "Critical - Main vessel injury or multifragmented kidney with active bleeding",
       };
-      gradeDescription = kidneyGrades[grade] || "";
+      gradeDescriptions = kidneyGrades;
     }
 
     // ============================================
@@ -1035,7 +1080,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Collecting system involvement, segmental vessel injury, or urinary extravasation",
         5: "Critical - Main vessel injury, shattered kidney, or devascularized with bleeding",
       };
-      gradeDescription = kidneyGrades[grade] || "";
+      gradeDescriptions = kidneyGrades;
     }
 
     // ============================================
@@ -1043,6 +1088,23 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
     // Ductal integrity is the primary grading determinant
     // ============================================
     else if (organ === "pancreas") {
+      // The 2024 revision grades a duct injury by location (neck/body/tail =
+      // Grade III, head = Grade IV). Without a location the grade is unknown, so
+      // fail closed instead of assuming the lower grade. A destructive head injury
+      // is Grade V whatever the duct location, so it never waits for one.
+      if (
+        !pancreas_destructive &&
+        pancreas_duct &&
+        pancreas_duct !== "none" &&
+        pancreas_duct_location !== "head" &&
+        pancreas_duct_location !== "body_tail"
+      ) {
+        return {
+          Error:
+            "Select the Location of Duct Injury (neck/body/tail or head) to grade this pancreatic duct injury: it is Grade III in the neck, body or tail and Grade IV in the head.",
+        };
+      }
+
       // DESTRUCTIVE (Grade V) — check first
       if (pancreas_destructive) {
         grade = Math.max(grade, 5);
@@ -1070,12 +1132,6 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         } else if (pancreas_duct_location === "body_tail") {
           grade = Math.max(grade, 3);
           gradeFindings.push(`Duct injury in neck/body/tail — ${ductSubgrade}`);
-        } else {
-          // Duct injury selected but location not yet chosen
-          grade = Math.max(grade, 3);
-          gradeFindings.push(
-            `Duct injury present — ${ductSubgrade} (select location for precise grading)`,
-          );
         }
       }
 
@@ -1111,15 +1167,44 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
         4: "Severe - Duct injury in head (right of portal vein/SMV)",
         5: "Critical - Destructive injury to pancreatic head with nonviable parenchyma",
       };
-      gradeDescription = pancreasGrades[grade] || "";
+      gradeDescriptions = pancreasGrades;
     }
 
-    // Apply multiple injury rule
-    let baseGrade = grade;
-    if (multiple_injuries && grade < 3 && grade > 0) {
+    // Grade-advance modifiers (Kozar 2018 table notes; for the pancreas, the 1990
+    // AAST pancreas scale's note, kept until the 2024 revision's notes can be
+    // verified; on the 2025 kidney path, the calculator's earlier advance,
+    // unchanged until the 2025 revision's notes can be verified). Each applies only
+    // to its own organ and version, and only to a base grade of I or II (ceiling
+    // Grade III). The UI keeps hidden checkbox values, so the organ
+    // and version are checked here as well: a stale value never changes a grade.
+    const baseGrade = grade;
+    let gradeAdvance = null;
+    if (baseGrade > 0 && baseGrade < 3) {
+      if (
+        (organ === "liver" ||
+          organ === "spleen" ||
+          organ === "pancreas" ||
+          (organ === "kidney" && kidney_ois_version !== "2018")) &&
+        multiple_injuries === true
+      ) {
+        gradeAdvance = "multiple";
+      } else if (
+        organ === "kidney" &&
+        kidney_ois_version === "2018" &&
+        kidney_2018_bilateral === true
+      ) {
+        gradeAdvance = "bilateral";
+      }
+    }
+    if (gradeAdvance === "multiple") {
       grade += 1;
       gradeFindings.push("Multiple injuries (+1 grade)");
+    } else if (gradeAdvance === "bilateral") {
+      grade += 1;
+      gradeFindings.push("Bilateral renal injuries (+1 grade)");
     }
+    // Describe the final grade; the adjustment line names the base grade.
+    gradeDescription = gradeDescriptions[grade] || "";
 
     if (grade === 0) {
       return {
@@ -1349,9 +1434,18 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       "Key Imaging Pitfalls": imagingPitfalls,
     };
 
-    if (multiple_injuries && baseGrade < 3 && baseGrade > 0) {
+    if (gradeAdvance === "multiple") {
       result["Multiple Injury Adjustment"] =
         `Base grade ${baseGrade} advanced to Grade ${grade} due to multiple injuries`;
+    } else if (gradeAdvance === "bilateral") {
+      result["Bilateral Injury Adjustment"] =
+        `Base grade ${baseGrade} advanced to Grade ${grade} due to bilateral renal injuries (2018 kidney OIS)`;
+    }
+    // The pancreas keeps the 1990 scale's advance; a base grade I-II result says
+    // where it comes from, advanced or not.
+    if (organ === "pancreas" && baseGrade > 0 && baseGrade <= 2) {
+      result["Grade-Advance Note"] =
+        "The 2024 pancreas OIS revision's table notes could not be verified, so the multiple-injury advance of the earlier 1990 AAST pancreas scale is kept: multiple injuries raise a grade I–II result by one, to at most Grade III. Clinical judgment applies.";
     }
 
     result["CRITICAL NOTE"] =
@@ -1391,7 +1485,7 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       u: "https://doi.org/10.1097/TA.0000000000002058",
     },
     {
-      t: "Keihani S, Tominaga GT, Swaroop M, et al. Kidney organ injury scaling: 2025 update. J Trauma Acute Care Surg. 2025;98(3):448-451.",
+      t: "Keihani S, Tominaga GT, Matta R, et al. Kidney organ injury scaling: 2025 update. J Trauma Acute Care Surg. 2025;98(3):448-451.",
       u: "https://pubmed.ncbi.nlm.nih.gov/39836096/",
     },
     {
@@ -1430,9 +1524,11 @@ MANAGEMENT PRINCIPLES (WSES Guidelines):
       t: "Bhullar IS, Frykberg ER, Siragusa D, et al. AAST Organ Injury Scale 2018 update for CT-based grading of renal trauma. Emerg Radiol. 2019;26(6):635-643.",
       u: "https://doi.org/10.1007/s10140-019-01721-z",
     },
+    // No link: the AAST's public injury scoring scale page no longer serves
+    // the scales (it is a reprint-permissions notice), so only the citation
+    // text is kept (docs/evidence/aast-injury-modifiers.md).
     {
       t: "AAST Official Website - Organ Injury Scale",
-      u: "https://www.aast.org/resources-detail/injury-scoring-scale",
     },
   ],
 };
