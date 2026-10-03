@@ -151,9 +151,11 @@ test.describe("Smoke Tests - Core Functionality", () => {
 
     await page.getByRole('button', { name: 'Calculate' }).click();
 
-    // Verify results appear - use specific text that only appears in results
-    await expect(page.getByText("Absolute Washout (%)")).toBeVisible();
-    await expect(page.getByText(/60\.?0?%/)).toBeVisible();
+    // APW = 100 × (80 − 35) / (80 − 5) = 60; RPW = 56.25.
+    // Assert the calculation, not a threshold mentioned in explanatory prose.
+    const result = page.getByRole("status", { name: "Calculator results" });
+    await expect(result).toContainText(/Absolute Washout \(%\):\s*60\.0/);
+    await expect(result).toContainText(/Relative Washout \(%\):\s*56\.3/);
   });
 
   test("should navigate to Child-Pugh calculator", async ({ page }) => {

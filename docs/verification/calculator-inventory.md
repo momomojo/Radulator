@@ -7,7 +7,7 @@ Generated from checked-out calculator exports, the guideline registry, canonical
 - Medical rows: 42; the Feedback category is excluded (feedback-form).
 - Registry claims: 10 verified, 32 seed-unverified, 0 missing; these labels are existing registry assertions, not a new independent clinical certification.
 - Canonical compute fixture inventory: 12 fixture files and 313 cases; counts do not establish that the tests passed or that all behavior is covered.
-- Browser spec presence: 42 calculator-specific files and 3 shared files; associations are statically detected from actual navigation or routes, so indirect or parameterized helpers may be omitted. Presence does not establish branch coverage, correct medicine, or a successful browser run.
+- Browser spec presence: 43 calculator-specific files and 3 shared files; associations are statically detected from actual navigation or routes, so indirect or parameterized helpers may be omitted. Presence does not establish branch coverage, correct medicine, or a successful browser run.
 - Clinical signoff: not established for any calculator in this inventory.
 - Release/proof: not established for any calculator in this inventory.
 - Full row evidence remains in the [JSON snapshot](./calculator-inventory.json) and the [canonical guideline registry](../../ops/hermes/radulator/skills/radulator-operations/references/guideline-versions.json).
