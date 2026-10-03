@@ -1,6 +1,6 @@
 # Wells PE: source evidence for wording, cut points and cohort figures
 
-Review date: 2026-09-28 (UTC)
+Review date: 2026-09-28 (UTC). Revised 2026-10-03 for the release remediation below.
 
 **Scope.** This review covers `src/components/calculators/WellsPE.jsx` (`wells-pe`):
 - the checkbox labels and subLabels;
@@ -13,6 +13,27 @@ Review date: 2026-09-28 (UTC)
 The item weights and the two-level split are unchanged. This is bounded source and implementation evidence, not clinical sign-off or whole-calculator certification.
 
 No source prose is reproduced here. The texts below are criterion names, numeric criteria and results stated as facts, identifiers, and our own paraphrases.
+
+## Release remediation (2026-10-03): visible definitions and the PERC note's conditions
+
+The primary judge on promotion #342 accepted the weights, cut points, cohort figures and criterion definitions, and blocked on two patient-facing points.
+
+1. **The corrected definitions were not visible.**
+   - **Problem:** they were checkbox subLabels, and the checkbox branch of `src/components/forms/Field.jsx` does not render subLabels. Users saw only short labels such as "Malignancy".
+   - **Fix:** each definition is now part of the visible label, in NICE Table 2's own "name (definition)" layout, and no field keeps a hidden subLabel.
+2. **The PERC note presented the score band as enough.**
+   - **Problem:** it was shown for every Wells score below 2, but NICE bases PERC on low clinical suspicion from the overall clinical impression, with other diagnoses feasible.
+   - **Fix:** the note now states those conditions and ACP's advice explicitly.
+
+| Field | Before | After | Source and locator | Paraphrase (own words) | Binding |
+|---|---|---|---|---|---|
+| `clinical_dvt` label | "Clinical signs/symptoms of DVT" (definition in a hidden subLabel) | "Clinical signs/symptoms of DVT (at minimum, leg swelling and pain on palpation of the deep veins)"; subLabel removed | NICE-NG158 Table 2 row 1 (PDF page 12) | Both findings are the minimum; either alone does not meet the item. | Audit (exact label, no subLabel); compute test; spec (rendered label) |
+| `immobilization_surgery` label | "Immobilization or surgery in past 4 weeks" (threshold hidden) | "Immobilization or surgery in the previous 4 weeks (immobilization for more than 3 days)"; subLabel removed | NICE-NG158 Table 2 row 4; Wells2000 abstract | Immobilization must exceed 3 days; surgery also counts; both within 4 weeks. The label keeps the Wells 2000 item name first. | Audit; compute test; spec |
+| `malignancy` label | "Malignancy" (definition hidden) | "Malignancy (under treatment, treated within the past 6 months, or palliative)"; subLabel removed | NICE-NG158 Table 2 row 7 | Cancer under current treatment, treated within the past 6 months, or managed palliatively. | Audit; compute test; spec |
+| `alternative_less_likely` subLabel | "PE judged more likely than every alternative diagnosis; a tie does not count" (hidden) | Removed; the visible label "Alternative diagnosis less likely than PE" is NICE's criterion | NICE-NG158 Table 2 row 2 | The strict reading (a tie does not score) follows from the criterion and stays recorded in the commit-1 table below. | Audit (no subLabel); compute test; spec |
+| PERC note (score below 2) | "Consider the PERC rule in low-probability patients (score <2) to avoid unnecessary D-dimer testing" | "Consider the PERC rule only if the overall clinical impression (history, examination and initial tests such as ECG or chest X-ray) gives low clinical suspicion of PE and other diagnoses are feasible (NICE NG158 1.1.16). A Wells score below 2 is not enough on its own. With a low pretest probability and all PERC criteria met, ACP 2015 advises against D-dimer testing or imaging. PERC is not validated in people with COVID-19." | NICE-NG158 recommendation 1.1.16 (PDF page 11; [2020, amended 2023]); ACP2015 Best Practice Advice 2 | NICE: use PERC only with low suspicion on the overall clinical impression (history, examination, initial tests such as ECG or chest X-ray) and other diagnoses feasible; not validated in COVID-19. ACP: with low pretest probability and every PERC criterion met, obtain neither D-dimer nor imaging. A score band cannot stand in for the overall impression. | Audit: exact text in every selection below the parsed low cut point, absent otherwise; compute test; spec |
+
+The NICE PDF (`d96c3f78…`, 305,423 bytes) and the ACP2015 abstract (`9540bc94…`, 3,279 bytes) were re-fetched on 2026-10-03 and still match the pins under "Retrieved artifacts". The PDF came from the Internet Archive capture `20260829003713` of the same URL, because NICE refuses automated requests.
 
 ## Sources
 
@@ -157,12 +178,13 @@ The calculator therefore states the Christopher Study event rate with its CI, gr
 - the absence of any NPV, ">99" or "excluded" claim, and of any unsourced percentage;
 - `guidelineVersion` and the references.
 
-The test runs the live audit and then 33 mutations, each of which must fail:
+The test runs the live audit and then 39 mutations, each of which must fail:
 - **source bytes:** same-length digest drift, byte-length drift, a missing record, a drifted HTTP 200 (never retried);
 - **records and statements:** DOI, year and layout drift; a same-length edit inside a pinned span; a seven-word marker;
 - **runtime items:** item order, a reverted label, `guidelineVersion`, a missing reference;
 - **runtime text:** the low band reverted, a changed tier rate, a changed Christopher rate, the assay attribution removed, the NPV claim restored, an unsourced percentage, the description line reverted;
 - **runtime output:** a changed weight, 1.5 scored Moderate, 4 scored PE likely, the recommendation reverted, the PERC note outside the low band, an unsourced output percentage, an NPV claim in a note;
+- **visible definitions and PERC conditions (release remediation):** the DVT, immobilization and malignancy definitions dropped from their labels, a hidden subLabel restored, the PERC note reverted to the score band alone, the PERC note without its COVID-19 caveat;
 - **response identity and retry:** wrong host, format or media type; 400, 429 and 5xx retried; 404 not retried; a redirect followed instead of refused; a redirected response accepted.
 
 It also checks that `Retry-After` lengthens a wait but never shortens it (30 s cap), and that every request goes one at a time through the shared request spacing and the fetch log. Its last output line is the pinned summary, so the runner's `pass_line` records the three pinned records.
@@ -181,7 +203,7 @@ The NICE bytes and hashes above let a reviewer re-verify the criterion wording b
 
 ## Rendering note
 
-At this head, checkbox subLabels are not rendered: the checkbox branch of `src/components/forms/Field.jsx` passes the label only. The corrected subLabels become visible when the renderer fix lands. Labels, the info text and all result lines are visible now.
+Checkbox subLabels are not rendered: the checkbox branch of `src/components/forms/Field.jsx` passes the label only. Since the release remediation, every criterion definition is part of its visible label and no Wells PE field has a subLabel. The audit and the compute test check both, and the spec checks the rendered labels.
 
 ## Reproduce
 

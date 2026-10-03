@@ -433,6 +433,25 @@ export function expectedText(facts) {
   const { years, christopher: c } = facts;
   const outcome = `${c.rate}% (95% CI ${c.ciLow}–${c.ciHigh}%) had nonfatal VTE over ${c.months} months of follow-up`;
   return {
+    // Visible labels (primary judge on #342): each NICE NG158 Table 2 definition is part of the label,
+    // because checkbox subLabels are not rendered. NICE is read by hand (not fetched); these pin the text.
+    labels: {
+      clinical_dvt: "Clinical signs/symptoms of DVT (at minimum, leg swelling and pain on palpation of the deep veins)",
+      alternative_less_likely: "Alternative diagnosis less likely than PE",
+      heart_rate: "Heart rate >100 bpm",
+      immobilization_surgery: "Immobilization or surgery in the previous 4 weeks (immobilization for more than 3 days)",
+      previous_pe_dvt: "Previous PE or DVT",
+      hemoptysis: "Hemoptysis",
+      malignancy: "Malignancy (under treatment, treated within the past 6 months, or palliative)",
+    },
+    // The PERC note (primary judge on #342): NICE NG158 1.1.16's conditions and ACP 2015 Best Practice
+    // Advice 2, so the low band is never presented as enough for PERC on its own.
+    perc:
+      "Consider the PERC rule only if the overall clinical impression " +
+      "(history, examination and initial tests such as ECG or chest X-ray) gives low clinical suspicion of PE and other diagnoses are feasible (NICE NG158 1.1.16). " +
+      `A Wells score below ${whole(facts.lowBelow)} is not enough on its own. ` +
+      "With a low pretest probability and all PERC criteria met, ACP 2015 advises against D-dimer testing or imaging. " +
+      "PERC is not validated in people with COVID-19.",
     bands: [
       `• Low probability: <${whole(facts.lowBelow)} points`,
       `• Moderate probability: ${whole(facts.lowBelow)}–${whole(facts.highAbove)} points`,
@@ -494,6 +513,10 @@ export function bindRuntime(wellsPE, facts) {
       `${FIELD_ORDER[index]} must weigh ${item.weight} points (Wells 2000)`,
     );
   });
+  for (const field of fields) {
+    assert.equal(field.label, text.labels[field.id], `runtime label for ${field.id} must carry its NICE NG158 Table 2 definition`);
+    assert.equal(field.subLabel, undefined, `${field.id} must not keep a hidden subLabel (checkbox subLabels are not rendered)`);
+  }
 
   // Every selection: score, both tiers, recommendation, PERC note, and no unsourced claims.
   let vectors = 0;
@@ -519,6 +542,12 @@ export function bindRuntime(wellsPE, facts) {
       score < facts.lowBelow,
       `${where}: the PERC note must follow the Wells 2000 low band`,
     );
+    if (score < facts.lowBelow) {
+      assert.ok(
+        String(result["Clinical Notes"]).split("; ").includes(text.perc),
+        `${where}: the PERC note must state the NICE NG158 1.1.16 and ACP 2015 conditions exactly`,
+      );
+    }
     for (const [key, value] of Object.entries(result)) {
       if (typeof value !== "string") continue;
       assert.doesNotMatch(value, FORBIDDEN_CLAIMS, `${where}: ${key} must not claim NPV >99% or exclusion`);
@@ -632,7 +661,7 @@ export function passLine({ facts, binding }) {
     `2-tier <=${facts.unlikelyAtMost}/>${facts.unlikelyAtMost}; Wells ${facts.years.wells2001} tier PE ${facts.tierRates.join("/")}% (n=${facts.cohort}); ` +
     `Wells ${facts.years.wells2000} PE-unlikely ${facts.unlikelyRate}%, negative SimpliRED ${facts.negativeDimer.derivation}/${facts.negativeDimer.validation}%; ` +
     `Christopher ${c.events}/${c.untreated} VTE ${c.rate}% (${c.ciLow}-${c.ciHigh}) at ${c.months} months -> ` +
-    `${binding.vectors} selections, ${binding.bands} info band lines, info text and recommendation bound`
+    `${binding.vectors} selections, ${binding.bands} info band lines, info text, recommendation, labels and PERC note bound`
   );
 }
 
