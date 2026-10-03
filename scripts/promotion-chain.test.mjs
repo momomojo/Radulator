@@ -994,6 +994,24 @@ const neutral = (pr, overrides = {}) => entrySpec(pr, {
     fixture: batch(spread([clinicalA(431), releaseControl(432)])),
   }, "clinical and release-control PRs in one batch");
   assert.equal(mixed.domain, "mixed");
+  // Primary judge on #317 (302d452): a PR whose own diff changes a clinical path and a release-control path is mixed
+  // by itself, so it never gets batch review, alone or batched with a clinical PR (riskDomain alone would call it
+  // clinical).
+  const bothDomains = (pr) => entrySpec(pr, {
+    files: [file(`src/components/calculators/Calc${pr}.jsx`, `calc-${pr}`), file(`scripts/auto-merge-helper-${pr}.mjs`, `rc-${pr}`)],
+  });
+  const alone = await expectReason("BATCH_DOMAIN_MIXED", { fixture: batch(spread([bothDomains(471)])) },
+    "one PR that changes both trust domains");
+  assert.equal(alone.domain, "mixed");
+  assert.deepEqual(alone.entries[0].domains, ["clinical", "release-control"]);
+  assert.equal(alone.entries[0].domain, "mixed");
+  assert.deepEqual(alone.counts.domains, { clinical: 1, "release-control": 1, neutral: 0 });
+  assert.equal(alone.counts.highRiskClinical, 1, "a two-domain high-risk PR still counts toward M");
+  assert.match(alone.summary, /\(#471 changes both\)/);
+  const withClinical = await expectReason("BATCH_DOMAIN_MIXED", { fixture: batch(spread([clinicalA(472), bothDomains(473)])) },
+    "a two-domain PR batched with a clinical PR");
+  assert.match(withClinical.summary, /\(#473 changes both\)/);
+  assert.equal(promotionReviewMode(withClinical), "full");
   const { chain: withNeutral } = await run(batch(spread([releaseControl(441), neutral(442)])));
   assert.equal(withNeutral.ok, true, "a standard-risk neutral PR joins any batch");
   assert.equal(withNeutral.domain, "release-control");
@@ -1041,12 +1059,18 @@ const neutral = (pr, overrides = {}) => entrySpec(pr, {
     mutate: recode(531, () => ["CLINICAL_EVIDENCE_CHANGE"]),
   }, "a release-control PR recorded as clinical");
   assert.match(wrongDomain.summary, /records no release-control risk/);
-  // Recorded codes may name more than the re-classification finds.
+  // Recorded codes may name more than the re-classification finds within a domain...
   const { chain: broader } = await run(batch(spread([clinicalA(541)])), {
-    mutate: recode(541, (codes) => [...codes, "RELEASE_CONTROL_CHANGE"]),
+    mutate: recode(541, (codes) => [...codes, "CLINICAL_EVIDENCE_CHANGE"]),
   });
   assert.equal(broader.ok, true, broader.summary);
   assert.equal(broader.entries[0].domain, "clinical");
+  // ...but a recorded second domain makes the entry mixed (fail toward full review).
+  const recordedBoth = await expectReason("BATCH_DOMAIN_MIXED", {
+    fixture: batch(spread([clinicalA(542)])),
+    mutate: recode(542, (codes) => [...codes, "RELEASE_CONTROL_CHANGE"]),
+  }, "recorded codes that name both domains");
+  assert.deepEqual(recordedBoth.entries[0].domains, ["clinical", "release-control"]);
 }
 
 // ---- Malformed inputs fail closed ------------------------------------------------------------------

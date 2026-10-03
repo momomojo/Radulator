@@ -158,7 +158,8 @@ export function decodeAttestedLabels(labelsSha256) {
   };
 }
 
-// Every non-neutral risk domain the reason codes name; riskDomain picks one of them for batch accounting.
+// Every non-neutral risk domain the reason codes name. riskDomain names just one of them; batch accounting uses the
+// whole set (entryDomains).
 export function riskDomains(reasonCodes) {
   const codes = Array.isArray(reasonCodes) ? reasonCodes : [];
   const domains = [];
@@ -171,8 +172,14 @@ export function riskDomain(reasonCodes) {
   return riskDomains(reasonCodes)[0] || "neutral";
 }
 
+// Every domain a chain entry touches. Batch accounting uses this whole set: riskDomain's single domain would let a PR
+// that changes both clinical and release-control paths count as clinical only.
+function entryDomains(entry) {
+  return Array.isArray(entry?.domains) ? entry.domains : riskDomains(entry?.reasonCodes);
+}
+
 export function isHighRiskClinical(entry) {
-  return entry?.tier === "high" && riskDomain(entry.reasonCodes) === "clinical";
+  return entry?.tier === "high" && entryDomains(entry).includes("clinical");
 }
 
 // Maps each path a comparison touched to its blob on the comparison's head side, or null when the
@@ -427,8 +434,10 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
   ) {
     fail("CHAIN_GATE_AUTHORIZATION_MISSING", `PR #${prNumber} head ${headSha} had no gate PASS authorization at merge time.`, at);
   }
-  // k. The verified entry.
+  // k. The verified entry. Its domains are every domain its recorded or re-classified codes name; a PR whose own diff
+  // spans clinical and release control is "mixed" by itself.
   const reasonCodes = Array.isArray(recorded.risk?.reasonCodes) ? [...recorded.risk.reasonCodes].sort() : [];
+  const domains = [...new Set([...riskDomains(reasonCodes), ...riskDomains(analyzed.reasonCodes)])].sort();
   return {
     pr: prNumber,
     title: typeof pr.title === "string" ? pr.title.slice(0, 200) : "",
@@ -440,7 +449,8 @@ function verifyCommit({ commit, index, parentSha, facts, publicKeys, policy, rep
     tier: recorded.risk.tier,
     reasonCodes,
     analyzedReasonCodes: [...analyzed.reasonCodes].sort(),
-    domain: riskDomain(reasonCodes),
+    domains,
+    domain: domains.length > 1 ? "mixed" : domains[0] || "neutral",
     remediation: labels.remediation,
     urgent: labels.urgent,
     labels: labels.labels,
@@ -518,8 +528,13 @@ function verifyPromotionContent({ facts, policy, mainSha, promotionHeadSha, merg
 
 function countEntries(entries) {
   const nonRemediation = entries.filter((entry) => !entry.remediation);
+  // Each entry counts once per domain it touches (a two-domain PR counts in both).
   const domains = { clinical: 0, "release-control": 0, neutral: 0 };
-  for (const entry of entries) domains[entry.domain] += 1;
+  for (const entry of entries) {
+    const touched = entryDomains(entry);
+    if (!touched.length) domains.neutral += 1;
+    for (const domain of touched) domains[domain] += 1;
+  }
   return {
     prs: entries.length,
     nonRemediation: nonRemediation.length,
@@ -531,7 +546,7 @@ function countEntries(entries) {
 }
 
 function batchDomain(entries) {
-  const domains = new Set(entries.map((entry) => entry.domain).filter((domain) => domain !== "neutral"));
+  const domains = new Set(entries.flatMap(entryDomains));
   if (domains.size > 1) return "mixed";
   return domains.size ? [...domains][0] : "neutral";
 }
@@ -554,7 +569,16 @@ function verifyLimits(entries, policy) {
       at,
     );
   }
-  if (batchDomain(entries) === "mixed") fail("BATCH_DOMAIN_MIXED", "The batch mixes clinical and release-control PRs.", at);
+  if (batchDomain(entries) === "mixed") {
+    const both = entries.filter((entry) => entryDomains(entry).length > 1).map((entry) => `#${entry.pr}`);
+    fail(
+      "BATCH_DOMAIN_MIXED",
+      both.length
+        ? `The batch mixes clinical and release-control changes (${both.join(", ")} ${both.length > 1 ? "change" : "changes"} both).`
+        : "The batch mixes clinical and release-control PRs.",
+      at,
+    );
+  }
   if (counts.urgent > 0 && counts.nonRemediation > 1) {
     fail("BATCH_URGENT_NOT_SOLO", "A release-urgent PR must release without other non-remediation PRs.", at);
   }
