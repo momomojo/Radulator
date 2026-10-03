@@ -20,12 +20,49 @@ test.describe("Wells Criteria for PE Calculator", () => {
       await expect(
         page.getByText("Clinical signs/symptoms of DVT"),
       ).toBeVisible();
-      await expect(page.getByText("PE is #1 diagnosis")).toBeVisible();
+      await expect(
+        page.getByText("Alternative diagnosis less likely than PE"),
+      ).toBeVisible();
       await expect(page.getByText("Heart rate >100 bpm")).toBeVisible();
       await expect(page.getByText("Immobilization")).toBeVisible();
       await expect(page.getByText("Previous PE or DVT")).toBeVisible();
       await expect(page.getByText("Hemoptysis")).toBeVisible();
       await expect(page.getByText("Malignancy")).toBeVisible();
+    });
+
+    // Checkbox subLabels are not rendered, so each NICE NG158 Table 2 definition is part of the
+    // visible label (primary judge on #342).
+    test("should show each criterion's NICE NG158 definition in its visible label", async ({ page }) => {
+      for (const [id, text] of [
+        ["clinical_dvt", "Clinical signs/symptoms of DVT (at minimum, leg swelling and pain on palpation of the deep veins)"],
+        ["immobilization_surgery", "Immobilization or surgery in the previous 4 weeks (immobilization for more than 3 days)"],
+        ["malignancy", "Malignancy (under treatment, treated within the past 6 months, or palliative)"],
+        ["alternative_less_likely", "Alternative diagnosis less likely than PE"],
+      ]) {
+        const label = page.locator(`label[for="${id}"]`);
+        await expect(label).toBeVisible();
+        await expect(label).toContainText(text);
+      }
+    });
+
+    test("should use the NICE NG158 / Wells 2000 wording for the alternative-diagnosis item", async ({
+      page,
+    }) => {
+      // The cited rule gives these 3 points only if PE is judged more likely than the alternative;
+      // the earlier "PE is #1 diagnosis OR equally likely" wording also scored a tie.
+      await expect(page.getByText(/equally likely/i)).toHaveCount(0);
+      await expect(page.getByText("PE is #1 diagnosis")).toHaveCount(0);
+
+      await page.locator('button[id="alternative_less_likely"]').click();
+      await page.click("button:has-text('Calculate')");
+
+      const breakdown = page.locator(
+        "section[aria-live='polite'] > div:has-text('Score Breakdown')",
+      );
+      await expect(breakdown).toContainText(
+        "Alternative diagnosis less likely than PE: +3.0",
+      );
+      await expect(page.getByText(/equally likely/i)).toHaveCount(0);
     });
 
     test("should display info section with Wells explanation", async ({
@@ -79,6 +116,55 @@ test.describe("Wells Criteria for PE Calculator", () => {
     });
   });
 
+  test.describe("Wells 2000 Cut Points", () => {
+    test("should classify 1.5 points as Low probability (Wells 2000 low band is below 2)", async ({
+      page,
+    }) => {
+      await page.locator('button[id="heart_rate"]').click();
+
+      await page.click("button:has-text('Calculate')");
+
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('Wells Score:')",
+        ),
+      ).toContainText("1.5 points");
+      await expect(
+        page.locator(
+          "section[aria-live='polite'] > div:has-text('3-Tier Assessment:')",
+        ),
+      ).toContainText("Low Probability");
+      // The PERC note states NICE NG158 1.1.16's conditions and ACP 2015 advice 2 (primary judge on #342).
+      const notes = page.locator(
+        "section[aria-live='polite'] > div:has-text('Clinical Notes:')",
+      );
+      await expect(notes).toContainText(
+        "Consider the PERC rule only if the overall clinical impression",
+      );
+      await expect(notes).toContainText("gives low clinical suspicion of PE and other diagnoses are feasible (NICE NG158 1.1.16)");
+      await expect(notes).toContainText("A Wells score below 2 is not enough on its own.");
+      await expect(notes).toContainText(
+        "With a low pretest probability and all PERC criteria met, ACP 2015 advises against D-dimer testing or imaging.",
+      );
+      await expect(notes).toContainText("PERC is not validated in people with COVID-19.");
+    });
+
+    test("should attribute the negative D-dimer outcome and make no NPV >99% claim", async ({
+      page,
+    }) => {
+      await page.click("button:has-text('Calculate')");
+
+      const recommendation = page.locator(
+        "section[aria-live='polite'] > div:has-text('Recommendation:')",
+      );
+      await expect(recommendation).toContainText("Christopher Study");
+      await expect(recommendation).toContainText(
+        "0.5% (95% CI 0.2–1.1%) had nonfatal VTE over 3 months of follow-up",
+      );
+      await expect(page.getByText(/NPV|>\s*99%|effectively excluded/)).toHaveCount(0);
+    });
+  });
+
   test.describe("Moderate Risk Calculations", () => {
     test("should calculate moderate risk with immobilization + HR >100", async ({
       page,
@@ -103,10 +189,10 @@ test.describe("Wells Criteria for PE Calculator", () => {
   });
 
   test.describe("High Risk Calculations", () => {
-    test("should calculate high risk with DVT signs + PE likely + HR >100", async ({
+    test("should calculate high risk with DVT signs + alternative less likely + HR >100", async ({
       page,
     }) => {
-      // DVT signs (3 pts) + PE likely (3 pts) + HR >100 (1.5 pts) = 7.5 pts
+      // DVT signs (3 pts) + alternative diagnosis less likely than PE (3 pts) + HR >100 (1.5 pts) = 7.5 pts
       await page.locator('button[id="clinical_dvt"]').click();
       await page.locator('button[id="alternative_less_likely"]').click();
       await page.locator('button[id="heart_rate"]').click();
