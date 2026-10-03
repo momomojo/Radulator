@@ -35,7 +35,7 @@ GANGLIONIC LEVEL (at level of basal ganglia):
 • I - Insular ribbon (insular cortex)
 • M1 - Frontal operculum (anterior MCA cortex)
 • M2 - Anterior temporal lobe (lateral to insular ribbon)
-• M3 - Posterior temporal lobe (posterior MCA cortex)
+• M3 - Posterior MCA cortex
 
 SUPRAGANGLIONIC LEVEL (above basal ganglia):
 • M4 - Anterior MCA territory (superior to M1)
@@ -64,50 +64,56 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
       ],
     },
 
-    // SUBCORTICAL STRUCTURES (Ganglionic Level)
+    // REGION CHECKBOXES. Each affected region subtracts 1 point (see info text).
+    // FieldLabel renders a subLabel as "label (subLabel)", so region subLabels
+    // carry no parentheses and do not repeat the level named in the label.
+    // Region wording and grouping: scripts/audit-aspects-region-source.mjs and
+    // docs/evidence/aspects-regions.md.
+
+    // SUBCORTICAL STRUCTURES (Ganglionic Level): C, L, IC
     {
       id: "caudate",
       label: "C - Caudate Head",
       type: "checkbox",
-      subLabel: "Early ischemic change in caudate nucleus (-1 point)",
+      subLabel: "Early ischemic change in caudate nucleus",
     },
     {
       id: "lentiform",
       label: "L - Lentiform Nucleus",
       type: "checkbox",
-      subLabel: "Putamen and globus pallidus (-1 point)",
+      subLabel: "Putamen and globus pallidus",
     },
     {
       id: "internal_capsule",
       label: "IC - Internal Capsule",
       type: "checkbox",
-      subLabel: "Posterior limb of internal capsule (-1 point)",
+      subLabel: "Posterior limb of internal capsule",
     },
+
+    // CORTICAL MCA REGIONS - GANGLIONIC LEVEL (I, M1-M3)
     {
       id: "insular",
       label: "I - Insular Ribbon",
       type: "checkbox",
-      subLabel: "Insular cortex / loss of insular ribbon (-1 point)",
+      subLabel: "Insular cortex / loss of insular ribbon",
     },
-
-    // CORTICAL MCA REGIONS - GANGLIONIC LEVEL (M1-M3)
     {
       id: "m1",
       label: "M1 - Anterior MCA Cortex (Ganglionic Level)",
       type: "checkbox",
-      subLabel: "Frontal operculum at ganglionic level (-1 point)",
+      subLabel: "Frontal operculum",
     },
     {
       id: "m2",
       label: "M2 - Lateral MCA Cortex (Ganglionic Level)",
       type: "checkbox",
-      subLabel: "Anterior temporal lobe, lateral to insular ribbon (-1 point)",
+      subLabel: "Anterior temporal lobe, lateral to insular ribbon",
     },
     {
       id: "m3",
       label: "M3 - Posterior MCA Cortex (Ganglionic Level)",
       type: "checkbox",
-      subLabel: "Posterior temporal lobe at ganglionic level (-1 point)",
+      subLabel: "Posterior MCA cortex",
     },
 
     // CORTICAL MCA REGIONS - SUPRAGANGLIONIC LEVEL (M4-M6)
@@ -115,19 +121,19 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
       id: "m4",
       label: "M4 - Anterior MCA Territory (Supraganglionic)",
       type: "checkbox",
-      subLabel: "Immediately superior to M1 (-1 point)",
+      subLabel: "Immediately superior to M1",
     },
     {
       id: "m5",
       label: "M5 - Lateral MCA Territory (Supraganglionic)",
       type: "checkbox",
-      subLabel: "Immediately superior to M2 (-1 point)",
+      subLabel: "Immediately superior to M2",
     },
     {
       id: "m6",
       label: "M6 - Posterior MCA Territory (Supraganglionic)",
       type: "checkbox",
-      subLabel: "Immediately superior to M3 (-1 point)",
+      subLabel: "Immediately superior to M3",
     },
 
     // TIME FROM SYMPTOM ONSET (optional, for clinical context)
@@ -159,7 +165,7 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
     const affectedRegions = [];
     let totalAffected = 0;
 
-    // Subcortical structures
+    // Subcortical structures (C, L, IC)
     if (caudate) {
       affectedRegions.push("C (Caudate)");
       totalAffected++;
@@ -172,12 +178,12 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
       affectedRegions.push("IC (Internal Capsule)");
       totalAffected++;
     }
+
+    // Ganglionic level cortical regions (I, M1-M3)
     if (insular) {
       affectedRegions.push("I (Insular)");
       totalAffected++;
     }
-
-    // Ganglionic level cortical regions
     if (m1) {
       affectedRegions.push("M1");
       totalAffected++;
@@ -254,18 +260,19 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
         ? `${totalAffected} region(s): ${affectedRegions.join(", ")}`
         : "No regions affected (normal CT)";
 
-    // Add category breakdown
-    const subcorticalAffected = [
-      caudate,
-      lentiform,
-      internal_capsule,
-      insular,
-    ].filter(Boolean).length;
-    const ganglionicCorticalAffected = [m1, m2, m3].filter(Boolean).length;
+    // Add category breakdown. The ASPECTS developers allot 3 points to
+    // subcortical structures (C, L, IC) and 7 to MCA cortex (insular cortex and
+    // M1-M6); the insular ribbon is cortex scored on the ganglionic cut.
+    const subcorticalAffected = [caudate, lentiform, internal_capsule].filter(
+      Boolean,
+    ).length;
+    const ganglionicCorticalAffected = [insular, m1, m2, m3].filter(
+      Boolean,
+    ).length;
     const supraganglionicCorticalAffected = [m4, m5, m6].filter(Boolean).length;
 
     result["Regional Breakdown"] =
-      `Subcortical: ${subcorticalAffected}/4 | Ganglionic cortical (M1-M3): ${ganglionicCorticalAffected}/3 | Supraganglionic (M4-M6): ${supraganglionicCorticalAffected}/3`;
+      `Subcortical (C, L, IC): ${subcorticalAffected}/3 | Ganglionic cortical (I, M1-M3): ${ganglionicCorticalAffected}/4 | Supraganglionic (M4-M6): ${supraganglionicCorticalAffected}/3`;
 
     // Treatment eligibility
     result["Thrombectomy Eligibility"] = thrombectomyEligibility;
@@ -321,24 +328,9 @@ Note: ASPECTS applies only to MCA territory strokes. For posterior circulation, 
       );
     }
 
-    if (m1 && m2 && m3 && m4 && m5 && m6) {
-      clinicalNotes.push(
-        "Complete cortical MCA involvement suggests very poor collateral circulation",
-      );
-    }
-
     if (totalAffected === 0) {
       clinicalNotes.push(
         "Normal ASPECTS (10/10) - No early ischemic changes visible on NCCT. Note: Subtle changes may be missed within first 3 hours of symptom onset",
-      );
-    }
-
-    if (
-      subcorticalAffected >= 3 &&
-      ganglionicCorticalAffected + supraganglionicCorticalAffected === 0
-    ) {
-      clinicalNotes.push(
-        "Predominantly subcortical involvement - consider lenticulostriate territory infarction",
       );
     }
 

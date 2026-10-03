@@ -2,6 +2,15 @@
 import { fileURLToPath } from "node:url";
 
 import {
+  isPromotionPr,
+  LABEL_FULL_REVIEW,
+  LABEL_URGENT,
+  loadPromotionChain,
+  PROMOTION_BATCH_REVIEW,
+  promotionExactStateReview,
+  summarizePromotionChain,
+} from "./promotion-chain.mjs";
+import {
   classifyRisk,
   digest,
   evaluateAttestationQuorum,
@@ -14,6 +23,12 @@ export const ENFORCEMENT_CONTEXT = "Radulator Clinical Release Authorization";
 export const MAX_PR_FILES = 3000;
 export const RECORD_SCHEMA = "radulator-clinical-gate-result/v1";
 export const ATTESTATION_MARKER = "<!-- radulator-clinical-attestation/v1 -->";
+// Promotions to main carry the promotion chain proof (scripts/promotion-chain.mjs) in the gate
+// result and check output. "report" publishes it without changing any verdict (the live test plan
+// observes real promotions first). "enforce" refuses a promotion whose chain is not verified unless
+// it carries the promotion-full-review label, which binds a full review into the attestations.
+// Changing this constant is a judged release-control change.
+export const PROMOTION_CHAIN_ENFORCEMENT = "report";
 
 const E2E_WORKFLOW_PATH = ".github/workflows/e2e-tests.yml";
 const E2E_WORKFLOW_FILE = "e2e-tests.yml";
@@ -31,12 +46,14 @@ const HOLD_LABELS = new Set([
   "cancelled",
   "canceled",
 ]);
-const RELEVANT_LABELS = new Set([
+export const RELEVANT_LABELS = new Set([
   "ready-for-gate",
   "release-remediation",
+  LABEL_URGENT,
+  LABEL_FULL_REVIEW,
   ...HOLD_LABELS,
 ]);
-const RELEVANT_TIMELINE_EVENTS = new Set([
+export const RELEVANT_TIMELINE_EVENTS = new Set([
   "closed",
   "reopened",
   "convert_to_draft",
@@ -73,6 +90,29 @@ function failure(headSha, baseSha, summary, reasonCode, details = {}) {
   result.fingerprint = digest(result);
   return result;
 }
+
+// A PR that is parked or still in flight is waiting, not failing: an open draft, no ready-for-gate
+// label, exact-head CI that has not started or finished, or a judge review that is missing or older
+// than the current evidence. The check concludes neutral and the required authorization status stays
+// pending, so the ruleset blocks merging exactly as it does on failure, while the check stays red only
+// for states someone must act on (a NEEDS_FIX verdict, finished CI that failed, a hold label, a closed
+// PR, malformed or inconsistent evidence, an evaluation error or a revoked PASS).
+function waiting(headSha, baseSha, summary, reasonCode, details = {}) {
+  const result = {
+    context: REQUIRED_CONTEXT,
+    conclusion: "neutral",
+    eligible: false,
+    reasonCode,
+    headSha,
+    baseSha,
+    summary,
+    ...details,
+  };
+  result.fingerprint = digest(result);
+  return result;
+}
+
+const WAITING_ATTESTATION_CODES = new Set(["MISSING_JUDGE_ROLE"]);
 
 function success(pr, risk, quorum) {
   const result = {
@@ -146,6 +186,7 @@ export function validateCiPolicy({ pr, files, requiredCi, ci }) {
       ok: false,
       reasonCode: "CI_NOT_EXACT_SUCCESS",
       summary: `Required CI is not exact green: ${ci?.summary || "missing evidence"}`,
+      pending: ci?.pending === true,
       risk,
       requiredCi: policyRequiredCi,
     };
@@ -221,9 +262,17 @@ function selectRequiredCiRun({ pr, workflowRuns, expectedWorkflowId }) {
 
   exactRuns.sort(runSort);
   const run = exactRuns[0];
-  if (!run) return { ok: false, summary: "No exact-head E2E workflow run matches the current PR head/base.", evidence: [] };
+  // No run yet, or one still queued or running, is pending; a finished run that did not succeed is not.
+  if (!run) {
+    return { ok: false, pending: true, summary: "No exact-head E2E workflow run matches the current PR head/base.", evidence: [] };
+  }
   if (run.status !== "completed" || run.conclusion !== "success") {
-    return { ok: false, summary: `Latest exact-head E2E run ${run.id} is ${run.status}/${run.conclusion || "none"}.`, evidence: [] };
+    return {
+      ok: false,
+      pending: run.status !== "completed",
+      summary: `Latest exact-head E2E run ${run.id} is ${run.status}/${run.conclusion || "none"}.`,
+      evidence: [],
+    };
   }
   return { ok: true, run };
 }
@@ -403,7 +452,7 @@ function newestRequiredRecords(records, roles, state, publicKeys) {
   return selected;
 }
 
-export function gateStateFingerprint({ pr, ci, files, reviews }) {
+export function gateStateFingerprint({ pr, ci, files, reviews, promotionChain }) {
   return digest({
     pr: {
       repositoryId: pr.repositoryId,
@@ -416,10 +465,13 @@ export function gateStateFingerprint({ pr, ci, files, reviews }) {
       headSha: pr.headSha,
       baseSha: pr.baseSha,
       baseRef: pr.baseRef,
+      headRef: pr.headRef ?? null,
+      headRepoFullName: pr.headRepoFullName ?? null,
       stateEpoch: pr.stateEpoch,
       labels: [...(pr.labels || [])].sort(),
       labelsDigest: pr.labelsDigest,
     },
+    promotionChain: promotionChain?.digest ?? null,
     ci,
     files: (files || []).map((file) => ({
       filename: file.filename,
@@ -436,12 +488,56 @@ export function gateStateFingerprint({ pr, ci, files, reviews }) {
   });
 }
 
-export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys }) {
+function promotionChainEnforced(mode) {
+  // Anything but the explicit report mode enforces (fail closed).
+  return mode !== "report";
+}
+
+function promotionChainLine(chain) {
+  const outcome = chain.ok
+    ? `verified, ${chain.counts?.prs ?? 0} PR(s), digest ${`${chain.digest}`.slice(0, 12)}`
+    : `${chain.reasonCode}`;
+  return `Promotion chain (${chain.enforcement}): ${outcome}.`;
+}
+
+// Promotions only: the result and check output carry the chain summary. In report mode the summary
+// stays outside the fingerprint; the chain still decides whether a batch approval counts (see
+// evaluateGateCore), so the gate's published check and the controller's in-process evaluation
+// (separate processes that each load the chain) can disagree only when one of them no longer counts
+// a batch approval, and the controller refuses a fingerprint mismatch. In enforce mode the summary
+// gates the verdict, so it is bound into the fingerprint. Results for every other PR are
+// byte-identical to the gate without the chain.
+function withPromotionChain(result, promotionChain, mode) {
+  const chain = {
+    ...summarizePromotionChain(promotionChain),
+    enforcement: promotionChainEnforced(mode) ? "enforce" : "report",
+  };
+  if (chain.enforcement === "report") return { ...result, promotionChain: chain };
+  const { fingerprint: _previous, ...core } = result;
+  const next = { ...core, summary: `${core.summary} ${promotionChainLine(chain)}`, promotionChain: chain };
+  next.fingerprint = digest(next);
+  return next;
+}
+
+export function evaluateGate(state, {
+  promotionChainEnforcement = PROMOTION_CHAIN_ENFORCEMENT,
+  promotionBatchReview = PROMOTION_BATCH_REVIEW,
+} = {}) {
+  const result = evaluateGateCore(state, promotionChainEnforcement, promotionBatchReview);
+  return isPromotionPr(state?.pr) ? withPromotionChain(result, state.promotionChain, promotionChainEnforcement) : result;
+}
+
+function evaluateGateCore({ pr, requiredCi, ci, files, reviews, publicKeys, promotionChain }, promotionChainEnforcement, promotionBatchReview) {
   if (!pr || !positiveInteger(pr.repositoryId) || !positiveInteger(pr.number) || !sha(pr.headSha) || !sha(pr.baseSha)) {
     return failure(pr?.headSha || "", pr?.baseSha || "", "Malformed PR/repository identity or head/base SHA; refusing PASS.", "MALFORMED_PR");
   }
   if (!ALLOWED_BASE_REFS.has(pr.baseRef)) return failure(pr.headSha, pr.baseSha, "PR base is outside develop/main; refusing PASS.", "UNSUPPORTED_BASE");
-  if (pr.state !== "open" || pr.draft) return failure(pr.headSha, pr.baseSha, "PR is not open and ready; refusing PASS.", "PR_NOT_OPEN_READY");
+  if (pr.state !== "open") return failure(pr.headSha, pr.baseSha, "PR is not open and ready; refusing PASS.", "PR_NOT_OPEN_READY");
+  // A hold label is a deliberate stop and stays red, on a draft too, so it is checked before any waiting state.
+  const labels = new Set((pr.labels || []).map((label) => `${label}`.toLowerCase()));
+  const hold = [...labels].find((label) => HOLD_LABELS.has(label));
+  if (hold) return failure(pr.headSha, pr.baseSha, `A hold label is present (${hold}); refusing PASS.`, "HOLD_PRESENT");
+  if (pr.draft) return waiting(pr.headSha, pr.baseSha, "PR is a draft (parked); refusing PASS until it is ready for review.", "PR_NOT_OPEN_READY");
   if (!completeFileList(pr, files)) {
     return failure(
       pr.headSha,
@@ -454,20 +550,35 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
     return failure(pr.headSha, pr.baseSha, "Relevant PR-state epoch is malformed; refusing PASS.", "MALFORMED_STATE_EPOCH");
   }
 
-  const labels = new Set((pr.labels || []).map((label) => `${label}`.toLowerCase()));
-  if (!labels.has("ready-for-gate")) return failure(pr.headSha, pr.baseSha, "ready-for-gate is absent.", "READY_LABEL_MISSING");
-  const hold = [...labels].find((label) => HOLD_LABELS.has(label));
-  if (hold) return failure(pr.headSha, pr.baseSha, `A hold label is present (${hold}); refusing PASS.`, "HOLD_PRESENT");
+  if (!labels.has("ready-for-gate")) return waiting(pr.headSha, pr.baseSha, "ready-for-gate is absent.", "READY_LABEL_MISSING");
 
   const ciPolicy = validateCiPolicy({ pr, files, requiredCi, ci });
   if (!ciPolicy.ok) {
-    return failure(pr.headSha, pr.baseSha, ciPolicy.summary, ciPolicy.reasonCode, ciPolicy.risk ? { risk: ciPolicy.risk } : {});
+    const blocked = ciPolicy.pending === true ? waiting : failure;
+    return blocked(pr.headSha, pr.baseSha, ciPolicy.summary, ciPolicy.reasonCode, ciPolicy.risk ? { risk: ciPolicy.risk } : {});
   }
   const risk = ciPolicy.risk;
-  const state = exactState(pr, ci, risk);
+  if (
+    promotionChainEnforced(promotionChainEnforcement) && isPromotionPr(pr) &&
+    promotionChain?.ok !== true && !labels.has(LABEL_FULL_REVIEW)
+  ) {
+    return failure(
+      pr.headSha,
+      pr.baseSha,
+      `Promotion chain is not verified (${promotionChain?.reasonCode || "CHAIN_EVIDENCE_UNAVAILABLE"}); a full review requires the ${LABEL_FULL_REVIEW} label.`,
+      "PROMOTION_CHAIN_UNVERIFIED",
+      { risk },
+    );
+  }
+  // A promotion's exact state carries the review binding of the chain loaded now, so a batch approval counts only
+  // while that is still the verified chain it was signed against (in report mode too).
+  const state = { ...exactState(pr, ci, risk), ...promotionExactStateReview(pr, promotionChain, { batchReview: promotionBatchReview }) };
   const carriers = attestationRecords(reviews);
   const quorum = evaluateAttestationQuorum(carriers, publicKeys, state);
-  if (!quorum.ok) return failure(pr.headSha, pr.baseSha, quorum.summary, quorum.reasonCode, { risk });
+  if (!quorum.ok) {
+    const blocked = WAITING_ATTESTATION_CODES.has(quorum.reasonCode) ? waiting : failure;
+    return blocked(pr.headSha, pr.baseSha, quorum.summary, quorum.reasonCode, { risk });
+  }
 
   const roles = requiredJudgeRoles(risk.tier);
   const selected = newestRequiredRecords(carriers, roles, state, publicKeys);
@@ -478,7 +589,7 @@ export function evaluateGate({ pr, requiredCi, ci, files, reviews, publicKeys })
   for (const role of roles) {
     const record = selected.get(role);
     if (!record || Date.parse(record.reviewed_at) < newestEvidenceAt) {
-      return failure(pr.headSha, pr.baseSha, `${role} attestation predates current PR/CI evidence.`, "STALE_ATTESTATION", { risk });
+      return waiting(pr.headSha, pr.baseSha, `${role} attestation predates current PR/CI evidence.`, "STALE_ATTESTATION", { risk });
     }
   }
   return success(pr, risk, quorum);
@@ -571,6 +682,8 @@ function normalizePr(data, stateEpoch = null) {
     headSha: data.head.sha,
     baseSha: data.base.sha,
     baseRef: data.base.ref,
+    headRef: typeof data.head.ref === "string" ? data.head.ref : null,
+    headRepoFullName: typeof data.head.repo?.full_name === "string" ? data.head.repo.full_name : null,
     author: data.user.login,
     authorId: data.user.id,
     authorType: data.user.type,
@@ -641,7 +754,7 @@ export async function loadGateState(token, owner, repo, prNumber, config) {
     expectedCiAppId: config.expectedCiAppId,
     expectedRepositoryFullName: `${owner}/${repo}`,
   });
-  return {
+  const state = {
     pr,
     requiredCi,
     ci,
@@ -649,6 +762,21 @@ export async function loadGateState(token, owner, repo, prNumber, config) {
     reviews: comments.map(normalizeComment),
     publicKeys: config.publicKeys,
   };
+  if (isPromotionPr(pr)) {
+    // Memoized per process: the before/after/post loads of one run see the same chain. A loading
+    // error becomes a not-ok chain (CHAIN_EVIDENCE_UNAVAILABLE), never an evaluation error.
+    state.promotionChain = await loadPromotionChain({
+      api: {
+        request: (path) => githubRequest(token, path),
+        paged: (path, key = null) => paged(token, path, key),
+      },
+      repository: `${owner}/${repo}`,
+      mainSha: pr.baseSha,
+      promotionHeadSha: pr.headSha,
+      publicKeys: config.publicKeys,
+    });
+  }
+  return state;
 }
 
 export function configuredPublicKeys(env = process.env) {
@@ -682,8 +810,12 @@ export function checkCompletionPayload(result) {
     conclusion: result.conclusion,
     external_id: `radulator-clinical-gate/v1/${result.fingerprint}`,
     output: {
-      title: result.eligible ? "Clinical release gate passed" : "Clinical release gate blocked",
-      summary: result.summary,
+      title: result.eligible
+        ? "Clinical release gate passed"
+        : result.conclusion === "neutral" ? "Clinical release gate waiting" : "Clinical release gate blocked",
+      summary: result.promotionChain?.enforcement === "report"
+        ? `${result.summary}\n\n${promotionChainLine(result.promotionChain)} Report only: it does not change this verdict.`
+        : result.summary,
       text: JSON.stringify({
         schema: RECORD_SCHEMA,
         policy_mode: "active",
@@ -694,6 +826,7 @@ export function checkCompletionPayload(result) {
         risk_tier: result.risk?.tier || null,
         judge_roles: result.judgeRoles || [],
         evaluation_fingerprint: result.fingerprint,
+        ...(result.promotionChain ? { promotion_chain: result.promotionChain } : {}),
       }),
     },
   };
@@ -701,7 +834,7 @@ export function checkCompletionPayload(result) {
 
 export function authorizationStatusPayload(result, check) {
   return {
-    state: result.conclusion === "success" ? "success" : "failure",
+    state: result.conclusion === "success" ? "success" : result.conclusion === "neutral" ? "pending" : "failure",
     context: ENFORCEMENT_CONTEXT,
     description: `${result.reasonCode} ${result.fingerprint}`,
     target_url: check.html_url,

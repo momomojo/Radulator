@@ -1437,7 +1437,7 @@
       "id": "nirads",
       "name": "ACR NI-RADS",
       "category": "Neuroradiology",
-      "guidelineVersion": "ACR NI-RADS 2018",
+      "guidelineVersion": "ACR NI-RADS 2018 / MRI v2025",
       "sourcePath": "src/components/calculators/NIRADS.jsx",
       "registry": {
         "status": "seed-unverified",
