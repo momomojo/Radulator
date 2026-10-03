@@ -13,6 +13,7 @@ import {
   loadGateState,
   validateCiPolicy,
 } from "../../../scripts/independent-review-gate.mjs";
+import { PROMOTION_BATCH_REVIEW, promotionExactStateReview } from "../../../scripts/promotion-chain.mjs";
 import {
   ATTESTATION_SCHEMA,
   canonicalJson,
@@ -124,6 +125,12 @@ export function signCandidate({ candidate, decision, identity, privateKey, revie
   if (Number.isNaN(Date.parse(reviewedAt))) throw new Error("reviewedAt is malformed.");
 
   const exact = candidate.exactState;
+  // A promotion candidate's review mode is its exact state's review binding, which the record signs; no other
+  // candidate carries one.
+  const promotion = candidate.reviewMode !== null && candidate.reviewMode !== undefined;
+  if (promotion ? exact?.review?.mode !== candidate.reviewMode : exact?.review !== undefined) {
+    throw new Error("Candidate review mode does not match its exact-state review binding.");
+  }
   const record = {
     schema: ATTESTATION_SCHEMA,
     repository_id: exact.repositoryId,
@@ -136,6 +143,7 @@ export function signCandidate({ candidate, decision, identity, privateKey, revie
     risk: exact.risk,
     ci: exact.ci,
     ci_sha256: exact.ciSha256,
+    ...(promotion ? { review: exact.review } : {}),
     verdict: decision.verdict,
     clinical_analysis: decision.clinical_analysis.trim(),
     citations: decision.citations.map((citation) => citation.trim()),
@@ -160,7 +168,7 @@ export function formatAttestationCarrier(record) {
   return body;
 }
 
-function exactStateFromLive(state) {
+function exactStateFromLive(state, { batchReview = PROMOTION_BATCH_REVIEW } = {}) {
   if (!completeFileList(state.pr, state.files)) {
     throw new Error("Live changed-file evidence is incomplete or exceeds the review limit.");
   }
@@ -180,12 +188,14 @@ function exactStateFromLive(state) {
     risk,
     ci: state.ci.evidence,
     ciSha256: digest(state.ci.evidence),
+    // A batch approval is posted only while the live chain is the one it was signed against.
+    ...promotionExactStateReview(state.pr, state.promotionChain, { batchReview }),
   };
 }
 
-export async function postAttestation({ record, publicKeys, api }) {
+export async function postAttestation({ record, publicKeys, api, promotionBatchReview = PROMOTION_BATCH_REVIEW }) {
   const live = await api.loadGateState(record.pr);
-  const verified = verifyAttestation(record, publicKeys, exactStateFromLive(live));
+  const verified = verifyAttestation(record, publicKeys, exactStateFromLive(live, { batchReview: promotionBatchReview }));
   if (!verified.ok) throw new Error(`Refusing stale or invalid attestation: ${verified.reasonCode}`);
   const body = formatAttestationCarrier(record);
   const existing = (live.reviews || []).find((review) => Number.isSafeInteger(review?.id) && review.body === body);

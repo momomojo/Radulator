@@ -554,4 +554,54 @@ const wrongRole = signedRecord(PRIMARY, highState, {
 });
 assert.equal(verifyAttestation(wrongRole, PUBLIC_KEYS, highState).reasonCode, "JUDGE_IDENTITY_MISMATCH");
 
+// Promotion review binding (Codex on #317): a batch approval holds only for the verified chain it was signed against.
+{
+  const chainA = "a".repeat(64);
+  const chainB = "b".repeat(64);
+  const live = (review) => ({ ...standardState, baseRef: "main", ...(review === undefined ? {} : { review }) });
+  const signedFor = (review, overrides = {}) =>
+    signedRecord(PRIMARY, live(), { ...(review === undefined ? {} : { review }), ...overrides });
+  const reason = (record, review) => verifyAttestation(record, PUBLIC_KEYS, live(review)).reasonCode;
+  const batchA = { mode: "batch", promotion_chain_sha256: chainA };
+  const batchPass = signedFor(batchA);
+
+  assert.equal(reason(batchPass, batchA), "VALID_ATTESTATION", "a batch PASS holds for the chain it was signed against");
+  assert.equal(evaluateAttestationQuorum([batchPass], PUBLIC_KEYS, live(batchA)).ok, true);
+  for (const [label, current] of [
+    ["another verified chain", { mode: "batch", promotion_chain_sha256: chainB }],
+    ["the same chain under the full-review label", { mode: "full", promotion_chain_sha256: chainA }],
+    ["a chain that no longer verifies", { mode: "full", promotion_chain_sha256: chainB }],
+    ["a chain that could not be loaded", { mode: "full", promotion_chain_sha256: null }],
+  ]) {
+    assert.equal(reason(batchPass, current), "ATTESTATION_STATE_MISMATCH", `a batch PASS does not hold for ${label}`);
+    assert.equal(evaluateAttestationQuorum([batchPass], PUBLIC_KEYS, live(current)).reasonCode, "MISSING_JUDGE_ROLE", label);
+  }
+  // A full review never relied on the chain; an unbound record predates batch review, so it is a full review.
+  for (const review of [{ mode: "full", promotion_chain_sha256: chainA }, { mode: "full", promotion_chain_sha256: null }, undefined]) {
+    const record = signedFor(review);
+    for (const current of [batchA, { mode: "full", promotion_chain_sha256: null }]) {
+      assert.equal(reason(record, current), "VALID_ATTESTATION", `a full review ${JSON.stringify(review)} holds for any chain`);
+    }
+  }
+  const batchNeedsFix = signedFor(batchA, { verdict: "NEEDS_FIX", clinical_analysis: "The merged text contradicts the source." });
+  assert.equal(
+    evaluateAttestationQuorum([batchPass, batchNeedsFix], PUBLIC_KEYS, live({ mode: "batch", promotion_chain_sha256: chainB })).reasonCode,
+    "NEEDS_FIX",
+    "a batch NEEDS_FIX stands after the chain changes",
+  );
+  assert.equal(reason(batchPass, undefined), "ATTESTATION_STATE_MISMATCH", "a state without a binding takes no bound record");
+  const { review: _review, ...stripped } = batchPass;
+  assert.equal(verifyAttestation(stripped, PUBLIC_KEYS, live(batchA)).reasonCode, "INVALID_SIGNATURE", "the signature covers the binding");
+  for (const [label, review, overrides] of [
+    ["a batch review without a chain", { mode: "batch", promotion_chain_sha256: null }],
+    ["an unknown mode", { mode: "partial", promotion_chain_sha256: chainA }],
+    ["an extra field", { ...batchA, note: "x" }],
+    ["a short digest", { mode: "batch", promotion_chain_sha256: "a".repeat(63) }],
+    ["an array", [batchA]],
+    ["a binding on a develop PR", batchA, { base_ref: "develop" }],
+  ]) {
+    assert.equal(reason(signedFor(review, overrides), batchA), "MALFORMED_ATTESTATION", label);
+  }
+}
+
 console.log("risk-tiered release policy tests passed");

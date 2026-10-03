@@ -41,6 +41,7 @@
     "test:calculator-helper": "node tests/calculator-test-helper.test.mjs",
     "test:invariants": "node scripts/check-radulator-invariants.test.mjs && npm run test:compute",
     "test:independent-review-gate": "node scripts/independent-review-gate.test.mjs",
+    "test:promotion-chain": "node scripts/promotion-chain.test.mjs",
     "test:release-policy": "node scripts/release-policy.test.mjs",
     "test:auto-merge": "node scripts/auto-merge.test.mjs",
     "test:release-workflow-permissions": "node scripts/release-workflow-permissions.test.mjs",
