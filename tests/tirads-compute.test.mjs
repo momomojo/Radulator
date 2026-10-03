@@ -16,6 +16,9 @@ const baseline = {
   nodule_size: "",
 };
 
+const GUIDANCE_SCOPE =
+  "Standard initial ACR TI-RADS guidance for an adult thyroid nodule. Prior biopsy or treatment, PET avidity, suspected invasive disease, and patient-specific clinical context may require a different approach. This calculator does not assess longitudinal growth or prioritize multiple nodules.";
+
 function withValues(overrides = {}) {
   return { ...baseline, ...overrides };
 }
@@ -23,6 +26,7 @@ function withValues(overrides = {}) {
 function assertError(values, message) {
   const result = TIRADS.compute(values);
   assert.ok(result.Error, `expected an error, got ${JSON.stringify(result)}`);
+  assert.equal(result["Guidance Scope"], undefined);
   if (message) assert.match(result.Error, message);
   return result;
 }
@@ -86,6 +90,32 @@ test("supports the maximum additive score of 17 points", () => {
     17,
     "TR5 - Highly Suspicious",
   );
+});
+
+test("scores explicit indeterminate descriptors and discloses the scoring assumptions", () => {
+  const cases = [
+    ["cannot_determine", "cannot_determine", 3, "TR3 - Mildly Suspicious"],
+    ["cannot_determine", "hypoechoic", 4, "TR4 - Moderately Suspicious"],
+    ["mixed", "cannot_determine", 2, "TR2 - Not Suspicious"],
+  ];
+  for (const [composition, echogenicity, points, category] of cases) {
+    const result = assertScore(withValues({ composition, echogenicity }), points, category);
+    if (composition === "cannot_determine") {
+      assert.match(result["Clinical Notes"], /composition cannot be determined.*scored as solid/i);
+    }
+    if (echogenicity === "cannot_determine") {
+      assert.match(result["Clinical Notes"], /echogenicity cannot be determined.*scored as isoechoic/i);
+    }
+  }
+  const values = withValues({
+    composition: "cannot_determine", echogenicity: "cannot_determine",
+    echogenic_foci_none: false, echogenic_foci_punctate: true, nodule_size: "1.2",
+  });
+  const tr4 = assertScore(values, 6, "TR4 - Moderately Suspicious");
+  assert.match(tr4["Follow-up Recommendation"], /1, 2, 3, and 5 years/);
+  const tr5 = assertScore({ ...values, echogenic_foci_macro: true }, 7, "TR5 - Highly Suspicious");
+  assert.match(tr5["FNA Recommendation"], /FNA recommended/);
+  assertError({ composition: "cannot_determine" }, /complete all ultrasound/i);
 });
 
 test("requires an explicit and internally consistent echogenic-foci assessment", () => {
@@ -166,6 +196,36 @@ test("accepts cystic and spongiform composition alone but rejects suspicious res
   );
   assertError({ composition: "cystic", echogenicity: false }, /echogenicity|invalid|reassess/i);
   assertError({ composition: "cystic", shape: 0 }, /shape|invalid|reassess/i);
+});
+
+test("reports honest scope and explicit benign follow-up disposition", () => {
+  for (const values of [{ composition: "cystic" }, { composition: "spongiform" }]) {
+    const result = TIRADS.compute(values);
+    assert.equal(result["TI-RADS Category"], "TR1 - Benign");
+    assert.equal(result["FNA Recommendation"], "No FNA recommended");
+    assert.equal(result["Follow-up Recommendation"], "No routine TI-RADS follow-up recommended");
+    assert.equal(result["Guidance Scope"], GUIDANCE_SCOPE);
+  }
+
+  const tr2 = TIRADS.compute(
+    withValues({ composition: "mixed", echogenicity: "hyperechoic" }),
+  );
+  assert.equal(tr2["TI-RADS Category"], "TR2 - Not Suspicious");
+  assert.equal(tr2["FNA Recommendation"], "No FNA recommended");
+  assert.equal(tr2["Follow-up Recommendation"], "No routine TI-RADS follow-up recommended");
+  assert.equal(tr2["Guidance Scope"], GUIDANCE_SCOPE);
+
+  const tr4 = TIRADS.compute(
+    withValues({ echogenicity: "hypoechoic", nodule_size: "1.2" }),
+  );
+  assert.equal(tr4["Follow-up Recommendation"], "Follow-up at 1, 2, 3, and 5 years");
+  assert.equal(tr4["Guidance Scope"], GUIDANCE_SCOPE);
+
+  assert.match(TIRADS.info.text, new RegExp(GUIDANCE_SCOPE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.equal(
+    TIRADS.refs[5].u,
+    "https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Reporting-and-Data-Systems/TI-RADS",
+  );
 });
 
 test("validates nodule size as blank or a finite positive number", () => {
@@ -378,8 +438,11 @@ test("reports group risk estimates instead of individual probabilities", () => {
 });
 
 test("states adult-nodule scope and clinical-context limitation in calculator metadata", () => {
+  const adultScope =
+    "For adult thyroid nodules; prior biopsy results and patient-specific clinical context can alter management.";
   assert.match(
     TIRADS.info.text,
-    /For adult thyroid nodules; prior biopsy results and patient-specific clinical context can alter management\./,
+    new RegExp(adultScope.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
   );
+  assert.ok(TIRADS.info.text.includes(`${adultScope} ${GUIDANCE_SCOPE}`));
 });
