@@ -129,6 +129,75 @@ assert.match(subsetCopy, /so the missing measurement cannot change it/);
 assert.match(subsetCopy, /Baseline sum 100 mm\./);
 assert.doesNotMatch(subsetCopy, /Target-lesion sum \d/);
 assert.doesNotMatch(subsetCopy, /vs baseline|vs prior nadir/);
+// The subset is a lower bound, so the nadir is not updated from it.
+assert.equal(missingSubsetPd.updated_nadir_sum_mm, "20");
+assert.equal(missingSubsetPd.nadir_not_updated_reason, "incomplete_target_sum");
+
+// Missing target measurements (primary judge on #277, round 3). With prior nadir 80 mm, one measured target
+// of 30 mm and another required target missing:
+const missingTarget = (overrides = {}) =>
+  computeRecist11(
+    measurableInputs({
+      targetLesions: [
+        targetLesion({ id: "target-1", baselineMeasurementMm: "50", currentMeasurementMm: "30" }),
+        targetLesion({ id: "target-2", organ: "lung", baselineMeasurementMm: "50", currentStatus: "missing", currentMeasurementMm: "" }),
+      ],
+      priorNadirSumMm: "80",
+      ...overrides,
+    }),
+  );
+// (a) No independent PD: NE, and the incomplete 30 mm never lowers the 80 mm nadir.
+const missingNoPd = missingTarget();
+assert.equal(missingNoPd.target_response, "NE");
+assert.equal(missingNoPd.overall_response, "NE");
+assert.equal(missingNoPd.updated_nadir_sum_mm, "80");
+assert.equal(missingNoPd.nadir_not_updated_reason, "incomplete_target_sum");
+assert.equal(
+  buildRecistImpression(missingNoPd),
+  "RECIST 1.1 time-point response unresolved: Not Evaluable (NE) because a required target measurement is missing and available measurements do not independently prove progression. Clinician/radiologist and protocol confirmation required.",
+);
+// (b) Unequivocal non-target progression still establishes overall PD, with the target compartment NE.
+const missingNonTargetPd = missingTarget({ nonTargetStatus: "unequivocal_pd" });
+assert.equal(missingNonTargetPd.target_response, "NE");
+assert.equal(missingNonTargetPd.overall_response, "PD");
+assert.equal(missingNonTargetPd.pd_driver, "non_target");
+assert.equal(missingNonTargetPd.updated_nadir_sum_mm, "80");
+assert.equal(
+  buildRecistImpression(missingNonTargetPd),
+  "RECIST 1.1 time-point response: Progressive Disease (PD). Target lesions: Not Evaluable (NE) because 1 target measurement is missing and the measured targets do not establish target progression; no target-lesion sum is given. Non-target lesions: Unequivocal PD. New lesions: None. Driver: unequivocal non-target progression.",
+);
+// (c) An unequivocal new lesion still establishes overall PD.
+const missingNewLesionPd = missingTarget({ newLesionStatus: "unequivocal" });
+assert.equal(missingNewLesionPd.target_response, "NE");
+assert.equal(missingNewLesionPd.overall_response, "PD");
+assert.equal(missingNewLesionPd.pd_driver, "new_lesion");
+assert.equal(
+  buildRecistImpression(missingNewLesionPd),
+  "RECIST 1.1 time-point response: Progressive Disease (PD). Target lesions: Not Evaluable (NE) because 1 target measurement is missing and the measured targets do not establish target progression; no target-lesion sum is given. Non-target lesions: None. New lesions: Unequivocal malignant new lesion. Driver: unequivocal new lesion.",
+);
+for (const copy of [buildRecistImpression(missingNonTargetPd), buildRecistImpression(missingNewLesionPd)]) {
+  assert.doesNotMatch(copy, /Target-lesion sum \d|vs baseline|vs prior nadir|unresolved/);
+}
+// The classifier never updates the nadir from an incomplete sum, and still does from a complete one.
+const incompleteBelowNadir = classifyRecistTimePoint({
+  mode: "measurable",
+  baseline_sum_mm: "100",
+  prior_nadir_sum_mm: "80",
+  current_sum_mm: "30",
+  all_target_cr: false,
+  target_measurements_complete: false,
+  measured_subset_definite_pd: false,
+  non_target_status: "none",
+  new_lesion_status: "none",
+  prior_confirmed_target_response: "none",
+  prior_confirmed_overall_response: "none",
+  reappeared_malignant_lesion: false,
+  reappearing_lesion_compartment: "none",
+});
+assert.equal(incompleteBelowNadir.updated_nadir_sum_mm, "80");
+assert.equal(incompleteBelowNadir.nadir_not_updated_reason, "incomplete_target_sum");
+assert.equal(exactPr.updated_nadir_sum_mm, "28");
+assert.equal(exactPr.nadir_not_updated_reason, null);
 
 assert.throws(
   () =>

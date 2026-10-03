@@ -131,6 +131,62 @@ test.describe("RECIST 1.1 calculator", () => {
       .toContain("a lower bound for the full sum");
   });
 
+  // Missing target measurement without a target-PD subset (primary judge on #277, round 3): the target
+  // compartment is NE, the incomplete sum never updates the nadir, and non-target or new-lesion PD still
+  // shows and copies as overall PD.
+  test("keeps an incomplete non-PD subset NE, leaves the nadir, and copies independent overall PD", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Add target lesion (1/5)" }).click();
+    await page.locator("#target-1-organ").selectOption("liver");
+    await page.locator("#target-1-baseline").fill("50");
+    await page.locator("#target-1-current").fill("30");
+    await page.locator("#target-2-organ").selectOption("lung");
+    await page.locator("#target-2-baseline").fill("50");
+    await page.locator("#target-2-current-status").selectOption("missing");
+    await page.locator("#prior-nadir").fill("80");
+    const calculate = page.getByRole("button", {
+      name: "Calculate RECIST 1.1 time-point response",
+    });
+    const results = page.getByTestId("recist-results");
+    const impression = page.getByTestId("recist-impression");
+    const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
+
+    // (a) No independent PD.
+    await calculate.click();
+    await expect(results).toContainText("Not Evaluable (NE)");
+    await expect(results).toContainText("Measured target subset (incomplete; 1 missing)");
+    await expect(results).toContainText("80 mm (not compared: the current sum is incomplete)");
+    await expect(results).toContainText("80 mm (not updated: the current sum is incomplete)");
+    await expect(results).not.toContainText("progression)");
+    await expect(impression).toContainText(
+      "RECIST 1.1 time-point response unresolved: Not Evaluable (NE) because a required target measurement is missing",
+    );
+
+    // (b) Unequivocal non-target progression. The status selects sit in the collapsed context section.
+    await page.getByText("2. Non-target, new-lesion, and longitudinal context").click();
+    await page.locator("#non-target-status").selectOption("unequivocal_pd");
+    await calculate.click();
+    await expect(results).toContainText("Progressive Disease (PD)");
+    await expect(impression).toContainText(
+      "RECIST 1.1 time-point response: Progressive Disease (PD). Target lesions: Not Evaluable (NE) because 1 target measurement is missing",
+    );
+    await expect(impression).toContainText("Driver: unequivocal non-target progression.");
+    await expect(impression).not.toContainText("unresolved");
+    await page.getByRole("button", { name: "Copy impression" }).click();
+    await expect.poll(clipboard).toContain("Driver: unequivocal non-target progression.");
+
+    // (c) An unequivocal new lesion.
+    await page.locator("#non-target-status").selectOption("none");
+    await page.locator("#new-lesion-status").selectOption("unequivocal");
+    await calculate.click();
+    await expect(impression).toContainText("Target lesions: Not Evaluable (NE) because 1 target measurement is missing");
+    await expect(impression).toContainText("Driver: unequivocal new lesion.");
+    await page.getByRole("button", { name: "Copy impression" }).click();
+    await expect.poll(clipboard).toContain("Driver: unequivocal new lesion.");
+    await expect.poll(clipboard).not.toContain("Target-lesion sum");
+  });
+
   test("uses the non-target-only copy template without target arithmetic", async ({
     page,
   }) => {

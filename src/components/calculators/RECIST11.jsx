@@ -528,7 +528,12 @@ export function classifyRecistTimePoint(caseData) {
     display_baseline_change_1dp: percentageOneDecimal(current, baseline),
     display_nadir_change_1dp: percentageOneDecimal(current, priorNadir),
     absolute_nadir_change_mm: current.subtract(priorNadir).toString(),
-    updated_nadir_sum_mm: exactMinimum(priorNadir, current).toString(),
+    // An incomplete target sum is only a lower bound for the full sum, not a valid smallest sum, so it never
+    // updates the nadir (primary judge on #277).
+    updated_nadir_sum_mm: caseData.target_measurements_complete
+      ? exactMinimum(priorNadir, current).toString()
+      : priorNadir.toString(),
+    nadir_not_updated_reason: caseData.target_measurements_complete ? null : "incomplete_target_sum",
   };
 
   let targetResponse;
@@ -953,14 +958,21 @@ export function buildRecistImpression(result) {
   }
 
   if (result.current_sum_is_measured_subset) {
-    // Only a measured subset that already meets PD reaches here; anything else is NE above. The value is a
-    // lower bound for the full sum, so no percentage is presented as the target-lesion sum's (primary judge
-    // on #277). Adding the missing measurements can only raise the sum, so PD stands.
+    // A target measurement is missing, so the measured value is only a lower bound for the full sum: no
+    // percentage is presented as the target-lesion sum's, and the nadir is not updated (primary judge on
+    // #277). Overall NE and INDETERMINATE were handled above, so the overall response here is PD.
+    const missing = result.missing_target_measurements;
+    const missingText = `${missing} target measurement${missing === 1 ? " is" : "s are"} missing`;
     if (result.target_response !== "PD") {
+      if (result.overall_response === "PD") {
+        // The target compartment is NE, but unequivocal non-target progression or an unequivocal new
+        // lesion independently establishes overall PD.
+        return `RECIST 1.1 time-point response: ${category}. Target lesions: Not Evaluable (NE) because ${missingText} and the measured targets do not establish target progression; no target-lesion sum is given. Non-target lesions: ${NON_TARGET_LABELS[result.non_target_status]}. New lesions: ${NEW_LESION_LABELS[result.new_lesion_status]}.${driver}${caution}`;
+      }
       return "RECIST 1.1 time-point response unresolved: a required target measurement is missing. Clinician/radiologist and protocol confirmation required.";
     }
-    const missing = result.missing_target_measurements;
-    return `RECIST 1.1 time-point response: ${category}. Target-lesion sum incomplete: ${missing} target measurement${missing === 1 ? " is" : "s are"} missing. The measured targets alone sum to ${result.current_sum_mm} mm, a lower bound for the full sum, and that already meets target progression (at least 20% and at least 5 mm above the prior nadir of ${result.prior_nadir_sum_mm} mm), so the missing measurement${missing === 1 ? "" : "s"} cannot change it. Baseline sum ${result.baseline_sum_mm} mm. Non-target lesions: ${NON_TARGET_LABELS[result.non_target_status]}. New lesions: ${NEW_LESION_LABELS[result.new_lesion_status]}.${driver}${caution}`;
+    // The measured subset alone meets both PD conditions; adding the missing measurements can only raise it.
+    return `RECIST 1.1 time-point response: ${category}. Target-lesion sum incomplete: ${missingText}. The measured targets alone sum to ${result.current_sum_mm} mm, a lower bound for the full sum, and that already meets target progression (at least 20% and at least 5 mm above the prior nadir of ${result.prior_nadir_sum_mm} mm), so the missing measurement${missing === 1 ? "" : "s"} cannot change it. Baseline sum ${result.baseline_sum_mm} mm. Non-target lesions: ${NON_TARGET_LABELS[result.non_target_status]}. New lesions: ${NEW_LESION_LABELS[result.new_lesion_status]}.${driver}${caution}`;
   }
 
   const nadirChange =
@@ -1739,7 +1751,9 @@ function Recist11Calculator() {
                   <div>
                     <dt className="text-muted-foreground">
                       {result.current_sum_is_measured_subset
-                        ? `Measured target subset (lower bound; ${result.missing_target_measurements} missing)`
+                        ? `Measured target subset (${
+                            result.target_response === "PD" ? "lower bound" : "incomplete"
+                          }; ${result.missing_target_measurements} missing)`
                         : "Current target sum"}
                     </dt>
                     <dd className="font-medium text-foreground">
@@ -1758,7 +1772,9 @@ function Recist11Calculator() {
                     <dt className="text-muted-foreground">Prior nadir denominator</dt>
                     <dd className="font-medium text-foreground">
                       {result.current_sum_is_measured_subset
-                        ? `${result.prior_nadir_sum_mm} mm (the measured subset alone is at least ${withSign(result.display_nadir_change_1dp, "%")} and ${withSign(result.absolute_nadir_change_mm, " mm")} above it: progression)`
+                        ? result.target_response === "PD"
+                          ? `${result.prior_nadir_sum_mm} mm (the measured subset alone is at least ${withSign(result.display_nadir_change_1dp, "%")} and ${withSign(result.absolute_nadir_change_mm, " mm")} above it: progression)`
+                          : `${result.prior_nadir_sum_mm} mm (not compared: the current sum is incomplete)`
                         : `${result.prior_nadir_sum_mm} mm (${
                             result.display_nadir_change_1dp === null
                               ? "percentage not calculable"
@@ -1769,7 +1785,9 @@ function Recist11Calculator() {
                   <div>
                     <dt className="text-muted-foreground">Updated nadir</dt>
                     <dd className="font-medium text-foreground">
-                      {result.updated_nadir_sum_mm} mm
+                      {result.nadir_not_updated_reason
+                        ? `${result.updated_nadir_sum_mm} mm (not updated: the current sum is incomplete)`
+                        : `${result.updated_nadir_sum_mm} mm`}
                     </dd>
                   </div>
                   <div>
